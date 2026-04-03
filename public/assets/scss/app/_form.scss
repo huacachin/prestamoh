@@ -1,0 +1,192 @@
+// >>-- 24 Form css start --<<
+
+.app-form {
+    .form-select,
+    .form-control {
+        color: rgba(var(--secondary), 1);
+        font-size: 14px;
+        padding: 0.4rem 0.75rem;
+        border: 1px solid var(--border_color);
+        &:focus {
+            color: rgba(var(--dark), 1);
+            box-shadow: 0 0 0 0.25rem rgba(var(--primary), 0.3);
+            border: 1px solid rgba(var(--primary), 1);
+        }
+        &::placeholder {
+            color: rgba(var(--dark), 0.6) !important;
+            opacity: 1;
+        }
+        &.is-invalid {
+            border-color: rgba(var(--danger), 1);
+            &:focus {
+                box-shadow: 0 0 0 0.25rem rgba(var(--danger), 0.3);
+            }
+        }
+        &.form-control-lg {
+            min-height: calc(1.5em + 1rem + calc(var(--bs-border-width) * 2));
+            padding: 0.5rem 1rem;
+            font-size: 1.25rem;
+        }
+        &.form-control-sm{
+            min-height: calc(1.5em + 0.5rem + calc(var(--bs-border-width) * 2));
+            padding: 0.25rem 0.5rem;
+            font-size: .875rem;        
+        }
+    }
+    .form-select{
+        padding: 0.5rem;
+        option{
+            padding: 0.5rem 1rem;
+            border-radius: 5px; 
+            
+            &:active,
+            &:checked{
+                background-color: rgb(var(--primary), 1);
+                color: var(--white);
+            }
+            &:hover{
+                background-color: rgb(var(--primary), .1);
+                color: rgb(var(--primary), 1);
+            }
+        }
+    }
+
+    .form-label {
+        color: rgba(var(--dark), .8);
+        font-size: 15px;
+        font-weight: 500;
+    }
+    .form-text {
+        color: rgba(var(--secondary), 1);
+    }
+    .input-group {
+        .input-group-text {
+            font-size: 14px;
+        }
+    }
+    .form-floating {
+        > .form-control {
+            &::placeholder {
+                color: transparent !important;
+            }
+            &:focus {
+                &::placeholder {
+                    color: rgba(var(--secondary), 1) !important;
+                }
+            }
+        }
+        > .form-select {
+            padding-top: 1.5rem;
+            padding-bottom: 0.625rem;
+        }
+    }
+    &.rounded-control {
+        .form-select,
+        .form-control {
+            border-radius: 20px;
+        }
+    }
+    .app-control {
+        position: relative;
+        padding-bottom: 20px;
+        &.success {
+            input {
+                border: 1px solid rgba(var(--success), 0.3);
+            }
+        }
+        &.error {
+            input {
+                border: 1px solid rgba(var(--danger), 1);
+                &:focus {
+                    box-shadow: 0 0 0 0.25rem rgba(var(--danger), 0.3);
+                }
+            }
+            small {
+                visibility: visible;
+            }
+        }
+        small {
+            color: rgba(var(--danger), 1);
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            visibility: hidden;
+        }
+    }
+    &.app-icon-form {
+        .form-control {
+            padding-left: 2rem;
+            &:focus {
+                border-color: rgba(var(--primary), 1);
+                box-shadow: none;
+            }
+        }
+        i {
+            position: absolute;
+            left: 12px;
+            top: 10px;
+            font-size: 16px;
+        }
+    }
+    &.was-validated{
+        .form-control{
+            &:invalid{
+                border-color: rgba(var(--danger), 1);
+            }
+            &:valid{
+                border-color: rgb(var(--success), 1);
+            }
+        }
+        .invalid-feedback{
+            color: rgba(var(--danger), 1);
+        }
+    }
+}
+
+.form-check-input{
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    border-color: rgba(var(--dark), .2);
+    &:checked{
+        background-color: rgb(var(--primary), 1);
+        border-color: rgb(var(--primary), 1);
+    }
+    &:focus {
+        border-color: rgb(var(--primary), 1);
+        outline: 0;
+        box-shadow: 0 0 0 .25rem rgb(var(--primary), .25);
+    }
+}
+.form-check-label{
+    line-height: 24px;
+}
+
+.form-range{
+    &::-webkit-slider-thumb{
+        background-color: rgb(var(--primary), 1) !important;
+    }
+    &:disabled{
+        &::-webkit-slider-thumb{
+            background-color: rgb(var(--secondary), 1) !important;
+        }   
+    }
+}
+
+// .form-check-input{
+//     &:checked{
+//         background-color: rgba(var(--primary), 1);
+//     }
+//     &:focus {
+//         box-shadow: 0 0 0 0.25rem rgba(var(--primary), 0.3);
+//         border: 1px solid rgba(var(--primary), 1);
+//     }
+// }
+.form-check-input {
+    &.outline-form-check-input{
+        border: 2px solid rgba(var(--dark), 0.2);
+        width: 1rem;
+        height: 1rem;
+    }
+}
+// >>-- 24 Form css end  --<<

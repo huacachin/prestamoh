@@ -1,0 +1,124 @@
+// >>-- 80 Product_list css start --<<
+
+.product-list-table{
+    table{
+        thead{
+            tr{
+                th:first-child{
+                    min-width: 50px;
+                }
+                th:nth-child(2){
+                    min-width: 250px;
+                    text-align: start;
+                }
+                th:nth-child(3){
+                    min-width: 100px;
+                }
+                th:nth-child(4){
+                    min-width: 100px;
+                }
+                th:nth-child(5){
+                    min-width: 100px;
+                }
+                th:nth-child(6){
+                    min-width: 100px;
+                }
+                th:nth-child(7){
+                    min-width: 200px;
+                }
+                th:nth-child(8){
+                    min-width:100px;
+                }
+            }
+        }
+    }
+    .dataTables_wrapper {
+        table {
+            text-align: center;
+            border-top: 1px dashed var(--border_color);
+            &.dataTable {
+                &.display > tbody > tr.even > .sorting_1,
+                &.display > tbody > tr.odd > * {
+                    box-shadow: none;
+                }
+                &.display > tbody > tr:hover > * {
+                    box-shadow: none;
+                }
+            }
+            &.order-column.stripe > tbody > tr.even > .sorting_1 {
+                box-shadow: none;
+            }
+            thead {
+                th {
+                    color: rgba(var(--dark), 0.8);
+                    font-weight: 600;
+                    text-align: center;
+                    &.sorting {
+                        &:before,
+                        &:after {
+                            display: none;
+                        }
+                    }
+                }
+                th,
+                td {
+                    border: none;
+                }
+            }
+            tbody {
+                td {
+                    border: none;
+                    color: rgba(var(--dark), 0.8);
+                    font-size: 15px;
+                    h6 {
+                        color: rgba(var(--dark), 0.8);
+                        font-weight: 600;
+                        margin-bottom: 0;
+                    }
+                    td:nth-child(2){
+                        text-align: start;
+                    }
+                }
+                tr {
+                    .odd {
+                        &.selected {
+                            background-color: var(--white) !important;
+                        }
+                    }
+                    &:hover {
+                        background-color: rgba(var(--light), 0.1);
+                        h6 {
+                            color: rgba(var(--primary), 1);
+                        }
+                    }
+                }
+            }
+        }
+
+        .dataTables_length {
+            margin-left: 16px;
+            select {
+                color: rgba(var(--secondary), 1);
+                font-size: 14px;
+                padding: 0.4rem 0.75rem;
+                border: 1px solid var(--border_color) !important;
+            }
+        }
+        .dataTables_filter {
+            margin-right: 16px;
+            input {
+                padding: 0.4rem 0.75rem;
+                border: 1px solid var(--border_color) !important;
+            }
+        }
+        .dataTables_paginate,
+        .dataTables_info {
+            display: none;
+        }
+        .no-footer {
+                    border-bottom: none !important;
+                }
+    }
+
+}
+// >>-- 80 Product_list css end --<<

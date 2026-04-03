@@ -1,0 +1,28 @@
+// >>-- 30 Tooltips_popovers css start --<<
+
+.custom-tooltip {
+    --bs-tooltip-bg: var(--bs-primary);
+  }
+.custom-secondary {
+  --bs-tooltip-bg: rgb(var(--secondary),1);
+}
+.custom-success {
+  --bs-tooltip-bg: rgb(var(--success),1);
+}
+.custom-danger {
+  --bs-tooltip-bg: rgb(var(--danger),1);
+}
+.custom-warning {
+  --bs-tooltip-bg: rgb(var(--warning),1);
+}
+.custom-info {
+  --bs-tooltip-bg: rgb(var(--info),1);
+}
+.custom-light {
+  --bs-tooltip-bg: rgb(var(--light),1);
+}
+.custom-dark {
+  --bs-tooltip-bg: rgb(var(--dark),1);
+}
+
+// >>-- 30 Tooltips_popovers css end --<<

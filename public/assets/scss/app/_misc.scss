@@ -1,0 +1,333 @@
+// >>-- 71 Misc css start --<<
+.app-breadcrumb {
+    .breadcrumb {
+        border: 1px solid var(--border_color);
+    }
+}
+.line-breadcrumbs {
+    li {
+        display: inline-block;
+        color: rgba(var(--dark), 0.75);
+        font-weight: 500;
+        & + li {
+            &::before {
+                content: "/";
+                color: rgba(var(--secondary), 1);
+                padding-left: 10px;
+                padding-right: 10px;
+            }
+            &.active {
+                color: rgba(var(--primary), 1);
+            }
+            &:hover {
+                a {
+                    text-decoration: underline;
+                }
+            }
+        }
+    }
+}
+.breadcrumbs {
+    li {
+        display: inline-block;
+        color: rgba(var(--dark), 0.75);
+        font-weight: 500;
+        & + li {
+            &::before {
+                font-family: "tabler-icons";
+                content: "\f60d";
+                color: var(--font-light-color);
+                padding-left: 8px;
+            }
+            &.active {
+                color: rgba(var(--primary), 1);
+            }
+        }
+    }
+}
+.breadcrumb {
+    flex-wrap: nowrap;
+    border-radius: 5px;
+    li {
+        display: inline-block;
+        color: rgba(var(--dark), 0.75);
+        font-weight: 500;
+        & + li {
+            &::before {
+                font-family: "tabler-icons";
+                content: "\ea61" !important;
+                padding: 0 !important;
+            }
+            &.active {
+                color: rgba(var(--primary), 1);
+            }
+        }
+        i {
+            margin-right: 5px;
+            line-height: 1.2;
+        }
+    }
+}
+
+.simple-breadcrumbs {
+    li {
+        display: inline-block;
+        padding: 5px 15px;
+        background: rgba(var(--secondary), 0.1);
+        transform: skew(-20deg);
+        cursor: pointer;
+        a {
+            display: block;
+            transform: skew(20deg);
+        }
+        &.active {
+            background: rgba(var(--primary), 1);
+            color: var(--white);
+        }
+    }
+}
+
+.simple-shape-breadcrumbs {
+    li {
+        position: relative;
+        background: rgba(var(--secondary), 0.1);
+        padding: 5px 25px;
+        text-align: center;
+        display: inline-block;
+        margin-left: 0;
+        &:last-child {
+            :before,
+            :after {
+                display: none;
+            }
+        }
+        &.active {
+            background-color: rgba(var(--primary), 1);
+            color: var(--white);
+        }
+    }
+    &.shape-breadcrumbs {
+        li{
+            &::before{
+                content: '';
+                position: absolute;
+                border-top: 15px solid transparent;
+                border-bottom: 15px solid transparent;
+                width: 0;
+                right: -12px;
+                top: 0;
+            }
+            &+{
+                li{
+                    margin-left: -4px;
+                }
+            }
+            &.active {
+                &:before {
+                    border-left:12px solid rgba(var(--primary), 1);
+                }
+            }
+        }
+       
+    }
+}
+@mixin circle_breadcrumbs_mixin($name, $color) {
+    .circle-breadcrumbs {
+        &.breadcrumbs-#{$name} {
+            li {
+                a {
+                    background-color: rgba(var(--secondary), 0.1);
+                    color: rgba(var(--dark), 0.75);
+                }
+                &.active {
+                    a {
+                        background: rgba(#{$color}, 1);
+                        color: var(--white);
+                    }
+                }
+            }
+        }
+    }
+}
+
+@each $name, $color in $colors {
+    @include circle_breadcrumbs_mixin($name, map-get($colors, $name));
+}
+
+.circle-breadcrumbs {
+    li {
+        display: inline-block;
+        position: relative;
+        margin-right: 20px;
+        & + {
+            li {
+                margin-left: 20px;
+            }
+        }
+        a {
+            display: block;
+            width: 35px;
+            height: 35px;
+            line-height: 35px;
+            font-size: 14px;
+            text-align: center;
+            border-radius: 50%;
+            &::after {
+                content: ">";
+                position: absolute;
+                left: -25px;
+                font-size: 20px;
+            }
+        }
+        &:first-child {
+            a {
+                &::after {
+                    content: "";
+                }
+            }
+        }
+    }
+}
+
+/* Stepbar*/
+
+.stepbar {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    counter-reset: step;
+    margin: 45px 0 50px;
+    &:before {
+        content: "";
+        height: 4px;
+        width: 100%;
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        background-color: var(--border_color);
+        z-index: 1;
+    }
+    .stepbar-step {
+        width: 35px;
+        height: 35px;
+        background-color: var(--border_color);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1;
+        &:before {
+            counter-increment: step;
+            content: counter(step);
+        }
+        &.step-active {
+            background-color: rgba(var(--primary));
+            color: var(--white);
+        }
+    }
+}
+
+// pagination
+
+.simple-pagination,
+.outline-pagination,
+.light-pagination {
+    li {
+        display: inline;
+        a {
+            display: inline-block;
+            padding: 6px 12px;
+        }
+    }
+}
+
+.circle-pagination,
+.outline-circle-pagination,
+.light-circle-pagination {
+    display: flex;
+    justify-content: end;
+    li {
+        display: inline-block;
+        padding: 0px 2px;
+        a {
+            display: inline-block;
+            line-height: 35px;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            text-align: center;
+        }
+    }
+}
+
+@mixin circle_pagination_mixin($name, $color) {
+    .simple-pagination,
+    .circle-pagination {
+        &.pagination-#{$name} {
+            li {
+                a {
+                    background-color: rgba(var(--secondary), 0.1);
+                    color: var(--black);
+                    &.active {
+                        background-color: rgba(#{$color}, 1);
+                        color: var(--white);
+                    }
+                }
+            }
+        }
+    }
+    .outline-pagination,
+    .outline-circle-pagination {
+        &.pagination-#{$name} {
+            li {
+                a {
+                    outline: 1px solid rgba(var(--secondary), 0.6);
+                    color: var(--black);
+                    &.active {
+                        outline: 1px solid rgba(#{$color}, 1);
+                        color: rgba(#{$color}, 1);
+                    }
+                }
+            }
+        }
+    }
+    .light-pagination,
+    .light-circle-pagination {
+        &.pagination-#{$name} {
+            li {
+                a {
+                    background-color: rgba(var(--secondary), 0.1);
+                    color: rgba(var(--secondary), 1);
+                    &.active {
+                        background-color: rgba(#{$color}, 0.1);
+                        color: rgba(#{$color}, 1);
+                    }
+                }
+            }
+        }
+    }
+}
+
+@each $name, $color in $colors {
+    @include circle_pagination_mixin($name, map-get($colors, $name));
+}
+
+.app-pagination {
+    gap: 10px;
+    .page-item {
+        .page-link {
+            border-radius: 5px !important;
+            &:focus{
+                background-color:var(--white);
+                box-shadow: 0 0 0 0.25rem rgba(var(--primary), 0.3);
+            }
+        }
+        &.active {
+            .page-link {
+                background-color: rgba(var(--primary), 1);
+                border-color: rgba(var(--primary), 1);
+            }
+        }
+    }
+}
+// >>-- 71 Misc css end --<<

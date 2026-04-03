@@ -1,0 +1,238 @@
+// ============================================================
+// _custom.scss — Estilos compartidos extraídos de los Blade
+// ============================================================
+
+// --- Tabla compacta global ---
+table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+th, td {
+    padding: 1px !important;
+    font-size: 10px !important;
+    text-align: center !important;
+    vertical-align: middle;
+    white-space: normal !important;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
+.btn, input, select {
+    font-size: 10px !important;
+}
+
+thead, tfoot {
+    font-weight: bold;
+}
+
+// --- Overlay de carga global ---
+.screen-overlay {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, .35);
+    backdrop-filter: blur(2px);
+    z-index: 2000;
+    pointer-events: all;
+}
+
+// --- Datepicker: ícono de calendario ---
+// jQuery UI añade .hasDatepicker automáticamente a cada input inicializado
+input.hasDatepicker {
+    background: url('/images/calen.png') #fff no-repeat right;
+    background-size: 21px 16px;
+    padding-right: 2rem;
+}
+
+// --- Label vencido (drivers/_form y owners/_form) ---
+.label-expired {
+    background: #c62828;
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+// --- Estadístico: filas rayadas y módulos verdes ---
+// (departures/stats y departures/rmp)
+.striped-cond {
+    background: #d0cdcd !important;
+}
+
+.green_modules {
+    color: #4D8A7C !important;
+}
+
+// --- Permisos: grid completo ---
+// (users/create, users/edit, users/perms)
+.perm-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.perm-row {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 8px;
+    align-items: center;
+    padding: 6px 8px;
+    border-radius: 8px;
+    background: #fff;
+    border: 1px solid #eee;
+    margin-bottom: 6px;
+}
+
+.perm-col-title {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.perm-col-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.perm-chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.chip-radio, .chip-hq, .chip-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border: 1px solid #e5e7eb;
+    border-radius: 999px;
+    background: #fff;
+    cursor: pointer;
+}
+
+.chip-hq .hq-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding-left: 6px;
+    margin-left: 6px;
+    border-left: 1px dashed #e5e7eb;
+    font-size: 11px;
+}
+
+.chip-hq.is-default {
+    border-color: #60a5fa;
+    background: #f0f9ff;
+}
+
+.chip-hq.is-selected {
+    border-color: #a7f3d0;
+    background: #ecfdf5;
+}
+
+.form-two-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+
+.form-two-cols .span-2 {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 576px) {
+    .perm-row {
+        grid-template-columns: 1fr;
+        padding: 6px;
+    }
+    .perm-col-title {
+        margin-bottom: 2px;
+    }
+    .chip-radio, .chip-hq, .chip-check {
+        padding: 3px 6px;
+    }
+}
+
+// --- Utilidades inline repetidas ---
+.input-offscreen {
+    position: absolute;
+    left: -9999px;
+}
+
+.input-readonly {
+    background: #eee !important;
+    pointer-events: none;
+}
+
+.input-uppercase {
+    text-transform: uppercase;
+}
+
+// --- Flex items para debts/monthly-detail ---
+.flex-item-sm {
+    flex: 1 1 160px;
+    min-width: 140px;
+}
+
+.flex-item-md {
+    flex: 1 1 180px;
+    min-width: 160px;
+}
+
+.flex-item-lg {
+    flex: 2 1 300px;
+    min-width: 240px;
+}
+
+.flex-item-xl {
+    flex: 2 1 420px;
+    min-width: 320px;
+    max-width: 100%;
+}
+
+// --- Quick Access FAB ---
+.quick-access {
+    display: flex;
+    position: fixed;
+    bottom: 130px;
+    right: 20px;
+    flex-direction: column;
+    gap: 6px;
+    z-index: 1050;
+}
+
+.quick-access-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 10px;
+    border-radius: 50px;
+    color: #fff !important;
+    font-size: 10px !important;
+    font-weight: 600;
+    text-decoration: none !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .25);
+    transition: transform .15s, box-shadow .15s;
+
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, .3);
+    }
+}
+
+.qa-departures { background: #3b82f6; }
+.qa-payments   { background: #22c55e; }
+.qa-incomes    { background: #f59e0b; }
+
+// Botón Exportar
+.btn-export {
+    background-color: #D0CECE !important;
+    border-color: #D0CECE !important;
+    color: #000 !important;
+}

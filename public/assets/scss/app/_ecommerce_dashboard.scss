@@ -1,0 +1,691 @@
+// >>-- 25 Ecommerce_dashboard css start --<<
+
+%background-image {
+    background-blend-mode: overlay;
+    border-radius: 10px;
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.bg-image1 {
+    @extend %background-image;
+    background-color: rgba(var(--dark), 1);
+    position: relative;
+    overflow: hidden;
+    &::after {
+        content: "";
+        position: absolute;
+        height: 100%;
+        width: 100%;
+        z-index: 1;
+        top: 0;
+        left: 0;
+        background-image: linear-gradient(#454347 1px, transparent 1px),
+            linear-gradient(to right, #454347 1px, #231928 1px);
+        background-size: 40px 40px;
+        opacity: 0.4;
+        z-index: 1;
+    }
+}
+
+.bg-image2 {
+    background-image: url("../images/dashboard/ecommerce/04.jpg");
+    @extend %background-image;
+    background-color: rgba(var(--light), 1);
+    overflow: hidden;
+    .icon-bg {
+        color: rgba(var(--primary), 0.75) !important;
+    }
+}
+
+.header-heading {
+    font-weight: 600;
+    color: rgba(var(--dark), 0.75);
+}
+
+.welcome-image {
+    background-color: rgba(var(--dark), 1);
+}
+
+.ecommerce-front-card {
+    user-select: none;
+    h6 {
+        margin-bottom: 0;
+        font-weight: 600;
+        color: rgba(var(--dark), 0.75);
+    }
+    p {
+        display: inline-block;
+        color: rgba(var(--secondary), 1);
+        margin-bottom: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 1;
+        -webkit-box-orient: vertical;
+    }
+    &:hover {
+        i {
+            animation: swing 1s ease-in-out infinite;
+        }
+        &::before {
+            clip-path: circle(100%);
+        }
+    }
+}
+.loss-card,
+.profit-card {
+    background-image: url("../images/dashboard/ecommerce/pattern.png");
+    background-repeat: no-repeat;
+    background-position: bottom right;
+    h3 {
+        margin-bottom: 0;
+        color: rgba(var(--dark), 0.8);
+    }
+    &:hover {
+        .btn-light-danger,
+        .btn-light-success {
+            i {
+                animation: flash 2s ease-in-out;
+            }
+        }
+    }
+}
+.image-card-content {
+    position: relative;
+    z-index: 2;
+    h2,
+    p {
+        color: var(--white);
+    }
+}
+.customers-card {
+    .icon-bg {
+        color: rgba(var(--light), 1);
+    }
+    h2 {
+        margin-bottom: 0;
+        color: rgba(var(--dark), 0.75);
+    }
+}
+.overview-report-card,
+.earning-reports-card {
+    h5 {
+        margin-bottom: 0;
+        font-weight: 600;
+        color: rgba(var(--dark), 0.75);
+    }
+}
+.countries-card {
+    h5 {
+        font-weight: 600;
+        color: rgba(var(--dark), 0.75);
+    }
+    h3 {
+        margin-bottom: 0;
+        color: rgba(var(--dark), 0.8);
+    }
+    h6 {
+        color: rgba(var(--dark), 0.8);
+        font-weight: 600;
+        margin-bottom: 0;
+    }
+    .counries-list {
+        tr {
+            i {
+                &.fs-2 {
+                    font-size: 30px !important;
+                }
+            }
+            &:hover {
+                h6 {
+                    color: rgba(var(--primary), 1);
+                }
+                .text-end {
+                    h6 {
+                        i {
+                            animation: slideOutUp 1s ease-in-out !important;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+.user-overview {
+    p {
+        &::before {
+            font-family: "tabler-icons";
+            content: "\f671";
+        }
+    }
+    .first-circle {
+        &::before {
+            color: rgba(var(--primary), 1);
+        }
+    }
+    .second-circle {
+        &::before {
+            color: rgba(var(--danger), 1);
+        }
+    }
+    .third-circle {
+        &::before {
+            color: rgba(var(--warning), 1);
+        }
+    }
+}
+.revenue-list {
+    li {
+        padding: 1.2rem 0;
+    }
+}
+.product-table {
+    overflow: auto;
+    tr {
+        transition: all 0.1s ease-in-out;
+        td {
+            padding: 0.8rem 0.75rem;
+            h6 {
+                color: rgba(var(--dark), 0.8);
+                font-weight: 500;
+            }
+        }
+
+        img {
+            background-color: rgba(var(--secondary), 0.1);
+            border-radius: 5px;
+            padding: 2px;
+            border: 1px dashed rgba(var(--dark), 0.2);
+        }
+        &:hover {
+            h6 {
+                color: rgba(var(--primary), 1) !important;
+            }
+            img {
+                background-color: rgba(var(--primary), 0.1);
+            }
+        }
+    }
+}
+
+.bank-offer-box {
+    border: 1px dashed;
+    border-radius: 10px;
+    padding: 25px 20px;
+    text-align: center;
+    margin: 0 10px;
+    img {
+        margin: 0 auto;
+    }
+    span {
+        display: block;
+    }
+    .offer-details {
+        margin-top: 15px;
+    }
+    .promo {
+        margin: 20px 0;
+    }
+}
+
+.seller-table {
+    thead {
+        tr {
+            th {
+                color: rgba(var(--dark), 0.8);
+                font-weight: 600;
+                &:first-child {
+                    padding-left: 25px;
+                }
+            }
+            th:nth-child(4) {
+                min-width: 180px;
+            }
+        }
+    }
+    tbody {
+        tr {
+            td {
+                color: rgba(var(--dark), 0.8);
+                font-size: 15px;
+                padding: 0.8rem 0.75rem;
+                &:first-child {
+                    padding-left: 25px;
+                    text-align: left;
+                }
+                p {
+                    font-weight: 500;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    display: -webkit-box;
+                    -webkit-line-clamp: 1;
+                    -webkit-box-orient: vertical;
+                }
+            }
+            &:hover {
+                td {
+                    p {
+                        color: rgba(var(--dark), 8);
+                    }
+                }
+            }
+        }
+    }
+}
+.app-pagination {
+    gap: 10px;
+    .page-item {
+        .page-link {
+            border-radius: 5px !important;
+        }
+        &.active {
+            .page-link {
+                background-color: rgba(var(--primary), 1);
+                border-color: rgba(var(--primary), 1);
+            }
+        }
+    }
+}
+.order-list-header {
+    display: flex;
+    justify-content: space-between;
+    .nav-pills-box {
+        .nav-link {
+            border: 1px dashed rgba(var(--primary), 0.4);
+            padding: 10px 25px;
+            margin-left: 10px;
+            color: rgba(var(--primary), 1) !important;
+            &:hover {
+                background-color: rgba(var(--primary), 0.1);
+            }
+        }
+    }
+}
+.order-table {
+    &.table-bottom-border {
+        & > tbody {
+            & > tr {
+                border-top: 1px dashed rgba(var(--secondary), 0.4);
+            }
+        }
+    }
+    thead {
+        tr {
+            th {
+                color: rgba(var(--dark), 0.8);
+                font-weight: 600;
+                &:first-child {
+                    padding-left: 25px;
+                }
+            }
+            th:first-child {
+                min-width: 25px;
+            }
+            th:nth-child(2) {
+                min-width: 205px;
+            }
+            th:nth-child(4) {
+                min-width: 160px;
+            }
+            th:nth-child(5),
+            th:nth-child(6) {
+                min-width: 100px;
+            }
+            th:nth-child(7) {
+                min-width: 100px;
+            }
+        }
+    }
+    tbody {
+        tr {
+            td {
+                color: rgba(var(--dark), 0.8);
+                font-size: 15px;
+                padding: 0.8rem 0.75rem;
+                &:first-child {
+                    font-weight: 500;
+                    padding-left: 25px;
+                }
+
+                h6 {
+                    color: rgba(var(--dark), 0.8);
+                    font-weight: 600;
+                    margin-bottom: 0;
+                }
+            }
+            &:hover {
+                td {
+                    &:first-child {
+                        color: rgba(var(--primary), 1);
+                    }
+                }
+            }
+        }
+    }
+}
+.user-overview {
+    .row {
+        gap: 0.8rem;
+        .chart-content-box {
+            border-radius: 5px;
+            padding: 8px;
+            border: 1px dashed rgba(var(--secondary), 0.4);
+        }
+    }
+}
+
+.chart-tooltip {
+    background-color: black;
+}
+.overview-primary-marker {
+    outline: 4px solid rgba(var(--primary), 0.2);
+    border-radius: 50px;
+    outline-offset: 2px;
+}
+.overview-success-marker {
+    outline: 4px solid rgba(var(--success), 0.2);
+    border-radius: 50px;
+    outline-offset: 2px;
+}
+.payment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+
+    h5 {
+        color: rgba(var(--dark), 0.75);
+        font-weight: 600;
+    }
+    a {
+        font-size: 16px;
+        color: rgba(var(--dark), 0.8);
+        font-weight: 500;
+    }
+}
+.payment-card {
+    overflow: hidden;
+    display: inline-block;
+    h5 {
+        font-size: calc(22px + (26 - 22) * ((100vw - 300px) / (1920 - 300)));
+        font-weight: 500;
+        color: var(--white);
+    }
+    p {
+        font-size: 16px;
+        margin-bottom: 0;
+        font-weight: 300;
+        color: var(--white);
+    }
+    h6 {
+        color: var(--white);
+        margin-bottom: 0;
+    }
+    &::before {
+        position: absolute;
+        content: "";
+        width: 100%;
+        height: 100%;
+        background-color: rgba(var(--dark), 0.15);
+        top: 0;
+        right: 0;
+        z-index: 0;
+    }
+    &.primary-payment {
+        background-image: url("../images/dashboard/ecommerce/bg.jpg");
+        background-size: cover;
+        background-repeat: no-repeat;
+        background-position: center;
+    }
+    &.secondary-payment {
+        background-image: url("../images/dashboard/ecommerce/bg2.jpg");
+        background-size: cover;
+        background-repeat: no-repeat;
+        background-position: center;
+    }
+}
+
+@media only screen and (max-width: 1500px) and (min-width: 992px) {
+    .user-overview {
+        max-height: 465px;
+        overflow: auto;
+        &::-webkit-scrollbar {
+            display: none;
+        }
+        &:hover {
+            &::-webkit-scrollbar {
+                display: block;
+            }
+        }
+        .row {
+            flex-direction: column;
+            margin-top: 1rem !important;
+        }
+    }
+}
+
+@media only screen and (max-width: 1440px) and (min-width: 992px) {
+    .product-table {
+        .mg-s-50 {
+            h6 {
+                max-width: 60px;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                overflow: hidden;
+            }
+        }
+    }
+
+    .order-list-header {
+        .nav-pills-box {
+            .nav-link {
+                padding: 8px 12px;
+            }
+        }
+    }
+}
+
+@media only screen and (max-width: 1199px) and (min-width: 992px) {
+    .order-list-header {
+        .nav-pills-box {
+            .nav-link {
+                font-size: 14px;
+                padding: 8px 4px;
+            }
+        }
+    }
+}
+
+@media screen and (max-width: 768px) {
+    .order-list-header {
+        .nav-item {
+            span {
+                display: none;
+            }
+            .nav-link {
+                padding: 10px 12px;
+                margin-left: 10px;
+            }
+        }
+    }
+}
+@media screen and (max-width: 567px) {
+    .orderlist-table {
+        .nav-item {
+            .nav-link {
+                padding: 0.4rem;
+                span {
+                    display: none !important;
+                }
+            }
+        }
+    }
+    .seller-table-footer {
+        flex-wrap: wrap;
+        ul,
+        p {
+            margin: 0.5rem 1rem !important;
+        }
+    }
+}
+
+@media screen and (max-width: 576px) {
+    .payment-header {
+        h5 {
+            display: none;
+        }
+    }
+    .revenue-list {
+        li {
+            padding: 0.8rem 0;
+            .d-flex {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+        }
+    }
+}
+
+@media screen and (max-width: 400px) {
+    .order-list-header {
+        flex-direction: column;
+        gap: 0.8rem;
+        .nav-item {
+            &:first-child {
+                .nav-link {
+                    margin-left: 0;
+                }
+            }
+        }
+    }
+
+    .app-pagination {
+        gap: 0 !important;
+        .page-item {
+            .page-link {
+                border-radius: 0px !important;
+            }
+        }
+    }
+    .bank-offer-box {
+        padding: 20px 10px;
+        h4 {
+            font-size: 16px;
+        }
+        .promo {
+            margin: 10px 0;
+            padding: 10px;
+            button {
+                width: 100%;
+                margin-bottom: 5px;
+            }
+        }
+    }
+}
+
+// RTL
+
+.rtl {
+    .order-table,
+    .product-table {
+        .mg-s-50 {
+            margin-right: 50px !important;
+        }
+    }
+    .counries-list {
+        .mg-s-40 {
+            margin-right: 40px !important;
+        }
+    }
+    .bg-image2 {
+        .icon-bg {
+            left: -4px !important;
+            right: auto !important;
+        }
+    }
+    .ecommerce-overview-chart,
+    .earning-reports-card {
+        .apexcharts-legend-text {
+            margin-right: 0.5rem;
+        }
+    }
+    .ecommerce-front-card {
+        .ms-2 {
+            margin-left: 0 !important;
+            margin-right: 0.5rem !important;
+        }
+    }
+    .loss-card,
+    .profit-card {
+        direction: ltr;
+    }
+    .order-table {
+        th:first-child {
+            padding-left: 8px;
+            padding-right: 20px;
+        }
+        td:first-child {
+            padding-left: 8px;
+            padding-right: 20px;
+        }
+    }
+    .seller-table {
+        th:first-child {
+            padding-left: 8px;
+            padding-right: 25px;
+        }
+        td:first-child {
+            padding-left: 8px;
+            padding-right: 25px;
+            text-align: right;
+        }
+    }
+}
+
+// Dark Mode
+
+[class="ltr dark"] {
+    .bg-image1 {
+        background-color: rgba(var(--dark), 0.1);
+    }
+    .bg-image2 {
+        background-color: rgba(var(--secondary), 0.6);
+    }
+    .customers-card h2 {
+        color: rgba(var(--secondary), 1);
+    }
+    .image-card-content {
+        h2,
+        p {
+            color: rgba(var(--light), 1) !important;
+        }
+    }
+    .welcome-image {
+        background-color: var(--white);
+    }
+}
+
+// box-layout css
+.box-layout {
+    .order-list-header {
+        .nav-pills-box {
+            .nav-link {
+                padding: 0.5rem 0.8rem;
+                font-size: 12px;
+            }
+        }
+    }
+    @media only screen and (min-width: 992px) {
+        .box-lg-5 {
+            flex: 0 0 auto;
+            width: 41.66666667%;
+        }
+        .box-lg-7 {
+            flex: 0 0 auto;
+            width: 58.33333333%;
+        }
+    }
+}
+// >>-- 25 Ecommerce_dashboard css end --<<

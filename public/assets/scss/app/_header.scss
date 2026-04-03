@@ -1,0 +1,316 @@
+// >>-- 05 Header css start --<<
+
+header {
+  &.header-main {
+    position: fixed;
+    height: 80px;
+    top: 0;
+    z-index: 1001;
+    padding-left: calc(16rem + 15px);
+    width: 100%;
+    right: 0;
+    transition: var(--app-transition);
+    &:before{
+      content: "";
+      position: absolute;
+      height: 15px;
+      width: 100%;
+      background-color: var(--bodybg-color);
+      top: -15px;
+      right: -10px;
+    }
+    .container-fluid{
+      padding: 0;
+      .card{
+        border: 0;
+        border-radius: 0;
+        background-color: #009BDC;
+        border-bottom: none;
+        .header-toggle i,
+        .head-icon i.ti,
+        .head-icon i.ti:hover {
+          color: #fff;
+        }
+      }
+    }
+    .header-searchbar{
+      width: 500px;
+      .form-control{
+        border: 1px dashed rgba(var(--dark), 0.2);
+        padding: 0.5rem 0.75rem;
+        margin: -0.1rem 0;
+        padding-left: 2rem;
+      }
+    }
+    .header-left {
+      .app-icon-form{
+        i{
+          top: 12px;
+        }
+      }
+      .header-toggle {
+        font-size: 24px;
+        cursor: pointer;
+        display: flex;
+        > i{
+          margin-top: -2px;
+        }
+      }
+    }
+
+    .header-right {
+        .header-language{
+          li{
+            &:hover,.active{
+              background-color: rgba(var(--primary), 0.1);
+              color: rgba(var(--primary), 1) !important;
+              transition: var(--app-transition);
+            }
+            &+li{
+              border-top: 1px dotted rgba(var(--secondary),0.3);
+            }
+          }
+        }
+        li{
+          .card-header{
+            .ti{
+              position: absolute;
+              left: 1.5rem;
+              scale: 3;
+              opacity: 0.1;
+            }
+          }
+        }
+       li.header-profile{
+         .dropdown-item{
+           &:active{
+              background-color: transparent;
+           }
+         }
+         a{
+           display: flex;
+           color: rgba(var(--secondary), 1);
+           align-items: center;
+         }
+         .dropdown-menu{
+           a{
+             padding: 6px 16px;
+           }
+         }
+       }
+      .header-apps{
+        .card-body{
+          a{
+            &:hover{
+              i{
+                animation: bounceIn ease-in-out 0.5s;
+              }
+            }
+          }
+        }
+      }
+      .head-icon{
+        padding:0px 0.5rem;
+        &:hover{
+              animation: pulse 0.5s ease-in-out;
+        }
+        i {
+          &.ti {
+            font-size: 24px;
+            color: rgb(var(--secondary), 0.8);
+
+            transition: var(--app-transition);
+            &:hover{
+              color: rgb(var(--primary), 1);
+              transition: var(--app-transition);
+            }
+          }
+        }
+      }
+      .header-card{
+
+        box-shadow: 0 0.2rem 1.2rem rgba(var(--dark), 0.2);
+        border: none;
+        margin-bottom: 1.25rem;
+
+      }
+      .header-dark {
+        position: relative;
+        .moon-logo {
+          position: absolute;
+          top: 0px;
+          opacity: 0;
+        }
+        .sun-logo {
+          opacity: 1;
+        }
+        .sun {
+          opacity: 0;
+        }
+        .moon {
+          opacity: 1;
+        }
+      }
+      .header-notification{
+        .head-icon{
+          span{
+            top: 3px;
+            right: 2px;
+          }
+        }
+      }
+      .hidden-div{
+        display: block;
+        text-align: center;
+        &.active-div{
+          display: block;
+
+        }
+      }
+      .hidden-massage{
+        display: block;
+        text-align: center;
+        &.active-massage{
+          display: block;
+        }
+      }
+      .lang-flag{
+        border-radius: 100%;
+      }
+    }
+  }
+  .header-search {
+    display: none;
+    .search-canvas {
+      height: 80px;
+      padding: 5px 0;
+    }
+  }
+  .header-cart{
+    .badge{
+      right: -10px;
+      top: 3px;
+      padding: 2px 5px 0 !important;
+    }
+  }
+  .head-container {
+    height: 200px;
+    overflow: auto;
+    .head-box {
+      display: flex;
+      align-items: center;
+      padding: 1rem 1.25rem;
+      border-top: 1px dotted rgba(var(--secondary),0.3);
+      &:first-child {
+        border-top: none;
+      }
+      &:hover {
+        background-color: rgb(var(--light), 0.1);
+      }
+      &~.hidden-massage{
+        display: none;
+      }
+    }
+  }
+}
+
+// Responsive scss
+
+
+@media screen and (max-width: 1200px) {
+  .loader-container{
+    .loader-main { 
+      width: calc(25% - 16px);
+    }
+  }
+}
+
+@media screen and (max-width: 768px) {
+
+  .header-cart,
+  .header-notification,
+  .header-apps {
+    .app-dropdown {
+      .dropdown-menu {
+        top: 60px !important;
+        transform: none !important;
+        left: 15px;
+      }
+    }
+  }
+  .loader-container{
+    .loader-main { 
+      width: calc(50% - 16px);
+    }
+  }
+}
+
+@media screen and (max-width: 600px) {
+  header {
+    .header-searchbar {
+      display: none;
+    }
+    .header-search {
+      display: block;
+    }
+  }
+  .header-left{
+    width: auto;
+  }
+  .header-right{
+    width: calc(100% - 64px);
+  }
+}
+
+@media screen and (max-width: 576px) {
+  header {
+    &.header-main {
+      .header-left{
+        .header-toggle {
+          font-size: 20px;
+        }
+      }
+      .header-right {
+        .header-search {
+          .search-canvas {
+            left: 0px;
+          }
+        }
+      }
+    }
+  }
+}
+@media screen and (max-width:480px) {
+  .f-s-22 {
+    font-size: 20px !important;
+  }
+
+  header {
+    &.header-main{
+      .header-right {
+        .head-icon{
+          padding: 0 0.35rem;
+          i.ti{
+             font-size: 22px;
+          }
+        }
+        .header-profile{
+          img{
+            width: 24px !important;
+            height: 24px !important;
+          }
+        }
+      }
+    }
+  }
+  .loader-container{
+    .loader-main { 
+      width: calc(100%);
+    }
+  }
+
+}
+
+
+
+// >>-- 05 Header css end --<<

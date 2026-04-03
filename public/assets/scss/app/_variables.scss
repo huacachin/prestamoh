@@ -1,0 +1,189 @@
+:root {
+    --font-color: #15264b;
+    --font-title-color: #1c3264;
+    --body-color: #f9f9f9;
+    --bodybg-color: #f5f6fa;
+    --font-secondary-color: #22242c;
+    --font-light-color: #a0a0b0;
+    --grid_color: rgba(144, 164, 246, 0.21);
+    --border_color: rgba(0, 0, 0, 0.21);
+
+    --primary: 0, 155, 220;
+    --secondary: 116, 120, 141;
+    --success: 15, 180, 80;
+    --danger: 217, 83, 79;
+    --warning: 250, 193, 15;
+    --info : 60, 145, 243;
+    --light: 172,	184, 200;
+    --dark: 35, 25, 40;
+    --border_color: #ebedf0;
+
+    --bs-dropdown-link-active-color: rgba(var(--primary), 1);
+    --bs-dropdown-link-active-bg: rgba(var(--primary), 0.2);
+
+
+
+    @mixin btn_css($name, $color) {
+        .btn-#{$name}{
+            --bs-btn-disabled-bg: rgba(var(--#{$color}), 0.8);
+            --bs-btn-disabled-border-color: rgba(var(--#{$color}), 0.8);
+        }
+        .btn-outline-#{$name}{
+            --bs-btn-color: rgba(var(--#{$color}), 1);
+            --bs-btn-border-color: rgba(var(--#{$color}), 1);
+            --bs-btn-hover-bg: rgba(var(--#{$color}), 1);
+            --bs-btn-hover-border-color: rgba(var(--#{$color}), 1);
+            --bs-btn-active-bg: rgba(var(--#{$color}), 1);
+            --bs-btn-active-border-color: rgba(var(--#{$color}), 1);
+            --bs-btn-disabled-color: rgba(var(--#{$color}), 1);
+            --bs-btn-disabled-border-color: rgba(var(--#{$color}), 1);
+        }
+    }
+
+    // Social media colors
+    --facebook : 59, 89, 152;
+    --twitter : 85, 172, 238;
+    --pinterest : 189, 8, 28;
+    --linkedin : 0, 119, 181;
+    --reddit : 255, 69, 0;
+    --whatsapp : 67, 216, 84;
+    --gmail : 234, 67, 53;
+    --telegram : 0, 64, 93;
+    --youtube : 205, 32, 31;
+    --vimeo : 26, 183, 234;
+    --behance : 23, 105, 255;
+    --github : 0, 64, 93;
+    --skype : 0, 175, 240;
+    --snapchat : 255, 250, 55;
+
+    --box-shadow: 0 0.2rem 1.2rem  var(--light-gray);
+    --hover-shadow: 0 0.5rem 2rem  var(--light-gray);
+    --app-transition: all 0.3s ease;
+    --light-gray: #eeeeee;
+    --white: #ffffff;
+    --p-line-height: 1.6;
+    --link-color: var(--primary-color);
+
+
+    //Typography
+    --font-size: 14px;
+    --p-font-size: 14px;
+    --h1-font-size :  2.5rem;
+    --h2-font-size : 2rem;
+    --h3-font-size : 1.75rem;
+    --h4-font-size : 1.25rem;
+    --h5-font-size : 1.125rem;
+    --h6-font-size : 1rem;
+    --btn-font-size : 15px;
+
+    --bs-border-radius: 0.5rem;
+    --bs-accordion-inner-border-radius: 0.5rem;
+}
+.default{
+    --primary: 0, 155, 220;
+    --secondary: 116, 120, 141;
+}
+.gold{
+    --primary: 192,127,0;
+    --secondary: 76,61,61;
+}
+.warm{
+    --primary: 255,103,125;
+    --secondary: 111,90,126;
+}
+.happy{
+    --primary: 0, 155, 220;
+    --secondary: 116, 120, 141;
+}
+.nature{
+    --primary: 127,180,20;
+    --secondary: 82,80,80;
+}
+.cold{
+    --primary: 3, 4, 94;
+}
+.hot{
+    --primary: 255,0,77;
+    --secondary: 29, 43, 83;
+}
+
+
+
+nav.dark-sidebar,body[class='ltr dark'],body[class='ltr dark modal-open'] {
+    //--white: #2d2f39;
+    --white: #2d2f39;
+    --black: #DCE2F0;
+    --bodybg-color: #009BDC;
+    --bs-body-bg: #2d2f39;
+    --font-color: #fff;
+    --box-shadow: 0px 0px 21px 3px rgba(119, 82, 254, 0.05);
+    --hover-shadow: 0 0.2rem 2rem #DCE2F0;
+    --light-gray: #2d2f39;
+    --dark:  234, 234, 236;
+    --link-color: #eaeaec;
+    --border_color: #474a56;
+    --bs-border-color: #474a56;
+    --bs-card-border-color: #5B5E69;
+    --bs-form-control-bg: #2d2f39;
+    --bs-body-color: #ffffff;
+    --bs-secondary-color:#eaeaec;
+    --bs-list-group-color:#eaeaec;
+    --bs-body-color-rgb:#eaeaec;
+    --bs-text-opacity: 0;
+    --bs-card-color:#eaeaec;
+    --bs-tertiary-bg: #242425;
+    .btn-dark,.btn{
+    --bs-btn-color: #000000;
+    --bs-btn-hover-color: #5B5E69;
+    }
+    .disabled>.page-link, .page-link.disabled {
+        color:#eaeaec !important;
+        background-color: #2d2f39;
+        border-color: #474a56;
+    }
+
+}
+body{
+    &[text='small-text']{
+        --font-size: 13px;
+        --p-font-size: 13px;
+        --h1-font-size :  2rem;
+        --h2-font-size : 1.75rem;
+        --h3-font-size : 1.25rem;
+        --h4-font-size : 1.125rem;
+        --h5-font-size : 1rem;
+        --h6-font-size : 15px;
+        --btn-font-size : 13px;
+    }
+    &[text='medium-text']{
+        --font-size: 14px;
+        --p-font-size: 14px;
+        --h1-font-size :  2.5rem;
+        --h2-font-size : 2rem;
+        --h3-font-size : 1.75rem;
+        --h4-font-size : 1.25rem;
+        --h5-font-size : 1.125rem;
+        --h6-font-size : 1rem;
+        --btn-font-size : 15px;
+    }
+    &[text='large-text']{
+        --font-size: 16px;
+        --p-font-size: 16px;
+        --h1-font-size :  2.75rem;
+        --h2-font-size : 2.5rem;
+        --h3-font-size : 2rem;
+        --h4-font-size : 1.75rem;
+        --h5-font-size : 1.25rem;
+        --h6-font-size : 1.125rem;
+        --btn-font-size : 17px;
+    }
+}
+
+
+$bottom-shadow : 0 8px 6px -5px var(--light-gray);
+$sidebar-width: 17rem;
+$semi-nav: 4.5rem;
+$font-Poppins: 'Poppins', sans-serif;
+$theme-body-font-color: #2b2b2b;
+$theme-body-sub-title-color: rgba($theme-body-font-color, 0.7);
+$tabler-icons : tabler-icons;

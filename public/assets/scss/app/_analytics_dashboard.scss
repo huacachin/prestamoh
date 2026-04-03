@@ -1,0 +1,420 @@
+// >>-- 96 Analytics_dashboard css start --<<
+.card-image {
+    background-image: url("../images/dashboard/analytics/01.png");
+    background-blend-mode: overlay;
+    // background-color: rgba(var(--primary), 0.1);
+    background-size: auto;
+    background-repeat: no-repeat;
+    background-position: bottom left;
+    border-radius: var(--bs-border-radius);
+}
+
+.premiere-card {
+    height: 200px;
+    position: relative;
+    h6 {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 1;
+        -webkit-box-orient: vertical;
+    }
+    .premiere-image {
+        position: absolute;
+        bottom: -20px;
+        right: -20px;
+    }
+}
+.collection-card {
+    overflow: hidden;
+    min-height: 232px;
+    .header-heading{
+        white-space: nowrap;
+    }
+    .collection-card-content {
+        position: relative;
+        .collection-chart {
+            position: absolute;
+            top: -6px;
+            left: 0;
+            right: 0;
+        }
+    }
+}
+
+.analytice-front-card {
+    overflow: hidden;
+    &:hover {
+        .analytice-card {
+            span {
+                i {
+                    animation: pulse 1s ease-in-out infinite;
+                }
+            }
+        }
+    }
+    .analytice-card {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: relative;
+        padding: 15px !important;
+        p{
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+        }
+        .position-absolute {
+            top: 20px;
+        }
+        span{
+            position: relative;
+            &::before{
+                content: '';
+                position: absolute;
+                width: 45px;
+                height: 45px;
+                border:1px dashed rgba(var(--dark),.75);
+            }
+        }
+    }
+}
+
+.target-content {
+    padding-top: 16px;
+}
+.ellipsis-text {
+    min-width: 80px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+}
+.transactions-list-table {
+    span{
+        &.position-absolute{
+            top: 0;
+            left: -4px;
+        }
+    }
+    tr {
+        &:hover {
+            i {
+                animation: rubberBand 1s ease-in-out infinite;
+            }
+            h6 {
+                color: rgba(var(--primary), 1);
+                cursor: pointer;
+            }
+        }
+        td {
+            &:nth-child(1) {
+                padding-left: 0;
+            }
+            &:nth-child(2) {
+                padding-right: 0;
+            }
+        }
+    }
+}
+.visitors-countries-table {
+    tr {
+        .position-absolute {
+            top: 2px;
+        }
+        td {
+            &:nth-child(1) {
+                padding-left: 0;
+            }
+            &:nth-child(2) {
+                padding-right: 0;
+            }
+        }
+        &:hover {
+            h6 {
+                color: rgba(var(--primary), 1);
+                cursor: pointer;
+            }
+        }
+    }
+}
+.visitors-table {
+    text-align: center;
+    .check-box {
+        margin-bottom: 0;
+        .checkmark {
+            width: 1rem;
+            height: 1rem;
+            border-radius: 4px;
+            margin-right: 0 !important;
+            margin-left: 12px !important;
+            &.outline-dark{
+                border: 2px solid rgba(var(--dark), 0.2);
+                &::before{
+                    font-size: 12px;
+                    line-height: 12px;
+                    top: 5px;
+                    left: 8px;
+                }
+            }
+        }
+    }
+    thead {
+        th {
+            padding: 0.8rem 0.75rem;
+            color: rgba(var(--dark), 0.8);
+            font-weight: 600;
+            .checkmark {
+                margin-bottom: 0.2rem;
+            }
+        }
+        th:nth-child(2) {
+            min-width: 150px;
+            text-align: left;
+        }
+        th:nth-child(6){
+            min-width: 120px;
+        }
+        th:nth-child(8){
+            min-width: 100px;
+        }
+    }
+    tbody {
+        tr {
+            td {
+                padding: 0.8rem 0.75rem;
+                color: rgba(var(--dark), 0.8);
+                font-size: 15px;
+            }
+            td:nth-child(2) {
+                text-align: left;
+            }
+            &:hover {
+                background-color: rgba(var(--light), 0.1);
+                cursor: pointer;
+                P {
+                    color: rgba(var(--primary), 1);
+                }
+                .rating {
+                    span {
+                        color: rgba(var(--warning), 1);
+                    }
+                }
+            }
+        }
+    }
+}
+.browser-source-list{
+    li{
+        padding: 1rem 0;
+        .position-absolute{
+            top: 20px;
+        }
+    }
+}
+.browser-update-list{
+    li{
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0;
+        .position-absolute{
+            top: 4px;
+        }
+    }
+}
+.collection-marker {
+    outline: 4px solid rgba(var(--success), 0.2);
+    border-radius: 50px;
+    outline-offset: 2px;
+}
+
+.target-content {
+    p {
+        white-space: nowrap;
+        font-size: 12px;
+    }
+}
+
+.disabled > .page-link {
+    color: rgba(var(--dark)) !important;
+}
+.active > .page-link {
+    color: #ffffff !important;
+}
+.page-link {
+    color: rgba(var(--primary)) !important;
+}
+.page-item {
+    .bg-primary {
+        color: #ffffff !important;
+    }
+}
+// Responsive css
+
+
+@media only screen and (max-width: 1440px) and (min-width: 992px) {
+    .visitors-countries-table {
+        .text-end {
+            h6 {
+                font-size: 14px;
+            }
+        }
+    }
+    .premiere-card {
+        h6 {
+            font-size: 12px;
+        }
+    }
+
+    .transactions-list {
+        p {
+            font-size: 12px;
+        }
+    }
+}
+@media only screen and (max-width: 1550px) and (min-width: 992px) {
+    .analytice-front-card{
+        .analytice-card{
+          flex-direction: column;
+          align-items: start;
+          .flex-grow-1{
+            &+{
+              div{
+                width: 100%;
+                h4 {
+                  width: 100%;
+                  text-align: end;
+                }
+              }
+            }
+          }
+        }
+    }
+    .collection-card{
+        .d-flex{
+          flex-direction: column;
+        }
+    }
+    .premiere-image{
+        opacity: 0.1;
+    }
+}
+
+@media screen and (max-width: 1199px) and (min-width: 992px){
+    .target-content{
+        flex-direction: column;
+    }
+}
+
+@media screen and (max-width: 991px) and (min-width: 768px){
+    .browser-source-list{
+        max-height: 200px;
+        overflow: auto;
+    }
+}
+
+@media screen and (max-width: 567px) {
+    .visitors-table-footer{
+        .d-flex{
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+    }
+}
+
+@media screen and (max-width: 567px) {
+    .analytice-card {
+        p {
+            font-size: 12px;
+        }
+    }
+    .transactions-list{
+        &.d-flex{
+            flex-direction: column;
+            align-items: start !important;
+        }
+    }
+    .premiere-image{
+        opacity: 0.1;
+    }
+}
+
+//  Dark Mode
+[class="ltr dark"] {
+    .targetChart {
+        text {
+            fill: white;
+        }
+    }
+    .app-pagination {
+        .disabled {
+            a {
+                color: var(--white) !important;
+            }
+        }
+    }
+}
+
+// rtl css
+
+.rtl {
+    .transactions-list-table,
+    .analytice-card {
+        .ms-5 {
+            margin-right: 48px !important;
+            margin-left: 0 !important;
+        }
+    }
+    .visitors-countries-table {
+        .mg-s-40 {
+            margin-right: 40px !important;
+            margin-left: 0 !important;
+        }
+
+    }
+
+    .visitors-table {
+        td:nth-child(2),
+        th:nth-child(2){
+            text-align: right !important;
+        }
+    }
+    .collection-card-content {
+        direction: ltr;
+    }
+    .courses-table {
+        tbody {
+            tr {
+                td {
+                    &:first-child {
+                        padding-right: 25px;
+                        padding-left: 0;
+                    }
+                }
+            }
+        }
+    }
+    .browser-update-list,
+    .browser-source-list{
+        .ms-5 {
+            margin-left: 0 !important;
+            margin-right: 3rem !important;
+        }
+    }
+}
+
+// box-layout
+
+.box-layout {
+    .collection-card {
+        .d-flex{
+            flex-direction: column;
+        }
+    }
+    .premiere-image{
+        opacity: 0.2;
+    }
+}
+// >>-- 96 Analytics_dashboard css end --<<

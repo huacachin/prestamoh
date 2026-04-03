@@ -1,0 +1,122 @@
+// >>-- 81 Product css start --<<
+.product-wrapper-grid {
+    overflow: hidden;
+
+
+    a {
+        color: rgb(var(--dark), 0.75);
+        font-weight: 600;
+    }
+    p {
+        color: rgb(var(--dark), 0.8);
+        font-weight: 500;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 1;
+        -webkit-box-orient: vertical;
+    }
+    .review-icon{
+        position: absolute;
+        top: 16px;
+        right: 16px;
+    }
+    .product-image {
+        border-radius: 7px 7px 0 0;
+    }
+}
+.pricing-box {
+    h6 {
+        color: rgb(var(--dark), 0.9);
+        font-weight: 600;
+        margin-bottom: 0;
+        span {
+            color: rgb(var(--secondary), 1);
+            font-size: calc(12px + (14 - 12) * ((100vw - 300px) / (1920 - 300)));
+            font-weight: 400;
+        }
+    }
+}
+
+.product-grid {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    .product-image {
+        width: 200px;
+        height: 200px;
+        overflow: hidden;
+        position: relative;
+        background-color: var(--white);
+
+        .images_box {
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            position: absolute;
+            top: 0;
+            left: 0;
+            transition: all 0.5s ease 0s;
+            background-color: var(--white);
+        }
+    }
+
+    .product-links {
+        opacity: 0;
+        position: absolute;
+        left: 14px;
+        top: 14px;
+        z-index: 1;
+        transition: var(--app-transition);
+        li {
+            margin: 5px 0;
+            a {
+                cursor: pointer;
+                background: var(--white);
+                font-size: 15px;
+                line-height: 36px;
+                width: 35px;
+                height: 35px;
+                border-radius: 5px;
+                box-shadow: 0 0 10px rgb(var(--dark), 0.1);
+                transition: all 0.3s ease-in-out;
+
+                &:hover {
+                    color: var(--white);
+                    background: rgb(var(--primary), 1);
+                }
+            }
+        }
+    }
+
+    &:hover {
+        .images_box,
+        .product-links {
+            opacity: 1;
+        }
+    }
+}
+.product-box {
+    .accordion-header {
+        span {
+            color: rgb(var(--dark), 0.75);
+            font-weight: 600;
+        }
+    }
+    .accordion-item{
+        border-bottom: 1px solid var(--border_color);
+    }
+    .accordion-button:not(.collapsed) {
+        background: none !important;
+        box-shadow: none;
+        color: rgb(var(--dark), 1);
+    }
+    .accordion-button {
+        padding: 12px  !important;
+        &:focus {
+            box-shadow: none;
+        }
+    }
+}
+
+// >>-- 81 Product css end --<<

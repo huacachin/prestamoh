@@ -1,0 +1,29 @@
+// >>-- 09 App css start --<<
+
+.app-wrapper{
+    display: flex;
+    .app-content{
+        // padding-left: $sidebar-width;    
+        padding-left: 19rem;
+        padding-top: 100px;
+        padding-bottom: 47px;
+        padding-right: 2rem;
+        width: 100%;
+        height: 100%;
+        transition: var(--app-transition);
+        box-shadow: var(--box-shadow);
+        overflow: hidden;
+        min-height: calc(100vh);
+
+        .container-xxl{
+            margin: 0 auto;
+        }
+        .page-title{
+            h4{
+                font-weight: 600;
+            }
+        }
+    }
+}
+
+// >>-- 09 App css end --<<

@@ -1,0 +1,80 @@
+// >>-- 51 Login css start --<<
+.image-contentbox {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(var(--primary), 0.1);
+}
+
+.form-container {
+  min-height: 100vh;
+  height: 100%;
+  padding: calc(16px + (48 - 16) * ((100vw - 300px) / (1920 - 300)));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  h2 {
+    margin-bottom: 0;
+    font-size: calc(22px + (32 - 22) * ((100vw - 300px) / (1920 - 300)));
+  }
+  p {
+    color: rgb(var(--dark), 1);
+    font-weight: 500;
+    font-size: calc(12px + (16 - 12) * ((100vw - 300px) / (1920 - 300)));
+  }
+}
+
+//
+
+.login-form-container {
+  width: 100%;
+  min-height: 100vh;
+  background-color: #01578E;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+
+  .form_container {
+    width: 350px;
+    padding: 0rem 1.5rem;
+    /*background-color: var(--white);
+    box-shadow: var(--box-shadow);*/
+    border-radius: var(--bs-border-radius);
+    h3 {
+      font-size: calc(20px + (28 - 20) * ((100vw - 300px) / (1920 - 300)));
+      color: var(--white);
+      font-weight: 600;
+    }
+    p {
+      color: var(--white);
+      font-weight: 500;
+      font-size: calc(12px + (16 - 12) * ((100vw - 300px) / (1920 - 300)));
+    }
+  label {
+      color: var(--white);
+      font-weight: 500;
+      font-size: calc(12px + (16 - 12) * ((100vw - 300px) / (1920 - 300)));
+  }
+      input{
+          height: 46px !important;
+      }
+  }
+}
+
+.user-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+.verification-box {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+
+// >>-- 51 Login css end --<<

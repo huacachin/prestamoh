@@ -1,0 +1,48 @@
+// >>-- 33 Typeahead css start --<<
+
+.app-typeahead{
+span.twitter-typeahead {
+    width: 100%;
+    input{
+        background-color: var(--white) !important;
+    }
+    .tt-menu {
+        position: absolute;
+        width: 100%;
+        padding: 0px;
+        text-align: left;
+        background-color: var(--bs-body-bg);
+        border: 1px solid rgba(0, 0, 0, 0.15);
+        border-radius: 4px;
+        margin-top: 10px;
+        z-index: 10000 !important;
+        box-shadow: rgba(0, 0, 0, 0.16) 0 3px 6px, rgba(0, 0, 0, 0.23) 0 3px 6px;
+
+        .tt-suggestion {
+            padding: 5px 15px;
+            font-size: 1rem;
+            color: var(--font-secondary-color);
+            font-family: $font-Poppins;
+            cursor: default;
+    
+            &:hover{
+                outline: 0;
+                background-color: rgb(var(--primary));
+                color: var(--bs-body-bg);
+            }
+        }
+    }
+    
+}
+}
+
+.typeahead-demo{
+    margin-bottom: 100px;
+    .tt-dataset {
+        max-height: 100px;
+        overflow-x: hidden;
+    }
+
+}
+
+// >>-- 33 Typeahead css end --<<

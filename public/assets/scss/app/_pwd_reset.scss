@@ -1,0 +1,35 @@
+// >>-- 73 pwd_reset css start --<<
+
+
+.reset_password{
+    width: 50%;
+    display: flex;
+    background-color: var(--white);
+    border-radius: var(--bs-border-radius);
+    .left{
+        width: 50%;
+        height: 580px;
+        padding: 0 50px;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: contain;
+        background-color: rgb(var(--primary),0.1);
+        border-top-left-radius: 10px;
+        border-bottom-left-radius: 10px;
+    }
+    .right{
+        width: 50%;
+        height: 580px;
+        padding: 0 50px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background-color: rgb(var(--primary),1);
+        border-top-right-radius: 10px;
+        border-bottom-right-radius: 10px;
+    }
+}
+
+
+// >>-- 73 pwd_reset css end --<<

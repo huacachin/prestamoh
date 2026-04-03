@@ -1,0 +1,121 @@
+// >>-- 12 Cheatsheat css start --<<
+.toggle-card{
+  .card-header{
+    text-transform: capitalize;
+  }
+    ul{
+      padding: 0.4rem 0;
+      li{
+        padding: 0.4rem 1.25rem;
+        color: rgba(var(--dark),.75);
+        font-size: 16px;
+        font-weight: 500;
+        transition: var(--app-transition);
+        cursor: pointer;
+        .collapse-icons{
+          float: right;
+          opacity: 0;
+          transition: var(--app-transition);
+          a{
+            font-size: 1.2rem;
+          }
+        }
+
+        &:hover{
+          background-color: rgba(var(--primary),0.1);
+          color: rgba(var(--primary),1);
+          transition: var(--app-transition);
+          .collapse-icons{
+            opacity: 1;
+            transition: var(--app-transition);
+          }
+        }
+      }
+    }
+}
+
+
+
+.code-container{
+  background: rgba(var(--secondary), 1);
+  position: fixed;
+  bottom: 45px;
+  width: calc(100% - 17rem - 60px);
+  right: 50px;
+  border-radius: var(--bs-border-radius);
+  z-index: 9999;
+  overflow: hidden;
+
+    .code-preview{
+      height: 20vh;
+      overflow-y: scroll;
+      overflow-x: none;
+    }
+    .code-preview-header {
+      background: rgba(var(--dark), 1);
+      padding: 1rem 1.75rem;
+    }
+}
+.box-shadow-none{
+  box-shadow: none;
+}
+
+.active-preview{
+  background-color:rgba(var(--primary), .1);
+  color: rgba(var(--primary), 1) !important;
+  .collapse-icons{
+    opacity: 1;
+  }
+}
+.cheatsheet-blocks{
+  margin: 0 -6px 1.25rem;
+  .cheatsheets-card{
+      width: calc(33% - 12px);
+      margin: 0 6px 12px;
+     .list-preview {
+       text-overflow: ellipsis;
+       white-space: nowrap;
+       overflow: hidden;
+     }
+  }
+  .d-flex{
+    a{
+        width: 100%;
+        cursor: pointer;
+    }
+}
+}
+.code-preview-popup{
+  .code-preview-header{
+    .box-close{
+      border: none;
+      background-color: transparent;
+      font-size: 24px;
+      color: var(--white);
+      line-height: 1;
+    }
+  }
+}
+.cheatsheet-header{
+  min-height: 280px;
+  background-image: url("../images/background/01.jpg");
+  background-blend-mode:overlay;
+  border-radius: 10px;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  margin-bottom: 50px;
+  background-color: #e9ecef;
+  h2{
+    font-size: calc(22px + (32 - 22) * ((100vw - 300px) / (1920 - 300)));
+  }
+  .search-div{
+    width: 60%;
+    padding: 0.375rem 0.75rem;
+  }
+}

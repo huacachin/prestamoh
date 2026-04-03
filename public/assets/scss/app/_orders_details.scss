@@ -1,0 +1,83 @@
+// >>-- 84 Orders_details css start --<<
+
+.orders-details-datatable {
+    .table {
+        thead {
+            tr {
+                th:nth-child(1) {
+                    min-width: 260px;
+                }
+                th {
+                    color: rgba(var(--dark), 0.75);
+                    font-weight: 600;
+                    &:last-child{
+                        padding-right: 20px;  
+                    }
+                    &:first-child{
+                        padding-left: 20px;
+                    }
+                }
+                th:nth-child(6),
+                th:nth-child(4) {
+                    min-width: 160px;
+                }
+                th:nth-child(7) {
+                    min-width: 160px;
+                }
+            }
+        }
+        tbody {
+            tr {
+                td {
+                    color: rgba(var(--scendary), 0.75);
+                    h6 {
+                        color: rgba(var(--dark), 0.8);
+                        font-weight: 500;
+                    }
+                    &:last-child{
+                        padding-right: 20px;    
+                    }
+                    &:first-child{
+                        padding-left: 20px;
+                    }
+                }
+            }
+        }
+    }
+}
+
+.order-details-card{
+    h6,
+    h5{
+        line-break: anywhere;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 1;
+        -webkit-box-orient: vertical;
+    }
+    .text-end{
+        p{
+            line-break: anywhere;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+        }
+    }
+}
+
+.order-details-timeline{
+    .timeline-content{
+      .d-flex{
+        flex-direction: column;
+        align-items: start !important;
+        .ms-2{
+          margin-left: 0 !important;
+        }
+      }
+    }
+  }
+
+// >>-- 84 Orders_details css end --<<
