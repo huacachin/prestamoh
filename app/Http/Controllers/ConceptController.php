@@ -1,5 +1,7 @@
 <?php
+
 namespace App\Http\Controllers;
+
 class ConceptController extends Controller
 {
     public function index() { return view('concepts.index'); }

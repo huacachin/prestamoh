@@ -1,14 +1,14 @@
-@section('title', 'Iniciar Sesión | Taxivan')
-@include('layout.head')
-
-@include('layout.css')
-
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    @include('layout.head')
+    @include('layout.css')
+</head>
 <body>
 
 <livewire:auth.login />
+
 @livewireScripts
+<script src="{{ asset('assets/vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
 </body>
-@section('script')
-    <!-- Bootstrap js-->
-    <script src="{{asset('assets/vendor/bootstrap/bootstrap.bundle.min.js')}}"></script>
-@endsection
+</html>

@@ -5,35 +5,29 @@
         [ 'type' => 'title', 'title' => '' ],
 
         [
-            'id'    => 'dashboard',
-            'title' => 'Panel de control',
+            'id'    => 'dashboard-simple',
+            'title' => 'Panel De Control',
             'icon'  => 'ti ti-home',
             'route' => 'dashboard.index',
             'can'   => 'dashboard',
         ],
 
         [
-            'id'    => 'clients',
-            'title' => 'Clientes',
-            'icon'  => 'ti ti-users',
-            'route' => 'clients.index',
-            'can'   => 'clientes',
-        ],
-
-        [
-            'id'       => 'credits',
-            'title'    => 'Créditos',
-            'icon'     => 'ti ti-credit-card',
-            'route'    => 'credits.index',
-            'can'      => 'creditos',
-        ],
-
-        [
-            'id'    => 'payments',
-            'title' => 'Pagos',
-            'icon'  => 'ti ti-currency-dollar',
-            'route' => 'payments.index',
-            'can'   => 'pagos',
+            'id'       => 'registro',
+            'title'    => 'Registro',
+            'icon'     => 'ti ti-file-text',
+            'canAny'   => ['registro.activar', 'registro.estado', 'clientes', 'registro.cesados', 'configuracion.conceptos', 'registro.eliminar-masivo', 'pagos', 'creditos', 'configuracion.tipo-cambio'],
+            'children' => [
+                ['title' => 'Activar Prestamos',  'route' => 'credits.activate',              'can' => 'registro.activar'],
+                ['title' => 'Cambiar Estado',      'route' => 'credits.change-status',          'can' => 'registro.estado'],
+                ['title' => 'Cliente',             'route' => 'clients.index',                  'can' => 'clientes'],
+                ['title' => 'Cliente Cesados',     'route' => 'clients.ceased',                 'can' => 'registro.cesados'],
+                ['title' => 'Conceptos Fijos',     'route' => 'settings.concepts.index',        'can' => 'configuracion.conceptos'],
+                ['title' => 'Eliminar Masivo',     'route' => 'credits.mass-delete',            'can' => 'registro.eliminar-masivo'],
+                ['title' => 'Pagos/Credito',       'route' => 'payments.index',                 'can' => 'pagos'],
+                ['title' => 'Prestamo',            'route' => 'credits.index',                  'can' => 'creditos'],
+                ['title' => 'Tipo de Cambio',      'route' => 'settings.exchange-rates.index',  'can' => 'configuracion.tipo-cambio'],
+            ],
         ],
 
         [
@@ -42,10 +36,10 @@
             'icon'     => 'ti ti-home-dollar',
             'canAny'   => ['caja.apertura', 'caja.ingresos', 'caja.egresos', 'caja.balance'],
             'children' => [
-                ['title' => 'Apertura',  'route' => 'cash.opening',  'can' => 'caja.apertura'],
-                ['title' => 'Ingresos',  'route' => 'cash.incomes',  'can' => 'caja.ingresos'],
-                ['title' => 'Egresos',   'route' => 'cash.expenses', 'can' => 'caja.egresos'],
-                ['title' => 'Balance',   'route' => 'cash.balance',  'can' => 'caja.balance'],
+                ['title' => 'Apertura Caja',  'route' => 'cash.opening',  'can' => 'caja.apertura'],
+                ['title' => 'Ingreso',        'route' => 'cash.incomes',  'can' => 'caja.ingresos'],
+                ['title' => 'Egreso',         'route' => 'cash.expenses', 'can' => 'caja.egresos'],
+                ['title' => 'Balance',        'route' => 'cash.balance',  'can' => 'caja.balance'],
             ],
         ],
 
@@ -53,12 +47,22 @@
             'id'       => 'reportes',
             'title'    => 'Reportes',
             'icon'     => 'ti ti-report-analytics',
-            'canAny'   => ['reportes.cartera', 'reportes.pagos', 'reportes.morosidad', 'reportes.caja'],
+            'canAny'   => ['pagos', 'reportes.asesor', 'reportes.pagos', 'reportes.caja-estadistica', 'reportes.credito-estadistica', 'reportes.caja-general-1', 'reportes.caja-general-2', 'reportes.caja-general-3', 'reportes.cartera', 'reportes.morosidad', 'reportes.cancelados', 'reportes.simulador'],
             'children' => [
-                ['title' => 'Cartera Activa',  'route' => 'reports.portfolio',  'can' => 'reportes.cartera'],
-                ['title' => 'Pagos',           'route' => 'reports.payments',   'can' => 'reportes.pagos'],
-                ['title' => 'Morosidad',       'route' => 'reports.delinquent', 'can' => 'reportes.morosidad'],
-                ['title' => 'Caja',            'route' => 'reports.cash',       'can' => 'reportes.caja'],
+                ['title' => 'Reporte Credito D.',      'route' => 'payments.daily',              'can' => 'pagos'],
+                ['title' => 'Reporte Credito M.',      'route' => 'payments.monthly',            'can' => 'pagos'],
+                ['title' => 'Reporte Credito S.',      'route' => 'payments.weekly',              'can' => 'pagos'],
+                ['title' => 'Reporte de Asesor',       'route' => 'reports.advisor',              'can' => 'reportes.asesor'],
+                ['title' => 'Reporte de Pago',         'route' => 'reports.payments',             'can' => 'reportes.pagos'],
+                ['title' => 'Rep. Estad. Caja M.A.',   'route' => 'reports.cash-statistics',      'can' => 'reportes.caja-estadistica'],
+                ['title' => 'Rep. Estad. Crédito',     'route' => 'reports.credit-statistics',    'can' => 'reportes.credito-estadistica'],
+                ['title' => 'Rep. General Caja 1',     'route' => 'reports.cash-general-1',       'can' => 'reportes.caja-general-1'],
+                ['title' => 'Rep. General Caja 2',     'route' => 'reports.cash-general-2',       'can' => 'reportes.caja-general-2'],
+                ['title' => 'Rep. General Caja 3',     'route' => 'reports.cash-general-3',       'can' => 'reportes.caja-general-3'],
+                ['title' => 'Resumen de Créditos',     'route' => 'reports.portfolio',            'can' => 'reportes.cartera'],
+                ['title' => 'Pendientes x Cobrar',     'route' => 'reports.delinquent',           'can' => 'reportes.morosidad'],
+                ['title' => 'Resumen de Cancelados',   'route' => 'reports.cancelled',            'can' => 'reportes.cancelados'],
+                ['title' => 'Simulacro de Crédito',    'route' => 'reports.simulator',            'can' => 'reportes.simulador'],
             ],
         ],
 
@@ -66,53 +70,35 @@
             'id'       => 'settings',
             'title'    => 'Configuración',
             'icon'     => 'ti ti-settings',
-            'canAny'   => ['configuracion.usuarios', 'configuracion.sucursales', 'configuracion.conceptos'],
+            'canAny'   => ['configuracion.usuarios', 'configuracion.sucursales', 'configuracion.conceptos', 'configuracion.tipo-cambio'],
             'children' => [
-                ['title' => 'Usuarios',     'route' => 'settings.users.index',         'can' => 'configuracion.usuarios'],
-                ['title' => 'Sucursales',   'route' => 'settings.headquarters.index',  'can' => 'configuracion.sucursales'],
-                ['title' => 'Conceptos',    'route' => 'settings.concepts.index',      'can' => 'configuracion.conceptos'],
+                ['title' => 'Usuarios',     'route' => 'settings.users.index',          'can' => 'configuracion.usuarios'],
+                ['title' => 'Sucursales',   'route' => 'settings.headquarters.index',   'can' => 'configuracion.sucursales'],
+                ['title' => 'Conceptos',    'route' => 'settings.concepts.index',       'can' => 'configuracion.conceptos'],
                 ['title' => 'Tipo Cambio',  'route' => 'settings.exchange-rates.index', 'can' => 'configuracion.tipo-cambio'],
             ],
         ],
     ];
 @endphp
 
-{{-- Render sidebar items --}}
-@foreach($sidebarItems as $item)
-    @if(isset($item['type']) && $item['type'] === 'title')
-        <li class="sidebar-title">{{ $item['title'] }}</li>
-    @elseif(isset($item['children']))
-        @php
-            $canSee = false;
-            if (isset($item['canAny'])) {
-                $canSee = auth()->user()?->canAny($item['canAny']);
-            }
-        @endphp
-        @if($canSee)
-            <li class="sidebar-item has-sub {{ request()->routeIs(collect($item['children'])->pluck('route')->map(fn($r) => $r.'*')->toArray()) ? 'active open' : '' }}">
-                <a href="javascript:void(0)" class="sidebar-link">
-                    <i class="{{ $item['icon'] }} f-s-16"></i>
-                    <span>{{ $item['title'] }}</span>
-                </a>
-                <ul class="sidebar-sub-item">
-                    @foreach($item['children'] as $child)
-                        @can($child['can'])
-                            <li class="{{ request()->routeIs($child['route'].'*') ? 'active' : '' }}">
-                                <a href="{{ route($child['route']) }}">{{ $child['title'] }}</a>
-                            </li>
-                        @endcan
-                    @endforeach
-                </ul>
-            </li>
+<nav class="dark-sidebar">
+    <div class="app-logo">
+        <a class="logo d-inline-block" href="{{ route('dashboard.index') }}">
+            <img width="1000px" src="{{ asset('assets/images/logo/logo1.png') }}" alt="#" class="dark-logo">
+        </a>
+        <span class="bg-light-light toggle-semi-nav">
+            <i class="ti ti-chevrons-right f-s-20"></i>
+        </span>
+    </div>
+
+    <div class="app-nav" id="app-simple-bar">
+        @if(!empty($sidebarItems))
+            @include('partials.sidebar-menu', ['items' => $sidebarItems])
         @endif
-    @else
-        @can($item['can'] ?? '')
-            <li class="sidebar-item {{ request()->routeIs(($item['route'] ?? '').'*') ? 'active' : '' }}">
-                <a href="{{ route($item['route']) }}" class="sidebar-link">
-                    <i class="{{ $item['icon'] }} f-s-16"></i>
-                    <span>{{ $item['title'] }}</span>
-                </a>
-            </li>
-        @endcan
-    @endif
-@endforeach
+    </div>
+
+    <div class="menu-navs">
+        <span class="menu-previous"><i class="ti ti-chevron-left"></i></span>
+        <span class="menu-next"><i class="ti ti-chevron-right"></i></span>
+    </div>
+</nav>

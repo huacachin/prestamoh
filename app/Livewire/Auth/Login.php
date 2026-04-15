@@ -60,7 +60,7 @@ class Login extends Component
         RateLimiter::clear($this->throttleKey());
         session()->regenerate();
 
-        return redirect()->intended('/departures');
+        return redirect()->intended('/dashboard');
     }
 
     public function render()

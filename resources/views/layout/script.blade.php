@@ -1,19 +1,7 @@
 
 <!-- latest jquery-->
 <!-- TODO: optimizar esto, datepicker no debería ir con jquery -->
-@if (! request()->routeIs([
-    'departures.index',
-    'payments.index',
-    'cash.incomes',
-    'cash.expenses',
-    'settings.owners.create',
-    'settings.owners.edit',
-    'settings.drivers.create',
-    'settings.drivers.edit',
-    'settings.vehicles.create',
-    'settings.vehicles.edit',
-    'departures.edit'
-]))
+@if (true)
     <script src="{{ asset('assets/js/jquery-3.6.3.min.js') }}"></script>
 @endif
 

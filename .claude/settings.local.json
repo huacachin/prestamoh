@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sed -n '540,566p' /Users/antonyalfredoculquicarranza/projects/prestamo/huacachi_prestamo.sql)",
+      "Bash(sed -n '659,828p' /Users/antonyalfredoculquicarranza/projects/prestamo/huacachi_prestamo.sql)",
+      "Bash(wc -l /Users/antonyalfredoculquicarranza/projects/prestamo/sistema/*.php)",
+      "Bash(ls -lh /Users/antonyalfredoculquicarranza/projects/prestamo/websystem/*.php)",
+      "Bash(xargs -I {} basename {})",
+      "Bash(find /Users/antonyalfredoculquicarranza/projects/prestamo/websystem -name \"*.php\" -exec wc -l {} +)",
+      "Bash(xargs cat:*)",
+      "Bash(php artisan:*)",
+      "Bash(php -l app/Http/Controllers/PaymentController.php)",
+      "Bash(php -l app/Livewire/Payments/Index.php)",
+      "Bash(php -l app/Livewire/Payments/Create.php)",
+      "Bash(php -l app/Livewire/Payments/Daily.php)",
+      "Bash(php -l app/Livewire/Payments/Weekly.php)",
+      "Bash(php -l app/Http/Controllers/ReportController.php)",
+      "Bash(php -l app/Livewire/Reports/Portfolio.php)",
+      "Bash(php -l app/Livewire/Reports/Payments.php)",
+      "Bash(php -l app/Livewire/Reports/Delinquent.php)",
+      "Bash(php -l app/Livewire/Reports/Cash.php)",
+      "Bash(php -l app/Livewire/Cash/Opening.php)",
+      "Bash(php -l app/Livewire/Reports/Simulator.php)",
+      "Bash(php -l app/Livewire/Dashboard/Index.php)",
+      "Bash(find app/Livewire -name \"*.php\" -exec php -l {} \\\\;)",
+      "Bash(find app/Http -name \"*.php\" -exec php -l {} \\\\;)",
+      "Bash(find app/Models -name \"*.php\" -exec php -l {} \\\\;)",
+      "Bash(find database/seeders -name \"*.php\" -exec php -l {} \\\\;)",
+      "Bash(grep -r \"route\\(\" /Users/antonyalfredoculquicarranza/projects/laravel_prestamos/resources/views/*.blade.php)",
+      "Bash(curl -s -L -o /dev/null -w \"%{http_code}\" http://localhost:8001/login)",
+      "Bash(curl -s http://localhost:8001/login)",
+      "Bash(curl -s -c - http://localhost:8002/login)",
+      "Bash(npm run:*)",
+      "Bash(cp:*)",
+      "Bash(mysql:*)",
+      "Bash(grep \"\\\\.php$\")",
+      "Bash(php:*)",
+      "Bash(grep:*)"
+    ]
+  }
+}

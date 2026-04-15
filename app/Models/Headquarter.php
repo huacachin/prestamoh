@@ -10,4 +10,14 @@ class Headquarter extends Model
         'name', 'empresa', 'ruc', 'slogan', 'direccion',
         'telefono', 'email', 'responsable', 'sort_order', 'status',
     ];
+
+    public function users()
+    {
+        return $this->hasMany(User::class);
+    }
+
+    public function activeUsers()
+    {
+        return $this->hasMany(User::class)->where('status', 'active');
+    }
 }

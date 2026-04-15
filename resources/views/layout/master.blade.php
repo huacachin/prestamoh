@@ -32,9 +32,6 @@
         <!-- Main Section end -->
     </div>
 
-    <!-- Quick access buttons -->
-    @include('partials.quick-access')
-
     <!-- tap on top -->
     <div class="go-top">
       <span class="progress-value">

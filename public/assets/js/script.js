@@ -186,7 +186,7 @@ window.addEventListener("resize", () => {
 
 // >>-- 05 Sidebar scroll js --<<
 var myElement = document.getElementById('app-simple-bar');
-new SimpleBar(myElement, { autoHide: true });
+if (myElement) new SimpleBar(myElement, { autoHide: true });
 
 
 

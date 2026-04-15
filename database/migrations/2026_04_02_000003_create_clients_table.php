@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('clients', function (Blueprint $table) {
             $table->id();
-            $table->string('expediente', 20)->unique()->nullable();
+            $table->string('expediente', 20)->nullable()->index();
             $table->string('nombre');
             $table->string('apellido_pat')->nullable();
             $table->string('apellido_mat')->nullable();

@@ -1,5 +1,7 @@
 <?php
+
 namespace App\Http\Controllers;
+
 class HeadquarterController extends Controller
 {
     public function index() { return view('headquarters.index'); }

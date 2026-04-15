@@ -5,6 +5,7 @@
 // jQuery UI Datepicker: locale español
 // =========================================================
 $(function () {
+    if (typeof $.datepicker === 'undefined') return;
     if (!$.datepicker.regional['es']) {
         $.datepicker.regional['es'] = {
             closeText: 'Cerrar',
