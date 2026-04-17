@@ -1,114 +1,215 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-sm-6">
-            <h4 class="main-title title-modules">LISTADO GENERAL DE CLIENTES</h4>
+            <h4 class="main-title title-modules">CLIENTES</h4>
         </div>
         <div class="col-sm-6 mt-sm-2">
             <ul class="breadcrumb breadcrumb-start float-sm-end">
                 <li class="d-flex">
-                    <i class="ti ti-users f-s-16"></i>
-                    <a href="#" class="f-s-14 d-flex gap-2"><span class="d-none d-md-block">Clientes</span></a>
+                    <i class="ti ti-file-text f-s-16"></i>
+                    <a href="#" class="f-s-14 d-flex gap-2"><span class="d-none d-md-block">Registro</span></a>
                 </li>
-                <li class="d-flex active"><a href="#" class="f-s-14">Listado</a></li>
+                <li class="d-flex active"><a href="#" class="f-s-14">Cliente</a></li>
             </ul>
         </div>
     </div>
-
-    @if(session('client_success'))
-        <div class="alert alert-success alert-dismissible fade show py-2 mb-2" role="alert">
-            {{ session('client_success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
 
     <div class="row table-section">
         <div class="col-xl-12">
             <div class="card shadow-sm">
                 <div class="card-body pb-2">
-                    <div class="row my-2">
-                        <div class="col-12">
-                            <div class="d-flex flex-wrap align-items-end gap-2 overflow-auto py-1">
-                                <div class="flex-shrink-0" style="width: 130px;">
-                                    <select class="form-select form-select-sm" wire:model="filterBy">
-                                        <option value="nombre">Nombre</option>
-                                        <option value="documento">Documento</option>
-                                        <option value="expediente">Expediente</option>
-                                    </select>
-                                </div>
-
-                                <div class="flex-shrink-0" style="width: 260px;">
-                                    <input type="search" class="form-control form-control-sm"
-                                           placeholder="Buscar..." wire:model="search">
-                                </div>
-
-                                <button class="btn btn-sm btn-dark flex-shrink-0" wire:click="$refresh">
-                                    <i class="ti ti-search f-s-12"></i>
-                                </button>
-
-                                <a class="btn btn-sm btn-primary flex-shrink-0"
-                                   href="{{ route('clients.create') }}" target="_blank">
-                                    <i class="ti ti-square-plus f-s-12"></i> Nuevo
-                                </a>
+                    {{-- Filtros --}}
+                    <form wire:submit.prevent="$refresh">
+                        <div class="row g-2 align-items-end mb-2">
+                            <div class="col">
+                                <label class="form-label mb-0 small"><b>Expediente</b></label>
+                                <input type="text" class="form-control form-control-sm"
+                                       wire:model="nexpediente" placeholder="Numero Expediente">
+                            </div>
+                            <div class="col">
+                                <label class="form-label mb-0 small"><b>DNI</b></label>
+                                <input type="text" class="form-control form-control-sm"
+                                       wire:model="documento" placeholder="DNI">
+                            </div>
+                            <div class="col">
+                                <label class="form-label mb-0 small"><b>Nombre</b></label>
+                                <input type="text" class="form-control form-control-sm"
+                                       wire:model="nombre" placeholder="Nombres">
+                            </div>
+                            <div class="col">
+                                <label class="form-label mb-0 small"><b>T.Credito</b></label>
+                                <input type="text" class="form-control form-control-sm"
+                                       wire:model="ruta" placeholder="Ruta">
+                            </div>
+                            <div class="col">
+                                <label class="form-label mb-0 small"><b>Asesor</b></label>
+                                <select class="form-select form-select-sm" wire:model="ejecutivo">
+                                    <option value="">Todos</option>
+                                    <option value="Ninguno">Sin Asesor</option>
+                                    @foreach($asesores as $asesor)
+                                        <option value="{{ $asesor->id }}">{{ $asesor->name }}</option>
+                                    @endforeach
+                                </select>
                             </div>
                         </div>
-                    </div>
+                        <div class="d-flex gap-2 mb-2">
+                            <button type="submit" class="btn btn-sm btn-primary">
+                                <i class="ti ti-search f-s-12"></i> Buscar
+                            </button>
+                            <a href="{{ route('exports.clients') }}?nexpediente={{ $nexpediente }}&documento={{ $documento }}&nombre={{ $nombre }}&ruta={{ $ruta }}&ejecutivo={{ $ejecutivo }}"
+                               class="btn btn-sm btn-success" target="_blank">
+                                <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
+                            </a>
+                            <a href="{{ route('clients.create') }}" class="btn btn-sm btn-danger">
+                                <i class="ti ti-user-plus f-s-12"></i> Nuevo Cliente
+                            </a>
+                        </div>
+                    </form>
 
-                    <div class="table-responsive tableFixHead">
-                        <table class="table table-bordered table-striped table-hover">
+                    {{-- Tabla Desktop / Cards Mobile --}}
+                    <div class="table-responsive d-none d-md-block">
+                        <table class="table table-bordered table-striped table-hover" style="font-size: 11px;">
                             <thead class="bg-primary">
-                            <tr>
-                                <th>#</th>
-                                <th>Expediente</th>
-                                <th>Documento</th>
-                                <th>Nombre Completo</th>
-                                <th>Celular</th>
-                                <th>Dirección</th>
-                                <th>Asesor</th>
-                                <th></th>
-                            </tr>
+                                <tr>
+                                    <th class="text-center">N&deg;</th>
+                                    <th class="text-center">Fecha</th>
+                                    <th class="text-center">Exp.</th>
+                                    <th class="text-center">Nombres Apellidos</th>
+                                    <th class="text-center">DNI</th>
+                                    <th class="text-center">Movil</th>
+                                    <th class="text-center">T.Credito</th>
+                                    <th class="text-center">Giro</th>
+                                    <th class="text-center">Asesor</th>
+                                    <th class="text-center" colspan="3">Opciones</th>
+                                    <th class="text-center">C.</th>
+                                    <th class="text-center">N.</th>
+                                </tr>
                             </thead>
                             <tbody>
                             @forelse($clients as $client)
-                                <tr>
-                                    <td>{{ $loop->iteration + ($clients->currentPage() - 1) * $clients->perPage() }}</td>
-                                    <td>{{ $client->expediente }}</td>
-                                    <td>{{ $client->documento }}</td>
-                                    <td>{{ $client->fullName() }}</td>
-                                    <td>{{ $client->celular1 ?: '—' }}</td>
-                                    <td>{{ \Illuminate\Support\Str::limit($client->direccion, 30) ?: '—' }}</td>
-                                    <td>{{ $client->asesor?->name ?: '—' }}</td>
-                                    <td class="text-nowrap">
-                                        <a href="{{ route('clients.show', $client->id) }}" title="Ver">
-                                            <i class="ti ti-eye f-s-18 text-info" style="cursor:pointer"></i>
+                                @php
+                                    $hasCredit = isset($clientsWithCredit[$client->id]);
+                                    $rowStyle = $hasCredit ? '' : 'color: red;';
+                                @endphp
+                                <tr style="{{ $rowStyle }}"
+                                    onmouseover="this.style.backgroundColor='#CCFF66'"
+                                    onmouseout="this.style.backgroundColor=''">
+                                    <td class="text-center">{{ $loop->iteration + ($clients->currentPage() - 1) * $clients->perPage() }}</td>
+                                    <td class="text-center">{{ $client->created_at?->format('Y-m-d') }}</td>
+                                    <td class="text-center">{{ $client->expediente }}</td>
+                                    <td>
+                                        <a href="{{ route('clients.edit', $client->id) }}" style="color: black;">
+                                            {{ $client->nombre }} {{ $client->apellido_pat }} {{ $client->apellido_mat }}
                                         </a>
-                                        <a href="{{ route('clients.edit', $client->id) }}" title="Editar">
-                                            <i class="ti ti-edit f-s-18 text-success" style="cursor:pointer"></i>
+                                    </td>
+                                    <td>
+                                        <a href="{{ route('credits.create', $client->id) }}">
+                                            {{ $client->documento }}
                                         </a>
-                                        <a href="{{ route('credits.create', $client->id) }}" title="Nuevo Crédito">
-                                            <i class="ti ti-credit-card f-s-18 text-primary" style="cursor:pointer"></i>
+                                    </td>
+                                    <td>{{ $client->celular1 }}</td>
+                                    <td class="text-center">{{ $client->zona }}</td>
+                                    <td class="text-center">{{ $client->telefono_fijo }}</td>
+                                    <td class="text-center">{{ $client->asesor?->username ?? $client->asesor?->name }}</td>
+                                    <td class="text-center text-nowrap">
+                                        <a href="{{ route('clients.show', $client->id) }}"
+                                           class="btn btn-xs btn-primary" style="padding: 2px 8px; font-size: 10px;">
+                                            Prestamo
                                         </a>
+                                    </td>
+                                    <td class="text-center">
+                                        <a href="{{ route('clients.show', $client->id) }}"
+                                           class="btn btn-xs btn-danger" style="padding: 2px 8px; font-size: 10px;">
+                                            Aval
+                                        </a>
+                                    </td>
+                                    <td class="text-center">
+                                        <a href="{{ route('clients.show', $client->id) }}"
+                                           class="btn btn-xs btn-danger" style="padding: 2px 8px; font-size: 10px;">
+                                            Adjuntos
+                                        </a>
+                                    </td>
+                                    <td class="text-center">
+                                        @if($client->latitud && $client->longitud)
+                                            <a href="https://maps.google.com/?q={{ $client->latitud }},{{ $client->longitud }}" target="_blank">
+                                                <i class="ti ti-map-pin f-s-18 text-success"></i>
+                                            </a>
+                                        @else
+                                            <i class="ti ti-map-pin-off f-s-18 text-danger"></i>
+                                        @endif
+                                    </td>
+                                    <td class="text-center">
+                                        <i class="ti ti-map-pin-off f-s-18 text-muted"></i>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="py-4 text-muted">No se encontraron resultados</td>
+                                    <td colspan="14" class="py-4 text-muted text-center">No se encontraron resultados</td>
                                 </tr>
                             @endforelse
                             </tbody>
                             <tfoot class="bg-primary">
-                            <tr>
-                                <td></td>
-                                <td class="text-start">TOTAL</td>
-                                <td colspan="5"></td>
-                                <td class="num">{{ $clients->total() }}</td>
-                            </tr>
+                                <tr>
+                                    <td colspan="2">TOTAL</td>
+                                    <td colspan="11"></td>
+                                    <td class="text-center fw-bold">{{ $clients->total() }}</td>
+                                </tr>
                             </tfoot>
                         </table>
                     </div>
 
-                    <div class="mt-2">
-                        {{ $clients->links() }}
+                    {{-- Cards Mobile --}}
+                    <div class="d-md-none">
+                        @forelse($clients as $client)
+                            @php
+                                $hasCredit = isset($clientsWithCredit[$client->id]);
+                            @endphp
+                            <div class="card mb-2 shadow-sm {{ !$hasCredit ? 'border-danger' : '' }}">
+                                <div class="card-body p-3" style="{{ !$hasCredit ? 'color: red;' : '' }}">
+                                    <div class="d-flex justify-content-between align-items-start mb-1">
+                                        <h6 class="mb-0">
+                                            <a href="{{ route('clients.edit', $client->id) }}" style="{{ !$hasCredit ? 'color: red;' : 'color: black;' }}">
+                                                {{ $client->nombre }} {{ $client->apellido_pat }} {{ $client->apellido_mat }}
+                                            </a>
+                                        </h6>
+                                        <span class="badge bg-secondary">#{{ $loop->iteration + ($clients->currentPage() - 1) * $clients->perPage() }}</span>
+                                    </div>
+                                    <div class="row g-1" style="font-size: 12px;">
+                                        <div class="col-6"><b>DNI:</b>
+                                            <a href="{{ route('credits.create', $client->id) }}">{{ $client->documento }}</a>
+                                        </div>
+                                        <div class="col-6"><b>Exp.:</b> {{ $client->expediente }}</div>
+                                        <div class="col-6"><b>Movil:</b> {{ $client->celular1 }}</div>
+                                        <div class="col-6"><b>T.Credito:</b> {{ $client->zona }}</div>
+                                        <div class="col-6"><b>Giro:</b> {{ $client->telefono_fijo }}</div>
+                                        <div class="col-6"><b>Asesor:</b> {{ $client->asesor?->username ?? $client->asesor?->name }}</div>
+                                        <div class="col-6"><b>Fecha:</b> {{ $client->created_at?->format('Y-m-d') }}</div>
+                                        <div class="col-6">
+                                            @if($client->latitud && $client->longitud)
+                                                <a href="https://maps.google.com/?q={{ $client->latitud }},{{ $client->longitud }}" target="_blank">
+                                                    <i class="ti ti-map-pin f-s-14 text-success"></i> Casa
+                                                </a>
+                                            @else
+                                                <i class="ti ti-map-pin-off f-s-14 text-danger"></i> Casa
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <div class="d-flex gap-1 mt-2">
+                                        <a href="{{ route('clients.show', $client->id) }}" class="btn btn-xs btn-primary" style="padding: 2px 8px; font-size: 10px;">Prestamo</a>
+                                        <a href="{{ route('clients.show', $client->id) }}" class="btn btn-xs btn-danger" style="padding: 2px 8px; font-size: 10px;">Aval</a>
+                                        <a href="{{ route('clients.show', $client->id) }}" class="btn btn-xs btn-danger" style="padding: 2px 8px; font-size: 10px;">Adjuntos</a>
+                                    </div>
+                                </div>
+                            </div>
+                        @empty
+                            <div class="text-center text-muted py-4">No se encontraron resultados</div>
+                        @endforelse
+                        <div class="text-center mt-2">
+                            <span class="badge bg-primary">Total: {{ $clients->total() }}</span>
+                        </div>
                     </div>
+
+                    <x-pagination :paginator="$clients" />
                 </div>
             </div>
         </div>

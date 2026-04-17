@@ -10,85 +10,63 @@ class MassDelete extends Component
 {
     use WithPagination;
 
-    public string $search = '';
-    public string $searchType = '1'; // 1=code, 2=advisor, 3=user
-    public string $dateFrom = '';
-    public string $dateTo = '';
+    protected $paginationTheme = 'bootstrap';
+
+    public string $tipo = '1'; // 1=Codigo, 2=Asesor, 3=Usuario
+    public string $compra = '';
+    public string $fei = '';
+    public string $fef = '';
 
     public function mount(): void
     {
-        $this->dateFrom = now()->format('Y-m-d');
-        $this->dateTo = now()->format('Y-m-d');
+        $this->fei = now()->format('Y-m-d');
+        $this->fef = now()->format('Y-m-d');
     }
 
-    public function updatingSearch(): void
-    {
-        $this->resetPage();
-    }
-
-    public function updatingSearchType(): void
-    {
-        $this->resetPage();
-    }
+    public function updatingTipo() { $this->resetPage(); }
+    public function updatingCompra() { $this->resetPage(); }
+    public function updatingFei() { $this->resetPage(); }
+    public function updatingFef() { $this->resetPage(); }
 
     public function render()
     {
-        $term = trim($this->search);
-
-        $query = MassDeletion::query()
-            ->with(['credit.client']);
-
-        // Role-based filter: cobranza only sees their own records
+        $term = trim($this->compra);
         $user = auth()->user();
-        if ($user && $user->hasRole('Cobranza')) {
-            $query->where('user', $user->name);
+
+        $query = MassDeletion::query()->with(['credit.client']);
+
+        // Filtro por rol (Cobranza solo ve sus propios registros)
+        if ($user && $user->hasRole('cobranza')) {
+            $query->where('user', $user->username);
         }
 
-        // Date range filter
-        if ($this->dateFrom !== '') {
-            $query->whereDate('date', '>=', $this->dateFrom);
-        }
-        if ($this->dateTo !== '') {
-            $query->whereDate('date', '<=', $this->dateTo);
+        // Lógica del legacy: si hay búsqueda y no hay fechas, ignora fechas
+        if ($term !== '' && ($this->fei === '' || $this->fef === '')) {
+            // Solo búsqueda
+        } elseif ($term !== '' && $this->fei !== '' && $this->fef !== '') {
+            $query->whereDate('date', '>=', $this->fei)
+                  ->whereDate('date', '<=', $this->fef);
+        } elseif ($term === '' && $this->fei !== '' && $this->fef !== '') {
+            $query->whereDate('date', '>=', $this->fei)
+                  ->whereDate('date', '<=', $this->fef);
+        } else {
+            $query->whereDate('date', now()->format('Y-m-d'));
         }
 
-        // Search filter based on searchType
+        // Filtro por búsqueda
         if ($term !== '') {
-            match ($this->searchType) {
-                '1' => $query->whereHas('credit', fn ($q) =>
-                    $q->where('id', 'like', "%{$term}%")
-                ),
+            match ($this->tipo) {
+                '1' => $query->where('credit_id', 'like', "%{$term}%"),
                 '2' => $query->where('advisor', 'like', "%{$term}%"),
-                '3' => $query->where('user', 'like', "%{$term}%"),
+                '3' => $query->where('performed_by', 'like', "%{$term}%"),
                 default => null,
             };
         }
 
-        $records = $query->orderByDesc('id')->paginate(50);
+        $records = $query->orderBy('date', 'desc')->paginate(50);
 
-        // Calculate total for current filter (all pages)
-        $totalQuery = MassDeletion::query();
-
-        if ($user && $user->hasRole('Cobranza')) {
-            $totalQuery->where('user', $user->name);
-        }
-        if ($this->dateFrom !== '') {
-            $totalQuery->whereDate('date', '>=', $this->dateFrom);
-        }
-        if ($this->dateTo !== '') {
-            $totalQuery->whereDate('date', '<=', $this->dateTo);
-        }
-        if ($term !== '') {
-            match ($this->searchType) {
-                '1' => $totalQuery->whereHas('credit', fn ($q) =>
-                    $q->where('id', 'like', "%{$term}%")
-                ),
-                '2' => $totalQuery->where('advisor', 'like', "%{$term}%"),
-                '3' => $totalQuery->where('user', 'like', "%{$term}%"),
-                default => null,
-            };
-        }
-
+        // Total para todas las páginas
+        $totalQuery = clone $query;
         $totalSum = $totalQuery->sum('amount');
 
         return view('livewire.credits.mass-delete', compact('records', 'totalSum'));

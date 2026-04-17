@@ -32,7 +32,6 @@ class PermissionCatalogSeeder extends Seeder
             ['name' => 'caja.apertura', 'label' => 'Apertura',  'module' => 'caja', 'module_label' => 'Caja', 'description' => 'Acceso a Apertura de Caja'],
             ['name' => 'caja.ingresos', 'label' => 'Ingresos',  'module' => 'caja', 'module_label' => 'Caja', 'description' => 'Acceso a Ingresos'],
             ['name' => 'caja.egresos',  'label' => 'Egresos',   'module' => 'caja', 'module_label' => 'Caja', 'description' => 'Acceso a Egresos'],
-            ['name' => 'caja.balance',  'label' => 'Balance',   'module' => 'caja', 'module_label' => 'Caja', 'description' => 'Acceso a Balance'],
 
             // Reportes (hijos)
             ['name' => 'reportes.cartera',    'label' => 'Cartera Activa', 'module' => 'reportes', 'module_label' => 'Reportes', 'description' => 'Acceso a Reporte Cartera'],

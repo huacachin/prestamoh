@@ -20,7 +20,7 @@ class UsersSeeder extends Seeder
 
         $allPerms = [
             'dashboard', 'clientes', 'creditos', 'pagos',
-            'caja.apertura', 'caja.ingresos', 'caja.egresos', 'caja.balance',
+            'caja.apertura', 'caja.ingresos', 'caja.egresos',
             'reportes.cartera', 'reportes.pagos', 'reportes.morosidad', 'reportes.caja',
             'configuracion.usuarios', 'configuracion.sucursales', 'configuracion.conceptos', 'configuracion.tipo-cambio',
             // Registro

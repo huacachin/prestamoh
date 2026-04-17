@@ -1,7 +1,7 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-sm-6">
-            <h4 class="main-title title-modules">ELIMINAR MASIVO</h4>
+            <h4 class="main-title title-modules" style="color:red;">ELIMINAR MASIVO</h4>
         </div>
         <div class="col-sm-6 mt-sm-2">
             <ul class="breadcrumb breadcrumb-start float-sm-end">
@@ -18,98 +18,158 @@
         <div class="col-xl-12">
             <div class="card shadow-sm">
                 <div class="card-body pb-2">
-                    <div class="row my-2">
-                        <div class="col-12">
-                            <div class="d-flex flex-wrap align-items-end gap-2 overflow-auto py-1">
-                                {{-- Search type radio buttons --}}
-                                <div class="flex-shrink-0 d-flex align-items-center gap-3 border rounded px-3 py-1">
-                                    <div class="form-check form-check-inline mb-0">
-                                        <input class="form-check-input" type="radio" wire:model="searchType" value="1" id="searchCode">
-                                        <label class="form-check-label small" for="searchCode">Codigo</label>
+                    {{-- Filtros --}}
+                    <form wire:submit.prevent="$refresh">
+                        <div class="row g-2 align-items-end mb-2">
+                            <div class="col-md-5">
+                                <label class="form-label mb-0 small"><b>BUSCAR X</b></label>
+                                <div class="d-flex gap-3 mb-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input me-1" type="radio" wire:model.live="tipo" value="1" id="tipoCodigo">
+                                        <label class="form-check-label small" for="tipoCodigo">Código</label>
                                     </div>
-                                    <div class="form-check form-check-inline mb-0">
-                                        <input class="form-check-input" type="radio" wire:model="searchType" value="2" id="searchAdvisor">
-                                        <label class="form-check-label small" for="searchAdvisor">Asesor</label>
+                                    <div class="form-check">
+                                        <input class="form-check-input me-1" type="radio" wire:model.live="tipo" value="2" id="tipoAsesor">
+                                        <label class="form-check-label small" for="tipoAsesor">Asesor</label>
                                     </div>
-                                    <div class="form-check form-check-inline mb-0">
-                                        <input class="form-check-input" type="radio" wire:model="searchType" value="3" id="searchUser">
-                                        <label class="form-check-label small" for="searchUser">Usuario</label>
+                                    <div class="form-check">
+                                        <input class="form-check-input me-1" type="radio" wire:model.live="tipo" value="3" id="tipoUsuario">
+                                        <label class="form-check-label small" for="tipoUsuario">Usuario</label>
                                     </div>
                                 </div>
+                                <input type="text" class="form-control form-control-sm"
+                                       wire:model.live.debounce.300ms="compra"
+                                       placeholder="Ingrese el texto a buscar">
+                            </div>
 
-                                {{-- Search input --}}
-                                <div class="flex-shrink-0" style="width: 220px;">
-                                    <input type="search" class="form-control form-control-sm"
-                                           placeholder="Buscar..." wire:model.live="search">
-                                </div>
+                            <div class="col-md-2">
+                                <label class="form-label mb-0 small"><b>Fecha Inicio</b></label>
+                                <input type="date" class="form-control form-control-sm" wire:model.live="fei">
+                            </div>
 
-                                {{-- Date range --}}
-                                <div class="flex-shrink-0" style="width: 150px;">
-                                    <label class="form-label mb-0 small">Fecha Inicio</label>
-                                    <input type="date" class="form-control form-control-sm" wire:model="dateFrom">
-                                </div>
-                                <div class="flex-shrink-0" style="width: 150px;">
-                                    <label class="form-label mb-0 small">Fecha Fin</label>
-                                    <input type="date" class="form-control form-control-sm" wire:model="dateTo">
-                                </div>
-
-                                {{-- Search button --}}
-                                <button class="btn btn-sm btn-dark flex-shrink-0" wire:click="$refresh">
-                                    <i class="ti ti-search f-s-12"></i> Buscar
-                                </button>
+                            <div class="col-md-2">
+                                <label class="form-label mb-0 small"><b>Fecha Fin</b></label>
+                                <input type="date" class="form-control form-control-sm" wire:model.live="fef">
                             </div>
                         </div>
-                    </div>
+                        <div class="d-flex gap-2 mb-2">
+                            <button type="submit" class="btn btn-sm btn-primary">
+                                <i class="ti ti-search f-s-12"></i> Buscar
+                            </button>
+                            <a href="#" class="btn btn-sm btn-success">
+                                <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
+                            </a>
+                        </div>
+                    </form>
 
-                    <div class="table-responsive tableFixHead">
-                        <table class="table table-bordered table-striped table-hover">
+                    @php
+                        $hoy = now()->format('Y-m-d');
+                        $isSuperUsuario = auth()->user()->hasRole('superusuario');
+                    @endphp
+
+                    {{-- Tabla Desktop --}}
+                    <div class="table-responsive d-none d-md-block">
+                        <table class="table table-bordered table-striped table-hover" style="font-size: 11px;">
                             <thead class="bg-primary">
-                            <tr>
-                                <th>N&deg;</th>
-                                <th>Fecha</th>
-                                <th>Hora</th>
-                                <th>Usuario</th>
-                                <th>Asesor</th>
-                                <th>Cliente</th>
-                                <th>Codigo</th>
-                                <th>Total</th>
-                            </tr>
+                                <tr>
+                                    <th class="text-center" width="50">Op</th>
+                                    <th class="text-center" width="50">N°</th>
+                                    <th class="text-center" width="100">Fecha</th>
+                                    <th class="text-center" width="80">Hora</th>
+                                    <th class="text-center">Usuario</th>
+                                    <th class="text-center">Asesor</th>
+                                    <th class="text-center">Cliente</th>
+                                    <th class="text-center" width="100">Código</th>
+                                    <th class="text-end" width="100">Total</th>
+                                </tr>
                             </thead>
                             <tbody>
                             @forelse($records as $record)
-                                <tr>
-                                    <td>{{ $loop->iteration + ($records->currentPage() - 1) * $records->perPage() }}</td>
-                                    <td>{{ $record->date?->format('d/m/Y') }}</td>
-                                    <td>{{ $record->time }}</td>
-                                    <td>{{ $record->user }}</td>
+                                @php
+                                    $canEdit = $isSuperUsuario || ($record->date && $record->date->format('Y-m-d') === $hoy);
+                                @endphp
+                                <tr onmouseover="this.style.backgroundColor='#CCFF66'"
+                                    onmouseout="this.style.backgroundColor=''">
+                                    <td class="text-center">
+                                        @if($canEdit)
+                                            <a href="#" title="Ver detalle y modificar">
+                                                <i class="ti ti-edit f-s-16 text-primary"></i>
+                                            </a>
+                                        @endif
+                                    </td>
+                                    <td class="text-center">{{ $loop->iteration + ($records->currentPage() - 1) * $records->perPage() }}</td>
+                                    <td class="text-center">{{ $record->date?->format('d/m/Y') }}</td>
+                                    <td class="text-center">{{ $record->time }}</td>
+                                    <td>{{ $record->performed_by ?? $record->user }}</td>
                                     <td>{{ $record->advisor }}</td>
-                                    <td>{{ $record->credit?->client?->fullName() }}</td>
-                                    <td>
+                                    <td>{{ $record->credit?->client?->nombre }} {{ $record->credit?->client?->apellido_pat }}</td>
+                                    <td class="text-center">
                                         @if($record->credit_id)
                                             <a href="{{ route('credits.show', $record->credit_id) }}">
                                                 #{{ $record->credit_id }}
                                             </a>
                                         @endif
                                     </td>
-                                    <td class="text-end">{{ number_format($record->amount, 2) }}</td>
+                                    <td class="text-end fw-bold">{{ number_format($record->amount, 2) }}</td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="py-4 text-muted text-center">No se encontraron resultados</td>
+                                    <td colspan="9" class="py-4 text-muted text-center">No se encontraron resultados</td>
                                 </tr>
                             @endforelse
                             </tbody>
                             <tfoot class="bg-primary">
-                            <tr>
-                                <td></td>
-                                <td class="text-start">TOTAL</td>
-                                <td colspan="5"></td>
-                                <td class="text-end">{{ number_format($totalSum, 2) }}</td>
-                            </tr>
+                                <tr>
+                                    <td colspan="8" class="text-end fw-bold">TOTAL:</td>
+                                    <td class="text-end fw-bold">{{ number_format($totalSum, 2) }}</td>
+                                </tr>
                             </tfoot>
                         </table>
                     </div>
-                    <div class="mt-2">{{ $records->links() }}</div>
+
+                    {{-- Cards Mobile --}}
+                    <div class="d-md-none">
+                        @forelse($records as $record)
+                            @php
+                                $canEdit = $isSuperUsuario || ($record->date && $record->date->format('Y-m-d') === $hoy);
+                            @endphp
+                            <div class="card mb-2 shadow-sm">
+                                <div class="card-body p-3">
+                                    <div class="d-flex justify-content-between align-items-start mb-1">
+                                        <h6 class="mb-0">
+                                            {{ $record->credit?->client?->nombre }} {{ $record->credit?->client?->apellido_pat }}
+                                        </h6>
+                                        <span class="badge bg-primary">S/ {{ number_format($record->amount, 2) }}</span>
+                                    </div>
+                                    <div class="row g-1" style="font-size: 12px;">
+                                        <div class="col-6"><b>Código:</b>
+                                            @if($record->credit_id)
+                                                <a href="{{ route('credits.show', $record->credit_id) }}">#{{ $record->credit_id }}</a>
+                                            @endif
+                                        </div>
+                                        <div class="col-6"><b>Fecha:</b> {{ $record->date?->format('d/m/Y') }}</div>
+                                        <div class="col-6"><b>Hora:</b> {{ $record->time }}</div>
+                                        <div class="col-6"><b>Usuario:</b> {{ $record->performed_by ?? $record->user }}</div>
+                                        <div class="col-12"><b>Asesor:</b> {{ $record->advisor }}</div>
+                                    </div>
+                                    @if($canEdit)
+                                        <div class="mt-2">
+                                            <a href="#" class="btn btn-xs btn-outline-primary" style="padding: 2px 8px; font-size: 10px;">
+                                                <i class="ti ti-edit"></i> Editar
+                                            </a>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        @empty
+                            <div class="text-center text-muted py-4">No se encontraron resultados</div>
+                        @endforelse
+                        <div class="text-center mt-2">
+                            <span class="badge bg-primary">Total: S/ {{ number_format($totalSum, 2) }}</span>
+                        </div>
+                    </div>
+
+                    <x-pagination :paginator="$records" />
                 </div>
             </div>
         </div>

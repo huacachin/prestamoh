@@ -67,7 +67,6 @@ Route::middleware('auth')->group(function () {
     Route::get('cash/expenses', [CashController::class, 'expenses'])->name('cash.expenses')->middleware('permission:caja.egresos');
     Route::get('cash/expenses/create', [CashController::class, 'createExpense'])->name('cash.expenses.create')->middleware('permission:caja.egresos');
     Route::get('cash/expenses/{id}/edit', [CashController::class, 'editExpense'])->name('cash.expenses.edit')->middleware('permission:caja.egresos');
-    Route::get('cash/balance', [CashController::class, 'balance'])->name('cash.balance')->middleware('permission:caja.balance');
 
     // Reportes
     Route::get('reports/portfolio', [ReportController::class, 'portfolio'])->name('reports.portfolio')->middleware('permission:reportes.cartera');

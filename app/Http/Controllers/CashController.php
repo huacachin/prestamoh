@@ -13,7 +13,6 @@ class CashController extends Controller
     public function expenses() { return view('cash.expenses'); }
     public function createExpense() { return view('cash.create-expense'); }
     public function editExpense(int $id) { return view('cash.edit-expense', compact('id')); }
-    public function balance() { return view('cash.balance'); }
     public function exportIncomes(Request $request) { }
     public function exportExpenses(Request $request) { }
 }

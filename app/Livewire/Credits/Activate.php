@@ -7,71 +7,93 @@ use Livewire\Component;
 
 class Activate extends Component
 {
-    public $creditId = '';
+    public $tipoe = 'Pago-Credito';
     public $search = '';
+    public $selectedId = null;
+    public $showDropdown = false;
 
-    public function rules()
+    public function updatedSearch()
     {
-        return [
-            'creditId' => 'required|exists:credits,id',
-        ];
+        $this->selectedId = null;
+        $this->showDropdown = strlen(trim($this->search)) >= 1;
     }
 
-    public function messages()
+    public function selectCredit($id)
     {
-        return [
-            'creditId.required' => 'Debe seleccionar un crédito.',
-            'creditId.exists' => 'El crédito seleccionado no existe.',
-        ];
+        $this->selectedId = $id;
+        $this->showDropdown = false;
+
+        $credit = Credit::with('client:id,nombre,apellido_pat,apellido_mat,documento')->find($id);
+        if ($credit) {
+            $this->search = $credit->id . ' - ' . ($credit->client?->nombre ?? '') . ' ' . ($credit->client?->apellido_pat ?? '');
+        }
     }
 
     public function activate()
     {
-        $this->validate();
+        if (!$this->selectedId) {
+            $this->dispatch('errorAlert', ['message' => 'Debe seleccionar un préstamo.']);
+            return;
+        }
 
-        $credit = Credit::findOrFail($this->creditId);
-
-        if (! in_array($credit->situacion, ['Cancelado', 'Refinanciado'])) {
-            $this->dispatch('errorAlert', ['message' => 'Solo se pueden activar créditos Cancelados o Refinanciados.']);
+        $credit = Credit::find($this->selectedId);
+        if (!$credit) {
+            $this->dispatch('errorAlert', ['message' => 'El préstamo seleccionado no existe.']);
             return;
         }
 
         $credit->update([
-            'situacion'         => 'Activo',
+            'refinanciado'      => false,
             'estado'            => 1,
+            'situacion'         => 'Activo',
             'fecha_cancelacion' => null,
         ]);
 
-        $this->creditId = '';
-        $this->dispatch('successAlert', ['message' => 'Préstamo activado correctamente.']);
-    }
-
-    public function getCreditsList()
-    {
-        $term = trim($this->search);
-
-        return Credit::query()
-            ->with('client')
-            ->whereIn('situacion', ['Cancelado', 'Refinanciado'])
-            ->when($term !== '', function ($q) use ($term) {
-                $q->where(function ($w) use ($term) {
-                    $w->whereHas('client', fn ($c) =>
-                        $c->where('nombre', 'like', "%{$term}%")
-                          ->orWhere('apellido_pat', 'like', "%{$term}%")
-                          ->orWhere('apellido_mat', 'like', "%{$term}%")
-                          ->orWhere('documento', 'like', "%{$term}%")
-                    )
-                    ->orWhere('id', 'like', "%{$term}%");
-                });
-            })
-            ->orderByDesc('id')
-            ->paginate(50);
+        $this->selectedId = null;
+        $this->search = '';
+        $this->showDropdown = false;
+        $this->dispatch('successAlert', ['message' => 'Se Re-Activó con éxito']);
     }
 
     public function render()
     {
-        $credits = $this->getCreditsList();
+        $results = collect();
+        $selectedCredit = null;
 
-        return view('livewire.credits.activate', compact('credits'));
+        if ($this->showDropdown && strlen(trim($this->search)) >= 1) {
+            $term = trim($this->search);
+            $user = auth()->user();
+            $isSuperUsuario = $user->hasRole('superusuario');
+
+            $query = Credit::query()
+                ->with('client:id,nombre,apellido_pat,apellido_mat,documento')
+                ->select('id', 'client_id', 'importe', 'situacion', 'fecha_cancelacion', 'cuotas', 'tipo_planilla', 'interes', 'fecha_prestamo');
+
+            if (!$isSuperUsuario) {
+                $query->whereDate('fecha_cancelacion', today());
+            }
+
+            $query->where(function ($q) use ($term) {
+                $q->where('id', 'like', "%{$term}%")
+                  ->orWhereHas('client', fn ($c) =>
+                      $c->where('nombre', 'like', "%{$term}%")
+                        ->orWhere('apellido_pat', 'like', "%{$term}%")
+                        ->orWhere('apellido_mat', 'like', "%{$term}%")
+                        ->orWhere('documento', 'like', "%{$term}%")
+                  );
+            });
+
+            $results = $query->orderByDesc('id')->limit(20)->get();
+        }
+
+        if ($this->selectedId) {
+            $selectedCredit = Credit::with('client:id,nombre,apellido_pat,apellido_mat,documento')
+                ->find($this->selectedId);
+        }
+
+        return view('livewire.credits.activate', [
+            'results'        => $results,
+            'selectedCredit' => $selectedCredit,
+        ]);
     }
 }

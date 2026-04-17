@@ -4,49 +4,95 @@ namespace App\Livewire\Cash;
 
 use App\Models\Expense;
 use Livewire\Component;
-use Livewire\WithPagination;
 
 class Expenses extends Component
 {
-    use WithPagination;
-
-    public string $fecha = '';
-    public string $search = '';
+    public string $tipo = '1';   // 1=A, 2=Motivo, 3=Usuario, 4=Respons.
+    public string $compra = '';
+    public string $fei = '';
+    public string $fef = '';
 
     public function mount(): void
     {
-        $this->fecha = now()->format('Y-m-d');
-    }
-
-    public function updatedFecha(): void
-    {
-        $this->resetPage();
-    }
-
-    public function updatedSearch(): void
-    {
-        $this->resetPage();
+        $this->fei = now()->format('Y-m-d');
+        $this->fef = now()->format('Y-m-d');
     }
 
     public function render()
     {
         $user = auth()->user();
-        $term = trim($this->search);
+        $term = trim($this->compra);
 
-        $expenses = Expense::query()
-            ->where('headquarter_id', $user->headquarter_id)
-            ->when($this->fecha !== '', fn ($q) => $q->whereDate('date', $this->fecha))
-            ->when($term !== '', fn ($q) =>
-                $q->where(function ($w) use ($term) {
-                    $w->where('reason', 'like', "%{$term}%")
-                      ->orWhere('detail', 'like', "%{$term}%")
-                      ->orWhere('in_charge', 'like', "%{$term}%");
-                })
-            )
-            ->with('user:id,name')
-            ->orderByDesc('id')
-            ->paginate(30);
+        $query = Expense::query()
+            ->where('headquarter_id', $user->headquarter_id ?? 1)
+            ->where(function ($q) {
+                $q->where('modo', '<>', 'Compra')->orWhereNull('modo');
+            })
+            ->with('user:id,name,username');
 
-        return view('livewire.cash.expenses', compact('expenses'));
+        // Filtros por rol (legacy)
+        if ($user->hasAnyRole(['asesor', 'cobranza'])) {
+            $query->where('user_id', $user->id);
+        }
+
+        // Lógica fechas + búsqueda (estilo legacy)
+        if ($term !== '' && ($this->fei === '' || $this->fef === '')) {
+            // Solo búsqueda
+        } elseif ($term !== '' && $this->fei !== '' && $this->fef !== '') {
+            $query->whereDate('date', '>=', $this->fei)->whereDate('date', '<=', $this->fef);
+        } elseif ($term === '' && $this->fei !== '' && $this->fef !== '') {
+            $query->whereDate('date', '>=', $this->fei)->whereDate('date', '<=', $this->fef);
+        } else {
+            $query->whereDate('date', now()->format('Y-m-d'));
+        }
+
+        // Filtro búsqueda
+        if ($term !== '') {
+            match ($this->tipo) {
+                '1' => $query->where('reason', 'like', "%{$term}%"),
+                '2' => $query->where('detail', 'like', "%{$term}%"),
+                '3' => $query->whereHas('user', fn ($u) =>
+                    $u->where('username', 'like', "%{$term}%")
+                      ->orWhere('name', 'like', "%{$term}%")
+                ),
+                '4' => $query->where('in_charge', 'like', "%{$term}%"),
+                default => null,
+            };
+        }
+
+        $expenses = $query->orderBy('date', 'desc')->orderBy('id', 'desc')->get();
+
+        // Subtotales
+        $tofijo = 0; $totros = 0;
+        $sumdiario = 0; $summensu = 0; $sumdm = 0;
+        $totalGeneral = 0;
+
+        foreach ($expenses as $e) {
+            $totalGeneral += (float) $e->total;
+            if ($e->modo === 'Fijos') $tofijo += $e->total;
+            else $totros += $e->total;
+
+            if ($e->reason === 'Diario') $sumdiario += $e->total;
+            elseif ($e->reason === 'Mensual') $summensu += $e->total;
+            elseif ($e->reason === 'D.M') $sumdm += $e->total;
+        }
+
+        $datos220 = $sumdm / 2;
+        $valor1 = $sumdiario + $datos220;
+        $valor2 = $summensu + $datos220;
+        $valor3 = $valor1 + $valor2;
+
+        return view('livewire.cash.expenses', [
+            'expenses'     => $expenses,
+            'totalGeneral' => $totalGeneral,
+            'tofijo'       => $tofijo,
+            'totros'       => $totros,
+            'sumdiario'    => $sumdiario,
+            'summensu'     => $summensu,
+            'sumdm'        => $sumdm,
+            'valor1'       => $valor1,
+            'valor2'       => $valor2,
+            'valor3'       => $valor3,
+        ]);
     }
 }

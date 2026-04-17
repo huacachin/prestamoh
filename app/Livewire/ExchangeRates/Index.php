@@ -8,19 +8,17 @@ use Livewire\Component;
 class Index extends Component
 {
     public string $fecha = '';
-    public string $compra = '';
-    public string $venta = '';
-    public $rates;
+    public $compra = '';
+    public $venta = '';
+
+    public bool $saved = false;
 
     public function mount()
     {
-        $this->fecha = now()->format('Y-m-d');
-        $this->loadRates();
-    }
-
-    private function loadRates(): void
-    {
-        $this->rates = ExchangeRate::orderByDesc('fecha')->limit(30)->get();
+        $current = ExchangeRate::orderByDesc('fecha')->first();
+        $this->fecha  = $current?->fecha?->format('Y-m-d') ?? now()->format('Y-m-d');
+        $this->compra = $current?->compra ?? '';
+        $this->venta  = $current?->venta ?? '';
     }
 
     protected $rules = [
@@ -38,10 +36,8 @@ class Index extends Component
             ['compra' => $this->compra, 'venta' => $this->venta]
         );
 
-        $this->dispatch('successAlert', ['message' => 'Tipo de cambio guardado correctamente.']);
-        $this->compra = '';
-        $this->venta = '';
-        $this->loadRates();
+        $this->saved = true;
+        $this->dispatch('successAlert', ['message' => 'Se actualizó el Tipo de Cambio con éxito']);
     }
 
     public function render()

@@ -11,6 +11,8 @@ class Create extends Component
     public string $name   = '';
     public string $status = 'active';
     public string $type   = 'ingreso';
+    public $factor_ingreso = 0;
+    public $factor_egreso  = 0;
 
     public function mount(): void
     {
@@ -29,14 +31,18 @@ class Create extends Component
         $this->status = 'active';
         $this->type   = 'ingreso';
         $this->code   = $this->generateCode();
+        $this->factor_ingreso = 0;
+        $this->factor_egreso  = 0;
         $this->resetErrorBag();
     }
 
     protected $rules = [
-        'code'   => 'required|string|max:10',
-        'name'   => 'required|string|max:255',
-        'status' => 'required|in:active,inactive',
-        'type'   => 'required|in:ingreso,egreso',
+        'code'           => 'required|string|max:10',
+        'name'           => 'required|string|max:255',
+        'status'         => 'required|in:active,inactive',
+        'type'           => 'required|in:ingreso,egreso',
+        'factor_ingreso' => 'nullable|numeric|min:0',
+        'factor_egreso'  => 'nullable|numeric|min:0',
     ];
 
     public function save(): void
@@ -45,10 +51,12 @@ class Create extends Component
             $this->validate();
 
             Concept::create([
-                'code'   => $this->code,
-                'name'   => $this->name,
-                'status' => $this->status,
-                'type'   => $this->type,
+                'code'           => $this->code,
+                'name'           => $this->name,
+                'status'         => $this->status,
+                'type'           => $this->type,
+                'factor_ingreso' => $this->factor_ingreso ?: 0,
+                'factor_egreso'  => $this->factor_egreso ?: 0,
             ]);
 
             session()->flash('concept_success', 'Concepto creado correctamente.');

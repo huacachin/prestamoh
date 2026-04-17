@@ -35,7 +35,16 @@
       "Bash(mysql:*)",
       "Bash(grep \"\\\\.php$\")",
       "Bash(php:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(npm install *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(ls /Users/antonyalfredoculquicarranza/Desktop/paginacion*)",
+      "Bash(ls -lt /Users/antonyalfredoculquicarranza/Desktop/*.png)",
+      "Bash(ls -lt /Users/antonyalfredoculquicarranza/Desktop/paginacion*)",
+      "Bash(cp \"/Users/antonyalfredoculquicarranza/Desktop/Captura de pantalla 2026-04-16 a las 11.34.34 a. m..png\" /tmp/captura.png)",
+      "Read(//tmp/**)"
     ]
   }
 }

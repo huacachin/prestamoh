@@ -473,6 +473,12 @@ class MigrateLegacyData extends Command
             Schema::enableForeignKeyConstraints();
         }
 
+        // Build user mapping
+        $userMap = [];
+        foreach (\App\Models\User::pluck('id', 'username') as $username => $id) {
+            $userMap[strtolower($username)] = $id;
+        }
+
         $total = DB::connection('legacy')->table('ingreso')->where('modo', '<>', 'CREDITO')->count();
         $bar = $this->output->createProgressBar($total);
         $bar->start();
@@ -482,16 +488,21 @@ class MigrateLegacyData extends Command
             ->table('ingreso')
             ->where('modo', '<>', 'CREDITO')
             ->orderBy('identrada')
-            ->chunk(1000, function ($chunk) use (&$count, $bar) {
+            ->chunk(1000, function ($chunk) use (&$count, $bar, $userMap) {
                 $batch = [];
                 foreach ($chunk as $li) {
                     $bar->advance();
+                    $userId = $userMap[strtolower(trim($li->usuario ?? ''))] ?? null;
+
                     $batch[] = [
                         'date'           => ($li->fechaentrada && $li->fechaentrada !== '0000-00-00') ? $li->fechaentrada : now()->format('Y-m-d'),
                         'reason'         => $li->aa ?: ($li->modo ?: 'Otros'),
+                        'modo'           => $li->modo ?: null,
+                        'documento'      => $li->documento ?: null,
+                        'asesor'         => $li->asesor ?: null,
                         'detail'         => mb_substr($li->detalle ?: '', 0, 255),
                         'total'          => $li->totalgeneral ?? 0,
-                        'user_id'        => null,
+                        'user_id'        => $userId,
                         'headquarter_id' => 1,
                         'created_at'     => now(),
                         'updated_at'     => now(),
@@ -519,6 +530,12 @@ class MigrateLegacyData extends Command
             Schema::enableForeignKeyConstraints();
         }
 
+        // Build user mapping
+        $userMap = [];
+        foreach (\App\Models\User::pluck('id', 'username') as $username => $id) {
+            $userMap[strtolower($username)] = $id;
+        }
+
         $total = DB::connection('legacy')->table('entrada')->count();
         $bar = $this->output->createProgressBar($total);
         $bar->start();
@@ -527,18 +544,21 @@ class MigrateLegacyData extends Command
         DB::connection('legacy')
             ->table('entrada')
             ->orderBy('identrada')
-            ->chunk(1000, function ($chunk) use (&$count, $bar) {
+            ->chunk(1000, function ($chunk) use (&$count, $bar, $userMap) {
                 $batch = [];
                 foreach ($chunk as $le) {
                     $bar->advance();
+                    $userId = $userMap[strtolower(trim($le->usuario ?? ''))] ?? null;
+
                     $batch[] = [
                         'date'           => ($le->fechaentrada && $le->fechaentrada !== '0000-00-00') ? $le->fechaentrada : now()->format('Y-m-d'),
                         'reason'         => $le->aa ?: ($le->modo ?: 'Otros'),
+                        'modo'           => $le->modo ?: null,
                         'detail'         => mb_substr($le->detalle ?: '', 0, 255),
                         'total'          => $le->totalgeneral ?? 0,
                         'document_type'  => $le->tipcom ?: null,
                         'in_charge'      => $le->respons ?: null,
-                        'user_id'        => null,
+                        'user_id'        => $userId,
                         'headquarter_id' => 1,
                         'created_at'     => now(),
                         'updated_at'     => now(),
@@ -570,14 +590,27 @@ class MigrateLegacyData extends Command
             ->table('caja')
             ->get();
 
+        // Build user mapping: legacy clientes.user/usuario → new users.id
+        $userMap = [];
+        foreach (\App\Models\User::pluck('id', 'username') as $username => $id) {
+            $userMap[strtolower($username)] = $id;
+        }
+
         $count = 0;
         foreach ($legacyCash as $lc) {
+            $userId = $userMap[strtolower(trim($lc->usuario ?? ''))] ?? null;
+
             CashOpening::create([
                 'fecha'          => ($lc->fecha && $lc->fecha !== '0000-00-00') ? $lc->fecha : now()->format('Y-m-d'),
+                'hora'           => $lc->hora ?: null,
                 'saldo_inicial'  => $lc->importe ?? 0,
                 'saldo_final'    => 0,
-                'estado'         => 'cerrado',
-                'user_id'        => null,
+                'estado'         => match (strtolower($lc->estado ?? '')) {
+                    'activo', 'abierto' => 'abierto',
+                    default              => 'cerrado',
+                },
+                'moneda'         => $lc->moneda ?: 'Soles',
+                'user_id'        => $userId,
                 'headquarter_id' => 1,
             ]);
             $count++;
@@ -605,9 +638,11 @@ class MigrateLegacyData extends Command
             Concept::updateOrCreate(
                 ['code' => $lc->cvalparametro],
                 [
-                    'name'   => $lc->cnombrees ?: 'Sin nombre',
-                    'type'   => ($lc->ctipocon == '1') ? 'Ingreso' : 'Egreso',
-                    'status' => ($lc->cestparametro == 1) ? 'active' : 'inactive',
+                    'name'           => $lc->cnombrees ?: 'Sin nombre',
+                    'type'           => ($lc->ctipocon == '1') ? 'Ingreso' : 'Egreso',
+                    'factor_ingreso' => $lc->facpago ?? 0,
+                    'factor_egreso'  => $lc->facdivi ?? 0,
+                    'status'         => ($lc->cestparametro == 1) ? 'active' : 'inactive',
                 ]
             );
             $count++;

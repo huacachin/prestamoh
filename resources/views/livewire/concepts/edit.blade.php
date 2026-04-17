@@ -77,6 +77,28 @@
                                 @error('type') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
                         </div>
+
+                        <div class="col-md-2">
+                            <div class="mb-3">
+                                <label class="form-label">ING. S/</label>
+                                <input type="number" step="0.01" min="0"
+                                       class="form-control form-control-sm @error('factor_ingreso') is-invalid @enderror"
+                                       placeholder="0.00"
+                                       wire:model.defer="factor_ingreso">
+                                @error('factor_ingreso') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            </div>
+                        </div>
+
+                        <div class="col-md-2">
+                            <div class="mb-3">
+                                <label class="form-label">EGR. S/</label>
+                                <input type="number" step="0.01" min="0"
+                                       class="form-control form-control-sm @error('factor_egreso') is-invalid @enderror"
+                                       placeholder="0.00"
+                                       wire:model.defer="factor_egreso">
+                                @error('factor_egreso') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            </div>
+                        </div>
                     </div>
 
                     <div class="d-flex gap-2">

@@ -34,12 +34,11 @@
             'id'       => 'caja',
             'title'    => 'Caja',
             'icon'     => 'ti ti-home-dollar',
-            'canAny'   => ['caja.apertura', 'caja.ingresos', 'caja.egresos', 'caja.balance'],
+            'canAny'   => ['caja.apertura', 'caja.ingresos', 'caja.egresos'],
             'children' => [
                 ['title' => 'Apertura Caja',  'route' => 'cash.opening',  'can' => 'caja.apertura'],
                 ['title' => 'Ingreso',        'route' => 'cash.incomes',  'can' => 'caja.ingresos'],
                 ['title' => 'Egreso',         'route' => 'cash.expenses', 'can' => 'caja.egresos'],
-                ['title' => 'Balance',        'route' => 'cash.balance',  'can' => 'caja.balance'],
             ],
         ],
 

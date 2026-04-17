@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class CashOpening extends Model
 {
     protected $fillable = [
-        'fecha', 'saldo_inicial', 'saldo_final', 'estado',
+        'fecha', 'hora', 'saldo_inicial', 'saldo_final', 'estado', 'moneda',
         'user_id', 'headquarter_id',
     ];
 

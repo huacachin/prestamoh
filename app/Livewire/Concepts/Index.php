@@ -4,35 +4,45 @@ namespace App\Livewire\Concepts;
 
 use App\Models\Concept;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 class Index extends Component
 {
-    public $search = '';
-    public $concepts;
+    use WithPagination;
 
-    public function mount()
-    {
-        $this->loadConcepts();
-    }
+    protected $paginationTheme = 'bootstrap';
 
-    public function updatedSearch()
-    {
-        $this->loadConcepts();
-    }
+    public $tipo = '2'; // 1=Codigo, 2=Nombre
+    public $compra = '';
+    public $estados = 'Activo';
 
-    private function loadConcepts(): void
-    {
-        $term = trim($this->search);
-        $this->concepts = Concept::query()
-            ->when($term !== '', fn ($q) =>
-                $q->where('name', 'like', "%{$term}%")
-            )
-            ->orderBy('id')
-            ->get();
-    }
+    public function updatingTipo() { $this->resetPage(); }
+    public function updatingCompra() { $this->resetPage(); }
+    public function updatingEstados() { $this->resetPage(); }
 
     public function render()
     {
-        return view('livewire.concepts.index');
+        $query = Concept::query();
+
+        // Filtro búsqueda
+        if (trim($this->compra) !== '') {
+            $term = trim($this->compra);
+            if ($this->tipo === '1') {
+                $query->where('code', 'like', "%{$term}%");
+            } else {
+                $query->where('name', 'like', "%{$term}%");
+            }
+        }
+
+        // Filtro estado
+        if ($this->estados === 'Cesado') {
+            $query->where('status', 'inactive');
+        } else {
+            $query->where('status', 'active');
+        }
+
+        $concepts = $query->orderBy('code', 'asc')->paginate(50);
+
+        return view('livewire.concepts.index', compact('concepts'));
     }
 }
