@@ -139,7 +139,7 @@
                             <tfoot class="bg-primary">
                                 <tr>
                                     <td colspan="7">TOTAL</td>
-                                    <td class="text-center fw-bold">{{ $concepts->total() }}</td>
+                                    <td class="text-center fw-bold">{{ $concepts->count() }}</td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -189,11 +189,9 @@
                             <div class="text-center text-muted py-4">No se encontraron resultados</div>
                         @endforelse
                         <div class="text-center mt-2">
-                            <span class="badge bg-primary">Total: {{ $concepts->total() }}</span>
+                            <span class="badge bg-primary">Total: {{ $concepts->count() }}</span>
                         </div>
                     </div>
-
-                    <x-pagination :paginator="$concepts" />
                 </div>
             </div>
         </div>

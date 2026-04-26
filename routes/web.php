@@ -42,6 +42,7 @@ Route::middleware('auth')->group(function () {
     Route::get('credits/activate', [CreditController::class, 'activate'])->name('credits.activate')->middleware('permission:registro.activar');
     Route::get('credits/change-status', [CreditController::class, 'changeStatus'])->name('credits.change-status')->middleware('permission:registro.estado');
     Route::get('credits/mass-delete', [CreditController::class, 'massDelete'])->name('credits.mass-delete')->middleware('permission:registro.eliminar-masivo');
+    Route::get('credits/mass-delete/{id}/edit', [CreditController::class, 'massDeleteEdit'])->name('credits.mass-delete.edit')->middleware('permission:registro.eliminar-masivo');
     Route::middleware('permission:creditos')->group(function () {
         Route::get('credits', [CreditController::class, 'index'])->name('credits.index');
         Route::get('credits/create/{clientId?}', [CreditController::class, 'create'])->name('credits.create');
@@ -57,6 +58,7 @@ Route::middleware('auth')->group(function () {
         Route::get('payments/daily', [PaymentController::class, 'daily'])->name('payments.daily');
         Route::get('payments/monthly', [PaymentController::class, 'monthly'])->name('payments.monthly');
         Route::get('payments/weekly', [PaymentController::class, 'weekly'])->name('payments.weekly');
+        Route::get('payments/refinance/{creditId}', [PaymentController::class, 'refinance'])->name('payments.refinance');
     });
 
     // Caja

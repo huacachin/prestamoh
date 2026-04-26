@@ -207,30 +207,30 @@
                                 </tbody>
 
                                 @if(count($days) > 0)
-                                    <tfoot class="bg-primary">
+                                    <tfoot>
                                         {{-- Sub Total General --}}
-                                        <tr>
-                                            <td colspan="5" class="text-end"><strong>Sub Total General</strong></td>
-                                            <td class="text-end"><strong class="text-primary">{{ number_format($Tcpi, 2) }}</strong></td>
-                                            <td class="text-end"><strong class="text-primary">{{ number_format($Tcpi2, 2) }}</strong></td>
-                                            <td class="text-end"><strong class="text-primary">{{ number_format($Tint, 2) }}</strong></td>
-                                            <td class="text-end"><strong class="text-primary">{{ number_format($Tmor4, 2) }}</strong></td>
+                                        <tr style="background-color: #ffffff;">
+                                            <td colspan="5" class="text-end" style="color:#000;"><strong>Sub Total General</strong></td>
+                                            <td class="text-end" style="color:#0d6efd;"><strong>{{ number_format($Tcpi, 2) }}</strong></td>
+                                            <td class="text-end" style="color:#0d6efd;"><strong>{{ number_format($Tcpi2, 2) }}</strong></td>
+                                            <td class="text-end" style="color:#0d6efd;"><strong>{{ number_format($Tint, 2) }}</strong></td>
+                                            <td class="text-end" style="color:#0d6efd;"><strong>{{ number_format($Tmor4, 2) }}</strong></td>
                                             <td colspan="4"></td>
-                                            <td class="text-end"><strong>{{ number_format($toff, 2) }}</strong></td>
+                                            <td class="text-end" style="color:#000;"><strong>{{ number_format($toff, 2) }}</strong></td>
                                             <td></td>
-                                            <td class="text-end"><strong>{{ number_format($toff2, 2) }}</strong></td>
+                                            <td class="text-end" style="color:#000;"><strong>{{ number_format($toff2, 2) }}</strong></td>
                                             <td colspan="3"></td>
                                         </tr>
                                         {{-- TOTAL GENERAL --}}
-                                        <tr>
-                                            <td colspan="5" class="text-end">
-                                                <strong>REPORTE GENERAL <span class="text-danger">CAJA 1 -</span> TOTAL <span class="text-danger">GENERAL</span></strong>
+                                        <tr style="background-color: #ffffff;">
+                                            <td colspan="5" class="text-end" style="color:#000;">
+                                                <strong>REPORTE GENERAL <span style="color:#dc3545;">CAJA 1 -</span> TOTAL <span style="color:#dc3545;">GENERAL</span></strong>
                                             </td>
-                                            <td class="text-end"><strong class="text-danger">{{ number_format($toff1, 2) }}</strong></td>
+                                            <td class="text-end" style="color:#dc3545;"><strong>{{ number_format($toff1, 2) }}</strong></td>
                                             <td colspan="7"></td>
-                                            <td class="text-end"><strong class="text-danger">{{ number_format($toff, 2) }}</strong></td>
+                                            <td class="text-end" style="color:#dc3545;"><strong>{{ number_format($toff, 2) }}</strong></td>
                                             <td></td>
-                                            <td class="text-end"><strong class="text-danger">{{ number_format($toff2, 2) }}</strong></td>
+                                            <td class="text-end" style="color:#dc3545;"><strong>{{ number_format($toff2, 2) }}</strong></td>
                                             <td colspan="3"></td>
                                         </tr>
                                     </tfoot>

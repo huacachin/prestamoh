@@ -4,21 +4,12 @@ namespace App\Livewire\Payments;
 
 use App\Models\Credit;
 use Livewire\Component;
-use Livewire\WithPagination;
 
 class Index extends Component
 {
-    use WithPagination;
-
-    protected $paginationTheme = 'bootstrap';
-
     public string $nombre  = ''; // DNI
     public string $nombre1 = ''; // Nombre
     public string $codigo1 = ''; // Código
-
-    public function updatingNombre()  { $this->resetPage(); }
-    public function updatingNombre1() { $this->resetPage(); }
-    public function updatingCodigo1() { $this->resetPage(); }
 
     public function render()
     {
@@ -59,11 +50,9 @@ class Index extends Component
             $query->where('id', 'like', '%' . trim($this->codigo1) . '%');
         }
 
-        $credits = $query->orderByDesc('id')->paginate(50);
+        $credits = $query->orderBy('id', 'asc')->get();
 
-        // Total Capital de toda la búsqueda (no solo página actual)
-        $totalQuery = clone $query;
-        $totalCapital = $totalQuery->sum('importe');
+        $totalCapital = $credits->sum('importe');
 
         return view('livewire.payments.index', compact('credits', 'totalCapital'));
     }

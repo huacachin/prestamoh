@@ -9,9 +9,9 @@ class Payment extends Model
 {
     protected $fillable = [
         'credit_id', 'installment_id', 'modo', 'tipo',
-        'documento', 'nro_recibo', 'fecha', 'monto',
+        'documento', 'nro_recibo', 'fecha', 'hora', 'monto',
         'moneda', 'tipo_cambio', 'detalle', 'asesor',
-        'user_id', 'headquarter_id', 'latitud', 'longitud',
+        'user_id', 'usuario', 'headquarter_id', 'latitud', 'longitud',
     ];
 
     protected $casts = [

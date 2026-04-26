@@ -67,14 +67,14 @@
                             @forelse($credits as $credit)
                                 <tr onmouseover="this.style.backgroundColor='#CCFF66'"
                                     onmouseout="this.style.backgroundColor=''">
-                                    <td class="text-center">{{ $loop->iteration + ($credits->currentPage() - 1) * $credits->perPage() }}</td>
+                                    <td class="text-center">{{ $loop->iteration }}</td>
                                     <td class="text-center">{{ $credit->client?->expediente }}</td>
                                     <td class="text-center">
                                         <a href="{{ route('credits.show', $credit->id) }}" style="color: black;">
                                             {{ $credit->id }}
                                         </a>
                                     </td>
-                                    <td>{{ $credit->client?->nombre }} {{ $credit->client?->apellido_pat }} {{ $credit->client?->apellido_mat }}</td>
+                                    <td>{{ trim($credit->client?->apellido_pat . ' ' . $credit->client?->apellido_mat . ' ' . $credit->client?->nombre) }}</td>
                                     <td class="text-center">{{ $credit->moneda }}</td>
                                     <td class="text-end">{{ number_format($credit->importe, 2) }}</td>
                                     <td class="text-center">{{ round($credit->interes, 0) }}</td>
@@ -85,7 +85,7 @@
                                             Masivo
                                         </a>
                                         @if($credit->tipo_planilla == 3 && $credit->cuotas == 1)
-                                            <a href="#"
+                                            <a href="{{ route('payments.refinance', $credit->id) }}"
                                                class="btn btn-xs btn-danger" style="padding: 2px 8px; font-size: 10px;">
                                                 Refinanciar
                                             </a>
@@ -102,7 +102,7 @@
                                 <tr>
                                     <td colspan="5" class="text-end fw-bold">Totales:</td>
                                     <td class="text-end fw-bold">{{ number_format($totalCapital, 2) }}</td>
-                                    <td colspan="3" class="text-end">{{ $credits->total() }} créditos</td>
+                                    <td colspan="3" class="text-end">{{ $credits->count() }} créditos</td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -116,7 +116,7 @@
                                     <div class="d-flex justify-content-between align-items-start mb-1">
                                         <h6 class="mb-0">
                                             <a href="{{ route('credits.show', $credit->id) }}" style="color: black;">
-                                                #{{ $credit->id }} - {{ $credit->client?->nombre }} {{ $credit->client?->apellido_pat }}
+                                                #{{ $credit->id }} - {{ trim($credit->client?->apellido_pat . ' ' . $credit->client?->apellido_mat . ' ' . $credit->client?->nombre) }}
                                             </a>
                                         </h6>
                                         <span class="badge bg-primary">S/ {{ number_format($credit->importe, 2) }}</span>
@@ -133,7 +133,7 @@
                                             Masivo
                                         </a>
                                         @if($credit->tipo_planilla == 3 && $credit->cuotas == 1)
-                                            <a href="#"
+                                            <a href="{{ route('payments.refinance', $credit->id) }}"
                                                class="btn btn-xs btn-danger" style="padding: 2px 8px; font-size: 10px;">
                                                 Refinanciar
                                             </a>
@@ -145,11 +145,9 @@
                             <div class="text-center text-muted py-4">No se encontraron resultados</div>
                         @endforelse
                         <div class="text-center mt-2">
-                            <span class="badge bg-primary">Total Capital: S/ {{ number_format($totalCapital, 2) }} | {{ $credits->total() }} créditos</span>
+                            <span class="badge bg-primary">Total Capital: S/ {{ number_format($totalCapital, 2) }} | {{ $credits->count() }} créditos</span>
                         </div>
                     </div>
-
-                    <x-pagination :paginator="$credits" />
                 </div>
             </div>
         </div>

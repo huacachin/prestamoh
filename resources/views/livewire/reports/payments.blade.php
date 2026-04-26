@@ -1,7 +1,7 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-sm-6">
-            <h4 class="main-title title-modules">REPORTE DE PAGOS</h4>
+            <h4 class="main-title title-modules" style="color:red;">REPORTE DE PAGO</h4>
         </div>
         <div class="col-sm-6 mt-sm-2">
             <ul class="breadcrumb breadcrumb-start float-sm-end">
@@ -9,9 +9,7 @@
                     <i class="ti ti-report-analytics f-s-16"></i>
                     <a href="#" class="f-s-14 d-flex gap-2"><span class="d-none d-md-block">Reportes</span></a>
                 </li>
-                <li class="d-flex active">
-                    <a href="#" class="f-s-14">Pagos</a>
-                </li>
+                <li class="breadcrumb-item active"><span>Pagos</span></li>
             </ul>
         </div>
     </div>
@@ -20,104 +18,149 @@
         <div class="col-xl-12">
             <div class="card shadow-sm">
                 <div class="card-body pb-2">
+                    {{-- Filtros: Buscar por --}}
                     <div class="row my-2">
                         <div class="col-12">
-                            <div class="d-flex flex-wrap align-items-end gap-2 overflow-auto py-1">
-                                <div class="flex-shrink-0" style="width: 170px;">
-                                    <label class="form-label mb-0 small">Desde</label>
-                                    <input type="date" class="form-control form-control-sm" wire:model="fecha_desde">
+                            <div class="d-flex flex-wrap align-items-end gap-3 py-1">
+                                <div class="d-flex flex-column">
+                                    <label class="form-label mb-1 small fw-semibold">BUSCAR X</label>
+                                    <div class="d-flex gap-2 flex-wrap">
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" wire:model.live="tipo" value="1" id="tipo1">
+                                            <label class="form-check-label" for="tipo1">A/</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" wire:model.live="tipo" value="2" id="tipo2">
+                                            <label class="form-check-label" for="tipo2">Motivo</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" wire:model.live="tipo" value="3" id="tipo3">
+                                            <label class="form-check-label" for="tipo3">Asesor</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" wire:model.live="tipo" value="4" id="tipo4">
+                                            <label class="form-check-label" for="tipo4">Usuario</label>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="flex-shrink-0" style="width: 170px;">
-                                    <label class="form-label mb-0 small">Hasta</label>
-                                    <input type="date" class="form-control form-control-sm" wire:model="fecha_hasta">
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Filtros: texto + fechas --}}
+                    <div class="row my-2">
+                        <div class="col-12">
+                            <div class="d-flex flex-wrap align-items-end gap-2 py-1">
+                                <div class="flex-grow-1" style="min-width: 250px; max-width:400px;">
+                                    <label class="form-label mb-0 small">Texto</label>
+                                    <input type="text" class="form-control form-control-sm"
+                                           wire:model.live.debounce.500ms="compra"
+                                           placeholder="Ingrese el texto a buscar">
+                                </div>
+                                <div class="flex-shrink-0" style="width: 150px;">
+                                    <label class="form-label mb-0 small">Fecha Inicio</label>
+                                    <input type="date" class="form-control form-control-sm" wire:model.live="fei">
+                                </div>
+                                <div class="flex-shrink-0" style="width: 150px;">
+                                    <label class="form-label mb-0 small">Fecha Fin</label>
+                                    <input type="date" class="form-control form-control-sm" wire:model.live="fef">
                                 </div>
                                 <button class="btn btn-sm btn-dark flex-shrink-0" wire:click="search">
                                     <i class="ti ti-search f-s-12"></i> Buscar
+                                </button>
+                                <button class="btn btn-sm btn-success flex-shrink-0" onclick="window.print()">
+                                    <i class="ti ti-file-spreadsheet f-s-12"></i>
                                 </button>
                             </div>
                         </div>
                     </div>
 
-                    {{-- Summary cards --}}
-                    <div class="row mb-3">
-                        <div class="col-md-3">
-                            <div class="card border-start border-primary border-4 shadow-sm">
-                                <div class="card-body py-2">
-                                    <small class="text-muted">Capital</small>
-                                    <h5 class="mb-0">S/ {{ number_format($totals->CAPITAL, 2) }}</h5>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card border-start border-success border-4 shadow-sm">
-                                <div class="card-body py-2">
-                                    <small class="text-muted">Interes</small>
-                                    <h5 class="mb-0">S/ {{ number_format($totals->INTERES, 2) }}</h5>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card border-start border-danger border-4 shadow-sm">
-                                <div class="card-body py-2">
-                                    <small class="text-muted">Mora</small>
-                                    <h5 class="mb-0">S/ {{ number_format($totals->MORA, 2) }}</h5>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card border-start border-dark border-4 shadow-sm">
-                                <div class="card-body py-2">
-                                    <small class="text-muted">Total</small>
-                                    <h5 class="mb-0">S/ {{ number_format($totals->total, 2) }}</h5>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="table-responsive tableFixHead">
-                        <table class="table table-bordered table-striped table-hover">
-                            <thead class="bg-primary">
-                            <tr>
-                                <th>#</th>
-                                <th>Fecha</th>
-                                <th>Cliente</th>
-                                <th>Credito #</th>
-                                <th>Tipo</th>
-                                <th>Monto</th>
-                            </tr>
+                    {{-- Tabla --}}
+                    <div class="table-responsive" style="max-height: 650px; overflow:auto;">
+                        <table class="table table-bordered table-striped table-hover" style="font-size: 11px; min-width: 1280px;">
+                            <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
+                                <tr>
+                                    <th class="text-center" style="background:#949696;">Nº</th>
+                                    <th class="text-center">Fecha</th>
+                                    <th class="text-center" style="background:#949696;">Hora</th>
+                                    <th class="text-center">Usuario</th>
+                                    <th class="text-center" style="background:#949696;">Asesor</th>
+                                    <th>A</th>
+                                    <th style="background:#949696;">Motivo</th>
+                                    <th class="text-center">S/.</th>
+                                    @if($isAdmin)
+                                        <th class="text-center" style="background:#949696;">Map</th>
+                                    @endif
+                                </tr>
                             </thead>
                             <tbody>
-                            @forelse($payments as $index => $payment)
-                                <tr>
-                                    <td>{{ $index + 1 }}</td>
-                                    <td>{{ $payment->fecha?->format('d/m/Y') }}</td>
-                                    <td>{{ $payment->credit?->client?->fullName() }}</td>
-                                    <td>{{ $payment->credit_id }}</td>
-                                    <td>
-                                        @php
-                                            $bc = match($payment->tipo) {
-                                                'CAPITAL' => 'bg-primary', 'INTERES' => 'bg-success',
-                                                'MORA' => 'bg-danger', default => 'bg-secondary',
-                                            };
-                                        @endphp
-                                        <span class="badge {{ $bc }}">{{ $payment->tipo }}</span>
-                                    </td>
-                                    <td class="text-end">{{ number_format($payment->monto, 2) }}</td>
+                                @forelse($rows as $row)
+                                    <tr>
+                                        <td class="text-center">{{ $row['n'] }}</td>
+                                        <td>{{ $row['fecha'] }}</td>
+                                        <td>{{ $row['hora'] }}</td>
+                                        <td>{{ $row['usuario'] }}</td>
+                                        <td>{{ $row['asesor'] }}</td>
+                                        <td>{{ $row['cliente'] }}</td>
+                                        <td>{{ $row['detalle'] }}</td>
+                                        <td class="text-end">{{ number_format($row['monto'], 2) }}</td>
+                                        @if($isAdmin)
+                                            <td class="text-center">
+                                                @if($row['latitud'] && $row['longitud'])
+                                                    <a target="_blank" href="https://maps.google.com/?q={{ $row['latitud'] }},{{ $row['longitud'] }}">
+                                                        <i class="ti ti-world"></i>
+                                                    </a>
+                                                @endif
+                                            </td>
+                                        @endif
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="{{ $isAdmin ? 9 : 8 }}" class="text-center py-4 text-muted">
+                                            No se encontraron pagos en el rango seleccionado
+                                        </td>
+                                    </tr>
+                                @endforelse
+
+                                {{-- Totales --}}
+                                <tr style="background-color:#f0f0f0; font-weight:500;">
+                                    <td colspan="5" rowspan="6" class="text-center">Total</td>
+                                    <td></td>
+                                    <td></td>
+                                    <td class="text-end">{{ number_format($totals['total'], 2) }}</td>
+                                    @if($isAdmin)<td></td>@endif
                                 </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="6" class="py-4 text-muted text-center">No se encontraron pagos en el rango seleccionado</td>
+                                <tr style="background-color:#f0f0f0; font-weight:500;">
+                                    <td class="text-center">Fijos</td>
+                                    <td class="text-end">{{ number_format($totals['fijos'], 2) }}</td>
+                                    <td></td>
+                                    @if($isAdmin)<td></td>@endif
                                 </tr>
-                            @endforelse
+                                <tr style="background-color:#f0f0f0; font-weight:500;">
+                                    <td class="text-center" style="color:red;">Otros</td>
+                                    <td class="text-end">{{ number_format($totals['otros'], 2) }}</td>
+                                    <td></td>
+                                    @if($isAdmin)<td></td>@endif
+                                </tr>
+                                <tr style="background-color:#f0f0f0; font-weight:500;">
+                                    <td class="text-center">Capital</td>
+                                    <td class="text-end">{{ number_format($totals['capital'], 2) }}</td>
+                                    <td></td>
+                                    @if($isAdmin)<td></td>@endif
+                                </tr>
+                                <tr style="background-color:#f0f0f0; font-weight:500;">
+                                    <td class="text-center">Interes</td>
+                                    <td class="text-end">{{ number_format($totals['interes'], 2) }}</td>
+                                    <td></td>
+                                    @if($isAdmin)<td></td>@endif
+                                </tr>
+                                <tr style="background-color:#f0f0f0; font-weight:500;">
+                                    <td class="text-center">Mora</td>
+                                    <td class="text-end">{{ number_format($totals['mora'], 2) }}</td>
+                                    <td></td>
+                                    @if($isAdmin)<td></td>@endif
+                                </tr>
                             </tbody>
-                            <tfoot class="bg-primary">
-                            <tr>
-                                <td></td>
-                                <td class="text-start fw-bold">TOTAL</td>
-                                <td colspan="3"></td>
-                                <td class="text-end fw-bold">{{ number_format($totals->total, 2) }}</td>
-                            </tr>
-                            </tfoot>
                         </table>
                     </div>
                 </div>

@@ -21,7 +21,7 @@ class Create extends Component
     public ?string $fecha_nacimiento = null;
     public string $sexo = 'M';
     public ?string $email = null;
-    public ?string $telefono_fijo = null;
+    public ?string $giro = null;
     public ?string $celular1 = null;
     public ?string $celular2 = null;
 
@@ -82,7 +82,7 @@ class Create extends Component
     {
         $this->reset([
             'nombre', 'apellido_pat', 'apellido_mat', 'tipo_documento', 'documento',
-            'fecha_nacimiento', 'sexo', 'email', 'telefono_fijo', 'celular1', 'celular2',
+            'fecha_nacimiento', 'sexo', 'email', 'giro', 'celular1', 'celular2',
             'direccion', 'referencia', 'distrito', 'provincia', 'departamento', 'zona',
             'contacto_emergencia', 'telefono_contacto',
             'banco_haberes', 'cuenta_haberes', 'banco_cts', 'cuenta_cts', 'afp', 'cussp',
@@ -105,7 +105,7 @@ class Create extends Component
             'fecha_nacimiento' => $this->fecha_nacimiento,
             'sexo'          => $this->sexo,
             'email'         => $this->email,
-            'telefono_fijo' => $this->telefono_fijo,
+            'giro'          => $this->giro,
             'celular1'      => $this->celular1,
             'celular2'      => $this->celular2,
             'direccion'     => $this->direccion,

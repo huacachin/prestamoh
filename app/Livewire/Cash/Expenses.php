@@ -24,26 +24,26 @@ class Expenses extends Component
         $term = trim($this->compra);
 
         $query = Expense::query()
-            ->where('headquarter_id', $user->headquarter_id ?? 1)
+            ->where('caja', 1)
             ->where(function ($q) {
                 $q->where('modo', '<>', 'Compra')->orWhereNull('modo');
             })
             ->with('user:id,name,username');
 
         // Filtros por rol (legacy)
+        // - Asesor/Cobranza: solo sus propios egresos con reason='Diario'
         if ($user->hasAnyRole(['asesor', 'cobranza'])) {
-            $query->where('user_id', $user->id);
+            $query->where('user_id', $user->id)
+                  ->where('reason', 'Diario');
         }
 
         // Lógica fechas + búsqueda (estilo legacy)
         if ($term !== '' && ($this->fei === '' || $this->fef === '')) {
-            // Solo búsqueda
-        } elseif ($term !== '' && $this->fei !== '' && $this->fef !== '') {
-            $query->whereDate('date', '>=', $this->fei)->whereDate('date', '<=', $this->fef);
-        } elseif ($term === '' && $this->fei !== '' && $this->fef !== '') {
-            $query->whereDate('date', '>=', $this->fei)->whereDate('date', '<=', $this->fef);
+            // Solo búsqueda, sin filtro de fecha
+        } elseif ($this->fei !== '' && $this->fef !== '') {
+            $query->where('date', '>=', $this->fei)->where('date', '<=', $this->fef);
         } else {
-            $query->whereDate('date', now()->format('Y-m-d'));
+            $query->where('date', now()->format('Y-m-d'));
         }
 
         // Filtro búsqueda
@@ -60,7 +60,7 @@ class Expenses extends Component
             };
         }
 
-        $expenses = $query->orderBy('date', 'desc')->orderBy('id', 'desc')->get();
+        $expenses = $query->orderBy('date', 'asc')->orderBy('id', 'asc')->get();
 
         // Subtotales
         $tofijo = 0; $totros = 0;

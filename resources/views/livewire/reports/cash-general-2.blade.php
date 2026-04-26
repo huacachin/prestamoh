@@ -1,7 +1,7 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-sm-6">
-            <h4 class="main-title title-modules">REPORTE GENERAL CAJA 2</h4>
+            <h4 class="main-title title-modules" style="color:red;">REPORTE GENERAL CAJA 2</h4>
         </div>
         <div class="col-sm-6 mt-sm-2">
             <ul class="breadcrumb breadcrumb-start float-sm-end">
@@ -124,13 +124,13 @@
                                     @endforelse
                                 </tbody>
                                 @if(count($report['days']) > 0)
-                                    <tfoot class="bg-primary" style="position: sticky; bottom: 0; z-index: 2;">
-                                        <tr>
-                                            <td colspan="4">
-                                                <strong>REPORTE GENERAL <span class="text-danger">CAJA 2 - </span>TOTAL <span class="text-danger">GENERAL</span></strong>
+                                    <tfoot>
+                                        <tr style="background-color:#ffffff;">
+                                            <td colspan="4" style="color:#000;">
+                                                <strong>REPORTE GENERAL <span style="color:#dc3545;">CAJA 2 - </span>TOTAL <span style="color:#dc3545;">GENERAL</span></strong>
                                             </td>
-                                            <td class="text-end" colspan="2">
-                                                <strong class="text-primary">{{ number_format($report['balance_general'], 2) }}</strong>
+                                            <td class="text-end" colspan="2" style="color:#0d6efd;">
+                                                <strong>{{ number_format($report['balance_general'], 2) }}</strong>
                                             </td>
                                         </tr>
                                     </tfoot>

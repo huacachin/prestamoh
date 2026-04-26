@@ -6,25 +6,14 @@ use App\Models\Client;
 use App\Models\User;
 use Livewire\Attributes\On;
 use Livewire\Component;
-use Livewire\WithPagination;
 
 class Ceased extends Component
 {
-    use WithPagination;
-
-    protected $paginationTheme = 'bootstrap';
-
     public $nexpediente = '';
     public $documento = '';
     public $nombre = '';
     public $ruta = '';
     public $ejecutivo = '';
-
-    public function updatingNexpediente() { $this->resetPage(); }
-    public function updatingDocumento() { $this->resetPage(); }
-    public function updatingNombre() { $this->resetPage(); }
-    public function updatingRuta() { $this->resetPage(); }
-    public function updatingEjecutivo() { $this->resetPage(); }
 
     #[On('register_destroy')]
     public function reactivate(int $id): void
@@ -75,7 +64,7 @@ class Ceased extends Component
             $query->where('zona', 'like', '%' . trim($this->ruta) . '%');
         }
 
-        $clients = $query->orderBy('expediente', 'asc')->paginate(50);
+        $clients = $query->orderByRaw('CAST(expediente AS UNSIGNED) ASC')->get();
 
         // Asesores para dropdown
         $asesores = User::whereHas('roles', fn ($q) => $q->whereIn('name', ['asesor', 'superusuario', 'administrador', 'director']))

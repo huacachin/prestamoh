@@ -68,8 +68,8 @@
     <div class="col-12"><div class="app-divider-v">CONTACTO</div></div>
 
     <div class="col-auto">
-        <label class="form-label">Teléfono Fijo</label>
-        <input type="text" class="form-control form-control-sm" placeholder="Fijo" wire:model.defer="telefono_fijo">
+        <label class="form-label">Giro</label>
+        <input type="text" class="form-control form-control-sm" placeholder="Giro" wire:model.defer="giro">
     </div>
 
     <div class="col-auto">

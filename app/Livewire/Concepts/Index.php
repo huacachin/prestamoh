@@ -4,21 +4,12 @@ namespace App\Livewire\Concepts;
 
 use App\Models\Concept;
 use Livewire\Component;
-use Livewire\WithPagination;
 
 class Index extends Component
 {
-    use WithPagination;
-
-    protected $paginationTheme = 'bootstrap';
-
     public $tipo = '2'; // 1=Codigo, 2=Nombre
     public $compra = '';
     public $estados = 'Activo';
-
-    public function updatingTipo() { $this->resetPage(); }
-    public function updatingCompra() { $this->resetPage(); }
-    public function updatingEstados() { $this->resetPage(); }
 
     public function render()
     {
@@ -41,7 +32,7 @@ class Index extends Component
             $query->where('status', 'active');
         }
 
-        $concepts = $query->orderBy('code', 'asc')->paginate(50);
+        $concepts = $query->orderBy('code', 'asc')->get();
 
         return view('livewire.concepts.index', compact('concepts'));
     }

@@ -14,5 +14,6 @@ class CreditController extends Controller
     public function activate() { return view('credits.activate'); }
     public function changeStatus() { return view('credits.change-status'); }
     public function massDelete() { return view('credits.mass-delete'); }
+    public function massDeleteEdit(int $id) { return view('credits.mass-delete-edit', compact('id')); }
     public function export(Request $request) { }
 }

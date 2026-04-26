@@ -24,7 +24,7 @@ class Edit extends Component
     public ?string $fecha_nacimiento = null;
     public string $sexo = 'M';
     public ?string $email = null;
-    public ?string $telefono_fijo = null;
+    public ?string $giro = null;
     public ?string $celular1 = null;
     public ?string $celular2 = null;
 
@@ -89,7 +89,7 @@ class Edit extends Component
         $this->fecha_nacimiento = $this->client->fecha_nacimiento?->format('Y-m-d');
         $this->sexo          = $this->client->sexo ?? 'M';
         $this->email         = $this->client->email;
-        $this->telefono_fijo = $this->client->telefono_fijo;
+        $this->giro          = $this->client->giro;
         $this->celular1      = $this->client->celular1;
         $this->celular2      = $this->client->celular2;
         $this->direccion     = $this->client->direccion;
@@ -138,7 +138,7 @@ class Edit extends Component
             'fecha_nacimiento' => $this->fecha_nacimiento,
             'sexo'          => $this->sexo,
             'email'         => $this->email,
-            'telefono_fijo' => $this->telefono_fijo,
+            'giro'          => $this->giro,
             'celular1'      => $this->celular1,
             'celular2'      => $this->celular2,
             'direccion'     => $this->direccion,

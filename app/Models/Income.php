@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Income extends Model
 {
-    protected $fillable = ['date', 'reason', 'modo', 'documento', 'asesor', 'detail', 'total', 'image_path', 'user_id', 'headquarter_id'];
+    protected $fillable = ['date', 'reason', 'modo', 'documento', 'asesor', 'detail', 'total', 'image_path', 'user_id', 'headquarter_id', 'caja'];
 
     protected $casts = ['date' => 'date', 'total' => 'decimal:2'];
 

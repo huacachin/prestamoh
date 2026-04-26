@@ -70,7 +70,7 @@ class Activate extends Component
                 ->select('id', 'client_id', 'importe', 'situacion', 'fecha_cancelacion', 'cuotas', 'tipo_planilla', 'interes', 'fecha_prestamo');
 
             if (!$isSuperUsuario) {
-                $query->whereDate('fecha_cancelacion', today());
+                $query->where('fecha_cancelacion', today());
             }
 
             $query->where(function ($q) use ($term) {

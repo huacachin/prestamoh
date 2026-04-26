@@ -116,7 +116,7 @@
                                             {{ $credit->id }}
                                         </a>
                                     </td>
-                                    <td>{{ $credit->client?->nombre }} {{ $credit->client?->apellido_pat }} {{ $credit->client?->apellido_mat }}</td>
+                                    <td>{{ trim($credit->client?->apellido_pat . ' ' . $credit->client?->apellido_mat . ' ' . $credit->client?->nombre) }}</td>
                                     <td class="text-end">{{ number_format($credit->importe, 2) }}</td>
                                     <td class="text-center">
                                         @if((int)$credit->interes == (float)$credit->interes)
@@ -184,7 +184,7 @@
                                     <div class="d-flex justify-content-between align-items-start mb-1">
                                         <h6 class="mb-0">
                                             <a href="{{ route('credits.show', $credit->id) }}" style="color: black;">
-                                                #{{ $credit->id }} - {{ $credit->client?->nombre }} {{ $credit->client?->apellido_pat }}
+                                                #{{ $credit->id }} - {{ trim($credit->client?->apellido_pat . ' ' . $credit->client?->apellido_mat . ' ' . $credit->client?->nombre) }}
                                             </a>
                                         </h6>
                                         <span class="badge bg-primary">{{ $tcLabel }}</span>

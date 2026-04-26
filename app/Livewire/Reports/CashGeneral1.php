@@ -4,8 +4,8 @@ namespace App\Livewire\Reports;
 
 use App\Models\Credit;
 use App\Models\Payment;
-use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 
 class CashGeneral1 extends Component
@@ -28,34 +28,81 @@ class CashGeneral1 extends Component
         $month  = (int) $this->selemes;
         $tipoFilter = ($this->seletipl !== '' && $this->seletipl !== '0000') ? (int) $this->seletipl : null;
 
-        $daysInMonth = Carbon::create($year, $month)->daysInMonth;
-        $today = Carbon::today()->format('Y-m-d');
+        $startMonth = Carbon::create($year, $month, 1)->format('Y-m-d');
+        $endMonth   = Carbon::create($year, $month)->endOfMonth()->format('Y-m-d');
+        $today      = Carbon::today()->format('Y-m-d');
+        $endLimit   = min($endMonth, $today);
 
+        // ─── PRECARGAR TODOS LOS PAGOS DEL MES (1 query) ───────────────
+        $payQuery = Payment::query()
+            ->where('fecha', '>=', $startMonth)
+            ->where('fecha', '<=', $endLimit)
+            ->with(['credit:id,client_id,tipo_planilla,refinanciado,fecha_cancelacion,importe,interes,cuotas',
+                    'credit.client:id,nombre,apellido_pat,apellido_mat,asesor_id',
+                    'credit.client.asesor:id,name,username']);
+
+        if ($tipoFilter !== null) {
+            $payQuery->whereHas('credit', fn ($q) => $q->where('tipo_planilla', $tipoFilter));
+        }
+
+        $allPayments = $payQuery->get();
+        $paymentsByDate = $allPayments->groupBy(fn ($p) => $p->fecha->format('Y-m-d'));
+
+        // ─── PRECARGAR TODOS LOS CREDITOS DEL MES (egresos, 1 query) ───
+        $credQuery = Credit::query()
+            ->where('fecha_actualizacion', '>=', $startMonth)
+            ->where('fecha_actualizacion', '<=', $endLimit)
+            ->with(['client:id,nombre,apellido_pat,apellido_mat,asesor_id',
+                    'client.asesor:id,name,username',
+                    'user:id,name,username']);
+
+        if ($tipoFilter !== null) {
+            $credQuery->where('tipo_planilla', $tipoFilter);
+        }
+
+        $allCredits = $credQuery->get();
+        $creditsByDate = $allCredits->groupBy(fn ($c) => $c->fecha_actualizacion->format('Y-m-d'));
+
+        // ─── PRECALCULAR PAGOS PREVIOS PARA REFI CANCELADOS DEL MES ────
+        // Solo necesitamos para créditos refinanciados que se cancelan en este mes
+        $refiCancelIds = $allPayments
+            ->pluck('credit')
+            ->filter(fn ($c) => $c && $c->refinanciado &&
+                $c->fecha_cancelacion?->format('Y-m-d') >= $startMonth &&
+                $c->fecha_cancelacion?->format('Y-m-d') <= $endLimit)
+            ->pluck('id')
+            ->unique()
+            ->values();
+
+        $pagosPreviosPorCredito = [];
+        if ($refiCancelIds->isNotEmpty()) {
+            // Una sola query: sum payments por credit_id antes de la fecha_cancelacion
+            $rows = DB::table('payments as p')
+                ->join('credits as c', 'p.credit_id', '=', 'c.id')
+                ->whereIn('p.credit_id', $refiCancelIds)
+                ->whereColumn('p.fecha', '<', 'c.fecha_cancelacion')
+                ->groupBy('p.credit_id')
+                ->select('p.credit_id', DB::raw('SUM(p.monto) as total'))
+                ->get();
+
+            foreach ($rows as $r) {
+                $pagosPreviosPorCredito[$r->credit_id] = (float) $r->total;
+            }
+        }
+
+        // ─── PROCESAR DÍA POR DÍA EN MEMORIA ───────────────────────────
         $days = [];
-        $Tcpi = 0;   // total ingresos (montos)
-        $Tcpi2 = 0;  // total capital
-        $Tint = 0;   // total interés
-        $Tmor4 = 0;  // total mora
-        $toff = 0;   // total egresos importe
-        $toff2 = 0;  // total egresos interés monto
+        $Tcpi = 0; $Tcpi2 = 0; $Tint = 0; $Tmor4 = 0; $toff = 0; $toff2 = 0;
+
+        $daysInMonth = Carbon::create($year, $month)->daysInMonth;
 
         for ($d = 1; $d <= $daysInMonth; $d++) {
             $date = Carbon::create($year, $month, $d)->format('Y-m-d');
-
-            // Stop si fecha es futura
             if ($date > $today) break;
 
-            // INGRESOS: agrupados por crédito
-            $payQuery = Payment::query()
-                ->whereDate('fecha', $date)
-                ->with(['credit.client:id,nombre,apellido_pat,apellido_mat,asesor_id', 'credit.client.asesor:id,name,username']);
-
-            if ($tipoFilter !== null) {
-                $payQuery->whereHas('credit', fn ($q) => $q->where('tipo_planilla', $tipoFilter));
-            }
-
-            $payments = $payQuery->get();
-            $byCredit = $payments->groupBy('credit_id');
+            // INGRESOS del día
+            $dayPayments = $paymentsByDate->get($date, collect());
+            $byCredit = $dayPayments->groupBy('credit_id');
 
             $ingresos = [];
             foreach ($byCredit as $cid => $pays) {
@@ -63,34 +110,52 @@ class CashGeneral1 extends Component
                 if (!$credit) continue;
 
                 $tipoplani = (int) $credit->tipo_planilla;
+                $isRefi = (bool) $credit->refinanciado;
+                $fechaCan = $credit->fecha_cancelacion?->format('Y-m-d');
 
-                // Suma SIN mora (legacy: $montotX = $pt = sum totalgeneral excluyendo mora)
-                $totalSinMora = (float) $pays->whereIn('tipo', ['CAPITAL', 'INTERES'])->sum('monto');
+                $totalSinMora     = (float) $pays->whereIn('tipo', ['CAPITAL', 'INTERES'])->sum('monto');
+                $totalConMora     = (float) $pays->sum('monto');
+                $sumInteresPagado = (float) $pays->where('tipo', 'INTERES')->sum('monto');
+                $sumCapitalPagado = (float) $pays->where('tipo', 'CAPITAL')->sum('monto');
+                $mora             = (float) $pays->where('tipo', 'MORA')->sum('monto');
 
-                $interes = (float) $pays->where('tipo', 'INTERES')->sum('monto');
-                $mora    = (float) $pays->where('tipo', 'MORA')->sum('monto');
+                if ($isRefi && $fechaCan === $date) {
+                    // RAMA REFI cancelado este mismo día (legacy)
+                    $interesTotal = in_array($tipoplani, [1, 4])
+                        ? round(($credit->importe * $credit->interes) / 100, 2)
+                        : round(($credit->importe * $credit->interes) / 100, 2) * $credit->cuotas;
 
-                // Lógica del legacy:
-                // tipoplani=4 (Diario): capital = total - interés
-                // tipoplani=1 o 3: capital = sum(documento='CAPITAL')
-                if ($tipoplani === 4) {
-                    $capital = $totalSinMora - $interes;
+                    $total = (float) $credit->importe + $interesTotal;
+                    $pagosPrevios = $pagosPreviosPorCredito[$cid] ?? 0.0;
+
+                    if ($pagosPrevios > 0) {
+                        $capital = (float) $credit->importe + $interesTotal - $pagosPrevios - $totalConMora;
+                        $total -= $pagosPrevios;
+                        $interes = max(0, $interesTotal - $pagosPrevios);
+                    } else {
+                        $interes = $interesTotal;
+                        $capital = (float) $credit->importe;
+                    }
+                } elseif ($tipoplani === 4) {
+                    $total   = $totalSinMora;
+                    $interes = $sumInteresPagado;
+                    $capital = $totalSinMora - $sumInteresPagado;
                 } else {
-                    $capital = (float) $pays->where('tipo', 'CAPITAL')->sum('monto');
+                    $total   = $totalSinMora;
+                    $interes = $sumInteresPagado;
+                    $capital = $sumCapitalPagado;
                 }
 
-                // TOTAL en el legacy es $montotX (sum sin mora)
-                $total = $totalSinMora;
-
                 $cli = $credit->client;
-                $cliName = $cli ? trim($cli->nombre . ' ' . $cli->apellido_pat . ' ' . $cli->apellido_mat) : 'N/A';
+                $cliName = $cli ? trim($cli->apellido_pat . ' ' . $cli->apellido_mat . ' ' . $cli->nombre) : 'N/A';
                 $asesor  = $cli?->asesor?->username ?? $cli?->asesor?->name ?? '';
                 $nroCuotas = $pays->pluck('installment_id')->filter()->unique()->count();
+                $detalle = $pays->first()?->detalle ?? '';
 
                 $ingresos[] = [
                     'credit_id'     => $cid,
                     'cliente'       => $cliName,
-                    'detalle'       => $credit->glosa ?? '',
+                    'detalle'       => $detalle,
                     'nro_cuotas'    => $nroCuotas,
                     'total'         => $total,
                     'capital'       => $capital,
@@ -101,29 +166,17 @@ class CashGeneral1 extends Component
                 ];
             }
 
-            // EGRESOS: créditos desembolsados ese día
-            $credQuery = Credit::query()
-                ->whereDate('fecha_prestamo', $date)
-                ->with(['client:id,nombre,apellido_pat,apellido_mat,asesor_id', 'client.asesor:id,name,username', 'user:id,name,username']);
-
-            if ($tipoFilter !== null) {
-                $credQuery->where('tipo_planilla', $tipoFilter);
-            }
-
-            $credits = $credQuery->get();
-
+            // EGRESOS del día
+            $dayCredits = $creditsByDate->get($date, collect());
             $egresos = [];
-            foreach ($credits as $credit) {
+            foreach ($dayCredits as $credit) {
                 $cli = $credit->client;
-                $cliName = $cli ? trim($cli->nombre . ' ' . $cli->apellido_pat . ' ' . $cli->apellido_mat) : 'N/A';
+                $cliName = $cli ? trim($cli->apellido_pat . ' ' . $cli->apellido_mat . ' ' . $cli->nombre) : 'N/A';
                 $asesor  = $cli?->asesor?->username ?? $cli?->asesor?->name ?? '';
 
-                // Cálculo interés
-                if (in_array((int) $credit->tipo_planilla, [1, 4])) {
-                    $interesMonto = round(($credit->importe * $credit->interes) / 100, 2);
-                } else {
-                    $interesMonto = round(($credit->importe * $credit->interes) / 100, 2) * $credit->cuotas;
-                }
+                $interesMonto = in_array((int) $credit->tipo_planilla, [1, 4])
+                    ? round(($credit->importe * $credit->interes) / 100, 2)
+                    : round(($credit->importe * $credit->interes) / 100, 2) * $credit->cuotas;
 
                 $egresos[] = [
                     'credit_id'     => $credit->id,
@@ -137,6 +190,8 @@ class CashGeneral1 extends Component
                 ];
             }
 
+            if (count($ingresos) === 0 && count($egresos) === 0) continue;
+
             $subIng    = collect($ingresos)->sum('total');
             $subCap    = collect($ingresos)->sum('capital');
             $subInt    = collect($ingresos)->sum('interes');
@@ -144,38 +199,36 @@ class CashGeneral1 extends Component
             $subEgr    = collect($egresos)->sum('monto');
             $subEgrInt = collect($egresos)->sum('interes_monto');
 
-            if (count($ingresos) > 0 || count($egresos) > 0) {
-                $days[] = [
-                    'date'         => $date,
-                    'date_label'   => Carbon::parse($date)->translatedFormat('l d \\d\\e F Y'),
-                    'ingresos'     => $ingresos,
-                    'egresos'      => $egresos,
-                    'sub_ingresos' => $subIng,
-                    'sub_capital'  => $subCap,
-                    'sub_interes'  => $subInt,
-                    'sub_mora'     => $subMora,
-                    'sub_egresos'  => $subEgr,
-                    'sub_egresos_interes' => $subEgrInt,
-                ];
+            $days[] = [
+                'date'                => $date,
+                'date_label'          => Carbon::parse($date)->translatedFormat('l d \\d\\e F Y'),
+                'ingresos'            => $ingresos,
+                'egresos'             => $egresos,
+                'sub_ingresos'        => $subIng,
+                'sub_capital'         => $subCap,
+                'sub_interes'         => $subInt,
+                'sub_mora'            => $subMora,
+                'sub_egresos'         => $subEgr,
+                'sub_egresos_interes' => $subEgrInt,
+            ];
 
-                $Tcpi  += $subIng;
-                $Tcpi2 += $subCap;
-                $Tint  += $subInt;
-                $Tmor4 += $subMora;
-                $toff  += $subEgr;
-                $toff2 += $subEgrInt;
-            }
+            $Tcpi  += $subIng;
+            $Tcpi2 += $subCap;
+            $Tint  += $subInt;
+            $Tmor4 += $subMora;
+            $toff  += $subEgr;
+            $toff2 += $subEgrInt;
         }
 
         return view('livewire.reports.cash-general-1', [
-            'days'   => $days,
-            'Tcpi'   => $Tcpi,
-            'Tcpi2'  => $Tcpi2,
-            'Tint'   => $Tint,
-            'Tmor4'  => $Tmor4,
-            'toff'   => $toff,
-            'toff2'  => $toff2,
-            'toff1'  => $Tcpi + $Tmor4, // total general ingresos + mora
+            'days'  => $days,
+            'Tcpi'  => $Tcpi,
+            'Tcpi2' => $Tcpi2,
+            'Tint'  => $Tint,
+            'Tmor4' => $Tmor4,
+            'toff'  => $toff,
+            'toff2' => $toff2,
+            'toff1' => $Tcpi + $Tmor4,
         ]);
     }
 }

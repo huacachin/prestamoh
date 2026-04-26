@@ -37,7 +37,6 @@ class Opening extends Component
         $existing = CashOpening::whereYear('fecha', date('Y', strtotime($fecha)))
             ->whereMonth('fecha', date('m', strtotime($fecha)))
             ->where('moneda', 'Soles')
-            ->where('headquarter_id', $user->headquarter_id ?? 1)
             ->first();
 
         if ($existing) {
@@ -121,17 +120,14 @@ class Opening extends Component
         $currentMonth = CashOpening::whereYear('fecha', date('Y'))
             ->whereMonth('fecha', date('m'))
             ->where('moneda', 'Soles')
-            ->where('headquarter_id', $user->headquarter_id ?? 1)
             ->orderBy('id')
             ->first();
 
-        // Histórico (todos los Soles, descendente)
+        // Histórico (todos los Soles, descendente, sin limit)
         $history = CashOpening::where('moneda', 'Soles')
-            ->where('headquarter_id', $user->headquarter_id ?? 1)
             ->with('user:id,name,username')
             ->orderByDesc('fecha')
             ->orderByDesc('id')
-            ->limit(50)
             ->get();
 
         return view('livewire.cash.opening', [

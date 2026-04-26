@@ -1,7 +1,7 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-sm-6">
-            <h4 class="main-title title-modules">REGISTRAR PAGO</h4>
+            <h4 class="main-title title-modules" style="color:red;">PAGO DE CRÉDITO MASIVO</h4>
         </div>
         <div class="col-sm-6 mt-sm-2">
             <ul class="breadcrumb breadcrumb-start float-sm-end">
@@ -11,194 +11,269 @@
                         <span class="d-none d-md-block">Pagos</span>
                     </a>
                 </li>
-                <li class="d-flex active"><span class="f-s-14">Nuevo</span></li>
+                <li class="breadcrumb-item active"><span>Pago Masivo</span></li>
             </ul>
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-body">
-            @if ($errors->any())
-                <div class="alert alert-danger">
-                    <strong>Revisa los siguientes errores:</strong>
-                    <ul class="mb-0 mt-2 ps-3">
-                        @foreach ($errors->all() as $error) <li>{{ $error }}</li> @endforeach
-                    </ul>
-                </div>
-            @endif
-
-            <div class="row g-3">
-                {{-- Buscar credito --}}
-                <div class="col-12"><div class="app-divider-v">CREDITO</div></div>
-
-                @if($creditInfo)
-                    <div class="col-12">
-                        <span class="badge bg-dark p-2">{{ $creditInfo }}</span>
-                        <button class="btn btn-sm btn-outline-danger ms-2" wire:click="clearCredit">
-                            <i class="ti ti-x"></i> Cambiar
-                        </button>
-                    </div>
-                @else
-                    <div class="col-12 col-md-6 position-relative">
-                        <label class="form-label">Buscar Credito (*)</label>
-                        <input type="search" class="form-control form-control-sm @error('credit_id') is-invalid @enderror"
-                               placeholder="Nombre o DNI del cliente..." wire:model.live.debounce.300ms="searchCredit">
-                        @error('credit_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
-
-                        @if(count($credits) > 0)
-                            <div class="list-group position-absolute w-100 shadow" style="z-index:100; max-height:200px; overflow-y:auto;">
-                                @foreach($credits as $c)
-                                    <button type="button" class="list-group-item list-group-item-action py-1"
-                                            wire:click="selectCredit({{ $c->id }})">
-                                        {{ $c->client?->fullName() }} - {{ $c->client?->documento }}
-                                        | Credito #{{ $c->id }} | S/. {{ number_format($c->importe, 2) }}
-                                    </button>
-                                @endforeach
-                            </div>
-                        @endif
-                    </div>
-                @endif
-
-                {{-- Info del credito seleccionado --}}
-                @if($selectedCredit)
-                    <div class="col-12">
-                        <div class="row g-2">
-                            <div class="col-auto">
-                                <small class="text-muted">Capital:</small>
-                                <strong>S/. {{ number_format($selectedCredit->importe, 2) }}</strong>
-                            </div>
-                            <div class="col-auto">
-                                <small class="text-muted">Cuotas:</small>
-                                <strong>{{ $selectedCredit->cuotas }}</strong>
-                            </div>
-                            <div class="col-auto">
-                                <small class="text-muted">Tipo:</small>
-                                <strong>{{ $selectedCredit->tipoPlanillaLabel() }}</strong>
-                            </div>
-                            <div class="col-auto">
-                                <small class="text-muted">Interes:</small>
-                                <strong>{{ $selectedCredit->interes }}%</strong>
-                            </div>
-                            <div class="col-auto">
-                                <small class="text-muted">Situacion:</small>
-                                <span class="badge bg-success">{{ $selectedCredit->situacion }}</span>
-                            </div>
-                        </div>
-                    </div>
-                @endif
-
-                {{-- Datos del pago --}}
-                @if($credit_id)
-                    <div class="col-12"><div class="app-divider-v">DATOS DEL PAGO</div></div>
-
-                    <div class="col-12 col-md-4">
-                        <label class="form-label">Cuota (*)</label>
-                        <select class="form-select form-select-sm @error('installment_id') is-invalid @enderror"
-                                wire:model="installment_id">
-                            <option value="">-- Seleccionar cuota --</option>
-                            @foreach($installments as $inst)
-                                <option value="{{ $inst->id }}">
-                                    Cuota {{ $inst->num_cuota }}
-                                    - Venc: {{ $inst->fecha_vencimiento?->format('d/m/Y') }}
-                                    - Cap: {{ number_format($inst->importe_cuota, 2) }}
-                                    - Int: {{ number_format($inst->importe_interes, 2) }}
-                                    @if($inst->pagado) [PAGADO] @else [Pend: {{ number_format($inst->saldoPendiente(), 2) }}] @endif
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('installment_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                    </div>
-
-                    <div class="col-auto">
-                        <label class="form-label">Tipo Pago (*)</label>
-                        <select class="form-select form-select-sm @error('tipo') is-invalid @enderror"
-                                wire:model="tipo">
-                            <option value="CAPITAL">CAPITAL</option>
-                            <option value="INTERES">INTERES</option>
-                            <option value="MORA">MORA</option>
-                        </select>
-                        @error('tipo') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                    </div>
-
-                    <div class="col-auto">
-                        <label class="form-label">Monto (*)</label>
-                        <input type="number" step="0.01" class="form-control form-control-sm @error('monto') is-invalid @enderror"
-                               placeholder="0.00" wire:model="monto">
-                        @error('monto') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                    </div>
-
-                    <div class="col-auto">
-                        <label class="form-label">Fecha (*)</label>
-                        <input type="date" class="form-control form-control-sm @error('fecha') is-invalid @enderror"
-                               wire:model="fecha">
-                        @error('fecha') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                    </div>
-
-                    <div class="col-auto">
-                        <label class="form-label">Nro. Recibo</label>
-                        <input type="text" class="form-control form-control-sm" placeholder="Recibo"
-                               wire:model="nro_recibo">
-                    </div>
-
-                    <div class="col-12 col-md-4">
-                        <label class="form-label">Detalle</label>
-                        <input type="text" class="form-control form-control-sm" placeholder="Observacion"
-                               wire:model="detalle">
-                    </div>
-                @endif
-            </div>
-
-            <div class="mt-3 d-flex gap-2">
-                @if($credit_id)
-                    <button class="btn btn-sm btn-primary" wire:click="save">
-                        <i class="ti ti-device-floppy f-s-12"></i> Registrar Pago
-                    </button>
-                @endif
+    @if(!$credit)
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <p class="text-muted">No se ha seleccionado un crédito.</p>
                 <a href="{{ route('payments.index') }}" class="btn btn-sm btn-secondary">Volver</a>
             </div>
+        </div>
+    @else
+        @php $c = $calcs; @endphp
 
-            {{-- Tabla de cuotas del credito seleccionado --}}
-            @if($credit_id && count($installments) > 0)
-                <div class="mt-3">
-                    <h6>CRONOGRAMA DE CUOTAS</h6>
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-striped table-sm">
-                            <thead class="bg-primary">
-                            <tr>
-                                <th>Cuota</th>
-                                <th>Fecha Venc.</th>
-                                <th>Capital</th>
-                                <th>Interes</th>
-                                <th>Pagado Cap.</th>
-                                <th>Pagado Int.</th>
-                                <th>Saldo</th>
-                                <th>Estado</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            @foreach($installments as $inst)
-                                <tr class="{{ $inst->pagado ? 'table-success' : '' }}">
-                                    <td>{{ $inst->num_cuota }}</td>
-                                    <td>{{ $inst->fecha_vencimiento?->format('d/m/Y') }}</td>
-                                    <td class="text-end">{{ number_format($inst->importe_cuota, 2) }}</td>
-                                    <td class="text-end">{{ number_format($inst->importe_interes, 2) }}</td>
-                                    <td class="text-end">{{ number_format($inst->importe_aplicado, 2) }}</td>
-                                    <td class="text-end">{{ number_format($inst->interes_aplicado, 2) }}</td>
-                                    <td class="text-end">{{ number_format($inst->saldoPendiente(), 2) }}</td>
-                                    <td>
-                                        @if($inst->pagado)
-                                            <span class="badge bg-success">Pagado</span>
-                                        @else
-                                            <span class="badge bg-warning">Pendiente</span>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @endforeach
-                            </tbody>
-                        </table>
+        {{-- Acciones --}}
+        <div class="row my-2">
+            <div class="col-12">
+                <div class="d-flex gap-2 py-1">
+                    <a href="{{ route('clients.show', $credit->client_id) }}" class="btn btn-sm btn-secondary ms-auto">Regresar</a>
+                </div>
+            </div>
+        </div>
+
+        {{-- Formulario --}}
+        <form wire:submit.prevent="pagar">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <label class="form-label mb-0 small fw-semibold">Cliente</label>
+                            <input type="text" class="form-control form-control-sm bg-light"
+                                   value="{{ $credit->id }}-{{ $credit->client?->fullName() }}" readonly>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label mb-0 small fw-semibold">DNI</label>
+                            <input type="text" class="form-control form-control-sm bg-light"
+                                   value="{{ $credit->client?->documento }}" readonly>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label mb-0 small fw-semibold">Moneda</label>
+                            <input type="text" class="form-control form-control-sm bg-light"
+                                   value="{{ $credit->moneda ?: 'Soles' }}" readonly>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label mb-0 small fw-semibold">Capital / % / Interés / Total</label>
+                            <div class="d-flex gap-1">
+                                <input type="text" class="form-control form-control-sm bg-light" style="width:100px;"
+                                       value="{{ number_format($c['importe'], 2) }}" readonly>
+                                <input type="text" class="form-control form-control-sm bg-light" style="width:60px;"
+                                       value="{{ number_format($c['interes_pct'], 0) }}" readonly>
+                                <input type="text" class="form-control form-control-sm bg-light" style="width:100px;"
+                                       value="{{ number_format($c['interes_total'], 2) }}" readonly>
+                                <input type="text" class="form-control form-control-sm bg-light" style="width:120px;"
+                                       value="{{ number_format($c['total_credito'], 2) }}" readonly>
+                            </div>
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label mb-0 small fw-semibold">Pago x día atrasado</label>
+                            <input type="text" class="form-control form-control-sm bg-light"
+                                   style="color:red; font-weight:600;" value="{{ number_format($c['mora_rate'], 2) }}" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label mb-0 small fw-semibold">Ejecutivo</label>
+                            <input type="text" class="form-control form-control-sm bg-light"
+                                   value="{{ $c['asesor_nombre'] }}" readonly>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label mb-0 small fw-semibold">Saldo Pendiente</label>
+                            <input type="text" class="form-control form-control-sm bg-light"
+                                   style="color:red; font-weight:bold;"
+                                   value="{{ number_format($c['saldo_pendiente'], 2) }}" readonly>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label mb-0 small fw-semibold">Monto a Pagar</label>
+                            <input type="number" class="form-control form-control-sm" wire:model="monto"
+                                   min="0.01" max="{{ $c['saldo_pendiente'] }}" step="0.01" style="background:yellow;">
+                        </div>
+                        <div class="col-md-1">
+                            <label class="form-label mb-0 small fw-semibold">Mora</label>
+                            <input type="text" class="form-control form-control-sm bg-light" value="0.00" readonly>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label mb-0 small fw-semibold">Fecha de Pago</label>
+                            <input type="date" class="form-control form-control-sm bg-light"
+                                   wire:model="fecpag" readonly>
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label mb-0 small fw-semibold">Fecha de Vencimiento</label>
+                            <input type="text" class="form-control form-control-sm bg-light"
+                                   value="{{ $c['fecha_venc'] }}" readonly>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label mb-0 small fw-semibold">Días Transcurridos</label>
+                            <input type="text" class="form-control form-control-sm"
+                                   style="background:red; color:white;"
+                                   value="{{ $c['dias_atraso'] }}" readonly>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label mb-0 small fw-semibold">Descontar Días</label>
+                            <input type="number" class="form-control form-control-sm" wire:model="diasf"
+                                   min="0" style="background:yellow;">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label mb-0 small fw-semibold">Días Final</label>
+                            <input type="text" class="form-control form-control-sm"
+                                   style="background:red; color:white;"
+                                   value="{{ $c['dias_final'] }}" readonly>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label mb-0 small fw-semibold">Total Mora</label>
+                            <input type="text" class="form-control form-control-sm"
+                                   style="background:red; color:white;"
+                                   value="{{ number_format($c['total_mora'], 2) }}" readonly>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label mb-0 small fw-semibold">Saldo P. + Mora</label>
+                            <input type="text" class="form-control form-control-sm bg-light"
+                                   style="color:red; font-weight:bold;"
+                                   value="{{ number_format($c['saldo_mora'], 2) }}" readonly>
+                        </div>
+                    </div>
+
+                    {{-- Inputs avanzados de mora manual --}}
+                    <div class="row g-2 mt-2 pt-2 border-top">
+                        <div class="col-12">
+                            <small class="text-muted fw-semibold">PAGOS DE MORA MANUALES (avanzado)</small>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label mb-0 small">Cuota destino (idpre)</label>
+                            <select class="form-select form-select-sm" wire:model="idpre">
+                                <option value="">—</option>
+                                @foreach($credit->installments as $ins)
+                                    <option value="{{ $ins->id }}">
+                                        Cuota {{ $ins->num_cuota }} ({{ $ins->fecha_pago?->format('d/m/Y') }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label mb-0 small">Mora Interés</label>
+                            <input type="number" class="form-control form-control-sm" wire:model="impointe2"
+                                   min="0" step="0.01" placeholder="0.00">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label mb-0 small">Mora Acumulada</label>
+                            <input type="number" class="form-control form-control-sm" wire:model="saldomora"
+                                   min="0" step="0.01" placeholder="0.00">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label mb-0 small">Mora Capital</label>
+                            <input type="number" class="form-control form-control-sm" wire:model="impomora"
+                                   min="0" step="0.01" placeholder="0.00">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label mb-0 small">Observación</label>
+                            <input type="text" class="form-control form-control-sm" wire:model="obs"
+                                   placeholder="Observación de la cuota">
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-3 mt-3 align-items-center">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" wire:model="ckmora" id="ckmora">
+                            <label class="form-check-label fw-semibold ms-2" for="ckmora" style="color:red;">
+                                Reserva Mora
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" wire:model="cancel" id="cancel">
+                            <label class="form-check-label fw-semibold ms-2" for="cancel" style="color:red;">
+                                Cancelado
+                            </label>
+                        </div>
+
+                        <button type="submit" class="btn btn-sm btn-dark ms-auto" wire:loading.attr="disabled">
+                            <i class="ti ti-thumb-up"></i> Pagar
+                        </button>
                     </div>
                 </div>
-            @endif
+            </div>
+        </form>
+
+        @script
+        <script>
+            // Capturar GPS si el navegador lo permite
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        $wire.set('latitud', pos.coords.latitude.toString(), false);
+                        $wire.set('longitud', pos.coords.longitude.toString(), false);
+                    },
+                    (err) => { /* silenciosamente ignorar */ }
+                );
+            }
+        </script>
+        @endscript
+
+        {{-- Tabla cronograma --}}
+        <div class="card shadow-sm mt-2">
+            <div class="card-body pb-2">
+                <div class="table-responsive" style="max-height: 500px; overflow:auto;">
+                    <table class="table table-bordered table-hover" style="font-size: 11px;">
+                        <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
+                            <tr>
+                                <th class="text-center" style="width:80px;">N° Cuota</th>
+                                <th class="text-center" style="width:110px;">Periodo</th>
+                                <th class="text-center" style="width:100px;">Capital</th>
+                                <th class="text-center" style="width:100px;">Interés</th>
+                                <th class="text-center" style="width:110px;">Total</th>
+                                <th class="text-center" style="width:90px;">Mora</th>
+                                <th class="text-center" style="width:110px;">Pagado</th>
+                                <th class="text-center" style="width:120px;">Fecha Pago</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @php $sumCap = 0; $sumInt = 0; $sumPag = 0; $sumMora = 0; $todayStr = now()->format('Y-m-d'); @endphp
+                            @foreach($credit->installments as $ins)
+                                @php
+                                    $fechaPago = $ins->fecha_pago ? $ins->fecha_pago->format('Y-m-d') : '';
+                                    $dow = $fechaPago ? \Carbon\Carbon::parse($fechaPago)->dayOfWeek : null;
+                                    $color = '';
+                                    if ($dow === \Carbon\Carbon::SUNDAY) $color = 'red';
+                                    elseif ($dow === \Carbon\Carbon::SATURDAY) $color = 'green';
+
+                                    $cap = round((float) $ins->importe_cuota, 2);
+                                    $int = round((float) $ins->importe_interes, 2);
+                                    $apli = round((float) $ins->importe_aplicado, 2);
+                                    $iapli = round((float) $ins->interes_aplicado, 2);
+                                    $mora = round((float) $ins->importe_mora, 2);
+                                    $pagado = round($apli + $iapli + $mora, 2);
+                                    $totalCuota = round($cap + $int, 2);
+
+                                    $rowStyle = $color ? 'color:'.$color.';' : '';
+
+                                    $sumCap += $cap; $sumInt += $int; $sumPag += $pagado; $sumMora += $mora;
+                                @endphp
+                                <tr style="{{ $rowStyle }}">
+                                    <td class="text-center">{{ $ins->num_cuota }}</td>
+                                    <td class="text-center">{{ $fechaPago }}</td>
+                                    <td class="text-end">{{ number_format($cap, 2) }}</td>
+                                    <td class="text-end">{{ number_format($int, 2) }}</td>
+                                    <td class="text-end">{{ number_format($totalCuota, 2) }}</td>
+                                    <td class="text-end">{{ number_format($mora, 2) }}</td>
+                                    <td class="text-end">{{ number_format($pagado, 2) }}</td>
+                                    <td class="text-center">{{ $ins->pagado ? $fechaPago : '' }}</td>
+                                </tr>
+                            @endforeach
+                            <tr style="background-color:#f0f0f0; font-weight:500;">
+                                <td colspan="2" class="text-center">Total</td>
+                                <td class="text-end">{{ number_format($sumCap, 2) }}</td>
+                                <td class="text-end">{{ number_format($sumInt, 2) }}</td>
+                                <td class="text-end">{{ number_format($sumCap + $sumInt, 2) }}</td>
+                                <td class="text-end">{{ number_format($sumMora, 2) }}</td>
+                                <td class="text-end">{{ number_format($sumPag, 2) }}</td>
+                                <td></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
-    </div>
+    @endif
 </div>

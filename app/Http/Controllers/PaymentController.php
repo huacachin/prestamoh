@@ -11,5 +11,6 @@ class PaymentController extends Controller
     public function daily() { return view('payments.daily'); }
     public function weekly() { return view('payments.weekly'); }
     public function monthly() { return view('payments.monthly'); }
+    public function refinance(int $creditId) { return view('payments.refinance', compact('creditId')); }
     public function export(Request $request) { }
 }

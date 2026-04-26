@@ -10,16 +10,17 @@ class Client extends Model
 {
     protected $fillable = [
         'expediente', 'nombre', 'apellido_pat', 'apellido_mat',
-        'tipo_documento', 'documento', 'fecha_nacimiento', 'sexo',
-        'email', 'telefono_fijo', 'celular1', 'celular2',
+        'tipo_documento', 'documento', 'fecha_registro', 'usuario', 'fecha_nacimiento', 'sexo',
+        'email', 'giro', 'celular1', 'celular2',
         'direccion', 'referencia', 'distrito', 'provincia', 'departamento',
         'zona', 'contacto_emergencia', 'telefono_contacto',
         'banco_haberes', 'cuenta_haberes', 'banco_cts', 'cuenta_cts',
-        'afp', 'cussp', 'latitud', 'longitud', 'imagen',
+        'afp', 'cussp', 'latitud', 'longitud', 'latitud2', 'longitud2', 'imagen',
         'observaciones', 'asesor_id', 'headquarter_id', 'status',
     ];
 
     protected $casts = [
+        'fecha_registro' => 'date',
         'fecha_nacimiento' => 'date',
     ];
 

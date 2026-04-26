@@ -16,10 +16,12 @@ return new class extends Migration
             $table->string('apellido_mat')->nullable();
             $table->string('tipo_documento', 10)->default('DNI');
             $table->string('documento', 20)->nullable()->index();
+            $table->date('fecha_registro')->nullable();
+            $table->string('usuario', 50)->nullable();
             $table->date('fecha_nacimiento')->nullable();
             $table->enum('sexo', ['M', 'F'])->nullable();
             $table->string('email')->nullable();
-            $table->string('telefono_fijo', 20)->nullable();
+            $table->string('giro', 100)->nullable();
             $table->string('celular1', 20)->nullable();
             $table->string('celular2', 20)->nullable();
             $table->string('direccion')->nullable();
@@ -38,11 +40,13 @@ return new class extends Migration
             $table->string('cussp')->nullable();
             $table->decimal('latitud', 10, 7)->nullable();
             $table->decimal('longitud', 10, 7)->nullable();
+            $table->decimal('latitud2', 10, 7)->nullable();
+            $table->decimal('longitud2', 10, 7)->nullable();
             $table->string('imagen')->nullable();
             $table->text('observaciones')->nullable();
             $table->foreignId('asesor_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('headquarter_id')->nullable()->constrained('headquarters')->nullOnDelete();
-            $table->enum('status', ['active', 'inactive'])->default('active')->index();
+            $table->enum('status', ['active', 'inactive', 'deleted'])->default('active')->index();
             $table->timestamps();
         });
     }

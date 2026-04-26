@@ -20,7 +20,7 @@ class Index extends Component
 
         $totalCartera = Credit::where('situacion', 'Activo')->sum('importe');
 
-        $cobranzaHoy = Payment::whereDate('fecha', $today)->sum('monto');
+        $cobranzaHoy = Payment::where('fecha', $today)->sum('monto');
 
         $morosidad = Credit::where('situacion', 'Activo')
             ->whereHas('installments', function ($q) use ($today) {
@@ -29,9 +29,9 @@ class Index extends Component
             })
             ->count();
 
-        $ingresosHoy = Income::whereDate('date', $today)->sum('total');
+        $ingresosHoy = Income::where('date', $today)->sum('total');
 
-        $egresosHoy = Expense::whereDate('date', $today)->sum('total');
+        $egresosHoy = Expense::where('date', $today)->sum('total');
 
         $ultimosPagos = Payment::with('credit.client')
             ->latest('fecha')

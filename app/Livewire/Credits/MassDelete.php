@@ -2,16 +2,13 @@
 
 namespace App\Livewire\Credits;
 
+use App\Exports\MassDeletionsExport;
 use App\Models\MassDeletion;
 use Livewire\Component;
-use Livewire\WithPagination;
+use Maatwebsite\Excel\Facades\Excel;
 
 class MassDelete extends Component
 {
-    use WithPagination;
-
-    protected $paginationTheme = 'bootstrap';
-
     public string $tipo = '1'; // 1=Codigo, 2=Asesor, 3=Usuario
     public string $compra = '';
     public string $fei = '';
@@ -23,34 +20,32 @@ class MassDelete extends Component
         $this->fef = now()->format('Y-m-d');
     }
 
-    public function updatingTipo() { $this->resetPage(); }
-    public function updatingCompra() { $this->resetPage(); }
-    public function updatingFei() { $this->resetPage(); }
-    public function updatingFef() { $this->resetPage(); }
+    public function exportExcel()
+    {
+        return Excel::download(
+            new MassDeletionsExport($this->tipo, $this->compra, $this->fei, $this->fef),
+            'eliminar-masivo-' . now()->format('Y-m-d') . '.xlsx'
+        );
+    }
 
     public function render()
     {
         $term = trim($this->compra);
-        $user = auth()->user();
 
         $query = MassDeletion::query()->with(['credit.client']);
 
-        // Filtro por rol (Cobranza solo ve sus propios registros)
-        if ($user && $user->hasRole('cobranza')) {
-            $query->where('user', $user->username);
-        }
-
-        // Lógica del legacy: si hay búsqueda y no hay fechas, ignora fechas
+        // Lógica del legacy:
+        //  - compra + sin fechas → solo búsqueda
+        //  - compra + fechas → ambos filtros
+        //  - sin compra + fechas → solo fechas
+        //  - default → solo hoy
         if ($term !== '' && ($this->fei === '' || $this->fef === '')) {
-            // Solo búsqueda
-        } elseif ($term !== '' && $this->fei !== '' && $this->fef !== '') {
-            $query->whereDate('date', '>=', $this->fei)
-                  ->whereDate('date', '<=', $this->fef);
-        } elseif ($term === '' && $this->fei !== '' && $this->fef !== '') {
-            $query->whereDate('date', '>=', $this->fei)
-                  ->whereDate('date', '<=', $this->fef);
+            // Solo búsqueda, sin filtro de fecha
+        } elseif ($this->fei !== '' && $this->fef !== '') {
+            $query->where('date', '>=', $this->fei)
+                  ->where('date', '<=', $this->fef);
         } else {
-            $query->whereDate('date', now()->format('Y-m-d'));
+            $query->where('date', now()->format('Y-m-d'));
         }
 
         // Filtro por búsqueda
@@ -63,11 +58,9 @@ class MassDelete extends Component
             };
         }
 
-        $records = $query->orderBy('date', 'desc')->paginate(50);
+        $records = $query->orderBy('date', 'asc')->get();
 
-        // Total para todas las páginas
-        $totalQuery = clone $query;
-        $totalSum = $totalQuery->sum('amount');
+        $totalSum = $records->sum('amount');
 
         return view('livewire.credits.mass-delete', compact('records', 'totalSum'));
     }

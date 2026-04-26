@@ -92,13 +92,13 @@ class ChangeStatus extends Component
 
         $newSituacion = $situacionMap[$this->selecsitu] ?? $this->selecsitu;
         $credit->situacion = $newSituacion;
-        $credit->estado = 0;
+        $credit->estado = ($newSituacion === 'Activo') ? 1 : 0;
 
-        // Fecha específica según situación
-        if ($this->selecsitu === 'Cancelado') {
+        // fecha_cancelacion siempre debe estar seteada cuando situacion='Cancelado'
+        // (incluye Cancelado, R. Capital, R.C.P. Int. Cong, Condonado)
+        if ($newSituacion === 'Cancelado') {
             $credit->fecha_cancelacion = $this->fecha;
-        } elseif ($this->selecsitu === 'Vigente') {
-            $credit->estado = 1;
+        } else {
             $credit->fecha_cancelacion = null;
         }
 

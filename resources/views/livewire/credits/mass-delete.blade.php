@@ -56,9 +56,9 @@
                             <button type="submit" class="btn btn-sm btn-primary">
                                 <i class="ti ti-search f-s-12"></i> Buscar
                             </button>
-                            <a href="#" class="btn btn-sm btn-success">
+                            <button type="button" wire:click="exportExcel" class="btn btn-sm btn-success">
                                 <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
-                            </a>
+                            </button>
                         </div>
                     </form>
 
@@ -92,17 +92,17 @@
                                     onmouseout="this.style.backgroundColor=''">
                                     <td class="text-center">
                                         @if($canEdit)
-                                            <a href="#" title="Ver detalle y modificar">
+                                            <a href="{{ route('credits.mass-delete.edit', $record->id) }}" title="Ver detalle y modificar">
                                                 <i class="ti ti-edit f-s-16 text-primary"></i>
                                             </a>
                                         @endif
                                     </td>
-                                    <td class="text-center">{{ $loop->iteration + ($records->currentPage() - 1) * $records->perPage() }}</td>
+                                    <td class="text-center">{{ $loop->iteration }}</td>
                                     <td class="text-center">{{ $record->date?->format('d/m/Y') }}</td>
                                     <td class="text-center">{{ $record->time }}</td>
                                     <td>{{ $record->performed_by ?? $record->user }}</td>
                                     <td>{{ $record->advisor }}</td>
-                                    <td>{{ $record->credit?->client?->nombre }} {{ $record->credit?->client?->apellido_pat }}</td>
+                                    <td>{{ trim($record->credit?->client?->apellido_pat . ' ' . $record->credit?->client?->apellido_mat . ' ' . $record->credit?->client?->nombre) }}</td>
                                     <td class="text-center">
                                         @if($record->credit_id)
                                             <a href="{{ route('credits.show', $record->credit_id) }}">
@@ -137,7 +137,7 @@
                                 <div class="card-body p-3">
                                     <div class="d-flex justify-content-between align-items-start mb-1">
                                         <h6 class="mb-0">
-                                            {{ $record->credit?->client?->nombre }} {{ $record->credit?->client?->apellido_pat }}
+                                            {{ trim($record->credit?->client?->apellido_pat . ' ' . $record->credit?->client?->apellido_mat . ' ' . $record->credit?->client?->nombre) }}
                                         </h6>
                                         <span class="badge bg-primary">S/ {{ number_format($record->amount, 2) }}</span>
                                     </div>
@@ -154,7 +154,7 @@
                                     </div>
                                     @if($canEdit)
                                         <div class="mt-2">
-                                            <a href="#" class="btn btn-xs btn-outline-primary" style="padding: 2px 8px; font-size: 10px;">
+                                            <a href="{{ route('credits.mass-delete.edit', $record->id) }}" class="btn btn-xs btn-outline-primary" style="padding: 2px 8px; font-size: 10px;">
                                                 <i class="ti ti-edit"></i> Editar
                                             </a>
                                         </div>
@@ -168,8 +168,6 @@
                             <span class="badge bg-primary">Total: S/ {{ number_format($totalSum, 2) }}</span>
                         </div>
                     </div>
-
-                    <x-pagination :paginator="$records" />
                 </div>
             </div>
         </div>

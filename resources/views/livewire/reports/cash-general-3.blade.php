@@ -1,7 +1,7 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-sm-6">
-            <h4 class="main-title title-modules">REPORTE GENERAL CAJA 3</h4>
+            <h4 class="main-title title-modules" style="color:red;">REPORTE GENERAL CAJA 3</h4>
         </div>
         <div class="col-sm-6 mt-sm-2">
             <ul class="breadcrumb breadcrumb-start float-sm-end">
@@ -71,55 +71,48 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @php $cont = 0; $totalIngreso = 0; $totalEgreso = 0; @endphp
                                     @forelse($report['days'] as $day)
-                                        @foreach($day['rows'] as $row)
-                                            @php $cont++; @endphp
+                                        @foreach($day['items'] as $item)
                                             <tr>
-                                                <td><strong>{{ $cont }}</strong></td>
-                                                <td><strong>{{ $day['date'] }}</strong></td>
-                                                <td class="text-start">{{ $row['cliente'] }}</td>
-                                                <td class="text-start">{{ $row['detalle'] }}</td>
+                                                <td><strong>{{ $item['n'] }}</strong></td>
+                                                <td><strong>{{ $item['fecha'] }}</strong></td>
+                                                <td class="text-start">{{ $item['cliente'] }}</td>
+                                                <td class="text-start">{{ $item['detalle'] }}</td>
                                                 <td class="text-end">
-                                                    @if($row['ingreso'] > 0)
-                                                        <span class="text-primary">{{ number_format($row['ingreso'], 2) }}</span>
+                                                    @if($item['ingreso'] > 0)
+                                                        <span class="text-primary">{{ number_format($item['ingreso'], 2) }}</span>
                                                     @endif
                                                 </td>
                                                 <td class="text-end">
-                                                    @if($row['egreso'] > 0)
-                                                        <span class="text-danger">{{ number_format($row['egreso'], 2) }}</span>
+                                                    @if($item['egreso'] > 0)
+                                                        <span class="text-danger">{{ number_format($item['egreso'], 2) }}</span>
                                                     @endif
                                                 </td>
                                             </tr>
-                                            @php
-                                                $totalIngreso += $row['ingreso'];
-                                                $totalEgreso  += $row['egreso'];
-                                            @endphp
                                         @endforeach
                                         {{-- Daily total --}}
-                                        <tr class="table-secondary">
+                                        <tr style="background-color:#f0f0f0;">
                                             <td></td>
                                             <td></td>
                                             <td></td>
                                             <td><strong>TOTAL</strong></td>
-                                            <td class="text-end">
-                                                <strong><span class="text-primary">{{ number_format($day['total'], 2) }}</span></strong>
+                                            <td class="text-end" style="color:#0d6efd;">
+                                                <strong>{{ number_format($day['total_ingreso'], 2) }}</strong>
                                             </td>
-                                            <td class="text-end">
-                                                <strong><span class="text-danger"></span></strong>
+                                            <td class="text-end" style="color:#dc3545;">
+                                                <strong>{{ number_format($day['total_egreso'], 2) }}</strong>
                                             </td>
                                         </tr>
-                                        <tr class="table-light">
+                                        <tr style="background-color:#CEE7FF;">
                                             <td></td>
                                             <td></td>
                                             <td></td>
-                                            <td><strong>SALDO <span class="text-danger">FINAL-INICIAL</span></strong></td>
-                                            <td class="text-end">
-                                                <strong><span class="text-primary">{{ number_format($day['total'], 2) }}</span></strong>
+                                            <td><strong>SALDO <span style="color:#dc3545;">FINAL-INICIAL</span></strong></td>
+                                            <td class="text-end" style="color:#0d6efd;">
+                                                <strong>{{ number_format($day['saldo'], 2) }}</strong>
                                             </td>
                                             <td></td>
                                         </tr>
-                                        @php $cont = 0; @endphp
                                     @empty
                                         <tr>
                                             <td colspan="6" class="py-3 text-muted text-center">Sin movimientos para el periodo seleccionado</td>
@@ -127,16 +120,16 @@
                                     @endforelse
                                 </tbody>
                                 @if(count($report['days']) > 0)
-                                    <tfoot class="bg-primary" style="position: sticky; bottom: 0; z-index: 2;">
-                                        <tr>
-                                            <td colspan="4">
-                                                <strong>REPORTE GENERAL <span class="text-danger">CAJA 3 - </span>TOTAL <span class="text-danger">GENERAL</span></strong>
+                                    <tfoot>
+                                        <tr style="background-color:#ffffff;">
+                                            <td colspan="4" style="color:#000;">
+                                                <strong>REPORTE GENERAL <span style="color:#dc3545;">CAJA 3 - </span>TOTAL <span style="color:#dc3545;">GENERAL</span></strong>
                                             </td>
-                                            <td class="text-end">
-                                                <strong class="text-primary">{{ number_format($report['total_general'], 2) }}</strong>
+                                            <td class="text-end" style="color:#0d6efd;">
+                                                <strong>{{ number_format($report['total_ingresos'], 2) }}</strong>
                                             </td>
-                                            <td class="text-end">
-                                                <strong class="text-danger">0.00</strong>
+                                            <td class="text-end" style="color:#dc3545;">
+                                                <strong>{{ number_format($report['total_egresos'], 2) }}</strong>
                                             </td>
                                         </tr>
                                     </tfoot>
@@ -160,41 +153,40 @@
                                             </thead>
                                             <tbody>
                                                 @php $sCount = 0; @endphp
-                                                {{-- Interest row --}}
+                                                {{-- Interés --}}
                                                 @php $sCount++; @endphp
                                                 <tr>
                                                     <td><strong>{{ $sCount }}</strong></td>
                                                     <td><strong>INTERES</strong></td>
-                                                    <td class="text-end"><span class="text-primary">0.00</span></td>
-                                                    <td class="text-end"><span class="text-primary">{{ number_format($report['total_interes'], 2) }}</span></td>
+                                                    <td class="text-end" style="color:#0d6efd;">0.00</td>
+                                                    <td class="text-end" style="color:#0d6efd;">{{ number_format($report['total_interes'], 2) }}</td>
                                                     <td class="text-end align-middle" rowspan="2">
                                                         {{ number_format($report['total_interes'] + $report['total_mora'], 2) }}
                                                     </td>
                                                 </tr>
-                                                {{-- Mora row --}}
+                                                {{-- Mora --}}
                                                 @php $sCount++; @endphp
                                                 <tr>
                                                     <td><strong>{{ $sCount }}</strong></td>
                                                     <td><strong>MORA</strong></td>
-                                                    <td class="text-end"><span class="text-primary">0.00</span></td>
-                                                    <td class="text-end"><span class="text-primary">{{ number_format($report['total_mora'], 2) }}</span></td>
+                                                    <td class="text-end" style="color:#0d6efd;">0.00</td>
+                                                    <td class="text-end" style="color:#0d6efd;">{{ number_format($report['total_mora'], 2) }}</td>
                                                 </tr>
-                                                {{-- By advisor --}}
+                                                {{-- Por asesor (huaca_ingreso3) --}}
                                                 @php
                                                     $advisorCount = count($report['by_advisor']);
                                                     $advisorIdx   = 0;
-                                                    $advisorTotal = collect($report['by_advisor'])->sum('total');
                                                 @endphp
-                                                @foreach($report['by_advisor'] as $advisorName => $data)
+                                                @foreach($report['by_advisor'] as $row)
                                                     @php $sCount++; $advisorIdx++; @endphp
                                                     <tr>
                                                         <td><strong>{{ $sCount }}</strong></td>
-                                                        <td><strong>{{ $advisorName }}</strong></td>
-                                                        <td class="text-end"><span class="text-primary">0.00</span></td>
-                                                        <td class="text-end"><span class="text-primary">{{ number_format($data['total'], 2) }}</span></td>
+                                                        <td><strong>{{ trim(($row->aa ?? '') . ' ' . ($row->asesores ?? '')) }}</strong></td>
+                                                        <td class="text-end" style="color:#0d6efd;">{{ number_format($row->tm ?? 0, 2) }}</td>
+                                                        <td class="text-end" style="color:#0d6efd;">{{ number_format($row->gm, 2) }}</td>
                                                         @if($advisorIdx === 1)
                                                             <td class="text-end align-middle" rowspan="{{ $advisorCount }}">
-                                                                {{ number_format($advisorTotal, 2) }}
+                                                                {{ number_format($report['total_advisor'], 2) }}
                                                             </td>
                                                         @endif
                                                     </tr>
@@ -204,9 +196,9 @@
                                                 <tr>
                                                     <td></td>
                                                     <td><strong>Total General</strong></td>
-                                                    <td class="text-end"><strong><span class="text-primary">0.00</span></strong></td>
-                                                    <td class="text-center" colspan="2">
-                                                        <strong><span class="text-primary">{{ number_format($report['total_general'], 2) }}</span></strong>
+                                                    <td class="text-end" style="color:#0d6efd;"><strong>0.00</strong></td>
+                                                    <td class="text-center" colspan="2" style="color:#0d6efd;">
+                                                        <strong>{{ number_format($report['total_resumen'], 2) }}</strong>
                                                     </td>
                                                 </tr>
                                             </tfoot>

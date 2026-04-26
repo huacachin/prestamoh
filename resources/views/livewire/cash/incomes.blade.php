@@ -98,39 +98,39 @@
                                 </tr>
                             </thead>
                             <tbody>
-                            @forelse($incomes as $income)
+                            @forelse($rows as $row)
                                 @php
-                                    $rowStyle = ($income->modo === 'Otros') ? 'color: red;' : '';
-                                    $canEdit = $isSuperUsuario || (
-                                        $income->date?->format('Y-m-d') === $hoy
-                                        && $income->user_id === $userId
-                                        && $income->modo !== 'CREDITO'
-                                    );
+                                    $isOtros = $row['modo'] === 'Otros';
+                                    $rowStyle = $isOtros ? 'color: red;' : '';
+                                    $canEdit = $row['editable'] && ($isSuperUsuario || (
+                                        $row['date']?->format('Y-m-d') === $hoy
+                                        && $row['user_id'] === $userId
+                                    ));
                                 @endphp
                                 <tr style="{{ $rowStyle }}"
                                     onmouseover="this.style.backgroundColor='#CCFF66'"
                                     onmouseout="this.style.backgroundColor=''">
                                     <td class="text-center">
                                         @if($canEdit)
-                                            <a href="{{ route('cash.incomes.edit', $income->id) }}" title="Editar">
+                                            <a href="{{ route('cash.incomes.edit', $row['id']) }}" title="Editar">
                                                 <i class="ti ti-edit f-s-16 text-primary"></i>
                                             </a>
                                         @endif
                                     </td>
                                     <td class="text-center">{{ $loop->iteration }}</td>
                                     <td class="text-center">
-                                        @if($income->image_path)
+                                        @if($row['has_image'])
                                             <a href="#" target="_blank">
                                                 <i class="ti ti-camera f-s-16 text-info"></i>
                                             </a>
                                         @endif
                                     </td>
-                                    <td class="text-center">{{ $income->date?->format('d/m/Y') }}</td>
-                                    <td>{{ $income->user?->username ?? $income->user?->name ?? '-' }}</td>
-                                    <td>{{ $income->asesor }}</td>
-                                    <td class="text-center">{{ $income->reason }}</td>
-                                    <td>{{ $income->detail }}</td>
-                                    <td class="text-end fw-bold">{{ number_format($income->total, 2) }}</td>
+                                    <td class="text-center">{{ $row['date']?->format('d/m/Y') }}</td>
+                                    <td>{{ $row['usuario'] }}</td>
+                                    <td>{{ $row['asesor'] }}</td>
+                                    <td class="text-center">{{ $row['reason'] }}</td>
+                                    <td>{{ $row['detail'] }}</td>
+                                    <td class="text-end fw-bold">{{ number_format($row['total'], 2) }}</td>
                                 </tr>
                             @empty
                                 <tr>
@@ -138,30 +138,43 @@
                                 </tr>
                             @endforelse
                             </tbody>
-                            <tfoot class="bg-primary">
+                            <tfoot class="bg-light">
                                 <tr>
-                                    <td colspan="8" class="text-end fw-bold">Total General:</td>
+                                    <td colspan="5" rowspan="6" class="text-center align-middle fw-bold" style="font-size: 14px;">Total</td>
+                                    <td></td>
+                                    <td></td>
                                     <td class="text-end fw-bold">{{ number_format($totalGeneral, 2) }}</td>
+                                    <td></td>
                                 </tr>
                                 <tr>
-                                    <td colspan="8" class="text-end"><b>Fijos:</b></td>
-                                    <td class="text-end">{{ number_format($tofijo, 2) }}</td>
+                                    <td class="text-center"><b>Fijos</b></td>
+                                    <td class="text-end fw-bold">{{ number_format($tofijo, 2) }}</td>
+                                    <td></td>
+                                    <td></td>
                                 </tr>
                                 <tr>
-                                    <td colspan="8" class="text-end" style="color: red;"><b>Otros:</b></td>
-                                    <td class="text-end" style="color: red;">{{ number_format($totros, 2) }}</td>
+                                    <td class="text-center" style="color: red;"><b>Otros</b></td>
+                                    <td class="text-end fw-bold" style="color: red;">{{ number_format($totros, 2) }}</td>
+                                    <td></td>
+                                    <td></td>
                                 </tr>
                                 <tr>
-                                    <td colspan="8" class="text-end"><b>Capital:</b></td>
-                                    <td class="text-end">{{ number_format($tocapi, 2) }}</td>
+                                    <td class="text-center"><b>Capital</b></td>
+                                    <td class="text-end fw-bold">{{ number_format($tocapi, 2) }}</td>
+                                    <td></td>
+                                    <td></td>
                                 </tr>
                                 <tr>
-                                    <td colspan="8" class="text-end"><b>Interés:</b></td>
-                                    <td class="text-end">{{ number_format($totinte, 2) }}</td>
+                                    <td class="text-center"><b>Interes</b></td>
+                                    <td class="text-end fw-bold">{{ number_format($totinte, 2) }}</td>
+                                    <td></td>
+                                    <td></td>
                                 </tr>
                                 <tr>
-                                    <td colspan="8" class="text-end"><b>Mora:</b></td>
-                                    <td class="text-end">{{ number_format($totmora, 2) }}</td>
+                                    <td class="text-center"><b>Mora</b></td>
+                                    <td class="text-end fw-bold">{{ number_format($totmora, 2) }}</td>
+                                    <td></td>
+                                    <td></td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -169,32 +182,31 @@
 
                     {{-- Cards Mobile --}}
                     <div class="d-md-none">
-                        @forelse($incomes as $income)
+                        @forelse($rows as $row)
                             @php
-                                $isOtros = $income->modo === 'Otros';
-                                $canEdit = $isSuperUsuario || (
-                                    $income->date?->format('Y-m-d') === $hoy
-                                    && $income->user_id === $userId
-                                    && $income->modo !== 'CREDITO'
-                                );
+                                $isOtros = $row['modo'] === 'Otros';
+                                $canEdit = $row['editable'] && ($isSuperUsuario || (
+                                    $row['date']?->format('Y-m-d') === $hoy
+                                    && $row['user_id'] === $userId
+                                ));
                             @endphp
                             <div class="card mb-2 shadow-sm {{ $isOtros ? 'border-danger' : '' }}">
                                 <div class="card-body p-3" style="{{ $isOtros ? 'color: red;' : '' }}">
                                     <div class="d-flex justify-content-between align-items-start mb-1">
                                         <div>
-                                            <h6 class="mb-0">{{ $income->reason }}</h6>
-                                            <small class="text-muted">{{ $income->date?->format('d/m/Y') }}</small>
+                                            <h6 class="mb-0">{{ $row['reason'] }}</h6>
+                                            <small class="text-muted">{{ $row['date']?->format('d/m/Y') }}</small>
                                         </div>
-                                        <span class="badge bg-primary">S/ {{ number_format($income->total, 2) }}</span>
+                                        <span class="badge bg-primary">S/ {{ number_format($row['total'], 2) }}</span>
                                     </div>
                                     <div class="row g-1 mt-1" style="font-size: 12px;">
-                                        <div class="col-12"><b>Motivo:</b> {{ $income->detail }}</div>
-                                        <div class="col-6"><b>Usuario:</b> {{ $income->user?->username ?? '-' }}</div>
-                                        <div class="col-6"><b>Asesor:</b> {{ $income->asesor ?: '-' }}</div>
+                                        <div class="col-12"><b>Motivo:</b> {{ $row['detail'] }}</div>
+                                        <div class="col-6"><b>Usuario:</b> {{ $row['usuario'] ?: '-' }}</div>
+                                        <div class="col-6"><b>Asesor:</b> {{ $row['asesor'] ?: '-' }}</div>
                                     </div>
                                     @if($canEdit)
                                         <div class="mt-2">
-                                            <a href="{{ route('cash.incomes.edit', $income->id) }}" class="btn btn-xs btn-outline-primary" style="padding: 2px 8px; font-size: 10px;">
+                                            <a href="{{ route('cash.incomes.edit', $row['id']) }}" class="btn btn-xs btn-outline-primary" style="padding: 2px 8px; font-size: 10px;">
                                                 <i class="ti ti-edit"></i> Editar
                                             </a>
                                         </div>

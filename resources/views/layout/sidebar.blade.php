@@ -69,12 +69,10 @@
             'id'       => 'settings',
             'title'    => 'Configuración',
             'icon'     => 'ti ti-settings',
-            'canAny'   => ['configuracion.usuarios', 'configuracion.sucursales', 'configuracion.conceptos', 'configuracion.tipo-cambio'],
+            'canAny'   => ['configuracion.usuarios', 'configuracion.sucursales'],
             'children' => [
                 ['title' => 'Usuarios',     'route' => 'settings.users.index',          'can' => 'configuracion.usuarios'],
                 ['title' => 'Sucursales',   'route' => 'settings.headquarters.index',   'can' => 'configuracion.sucursales'],
-                ['title' => 'Conceptos',    'route' => 'settings.concepts.index',       'can' => 'configuracion.conceptos'],
-                ['title' => 'Tipo Cambio',  'route' => 'settings.exchange-rates.index', 'can' => 'configuracion.tipo-cambio'],
             ],
         ],
     ];

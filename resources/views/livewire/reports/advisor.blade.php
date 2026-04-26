@@ -1,7 +1,7 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-sm-6">
-            <h4 class="main-title title-modules">REPORTE DE ASESOR</h4>
+            <h4 class="main-title title-modules" style="color:red;">REPORTE DE ASESORES DE CREDITO</h4>
         </div>
         <div class="col-sm-6 mt-sm-2">
             <ul class="breadcrumb breadcrumb-start float-sm-end">
@@ -9,9 +9,7 @@
                     <i class="ti ti-report-analytics f-s-16"></i>
                     <a href="#" class="f-s-14 d-flex gap-2"><span class="d-none d-md-block">Reportes</span></a>
                 </li>
-                <li class="d-flex active">
-                    <a href="#" class="f-s-14">Reporte de Asesor</a>
-                </li>
+                <li class="breadcrumb-item active"><span>Asesores de Crédito</span></li>
             </ul>
         </div>
     </div>
@@ -20,122 +18,189 @@
         <div class="col-xl-12">
             <div class="card shadow-sm">
                 <div class="card-body pb-2">
-                    {{-- Filters --}}
+                    {{-- Filtros --}}
                     <div class="row my-2">
                         <div class="col-12">
-                            <div class="d-flex flex-wrap align-items-end gap-2 overflow-auto py-1">
+                            <div class="d-flex flex-wrap align-items-end gap-2 py-1">
                                 <div class="flex-shrink-0" style="width: 220px;">
                                     <label class="form-label mb-0 small">Asesor</label>
-                                    <select class="form-select form-select-sm" wire:model="advisorId">
-                                        <option value="">-- Todos --</option>
-                                        @foreach($advisors as $advisor)
-                                            <option value="{{ $advisor->id }}">{{ $advisor->name }}</option>
+                                    <select class="form-select form-select-sm" wire:model="ejecutivo">
+                                        <option value="Todos">Todos</option>
+                                        @foreach($asesores as $a)
+                                            <option value="{{ $a->id }}">{{ $a->name }}</option>
                                         @endforeach
                                     </select>
                                 </div>
-                                <div class="flex-shrink-0" style="width: 120px;">
+                                <div class="flex-shrink-0" style="width: 140px;">
                                     <label class="form-label mb-0 small">Mes</label>
-                                    <select class="form-select form-select-sm" wire:model="month">
-                                        @for($m = 1; $m <= 12; $m++)
-                                            <option value="{{ $m }}">{{ str_pad($m, 2, '0', STR_PAD_LEFT) }} - {{ \Carbon\Carbon::create()->month($m)->isoFormat('MMMM') }}</option>
-                                        @endfor
+                                    <select class="form-select form-select-sm" wire:model="selemes">
+                                        @foreach($months as $key => $nombre)
+                                            <option value="{{ $key }}">{{ $nombre }}</option>
+                                        @endforeach
                                     </select>
                                 </div>
-                                <div class="flex-shrink-0" style="width: 100px;">
-                                    <label class="form-label mb-0 small">Anio</label>
-                                    <select class="form-select form-select-sm" wire:model="year">
-                                        @for($y = 2020; $y <= 2030; $y++)
+                                <div class="flex-shrink-0" style="width: 110px;">
+                                    <label class="form-label mb-0 small">Año</label>
+                                    <select class="form-select form-select-sm" wire:model="selecano">
+                                        @for($y = 2015; $y <= 2028; $y++)
                                             <option value="{{ $y }}">{{ $y }}</option>
                                         @endfor
                                     </select>
                                 </div>
-                                <button class="btn btn-sm btn-dark flex-shrink-0" wire:click="search">
+                                <button class="btn btn-sm btn-dark flex-shrink-0" wire:click="search" wire:loading.attr="disabled">
                                     <i class="ti ti-search f-s-12"></i> Buscar
                                 </button>
-                                <button class="btn btn-sm btn-outline-secondary flex-shrink-0" onclick="window.print()">
-                                    <i class="ti ti-printer f-s-12"></i> Imprimir
+                                <button class="btn btn-sm btn-success flex-shrink-0" onclick="window.print()">
+                                    <i class="ti ti-file-spreadsheet f-s-12"></i>
                                 </button>
                             </div>
                         </div>
                     </div>
 
-                    {{-- Report Table --}}
-                    <div class="table-responsive tableFixHead mt-2">
-                        <table class="table table-bordered table-hover table-sm" style="font-size: 0.85rem;">
-                            <thead class="bg-primary text-white">
-                                <tr class="text-center">
-                                    <th rowspan="2" class="align-middle" style="width:40px;">N&deg;</th>
-                                    <th rowspan="2" class="align-middle" style="width:95px;">Fecha</th>
-                                    <th rowspan="2" class="align-middle" style="width:50px;">Dia</th>
-                                    <th rowspan="2" class="align-middle">Nuevos</th>
-                                    <th rowspan="2" class="align-middle">Renov.</th>
-                                    <th rowspan="2" class="align-middle">Canc.</th>
-                                    <th rowspan="2" class="align-middle">Total</th>
-                                    <th rowspan="2" class="align-middle">Capital</th>
-                                    <th colspan="2" class="text-center">Cobrados</th>
-                                    <th colspan="2" class="text-center">No Cobrados</th>
+                    {{-- TABLA DIARIA --}}
+                    <div class="table-responsive" style="max-height: 650px; overflow:auto;">
+                        <table class="table table-bordered table-striped table-hover" style="font-size: 11px; min-width: 1280px;">
+                            <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
+                                <tr>
+                                    <th rowspan="2" class="align-middle text-center">N°</th>
+                                    <th rowspan="2" class="align-middle text-center">FECHA</th>
+                                    <th colspan="5" class="text-center">CLIENTES</th>
+                                    <th rowspan="2" class="align-middle text-center">IMP. A<br>COBRAR</th>
+                                    <th colspan="2" class="text-center">COBRADOS</th>
+                                    <th colspan="2" class="text-center">NO COBRADOS</th>
                                 </tr>
-                                <tr class="text-center">
-                                    <th>Cant.</th>
-                                    <th>Importe</th>
-                                    <th>Cant.</th>
-                                    <th>Importe</th>
+                                <tr>
+                                    <th class="text-center">NUEVO</th>
+                                    <th class="text-center">REN./REF.</th>
+                                    <th class="text-center">CANC.</th>
+                                    <th class="text-center">TOTAL</th>
+                                    <th class="text-center">CAPITAL</th>
+                                    <th class="text-center">CANT.</th>
+                                    <th class="text-center">IMPORTE</th>
+                                    <th class="text-center">CANT.</th>
+                                    <th class="text-center">IMPORTE</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse($reportData as $row)
-                                    <tr class="text-center
-                                        @if($row->day_of_week === 0) table-danger
-                                        @elseif($row->day_of_week === 6) table-success
-                                        @endif
-                                    ">
-                                        <td>{{ $row->num }}</td>
-                                        <td class="text-nowrap">{{ $row->fecha }}</td>
-                                        <td>{{ ucfirst($row->dia) }}</td>
-                                        <td>{{ $row->nuevos ?: '' }}</td>
-                                        <td>{{ $row->renovaciones ?: '' }}</td>
-                                        <td>{{ $row->cancelaciones ?: '' }}</td>
-                                        <td><strong>{{ $row->total_creditos ?: '' }}</strong></td>
-                                        <td class="text-end">{{ $row->capital > 0 ? number_format($row->capital, 2) : '' }}</td>
-                                        <td>{{ $row->cobrados_cant ?: '' }}</td>
-                                        <td class="text-end">{{ $row->cobrados_importe > 0 ? number_format($row->cobrados_importe, 2) : '' }}</td>
-                                        <td>{{ $row->no_cobrados_cant ?: '' }}</td>
-                                        <td class="text-end">{{ $row->no_cobrados_importe > 0 ? number_format($row->no_cobrados_importe, 2) : '' }}</td>
-                                    </tr>
-                                @empty
+                                @foreach($rows as $row)
+                                    @php $st = $row['color'] ? 'color:'.$row['color'].';' : ''; @endphp
                                     <tr>
-                                        <td colspan="12" class="text-center text-muted py-3">Sin datos para el periodo seleccionado</td>
+                                        <td style="{{ $st }}">{{ $row['d'] }}</td>
+                                        <td style="{{ $st }}">{{ $row['fecha'] }}</td>
+                                        <td style="{{ $st }}" class="text-end">{{ $row['nuevo'] }}</td>
+                                        <td style="{{ $st }}" class="text-end">{{ $row['renov'] }}</td>
+                                        <td style="{{ $st }}" class="text-end">{{ $row['canc'] }}</td>
+                                        <td style="{{ $st }}" class="text-end">{{ $row['total'] }}</td>
+                                        <td style="{{ $st }}" class="text-end">{{ number_format($row['capital'], 2) }}</td>
+                                        <td style="{{ $st }}" class="text-end">{{ number_format($row['imp_cobrar'], 2) }}</td>
+                                        <td style="{{ $st }}" class="text-end">{{ $row['cob_cnt'] }}</td>
+                                        <td style="{{ $st }}" class="text-end">{{ number_format($row['cob_imp'], 2) }}</td>
+                                        <td style="{{ $st }}" class="text-end">{{ number_format($row['noc_cnt'], 0) }}</td>
+                                        <td style="{{ $st }}" class="text-end">{{ number_format($row['noc_imp'], 2) }}</td>
                                     </tr>
-                                @endforelse
+                                @endforeach
+
+                                {{-- Total --}}
+                                <tr style="background-color:#f0f0f0; font-weight:500;">
+                                    <td colspan="2" rowspan="2" class="text-center">Total</td>
+                                    <td class="text-end">{{ number_format($tot['nuevo'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($tot['renov'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($tot['canc'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($tot['total'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($tot['capital'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($tot['imp_cobrar'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($tot['cob_cnt'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($tot['cob_imp'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($tot['noc_cnt'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($tot['noc_imp'], 2) }}</td>
+                                </tr>
+                                <tr style="background-color:#f0f0f0; font-weight:500;">
+                                    <td class="text-end">{{ number_format($avg['nuevo'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($avg['renov'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($avg['canc'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($avg['total'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($avg['capital'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($avg['imp_cobrar'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($avg['cob_cnt'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($avg['cob_imp'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($avg['noc_cnt'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($avg['noc_imp'], 2) }}</td>
+                                </tr>
                             </tbody>
-                            @if(count($reportData) > 0)
-                            <tfoot>
-                                <tr class="text-center fw-bold table-dark">
-                                    <td colspan="3">TOTALES</td>
-                                    <td>{{ $totals->nuevos }}</td>
-                                    <td>{{ $totals->renovaciones }}</td>
-                                    <td>{{ $totals->cancelaciones }}</td>
-                                    <td>{{ $totals->total_creditos }}</td>
-                                    <td class="text-end">{{ number_format($totals->capital, 2) }}</td>
-                                    <td>{{ $totals->cobrados_cant }}</td>
-                                    <td class="text-end">{{ number_format($totals->cobrados_importe, 2) }}</td>
-                                    <td>{{ $totals->no_cobrados_cant }}</td>
-                                    <td class="text-end">{{ number_format($totals->no_cobrados_importe, 2) }}</td>
+                        </table>
+                    </div>
+
+                    <br>
+
+                    {{-- TABLA MENSUAL DEL AÑO --}}
+                    <div class="table-responsive" style="max-height: 650px; overflow:auto;">
+                        <table class="table table-bordered table-striped table-hover" style="font-size: 11px; min-width: 1280px;">
+                            <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
+                                <tr>
+                                    <th rowspan="2" class="align-middle text-center">N°</th>
+                                    <th rowspan="2" class="align-middle text-center">MES</th>
+                                    <th colspan="5" class="text-center">CLIENTES</th>
+                                    <th rowspan="2" class="align-middle text-center">IMP. A<br>COBRAR</th>
+                                    <th colspan="2" class="text-center">COBRADOS</th>
+                                    <th colspan="2" class="text-center">NO COBRADOS</th>
                                 </tr>
-                                <tr class="text-center fw-bold table-secondary">
-                                    <td colspan="3">PROMEDIO / DIA</td>
-                                    <td>{{ $averages->nuevos }}</td>
-                                    <td>{{ $averages->renovaciones }}</td>
-                                    <td>{{ $averages->cancelaciones }}</td>
-                                    <td>{{ $averages->total_creditos }}</td>
-                                    <td class="text-end">{{ number_format($averages->capital, 2) }}</td>
-                                    <td>{{ $averages->cobrados_cant }}</td>
-                                    <td class="text-end">{{ number_format($averages->cobrados_importe, 2) }}</td>
-                                    <td>{{ $averages->no_cobrados_cant }}</td>
-                                    <td class="text-end">{{ number_format($averages->no_cobrados_importe, 2) }}</td>
+                                <tr>
+                                    <th class="text-center">X.C.N.</th>
+                                    <th class="text-center">X.R.C.</th>
+                                    <th class="text-center">CANC.</th>
+                                    <th class="text-center">TOTAL</th>
+                                    <th class="text-center">CAPITAL</th>
+                                    <th class="text-center">CANT.</th>
+                                    <th class="text-center">IMPORTE</th>
+                                    <th class="text-center">CANT.</th>
+                                    <th class="text-center">IMPORTE</th>
                                 </tr>
-                            </tfoot>
-                            @endif
+                            </thead>
+                            <tbody>
+                                @foreach($monthlyHistory['rows'] as $r)
+                                    <tr>
+                                        <td>{{ $r['n'] }}</td>
+                                        <td>{{ $r['mes'] }}</td>
+                                        <td class="text-end">{{ number_format($r['nuevo'], 2) }}</td>
+                                        <td class="text-end">{{ number_format($r['renov'], 2) }}</td>
+                                        <td class="text-end">{{ number_format($r['canc'], 2) }}</td>
+                                        <td class="text-end">{{ number_format($r['total'], 2) }}</td>
+                                        <td class="text-end">{{ number_format($r['capital'], 2) }}</td>
+                                        <td class="text-end">{{ number_format($r['imp_cobrar'], 2) }}</td>
+                                        <td class="text-end">{{ number_format($r['cob_cnt'], 2) }}</td>
+                                        <td class="text-end">{{ number_format($r['cob_imp'], 2) }}</td>
+                                        <td class="text-end">{{ number_format($r['noc_cnt'], 2) }}</td>
+                                        <td class="text-end">{{ number_format($r['noc_imp'], 2) }}</td>
+                                    </tr>
+                                @endforeach
+
+                                {{-- Totales --}}
+                                <tr style="background-color:#f0f0f0; font-weight:500;">
+                                    <td colspan="2" rowspan="2" class="text-center">Totales</td>
+                                    <td class="text-end">{{ number_format($monthlyHistory['tot']['nuevo'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($monthlyHistory['tot']['renov'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($monthlyHistory['tot']['canc'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($monthlyHistory['tot']['total'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($monthlyHistory['tot']['capital'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($monthlyHistory['tot']['imp_cobrar'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($monthlyHistory['tot']['cob_cnt'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($monthlyHistory['tot']['cob_imp'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($monthlyHistory['tot']['noc_cnt'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($monthlyHistory['tot']['noc_imp'], 2) }}</td>
+                                </tr>
+                                <tr style="background-color:#f0f0f0; font-weight:500;">
+                                    <td class="text-end">{{ number_format($monthlyHistory['avg']['nuevo'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($monthlyHistory['avg']['renov'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($monthlyHistory['avg']['canc'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($monthlyHistory['avg']['total'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($monthlyHistory['avg']['capital'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($monthlyHistory['avg']['imp_cobrar'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($monthlyHistory['avg']['cob_cnt'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($monthlyHistory['avg']['cob_imp'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($monthlyHistory['avg']['noc_cnt'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($monthlyHistory['avg']['noc_imp'], 2) }}</td>
+                                </tr>
+                            </tbody>
                         </table>
                     </div>
                 </div>

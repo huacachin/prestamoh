@@ -163,7 +163,7 @@ class MigrateLegacy extends Command
                     'fecha_nacimiento' => $fechaNac,
                     'sexo'          => strtoupper($row->csexpersona ?? 'M') ?: 'M',
                     'email'         => ($row->cemapersona && $row->cemapersona !== 'g@huacachin.com') ? $row->cemapersona : null,
-                    'telefono_fijo' => $row->ntelefono ?: null,
+                    'giro'          => $row->ntelefono ?: null,
                     'celular1'      => $row->nmovil ?: null,
                     'celular2'      => $row->nmovil2 ?: null,
                     'direccion'     => $row->cdireccion ?: null,

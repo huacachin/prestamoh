@@ -192,11 +192,18 @@ if (myElement) new SimpleBar(myElement, { autoHide: true });
 
 // Sidebar active class js
 $(function () {
-  let current = location.pathname;
-  current = current.substring((current.lastIndexOf('/')) + 1);
+  let current = location.pathname.replace(/\/+$/, '');
   $('.main-nav li a').each(function () {
     var $this = $(this);
-    if (current === $this.attr("href").split('/').pop()) {
+    var href = $this.attr('href');
+    if (!href || href === '#' || href.startsWith('#')) return;
+    var hrefPath;
+    try {
+      hrefPath = new URL(href, window.location.origin).pathname.replace(/\/+$/, '');
+    } catch (e) {
+      return;
+    }
+    if (current === hrefPath) {
       if ($this.parent().parent().parent().hasClass("another-level")) {
         $this.parent().parent().parent().parent().closest('li').children().addClass('show').attr("aria-expanded", "true");
       }

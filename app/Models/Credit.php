@@ -9,17 +9,18 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Credit extends Model
 {
     protected $fillable = [
-        'client_id', 'fecha_prestamo', 'importe', 'cuotas',
-        'tipo_planilla', 'interes', 'interes_total', 'mora',
+        'client_id', 'fecha_prestamo', 'fecha_actualizacion', 'importe', 'cuotas',
+        'tipo_planilla', 'interes', 'interes_total', 'mora', 'mora1', 'mora2',
         'moneda', 'documento', 'glosa', 'situacion', 'estado',
-        'refinanciado', 'fecha_vencimiento', 'fecha_cancelacion',
-        'asesor', 'user_id', 'headquarter_id',
+        'refinanciado', 'cod_rem', 'gat', 'idcan', 'fecha_vencimiento', 'fecha_cancelacion',
+        'asesor', 'user_id', 'usuario', 'headquarter_id',
     ];
 
     protected $casts = [
-        'fecha_prestamo'    => 'date',
-        'fecha_vencimiento' => 'date',
-        'fecha_cancelacion' => 'date',
+        'fecha_prestamo'      => 'date',
+        'fecha_actualizacion' => 'date',
+        'fecha_vencimiento'   => 'date',
+        'fecha_cancelacion'   => 'date',
         'importe'           => 'decimal:2',
         'interes'           => 'decimal:4',
         'interes_total'     => 'decimal:2',
