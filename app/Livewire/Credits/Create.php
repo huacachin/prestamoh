@@ -16,6 +16,8 @@ class Create extends Component
     public string $codigoc = '';     // DNI
     public ?string $nombreb = null;  // Nombre cliente (auto)
     public ?int $codigod = null;     // client_id (auto)
+    public ?string $dniMsg = null;
+    public ?string $dniMsgType = null; // 'ok' | 'err'
 
     // Crédito
     public int $codpre_;             // Código del préstamo (correlativo)
@@ -62,13 +64,28 @@ class Create extends Component
 
     public function updatedCodigoc()
     {
-        $client = Client::where('documento', $this->codigoc)->first();
+        $doc = preg_replace('/\D+/', '', (string) $this->codigoc);
+        $this->codigoc = $doc;
+
+        if (strlen($doc) < 8) {
+            $this->codigod = null;
+            $this->nombreb = null;
+            $this->dniMsg = null;
+            $this->dniMsgType = null;
+            return;
+        }
+
+        $client = Client::where('documento', $doc)->first();
         if ($client) {
             $this->codigod = $client->id;
             $this->nombreb = $client->fullName();
+            $this->dniMsg = 'Cliente encontrado.';
+            $this->dniMsgType = 'ok';
         } else {
             $this->codigod = null;
             $this->nombreb = null;
+            $this->dniMsg = 'Cliente no registrado. Regístralo primero en /clients/create.';
+            $this->dniMsgType = 'err';
         }
     }
 
@@ -96,7 +113,6 @@ class Create extends Component
     {
         $cap = (float) $this->impopres;
         $intePct = (float) $this->inte;
-        $cuotas = max(1, (int) $this->cuot);
         $interes2 = $cap * $intePct / 100;
         $tipo = $this->seletipl;
 
@@ -116,23 +132,45 @@ class Create extends Component
         }
     }
 
+    protected function rules(): array
+    {
+        return [
+            'codigoc'     => 'required|string|min:8|max:11',
+            'codigod'     => 'required|integer|exists:clients,id',
+            'codpre_'     => 'required|integer|min:1',
+            'impopres'    => 'required|numeric|gt:0',
+            'cuot'        => 'required|integer|gt:0',
+            'inte'        => 'required|numeric|gte:0',
+            'seletipl'    => 'required|in:1,3,4',
+            'nomasesores' => 'required|string',
+        ];
+    }
+
+    protected function messages(): array
+    {
+        return [
+            'codigoc.required'  => 'Ingrese DNI del cliente.',
+            'codigod.required'  => 'El cliente no está registrado.',
+            'codigod.exists'    => 'El cliente no está registrado.',
+            'codpre_.required'  => 'Falta el código de préstamo.',
+            'impopres.required' => 'Ingrese el importe del crédito.',
+            'impopres.gt'       => 'El importe debe ser mayor a 0.',
+            'cuot.required'     => 'Ingrese la cantidad de cuotas.',
+            'cuot.gt'           => 'Las cuotas deben ser mayor a 0.',
+            'inte.required'     => 'Ingrese el porcentaje de interés.',
+            'seletipl.required' => 'Seleccione el tipo de planilla.',
+            'seletipl.in'       => 'Seleccione el tipo de planilla.',
+            'nomasesores.required' => 'Indique el asesor.',
+        ];
+    }
+
     public function save()
     {
-        $errors = [];
-        if (!$this->codigoc) $errors[] = 'Ingrese DNI del cliente';
-        if (!$this->codigod) $errors[] = 'El cliente no está registrado';
-        if (!$this->cuot || $this->cuot <= 0) $errors[] = 'Cantidad de cuotas requerida';
-        if (!$this->impopres || $this->impopres <= 0) $errors[] = 'Importe requerido';
-        if (!$this->nomasesores) $errors[] = 'Indique nombre del asesor';
-        if (!$this->seletipl || $this->seletipl === '0000') $errors[] = 'Seleccione tipo de planilla';
+        $this->validate();
 
-        // Validar que el código de préstamo no esté en uso
+        // Validar que el código de préstamo no esté en uso (race condition / edición manual)
         if (DB::table('credits')->where('id', $this->codpre_)->exists()) {
-            $errors[] = 'El código de préstamo ya está utilizado';
-        }
-
-        if (!empty($errors)) {
-            $this->dispatch('errorAlert', ['message' => implode(' / ', $errors)]);
+            $this->addError('codpre_', 'El código de préstamo ya está utilizado.');
             return;
         }
 
@@ -365,7 +403,12 @@ class Create extends Component
 
     public function render()
     {
-        $asesores = User::orderBy('name')->get(['id', 'name', 'username']);
+        $asesores = User::query()
+            ->where('status', 'active')
+            ->whereDoesntHave('roles', fn ($q) => $q->where('name', 'Web'))
+            ->orderBy('name')
+            ->get(['id', 'name', 'username']);
+
         return view('livewire.credits.create', compact('asesores'));
     }
 }

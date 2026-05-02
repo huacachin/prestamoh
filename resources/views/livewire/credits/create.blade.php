@@ -17,21 +17,42 @@
     </div>
 
     <form wire:submit.prevent="save">
+
+        @if ($errors->any())
+            <div class="alert alert-danger py-2 px-3 mb-2" style="font-size:12px;">
+                <ul class="mb-0 ps-3">
+                    @foreach ($errors->all() as $e) <li>{{ $e }}</li> @endforeach
+                </ul>
+            </div>
+        @endif
+
         <div class="card shadow-sm">
             <div class="card-body">
                 <div class="row g-2">
+
+                    {{-- ─── Cliente ─── --}}
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">DNI</label>
-                        <input type="text" class="form-control form-control-sm" wire:model.live.debounce.500ms="codigoc"
+                        <input type="text" class="form-control form-control-sm @error('codigoc') is-invalid @enderror @error('codigod') is-invalid @enderror"
+                               wire:model.live.debounce.500ms="codigoc"
                                style="background-color:yellow;" maxlength="11" required>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label mb-0 small fw-semibold">Nombre del Cliente</label>
-                        <input type="text" class="form-control form-control-sm bg-light" value="{{ $nombreb }}" readonly>
+                        <input type="text" class="form-control form-control-sm bg-light"
+                               value="{{ $nombreb }}" readonly>
+                        @if($dniMsg)
+                            <span class="small {{ $dniMsgType === 'ok' ? 'text-success' : 'text-danger' }}"
+                                  style="font-size:11px;">
+                                <i class="ti {{ $dniMsgType === 'ok' ? 'ti-circle-check' : 'ti-alert-circle' }}"></i>
+                                {{ $dniMsg }}
+                            </span>
+                        @endif
                     </div>
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">Código Préstamo</label>
-                        <input type="number" class="form-control form-control-sm" wire:model="codpre_"
+                        <input type="number" class="form-control form-control-sm @error('codpre_') is-invalid @enderror"
+                               wire:model.defer="codpre_"
                                style="background-color:yellow;" required>
                     </div>
                     <div class="col-md-2">
@@ -39,9 +60,11 @@
                         <input type="text" class="form-control form-control-sm bg-light" value="Soles" readonly>
                     </div>
 
+                    {{-- ─── Capital y Periodo ─── --}}
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">Capital</label>
-                        <input type="number" class="form-control form-control-sm" wire:model.live.debounce.500ms="impopres"
+                        <input type="number" class="form-control form-control-sm @error('impopres') is-invalid @enderror"
+                               wire:model.live.debounce.500ms="impopres"
                                style="background-color:yellow;" min="0" step="0.01" required>
                     </div>
                     <div class="col-md-2">
@@ -58,9 +81,10 @@
                     </div>
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">Tipo</label>
-                        <select class="form-select form-select-sm" wire:model.live="seletipl"
+                        <select class="form-select form-select-sm @error('seletipl') is-invalid @enderror"
+                                wire:model.live="seletipl"
                                 style="background-color:yellow;" required>
-                            <option value="0000">Seleccione</option>
+                            <option value="">Seleccione</option>
                             <option value="1">Semanal</option>
                             <option value="3">Mensual</option>
                             <option value="4">Diario</option>
@@ -68,16 +92,19 @@
                     </div>
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">Cuotas</label>
-                        <input type="number" class="form-control form-control-sm" wire:model.live.debounce.500ms="cuot"
+                        <input type="number" class="form-control form-control-sm @error('cuot') is-invalid @enderror"
+                               wire:model.live.debounce.500ms="cuot"
                                style="background-color:yellow;" min="1" required
                                @if($seletipl === '4') readonly @endif>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">Interés %</label>
-                        <input type="number" class="form-control form-control-sm" wire:model.live.debounce.500ms="inte"
+                        <input type="number" class="form-control form-control-sm @error('inte') is-invalid @enderror"
+                               wire:model.live.debounce.500ms="inte"
                                style="background-color:yellow;" min="0" step="0.01" required>
                     </div>
 
+                    {{-- ─── Mora calculada y fechas ─── --}}
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">Mora Capital</label>
                         <input type="text" class="form-control form-control-sm bg-light"
@@ -98,7 +125,8 @@
                     </div>
                     <div class="col-md-4">
                         <label class="form-label mb-0 small fw-semibold">Asesor</label>
-                        <select class="form-select form-select-sm" wire:model="nomasesores"
+                        <select class="form-select form-select-sm @error('nomasesores') is-invalid @enderror"
+                                wire:model="nomasesores"
                                 style="background-color:yellow;" required>
                             <option value="">Seleccione</option>
                             @foreach($asesores as $a)
@@ -110,8 +138,11 @@
                 </div>
 
                 <div class="d-flex gap-2 mt-3 justify-content-center">
-                    <button type="submit" class="btn btn-sm btn-dark" wire:loading.attr="disabled">
-                        <i class="ti ti-check"></i> Aceptar
+                    <button type="submit" class="btn btn-sm btn-dark"
+                            wire:loading.attr="disabled" wire:target="save">
+                        <i class="ti ti-check"></i>
+                        <span wire:loading.remove wire:target="save">Aceptar</span>
+                        <span wire:loading wire:target="save">Guardando…</span>
                     </button>
                     <a href="{{ route('credits.index') }}" class="btn btn-sm btn-secondary">
                         <i class="ti ti-x"></i> Cancelar
