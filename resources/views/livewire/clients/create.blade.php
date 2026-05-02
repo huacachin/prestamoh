@@ -1,7 +1,7 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-sm-6">
-            <h4 class="main-title title-modules">CLIENTES : AGREGAR</h4>
+            <h4 class="main-title title-modules">NUEVO CLIENTE</h4>
         </div>
         <div class="col-sm-6 mt-sm-2">
             <ul class="breadcrumb breadcrumb-start float-sm-end">
@@ -16,15 +16,194 @@
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-body">
-            @include('livewire.clients._form')
+    <form wire:submit.prevent="save">
 
-            <div class="mt-3 d-flex gap-2">
-                <button class="btn btn-sm btn-primary" wire:click="save">Agregar</button>
-                <button class="btn btn-sm btn-danger" wire:click="clean">Limpiar</button>
-                <a href="{{ route('clients.index') }}" class="btn btn-sm btn-secondary">Volver</a>
+        {{-- ════════ Búsqueda DNI / RUC ════════ --}}
+        <div class="card shadow-sm mb-2">
+            <div class="card-body py-3">
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label mb-0 small fw-semibold" style="color:red;">
+                            INGRESE DNI O RUC
+                        </label>
+                        <input type="text"
+                               class="form-control form-control-sm"
+                               wire:model.defer="docBuscar"
+                               placeholder="DNI (8) o RUC (11)"
+                               maxlength="11"
+                               wire:keydown.enter.prevent="consultarDocumento"
+                               style="border:2px solid #d9534f; color:#d9534f;">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-sm btn-danger w-100"
+                                wire:click="consultarDocumento"
+                                wire:loading.attr="disabled" wire:target="consultarDocumento">
+                            <span wire:loading.remove wire:target="consultarDocumento">
+                                <i class="ti ti-search"></i> Consultar
+                            </span>
+                            <span wire:loading wire:target="consultarDocumento">
+                                <i class="ti ti-loader-2"></i> Buscando…
+                            </span>
+                        </button>
+                    </div>
+                    <div class="col-md-6">
+                        @if($docMsg)
+                            @php
+                                $alertClass = match($docMsgType) {
+                                    'ok'   => 'alert-success',
+                                    'warn' => 'alert-warning',
+                                    'err'  => 'alert-danger',
+                                    default => 'alert-info',
+                                };
+                                $icon = match($docMsgType) {
+                                    'ok'   => 'ti-circle-check',
+                                    'warn' => 'ti-alert-triangle',
+                                    'err'  => 'ti-alert-circle',
+                                    default => 'ti-info-circle',
+                                };
+                            @endphp
+                            <div class="alert {{ $alertClass }} mb-0 py-1 px-2" style="font-size:12px;">
+                                <i class="ti {{ $icon }}"></i> {{ $docMsg }}
+                            </div>
+                        @endif
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
+
+        @if ($errors->any())
+            <div class="alert alert-danger py-2 px-3" style="font-size:12px;">
+                <ul class="mb-0 ps-3">
+                    @foreach ($errors->all() as $e) <li>{{ $e }}</li> @endforeach
+                </ul>
+            </div>
+        @endif
+
+        {{-- ════════ Datos Personales ════════ --}}
+        <div class="card shadow-sm mb-2">
+            <div class="card-body">
+                <h6 class="mb-2" style="color:red;">Datos Personales</h6>
+
+                <div class="row g-2">
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">
+                            Apellido Paterno
+                            @if($tipo_documento === 'RUC')
+                                <span class="text-muted small">(opcional)</span>
+                            @endif
+                        </label>
+                        <input type="text" class="form-control form-control-sm @error('apellido_pat') is-invalid @enderror"
+                               wire:model.defer="apellido_pat" placeholder="Apellido Paterno">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">
+                            Apellido Materno <span class="text-muted small">(opcional)</span>
+                        </label>
+                        <input type="text" class="form-control form-control-sm"
+                               wire:model.defer="apellido_mat" placeholder="Apellido Materno">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">
+                            {{ $tipo_documento === 'RUC' ? 'Razón social' : 'Nombres' }}
+                        </label>
+                        <input type="text" class="form-control form-control-sm @error('nombre') is-invalid @enderror"
+                               wire:model.defer="nombre"
+                               placeholder="{{ $tipo_documento === 'RUC' ? 'Razón social' : 'Nombres' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">Nacionalidad</label>
+                        <input type="text" class="form-control form-control-sm bg-light"
+                               value="{{ $nacionalidad }}" readonly>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label mb-0 small fw-semibold">Sexo</label>
+                        <select class="form-select form-select-sm" wire:model.defer="sexo">
+                            <option value="M">Masculino</option>
+                            <option value="F">Femenino</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label mb-0 small fw-semibold">Nacimiento</label>
+                        <input type="date" class="form-control form-control-sm" wire:model.defer="fecha_nacimiento">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">DNI / RUC</label>
+                        <input type="text" class="form-control form-control-sm @error('documento') is-invalid @enderror"
+                               wire:model.defer="documento" placeholder="Número de documento" maxlength="11">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label mb-0 small fw-semibold">Expediente</label>
+                        <input type="number" class="form-control form-control-sm @error('expediente') is-invalid @enderror"
+                               wire:model.defer="expediente" min="1">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">Tipo</label>
+                        <input type="text" class="form-control form-control-sm bg-light"
+                               value="{{ $tipo_documento }}" readonly>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- ════════ Dirección Principal ════════ --}}
+        <div class="card shadow-sm mb-2">
+            <div class="card-body">
+                <h6 class="mb-2" style="color:red;">Dirección Principal</h6>
+
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <label class="form-label mb-0 small fw-semibold">Dirección</label>
+                        <input type="text" class="form-control form-control-sm"
+                               wire:model.defer="direccion" placeholder="Av. Arequipa Nro. 3400">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">Giro</label>
+                        <input type="text" class="form-control form-control-sm"
+                               wire:model.defer="giro" placeholder="Giro del negocio">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">T. Crédito</label>
+                        <input type="text" class="form-control form-control-sm"
+                               wire:model.defer="zona" placeholder="Zona o ruta">
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">Celular / Whatsapp</label>
+                        <input type="text" class="form-control form-control-sm"
+                               wire:model.defer="celular1" placeholder="999-999-999">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">Celular Secundario</label>
+                        <input type="text" class="form-control form-control-sm"
+                               wire:model.defer="celular2" placeholder="999-999-999">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label mb-0 small fw-semibold">Ejecutivo / Asesor</label>
+                        <select class="form-select form-select-sm" wire:model.defer="asesor_id">
+                            <option value="">— Seleccione —</option>
+                            @foreach($asesores as $a)
+                                <option value="{{ $a->id }}">{{ $a->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- ════════ Acciones ════════ --}}
+        <div class="d-flex gap-2 justify-content-center mt-3">
+            <button type="submit" class="btn btn-sm btn-dark" wire:loading.attr="disabled" wire:target="save">
+                <i class="ti ti-device-floppy"></i>
+                <span wire:loading.remove wire:target="save">Aceptar</span>
+                <span wire:loading wire:target="save">Guardando…</span>
+            </button>
+            <button type="button" class="btn btn-sm btn-secondary" wire:click="clean">
+                <i class="ti ti-eraser"></i> Limpiar
+            </button>
+            <a href="{{ route('clients.index') }}" class="btn btn-sm btn-danger">
+                <i class="ti ti-x"></i> Cancelar
+            </a>
+        </div>
+    </form>
 </div>

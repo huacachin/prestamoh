@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'migo' => [
+        'token' => env('MIGO_PE_TOKEN'),
+        'base'  => 'https://api.migo.pe/api/v1',
+    ],
+
 ];
