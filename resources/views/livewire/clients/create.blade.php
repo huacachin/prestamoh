@@ -17,11 +17,11 @@
     </div>
 
     <form wire:submit.prevent="save">
+        <div class="card shadow-sm">
+            <div class="card-body">
 
-        {{-- ════════ Búsqueda DNI / RUC ════════ --}}
-        <div class="card shadow-sm mb-2">
-            <div class="card-body py-3">
-                <div class="row g-2 align-items-end">
+                {{-- ════════ Búsqueda DNI / RUC ════════ --}}
+                <div class="row g-2 align-items-end mb-2">
                     <div class="col-md-4">
                         <label class="form-label mb-0 small fw-semibold" style="color:red;">
                             INGRESE DNI O RUC
@@ -68,23 +68,18 @@
                         @endif
                     </div>
                 </div>
-            </div>
-        </div>
 
-        @if ($errors->any())
-            <div class="alert alert-danger py-2 px-3" style="font-size:12px;">
-                <ul class="mb-0 ps-3">
-                    @foreach ($errors->all() as $e) <li>{{ $e }}</li> @endforeach
-                </ul>
-            </div>
-        @endif
+                @if ($errors->any())
+                    <div class="alert alert-danger py-2 px-3 mb-3" style="font-size:12px;">
+                        <ul class="mb-0 ps-3">
+                            @foreach ($errors->all() as $e) <li>{{ $e }}</li> @endforeach
+                        </ul>
+                    </div>
+                @endif
 
-        {{-- ════════ Datos Personales ════════ --}}
-        <div class="card shadow-sm mb-2">
-            <div class="card-body">
-                <h6 class="mb-2" style="color:red;">Datos Personales</h6>
-
-                <div class="row g-2">
+                {{-- ════════ Datos Personales ════════ --}}
+                <h6 class="mb-1" style="color:red;">Datos Personales</h6>
+                <div class="row g-2 mb-2">
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">
                             Apellido Paterno
@@ -143,14 +138,11 @@
                                value="{{ $tipo_documento }}" readonly>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        {{-- ════════ Dirección Principal ════════ --}}
-        <div class="card shadow-sm mb-2">
-            <div class="card-body">
-                <h6 class="mb-2" style="color:red;">Dirección Principal</h6>
+                <hr class="my-2" style="border-color:#e8e2d5;">
 
+                {{-- ════════ Dirección Principal ════════ --}}
+                <h6 class="mb-1" style="color:red;">Dirección Principal</h6>
                 <div class="row g-2">
                     <div class="col-md-6">
                         <label class="form-label mb-0 small fw-semibold">Dirección</label>
@@ -188,22 +180,22 @@
                         </select>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        {{-- ════════ Acciones ════════ --}}
-        <div class="d-flex gap-2 justify-content-center mt-3">
-            <button type="submit" class="btn btn-sm btn-dark" wire:loading.attr="disabled" wire:target="save">
-                <i class="ti ti-device-floppy"></i>
-                <span wire:loading.remove wire:target="save">Aceptar</span>
-                <span wire:loading wire:target="save">Guardando…</span>
-            </button>
-            <button type="button" class="btn btn-sm btn-secondary" wire:click="clean">
-                <i class="ti ti-eraser"></i> Limpiar
-            </button>
-            <a href="{{ route('clients.index') }}" class="btn btn-sm btn-danger">
-                <i class="ti ti-x"></i> Cancelar
-            </a>
+                {{-- ════════ Acciones ════════ --}}
+                <div class="d-flex gap-2 justify-content-center mt-3">
+                    <button type="submit" class="btn btn-sm btn-dark" wire:loading.attr="disabled" wire:target="save">
+                        <i class="ti ti-device-floppy"></i>
+                        <span wire:loading.remove wire:target="save">Aceptar</span>
+                        <span wire:loading wire:target="save">Guardando…</span>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-secondary" wire:click="clean">
+                        <i class="ti ti-eraser"></i> Limpiar
+                    </button>
+                    <a href="{{ route('clients.index') }}" class="btn btn-sm btn-danger">
+                        <i class="ti ti-x"></i> Cancelar
+                    </a>
+                </div>
+            </div>
         </div>
     </form>
 </div>
