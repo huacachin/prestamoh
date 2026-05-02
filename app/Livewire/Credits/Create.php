@@ -20,21 +20,21 @@ class Create extends Component
     public ?string $dniMsgType = null; // 'ok' | 'err'
 
     // Crédito
-    public int $codpre_;             // Código del préstamo (correlativo)
+    public $codpre_ = null;          // Código del préstamo (correlativo)
     public string $selecmoned = 'S'; // Moneda fija Soles
-    public float $impopres = 0;      // Capital
-    public string $selecano;         // Año
-    public string $selecmes;         // Mes
+    public $impopres = 0;            // Capital
+    public string $selecano = '';    // Año
+    public string $selecmes = '';    // Mes
     public string $seletipl = '';    // Tipo planilla (1, 3, 4)
-    public int $cuot = 0;            // Cuotas
-    public float $inte = 0;          // % interés
-    public float $moracc = 0;        // Mora Capital (auto)
-    public float $moraii = 0;        // Mora Interés (auto)
-    public string $fechar;           // Fecha registro
-    public string $fechad;           // Fecha préstamo
+    public $cuot = 0;                // Cuotas
+    public $inte = 0;                // % interés
+    public $moracc = 0;              // Mora Capital (auto)
+    public $moraii = 0;              // Mora Interés (auto)
+    public string $fechar = '';      // Fecha registro
+    public string $fechad = '';      // Fecha préstamo
     public ?string $nomasesores = null; // Asesor (username)
     public ?string $glosa = null;
-    public float $gat = 0;
+    public $gat = 0;
 
     // Estado de checkboxes (auto-set por tipo)
     public bool $morai = false; // Mora Interés (mora1)

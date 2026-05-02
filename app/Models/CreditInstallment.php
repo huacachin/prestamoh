@@ -10,7 +10,7 @@ class CreditInstallment extends Model
     protected $fillable = [
         'credit_id', 'num_cuota', 'fecha_vencimiento',
         'importe_cuota', 'importe_interes', 'importe_aplicado',
-        'interes_aplicado', 'importe_mora', 'pagado',
+        'interes_aplicado', 'importe_mora', 'mora_interes', 'pagado',
         'fecha_pago', 'observacion', 'usuario',
     ];
 
@@ -22,6 +22,7 @@ class CreditInstallment extends Model
         'importe_aplicado'  => 'decimal:2',
         'interes_aplicado'  => 'decimal:2',
         'importe_mora'      => 'decimal:2',
+        'mora_interes'      => 'decimal:2',
         'pagado'            => 'boolean',
     ];
 

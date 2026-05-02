@@ -52,7 +52,13 @@
                 </tr>
                 <tr>
                     <td style="background-color:#f0f0f0;">N° Expediente</td>
-                    <td>{{ $client->expediente }}</td>
+                    <td>
+                        <a href="{{ route('clients.gallery', $client->id) }}"
+                           title="Ver adjuntos"
+                           style="color:#0d6efd; text-decoration:underline;">
+                            {{ $client->expediente }}
+                        </a>
+                    </td>
                     <td style="background-color:#f0f0f0;">Nacionalidad</td>
                     <td>Peruano</td>
                 </tr>

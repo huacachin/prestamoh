@@ -35,6 +35,7 @@ Route::middleware('auth')->group(function () {
         Route::get('clients', [ClientController::class, 'index'])->name('clients.index');
         Route::get('clients/create', [ClientController::class, 'create'])->name('clients.create');
         Route::get('clients/{id}/edit', [ClientController::class, 'edit'])->name('clients.edit');
+        Route::get('clients/{id}/gallery', [ClientController::class, 'gallery'])->name('clients.gallery');
         Route::get('clients/{id}', [ClientController::class, 'show'])->name('clients.show');
     });
 

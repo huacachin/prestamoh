@@ -3,113 +3,163 @@
 namespace App\Livewire\Clients;
 
 use App\Models\Client;
-use App\Models\Headquarter;
+use App\Models\Credit;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\On;
 use Livewire\Component;
-use Livewire\WithFileUploads;
 
 class Edit extends Component
 {
-    use WithFileUploads;
-
     public Client $client;
     public int $clientId;
 
-    public string $nombre = '';
+    // ── Campos editables (homologados a clienteedit.php) ──
     public string $apellido_pat = '';
     public string $apellido_mat = '';
-    public string $tipo_documento = 'DNI';
+    public string $nombre = '';
+    public string $tipo_documento = 'DNI'; // readonly display
     public string $documento = '';
     public ?string $fecha_nacimiento = null;
     public string $sexo = 'M';
-    public ?string $email = null;
-    public ?string $giro = null;
-    public ?string $celular1 = null;
-    public ?string $celular2 = null;
+    public string $status = 'active';
 
     public ?string $direccion = null;
     public ?string $referencia = null;
-    public ?string $distrito = null;
-    public ?string $provincia = null;
-    public ?string $departamento = null;
-    public ?string $zona = null;
-
-    public ?string $contacto_emergencia = null;
-    public ?string $telefono_contacto = null;
-
-    public ?string $banco_haberes = null;
-    public ?string $cuenta_haberes = null;
-    public ?string $banco_cts = null;
-    public ?string $cuenta_cts = null;
-    public ?string $afp = null;
-    public ?string $cussp = null;
-
-    public ?string $observaciones = null;
+    public ?string $giro = null;            // Legacy: telefono1 → giro
+    public ?string $telefono_secundario = null; // Legacy: telefono2
+    public ?string $celular1 = null;
+    public ?string $celular2 = null;
+    public ?string $zona = null;            // Legacy: T.Crédito
     public ?int $asesor_id = null;
-    public ?int $headquarter_id = null;
-    public $imagen = null;
-    public ?string $imagen_actual = null;
+
+    // ── Casa / Negocio (reset coords) ──
+    public bool $casa = false;
+    public bool $negocio = false;
+    public ?string $latitud = null;
+    public ?string $latitud2 = null;
+
+    // ── Permisos cacheados ──
+    public bool $puedeEditarIdentidad = false;
+    public bool $puedeGuardar = true;
+    public bool $tieneCreditosVigentes = false;
 
     public $asesores;
-    public $headquarters;
 
-    protected function rules()
+    protected function rules(): array
     {
+        $isRuc = $this->tipo_documento === 'RUC';
         return [
-            'nombre'       => 'required|string|max:100',
-            'apellido_pat' => 'required|string|max:100',
-            'apellido_mat' => 'nullable|string|max:100',
-            'tipo_documento' => 'required|in:DNI,RUC,CE',
-            'documento'    => 'required|string|max:20|unique:clients,documento,' . $this->clientId,
-            'fecha_nacimiento' => 'nullable|date',
-            'sexo'         => 'required|in:M,F',
-            'email'        => 'nullable|email|max:255',
-            'celular1'     => 'nullable|string|max:20',
-            'direccion'    => 'nullable|string|max:255',
-            'asesor_id'    => 'nullable|exists:users,id',
-            'headquarter_id' => 'nullable|exists:headquarters,id',
-            'imagen'       => 'nullable|image|max:3072',
+            'nombre'              => 'required|string|max:200',
+            'apellido_pat'        => $isRuc ? 'nullable|string|max:100' : 'required|string|max:100',
+            'apellido_mat'        => 'nullable|string|max:100',
+            'documento'           => 'required|string|max:20|unique:clients,documento,' . $this->clientId,
+            'fecha_nacimiento'    => 'nullable|date',
+            'sexo'                => 'required|in:M,F',
+            'status'              => 'required|in:active,inactive',
+            'direccion'           => 'nullable|string|max:255',
+            'referencia'          => 'nullable|string|max:255',
+            'giro'                => 'nullable|string|max:100',
+            'telefono_secundario' => 'nullable|string|max:20',
+            'celular1'            => 'nullable|string|max:20',
+            'celular2'            => 'nullable|string|max:20',
+            'zona'                => 'nullable|string|max:100',
+            'asesor_id'           => 'nullable|exists:users,id',
         ];
     }
 
-    public function mount(int $id)
+    public function mount(int $id): void
     {
-        $this->client = Client::findOrFail($id);
+        $this->client   = Client::findOrFail($id);
         $this->clientId = $id;
 
-        $this->asesores = User::where('status', 'active')->get(['id', 'name']);
-        $this->headquarters = Headquarter::where('status', 'active')->get(['id', 'name']);
+        $user = auth()->user();
+        $this->puedeEditarIdentidad = $user?->hasRole('superusuario') ?? false;
+        $this->puedeGuardar = !($user?->hasRole('asesor') ?? false);
 
-        $this->nombre        = $this->client->nombre ?? '';
-        $this->apellido_pat  = $this->client->apellido_pat ?? '';
-        $this->apellido_mat  = $this->client->apellido_mat ?? '';
-        $this->tipo_documento = $this->client->tipo_documento ?? 'DNI';
-        $this->documento     = $this->client->documento ?? '';
-        $this->fecha_nacimiento = $this->client->fecha_nacimiento?->format('Y-m-d');
-        $this->sexo          = $this->client->sexo ?? 'M';
-        $this->email         = $this->client->email;
-        $this->giro          = $this->client->giro;
-        $this->celular1      = $this->client->celular1;
-        $this->celular2      = $this->client->celular2;
-        $this->direccion     = $this->client->direccion;
-        $this->referencia    = $this->client->referencia;
-        $this->distrito      = $this->client->distrito;
-        $this->provincia     = $this->client->provincia;
-        $this->departamento  = $this->client->departamento;
-        $this->zona          = $this->client->zona;
-        $this->contacto_emergencia = $this->client->contacto_emergencia;
-        $this->telefono_contacto   = $this->client->telefono_contacto;
-        $this->banco_haberes = $this->client->banco_haberes;
-        $this->cuenta_haberes = $this->client->cuenta_haberes;
-        $this->banco_cts     = $this->client->banco_cts;
-        $this->cuenta_cts    = $this->client->cuenta_cts;
-        $this->afp           = $this->client->afp;
-        $this->cussp         = $this->client->cussp;
-        $this->observaciones = $this->client->observaciones;
-        $this->asesor_id     = $this->client->asesor_id;
-        $this->headquarter_id = $this->client->headquarter_id;
-        $this->imagen_actual = $this->client->imagen;
+        $this->tieneCreditosVigentes = Credit::where('client_id', $id)
+            ->where('situacion', 'Activo')
+            ->exists();
+
+        $this->asesores = User::query()
+            ->where('status', 'active')
+            ->whereDoesntHave('roles', fn ($q) => $q->where('name', 'web'))
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $c = $this->client;
+        $this->apellido_pat        = (string) ($c->apellido_pat ?? '');
+        $this->apellido_mat        = (string) ($c->apellido_mat ?? '');
+        $this->nombre              = (string) ($c->nombre ?? '');
+        $this->tipo_documento      = $c->tipo_documento ?? 'DNI';
+        $this->documento           = (string) ($c->documento ?? '');
+        $this->fecha_nacimiento    = $c->fecha_nacimiento?->format('Y-m-d');
+        $this->sexo                = $c->sexo ?? 'M';
+        $this->status              = $c->status ?? 'active';
+        $this->direccion           = $c->direccion;
+        $this->referencia          = $c->referencia;
+        $this->giro                = $c->giro;
+        // Legacy ntelefono2 → en nuestro modelo no había exacto; usamos telefono_contacto como almacén
+        $this->telefono_secundario = $c->telefono_contacto;
+        $this->celular1            = $c->celular1;
+        $this->celular2            = $c->celular2;
+        $this->zona                = $c->zona;
+        $this->asesor_id           = $c->asesor_id;
+        $this->latitud             = $c->latitud;
+        $this->latitud2            = $c->latitud2;
+    }
+
+    public function update()
+    {
+        if (!$this->puedeGuardar) {
+            $this->dispatch('errorAlert', ['message' => 'No tienes permiso para guardar.']);
+            return;
+        }
+
+        $this->validate();
+
+        $data = [
+            // Identidad: solo si SuperUsuario puede editar
+            'apellido_pat'   => $this->puedeEditarIdentidad ? $this->apellido_pat : $this->client->apellido_pat,
+            'apellido_mat'   => $this->puedeEditarIdentidad ? $this->apellido_mat : $this->client->apellido_mat,
+            'nombre'         => $this->puedeEditarIdentidad ? $this->nombre        : $this->client->nombre,
+            'documento'      => $this->puedeEditarIdentidad ? $this->documento     : $this->client->documento,
+
+            // Resto editables por todos (excepto Asesor que ni siquiera ve el botón)
+            'fecha_nacimiento'   => $this->fecha_nacimiento,
+            'sexo'               => $this->sexo,
+            'direccion'          => $this->direccion,
+            'referencia'         => $this->referencia,
+            'giro'               => $this->giro,
+            'telefono_contacto'  => $this->telefono_secundario,
+            'celular1'           => $this->celular1,
+            'celular2'           => $this->celular2,
+            'zona'               => $this->zona,
+            'asesor_id'          => $this->asesor_id,
+            'updated_at'         => now(),
+        ];
+
+        // Estado: solo si NO hay créditos vigentes (igual que legacy)
+        if (!$this->tieneCreditosVigentes) {
+            $data['status'] = $this->status;
+        }
+
+        // Casa / Negocio: reset coords (solo SuperUsuario)
+        if ($this->puedeEditarIdentidad) {
+            if ($this->casa) {
+                $data['latitud']   = null;
+                $data['longitud']  = null;
+            }
+            if ($this->negocio) {
+                $data['latitud2']  = null;
+                $data['longitud2'] = null;
+            }
+        }
+
+        $this->client->update($data);
+
+        session()->flash('client_success', 'Cliente actualizado correctamente.');
+        return redirect()->route('clients.index');
     }
 
     public function questionDelete(int $id): void
@@ -123,51 +173,6 @@ class Edit extends Component
         Client::findOrFail($id)->update(['status' => 'inactive']);
         session()->flash('client_success', 'Cliente desactivado correctamente.');
         $this->redirectRoute('clients.index');
-    }
-
-    public function update()
-    {
-        $this->validate();
-
-        $data = [
-            'nombre'        => $this->nombre,
-            'apellido_pat'  => $this->apellido_pat,
-            'apellido_mat'  => $this->apellido_mat,
-            'tipo_documento' => $this->tipo_documento,
-            'documento'     => $this->documento,
-            'fecha_nacimiento' => $this->fecha_nacimiento,
-            'sexo'          => $this->sexo,
-            'email'         => $this->email,
-            'giro'          => $this->giro,
-            'celular1'      => $this->celular1,
-            'celular2'      => $this->celular2,
-            'direccion'     => $this->direccion,
-            'referencia'    => $this->referencia,
-            'distrito'      => $this->distrito,
-            'provincia'     => $this->provincia,
-            'departamento'  => $this->departamento,
-            'zona'          => $this->zona,
-            'contacto_emergencia' => $this->contacto_emergencia,
-            'telefono_contacto'   => $this->telefono_contacto,
-            'banco_haberes' => $this->banco_haberes,
-            'cuenta_haberes' => $this->cuenta_haberes,
-            'banco_cts'     => $this->banco_cts,
-            'cuenta_cts'    => $this->cuenta_cts,
-            'afp'           => $this->afp,
-            'cussp'         => $this->cussp,
-            'observaciones' => $this->observaciones,
-            'asesor_id'     => $this->asesor_id,
-            'headquarter_id' => $this->headquarter_id,
-        ];
-
-        if ($this->imagen) {
-            $data['imagen'] = $this->imagen->store('clients', 'public');
-        }
-
-        $this->client->update($data);
-
-        session()->flash('client_success', 'Cliente actualizado correctamente.');
-        return redirect()->route('clients.index');
     }
 
     public function render()

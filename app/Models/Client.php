@@ -44,6 +44,11 @@ class Client extends Model
         return $this->hasMany(Credit::class);
     }
 
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(ClientAttachment::class);
+    }
+
     public function scopeActive($q)
     {
         return $q->where('status', 'active');

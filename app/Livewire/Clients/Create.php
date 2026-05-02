@@ -256,7 +256,7 @@ class Create extends Component
             $this->newClientId = $clientId;
         });
 
-        return redirect()->route('clients.show', $this->newClientId);
+        return redirect()->route('clients.gallery', $this->newClientId);
     }
 
     public ?int $newClientId = null;

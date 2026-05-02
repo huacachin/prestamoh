@@ -10,6 +10,7 @@ class ClientController extends Controller
     public function create() { return view('clients.create'); }
     public function edit(int $id) { return view('clients.edit', compact('id')); }
     public function show(int $id) { return view('clients.show', compact('id')); }
+    public function gallery(int $id) { return view('clients.gallery', compact('id')); }
     public function ceased() { return view('clients.ceased'); }
     public function export(Request $request) { }
 }
