@@ -77,7 +77,7 @@ class EditIncome extends Component
     #[On('register_destroy')]
     public function destroy(int $id): void
     {
-        if (!auth()->user()?->hasAnyRole('superusuario', 'administrador')) {
+        if (!auth()->user()?->can('caja.eliminar')) {
             abort(403);
         }
 

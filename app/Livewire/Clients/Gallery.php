@@ -44,8 +44,7 @@ class Gallery extends Component
         $this->client = Client::findOrFail($id);
         $this->clientId = $id;
 
-        // Asesor no puede eliminar (igual que legacy)
-        $this->puedeEliminar = !(auth()->user()?->hasRole('asesor') ?? false);
+        $this->puedeEliminar = auth()->user()?->can('clientes.eliminar') ?? false;
     }
 
     public function save()

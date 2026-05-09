@@ -21,18 +21,25 @@ class Expenses extends Component
     public function render()
     {
         $user = auth()->user();
+        $crossHQ = $user->can('acceso.cross-headquarter');
+        $hqId = $user->headquarter_id ?? 1;
         $term = trim($this->compra);
 
+        // caja=1: caja principal (legacy huaca_entrada). caja=3 son duplicados-espejo.
         $query = Expense::query()
             ->where('caja', 1)
             ->where(function ($q) {
                 $q->where('modo', '<>', 'Compra')->orWhereNull('modo');
             })
-            ->with('user:id,name,username');
+            ->with('user:id,name,username')
+            ->withCount('attachments');
 
-        // Filtros por rol (legacy)
-        // - Asesor/Cobranza: solo sus propios egresos con reason='Diario'
-        if ($user->hasAnyRole(['asesor', 'cobranza'])) {
+        if (!$crossHQ) {
+            $query->where('headquarter_id', $hqId);
+        }
+
+        // Operadores de caja (sin caja.editar-historico): solo sus propios egresos diarios
+        if (!$user->can('caja.editar-historico')) {
             $query->where('user_id', $user->id)
                   ->where('reason', 'Diario');
         }

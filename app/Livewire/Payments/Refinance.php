@@ -13,22 +13,22 @@ class Refinance extends Component
     public ?Credit $credit = null;
 
     // Datos del nuevo crédito (mostly readonly, replica legacy)
-    public int $codpre_;
-    public float $impopres = 0;     // Capital = saldo pendiente
-    public int $cuot = 0;           // Mismas cuotas que el original
-    public float $inte = 0;         // Mismo % interés
+    public $codpre_ = null;         // sin tipo estricto
+    public $impopres = 0;           // Capital = saldo pendiente
+    public $cuot = 0;               // Mismas cuotas que el original
+    public $inte = 0;               // Mismo % interés
     public string $seletipl = '3';  // Mensual fijo
-    public string $fechad;          // Fecha = última fecha de pago del original
-    public string $fechar;          // Fecha registro = hoy
+    public string $fechad = '';     // Fecha = última fecha de pago del original
+    public string $fechar = '';     // Fecha registro = hoy
     public ?string $nomasesores = null; // ÚNICO campo editable
-    public float $moracc = 0;       // Auto
-    public float $moraii = 0;       // Auto
-    public float $intmont = 0;      // Monto interés (cap × tasa / 100)
+    public $moracc = 0;             // Auto
+    public $moraii = 0;             // Auto
+    public $intmont = 0;            // Monto interés (cap × tasa / 100)
     public bool $morai = true;
     public bool $morac = false;
 
     // Datos para mostrar
-    public float $importePagadoAlgo = 0; // Si > 0, se permite refinanciar
+    public $importePagadoAlgo = 0;  // Si > 0, se permite refinanciar
 
     public function mount(int $creditId)
     {
@@ -93,21 +93,23 @@ class Refinance extends Component
     public function refinance()
     {
         if ($this->importePagadoAlgo <= 0) {
-            $this->dispatch('errorAlert', ['message' => 'No se puede refinanciar: el crédito no tiene pagos previos.']);
+            $this->addError('refinance', 'No se puede refinanciar: el crédito no tiene pagos previos.');
             return;
         }
 
         if (!$this->nomasesores) {
-            $this->dispatch('errorAlert', ['message' => 'Indique nombre del asesor.']);
+            $this->addError('nomasesores', 'Indique el asesor.');
             return;
         }
 
         if (DB::table('credits')->where('id', $this->codpre_)->exists()) {
-            $this->dispatch('errorAlert', ['message' => 'El código de préstamo ya está utilizado.']);
+            $this->addError('codpre_', 'El código de préstamo ya está utilizado.');
             return;
         }
 
-        DB::transaction(function () {
+        $hqId = auth()->user()?->headquarter_id ?? 1; // G2: headquarter dinámico
+
+        DB::transaction(function () use ($hqId) {
             $pid = (int) $this->codpre_;
             $codigopre = $this->credit->id;
             $fechaBase = Carbon::parse($this->fechad);
@@ -141,7 +143,7 @@ class Refinance extends Component
                 'asesor'              => null,
                 'user_id'             => auth()->id(),
                 'usuario'             => $this->nomasesores,
-                'headquarter_id'      => 1,
+                'headquarter_id'      => $hqId, // G2
                 'created_at'          => now(),
                 'updated_at'          => now(),
             ]);
@@ -231,7 +233,11 @@ class Refinance extends Component
 
     public function render()
     {
-        $asesores = User::orderBy('name')->get(['id', 'name', 'username']);
+        $asesores = User::permission('creditos.ser-asesor-responsable')
+            ->where('status', 'active')
+            ->orderBy('name')
+            ->get(['id', 'name', 'username']);
+
         return view('livewire.payments.refinance', compact('asesores'));
     }
 }

@@ -25,18 +25,20 @@ class Index extends Component
             return;
         }
 
-        // Verificar que no tenga pagos aplicados
-        $totalPagado = CreditInstallment::where('credit_id', $id)
-            ->sum('importe_aplicado');
-
-        if ($totalPagado > 0 && !$user->hasRole('superusuario')) {
-            $this->dispatch('errorAlert', ['message' => 'No se puede eliminar: el crédito tiene pagos aplicados.']);
+        if (!$user->can('creditos.eliminar')) {
+            $this->dispatch('errorAlert', ['message' => 'No tienes permisos para eliminar créditos.']);
             return;
         }
 
-        // SuperUsuario sin pagos puede eliminar siempre
-        // Otros: solo si es de hoy y no es refinanciado
-        if (!$user->hasRole('superusuario')) {
+        $totalPagado = CreditInstallment::where('credit_id', $id)
+            ->sum('importe_aplicado');
+
+        // Sin permiso de bypass, solo se eliminan créditos sin pagos, del día y no refinanciados.
+        if (!$user->can('caja.bypass-fecha-anterior')) {
+            if ($totalPagado > 0) {
+                $this->dispatch('errorAlert', ['message' => 'No se puede eliminar: el crédito tiene pagos aplicados.']);
+                return;
+            }
             $hoy = now()->format('Y-m-d');
             $fechaCredit = $credit->fecha_prestamo?->format('Y-m-d');
             if ($fechaCredit !== $hoy || $credit->refinanciado) {
@@ -99,8 +101,7 @@ class Index extends Component
             }
         }
 
-        // Asesores para dropdown
-        $asesores = User::whereHas('roles', fn ($q) => $q->whereIn('name', ['asesor', 'superusuario', 'administrador', 'director']))
+        $asesores = User::permission('creditos.ser-asesor-responsable')
             ->where('status', 'active')
             ->orderBy('name')
             ->get(['id', 'name', 'username']);

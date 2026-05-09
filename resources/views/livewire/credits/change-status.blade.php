@@ -78,22 +78,19 @@
                             @endif
                         </div>
 
-                        {{-- Situación --}}
+                        {{-- Situación (legacy estado.php solo deja "Cancelado" activo) --}}
                         <div class="col-md-2">
                             <label class="form-label"><b>Situacion</b></label>
-                            <select class="form-select" wire:model.live="selecsitu">
-                                <option value="0000">Seleccione</option>
-                                @foreach($situaciones as $sit)
-                                    <option value="{{ $sit }}">{{ $sit }}</option>
-                                @endforeach
+                            <select class="form-select" disabled>
+                                <option value="Cancelado" selected>Cancelado</option>
                             </select>
                         </div>
 
                         {{-- Botón --}}
                         <div class="col-md-2">
                             <button class="btn btn-primary w-100"
-                                    @if(!$selectedId || !$selecsitu || $selecsitu === '0000') disabled @endif
-                                    wire:confirm="¿Está seguro de cambiar el estado del crédito?"
+                                    @if(!$selectedId) disabled @endif
+                                    wire:confirm="¿Está seguro de cambiar el estado del crédito a Cancelado?"
                                     wire:click="changeStatus">
                                 <i class="ti ti-refresh f-s-14"></i> Cambiar Estado
                             </button>

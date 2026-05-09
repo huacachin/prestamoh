@@ -3,75 +3,59 @@
 namespace App\Livewire\Credits;
 
 use App\Models\Credit;
+use Carbon\Carbon;
 use Livewire\Component;
 
 class ChangeStatus extends Component
 {
-    public $tipoe = 'Credito';
-    public $fecha;
-    public $search = '';
-    public $selectedId = null;
-    public $showDropdown = false;
-    public $selecsitu = '';
+    public string $tipoe = 'Credito';
+    public string $fecha = '';
+    public string $search = '';
+    public ?int $selectedId = null;
+    public bool $showDropdown = false;
 
-    protected $situaciones = [
-        'Cancelado',
-        'Vigente',
-        'R. Capital',
-        'R.C.P. Int. Cong',
-        'Judicializado',
-        'Condonado',
-    ];
+    // Legacy estado.php solo deja la opción "Cancelado" activa en el <select>
+    // (las demás están comentadas en el HTML). Mantenemos la misma semántica.
+    public string $selecsitu = 'Cancelado';
 
-    public function mount()
+    public function mount(): void
     {
         $this->fecha = now()->format('Y-m-d');
     }
 
-    public function updatedSearch()
+    public function updatedSearch(): void
     {
         $this->selectedId = null;
         $this->showDropdown = strlen(trim($this->search)) >= 1;
     }
 
-    public function selectCredit($id)
+    public function selectCredit(int $id): void
     {
-        $this->selectedId = $id;
-        $this->showDropdown = false;
-
         $credit = Credit::with('client:id,nombre,apellido_pat,apellido_mat,documento')->find($id);
-        if ($credit) {
-            $this->search = $credit->id . ' - ' . ($credit->client?->nombre ?? '') . ' ' . ($credit->client?->apellido_pat ?? '');
-        }
+        if (!$credit) return;
+
+        $this->selectedId  = $id;
+        $this->showDropdown = false;
+        $this->search = $credit->id . ' - ' . trim(($credit->client?->nombre ?? '') . ' ' . ($credit->client?->apellido_pat ?? ''));
     }
 
-    public function changeStatus()
+    public function changeStatus(): void
     {
         if (!$this->selectedId) {
             $this->dispatch('errorAlert', ['message' => 'Debe seleccionar un crédito.']);
             return;
         }
-
-        if (!$this->selecsitu || $this->selecsitu === '0000') {
-            $this->dispatch('errorAlert', ['message' => 'Debe seleccionar una situación.']);
-            return;
-        }
-
         if (!$this->fecha) {
             $this->dispatch('errorAlert', ['message' => 'La fecha es obligatoria.']);
             return;
         }
 
-        // Validar mes anterior (solo SuperUsuario puede)
-        $user = auth()->user();
-        $fechaHoy = now();
-        $fechaSeleccionada = \Carbon\Carbon::parse($this->fecha);
-
-        if (!$user->hasRole('superusuario')) {
-            if ($fechaSeleccionada->format('Ym') < $fechaHoy->format('Ym')) {
-                $this->dispatch('errorAlert', ['message' => 'No es posible cambiar estado a fecha de mes anterior.']);
-                return;
-            }
+        // Bloqueo de fecha de mes anterior (legacy: solo SuperUsuario bypass)
+        $hoy = now();
+        $sel = Carbon::parse($this->fecha);
+        if ($sel->format('Ym') < $hoy->format('Ym') && !auth()->user()?->can('caja.bypass-fecha-anterior')) {
+            $this->dispatch('errorAlert', ['message' => 'No es posible eliminar, Fecha mes anterior.']);
+            return;
         }
 
         $credit = Credit::find($this->selectedId);
@@ -80,34 +64,14 @@ class ChangeStatus extends Component
             return;
         }
 
-        // Mapear situación legacy → nueva
-        $situacionMap = [
-            'Vigente'          => 'Activo',
-            'Cancelado'        => 'Cancelado',
-            'R. Capital'       => 'Cancelado',
-            'R.C.P. Int. Cong' => 'Cancelado',
-            'Judicializado'    => 'Activo',
-            'Condonado'        => 'Cancelado',
-        ];
+        // Legacy: UPDATE cab_cuentacorriente SET situacion='Cancelado', estado=0, fechacan=$fecha WHERE id=...
+        $credit->update([
+            'situacion'         => 'Cancelado',
+            'estado'            => 0,
+            'fecha_cancelacion' => $this->fecha,
+        ]);
 
-        $newSituacion = $situacionMap[$this->selecsitu] ?? $this->selecsitu;
-        $credit->situacion = $newSituacion;
-        $credit->estado = ($newSituacion === 'Activo') ? 1 : 0;
-
-        // fecha_cancelacion siempre debe estar seteada cuando situacion='Cancelado'
-        // (incluye Cancelado, R. Capital, R.C.P. Int. Cong, Condonado)
-        if ($newSituacion === 'Cancelado') {
-            $credit->fecha_cancelacion = $this->fecha;
-        } else {
-            $credit->fecha_cancelacion = null;
-        }
-
-        $credit->save();
-
-        $this->selectedId = null;
-        $this->search = '';
-        $this->selecsitu = '';
-        $this->showDropdown = false;
+        $this->reset(['selectedId', 'search', 'showDropdown']);
         $this->fecha = now()->format('Y-m-d');
         $this->dispatch('successAlert', ['message' => 'Cambio realizado Satisfactoriamente']);
     }
@@ -119,22 +83,21 @@ class ChangeStatus extends Component
 
         if ($this->showDropdown && strlen(trim($this->search)) >= 1) {
             $term = trim($this->search);
-
-            $query = Credit::query()
+            $results = Credit::query()
                 ->with('client:id,nombre,apellido_pat,apellido_mat,documento')
-                ->select('id', 'client_id', 'importe', 'situacion', 'fecha_cancelacion', 'cuotas', 'tipo_planilla', 'interes', 'fecha_prestamo');
-
-            $query->where(function ($q) use ($term) {
-                $q->where('id', 'like', "%{$term}%")
-                  ->orWhereHas('client', fn ($c) =>
-                      $c->where('nombre', 'like', "%{$term}%")
+                ->select('id', 'client_id', 'importe', 'situacion', 'fecha_cancelacion', 'cuotas', 'tipo_planilla', 'interes', 'fecha_prestamo')
+                ->where(fn ($q) => $q
+                    ->where('id', 'like', "%{$term}%")
+                    ->orWhereHas('client', fn ($c) => $c
+                        ->where('nombre', 'like', "%{$term}%")
                         ->orWhere('apellido_pat', 'like', "%{$term}%")
                         ->orWhere('apellido_mat', 'like', "%{$term}%")
                         ->orWhere('documento', 'like', "%{$term}%")
-                  );
-            });
-
-            $results = $query->orderByDesc('id')->limit(20)->get();
+                    )
+                )
+                ->orderByDesc('id')
+                ->limit(20)
+                ->get();
         }
 
         if ($this->selectedId) {
@@ -142,10 +105,6 @@ class ChangeStatus extends Component
                 ->find($this->selectedId);
         }
 
-        return view('livewire.credits.change-status', [
-            'results'        => $results,
-            'selectedCredit' => $selectedCredit,
-            'situaciones'    => $this->situaciones,
-        ]);
+        return view('livewire.credits.change-status', compact('results', 'selectedCredit'));
     }
 }

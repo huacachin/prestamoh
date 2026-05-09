@@ -172,7 +172,7 @@ class Create extends Component
         ]);
 
         $user = auth()->user();
-        if (!$user->hasRole('superusuario')) {
+        if (!$user->can('caja.bypass-fecha-anterior')) {
             $fechaSel = Carbon::parse($this->fecpag);
             if ($fechaSel->format('Ym') < now()->format('Ym')) {
                 $this->dispatch('errorAlert', ['message' => 'No es posible registrar pago en mes anterior.']);
@@ -209,7 +209,17 @@ class Create extends Component
             }
 
             // ─── 2) CABECERA pago masivo ───────────────────────────────────
-            $totalGeneral = round($this->monto + $totMora, 2);
+            // amount = SOLO lo realmente cobrado al cliente.
+            // Si Reserva Mora está marcada, $totMora se acumula pero NO se cobra → no suma.
+            // Las moras manuales (impointe2/impomora) sí se cobran siempre.
+            $moraQueSeCobra = $this->ckmora ? 0 : $totMora;
+            $totalGeneral = round(
+                $this->monto
+                + $moraQueSeCobra
+                + (float) $this->impointe2
+                + (float) $this->impomora,
+                2
+            );
             $massHeaderId = DB::table('mass_deletions')->insertGetId([
                 'credit_id'=>$this->credit->id,'amount'=>$totalGeneral,'date'=>$this->fecpag,
                 'time'=>$hora,'user'=>$usuario,'advisor'=>$this->credit->client?->asesor?->name,

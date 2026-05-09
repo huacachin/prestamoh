@@ -37,12 +37,12 @@
                                     <i class="ti ti-search f-s-12"></i>
                                 </button>
 
-                                @hasanyrole('superusuario|administrador')
+                                @can('configuracion.usuarios')
                                 <a class="btn btn-sm btn-primary flex-shrink-0"
                                    href="{{ route('settings.users.create') }}" target="_blank">
                                     <i class="ti ti-square-plus f-s-12"></i> Nuevo
                                 </a>
-                                @endhasanyrole
+                                @endcan
                             </div>
                         </div>
                     </div>
@@ -74,7 +74,7 @@
                                         <span class="badge bg-dark">{{ $user->permissions->count() }} permisos</span>
                                     </td>
                                     <td class="text-nowrap">
-                                        @hasanyrole('superusuario|administrador')
+                                        @can('configuracion.usuarios')
                                         <a class="btn btn-sm btn-outline-success me-1" title="Editar datos"
                                            href="{{ route('settings.users.edit', $user->id) }}">
                                             <i class="ti ti-edit"></i>
@@ -83,13 +83,13 @@
                                            href="{{ route('settings.users.perms', $user->id) }}" target="_blank">
                                             <i class="ti ti-shield-lock"></i>
                                         </a>
-                                        @if(!$user->hasRole('superusuario'))
+                                        @if(!$user->hasRole('director'))
                                         <button class="btn btn-sm btn-outline-danger ms-1" title="Desactivar"
                                                 wire:click="questionDelete({{ $user->id }}, '{{ $user->name }}')">
                                             <i class="ti ti-trash"></i>
                                         </button>
                                         @endif
-                                        @endhasanyrole
+                                        @endcan
                                     </td>
                                 </tr>
                             @empty

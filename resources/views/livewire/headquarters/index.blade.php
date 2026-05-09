@@ -49,12 +49,12 @@
                                     <i class="ti ti-search f-s-12"></i>
                                 </button>
 
-                                @hasanyrole('superusuario|administrador')
+                                @can('configuracion.sucursales')
                                 <a class="btn btn-sm btn-primary flex-shrink-0"
                                    href="{{ route('settings.headquarters.create') }}" target="_blank">
                                     <i class="ti ti-square-plus f-s-12"></i> Nuevo
                                 </a>
-                                @endhasanyrole
+                                @endcan
                             </div>
                         </div>
                     </div>
@@ -68,9 +68,9 @@
                                 <th>Nombre</th>
                                 <th>Usuarios</th>
                                 <th>Estado</th>
-                                @hasanyrole('superusuario|administrador')
+                                @can('configuracion.sucursales')
                                 <th></th>
-                                @endhasanyrole
+                                @endcan
                             </tr>
                             </thead>
                             <tbody>
@@ -85,13 +85,13 @@
                                             {{ $hq->status === 'active' ? 'Activo' : 'Inactivo' }}
                                         </span>
                                     </td>
-                                    @hasanyrole('superusuario|administrador')
+                                    @can('configuracion.sucursales')
                                     <td>
                                         <a href="{{ route('settings.headquarters.edit', $hq->id) }}">
                                             <i class="ti ti-edit f-s-18 text-success" style="cursor:pointer"></i>
                                         </a>
                                     </td>
-                                    @endhasanyrole
+                                    @endcan
                                 </tr>
                             @empty
                                 <tr>

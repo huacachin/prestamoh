@@ -90,15 +90,18 @@
                         </div>
                     </div>
 
-                    <div class="d-flex gap-2">
+                    <div class="d-flex gap-2 flex-wrap">
                         <button type="button" class="btn btn-sm btn-primary" wire:click="update">
                             <i class="ti ti-device-floppy f-s-12"></i> Guardar cambios
                         </button>
-                        @hasanyrole('superusuario|administrador')
+                        <a href="{{ route('cash.incomes.gallery', $incomeId) }}" class="btn btn-sm btn-info">
+                            <i class="ti ti-photo f-s-12"></i> Ver / subir adjuntos
+                        </a>
+                        @can('caja.eliminar')
                         <button type="button" class="btn btn-sm btn-danger" wire:click="questionDelete({{ $incomeId }})">
                             <i class="ti ti-trash f-s-12"></i> Eliminar
                         </button>
-                        @endhasanyrole
+                        @endcan
                         <a href="{{ route('cash.incomes') }}" class="btn btn-sm btn-secondary">Volver</a>
                     </div>
 

@@ -17,7 +17,7 @@ class Edit extends Component
 
     public function mount(int $id): void
     {
-        if (!auth()->user()?->hasAnyRole('superusuario', 'administrador')) {
+        if (!auth()->user()?->can('configuracion.sucursales')) {
             abort(403);
         }
 
@@ -43,7 +43,7 @@ class Edit extends Component
     #[On('register_destroy')]
     public function destroy(int $id): void
     {
-        if (!auth()->user()?->hasAnyRole('superusuario', 'administrador')) {
+        if (!auth()->user()?->can('configuracion.sucursales')) {
             abort(403);
         }
 

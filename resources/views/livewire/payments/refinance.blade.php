@@ -17,6 +17,15 @@
     </div>
 
     <form wire:submit.prevent="refinance">
+
+        @if ($errors->any())
+            <div class="alert alert-danger py-2 px-3 mb-2" style="font-size:12px;">
+                <ul class="mb-0 ps-3">
+                    @foreach ($errors->all() as $e) <li>{{ $e }}</li> @endforeach
+                </ul>
+            </div>
+        @endif
+
         {{-- Información del Préstamo (datos originales + asesor editable) --}}
         <div class="card shadow-sm">
             <div class="card-body">
@@ -60,7 +69,8 @@
                     </div>
                     <div class="col-md-4">
                         <label class="form-label mb-0 small fw-semibold">Asesor</label>
-                        <select class="form-select form-select-sm" wire:model="nomasesores"
+                        <select class="form-select form-select-sm @error('nomasesores') is-invalid @enderror"
+                                wire:model="nomasesores"
                                 style="background-color:yellow;" required>
                             <option value="">Seleccione</option>
                             @foreach($asesores as $a)

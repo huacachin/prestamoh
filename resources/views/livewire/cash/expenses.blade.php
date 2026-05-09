@@ -29,46 +29,46 @@
                                 <label class="form-label mb-0 small"><b>BUSCAR X</b></label>
                                 <div class="d-flex gap-3 mb-1">
                                     <div class="form-check">
-                                        <input class="form-check-input me-1" type="radio" wire:model.live="tipo" value="1" id="tipoA">
+                                        <input class="form-check-input me-1" type="radio" wire:model.defer="tipo" value="1" id="tipoA">
                                         <label class="form-check-label small" for="tipoA">A</label>
                                     </div>
                                     <div class="form-check">
-                                        <input class="form-check-input me-1" type="radio" wire:model.live="tipo" value="2" id="tipoMotivo">
+                                        <input class="form-check-input me-1" type="radio" wire:model.defer="tipo" value="2" id="tipoMotivo">
                                         <label class="form-check-label small" for="tipoMotivo">Motivo</label>
                                     </div>
                                     <div class="form-check">
-                                        <input class="form-check-input me-1" type="radio" wire:model.live="tipo" value="3" id="tipoUsuario">
+                                        <input class="form-check-input me-1" type="radio" wire:model.defer="tipo" value="3" id="tipoUsuario">
                                         <label class="form-check-label small" for="tipoUsuario">Usuario</label>
                                     </div>
                                     <div class="form-check">
-                                        <input class="form-check-input me-1" type="radio" wire:model.live="tipo" value="4" id="tipoRespons">
+                                        <input class="form-check-input me-1" type="radio" wire:model.defer="tipo" value="4" id="tipoRespons">
                                         <label class="form-check-label small" for="tipoRespons">Respons.</label>
                                     </div>
                                 </div>
                                 <input type="text" class="form-control form-control-sm"
-                                       wire:model.live.debounce.300ms="compra"
+                                       wire:model.defer="compra"
                                        placeholder="Ingrese el texto a buscar">
                             </div>
 
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small"><b>Fecha Inicio</b></label>
-                                <input type="date" class="form-control form-control-sm" wire:model.live="fei">
+                                <input type="date" class="form-control form-control-sm" wire:model.defer="fei">
                             </div>
 
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small"><b>Fecha Fin</b></label>
-                                <input type="date" class="form-control form-control-sm" wire:model.live="fef">
+                                <input type="date" class="form-control form-control-sm" wire:model.defer="fef">
                             </div>
                         </div>
                         <div class="d-flex gap-2 mb-2">
                             <button type="submit" class="btn btn-sm btn-primary">
                                 <i class="ti ti-search f-s-12"></i> Buscar
                             </button>
-                            @hasanyrole('superusuario|administrador|director|asesor')
+                            @can('caja.egresos')
                                 <a href="{{ route('cash.expenses.create') }}" class="btn btn-sm btn-danger">
                                     <i class="ti ti-plus f-s-12"></i> Agregar Nuevo
                                 </a>
-                            @endhasanyrole
+                            @endcan
                             <a href="#" class="btn btn-sm btn-success">
                                 <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
                             </a>
@@ -76,13 +76,15 @@
                     </form>
 
                     @php
-                        $isSuperUsuario = auth()->user()->hasRole('superusuario');
+                        $puedeEditarHistorico = auth()->user()->can('caja.editar-historico');
+                        $puedeEliminar       = auth()->user()->can('caja.eliminar');
                         $userId = auth()->id();
                         $hoy = now()->format('Y-m-d');
                     @endphp
 
-                    {{-- Tabla Desktop --}}
-                    <div class="table-responsive d-none d-md-block" style="max-height: 70vh; overflow: auto;">
+                    {{-- Tabla Desktop con FAB scroll --}}
+                    <div class="position-relative d-none d-md-block">
+                        <div id="expensesTable" class="table-responsive" style="max-height: 70vh; overflow: auto;">
                         <table class="table table-bordered table-striped table-hover" style="font-size: 11px;">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
@@ -102,7 +104,7 @@
                             @forelse($expenses as $expense)
                                 @php
                                     $rowStyle = ($expense->modo === 'Otros') ? 'color: red;' : '';
-                                    $canEdit = $isSuperUsuario || (
+                                    $canEdit = $puedeEditarHistorico || (
                                         $expense->date?->format('Y-m-d') === $hoy
                                         && $expense->user_id === $userId
                                     );
@@ -119,11 +121,19 @@
                                     </td>
                                     <td class="text-center">{{ $loop->iteration }}</td>
                                     <td class="text-center">
-                                        @if($expense->image_path)
-                                            <a href="#" target="_blank">
-                                                <i class="ti ti-camera f-s-16 text-info"></i>
-                                            </a>
-                                        @endif
+                                        <a href="{{ route('cash.expenses.gallery', $expense->id) }}"
+                                           title="Ver/subir adjuntos ({{ $expense->attachments_count ?? 0 }})">
+                                            @if($expense->attachments_count > 0 || $expense->image_path)
+                                                <i class="ti ti-camera-filled f-s-16 text-info"></i>
+                                            @else
+                                                <i class="ti ti-camera f-s-16 text-muted"></i>
+                                            @endif
+                                            @if(($expense->attachments_count ?? 0) > 0)
+                                                <span class="badge bg-info" style="font-size:9px; padding:1px 4px;">
+                                                    {{ $expense->attachments_count }}
+                                                </span>
+                                            @endif
+                                        </a>
                                     </td>
                                     <td class="text-center">{{ $expense->date?->format('d/m/Y') }}</td>
                                     <td>{{ $expense->user?->username ?? $expense->user?->name ?? '-' }}</td>
@@ -180,14 +190,51 @@
                                 </tr>
                             </tfoot>
                         </table>
-                    </div>
+                        </div>{{-- /#expensesTable --}}
+
+                        {{-- Botones flotantes para scroll dentro de la tabla --}}
+                        <div class="expenses-fab">
+                            <button type="button"
+                                    class="btn btn-sm btn-dark rounded-circle shadow"
+                                    title="Ir al inicio"
+                                    onclick="document.getElementById('expensesTable').scrollTo({top:0, behavior:'smooth'})">
+                                <i class="ti ti-chevron-up"></i>
+                            </button>
+                            <button type="button"
+                                    class="btn btn-sm btn-primary rounded-circle shadow"
+                                    title="Ver totales (ir al final)"
+                                    onclick="document.getElementById('expensesTable').scrollTo({top:document.getElementById('expensesTable').scrollHeight, behavior:'smooth'})">
+                                <i class="ti ti-chevron-down"></i>
+                            </button>
+                        </div>
+                    </div>{{-- /position-relative --}}
+
+                    <style>
+                        .expenses-fab {
+                            position: fixed;
+                            bottom: 24px;
+                            left: 24px;
+                            display: flex;
+                            flex-direction: column;
+                            gap: 8px;
+                            z-index: 1050;
+                        }
+                        .expenses-fab .btn {
+                            width: 42px; height: 42px; padding: 0;
+                            display: inline-flex; align-items: center; justify-content: center;
+                            opacity: 0.9;
+                            transition: opacity .15s ease, transform .15s ease;
+                        }
+                        .expenses-fab .btn:hover { opacity: 1; transform: scale(1.08); }
+                        .expenses-fab .ti { font-size: 18px; }
+                    </style>
 
                     {{-- Cards Mobile --}}
                     <div class="d-md-none">
                         @forelse($expenses as $expense)
                             @php
                                 $isOtros = $expense->modo === 'Otros';
-                                $canEdit = $isSuperUsuario || (
+                                $canEdit = $puedeEditarHistorico || (
                                     $expense->date?->format('Y-m-d') === $hoy
                                     && $expense->user_id === $userId
                                 );

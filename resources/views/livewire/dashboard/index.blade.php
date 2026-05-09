@@ -3,11 +3,7 @@
      ========================================================= --}}
 <div class="huac-dashboard">
 
-    {{-- Tipografías editoriales (Instrument Serif + IBM Plex Mono) --}}
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+    {{-- Sin fuentes adicionales: usa Poppins del layout global --}}
 
     @php
         $hour = (int) now()->format('H');
@@ -15,6 +11,18 @@
         $userName = trim(explode(' ', auth()->user()->name ?? 'Operador')[0]);
 
         $fmt = fn($n, $d=2) => number_format((float)$n, $d, '.', ',');
+
+        // Iniciales (max 2 letras) y color HSL determinístico desde el nombre
+        $iniciales = function (?string $name) {
+            $name = trim((string) $name);
+            if ($name === '' || $name === '—') return '··';
+            return collect(explode(' ', $name))->filter()->take(2)
+                ->map(fn ($w) => mb_strtoupper(mb_substr($w, 0, 1)))->join('');
+        };
+        $avatarStyle = function (?string $name) {
+            $h = abs(crc32(mb_strtolower(trim((string) $name)))) % 360;
+            return "background: hsl({$h}, 55%, 92%); color: hsl({$h}, 60%, 28%); border-color: hsl({$h}, 50%, 80%);";
+        };
     @endphp
 
     {{-- ════════ TIRA SUPERIOR ════════ --}}
@@ -310,49 +318,66 @@
                         <i class="ti ti-arrow-narrow-right"></i></a>
                 </header>
                 <div class="dash-panel__body p-0">
-                    <div class="table-responsive">
-                        <table class="dash-table">
-                            <thead>
-                                <tr>
-                                    <th>Fecha</th>
-                                    <th>Cliente</th>
-                                    <th>Tipo</th>
-                                    <th class="text-end">Monto</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($ultimosPagos as $pago)
-                                    <tr>
-                                        <td class="dash-table__date">
-                                            {{ $pago->fecha?->format('d M') }}
-                                        </td>
-                                        <td>
-                                            <span class="dash-table__name">
-                                                {{ $pago->credit?->client?->fullName() ?? '—' }}
+                    @if($ultimosPagos->isEmpty())
+                        <div class="dash-empty">
+                            <i class="ti ti-cash-off"></i>
+                            <p>Sin pagos registrados.</p>
+                        </div>
+                    @else
+                        <ul class="dash-feed">
+                            @foreach($ultimosPagos as $pago)
+                                @php
+                                    $tipoUp = strtoupper($pago->tipo ?? '');
+                                    $iconClass = match($tipoUp) {
+                                        'CAPITAL' => 'ti-cash',
+                                        'INTERES' => 'ti-percentage',
+                                        'MORA'    => 'ti-alert-triangle',
+                                        default   => 'ti-receipt-2',
+                                    };
+                                    $tipoMod = match($tipoUp) {
+                                        'CAPITAL' => 'cap',
+                                        'INTERES' => 'int',
+                                        'MORA'    => 'mor',
+                                        default   => 'def',
+                                    };
+                                    $cliente = $pago->credit?->client?->fullName() ?? '—';
+                                    $hace = $pago->fecha
+                                        ? \Carbon\Carbon::parse($pago->fecha)->locale('es')->diffForHumans(['parts' => 1, 'short' => true])
+                                        : '';
+                                @endphp
+                                <li class="dash-feed__row">
+                                    <span class="dash-feed__avatar"
+                                          style="{{ $avatarStyle($cliente) }}"
+                                          title="{{ $cliente }}">
+                                        {{ $iniciales($cliente) }}
+                                        <span class="dash-feed__dot dash-feed__dot--{{ $tipoMod }}"
+                                              title="{{ $pago->tipo }}">
+                                            <i class="ti {{ $iconClass }}"></i>
+                                        </span>
+                                    </span>
+                                    <div class="dash-feed__main">
+                                        <div class="dash-feed__top">
+                                            <a href="{{ route('credits.show', $pago->credit_id) }}"
+                                               class="dash-feed__name">
+                                                {{ \Illuminate\Support\Str::limit($cliente, 32) }}
+                                            </a>
+                                            <span class="dash-feed__amount dash-feed__amount--{{ $tipoMod }}">
+                                                S/ {{ $fmt($pago->monto) }}
                                             </span>
-                                            <span class="dash-table__sub">#{{ $pago->credit_id ?? '—' }}</span>
-                                        </td>
-                                        <td>
-                                            @php
-                                                $tipoClass = match(strtoupper($pago->tipo ?? '')) {
-                                                    'CAPITAL' => 'is-cap',
-                                                    'INTERES' => 'is-int',
-                                                    'MORA'    => 'is-mor',
-                                                    default   => '',
-                                                };
-                                            @endphp
-                                            <span class="dash-pill {{ $tipoClass }}">{{ $pago->tipo }}</span>
-                                        </td>
-                                        <td class="text-end dash-table__num">S/ {{ $fmt($pago->monto) }}</td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="4" class="dash-empty--row">Sin pagos registrados.</td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
+                                        </div>
+                                        <div class="dash-feed__bot">
+                                            <span class="dash-pill is-{{ $tipoMod }}">{{ $pago->tipo }}</span>
+                                            <span class="dash-feed__meta">
+                                                <i class="ti ti-credit-card"></i> #{{ $pago->credit_id ?? '—' }}
+                                                <span class="dash-feed__sep">·</span>
+                                                <i class="ti ti-clock"></i> {{ $hace }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
                 </div>
             </article>
         </div>
@@ -371,49 +396,79 @@
                         <i class="ti ti-arrow-narrow-right"></i></a>
                 </header>
                 <div class="dash-panel__body p-0">
-                    <div class="table-responsive">
-                        <table class="dash-table">
-                            <thead>
-                                <tr>
-                                    <th>Fecha</th>
-                                    <th>Código</th>
-                                    <th>Cliente</th>
-                                    <th class="text-end">Importe</th>
-                                    <th>Situación</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($creditosRecientes as $c)
-                                    <tr>
-                                        <td class="dash-table__date">{{ $c->fecha_prestamo?->format('d M') }}</td>
-                                        <td>
-                                            <a href="{{ route('credits.show', $c->id) }}" class="dash-link dash-link--inline">#{{ $c->id }}</a>
-                                        </td>
-                                        <td>
-                                            <span class="dash-table__name">{{ $c->client?->fullName() ?? '—' }}</span>
-                                        </td>
-                                        <td class="text-end dash-table__num">S/ {{ $fmt($c->importe) }}</td>
-                                        <td>
-                                            @php
-                                                $sitClass = match($c->situacion) {
-                                                    'Activo'       => 'is-active',
-                                                    'Cancelado'    => 'is-cancel',
-                                                    'Refinanciado' => 'is-refin',
-                                                    'Eliminado'    => 'is-elim',
-                                                    default        => '',
-                                                };
-                                            @endphp
-                                            <span class="dash-pill {{ $sitClass }}">{{ $c->situacion }}</span>
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="5" class="dash-empty--row">Sin créditos registrados.</td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
+                    @if($creditosRecientes->isEmpty())
+                        <div class="dash-empty">
+                            <i class="ti ti-credit-card-off"></i>
+                            <p>Sin créditos registrados.</p>
+                        </div>
+                    @else
+                        <ul class="dash-feed dash-feed--grid">
+                            @foreach($creditosRecientes as $c)
+                                @php
+                                    $tipoMod = match((int) $c->tipo_planilla) {
+                                        1 => 'sem',
+                                        3 => 'mes',
+                                        4 => 'dia',
+                                        default => 'def',
+                                    };
+                                    $tipoIcon = match((int) $c->tipo_planilla) {
+                                        1 => 'ti-calendar-week',
+                                        3 => 'ti-calendar-month',
+                                        4 => 'ti-calendar-event',
+                                        default => 'ti-credit-card',
+                                    };
+                                    $tipoLabel = match((int) $c->tipo_planilla) {
+                                        1 => 'Semanal',
+                                        3 => 'Mensual',
+                                        4 => 'Diario',
+                                        default => 'Crédito',
+                                    };
+                                    $sitMod = match($c->situacion) {
+                                        'Activo'       => 'active',
+                                        'Cancelado'    => 'cancel',
+                                        'Refinanciado' => 'refin',
+                                        'Eliminado'    => 'elim',
+                                        default        => 'def',
+                                    };
+                                    $cliente = $c->client?->fullName() ?? '—';
+                                    $hace = $c->fecha_prestamo
+                                        ? \Carbon\Carbon::parse($c->fecha_prestamo)->locale('es')->diffForHumans(['parts' => 1, 'short' => true])
+                                        : '';
+                                @endphp
+                                <li class="dash-feed__row">
+                                    <span class="dash-feed__avatar"
+                                          style="{{ $avatarStyle($cliente) }}"
+                                          title="{{ $cliente }}">
+                                        {{ $iniciales($cliente) }}
+                                        <span class="dash-feed__dot dash-feed__dot--{{ $tipoMod }}"
+                                              title="{{ $tipoLabel }}">
+                                            <i class="ti {{ $tipoIcon }}"></i>
+                                        </span>
+                                    </span>
+                                    <div class="dash-feed__main">
+                                        <div class="dash-feed__top">
+                                            <a href="{{ route('credits.show', $c->id) }}" class="dash-feed__name">
+                                                {{ \Illuminate\Support\Str::limit($cliente, 30) }}
+                                            </a>
+                                            <span class="dash-feed__amount">S/ {{ $fmt($c->importe) }}</span>
+                                        </div>
+                                        <div class="dash-feed__bot">
+                                            <span class="dash-pill is-{{ $sitMod }}">{{ $c->situacion }}</span>
+                                            <span class="dash-feed__meta">
+                                                <i class="ti {{ $tipoIcon }}"></i> {{ $tipoLabel }}
+                                                <span class="dash-feed__sep">·</span>
+                                                <i class="ti ti-list-numbers"></i> {{ $c->cuotas }} c.
+                                                <span class="dash-feed__sep">·</span>
+                                                <i class="ti ti-hash"></i>{{ $c->id }}
+                                                <span class="dash-feed__sep">·</span>
+                                                <i class="ti ti-clock"></i> {{ $hace }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
                 </div>
             </article>
         </div>
@@ -438,8 +493,8 @@
     --huac-mute:     #6B6F7A;
     --huac-mute-2:   #9AA0AA;
 
-    --huac-serif:    'Instrument Serif', 'Iowan Old Style', Georgia, serif;
-    --huac-mono:     'IBM Plex Mono', ui-monospace, 'JetBrains Mono', monospace;
+    --huac-serif:    'Poppins', sans-serif;
+    --huac-mono:     'Poppins', sans-serif;
 
     font-feature-settings: 'tnum' 1;
     padding: 0 16px 32px;
@@ -452,18 +507,18 @@
 }
 .dash-topstrip__left { min-width: 0; }
 .dash-greeting {
-    font-family: var(--huac-serif);
-    font-size: clamp(28px, 3.2vw, 42px);
-    line-height: 1.05;
+    font-family: 'Poppins', sans-serif;
+    font-size: clamp(24px, 2.8vw, 34px);
+    line-height: 1.15;
     color: var(--huac-ink);
     margin: 6px 0 0;
     letter-spacing: -0.01em;
-    font-weight: 400;
+    font-weight: 600;
 }
 .dash-greeting em {
-    font-style: italic;
+    font-style: normal;
     color: var(--huac-accent);
-    font-weight: 400;
+    font-weight: 700;
 }
 .dash-greeting__sub {
     display: block;
@@ -558,22 +613,22 @@
     flex-wrap: wrap;
 }
 .dash-currency {
-    font-size: 28px;
+    font-size: 24px;
     color: rgba(255,255,255,.55);
-    font-style: italic;
-    letter-spacing: -0.02em;
+    font-weight: 500;
+    letter-spacing: -0.01em;
 }
 .dash-bigint {
-    font-size: clamp(48px, 7vw, 88px);
-    font-style: italic;
-    letter-spacing: -0.04em;
+    font-size: clamp(40px, 6vw, 72px);
+    font-weight: 700;
+    letter-spacing: -0.025em;
     font-feature-settings: 'tnum' 1;
 }
 .dash-decimal {
-    font-size: 28px;
+    font-size: 24px;
     color: rgba(255,255,255,.55);
-    font-style: italic;
-    letter-spacing: -0.02em;
+    font-weight: 500;
+    letter-spacing: -0.01em;
 }
 
 .dash-hero__foot {
@@ -587,8 +642,9 @@
 .dash-hero__split { display: flex; gap: 28px; flex-wrap: wrap; }
 .dash-hero__split > div { display: flex; flex-direction: column; gap: 4px; }
 .dash-hero__val {
-    font-family: var(--huac-serif); font-style: italic;
-    font-size: 24px; color: #fff; letter-spacing: -0.01em;
+    font-family: 'Poppins', sans-serif; font-weight: 600;
+    font-size: 18px; color: #fff; letter-spacing: -0.005em;
+    font-feature-settings: 'tnum' 1;
 }
 .dash-hero__val--warn { color: #FFB57A; }
 
@@ -638,12 +694,12 @@
 .dash-ops__lbl { font-size: 13px; color: var(--huac-ink); font-weight: 500; }
 .dash-ops__sub { font-family: var(--huac-mono); font-size: 10px; color: var(--huac-mute-2); }
 .dash-ops__num {
-    font-family: var(--huac-serif); font-style: italic;
-    font-size: 18px; color: var(--huac-ink);
-    letter-spacing: -0.01em;
+    font-family: 'Poppins', sans-serif; font-weight: 600;
+    font-size: 15px; color: var(--huac-ink);
+    letter-spacing: -0.005em;
     font-feature-settings: 'tnum' 1;
 }
-.dash-ops__num--big { font-size: 22px; }
+.dash-ops__num--big { font-size: 18px; font-weight: 700; }
 .dash-ops__num.is-neg { color: var(--huac-warn); }
 
 /* ── DIVISORES EDITORIALES ────────────────────────────── */
@@ -652,9 +708,9 @@
     margin: 32px 0 16px;
 }
 .dash-section__num {
-    font-family: var(--huac-serif); font-style: italic;
-    font-size: 22px; color: var(--huac-mute-2);
-    letter-spacing: -0.01em;
+    font-family: 'Poppins', sans-serif; font-weight: 700;
+    font-size: 16px; color: var(--huac-mute-2);
+    letter-spacing: 0;
 }
 .dash-section__lbl {
     font-family: 'Poppins', sans-serif;
@@ -686,14 +742,14 @@
     font-size: 18px;
 }
 .dash-kpi__num {
-    font-family: var(--huac-serif); font-style: italic;
-    font-size: 42px; line-height: 1; color: var(--huac-ink);
-    letter-spacing: -0.025em;
+    font-family: 'Poppins', sans-serif; font-weight: 700;
+    font-size: 32px; line-height: 1; color: var(--huac-ink);
+    letter-spacing: -0.02em;
     font-feature-settings: 'tnum' 1;
 }
 .dash-kpi__num small {
-    font-size: 18px; color: var(--huac-mute);
-    margin-right: 4px; font-style: italic;
+    font-size: 14px; color: var(--huac-mute);
+    margin-right: 4px; font-weight: 500;
 }
 .dash-kpi__foot { margin-top: 10px; min-height: 16px; }
 .dash-kpi--warn .dash-kpi__num { color: var(--huac-warn); }
@@ -731,12 +787,12 @@
     padding: 18px 22px 12px; gap: 16px;
 }
 .dash-panel__title {
-    font-family: var(--huac-serif); font-style: normal;
-    font-size: 22px; color: var(--huac-ink);
-    margin: 4px 0 0; letter-spacing: -0.01em; font-weight: 400;
+    font-family: 'Poppins', sans-serif;
+    font-size: 18px; color: var(--huac-ink);
+    margin: 4px 0 0; letter-spacing: -0.01em; font-weight: 600;
 }
 .dash-panel__title em {
-    font-style: italic; font-weight: 400;
+    font-style: normal; font-weight: 700;
     font-feature-settings: 'tnum' 1;
 }
 .dash-panel__title small {
@@ -788,8 +844,9 @@
 .dash-donut__sw--eliminado    { background: #DC2626; }
 .dash-donut__lbl { font-family: 'Poppins', sans-serif; }
 .dash-donut__val {
-    font-family: var(--huac-serif); font-style: italic;
-    font-size: 16px; color: #fff;
+    font-family: 'Poppins', sans-serif; font-weight: 700;
+    font-size: 14px; color: #fff;
+    font-feature-settings: 'tnum' 1;
 }
 
 /* ── ALERTAS ──────────────────────────────────────────── */
@@ -812,8 +869,8 @@
 .dash-alerts__num { text-align: right; }
 .dash-alerts__val {
     display: block;
-    font-family: var(--huac-serif); font-style: italic;
-    font-size: 18px; color: var(--huac-ink); letter-spacing: -0.01em;
+    font-family: 'Poppins', sans-serif; font-weight: 600;
+    font-size: 14px; color: var(--huac-ink); letter-spacing: -0.005em;
     font-feature-settings: 'tnum' 1;
 }
 .dash-alerts__days {
@@ -850,8 +907,8 @@
 .dash-table__name { display: block; font-weight: 500; }
 .dash-table__sub  { display: block; font-family: var(--huac-mono); font-size: 10px; color: var(--huac-mute-2); }
 .dash-table__num {
-    font-family: var(--huac-serif); font-style: italic;
-    font-size: 16px; letter-spacing: -0.01em;
+    font-family: 'Poppins', sans-serif; font-weight: 600;
+    font-size: 13px; letter-spacing: -0.005em;
     font-feature-settings: 'tnum' 1;
     white-space: nowrap;
 }
@@ -867,6 +924,136 @@
 .dash-pill.is-cap   { background: #E0F2FE; color: #075985; }
 .dash-pill.is-int   { background: #FEF3C7; color: #92400E; }
 .dash-pill.is-mor   { background: #FEE2E2; color: #991B1B; }
+.dash-pill.is-def   { background: #ECECF0; color: #4A4F5A; }
+
+/* ── FEED de movimientos recientes ────────────────────── */
+.dash-feed { list-style: none; margin: 0; padding: 0; }
+.dash-feed__row {
+    display: grid;
+    grid-template-columns: 40px 1fr;
+    align-items: center; gap: 14px;
+    padding: 14px 22px;
+    border-top: 1px solid var(--huac-rule-2);
+    transition: background .15s ease;
+    position: relative;
+}
+.dash-feed__row:first-child { border-top: 0; }
+.dash-feed__row:hover { background: rgba(0,155,220,.04); }
+
+.dash-feed__icon {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+    border: 1px solid transparent;
+    transition: transform .2s ease;
+}
+.dash-feed__row:hover .dash-feed__icon { transform: scale(1.05); }
+
+/* Avatar con iniciales del cliente + dot indicador del tipo */
+.dash-feed__avatar {
+    position: relative;
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    border: 1px solid;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px; font-weight: 700;
+    letter-spacing: 0.02em;
+    flex-shrink: 0;
+    transition: transform .2s ease;
+    user-select: none;
+}
+.dash-feed__row:hover .dash-feed__avatar { transform: scale(1.05); }
+
+.dash-feed__dot {
+    position: absolute;
+    bottom: -3px; right: -3px;
+    width: 18px; height: 18px;
+    border-radius: 999px;
+    border: 2px solid #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.15);
+}
+.dash-feed__dot i { font-size: 10px; line-height: 1; }
+.dash-feed__dot--cap { background: #0EA5E9; color: #fff; }
+.dash-feed__dot--int { background: #F59E0B; color: #fff; }
+.dash-feed__dot--mor { background: #DC2626; color: #fff; }
+.dash-feed__dot--sem { background: #22C55E; color: #fff; }
+.dash-feed__dot--mes { background: #3B82F6; color: #fff; }
+.dash-feed__dot--dia { background: #F97316; color: #fff; }
+.dash-feed__dot--def { background: #6B7280; color: #fff; }
+
+.dash-feed__icon--cap { background: linear-gradient(135deg, #E0F2FE 0%, #BAE6FD 100%); color: #075985; border-color: rgba(7,89,133,.15); }
+.dash-feed__icon--int { background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%); color: #92400E; border-color: rgba(146,64,14,.15); }
+.dash-feed__icon--mor { background: linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%); color: #991B1B; border-color: rgba(153,27,27,.15); }
+.dash-feed__icon--def { background: #F1F5F9; color: #475569; border-color: #E2E8F0; }
+/* Tipo de planilla (créditos) */
+.dash-feed__icon--sem { background: linear-gradient(135deg, #DCFCE7 0%, #BBF7D0 100%); color: #166534; border-color: rgba(22,101,52,.15); }
+.dash-feed__icon--mes { background: linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%); color: #1E40AF; border-color: rgba(30,64,175,.15); }
+.dash-feed__icon--dia { background: linear-gradient(135deg, #FFEDD5 0%, #FED7AA 100%); color: #9A3412; border-color: rgba(154,52,18,.15); }
+
+/* Grid 2 columnas para créditos recientes (col-12, aprovecha el ancho) */
+.dash-feed--grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+}
+@media (min-width: 992px) {
+    .dash-feed--grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+    }
+    .dash-feed--grid .dash-feed__row:nth-child(2) {
+        border-top: 0;
+    }
+    .dash-feed--grid .dash-feed__row:nth-child(odd) {
+        border-right: 1px solid var(--huac-rule-2);
+    }
+}
+
+.dash-feed__main { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+
+.dash-feed__top {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 12px; min-width: 0;
+}
+.dash-feed__name {
+    font-family: 'Poppins', sans-serif;
+    font-size: 13.5px; font-weight: 600;
+    color: var(--huac-ink);
+    text-decoration: none;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    flex: 1; min-width: 0;
+    transition: color .15s ease;
+}
+.dash-feed__name:hover { color: var(--huac-accent); }
+
+.dash-feed__amount {
+    font-family: 'Poppins', sans-serif;
+    font-size: 16px; font-weight: 700;
+    color: var(--huac-ink);
+    letter-spacing: -0.01em;
+    font-feature-settings: 'tnum' 1;
+    white-space: nowrap;
+}
+.dash-feed__amount--cap { color: #075985; }
+.dash-feed__amount--int { color: #92400E; }
+.dash-feed__amount--mor { color: #991B1B; }
+
+.dash-feed__bot {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.dash-feed__meta {
+    font-family: 'Poppins', sans-serif;
+    font-size: 11px; color: var(--huac-mute);
+    display: inline-flex; align-items: center; gap: 4px;
+    font-weight: 500;
+}
+.dash-feed__meta i { font-size: 12px; opacity: .7; }
+.dash-feed__sep { margin: 0 4px; opacity: .5; }
 .dash-pill.is-active   { background: #DCFCE7; color: #166534; }
 .dash-pill.is-cancel   { background: #E5E7EB; color: #4B5563; }
 .dash-pill.is-refin    { background: #FEF3C7; color: #92400E; }
@@ -976,12 +1163,12 @@ body.dark .dash-pill { background: #3a3d4a; color: #cbd0db; }
                 grid: { borderColor: '#ECECF0', strokeDashArray: 3, padding: { left: 10, right: 10 } },
                 xaxis: {
                     type: 'datetime',
-                    labels: { style: { colors: '#6B6F7A', fontSize: '10px', fontFamily: 'IBM Plex Mono, monospace' }, format: 'dd MMM' },
+                    labels: { style: { colors: '#6B6F7A', fontSize: '10px', fontFamily: 'Poppins, sans-serif' }, format: 'dd MMM' },
                     axisBorder: { show: false }, axisTicks: { show: false },
                 },
                 yaxis: {
                     labels: {
-                        style: { colors: '#9AA0AA', fontSize: '10px', fontFamily: 'IBM Plex Mono, monospace' },
+                        style: { colors: '#9AA0AA', fontSize: '10px', fontFamily: 'Poppins, sans-serif' },
                         formatter: v => 'S/ ' + (v >= 1000 ? (v/1000).toFixed(1)+'k' : v.toFixed(0)),
                     },
                 },
@@ -1011,9 +1198,9 @@ body.dark .dash-pill { background: #3a3d4a; color: #cbd0db; }
                             size: '72%',
                             labels: {
                                 show: true,
-                                name:  { show: true, fontSize: '10px', fontFamily: 'Poppins, sans-serif', color: 'rgba(255,255,255,.6)', offsetY: 8 },
-                                value: { show: true, fontSize: '28px', fontFamily: 'Instrument Serif, serif', fontStyle: 'italic', color: '#fff', offsetY: -10, formatter: v => v },
-                                total: { show: true, label: 'Total', fontSize: '10px', color: 'rgba(255,255,255,.6)', formatter: w => w.globals.seriesTotals.reduce((a,b)=>a+b,0) },
+                                name:  { show: true, fontSize: '11px', fontFamily: 'Poppins, sans-serif', fontWeight: 500, color: 'rgba(255,255,255,.65)', letterSpacing: '0.05em', offsetY: 22 },
+                                value: { show: true, fontSize: '26px', fontFamily: 'Poppins, sans-serif', fontWeight: 700, color: '#fff', offsetY: -8, formatter: v => v },
+                                total: { show: true, label: 'Total', fontSize: '11px', fontWeight: 500, color: 'rgba(255,255,255,.65)', formatter: w => w.globals.seriesTotals.reduce((a,b)=>a+b,0) },
                             }
                         }
                     }

@@ -49,6 +49,11 @@ class Client extends Model
         return $this->hasMany(ClientAttachment::class);
     }
 
+    public function avales(): HasMany
+    {
+        return $this->hasMany(ClientAval::class);
+    }
+
     public function scopeActive($q)
     {
         return $q->where('status', 'active');

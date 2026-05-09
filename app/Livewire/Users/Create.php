@@ -6,8 +6,8 @@ use App\Models\Headquarter;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Database\Seeders\RoleSetupSeeder;
 use Livewire\Component;
-use Spatie\Permission\Models\Role;
 
 class Create extends Component
 {
@@ -46,12 +46,12 @@ class Create extends Component
 
     public function mount()
     {
-        if (!auth()->user()?->hasAnyRole('superusuario', 'administrador')) {
+        if (!auth()->user()?->can('configuracion.usuarios')) {
             abort(403);
         }
 
         $this->headquarters = Headquarter::where('status', 'active')->get(['id', 'name']);
-        $this->roles = Role::all(['id', 'name']);
+        $this->roles = RoleSetupSeeder::orderedRoles();
     }
 
     public function clean(): void

@@ -18,7 +18,7 @@ class Index extends Component
     #[On('register_destroy')]
     public function destroy(int $id): void
     {
-        if (!auth()->user()?->hasAnyRole('superusuario', 'administrador', 'director')) {
+        if (!auth()->user()?->can('clientes.eliminar')) {
             abort(403);
         }
         Client::findOrFail($id)->update(['status' => 'inactive']);
@@ -33,8 +33,7 @@ class Index extends Component
             ->where('status', 'active')
             ->with(['asesor:id,name,username', 'headquarter:id,name']);
 
-        // Filtro por rol: Asesor solo ve sus clientes
-        if ($user->hasRole('asesor')) {
+        if ($user->can('clientes.scope-propio')) {
             $query->where('asesor_id', $user->id);
         }
 
@@ -66,8 +65,8 @@ class Index extends Component
 
         $clients = $query->orderByRaw('CAST(expediente AS UNSIGNED) ASC')->get();
 
-        // Asesores para dropdown
-        $asesores = User::whereHas('roles', fn ($q) => $q->whereIn('name', ['asesor', 'superusuario', 'administrador', 'director']))
+        // Asesores para dropdown: cualquier usuario que pueda ser "asesor responsable" o tenga acceso amplio.
+        $asesores = User::permission('creditos.ser-asesor-responsable')
             ->where('status', 'active')
             ->orderBy('name')
             ->get(['id', 'name', 'username']);

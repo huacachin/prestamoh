@@ -13,7 +13,7 @@ class Create extends Component
 
     public function mount(): void
     {
-        if (!auth()->user()?->hasAnyRole('superusuario', 'administrador')) {
+        if (!auth()->user()?->can('configuracion.sucursales')) {
             abort(403);
         }
     }

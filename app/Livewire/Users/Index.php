@@ -13,12 +13,13 @@ class Index extends Component
     #[On('register_destroy')]
     public function destroy(int $id): void
     {
-        if (!auth()->user()?->hasAnyRole('superusuario', 'administrador')) {
+        if (!auth()->user()?->can('configuracion.usuarios')) {
             abort(403);
         }
 
         $user = User::findOrFail($id);
-        if ($user->hasRole('superusuario')) {
+        // Director es el rol super: no se puede desactivar.
+        if ($user->hasRole('director')) {
             abort(403);
         }
 

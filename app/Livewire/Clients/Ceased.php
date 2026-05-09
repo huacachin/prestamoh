@@ -18,7 +18,7 @@ class Ceased extends Component
     #[On('register_destroy')]
     public function reactivate(int $id): void
     {
-        if (!auth()->user()?->hasAnyRole('superusuario', 'administrador', 'director')) {
+        if (!auth()->user()?->can('clientes.eliminar')) {
             abort(403);
         }
         Client::findOrFail($id)->update(['status' => 'active']);
@@ -33,8 +33,7 @@ class Ceased extends Component
             ->where('status', 'inactive')
             ->with(['asesor:id,name,username', 'headquarter:id,name']);
 
-        // Filtro por rol: Asesor solo ve sus clientes
-        if ($user->hasRole('asesor')) {
+        if ($user->can('clientes.scope-propio')) {
             $query->where('asesor_id', $user->id);
         }
 
@@ -66,8 +65,7 @@ class Ceased extends Component
 
         $clients = $query->orderByRaw('CAST(expediente AS UNSIGNED) ASC')->get();
 
-        // Asesores para dropdown
-        $asesores = User::whereHas('roles', fn ($q) => $q->whereIn('name', ['asesor', 'superusuario', 'administrador', 'director']))
+        $asesores = User::permission('creditos.ser-asesor-responsable')
             ->where('status', 'active')
             ->orderBy('name')
             ->get(['id', 'name', 'username']);

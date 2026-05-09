@@ -74,16 +74,16 @@ class Edit extends Component
         $this->clientId = $id;
 
         $user = auth()->user();
-        $this->puedeEditarIdentidad = $user?->hasRole('superusuario') ?? false;
-        $this->puedeGuardar = !($user?->hasRole('asesor') ?? false);
+        $this->puedeEditarIdentidad = $user?->can('clientes.editar-identidad') ?? false;
+        // Quien tiene scope propio (analista, cobranzas) puede ver pero no guardar cambios.
+        $this->puedeGuardar = !($user?->can('clientes.scope-propio') ?? false);
 
         $this->tieneCreditosVigentes = Credit::where('client_id', $id)
             ->where('situacion', 'Activo')
             ->exists();
 
-        $this->asesores = User::query()
+        $this->asesores = User::permission('creditos.ser-asesor-responsable')
             ->where('status', 'active')
-            ->whereDoesntHave('roles', fn ($q) => $q->where('name', 'web'))
             ->orderBy('name')
             ->get(['id', 'name']);
 

@@ -14,31 +14,19 @@ trait TransactionPolicyTrait
 
     public function update(User $user, Model $record): bool
     {
-        if ($user->hasRole('director')) {
+        // Quien puede editar histórico edita siempre.
+        if ($user->can('caja.editar-historico')) {
             return true;
         }
 
-        $isToday = $this->isRecordFromToday($record);
-
-        if ($user->hasAnyRole(['gerente', 'administrador'])) {
-            return $isToday;
-        }
-
-        if ($user->hasAnyRole(['supervisor', 'controlador'])) {
-            return $isToday && $record->user_id === $user->id;
-        }
-
-        return false;
+        // Resto: solo registros propios y del día.
+        return $this->isRecordFromToday($record) && $record->user_id === $user->id;
     }
 
     public function delete(User $user, Model $record): bool
     {
-        if ($user->hasRole('director')) {
+        if ($user->can('caja.eliminar')) {
             return true;
-        }
-
-        if ($user->hasAnyRole(['gerente', 'administrador'])) {
-            return $this->isRecordFromToday($record);
         }
 
         return false;

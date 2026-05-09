@@ -22,17 +22,26 @@ class Incomes extends Component
     public function render()
     {
         $user = auth()->user();
+        $crossHQ = $user->can('acceso.cross-headquarter');
+        $hqId = $user->headquarter_id ?? 1;
         $term = trim($this->compra);
 
         // ─── INGRESOS (Fijos/Otros) ────────────────────────────────────
+        // caja=1: caja principal. caja=3 son duplicados-espejo del legacy
+        // (huaca_ingreso3) que se ven solo en CashStatistics, no acá.
         $incomeQuery = Income::query()
             ->where('caja', 1)
             ->where(function ($q) {
                 $q->where('modo', '<>', 'Compra')->orWhereNull('modo');
             })
-            ->with('user:id,name,username');
+            ->with('user:id,name,username')
+            ->withCount('attachments');
 
-        if ($user->hasAnyRole(['asesor', 'cobranza'])) {
+        if (!$crossHQ) {
+            $incomeQuery->where('headquarter_id', $hqId);
+        }
+
+        if (!$user->can('caja.editar-historico')) {
             $incomeQuery->where('user_id', $user->id)
                         ->where('reason', 'Diario');
         }
@@ -56,9 +65,13 @@ class Incomes extends Component
 
         // ─── PAGOS DE CRÉDITOS (CREDITO) ───────────────────────────────
         $payQuery = Payment::query()
-            ->with(['credit.client:id,nombre,apellido_pat,apellido_mat']);
+            ->with(['credit.client:id,nombre,apellido_pat,apellido_mat', 'user:id,name,username']);
 
-        if ($user->hasAnyRole(['asesor', 'cobranza'])) {
+        if (!$crossHQ) {
+            $payQuery->where('headquarter_id', $hqId);
+        }
+
+        if (!$user->can('caja.editar-historico')) {
             $payQuery->where('user_id', $user->id);
         }
 
@@ -74,7 +87,10 @@ class Incomes extends Component
                 }),
                 '2' => $payQuery->where('detalle', 'like', "%{$term}%"),
                 '3' => $payQuery->where('asesor', 'like', "%{$term}%"),
-                '4' => null, // payments no tiene user filtrable por nombre directo
+                '4' => $payQuery->whereHas('user', fn ($u) => // G2: ahora sí busca usuario en payments
+                    $u->where('username', 'like', "%{$term}%")
+                      ->orWhere('name', 'like', "%{$term}%")
+                ),
                 default => null,
             };
         }
@@ -96,7 +112,8 @@ class Incomes extends Component
                 'documento' => $i->documento ?? '',
                 'modo'      => $i->modo,
                 'total'     => (float) $i->total,
-                'has_image' => !empty($i->image_path ?? null),
+                'has_image' => ($i->attachments_count ?? 0) > 0 || !empty($i->image_path ?? null),
+                'attachments_count' => (int) ($i->attachments_count ?? 0),
                 'editable'  => true,
                 'user_id'   => $i->user_id,
             ]);
@@ -109,7 +126,7 @@ class Incomes extends Component
                 'kind'      => 'payment',
                 'id'        => $p->id,
                 'date'      => $p->fecha,
-                'usuario'   => '',
+                'usuario'   => $p->user?->username ?? $p->user?->name ?? '',
                 'asesor'    => $p->asesor,
                 'reason'    => $clienteNombre,         // legacy: aa = nombre cliente
                 'detail'    => $p->detalle,
@@ -117,6 +134,7 @@ class Incomes extends Component
                 'modo'      => 'CREDITO',
                 'total'     => (float) $p->monto,
                 'has_image' => false,
+                'attachments_count' => 0,
                 'editable'  => false,
                 'user_id'   => $p->user_id,
             ]);

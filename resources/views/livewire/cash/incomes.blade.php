@@ -29,46 +29,46 @@
                                 <label class="form-label mb-0 small"><b>BUSCAR X</b></label>
                                 <div class="d-flex gap-3 mb-1">
                                     <div class="form-check">
-                                        <input class="form-check-input me-1" type="radio" wire:model.live="tipo" value="1" id="tipoA">
+                                        <input class="form-check-input me-1" type="radio" wire:model.defer="tipo" value="1" id="tipoA">
                                         <label class="form-check-label small" for="tipoA">A</label>
                                     </div>
                                     <div class="form-check">
-                                        <input class="form-check-input me-1" type="radio" wire:model.live="tipo" value="2" id="tipoMotivo">
+                                        <input class="form-check-input me-1" type="radio" wire:model.defer="tipo" value="2" id="tipoMotivo">
                                         <label class="form-check-label small" for="tipoMotivo">Motivo</label>
                                     </div>
                                     <div class="form-check">
-                                        <input class="form-check-input me-1" type="radio" wire:model.live="tipo" value="3" id="tipoAsesor">
+                                        <input class="form-check-input me-1" type="radio" wire:model.defer="tipo" value="3" id="tipoAsesor">
                                         <label class="form-check-label small" for="tipoAsesor">Asesor</label>
                                     </div>
                                     <div class="form-check">
-                                        <input class="form-check-input me-1" type="radio" wire:model.live="tipo" value="4" id="tipoUsuario">
+                                        <input class="form-check-input me-1" type="radio" wire:model.defer="tipo" value="4" id="tipoUsuario">
                                         <label class="form-check-label small" for="tipoUsuario">Usuario</label>
                                     </div>
                                 </div>
                                 <input type="text" class="form-control form-control-sm"
-                                       wire:model.live.debounce.300ms="compra"
+                                       wire:model.defer="compra"
                                        placeholder="Ingrese el texto a buscar">
                             </div>
 
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small"><b>Fecha Inicio</b></label>
-                                <input type="date" class="form-control form-control-sm" wire:model.live="fei">
+                                <input type="date" class="form-control form-control-sm" wire:model.defer="fei">
                             </div>
 
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small"><b>Fecha Fin</b></label>
-                                <input type="date" class="form-control form-control-sm" wire:model.live="fef">
+                                <input type="date" class="form-control form-control-sm" wire:model.defer="fef">
                             </div>
                         </div>
                         <div class="d-flex gap-2 mb-2">
                             <button type="submit" class="btn btn-sm btn-primary">
                                 <i class="ti ti-search f-s-12"></i> Buscar
                             </button>
-                            @hasanyrole('superusuario|administrador|director|asesor')
+                            @can('caja.ingresos')
                                 <a href="{{ route('cash.incomes.create') }}" class="btn btn-sm btn-danger">
                                     <i class="ti ti-plus f-s-12"></i> Agregar Nuevo
                                 </a>
-                            @endhasanyrole
+                            @endcan
                             <a href="#" class="btn btn-sm btn-success">
                                 <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
                             </a>
@@ -76,13 +76,15 @@
                     </form>
 
                     @php
-                        $isSuperUsuario = auth()->user()->hasRole('superusuario');
+                        $puedeEditarHistorico = auth()->user()->can('caja.editar-historico');
+                        $puedeEliminar       = auth()->user()->can('caja.eliminar');
                         $userId = auth()->id();
                         $hoy = now()->format('Y-m-d');
                     @endphp
 
-                    {{-- Tabla Desktop --}}
-                    <div class="table-responsive d-none d-md-block" style="max-height: 70vh; overflow: auto;">
+                    {{-- Tabla Desktop con FAB scroll --}}
+                    <div class="position-relative d-none d-md-block">
+                        <div id="incomesTable" class="table-responsive" style="max-height: 70vh; overflow: auto;">
                         <table class="table table-bordered table-striped table-hover" style="font-size: 11px;">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
@@ -102,7 +104,7 @@
                                 @php
                                     $isOtros = $row['modo'] === 'Otros';
                                     $rowStyle = $isOtros ? 'color: red;' : '';
-                                    $canEdit = $row['editable'] && ($isSuperUsuario || (
+                                    $canEdit = $row['editable'] && ($puedeEditarHistorico || (
                                         $row['date']?->format('Y-m-d') === $hoy
                                         && $row['user_id'] === $userId
                                     ));
@@ -119,9 +121,19 @@
                                     </td>
                                     <td class="text-center">{{ $loop->iteration }}</td>
                                     <td class="text-center">
-                                        @if($row['has_image'])
-                                            <a href="#" target="_blank">
-                                                <i class="ti ti-camera f-s-16 text-info"></i>
+                                        @if($row['kind'] === 'income')
+                                            <a href="{{ route('cash.incomes.gallery', $row['id']) }}"
+                                               title="Ver/subir adjuntos ({{ $row['attachments_count'] ?? 0 }})">
+                                                @if($row['has_image'])
+                                                    <i class="ti ti-camera-filled f-s-16 text-info"></i>
+                                                @else
+                                                    <i class="ti ti-camera f-s-16 text-muted"></i>
+                                                @endif
+                                                @if(($row['attachments_count'] ?? 0) > 0)
+                                                    <span class="badge bg-info" style="font-size:9px; padding:1px 4px;">
+                                                        {{ $row['attachments_count'] }}
+                                                    </span>
+                                                @endif
                                             </a>
                                         @endif
                                     </td>
@@ -178,17 +190,64 @@
                                 </tr>
                             </tfoot>
                         </table>
-                    </div>
+                        </div>{{-- /#incomesTable --}}
+
+                        {{-- Botones flotantes para scroll dentro de la tabla --}}
+                        <div class="incomes-fab">
+                            <button type="button"
+                                    class="btn btn-sm btn-dark rounded-circle shadow"
+                                    title="Ir al inicio"
+                                    onclick="document.getElementById('incomesTable').scrollTo({top:0, behavior:'smooth'})">
+                                <i class="ti ti-chevron-up"></i>
+                            </button>
+                            <button type="button"
+                                    class="btn btn-sm btn-primary rounded-circle shadow"
+                                    title="Ver totales (ir al final)"
+                                    onclick="document.getElementById('incomesTable').scrollTo({top:document.getElementById('incomesTable').scrollHeight, behavior:'smooth'})">
+                                <i class="ti ti-chevron-down"></i>
+                            </button>
+                        </div>
+                    </div>{{-- /position-relative --}}
+
+                    <style>
+                        .incomes-fab {
+                            position: fixed;
+                            bottom: 24px;
+                            left: 24px;
+                            display: flex;
+                            flex-direction: column;
+                            gap: 8px;
+                            z-index: 1050;
+                        }
+                        .incomes-fab .btn {
+                            width: 42px;
+                            height: 42px;
+                            padding: 0;
+                            display: inline-flex;
+                            align-items: center;
+                            justify-content: center;
+                            opacity: 0.9;
+                            transition: opacity .15s ease, transform .15s ease;
+                        }
+                        .incomes-fab .btn:hover {
+                            opacity: 1;
+                            transform: scale(1.08);
+                        }
+                        .incomes-fab .ti { font-size: 18px; }
+                    </style>
 
                     {{-- Cards Mobile --}}
                     <div class="d-md-none">
                         @forelse($rows as $row)
                             @php
                                 $isOtros = $row['modo'] === 'Otros';
-                                $canEdit = $row['editable'] && ($isSuperUsuario || (
-                                    $row['date']?->format('Y-m-d') === $hoy
-                                    && $row['user_id'] === $userId
-                                ));
+                                $isGat = stripos((string)($row['reason'] ?? ''), 'Gat') !== false;
+                                $canEdit = $row['editable']
+                                    && !$isGat
+                                    && ($puedeEditarHistorico || (
+                                        $row['date']?->format('Y-m-d') === $hoy
+                                        && $row['user_id'] === $userId
+                                    ));
                             @endphp
                             <div class="card mb-2 shadow-sm {{ $isOtros ? 'border-danger' : '' }}">
                                 <div class="card-body p-3" style="{{ $isOtros ? 'color: red;' : '' }}">

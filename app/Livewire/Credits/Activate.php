@@ -63,13 +63,13 @@ class Activate extends Component
         if ($this->showDropdown && strlen(trim($this->search)) >= 1) {
             $term = trim($this->search);
             $user = auth()->user();
-            $isSuperUsuario = $user->hasRole('superusuario');
 
             $query = Credit::query()
                 ->with('client:id,nombre,apellido_pat,apellido_mat,documento')
                 ->select('id', 'client_id', 'importe', 'situacion', 'fecha_cancelacion', 'cuotas', 'tipo_planilla', 'interes', 'fecha_prestamo');
 
-            if (!$isSuperUsuario) {
+            // Sin permiso de bypass, solo se activan los cancelados HOY (legacy).
+            if (!$user->can('caja.bypass-fecha-anterior')) {
                 $query->where('fecha_cancelacion', today());
             }
 

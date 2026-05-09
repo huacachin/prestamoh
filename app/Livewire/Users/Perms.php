@@ -4,8 +4,8 @@ namespace App\Livewire\Users;
 
 use App\Models\Permission;
 use App\Models\User;
+use Database\Seeders\RoleSetupSeeder;
 use Livewire\Component;
-use Spatie\Permission\Models\Role;
 
 class Perms extends Component
 {
@@ -20,18 +20,19 @@ class Perms extends Component
 
     public function mount(int $id)
     {
-        if (!auth()->user()?->hasAnyRole('superusuario', 'administrador')) {
+        if (!auth()->user()?->can('usuarios.gestionar-permisos')) {
             abort(403);
         }
 
         $this->user = User::with('roles')->findOrFail($id);
 
         $this->permsUserName = $this->user->name;
-        $this->roles = Role::all(['id', 'name']);
+        $this->roles = RoleSetupSeeder::orderedRoles();
         $this->selectedRoleId = $this->user->roles()->value('id');
 
+        // Director: no editable (es el super-rol homologado).
         $editedRole = $this->user->roles->first()?->name;
-        if ($editedRole === 'superusuario') {
+        if ($editedRole === 'director') {
             $this->selectedPermissionNames = Permission::where('guard_name', 'web')->pluck('name')->toArray();
             $this->canEdit = false;
         } else {
@@ -41,48 +42,101 @@ class Perms extends Component
         $this->buildAclGroups();
     }
 
+    /**
+     * Construye los grupos en base a la estructura EXACTA del sidebar.
+     * Permisos en BD que no estén en este mapa quedan ocultos del form
+     * (siguen en la BD asignados a quienes ya los tienen, pero no se exponen).
+     */
     private function buildAclGroups(): void
     {
-        $perms = Permission::query()
-            ->where('guard_name', 'web')
-            ->orderBy('name')
-            ->get(['id', 'name', 'label', 'module', 'module_label']);
+        // Estructura idéntica al sidebar (resources/views/layout/sidebar.blade.php)
+        $sidebarStructure = [
+            [
+                'type'  => 'single',
+                'key'   => 'dashboard',
+                'title' => 'Panel De Control',
+                'permissions' => [
+                    ['perm' => 'dashboard', 'label' => 'Panel De Control'],
+                ],
+            ],
+            [
+                'type'  => 'group',
+                'key'   => 'configuracion',
+                'title' => 'Configuración',
+                'permissions' => [
+                    ['perm' => 'configuracion.usuarios',   'label' => 'Usuarios'],
+                    ['perm' => 'configuracion.sucursales', 'label' => 'Sucursales'],
+                ],
+            ],
+            [
+                'type'  => 'group',
+                'key'   => 'registro',
+                'title' => 'Registro',
+                'permissions' => [
+                    ['perm' => 'registro.activar',          'label' => 'Activar Prestamos'],
+                    ['perm' => 'registro.estado',           'label' => 'Cambiar Estado'],
+                    ['perm' => 'clientes',                  'label' => 'Cliente'],
+                    ['perm' => 'registro.cesados',          'label' => 'Cliente Cesados'],
+                    ['perm' => 'configuracion.conceptos',   'label' => 'Conceptos Fijos'],
+                    ['perm' => 'registro.eliminar-masivo',  'label' => 'Eliminar Masivo'],
+                    ['perm' => 'pagos',                     'label' => 'Pagos/Credito'],
+                    ['perm' => 'creditos',                  'label' => 'Prestamo'],
+                    ['perm' => 'configuracion.tipo-cambio', 'label' => 'Tipo de Cambio'],
+                ],
+            ],
+            [
+                'type'  => 'group',
+                'key'   => 'caja',
+                'title' => 'Caja',
+                'permissions' => [
+                    ['perm' => 'caja.apertura', 'label' => 'Apertura Caja'],
+                    ['perm' => 'caja.ingresos', 'label' => 'Ingreso'],
+                    ['perm' => 'caja.egresos',  'label' => 'Egreso'],
+                ],
+            ],
+            [
+                'type'  => 'group',
+                'key'   => 'reportes',
+                'title' => 'Reportes',
+                'permissions' => [
+                    // Reportes de pagos diario/mensual/semanal usan el permiso "pagos" del menú Registro,
+                    // por eso no aparecen aquí como permisos propios.
+                    ['perm' => 'reportes.asesor',              'label' => 'Reporte de Asesor'],
+                    ['perm' => 'reportes.pagos',               'label' => 'Reporte de Pago'],
+                    ['perm' => 'reportes.caja-estadistica',    'label' => 'Rep. Estad. Caja M.A.'],
+                    ['perm' => 'reportes.credito-estadistica', 'label' => 'Rep. Estad. Crédito'],
+                    ['perm' => 'reportes.caja-general-1',      'label' => 'Rep. General Caja 1'],
+                    ['perm' => 'reportes.caja-general-2',      'label' => 'Rep. General Caja 2'],
+                    ['perm' => 'reportes.caja-general-3',      'label' => 'Rep. General Caja 3'],
+                    ['perm' => 'reportes.cartera',             'label' => 'Resumen de Créditos'],
+                    ['perm' => 'reportes.morosidad',           'label' => 'Pendientes x Cobrar'],
+                    ['perm' => 'reportes.cancelados',          'label' => 'Resumen de Cancelados'],
+                    ['perm' => 'reportes.simulador',           'label' => 'Simulacro de Crédito'],
+                ],
+            ],
+        ];
 
+        // Sólo incluir items cuyo permiso EXISTA en BD (defensa contra cambios de schema)
+        $permsExistentes = Permission::where('guard_name', 'web')->pluck('name')->all();
         $groups = [];
-        foreach ($perms as $p) {
-            $name = $p->name;
-            $label = $p->label ?: ($p->module_label ?: $this->humanize($name));
-            if (str_contains($name, '.')) {
-                [$parent, $rest] = explode('.', $name, 2);
-                $groups[$parent] ??= ['type' => 'group', 'title' => $this->humanize($parent), 'items' => []];
-                $groups[$parent]['items'][] = ['key' => $name, 'label' => $p->label ?: $this->humanize($rest)];
-            } else {
-                $groups[$name] ??= ['type' => 'single', 'title' => $label, 'items' => []];
-                $groups[$name]['items'][] = ['key' => $name, 'label' => $label];
+
+        foreach ($sidebarStructure as $g) {
+            $items = [];
+            foreach ($g['permissions'] as $p) {
+                if (in_array($p['perm'], $permsExistentes, true)) {
+                    $items[] = ['key' => $p['perm'], 'label' => $p['label']];
+                }
             }
+            if (empty($items)) continue;
+
+            $groups[$g['key']] = [
+                'type'  => $g['type'],
+                'title' => $g['title'],
+                'items' => $items,
+            ];
         }
 
-        $sidebarOrder = ['dashboard', 'clientes', 'creditos', 'pagos', 'caja', 'reportes', 'configuracion'];
-        $ordered = [];
-        foreach ($sidebarOrder as $key) {
-            if (isset($groups[$key])) {
-                $ordered[$key] = $groups[$key];
-            }
-        }
-        foreach ($groups as $key => $group) {
-            if (!isset($ordered[$key])) {
-                $ordered[$key] = $group;
-            }
-        }
-
-        $this->aclGroups = $ordered;
-    }
-
-    private function humanize(string $val): string
-    {
-        $val = str_replace(['_', '-'], ' ', $val);
-        $parts = explode('.', $val);
-        return implode(' · ', array_map(fn ($x) => mb_convert_case($x, MB_CASE_TITLE, 'UTF-8'), $parts));
+        $this->aclGroups = $groups;
     }
 
     public function selectGroup(string $groupKey): void
@@ -101,7 +155,7 @@ class Perms extends Component
 
     public function savePerms(): void
     {
-        if (!auth()->user()?->hasAnyRole('superusuario', 'administrador')) {
+        if (!auth()->user()?->can('usuarios.gestionar-permisos')) {
             abort(403);
         }
 

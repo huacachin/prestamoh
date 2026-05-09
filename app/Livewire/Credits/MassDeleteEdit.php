@@ -20,7 +20,7 @@ class MassDeleteEdit extends Component
 
     public function reverse(): void
     {
-        if (!auth()->user()?->hasAnyRole('superusuario', 'administrador', 'director', 'gerente')) {
+        if (!auth()->user()?->can('registro.eliminar-masivo.revertir')) {
             $this->dispatch('errorAlert', ['message' => 'No tienes permisos para revertir esta operación.']);
             return;
         }
@@ -49,6 +49,9 @@ class MassDeleteEdit extends Component
                 }
             }
 
+            // Legacy editmasivo.php usa por error `id` de la última cuota como id del crédito
+            // (UPDATE cab_cuentacorriente WHERE id=$codigocuotas), por lo que la query nunca
+            // matcheaba y el crédito quedaba "Cancelado". Aquí restauramos correctamente.
             if ($this->record->credit_id) {
                 Credit::where('id', $this->record->credit_id)->update([
                     'estado'    => 1,

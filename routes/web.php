@@ -36,6 +36,7 @@ Route::middleware('auth')->group(function () {
         Route::get('clients/create', [ClientController::class, 'create'])->name('clients.create');
         Route::get('clients/{id}/edit', [ClientController::class, 'edit'])->name('clients.edit');
         Route::get('clients/{id}/gallery', [ClientController::class, 'gallery'])->name('clients.gallery');
+        Route::get('clients/{id}/aval', [ClientController::class, 'aval'])->name('clients.aval');
         Route::get('clients/{id}', [ClientController::class, 'show'])->name('clients.show');
     });
 
@@ -67,9 +68,11 @@ Route::middleware('auth')->group(function () {
     Route::get('cash/incomes', [CashController::class, 'incomes'])->name('cash.incomes')->middleware('permission:caja.ingresos');
     Route::get('cash/incomes/create', [CashController::class, 'createIncome'])->name('cash.incomes.create')->middleware('permission:caja.ingresos');
     Route::get('cash/incomes/{id}/edit', [CashController::class, 'editIncome'])->name('cash.incomes.edit')->middleware('permission:caja.ingresos');
+    Route::get('cash/incomes/{id}/gallery', [CashController::class, 'incomeGallery'])->name('cash.incomes.gallery')->middleware('permission:caja.ingresos');
     Route::get('cash/expenses', [CashController::class, 'expenses'])->name('cash.expenses')->middleware('permission:caja.egresos');
     Route::get('cash/expenses/create', [CashController::class, 'createExpense'])->name('cash.expenses.create')->middleware('permission:caja.egresos');
     Route::get('cash/expenses/{id}/edit', [CashController::class, 'editExpense'])->name('cash.expenses.edit')->middleware('permission:caja.egresos');
+    Route::get('cash/expenses/{id}/gallery', [CashController::class, 'expenseGallery'])->name('cash.expenses.gallery')->middleware('permission:caja.egresos');
 
     // Reportes
     Route::get('reports/portfolio', [ReportController::class, 'portfolio'])->name('reports.portfolio')->middleware('permission:reportes.cartera');

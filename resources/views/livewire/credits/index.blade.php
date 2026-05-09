@@ -65,7 +65,8 @@
                     </form>
 
                     @php
-                        $isSuperUsuario = auth()->user()->hasRole('superusuario');
+                        $puedeEliminar = auth()->user()->can('creditos.eliminar');
+                        $puedeEditarHistorico = auth()->user()->can('caja.editar-historico');
                         $hoy = now()->format('Y-m-d');
                         $tcLabels = [1 => 'S', 3 => 'M', 4 => 'D'];
                     @endphp
@@ -102,7 +103,7 @@
                                     $pago   = $iapli + $aplido;
                                     $saldo  = $credit->importe - $iapli - $aplido + $interS;
                                     $tcLabel = $tcLabels[$credit->tipo_planilla] ?? '?';
-                                    $canDelete = ($iapli <= 0) && ($isSuperUsuario || (
+                                    $canDelete = ($iapli <= 0) && ($puedeEditarHistorico || (
                                         $credit->fecha_prestamo?->format('Y-m-d') === $hoy && !$credit->refinanciado
                                     ));
                                 @endphp
@@ -175,7 +176,7 @@
                                 $pago   = $iapli + $aplido;
                                 $saldo  = $credit->importe - $iapli - $aplido + $interS;
                                 $tcLabel = $tcLabels[$credit->tipo_planilla] ?? '?';
-                                $canDelete = ($iapli <= 0) && ($isSuperUsuario || (
+                                $canDelete = ($iapli <= 0) && ($puedeEditarHistorico || (
                                     $credit->fecha_prestamo?->format('Y-m-d') === $hoy && !$credit->refinanciado
                                 ));
                             @endphp

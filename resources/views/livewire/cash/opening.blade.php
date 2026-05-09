@@ -24,14 +24,38 @@
                 <div class="card-body">
 
                     {{-- Encabezado: APERTURA DE CAJA FECHA - X Hora - Y --}}
-                    <div class="alert alert-light border mb-3" style="background: #fff;">
+                    <div class="alert alert-light border mb-2" style="background: #fff;">
                         <div class="d-flex flex-wrap align-items-center gap-2" style="color: red; font-weight: bold;">
                             <span>APERTURA DE CAJA FECHA -</span>
-                            <input type="date" class="form-control form-control-sm d-inline-block" style="width: 160px;"
-                                   wire:model="fechaera">
+                            <input type="date" class="form-control form-control-sm d-inline-block @error('fechaera') is-invalid @enderror"
+                                   style="width: 160px;" wire:model="fechaera">
                             <span>Hora - {{ $horaActual }}</span>
                         </div>
                     </div>
+
+                    {{-- Errores --}}
+                    @if ($errors->any())
+                        <div class="alert alert-danger py-2 px-3 mb-2" style="font-size:12px;">
+                            <ul class="mb-0 ps-3">
+                                @foreach ($errors->all() as $e) <li>{{ $e }}</li> @endforeach
+                            </ul>
+                        </div>
+                    @endif
+
+                    {{-- Banner informativo cuando ya hay apertura del mes --}}
+                    @if($currentMonth)
+                        <div class="alert alert-info py-2 px-3 mb-3" style="font-size:12px;">
+                            <i class="ti ti-info-circle"></i>
+                            Ya hay apertura para <strong>{{ \Carbon\Carbon::parse($currentMonth->fecha)->locale('es')->translatedFormat('F Y') }}</strong>
+                            · abierta por <strong>{{ $currentMonth->user?->username ?? $currentMonth->user?->name ?? '—' }}</strong>
+                            el {{ $currentMonth->fecha?->format('d/m/Y') }}
+                            @if($currentMonth->hora) a las {{ $currentMonth->hora }} @endif
+                            · S/ <strong>{{ number_format($currentMonth->saldo_inicial, 2) }}</strong>
+                            @if($puedeEditar)
+                                <span class="text-muted">— como SuperUsuario puedes actualizar el importe abajo.</span>
+                            @endif
+                        </div>
+                    @endif
 
                     {{-- Form principal --}}
                     <form wire:submit.prevent="save">
@@ -40,17 +64,18 @@
                                 <h5 class="mb-0 fw-bold">S/</h5>
                             </div>
                             <div class="col-md-3">
-                                @if($currentMonth && !$isSuperUsuario)
+                                @if($currentMonth && !$puedeEditar)
                                     <h5 class="mb-0">: {{ number_format($currentMonth->saldo_inicial, 2) }}</h5>
                                 @else
-                                    <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                    <input type="number" step="0.01" min="0"
+                                           class="form-control form-control-sm @error('solesm') is-invalid @enderror"
                                            placeholder="0.00"
                                            value="{{ $currentMonth?->saldo_inicial }}"
                                            wire:model="solesm">
                                 @endif
                             </div>
                             <div class="col">
-                                @if(!$currentMonth || $isSuperUsuario)
+                                @if(!$currentMonth || $puedeEditar)
                                     <button type="submit" class="btn btn-sm btn-primary">
                                         <i class="ti ti-device-floppy f-s-12"></i> Guardar
                                     </button>
@@ -75,10 +100,11 @@
 
                     <hr>
 
-                    {{-- Histórico Desktop --}}
-                    <div class="table-responsive d-none d-md-block">
+                    {{-- Histórico Desktop con sticky header --}}
+                    <div class="table-responsive d-none d-md-block"
+                         style="max-height: 500px; overflow-y: auto;">
                         <table class="table table-bordered table-striped table-hover" style="font-size: 11px;">
-                            <thead class="bg-primary">
+                            <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
                                     <th class="text-center" width="50">Id</th>
                                     <th class="text-center" width="100">Fecha</th>
@@ -86,7 +112,7 @@
                                     <th class="text-center">Usuario</th>
                                     <th class="text-end" width="150">Importe</th>
                                     <th class="text-center" width="80">Moneda</th>
-                                    @if($isSuperUsuario)
+                                    @if($puedeEditar)
                                         <th class="text-center" width="120">Opciones</th>
                                     @endif
                                 </tr>
@@ -100,7 +126,7 @@
                                     <td class="text-center">{{ $row->hora ?: '-' }}</td>
                                     <td>{{ $row->user?->username ?? $row->user?->name ?? '-' }}</td>
                                     <td class="text-end">
-                                        @if($isSuperUsuario && $editingId === $row->id)
+                                        @if($puedeEditar && $editingId === $row->id)
                                             <input type="number" step="0.01" class="form-control form-control-sm"
                                                    wire:model="editingValue"
                                                    wire:keydown.enter="updateInline({{ $row->id }})"
@@ -110,7 +136,7 @@
                                         @endif
                                     </td>
                                     <td class="text-center">{{ $row->moneda }}</td>
-                                    @if($isSuperUsuario)
+                                    @if($puedeEditar)
                                         <td class="text-center text-nowrap">
                                             @if($editingId === $row->id)
                                                 <button class="btn btn-xs btn-success" style="padding: 2px 8px; font-size: 10px;"
@@ -133,7 +159,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="{{ $isSuperUsuario ? 7 : 6 }}" class="py-4 text-muted text-center">
+                                    <td colspan="{{ $puedeEditar ? 7 : 6 }}" class="py-4 text-muted text-center">
                                         No hay aperturas registradas
                                     </td>
                                 </tr>
@@ -141,7 +167,7 @@
                             </tbody>
                             <tfoot class="bg-primary">
                                 <tr>
-                                    <td colspan="{{ $isSuperUsuario ? 7 : 6 }}" class="text-center fw-bold">
+                                    <td colspan="{{ $puedeEditar ? 7 : 6 }}" class="text-center fw-bold">
                                         Total: {{ $history->count() }} registros
                                     </td>
                                 </tr>
@@ -162,7 +188,7 @@
                                         <div class="col-6"><b>Usuario:</b> {{ $row->user?->username ?? '-' }}</div>
                                         <div class="col-6 text-end"><b>S/</b> {{ number_format($row->saldo_inicial, 2) }}</div>
                                     </div>
-                                    @if($isSuperUsuario)
+                                    @if($puedeEditar)
                                         <button class="btn btn-xs btn-primary w-100 mt-2" style="font-size: 10px;"
                                                 wire:click="startEdit({{ $row->id }})">
                                             <i class="ti ti-edit"></i> Editar

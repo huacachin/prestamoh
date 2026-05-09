@@ -19,15 +19,9 @@ class Index extends Component
             ->with(['client:id,expediente,nombre,apellido_pat,apellido_mat,documento,asesor_id'])
             ->where('situacion', '<>', 'Cancelado');
 
-        // Filtros por rol (legacy):
-        // Asesor → solo sus créditos
-        // SupervisorD → solo tipoplani=4 (diario)
-        // SupervisorM → solo tipoplani=1 (semanal)
-        if ($user->hasRole('asesor')) {
+        if ($user->can('clientes.scope-propio')) {
             $query->whereHas('client', fn ($c) => $c->where('asesor_id', $user->id));
         }
-        // Si tienes roles SupervisorD/M en el sistema, aquí se filtraría
-        // Por ahora se omite porque no tenemos esos roles activos
 
         // Filtro DNI
         if (trim($this->nombre) !== '') {

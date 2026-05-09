@@ -13,6 +13,17 @@
         ],
 
         [
+            'id'       => 'settings',
+            'title'    => 'Configuración',
+            'icon'     => 'ti ti-settings',
+            'canAny'   => ['configuracion.usuarios', 'configuracion.sucursales'],
+            'children' => [
+                ['title' => 'Usuarios',     'route' => 'settings.users.index',          'can' => 'configuracion.usuarios'],
+                ['title' => 'Sucursales',   'route' => 'settings.headquarters.index',   'can' => 'configuracion.sucursales'],
+            ],
+        ],
+
+        [
             'id'       => 'registro',
             'title'    => 'Registro',
             'icon'     => 'ti ti-file-text',
@@ -62,17 +73,6 @@
                 ['title' => 'Pendientes x Cobrar',     'route' => 'reports.delinquent',           'can' => 'reportes.morosidad'],
                 ['title' => 'Resumen de Cancelados',   'route' => 'reports.cancelled',            'can' => 'reportes.cancelados'],
                 ['title' => 'Simulacro de Crédito',    'route' => 'reports.simulator',            'can' => 'reportes.simulador'],
-            ],
-        ],
-
-        [
-            'id'       => 'settings',
-            'title'    => 'Configuración',
-            'icon'     => 'ti ti-settings',
-            'canAny'   => ['configuracion.usuarios', 'configuracion.sucursales'],
-            'children' => [
-                ['title' => 'Usuarios',     'route' => 'settings.users.index',          'can' => 'configuracion.usuarios'],
-                ['title' => 'Sucursales',   'route' => 'settings.headquarters.index',   'can' => 'configuracion.sucursales'],
             ],
         ],
     ];

@@ -103,7 +103,7 @@ class Payments extends Component
             'otros'   => 0, // legacy: modo='Otros' (no aplica en payments / CREDITO)
         ];
 
-        $isAdmin = auth()->user()?->hasAnyRole(['SuperUsuario','Director','Administrador','Gerente']) ?? false;
+        $isAdmin = auth()->user()?->can('transacciones.autorizar') ?? false;
 
         return view('livewire.reports.payments', [
             'rows'    => $rows,

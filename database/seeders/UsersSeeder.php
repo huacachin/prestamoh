@@ -4,33 +4,13 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Role;
 
 class UsersSeeder extends Seeder
 {
     public function run(): void
     {
-        // Roles
-        Role::firstOrCreate(['name' => 'superusuario',  'guard_name' => 'web']);
-        Role::firstOrCreate(['name' => 'administrador', 'guard_name' => 'web']);
-        Role::firstOrCreate(['name' => 'director',      'guard_name' => 'web']);
-        Role::firstOrCreate(['name' => 'asesor',        'guard_name' => 'web']);
-        Role::firstOrCreate(['name' => 'cobranza',      'guard_name' => 'web']);
-        Role::firstOrCreate(['name' => 'web',           'guard_name' => 'web']);
-
-        $allPerms = [
-            'dashboard', 'clientes', 'creditos', 'pagos',
-            'caja.apertura', 'caja.ingresos', 'caja.egresos',
-            'reportes.cartera', 'reportes.pagos', 'reportes.morosidad', 'reportes.caja',
-            'configuracion.usuarios', 'configuracion.sucursales', 'configuracion.conceptos', 'configuracion.tipo-cambio',
-            // Registro
-            'registro.activar', 'registro.estado', 'registro.cesados', 'registro.eliminar-masivo',
-            // Reportes (nuevos)
-            'reportes.asesor', 'reportes.caja-estadistica', 'reportes.credito-estadistica',
-            'reportes.caja-general-1', 'reportes.caja-general-2', 'reportes.caja-general-3',
-            'reportes.cancelados', 'reportes.simulador',
-        ];
-
+        // Roles y permisos vienen de RoleSetupSeeder y RolePermissionSeeder.
+        // Director hereda automáticamente todos los permisos vía rol.
         $users = [
             [
                 'id'              => 1,
@@ -44,8 +24,7 @@ class UsersSeeder extends Seeder
                 'headquarter_id'  => 1,
                 'status'          => 'active',
                 'nivel'           => 6,
-                'role'            => 'superusuario',
-                'direct_perms'    => $allPerms,
+                'role'            => 'director',
             ],
         ];
 
@@ -70,7 +49,8 @@ class UsersSeeder extends Seeder
                 $user->syncRoles([$data['role']]);
             }
 
-            $user->syncPermissions($data['direct_perms']);
+            // Sin permisos directos: la herencia por rol cubre todo.
+            $user->syncPermissions([]);
         }
 
         app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();

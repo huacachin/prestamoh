@@ -44,6 +44,11 @@
     <!-- Footer Section end -->
 </div>
 
+@auth
+    {{-- Paleta de comandos universal (cmd+k) + atajos de teclado tipo Gmail --}}
+    <livewire:command-palette />
+@endauth
+
 @stack('datepicker_js')
 </body>
 

@@ -57,11 +57,11 @@
                             <a href="#" class="btn btn-sm btn-success">
                                 <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
                             </a>
-                            @hasanyrole('superusuario|administrador')
+                            @can('configuracion.conceptos')
                                 <a href="{{ route('settings.concepts.create') }}" class="btn btn-sm btn-danger">
                                     <i class="ti ti-plus f-s-12"></i> Nuevo Concepto
                                 </a>
-                            @endhasanyrole
+                            @endcan
                         </div>
                     </form>
 
@@ -103,13 +103,13 @@
                                         <span style="color: {{ $isIngreso ? 'black' : 'red' }}; font-weight: bold;">{{ $num }}</span>
                                     </td>
                                     <td class="text-center">
-                                        @hasanyrole('superusuario|administrador')
+                                        @can('configuracion.conceptos')
                                             <a href="{{ route('settings.concepts.edit', $concept->id) }}" style="color: black;">
                                                 {{ $concept->code }}
                                             </a>
                                         @else
                                             {{ $concept->code }}
-                                        @endhasanyrole
+                                        @endcan
                                     </td>
                                     <td>{{ $concept->name }}</td>
                                     <td class="text-center">
@@ -122,12 +122,12 @@
                                     <td class="text-end">{{ number_format($concept->factor_ingreso, 2) }}</td>
                                     <td class="text-end">{{ number_format($concept->factor_egreso, 2) }}</td>
                                     <td class="text-center">
-                                        @hasanyrole('superusuario|administrador')
+                                        @can('configuracion.conceptos')
                                             <a href="{{ route('settings.concepts.edit', $concept->id) }}"
                                                class="btn btn-xs btn-success" style="padding: 2px 8px; font-size: 10px;">
                                                 Editar
                                             </a>
-                                        @endhasanyrole
+                                        @endcan
                                     </td>
                                 </tr>
                             @empty
@@ -178,11 +178,11 @@
                                         <div class="col-6"><b>ING. S/:</b> {{ number_format($concept->factor_ingreso, 2) }}</div>
                                         <div class="col-6"><b>EGR. S/:</b> {{ number_format($concept->factor_egreso, 2) }}</div>
                                     </div>
-                                    @hasanyrole('superusuario|administrador')
+                                    @can('configuracion.conceptos')
                                         <div class="mt-2">
                                             <a href="{{ route('settings.concepts.edit', $concept->id) }}" class="btn btn-xs btn-success" style="padding: 2px 8px; font-size: 10px;">Editar</a>
                                         </div>
-                                    @endhasanyrole
+                                    @endcan
                                 </div>
                             </div>
                         @empty

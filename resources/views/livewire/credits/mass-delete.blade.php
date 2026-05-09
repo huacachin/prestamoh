@@ -64,7 +64,7 @@
 
                     @php
                         $hoy = now()->format('Y-m-d');
-                        $isSuperUsuario = auth()->user()->hasRole('superusuario');
+                        $puedeEditarHistorico = auth()->user()->can('registro.eliminar-masivo.revertir');
                     @endphp
 
                     {{-- Tabla Desktop --}}
@@ -86,7 +86,7 @@
                             <tbody>
                             @forelse($records as $record)
                                 @php
-                                    $canEdit = $isSuperUsuario || ($record->date && $record->date->format('Y-m-d') === $hoy);
+                                    $canEdit = $puedeEditarHistorico || ($record->date && $record->date->format('Y-m-d') === $hoy);
                                 @endphp
                                 <tr onmouseover="this.style.backgroundColor='#CCFF66'"
                                     onmouseout="this.style.backgroundColor=''">
@@ -131,7 +131,7 @@
                     <div class="d-md-none">
                         @forelse($records as $record)
                             @php
-                                $canEdit = $isSuperUsuario || ($record->date && $record->date->format('Y-m-d') === $hoy);
+                                $canEdit = $puedeEditarHistorico || ($record->date && $record->date->format('Y-m-d') === $hoy);
                             @endphp
                             <div class="card mb-2 shadow-sm">
                                 <div class="card-body p-3">

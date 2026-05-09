@@ -403,9 +403,8 @@ class Create extends Component
 
     public function render()
     {
-        $asesores = User::query()
+        $asesores = User::permission('creditos.ser-asesor-responsable')
             ->where('status', 'active')
-            ->whereDoesntHave('roles', fn ($q) => $q->where('name', 'Web'))
             ->orderBy('name')
             ->get(['id', 'name', 'username']);
 
