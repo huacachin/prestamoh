@@ -11,12 +11,29 @@ class UsersSeeder extends Seeder
     {
         // Roles y permisos vienen de RoleSetupSeeder y RolePermissionSeeder.
         // Director hereda automáticamente todos los permisos vía rol.
-        $users = [
-            [
-                'id'              => 1,
+        $email    = 'admin@prestamos.local';
+        $username = 'admin';
+
+        // Buscar primero por email (clave única real de identidad). Si no, por username.
+        // No forzamos id=1: en una BD con datos legacy importados, id=1 puede pertenecer
+        // a un usuario real y un updateOrCreate por id sobrescribiría sus datos.
+        $admin = User::where('email', $email)->first()
+            ?? User::where('username', $username)->first();
+
+        if ($admin) {
+            // Existe: NO tocamos campos únicos (email, username, document_number) para
+            // evitar choques con otros registros. Sólo refrescamos lo seguro.
+            $admin->fill([
+                'name'           => 'Admin',
+                'headquarter_id' => $admin->headquarter_id ?? 1,
+                'status'         => 'active',
+                'nivel'          => 6,
+            ])->save();
+        } else {
+            $admin = User::create([
                 'name'            => 'Admin',
-                'username'        => 'admin',
-                'email'           => 'admin@prestamos.local',
+                'username'        => $username,
+                'email'           => $email,
                 'password'        => bcrypt('admin123'),
                 'document_type'   => 'DNI',
                 'document_number' => '00000000',
@@ -24,34 +41,12 @@ class UsersSeeder extends Seeder
                 'headquarter_id'  => 1,
                 'status'          => 'active',
                 'nivel'           => 6,
-                'role'            => 'director',
-            ],
-        ];
-
-        foreach ($users as $data) {
-            $user = User::updateOrCreate(
-                ['id' => $data['id']],
-                [
-                    'name'            => $data['name'],
-                    'username'        => $data['username'],
-                    'email'           => $data['email'],
-                    'password'        => $data['password'],
-                    'document_type'   => $data['document_type'],
-                    'document_number' => $data['document_number'],
-                    'phone'           => $data['phone'],
-                    'headquarter_id'  => $data['headquarter_id'],
-                    'status'          => $data['status'],
-                    'nivel'           => $data['nivel'],
-                ]
-            );
-
-            if ($data['role']) {
-                $user->syncRoles([$data['role']]);
-            }
-
-            // Sin permisos directos: la herencia por rol cubre todo.
-            $user->syncPermissions([]);
+            ]);
         }
+
+        $admin->syncRoles(['director']);
+        // Sin permisos directos: la herencia por rol cubre todo.
+        $admin->syncPermissions([]);
 
         app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
     }
