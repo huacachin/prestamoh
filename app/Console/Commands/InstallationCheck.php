@@ -98,13 +98,27 @@ class InstallationCheck extends Command
         $perms = DB::table('permissions')->count();
         $perms >= 38 ? $this->ok2("$perms permisos registrados") : $this->warn2("Solo $perms permisos — esperados al menos 38");
 
-        // Director (super) debe tener TODOS los permisos
+        // Director (super) debe tener TODOS los permisos NO-restrictivos.
+        // Permisos restrictivos = los que LIMITAN (no otorgan) capacidades, ej. scope-propio.
+        $restrictivos = ['clientes.scope-propio'];
         $director = DB::table('roles')->where('name', 'director')->first();
         if ($director) {
-            $assigned = DB::table('role_has_permissions')->where('role_id', $director->id)->count();
-            $assigned === $perms
-                ? $this->ok2("Director tiene los $perms permisos (super-rol)")
-                : $this->warn2("Director tiene $assigned/$perms permisos — ejecutar `db:seed --class=RolePermissionSeeder`");
+            $assigned = DB::table('role_has_permissions')
+                ->join('permissions', 'permissions.id', '=', 'role_has_permissions.permission_id')
+                ->where('role_id', $director->id)
+                ->pluck('permissions.name')
+                ->all();
+            $esperados = DB::table('permissions')->whereNotIn('name', $restrictivos)->pluck('name')->all();
+            $faltantes = array_diff($esperados, $assigned);
+            $sobrantes = array_intersect($assigned, $restrictivos);
+            if (empty($faltantes) && empty($sobrantes)) {
+                $this->ok2('Director tiene los ' . count($esperados) . ' permisos no-restrictivos (super-rol)');
+            } else {
+                $msg = [];
+                if ($faltantes) $msg[] = 'faltan ' . count($faltantes);
+                if ($sobrantes) $msg[] = 'sobran restrictivos: ' . implode(',', $sobrantes);
+                $this->warn2('Director: ' . implode(', ', $msg) . ' — ejecutar `db:seed --class=RolePermissionSeeder`');
+            }
         }
 
         // Verificar usuarios sin rol

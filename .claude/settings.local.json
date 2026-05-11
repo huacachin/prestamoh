@@ -48,7 +48,14 @@
       "Bash(yes)",
       "Bash('.\\\\$t.')",
       "Bash(curl *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Read(//Users/antonyalfredoculquicarranza/projects/prestamo/sistema/**)",
+      "Bash(perl -pi -e 's/\\\\\\\\\\\\$puedeEditar/\\\\$puedeEditar/g' resources/views/livewire/cash/opening.blade.php)",
+      "Bash(perl -pi -e 's/\\\\$isSuperUsuario/\\\\$puedeEditarHistorico/g' resources/views/livewire/cash/expenses.blade.php)",
+      "Bash(perl -pi -e 's/\\\\$isSuperUsuario/\\\\$puedeEditarHistorico/g' resources/views/livewire/cash/incomes.blade.php)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(php artisan *)",
+      "Bash(echo \"DONE EXIT=$?\")"
     ]
   }
 }

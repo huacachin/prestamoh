@@ -23,9 +23,17 @@ class RolePermissionSeeder extends Seeder
 
         $allPerms = Permission::where('guard_name', 'web')->pluck('name')->all();
 
+        // Permisos restrictivos: limitan la vista en lugar de otorgar capacidades.
+        // El Director NO debe recibirlos aunque sea super-rol, porque "tener" un
+        // permiso restrictivo recorta lo que ve (ej. scope-propio limita a sus
+        // clientes asignados). Asignárselos al Director rompe la regla "Director
+        // ve TODO".
+        $restrictivos = ['clientes.scope-propio'];
+        $directorPerms = array_values(array_diff($allPerms, $restrictivos));
+
         $matrix = [
-            // ─── DIRECTOR (super) ───
-            'director' => $allPerms,
+            // ─── DIRECTOR (super, sin permisos restrictivos) ───
+            'director' => $directorPerms,
 
             // ─── GERENTE (operativa + reportes amplios + autorizar) ───
             'gerente' => [
