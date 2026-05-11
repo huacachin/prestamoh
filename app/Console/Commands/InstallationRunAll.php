@@ -18,11 +18,12 @@ class InstallationRunAll extends Command
         $this->line('Se ejecutará la siguiente secuencia:');
         $this->line(' 1. installation:fix-invalid-dates       (0000-00-00 → NULL)');
         $this->line(' 2. installation:fix-expense-documento   (NULL → "GUIA")');
-        $this->line(' 3. installation:sync-correlativos       (Cliente, Credito)');
-        $this->line(' 4. mass-deletions:fix-amounts           (recálculo amount = sum(details))');
-        $this->line(' 5. installation:migrate-roles           (roles legacy → nuevos)');
-        $this->line(' 6. installation:fix-autoincrement       (AI = max(id)+1)');
-        $this->line(' 7. installation:check                   (health check final)');
+        $this->line(' 3. installation:fix-installment-dates   (cronograma cuotas)');
+        $this->line(' 4. installation:sync-correlativos       (Cliente, Credito)');
+        $this->line(' 5. mass-deletions:fix-amounts           (recálculo amount = sum(details))');
+        $this->line(' 6. installation:migrate-roles           (roles legacy → nuevos)');
+        $this->line(' 7. installation:fix-autoincrement       (AI = max(id)+1)');
+        $this->line(' 8. installation:check                   (health check final)');
         $this->newLine();
 
         if (!$force && !$this->confirm('¿Continuar?', true)) {
@@ -35,6 +36,7 @@ class InstallationRunAll extends Command
         $steps = [
             'installation:fix-invalid-dates',
             'installation:fix-expense-documento',
+            'installation:fix-installment-dates',
             'installation:sync-correlativos',
             'mass-deletions:fix-amounts',
             'installation:migrate-roles',

@@ -385,11 +385,17 @@ class MigrateLegacyData extends Command
                         continue;
                     }
 
-                    $fechaVenc = null;
-                    if ($li->ano_codano && $li->mes_codmes && $li->dia_coddia) {
-                        $fechaVenc = sprintf('%s-%s-%s', $li->ano_codano, str_pad($li->mes_codmes, 2, '0', STR_PAD_LEFT), str_pad($li->dia_coddia, 2, '0', STR_PAD_LEFT));
-                        if (!strtotime($fechaVenc)) $fechaVenc = null;
-                    }
+                    // Legacy huaca_det_cuentacorriente.fechapago = cronograma de la cuota
+                    // (NO la fecha real del pago). Los campos ano_codano/mes_codmes/dia_coddia
+                    // son códigos secuenciales (ej. dia_coddia=0), no fechas reales.
+                    $fechaVenc = ($li->fechapago && $li->fechapago !== '0000-00-00')
+                        ? $li->fechapago
+                        : null;
+
+                    // fecha_pago: NULL hasta que esté pagada. El legacy no guarda la fecha
+                    // real del pago a nivel cuota; cuando flpago=1 usamos la fecha del
+                    // cronograma como aproximación (igual que hacía el legacy).
+                    $fechaPago = ($li->flpago == 1 && $fechaVenc) ? $fechaVenc : null;
 
                     $batch[] = [
                         'id'                => $li->id,
@@ -402,7 +408,7 @@ class MigrateLegacyData extends Command
                         'interes_aplicado'  => $li->aplicado ?? 0,
                         'importe_mora'      => ($li->impomora ?? 0) + ($li->impomorai ?? 0),
                         'pagado'            => ($li->flpago == 1),
-                        'fecha_pago'        => ($li->fechapago && $li->fechapago !== '0000-00-00') ? $li->fechapago : null,
+                        'fecha_pago'        => $fechaPago,
                         'observacion'       => $li->observacion ?: null,
                         'usuario'           => $li->usuario ?: null,
                         'created_at'        => now(),

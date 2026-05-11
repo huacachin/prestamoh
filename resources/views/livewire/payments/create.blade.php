@@ -253,8 +253,9 @@
                             @endphp
                             @foreach($credit->installments as $ins)
                                 @php
-                                    $fechaPago = $ins->fecha_pago ? $ins->fecha_pago->format('Y-m-d') : '';
-                                    $dow = $fechaPago ? \Carbon\Carbon::parse($fechaPago)->dayOfWeek : null;
+                                    $fechaVenc = $ins->fecha_vencimiento ? $ins->fecha_vencimiento->format('Y-m-d') : '';
+                                    $fechaPagoReal = $ins->fecha_pago ? $ins->fecha_pago->format('Y-m-d') : '';
+                                    $dow = $fechaVenc ? \Carbon\Carbon::parse($fechaVenc)->dayOfWeek : null;
 
                                     $cap = round((float) $ins->importe_cuota, 2);
                                     $int = round((float) $ins->importe_interes, 2);
@@ -266,8 +267,8 @@
                                     $totalCuota = round($cap + $int, 2);
                                     $saldoCuota = round($totalCuota - $apli - $iapli, 2);
 
-                                    // Cuota vencida = no pagada Y fecha_pago < hoy
-                                    $vencida = (!$ins->pagado && $fechaPago && $fechaPago < $todayStr && $saldoCuota > 0.01);
+                                    // Cuota vencida = no pagada Y fecha_vencimiento < hoy
+                                    $vencida = (!$ins->pagado && $fechaVenc && $fechaVenc < $todayStr && $saldoCuota > 0.01);
 
                                     if ($vencida) {
                                         $contrd2++;
@@ -295,13 +296,13 @@
                                             <span style="font-weight:bold;">[{{ $contrd2 }}-]</span>
                                         @endif
                                     </td>
-                                    <td class="text-center">{{ $fechaPago }}</td>
+                                    <td class="text-center">{{ $fechaVenc }}</td>
                                     <td class="text-end">{{ number_format($cap, 2) }}</td>
                                     <td class="text-end">{{ number_format($int, 2) }}</td>
                                     <td class="text-end">{{ number_format($totalCuota, 2) }}</td>
                                     <td class="text-end">{{ number_format($mora, 2) }}</td>
                                     <td class="text-end">{{ number_format($pagado, 2) }}</td>
-                                    <td class="text-center">{{ $ins->pagado ? $fechaPago : '' }}</td>
+                                    <td class="text-center">{{ $ins->pagado ? ($fechaPagoReal ?: $fechaVenc) : '' }}</td>
                                 </tr>
                             @endforeach
 

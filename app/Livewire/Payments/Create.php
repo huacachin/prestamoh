@@ -116,7 +116,7 @@ class Create extends Component
             - (float) $totals->apli - (float) $totals->iapli;
 
         $minFecha = DB::table('credit_installments')->where('credit_id', $this->credit->id)
-            ->where('pagado', 0)->where('importe_cuota', '>', 0)->min('fecha_pago');
+            ->where('pagado', 0)->where('importe_cuota', '>', 0)->min('fecha_vencimiento');
         $minFechaStr = $minFecha ? Carbon::parse($minFecha)->format('Y-m-d') : null;
 
         $diasddd = 0;
@@ -278,8 +278,8 @@ class Create extends Component
                     }
 
                     if ($payInt > 0.001) {
-                        $diasInt = $ins->fecha_pago
-                            ? abs((int) Carbon::parse($ins->fecha_pago)->diffInDays(now(), false))
+                        $diasInt = $ins->fecha_vencimiento
+                            ? abs((int) Carbon::parse($ins->fecha_vencimiento)->diffInDays(now(), false))
                             : 0;
                         $p = Payment::create([
                             'credit_id'=>$this->credit->id,'installment_id'=>$ins->id,
@@ -421,7 +421,7 @@ class Create extends Component
         $ins = DB::table('credit_installments')
             ->where('credit_id', $cid)
             ->where('pagado', 0)
-            ->whereDate('fecha_pago', '<', $hoy)
+            ->whereDate('fecha_vencimiento', '<', $hoy)
             ->orderBy('num_cuota')->first();
         if ($ins) return $ins;
 
