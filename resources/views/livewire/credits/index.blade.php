@@ -61,7 +61,7 @@
                                class="btn btn-sm btn-success" target="_blank">
                                 <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
                             </a>
-                                <x-scroll-bottom-btn />
+                                <x-scroll-bottom-btn scrollable="#tabla-creditos" />
                         </div>
                     </form>
 
@@ -73,7 +73,7 @@
                     @endphp
 
                     {{-- Tabla Desktop --}}
-                    <div class="table-responsive d-none d-md-block" style="max-height: 70vh; overflow: auto;">
+                    <div id="tabla-creditos" class="table-responsive d-none d-md-block" style="max-height: 70vh; overflow: auto;">
                         <table class="table table-bordered table-striped table-hover" style="font-size: 11px;">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>

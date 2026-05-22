@@ -49,7 +49,7 @@
                                 <button class="btn btn-sm btn-dark flex-shrink-0" wire:click="search">
                                     <i class="ti ti-search f-s-12"></i> Buscar
                                 </button>
-                                <x-scroll-bottom-btn />
+                                <x-scroll-bottom-btn scrollable="#tabla-caja-3" />
                                 <button class="btn btn-sm btn-secondary flex-shrink-0" onclick="window.print()">
                                     <i class="ti ti-printer f-s-12"></i> Imprimir
                                 </button>
@@ -59,7 +59,7 @@
 
                     <div id="printme">
                         {{-- Daily detail table --}}
-                        <div class="table-responsive" style="max-height: 650px; overflow: auto;">
+                        <div id="tabla-caja-3" class="table-responsive" style="max-height: 650px; overflow: auto;">
                             <table class="table table-bordered table-striped table-hover table-sm">
                                 <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                     <tr>

@@ -74,7 +74,7 @@
                                class="btn btn-sm btn-success">
                                 <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
                             </a>
-                                <x-scroll-bottom-btn />
+                                <x-scroll-bottom-btn scrollable="#incomesTable" />
                         </div>
                     </form>
 

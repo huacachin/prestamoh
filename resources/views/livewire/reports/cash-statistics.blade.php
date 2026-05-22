@@ -37,21 +37,21 @@
                                     @endfor
                                 </select>
                             </div>
-                            <div class="col-md-3 d-flex gap-2">
-                                <button type="submit" class="btn btn-sm btn-primary">
+                            <div class="col-md-auto d-flex gap-2 flex-wrap">
+                                <button type="submit" class="btn btn-sm btn-primary flex-shrink-0">
                                     <i class="ti ti-search f-s-12"></i> Consultar
                                 </button>
-                                <button type="button" class="btn btn-sm btn-secondary" onclick="window.print()">
+                                <button type="button" class="btn btn-sm btn-secondary flex-shrink-0" onclick="window.print()">
                                     <i class="ti ti-printer f-s-12"></i> Imprimir
                                 </button>
-                                <x-scroll-bottom-btn />
+                                <x-scroll-bottom-btn class="flex-shrink-0" />
                             </div>
                         </div>
                     </form>
 
                     <div id="printme">
                         {{-- TABLA PRINCIPAL --}}
-                        <div class="table-responsive" style="max-height: 70vh; overflow: auto;">
+                        <div id="tabla-mensual" class="table-responsive" style="max-height: 70vh; overflow: auto;">
                             <table class="table table-bordered table-striped table-hover" style="font-size: 11px; min-width: 1700px;">
                                 <thead class="bg-primary text-center" style="position: sticky; top: 0; z-index: 2;">
                                     <tr>

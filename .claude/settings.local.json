@@ -58,7 +58,12 @@
       "Bash(echo \"DONE EXIT=$?\")",
       "Bash(awk -F: '{print $1}')",
       "Bash(lpstat -p)",
-      "Bash(lpstat -d)"
+      "Bash(lpstat -d)",
+      "Bash(perl -i -0pe 's|\\(</style>\\\\s*\\)\\\\z|<span id=\"final\"></span>\\\\n$1|s' /Users/antonyalfredoculquicarranza/projects/laravel_prestamos/resources/views/livewire/reports/cash-general-1.blade.php)",
+      "Bash(cd *)",
+      "Bash(perl -i -0pe \"s|<div class=\\\\\"table-responsive d-none d-md-block\\\\\"\\\\s+style=\\\\\"max-height|<div id=\\\\\"tabla-creditos\\\\\" class=\\\\\"table-responsive d-none d-md-block\\\\\" style=\\\\\"max-height|s\" resources/views/livewire/credits/index.blade.php)",
+      "Bash(perl -i -0pe 's|\\(style=\"max-height: 500px; overflow-y: auto;\"\\)|id=\"tabla-apertura\" $1|s if !/id=\"tabla-apertura\"/' resources/views/livewire/cash/opening.blade.php)",
+      "WebFetch(domain:docs.migo.pe)"
     ]
   }
 }

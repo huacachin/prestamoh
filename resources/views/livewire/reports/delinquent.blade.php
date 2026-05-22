@@ -85,17 +85,17 @@
                                 <label class="form-label mb-0 small">Fecha F</label>
                                 <input type="date" class="form-control form-control-sm" wire:model="fechaf">
                             </div>
-                            <div class="col-md-2 d-flex align-items-end">
+                            <div class="col-md-2 d-flex align-items-end gap-2">
                                 <button type="submit" class="btn btn-sm btn-primary">
                                     <i class="ti ti-search f-s-12"></i> Buscar
                                 </button>
-                                <x-scroll-bottom-btn />
+                                <x-scroll-bottom-btn scrollable="#tabla-morosidad" />
                             </div>
                         </div>
                     </form>
 
                     {{-- TABLA --}}
-                    <div class="table-responsive" style="max-height: 70vh; overflow: auto;">
+                    <div id="tabla-morosidad" class="table-responsive" style="max-height: 70vh; overflow: auto;">
                         <table class="table table-bordered table-striped table-hover" style="font-size: 11px; min-width: 1900px;">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>

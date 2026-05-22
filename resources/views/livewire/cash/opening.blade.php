@@ -1,6 +1,4 @@
-<div class="container-fluid">
-    <x-scroll-bottom-btn class="position-fixed shadow" style="bottom:20px; right:20px; z-index:1050;" />
-    <div class="row">
+<div class="container-fluid">    <div class="row">
         <div class="col-sm-6">
             <h4 class="main-title title-modules" style="color:red;">APERTURA DE CAJA</h4>
         </div>
@@ -102,8 +100,11 @@
                     <hr>
 
                     {{-- Histórico Desktop con sticky header --}}
+                    <div class="d-none d-md-flex justify-content-end mb-1">
+                        <x-scroll-bottom-btn scrollable="#tabla-apertura" />
+                    </div>
                     <div class="table-responsive d-none d-md-block"
-                         style="max-height: 500px; overflow-y: auto;">
+                         id="tabla-apertura" style="max-height: 500px; overflow-y: auto;">
                         <table class="table table-bordered table-striped table-hover" style="font-size: 11px;">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>

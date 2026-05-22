@@ -73,7 +73,7 @@
                                 <button type="button" class="btn btn-sm btn-secondary flex-shrink-0" onclick="window.print()">
                                     <i class="ti ti-printer f-s-12"></i>
                                 </button>
-                                <x-scroll-bottom-btn />
+                                <x-scroll-bottom-btn scrollable="#tabla-cancelados" />
                             </div>
                         </div>
                     </div>
@@ -107,7 +107,7 @@
                     </div>
 
                     {{-- Tabla principal --}}
-                    <div class="table-responsive" style="max-height: 650px; overflow:auto;">
+                    <div id="tabla-cancelados" class="table-responsive" style="max-height: 650px; overflow:auto;">
                         <table class="table table-bordered table-striped table-hover" style="font-size: 11px; min-width: 1500px;">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>

@@ -59,7 +59,7 @@
                                 <button type="submit" class="btn btn-sm btn-primary">
                                     <i class="ti ti-search f-s-12"></i> Consultar
                                 </button>
-                                <x-scroll-bottom-btn />
+                                <x-scroll-bottom-btn scrollable="#tabla-caja-1" />
                                 <a href="#" class="btn btn-sm btn-success">
                                     <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
                                 </a>
@@ -71,7 +71,7 @@
                     </form>
 
                     <div id="printme">
-                        <div class="table-responsive" style="max-height: 70vh; overflow: auto;">
+                        <div id="tabla-caja-1" class="table-responsive" style="max-height: 70vh; overflow: auto;">
                             <table class="table table-bordered table-striped table-hover" style="font-size: 11px; min-width: 1600px;">
                                 <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                     <tr>

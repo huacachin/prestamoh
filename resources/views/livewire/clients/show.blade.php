@@ -1,6 +1,4 @@
-<div class="container-fluid">
-    <x-scroll-bottom-btn class="position-fixed shadow" style="bottom:20px; right:20px; z-index:1050;" />
-    <div class="row">
+<div class="container-fluid">    <div class="row">
         <div class="col-sm-6">
             <h4 class="main-title title-modules" style="color:red;">FICHA DE CLIENTE</h4>
         </div>
@@ -85,7 +83,8 @@
     {{-- Tabla de créditos del cliente --}}
     <div class="card shadow-sm mt-2">
         <div class="card-body pb-2">
-            <div class="table-responsive" style="max-height: 650px; overflow:auto;">
+            <div class="d-flex justify-content-end mb-1"><x-scroll-bottom-btn scrollable="#tabla-cliente" /></div>
+                    <div id="tabla-cliente" class="table-responsive" style="max-height: 650px; overflow:auto;">
                 <table class="table table-bordered table-striped table-hover" style="font-size: 11px; min-width: 1800px;">
                     <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                         <tr>

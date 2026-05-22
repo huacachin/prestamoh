@@ -48,7 +48,7 @@
                                 <button class="btn btn-sm btn-dark flex-shrink-0" wire:click="search" wire:loading.attr="disabled">
                                     <i class="ti ti-search f-s-12"></i> Buscar
                                 </button>
-                                <x-scroll-bottom-btn />
+                                <x-scroll-bottom-btn scrollable="#tabla-pagos" />
                                 <button class="btn btn-sm btn-success flex-shrink-0" onclick="window.print()">
                                     <i class="ti ti-file-spreadsheet f-s-12"></i>
                                 </button>
@@ -56,7 +56,7 @@
                         </div>
                     </div>
 
-                    <div class="table-responsive" style="max-height: 650px; overflow:auto;">
+                    <div id="tabla-pagos" class="table-responsive" style="max-height: 650px; overflow:auto;">
                         <table class="table table-bordered table-striped table-hover" style="font-size: 11px; min-width: 2200px; table-layout: fixed;">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
