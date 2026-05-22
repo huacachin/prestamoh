@@ -45,7 +45,14 @@
                 if ($diasA > 0)  $out .= ' ' . $diasA . ' día' . ($diasA === 1 ? '' : 's');
                 return $out;
             };
-            $cancelDisabled = ($c['saldo_mora'] - (float) $monto) > 0.01;
+            // Para cancelar el crédito hay que cubrir el saldo. Si "Reserva Mora"
+            // está marcada, alcanza con capital+interés (la mora se perdona al
+            // cancelar). Sin reserva, hay que cubrir también la mora. La cobertura
+            // suma todos los inputs de pago (monto + impomora + impointe2).
+            $cobertura = (float) $monto + (float) $impomora + (float) $impointe2;
+            $cancelDisabled = $ckmora
+                ? ($c['saldo_pendiente'] - $cobertura) > 0.01
+                : ($c['saldo_mora']      - $cobertura) > 0.01;
         @endphp
 
         {{-- Formulario --}}
@@ -186,7 +193,9 @@
                                    style="color:{{ $cancelDisabled ? '#999' : 'red' }};">
                                 Cancelado
                                 @if($cancelDisabled)
-                                    <small class="text-muted">(se habilita al cubrir saldo + mora)</small>
+                                    <small class="text-muted">
+                                        (se habilita al cubrir {{ $ckmora ? 'capital + interés' : 'capital + interés + mora' }})
+                                    </small>
                                 @endif
                             </label>
                         </div>

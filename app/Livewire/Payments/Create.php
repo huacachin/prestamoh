@@ -363,7 +363,11 @@ class Create extends Component
             }
 
             // ─── 8) RESERVA MORA (ckmora) UPSERT ───────────────────────────
-            if ($this->ckmora && $totMora > 0.001) {
+            // Reserva + cancelar → la mora se PERDONA (no se acumula): no tiene
+            // sentido dejar mora como deuda futura sobre un crédito que se cierra.
+            // Reserva + sin cancelar → acumula en mora_acumulada para cobrarla
+            // más adelante (deuda viva).
+            if ($this->ckmora && !$this->cancel && $totMora > 0.001) {
                 $existing = DB::table('mora_acumulada')->where('credit_id', $this->credit->id)->first();
                 if ($existing) {
                     DB::table('mora_acumulada')->where('credit_id', $this->credit->id)->update([
