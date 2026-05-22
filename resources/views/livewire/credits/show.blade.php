@@ -152,7 +152,7 @@
         </div>
     </div>
 
-    {{-- Pagos realizados --}}
+    {{-- Pagos realizados (agrupados por cobro / mass_deletion) --}}
     <div class="card shadow-sm mt-3">
         <div class="card-body pb-2">
             <h6>PAGOS REALIZADOS</h6>
@@ -162,25 +162,53 @@
                     <tr>
                         <th>#</th>
                         <th>Fecha</th>
-                        <th>Tipo</th>
-                        <th>Monto</th>
-                        <th>Recibo</th>
-                        <th>Usuario</th>
+                        <th>Cuotas</th>
+                        <th class="text-end">Capital</th>
+                        <th class="text-end">Interés</th>
+                        <th class="text-end">Mora</th>
+                        <th class="text-end">Total</th>
+                        <th>Cobrador</th>
+                        <th class="text-center">Acción</th>
                     </tr>
                     </thead>
                     <tbody>
-                    @forelse($credit->payments as $pay)
+                    @forelse($credit->massDeletions as $masivo)
+                        @php
+                            $totales = ['C' => 0, 'I' => 0, 'M' => 0];
+                            $cuotas = [];
+                            foreach ($masivo->details as $d) {
+                                if (isset($totales[$d->tipo])) $totales[$d->tipo] += (float) $d->amount;
+                                if ($d->tipo === 'C' && $d->installment?->num_cuota !== null) {
+                                    $cuotas[] = $d->installment->num_cuota;
+                                }
+                            }
+                            $cuotas = array_values(array_unique($cuotas));
+                            sort($cuotas);
+                        @endphp
                         <tr>
                             <td>{{ $loop->iteration }}</td>
-                            <td>{{ $pay->fecha?->format('d/m/Y') }}</td>
-                            <td>{{ $pay->tipo }}</td>
-                            <td class="text-end">{{ number_format($pay->monto, 2) }}</td>
-                            <td>{{ $pay->nro_recibo ?: '—' }}</td>
-                            <td>{{ $pay->user?->name ?: '—' }}</td>
+                            <td>
+                                {{ $masivo->date?->format('d/m/Y') }}
+                                <small class="text-muted">{{ $masivo->time }}</small>
+                            </td>
+                            <td>{{ $cuotas ? implode(',', $cuotas) : '—' }}</td>
+                            <td class="text-end">{{ number_format($totales['C'], 2) }}</td>
+                            <td class="text-end">{{ number_format($totales['I'], 2) }}</td>
+                            <td class="text-end">{{ number_format($totales['M'], 2) }}</td>
+                            <td class="text-end fw-bold">{{ number_format($masivo->amount, 2) }}</td>
+                            <td>{{ $masivo->user ?: '—' }}</td>
+                            <td class="text-center">
+                                <button type="button"
+                                        wire:click="printPayment({{ $masivo->id }})"
+                                        class="btn btn-sm btn-primary"
+                                        title="Imprimir ticket #{{ $masivo->id }}">
+                                    <i class="ti ti-printer"></i>
+                                </button>
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="py-4 text-muted">Sin pagos registrados</td>
+                            <td colspan="9" class="py-4 text-muted text-center">Sin pagos registrados</td>
                         </tr>
                     @endforelse
                     </tbody>

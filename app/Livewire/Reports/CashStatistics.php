@@ -23,10 +23,128 @@ class CashStatistics extends Component
 
     public function search(): void {}
 
+    /**
+     * Recalcula y persiste cache_resumen_mensual para un mes/año, replicando
+     * exactamente el UPDATE huaca_tbresumen del legacy caja-estadistica.php (L556).
+     * Idempotente: se puede llamar en cada render.
+     */
+    private function recalcularResumenMes(int $year, int $month): void
+    {
+        $start = Carbon::create($year, $month, 1)->format('Y-m-d');
+        $end   = Carbon::create($year, $month)->endOfMonth()->format('Y-m-d');
+
+        // capital cobrado (legacy: $totalImporteG = SUM huaca_totcaj1a)
+        $capital = (float) DB::table('cache_capital_cobrado')
+            ->whereBetween('fecha', [$start, $end])->sum('importe');
+
+        // capital neto desembolsado (legacy: $totalImporteG1 = SUM huaca_capineto)
+        $recucapi = (float) DB::table('capital_neto')
+            ->whereBetween('fecha', [$start, $end])->sum('importe');
+
+        // n / monto por tipo planilla (legacy: SUM huaca_totcaj3)
+        $cct = DB::table('cache_credit_totals')
+            ->whereBetween('fecha', [$start, $end])
+            ->selectRaw('
+                COALESCE(SUM(n_mensual),0) n1, COALESCE(SUM(mensual),0) ms,
+                COALESCE(SUM(n_semanal),0) n2, COALESCE(SUM(semanal),0) ss,
+                COALESCE(SUM(n_diario),0)  n3, COALESCE(SUM(diario),0)  ds
+            ')->first();
+
+        // mora por tipo planilla (legacy: $tipo11/$tipo33/$tipo44, viene de
+        // huaca_ingreso documento LIKE 'MORA%' JOIN cab tipoplani)
+        $moras = DB::table('payments')
+            ->join('credits', 'payments.credit_id', '=', 'credits.id')
+            ->whereBetween('payments.fecha', [$start, $end])
+            ->where('payments.tipo', 'MORA')
+            ->whereIn('credits.tipo_planilla', [1, 3, 4])
+            ->selectRaw('credits.tipo_planilla as tp, SUM(payments.monto) as t')
+            ->groupBy('credits.tipo_planilla')
+            ->pluck('t', 'tp');
+        $mora1 = (float) ($moras[1] ?? 0); // semanal
+        $mora3 = (float) ($moras[3] ?? 0); // mensual
+        $mora4 = (float) ($moras[4] ?? 0); // diario
+
+        // total = mora del legacy. En el legacy ambos campos son lo mismo:
+        // $tottoddG = $totalImporteG3 = sum por día de (mensual+semanal+diario+moras)
+        $totalCredito = (float) $cct->ms + (float) $cct->ss + (float) $cct->ds
+                      + $mora1 + $mora3 + $mora4;
+
+        // caja 1 ingresos / egresos por modo (legacy: huaca_ingreso/huaca_entrada modo)
+        $fijoi  = (float) DB::table('incomes')->where('caja', 1)->where('modo', 'Fijos')
+            ->whereBetween('date', [$start, $end])->sum('total');
+        $otrosi = (float) DB::table('incomes')->where('caja', 1)->where('modo', 'Otros')
+            ->whereBetween('date', [$start, $end])->sum('total');
+        $fijoe  = (float) DB::table('expenses')->where('caja', 1)->where('modo', 'Fijos')
+            ->whereBetween('date', [$start, $end])->sum('total');
+        $otrose = (float) DB::table('expenses')->where('caja', 1)->where('modo', 'Otros')
+            ->whereBetween('date', [$start, $end])->sum('total');
+
+        // caja 3 (legacy: huaca_ingreso3/huaca_entrada3)
+        $otros2  = (float) DB::table('incomes')->where('caja', 3)
+            ->whereBetween('date', [$start, $end])->sum('total');
+        $egresov = (float) DB::table('expenses')->where('caja', 3)
+            ->whereBetween('date', [$start, $end])->sum('total');
+
+        // utilidad caja 3 (legacy: $newutix = SUM por día de tottodd + otros - egresov)
+        $utilidad2 = $totalCredito + $otros2 - $egresov;
+
+        // egreso (legacy: $totalImporteG5 = SUM por día de (créditos activados ese
+        // día con cod_rem<>'REF' + egresos caja 1 modo Fijos/Otros))
+        $capitalActivado = (float) DB::table('credits')
+            ->whereYear('fecha_actualizacion', $year)
+            ->whereMonth('fecha_actualizacion', $month)
+            ->where(function ($q) { $q->where('cod_rem', '<>', 'REF')->orWhereNull('cod_rem'); })
+            ->sum('importe');
+        $egreso = $capitalActivado + $fijoe + $otrose;
+
+        // otros del legacy = $totalImporteG4 = SUM ingresos caja 1 modo Fijos+Otros
+        $otros = $fijoi + $otrosi;
+
+        // utilidad global del legacy = $totalImporteGG = SUM por día de
+        // (capital_neto + capital_cobrado + total_credito + otros - egreso)
+        $utilidad = $recucapi + $capital + $totalCredito + $otros - $egreso;
+
+        DB::table('cache_resumen_mensual')->updateOrInsert(
+            ['idmes' => $month, 'idano' => $year],
+            [
+                'capital'    => $capital,
+                'recucapi'   => $recucapi,
+                'n1'         => (int) $cct->n1,
+                'n2'         => (int) $cct->n2,
+                'n3'         => (int) $cct->n3,
+                'mensual'    => (float) $cct->ms,
+                'semanal'    => (float) $cct->ss,
+                'diario'     => (float) $cct->ds,
+                'mora1'      => $mora1,
+                'mora3'      => $mora3,
+                'mora4'      => $mora4,
+                'mora'       => $totalCredito,
+                'total'      => $totalCredito,
+                'otros'      => $otros,
+                'egreso'     => $egreso,
+                'utilidad'   => $utilidad,
+                'otros2'     => $otros2,
+                'egresov'    => $egresov,
+                'utilidad2'  => $utilidad2,
+                'fijoi'      => $fijoi,
+                'otrosi'     => $otrosi,
+                'fijoe'      => $fijoe,
+                'otrose'     => $otrose,
+                'updated_at' => now(),
+            ]
+        );
+    }
+
     public function render()
     {
         $year  = (int) $this->year;
         $month = (int) $this->month;
+
+        // Replica el comportamiento del legacy caja-estadistica.php (línea 556):
+        // recalcula y persiste el resumen del mes ANTES de leerlo para la tabla 2.
+        // Sin esto, cualquier cambio en expenses/incomes/credits posterior a la
+        // migración deja la tabla 2 leyendo un cache stale.
+        $this->recalcularResumenMes($year, $month);
 
         $startMonth = Carbon::create($year, $month, 1)->format('Y-m-d');
         $endMonth   = Carbon::create($year, $month)->endOfMonth()->format('Y-m-d');
@@ -195,8 +313,8 @@ class CashStatistics extends Component
 
             $rows[] = $row;
 
-            foreach ($totals as $k => &$v) {
-                $v += $row[$k] ?? 0;
+            foreach (array_keys($totals) as $k) {
+                $totals[$k] += $row[$k] ?? 0;
             }
         }
 

@@ -56,7 +56,9 @@
       "Bash(echo \"EXIT: $?\")",
       "Bash(php artisan *)",
       "Bash(echo \"DONE EXIT=$?\")",
-      "Bash(awk -F: '{print $1}')"
+      "Bash(awk -F: '{print $1}')",
+      "Bash(lpstat -p)",
+      "Bash(lpstat -d)"
     ]
   }
 }

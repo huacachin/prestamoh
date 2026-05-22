@@ -43,6 +43,11 @@ class Credit extends Model
         return $this->hasMany(Payment::class);
     }
 
+    public function massDeletions(): HasMany
+    {
+        return $this->hasMany(MassDeletion::class)->orderByDesc('date')->orderByDesc('time');
+    }
+
     public function lateFees(): HasMany
     {
         return $this->hasMany(LateFee::class);
