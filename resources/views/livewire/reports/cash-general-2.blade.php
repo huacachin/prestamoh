@@ -49,9 +49,15 @@
                                 <button class="btn btn-sm btn-dark flex-shrink-0" wire:click="search">
                                     <i class="ti ti-search f-s-12"></i> Buscar
                                 </button>
-                                <button class="btn btn-sm btn-secondary flex-shrink-0" onclick="window.print()">
+                                <a href="{{ route('exports.reports.cash-general-2', ['month' => $month, 'year' => $year]) }}"
+                                   target="_blank"
+                                   class="btn btn-sm btn-success flex-shrink-0">
+                                    <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
+                                </a>
+                                <button type="button" class="btn btn-sm btn-secondary flex-shrink-0" onclick="window.print()">
                                     <i class="ti ti-printer f-s-12"></i> Imprimir
                                 </button>
+                                <x-scroll-bottom-btn />
                             </div>
                         </div>
                     </div>
@@ -142,4 +148,5 @@
             </div>
         </div>
     </div>
+<span id="final"></span>
 </div>

@@ -60,6 +60,7 @@
                                class="btn btn-sm btn-success" target="_blank">
                                 <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
                             </a>
+                                <x-scroll-bottom-btn />
                         </div>
                     </form>
 
@@ -227,4 +228,5 @@
             </div>
         </div>
     </div>
+<span id="final"></span>
 </div>

@@ -44,6 +44,7 @@
                                 <button type="button" class="btn btn-sm btn-secondary" onclick="window.print()">
                                     <i class="ti ti-printer f-s-12"></i> Imprimir
                                 </button>
+                                <x-scroll-bottom-btn />
                             </div>
                         </div>
                     </form>
@@ -538,4 +539,5 @@
             </div>
         </div>
     </div>
+<span id="final"></span>
 </div>

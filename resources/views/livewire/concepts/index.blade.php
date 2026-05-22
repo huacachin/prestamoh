@@ -54,9 +54,12 @@
                             <button type="submit" class="btn btn-sm btn-primary">
                                 <i class="ti ti-search f-s-12"></i> Buscar
                             </button>
-                            <a href="#" class="btn btn-sm btn-success">
+                            <a href="{{ route('exports.concepts', ['tipo' => $tipo, 'compra' => $compra, 'estados' => $estados]) }}"
+                               target="_blank"
+                               class="btn btn-sm btn-success">
                                 <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
                             </a>
+                                <x-scroll-bottom-btn />
                             @can('configuracion.conceptos')
                                 <a href="{{ route('settings.concepts.create') }}" class="btn btn-sm btn-danger">
                                     <i class="ti ti-plus f-s-12"></i> Nuevo Concepto
@@ -196,4 +199,5 @@
             </div>
         </div>
     </div>
+<span id="final"></span>
 </div>

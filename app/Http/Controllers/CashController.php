@@ -15,6 +15,35 @@ class CashController extends Controller
     public function createExpense() { return view('cash.create-expense'); }
     public function editExpense(int $id) { return view('cash.edit-expense', compact('id')); }
     public function expenseGallery(int $id) { return view('cash.expense-gallery', compact('id')); }
-    public function exportIncomes(Request $request) { }
-    public function exportExpenses(Request $request) { }
+    public function exportIncomes(Request $request)
+    {
+        $user = auth()->user();
+        $export = new \App\Exports\IncomesExport(
+            tipo:    (string) $request->query('tipo', '1'),
+            compra:  (string) $request->query('compra', ''),
+            fei:     (string) $request->query('fei', now()->format('Y-m-d')),
+            fef:     (string) $request->query('fef', now()->format('Y-m-d')),
+            userId:  $user?->id,
+            crossHQ: $user?->can('acceso.cross-headquarter') ?? false,
+            hqId:    $user?->headquarter_id ?? 1,
+            editarHistorico: $user?->can('caja.editar-historico') ?? false,
+        );
+        return \Maatwebsite\Excel\Facades\Excel::download($export, 'ingresos-' . now()->format('Ymd-His') . '.xlsx');
+    }
+
+    public function exportExpenses(Request $request)
+    {
+        $user = auth()->user();
+        $export = new \App\Exports\ExpensesExport(
+            tipo:    (string) $request->query('tipo', '1'),
+            compra:  (string) $request->query('compra', ''),
+            fei:     (string) $request->query('fei', now()->format('Y-m-d')),
+            fef:     (string) $request->query('fef', now()->format('Y-m-d')),
+            userId:  $user?->id,
+            crossHQ: $user?->can('acceso.cross-headquarter') ?? false,
+            hqId:    $user?->headquarter_id ?? 1,
+            editarHistorico: $user?->can('caja.editar-historico') ?? false,
+        );
+        return \Maatwebsite\Excel\Facades\Excel::download($export, 'egresos-' . now()->format('Ymd-His') . '.xlsx');
+    }
 }

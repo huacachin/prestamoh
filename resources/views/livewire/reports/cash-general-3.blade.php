@@ -49,6 +49,7 @@
                                 <button class="btn btn-sm btn-dark flex-shrink-0" wire:click="search">
                                     <i class="ti ti-search f-s-12"></i> Buscar
                                 </button>
+                                <x-scroll-bottom-btn />
                                 <button class="btn btn-sm btn-secondary flex-shrink-0" onclick="window.print()">
                                     <i class="ti ti-printer f-s-12"></i> Imprimir
                                 </button>
@@ -212,4 +213,5 @@
             </div>
         </div>
     </div>
+<span id="final"></span>
 </div>

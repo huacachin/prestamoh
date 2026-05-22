@@ -119,4 +119,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/exports/payments', [PaymentController::class, 'export'])->name('exports.payments');
     Route::get('/exports/incomes', [CashController::class, 'exportIncomes'])->name('exports.incomes');
     Route::get('/exports/expenses', [CashController::class, 'exportExpenses'])->name('exports.expenses');
+    Route::get('/exports/concepts', [ConceptController::class, 'export'])->name('exports.concepts');
+    Route::get('/exports/reports/cancelled',     [ReportController::class, 'exportCancelled'])->name('exports.reports.cancelled');
+    Route::get('/exports/reports/payments',      [ReportController::class, 'exportPayments'])->name('exports.reports.payments');
+    Route::get('/exports/reports/cash-general-2',[ReportController::class, 'exportCashGeneral2'])->name('exports.reports.cash-general-2');
+    Route::get('/exports/reports/advisor',       [ReportController::class, 'exportAdvisor'])->name('exports.reports.advisor');
 });

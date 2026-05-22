@@ -41,9 +41,12 @@
                             <button type="submit" class="btn btn-sm btn-primary">
                                 <i class="ti ti-search f-s-12"></i> Buscar
                             </button>
-                            <a href="#" class="btn btn-sm btn-success">
+                            <a href="{{ route('exports.payments', ['nombre' => $nombre, 'nombre1' => $nombre1, 'codigo1' => $codigo1]) }}"
+                               target="_blank"
+                               class="btn btn-sm btn-success">
                                 <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
                             </a>
+                            <x-scroll-bottom-btn />
                         </div>
                     </form>
 
@@ -152,4 +155,5 @@
             </div>
         </div>
     </div>
+<span id="final"></span>
 </div>

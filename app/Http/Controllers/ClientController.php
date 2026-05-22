@@ -13,5 +13,20 @@ class ClientController extends Controller
     public function gallery(int $id) { return view('clients.gallery', compact('id')); }
     public function aval(int $id) { return view('clients.aval', compact('id')); }
     public function ceased() { return view('clients.ceased'); }
-    public function export(Request $request) { }
+    public function export(Request $request)
+    {
+        $user = auth()->user();
+        $export = new \App\Exports\ClientsExport(
+            status:      (string) $request->query('status', 'active'),
+            nexpediente: (string) $request->query('nexpediente', ''),
+            documento:   (string) $request->query('documento', ''),
+            nombre:      (string) $request->query('nombre', ''),
+            ruta:        (string) $request->query('ruta', ''),
+            ejecutivo:   (string) $request->query('ejecutivo', ''),
+            userId:      $user?->id,
+            scopePropio: $user?->can('clientes.scope-propio') ?? false,
+        );
+        $prefix = $request->query('status') === 'inactive' ? 'clientes-cesados' : 'clientes';
+        return \Maatwebsite\Excel\Facades\Excel::download($export, $prefix . '-' . now()->format('Ymd-His') . '.xlsx');
+    }
 }

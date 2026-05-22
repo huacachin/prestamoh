@@ -89,6 +89,7 @@
                                 <button type="submit" class="btn btn-sm btn-primary">
                                     <i class="ti ti-search f-s-12"></i> Buscar
                                 </button>
+                                <x-scroll-bottom-btn />
                             </div>
                         </div>
                     </form>
@@ -467,4 +468,5 @@
     }
 </script>
 @endscript
+<span id="final"></span>
 </div>

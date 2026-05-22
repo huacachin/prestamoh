@@ -59,6 +59,7 @@
                                 <button type="submit" class="btn btn-sm btn-primary">
                                     <i class="ti ti-search f-s-12"></i> Consultar
                                 </button>
+                                <x-scroll-bottom-btn />
                                 <a href="#" class="btn btn-sm btn-success">
                                     <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
                                 </a>
@@ -249,4 +250,5 @@
         .breadcrumb, .btn, form { display: none !important; }
         #printme { width: 100%; }
     }
+<span id="final"></span>
 </style>

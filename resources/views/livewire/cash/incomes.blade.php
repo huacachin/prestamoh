@@ -69,9 +69,12 @@
                                     <i class="ti ti-plus f-s-12"></i> Agregar Nuevo
                                 </a>
                             @endcan
-                            <a href="#" class="btn btn-sm btn-success">
+                            <a href="{{ route('exports.incomes', ['tipo' => $tipo, 'compra' => $compra, 'fei' => $fei, 'fef' => $fef]) }}"
+                               target="_blank"
+                               class="btn btn-sm btn-success">
                                 <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
                             </a>
+                                <x-scroll-bottom-btn />
                         </div>
                     </form>
 
@@ -291,4 +294,5 @@
             </div>
         </div>
     </div>
+<span id="final"></span>
 </div>

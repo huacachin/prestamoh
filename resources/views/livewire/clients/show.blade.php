@@ -1,4 +1,5 @@
 <div class="container-fluid">
+    <x-scroll-bottom-btn class="position-fixed shadow" style="bottom:20px; right:20px; z-index:1050;" />
     <div class="row">
         <div class="col-sm-6">
             <h4 class="main-title title-modules" style="color:red;">FICHA DE CLIENTE</h4>
@@ -197,4 +198,5 @@
             </div>
         </div>
     </div>
+<span id="final"></span>
 </div>

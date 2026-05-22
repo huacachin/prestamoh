@@ -15,5 +15,14 @@ class CreditController extends Controller
     public function changeStatus() { return view('credits.change-status'); }
     public function massDelete() { return view('credits.mass-delete'); }
     public function massDeleteEdit(int $id) { return view('credits.mass-delete-edit', compact('id')); }
-    public function export(Request $request) { }
+    public function export(Request $request)
+    {
+        $export = new \App\Exports\CreditsExport(
+            nombre:    (string) $request->query('nombre', ''),
+            codigo:    (string) $request->query('codigo', ''),
+            ejecutivo: (string) $request->query('ejecutivo', ''),
+            seletipl:  (string) $request->query('seletipl', ''),
+        );
+        return \Maatwebsite\Excel\Facades\Excel::download($export, 'creditos-' . now()->format('Ymd-His') . '.xlsx');
+    }
 }
