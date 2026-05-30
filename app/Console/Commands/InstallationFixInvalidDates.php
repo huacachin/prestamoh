@@ -35,6 +35,15 @@ class InstallationFixInvalidDates extends Command
             if ($n > 0) $changes[] = ['table' => 'credits', 'column' => 'fecha_vencimiento', 'rows' => $n];
         } catch (\Throwable $e) {}
 
+        // incomes.date / expenses.date — fechas legacy 0000-00-00 que MySQL no
+        // estricto pudo dejar entrar. Deben quedar NULL, no con fecha basura.
+        foreach (['incomes', 'expenses'] as $tbl) {
+            try {
+                $n = DB::table($tbl)->whereRaw("CAST(`date` AS CHAR) = '0000-00-00'")->count();
+                if ($n > 0) $changes[] = ['table' => $tbl, 'column' => 'date', 'rows' => $n];
+            } catch (\Throwable $e) {}
+        }
+
         if (empty($changes)) {
             $this->info('✓ Sin fechas 0000-00-00. Nada que hacer.');
             return self::SUCCESS;

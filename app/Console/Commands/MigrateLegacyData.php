@@ -544,7 +544,7 @@ class MigrateLegacyData extends Command
                     $userId = $userMap[strtolower(trim($li->usuario ?? ''))] ?? null;
 
                     $batch[] = [
-                        'date'           => ($li->fechaentrada && $li->fechaentrada !== '0000-00-00') ? $li->fechaentrada : now()->format('Y-m-d'),
+                        'date'           => ($li->fechaentrada && $li->fechaentrada !== '0000-00-00') ? $li->fechaentrada : null,
                         'reason'         => $li->aa ?: ($li->modo ?: 'Otros'),
                         'modo'           => $li->modo ?: null,
                         'documento'      => $li->documento ?: null,
@@ -600,7 +600,7 @@ class MigrateLegacyData extends Command
                     $userId = $userMap[strtolower(trim($li->usuario ?? ''))] ?? null;
 
                     $batch[] = [
-                        'date'           => ($li->fechaentrada && $li->fechaentrada !== '0000-00-00') ? $li->fechaentrada : now()->format('Y-m-d'),
+                        'date'           => ($li->fechaentrada && $li->fechaentrada !== '0000-00-00') ? $li->fechaentrada : null,
                         'reason'         => $li->aa ?: ($li->modo ?: 'Otros'),
                         'modo'           => $li->modo ?: null,
                         'documento'      => $li->documento ?: null,
@@ -657,7 +657,7 @@ class MigrateLegacyData extends Command
                     $userId = $userMap[strtolower(trim($le->usuario ?? ''))] ?? null;
 
                     $batch[] = [
-                        'date'           => ($le->fechaentrada && $le->fechaentrada !== '0000-00-00') ? $le->fechaentrada : now()->format('Y-m-d'),
+                        'date'           => ($le->fechaentrada && $le->fechaentrada !== '0000-00-00') ? $le->fechaentrada : null,
                         'reason'         => $le->aa ?: ($le->modo ?: 'Otros'),
                         'modo'           => $le->modo ?: null,
                         'detail'         => mb_substr($le->detalle ?: '', 0, 255),
@@ -713,7 +713,7 @@ class MigrateLegacyData extends Command
                     $userId = $userMap[strtolower(trim($le->usuario ?? ''))] ?? null;
 
                     $batch[] = [
-                        'date'           => ($le->fechaentrada && $le->fechaentrada !== '0000-00-00') ? $le->fechaentrada : now()->format('Y-m-d'),
+                        'date'           => ($le->fechaentrada && $le->fechaentrada !== '0000-00-00') ? $le->fechaentrada : null,
                         'reason'         => $le->aa ?: ($le->modo ?: 'Otros'),
                         'modo'           => $le->modo ?: null,
                         'detail'         => mb_substr($le->detalle ?: '', 0, 255),
