@@ -2,19 +2,25 @@
 
 namespace App\Exports;
 
+use App\Exports\Concerns\LegacyExcelStyle;
 use App\Models\MassDeletion;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Events\AfterSheet;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
 
-class MassDeletionsExport implements FromCollection, WithHeadings, WithMapping, WithStyles, ShouldAutoSize, WithEvents
+/**
+ * Excel de pagos masivos — título "ELIMINAR MASIVO" + total de monto.
+ */
+class MassDeletionsExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithCustomStartCell, WithEvents
 {
+    use LegacyExcelStyle;
+
+    protected float $total = 0;
+
     public function __construct(
         protected ?string $tipo,
         protected ?string $compra,
@@ -45,7 +51,10 @@ class MassDeletionsExport implements FromCollection, WithHeadings, WithMapping, 
             };
         }
 
-        return $query->orderBy('date', 'asc')->get();
+        $rows = $query->orderBy('date', 'asc')->get();
+        $this->total = (float) $rows->sum('amount');
+
+        return $rows;
     }
 
     public function headings(): array
@@ -73,22 +82,20 @@ class MassDeletionsExport implements FromCollection, WithHeadings, WithMapping, 
         ];
     }
 
-    public function styles(Worksheet $sheet)
-    {
-        return [
-            1 => ['font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']]],
-        ];
-    }
-
     public function registerEvents(): array
     {
         return [
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
-                $sheet->getStyle('A1:H1')->getFill()
-                    ->setFillType(Fill::FILL_SOLID)
-                    ->getStartColor()->setRGB('2874A6');
-                $sheet->getStyle('A1:H1')->getAlignment()->setHorizontal('center');
+                $lastCol = 'H';
+
+                $totalRow = $sheet->getHighestRow() + 1;
+                $sheet->setCellValue("A{$totalRow}", 'Total');
+                $sheet->mergeCells("A{$totalRow}:G{$totalRow}");
+                $sheet->setCellValue("H{$totalRow}", number_format($this->total, 2));
+
+                $this->applyLegacyStyle($sheet, 'ELIMINAR MASIVO', $lastCol);
+                $this->markTotalRow($sheet, $totalRow, $lastCol);
             },
         ];
     }

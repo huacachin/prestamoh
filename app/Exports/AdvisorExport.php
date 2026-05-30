@@ -2,22 +2,26 @@
 
 namespace App\Exports;
 
+use App\Exports\Concerns\LegacyExcelStyle;
 use App\Livewire\Reports\Advisor as AdvisorLivewire;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Events\AfterSheet;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
- * Excel del reporte /reports/advisor (colocación por asesor — día a día del mes).
+ * Excel del reporte /reports/advisor (colocación por asesor). Título "REPORTE DE ASESOR".
+ * Fila TOTAL al final, marcada en celeste.
  */
-class AdvisorExport implements FromCollection, WithHeadings, WithMapping, WithStyles, ShouldAutoSize, WithEvents
+class AdvisorExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithCustomStartCell, WithEvents
 {
+    use LegacyExcelStyle;
+
+    protected bool $tieneTotal = false;
+
     public function __construct(
         protected array $filters = [],
     ) {}
@@ -32,9 +36,9 @@ class AdvisorExport implements FromCollection, WithHeadings, WithMapping, WithSt
         $data = $c->render()->getData();
         $rows = collect($data['rows'] ?? []);
 
-        // Append fila Total
         $tot = $data['tot'] ?? [];
         if (!empty($tot)) {
+            $this->tieneTotal = true;
             $rows->push([
                 'fecha' => 'TOTAL', 'nuevo' => $tot['nuevo'] ?? 0, 'renov' => $tot['renov'] ?? 0,
                 'canc' => $tot['canc'] ?? 0, 'total' => $tot['total'] ?? 0,
@@ -71,18 +75,15 @@ class AdvisorExport implements FromCollection, WithHeadings, WithMapping, WithSt
         ];
     }
 
-    public function styles(Worksheet $sheet)
-    {
-        return [1 => ['font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']]]];
-    }
-
     public function registerEvents(): array
     {
         return [
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
-                $sheet->getStyle('A1:K1')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('2874A6');
-                $sheet->getStyle('A1:K1')->getAlignment()->setHorizontal('center');
+                $this->applyLegacyStyle($sheet, 'REPORTE DE ASESOR', 'K');
+                if ($this->tieneTotal) {
+                    $this->markTotalRow($sheet, $sheet->getHighestRow(), 'K');
+                }
             },
         ];
     }

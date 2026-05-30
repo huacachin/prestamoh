@@ -2,25 +2,30 @@
 
 namespace App\Exports;
 
+use App\Exports\Concerns\LegacyExcelStyle;
 use App\Models\Credit;
 use App\Models\CreditInstallment;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Events\AfterSheet;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
- * Excel del listado /credits — réplica de reporte1.php (cartera activa).
+ * Excel del listado /credits — réplica de reporte1.php. Título "RESUMEN DE CREDITO".
+ * Totales de Capital, Pagado y Saldo.
  */
-class CreditsExport implements FromCollection, WithHeadings, WithMapping, WithStyles, ShouldAutoSize, WithEvents
+class CreditsExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithCustomStartCell, WithEvents
 {
+    use LegacyExcelStyle;
+
     /** @var array<int, array{iapli: float, aplido: float}> */
     protected array $pagosMap = [];
+    protected float $totCapital = 0;
+    protected float $totPagado = 0;
+    protected float $totSaldo = 0;
 
     public function __construct(
         protected string $nombre = '',
@@ -56,7 +61,6 @@ class CreditsExport implements FromCollection, WithHeadings, WithMapping, WithSt
 
         $credits = $query->orderByDesc('fecha_prestamo')->get();
 
-        // Precalcular sumas de pagos (evita N+1 en map)
         $ids = $credits->pluck('id')->all();
         if (!empty($ids)) {
             $sums = CreditInstallment::whereIn('credit_id', $ids)
@@ -68,6 +72,15 @@ class CreditsExport implements FromCollection, WithHeadings, WithMapping, WithSt
                     'aplido' => (float) $s->aplido,
                 ];
             }
+        }
+
+        foreach ($credits as $c) {
+            $iapli  = $this->pagosMap[$c->id]['iapli'] ?? 0;
+            $aplido = $this->pagosMap[$c->id]['aplido'] ?? 0;
+            $inter  = round(($c->importe * $c->interes) / 100, 2);
+            $this->totCapital += (float) $c->importe;
+            $this->totPagado  += $iapli + $aplido;
+            $this->totSaldo   += (float) $c->importe - $iapli - $aplido + $inter;
         }
 
         return $credits;
@@ -112,20 +125,22 @@ class CreditsExport implements FromCollection, WithHeadings, WithMapping, WithSt
         ];
     }
 
-    public function styles(Worksheet $sheet)
-    {
-        return [
-            1 => ['font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']]],
-        ];
-    }
-
     public function registerEvents(): array
     {
         return [
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
-                $sheet->getStyle('A1:N1')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('2874A6');
-                $sheet->getStyle('A1:N1')->getAlignment()->setHorizontal('center');
+                $lastCol = 'N';
+
+                $totalRow = $sheet->getHighestRow() + 1;
+                $sheet->setCellValue("A{$totalRow}", 'Totales');
+                $sheet->mergeCells("A{$totalRow}:F{$totalRow}");
+                $sheet->setCellValue("G{$totalRow}", number_format($this->totCapital, 2));
+                $sheet->setCellValue("J{$totalRow}", number_format($this->totPagado, 2));
+                $sheet->setCellValue("K{$totalRow}", number_format($this->totSaldo, 2));
+
+                $this->applyLegacyStyle($sheet, 'RESUMEN DE CREDITO', $lastCol);
+                $this->markTotalRow($sheet, $totalRow, $lastCol);
             },
         ];
     }

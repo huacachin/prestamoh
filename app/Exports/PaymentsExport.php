@@ -2,23 +2,26 @@
 
 namespace App\Exports;
 
+use App\Exports\Concerns\LegacyExcelStyle;
 use App\Models\Credit;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Events\AfterSheet;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
  * Excel del listado /payments (créditos activos para pago).
- * Réplica del legacy pagosex2.php — solo créditos NO cancelados.
+ * Réplica del legacy pagosex2.php — título "PAGO/CREDITO", fila Totales.
  */
-class PaymentsExport implements FromCollection, WithHeadings, WithMapping, WithStyles, ShouldAutoSize, WithEvents
+class PaymentsExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithCustomStartCell, WithEvents
 {
+    use LegacyExcelStyle;
+
+    protected float $totalImporte = 0;
+
     public function __construct(
         protected ?string $nombre  = '',
         protected ?string $nombre1 = '',
@@ -36,7 +39,6 @@ class PaymentsExport implements FromCollection, WithHeadings, WithMapping, WithS
         if ($this->scopePropio && $this->userId) {
             $query->whereHas('client', fn ($c) => $c->where('asesor_id', $this->userId));
         }
-
         if (trim((string) $this->nombre) !== '') {
             $t = trim((string) $this->nombre);
             $query->whereHas('client', fn ($c) => $c->where('documento', 'like', "%{$t}%"));
@@ -53,7 +55,10 @@ class PaymentsExport implements FromCollection, WithHeadings, WithMapping, WithS
             $query->where('id', 'like', '%' . trim((string) $this->codigo) . '%');
         }
 
-        return $query->orderBy('id', 'asc')->get();
+        $rows = $query->orderBy('id', 'asc')->get();
+        $this->totalImporte = (float) $rows->sum('importe');
+
+        return $rows;
     }
 
     public function headings(): array
@@ -81,20 +86,21 @@ class PaymentsExport implements FromCollection, WithHeadings, WithMapping, WithS
         ];
     }
 
-    public function styles(Worksheet $sheet)
-    {
-        return [
-            1 => ['font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']]],
-        ];
-    }
-
     public function registerEvents(): array
     {
         return [
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
-                $sheet->getStyle('A1:H1')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('2874A6');
-                $sheet->getStyle('A1:H1')->getAlignment()->setHorizontal('center');
+                $lastCol = 'H';
+
+                // Fila de totales (legacy: colspan 5 "Totales" + suma Capital)
+                $totalRow = $sheet->getHighestRow() + 1;
+                $sheet->setCellValue("A{$totalRow}", 'Totales');
+                $sheet->mergeCells("A{$totalRow}:E{$totalRow}");
+                $sheet->setCellValue("F{$totalRow}", number_format($this->totalImporte, 2));
+
+                $this->applyLegacyStyle($sheet, 'PAGO/CREDITO', $lastCol);
+                $this->markTotalRow($sheet, $totalRow, $lastCol);
             },
         ];
     }

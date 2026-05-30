@@ -2,23 +2,27 @@
 
 namespace App\Exports;
 
+use App\Exports\Concerns\LegacyExcelStyle;
 use App\Livewire\Reports\CashGeneral2 as CashGeneral2Livewire;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Events\AfterSheet;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
- * Excel del /reports/cash-general-2 (balance diario por asesor).
- * Aplana la estructura por día/items en filas planas para Excel.
+ * Excel del /reports/cash-general-2 (balance diario). Título "BALANCE DIARIO".
+ * Marca filas SUBTOTAL/BALANCE en celeste.
  */
-class CashGeneral2Export implements FromCollection, WithHeadings, WithMapping, WithStyles, ShouldAutoSize, WithEvents
+class CashGeneral2Export implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithCustomStartCell, WithEvents
 {
+    use LegacyExcelStyle;
+
+    /** @var int[] filas (1-based en la hoja) que son subtotal/total */
+    protected array $totalRows = [];
+
     public function __construct(
         protected array $filters = [],
     ) {}
@@ -32,12 +36,12 @@ class CashGeneral2Export implements FromCollection, WithHeadings, WithMapping, W
         $data = $c->render()->getData();
         $report = $data['report'] ?? ['days' => [], 'balance_general' => 0];
 
-        // Aplanar: una fila Excel por cada item de cada día + 1 fila de subtotal por día
         $flat = collect();
+        $rowNum = 2; // fila 1 = título; headers fila 2; datos desde fila 3
         foreach ($report['days'] as $day) {
             foreach ($day['items'] as $item) {
+                $rowNum++;
                 $flat->push([
-                    'type'     => 'item',
                     'date'     => $day['date'],
                     'cliente'  => $item['cliente'] ?? '',
                     'detalle'  => $item['detalle'] ?? '',
@@ -46,8 +50,9 @@ class CashGeneral2Export implements FromCollection, WithHeadings, WithMapping, W
                     'saldo'    => '',
                 ]);
             }
+            $rowNum++;
+            $this->totalRows[] = $rowNum;
             $flat->push([
-                'type'     => 'subtotal',
                 'date'     => $day['date'],
                 'cliente'  => 'SUBTOTAL DEL DÍA',
                 'detalle'  => $day['date_label'] ?? '',
@@ -56,8 +61,9 @@ class CashGeneral2Export implements FromCollection, WithHeadings, WithMapping, W
                 'saldo'    => (float) $day['saldo'],
             ]);
         }
+        $rowNum++;
+        $this->totalRows[] = $rowNum;
         $flat->push([
-            'type'    => 'total',
             'date'    => '',
             'cliente' => 'BALANCE GENERAL',
             'detalle' => '',
@@ -86,18 +92,15 @@ class CashGeneral2Export implements FromCollection, WithHeadings, WithMapping, W
         ];
     }
 
-    public function styles(Worksheet $sheet)
-    {
-        return [1 => ['font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']]]];
-    }
-
     public function registerEvents(): array
     {
         return [
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
-                $sheet->getStyle('A1:F1')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('2874A6');
-                $sheet->getStyle('A1:F1')->getAlignment()->setHorizontal('center');
+                $this->applyLegacyStyle($sheet, 'BALANCE DIARIO', 'F');
+                foreach ($this->totalRows as $row) {
+                    $this->markTotalRow($sheet, $row, 'F');
+                }
             },
         ];
     }

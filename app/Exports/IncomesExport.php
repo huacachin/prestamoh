@@ -2,26 +2,33 @@
 
 namespace App\Exports;
 
+use App\Exports\Concerns\LegacyExcelStyle;
 use App\Models\Income;
 use App\Models\Payment;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Events\AfterSheet;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
  * Excel del listado /cash/incomes — réplica del legacy ingreso_excel.php.
- * Une INGRESOS Fijos/Otros + PAGOS de créditos (CAPITAL/INTERES/MORA),
- * igual que la pantalla.
+ * Título "INGRESOS" + totales (General, Fijos, Otros, Capital, Interés, Mora).
  */
-class IncomesExport implements FromCollection, WithHeadings, WithMapping, WithStyles, ShouldAutoSize, WithEvents
+class IncomesExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithCustomStartCell, WithEvents
 {
+    use LegacyExcelStyle;
+
+    protected float $total = 0;
+    protected float $tofijo = 0;
+    protected float $totros = 0;
+    protected float $tocapi = 0;
+    protected float $totinte = 0;
+    protected float $totmora = 0;
+
     public function __construct(
         protected string $tipo = '1',
         protected string $compra = '',
@@ -37,7 +44,6 @@ class IncomesExport implements FromCollection, WithHeadings, WithMapping, WithSt
     {
         $term = trim($this->compra);
 
-        // ─── INGRESOS Fijos/Otros (caja=1)
         $incQ = Income::query()
             ->where('caja', 1)
             ->where(function ($q) { $q->where('modo', '<>', 'Compra')->orWhereNull('modo'); })
@@ -61,7 +67,6 @@ class IncomesExport implements FromCollection, WithHeadings, WithMapping, WithSt
         }
         $incomes = $incQ->get();
 
-        // ─── PAGOS (CREDITO)
         $payQ = Payment::query()
             ->with(['credit.client:id,nombre,apellido_pat,apellido_mat', 'user:id,name,username']);
 
@@ -87,7 +92,6 @@ class IncomesExport implements FromCollection, WithHeadings, WithMapping, WithSt
         }
         $payments = $payQ->get();
 
-        // ─── Unificar y ordenar por id ASC (legacy: identrada asc)
         $rows = new Collection();
         foreach ($incomes as $i) {
             $rows->push((object) [
@@ -118,7 +122,20 @@ class IncomesExport implements FromCollection, WithHeadings, WithMapping, WithSt
             ]);
         }
 
-        return $rows->sortBy('id')->values();
+        $rows = $rows->sortBy('id')->values();
+
+        foreach ($rows as $r) {
+            $t = (float) $r->total;
+            $this->total += $t;
+            if ($r->modo === 'Fijos') $this->tofijo += $t;
+            elseif ($r->modo === 'Otros') $this->totros += $t;
+            $doc = (string) $r->documento;
+            if ($doc === 'CAPITAL') $this->tocapi += $t;
+            elseif ($doc === 'INTERES') $this->totinte += $t;
+            elseif (str_contains($doc, 'MORA')) $this->totmora += $t;
+        }
+
+        return $rows;
     }
 
     private function applyDateFilter($q, string $col, string $term): void
@@ -154,20 +171,34 @@ class IncomesExport implements FromCollection, WithHeadings, WithMapping, WithSt
         ];
     }
 
-    public function styles(Worksheet $sheet)
-    {
-        return [
-            1 => ['font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']]],
-        ];
-    }
-
     public function registerEvents(): array
     {
         return [
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
-                $sheet->getStyle('A1:I1')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('2874A6');
-                $sheet->getStyle('A1:I1')->getAlignment()->setHorizontal('center');
+                $lastCol = 'I';
+
+                $filas = [
+                    ['Total General', $this->total],
+                    ['Fijos',         $this->tofijo],
+                    ['Otros',         $this->totros],
+                    ['Capital',       $this->tocapi],
+                    ['Interés',       $this->totinte],
+                    ['Mora',          $this->totmora],
+                ];
+                $r = $sheet->getHighestRow();
+                foreach ($filas as $f) {
+                    $r++;
+                    $sheet->setCellValue("A{$r}", $f[0]);
+                    $sheet->mergeCells("A{$r}:H{$r}");
+                    $sheet->setCellValue("I{$r}", number_format($f[1], 2));
+                }
+
+                $this->applyLegacyStyle($sheet, 'INGRESOS', $lastCol);
+                $firstTotal = $sheet->getHighestRow() - count($filas) + 1;
+                for ($x = $firstTotal; $x <= $sheet->getHighestRow(); $x++) {
+                    $this->markTotalRow($sheet, $x, $lastCol);
+                }
             },
         ];
     }

@@ -2,24 +2,28 @@
 
 namespace App\Exports;
 
+use App\Exports\Concerns\LegacyExcelStyle;
 use App\Models\Client;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithColumnFormatting;
+use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Events\AfterSheet;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
 /**
- * Excel del listado /clients (o /clients/ceased) — réplica de clienteex.php / clienteex_x.php.
+ * Excel del listado /clients (y /clients/ceased) — réplica de clienteex.php.
+ * Título "CLIENTES". DNI como texto (no pierde ceros a la izquierda).
  */
-class ClientsExport implements FromCollection, WithHeadings, WithMapping, WithStyles, ShouldAutoSize, WithEvents
+class ClientsExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithColumnFormatting, WithCustomStartCell, WithEvents
 {
+    use LegacyExcelStyle;
+
     public function __construct(
-        protected string $status = 'active',  // 'active' o 'inactive' (cesados)
+        protected string $status = 'active',
         protected string $nexpediente = '',
         protected string $documento = '',
         protected string $nombre = '',
@@ -81,9 +85,9 @@ class ClientsExport implements FromCollection, WithHeadings, WithMapping, WithSt
         return [
             $i,
             $c->expediente,
-            $c->documento,
+            (string) $c->documento,
             $nombre,
-            $c->telefono,
+            (string) $c->telefono,
             $c->direccion,
             $c->zona,
             $c->asesor?->name ?? $c->asesor?->username ?? '',
@@ -91,10 +95,12 @@ class ClientsExport implements FromCollection, WithHeadings, WithMapping, WithSt
         ];
     }
 
-    public function styles(Worksheet $sheet)
+    /** DNI (C) y Teléfono (E) como texto: no perder ceros a la izquierda. */
+    public function columnFormats(): array
     {
         return [
-            1 => ['font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']]],
+            'C' => NumberFormat::FORMAT_TEXT,
+            'E' => NumberFormat::FORMAT_TEXT,
         ];
     }
 
@@ -102,9 +108,8 @@ class ClientsExport implements FromCollection, WithHeadings, WithMapping, WithSt
     {
         return [
             AfterSheet::class => function (AfterSheet $event) {
-                $sheet = $event->sheet->getDelegate();
-                $sheet->getStyle('A1:I1')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('2874A6');
-                $sheet->getStyle('A1:I1')->getAlignment()->setHorizontal('center');
+                $titulo = $this->status === 'inactive' ? 'CLIENTES CESADOS' : 'CLIENTES';
+                $this->applyLegacyStyle($event->sheet->getDelegate(), $titulo, 'I');
             },
         ];
     }
