@@ -29,4 +29,10 @@ class ClientController extends Controller
         $prefix = $request->query('status') === 'inactive' ? 'clientes-cesados' : 'clientes';
         return \Maatwebsite\Excel\Facades\Excel::download($export, $prefix . '-' . now()->format('Ymd-His') . '.xlsx');
     }
+
+    public function exportHistory(int $id)
+    {
+        $export = new \App\Exports\ClientHistoryExport($id);
+        return \Maatwebsite\Excel\Facades\Excel::download($export, 'historial-cliente-' . $id . '.xlsx');
+    }
 }

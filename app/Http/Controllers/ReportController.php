@@ -43,4 +43,15 @@ class ReportController extends Controller
         $export = new \App\Exports\AdvisorExport(filters: $request->query());
         return Excel::download($export, 'reporte-asesor-' . now()->format('Ymd-His') . '.xlsx');
     }
+
+    public function exportSimulator(Request $request)
+    {
+        $export = new \App\Exports\SimulatorExport(
+            capital: (float) $request->query('capital', 0),
+            interes: (float) $request->query('tasa', 0),
+            nombre:  (string) $request->query('nombre', ''),
+            meses:   (int) $request->query('meses', 60),
+        );
+        return Excel::download($export, 'simulacion-credito-' . now()->format('Ymd-His') . '.xlsx');
+    }
 }

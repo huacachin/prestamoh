@@ -25,8 +25,11 @@
                 <a href="{{ route('credits.create', $client->id) }}" class="btn btn-sm btn-outline-primary">
                     <i class="ti ti-credit-card"></i> Nuevo Crédito
                 </a>
-                <button class="btn btn-sm btn-success" onclick="window.print()">
-                    <i class="ti ti-file-spreadsheet"></i>
+                <a href="{{ route('exports.clients.history', $client->id) }}" target="_blank" class="btn btn-sm btn-success">
+                    <i class="ti ti-file-spreadsheet"></i> Historial Excel
+                </a>
+                <button type="button" class="btn btn-sm btn-secondary" onclick="window.print()">
+                    <i class="ti ti-printer"></i> Imprimir
                 </button>
                 <a href="{{ route('clients.index') }}" class="btn btn-sm btn-secondary ms-auto">Volver</a>
             </div>

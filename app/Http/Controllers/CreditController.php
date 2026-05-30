@@ -25,4 +25,10 @@ class CreditController extends Controller
         );
         return \Maatwebsite\Excel\Facades\Excel::download($export, 'creditos-' . now()->format('Ymd-His') . '.xlsx');
     }
+
+    public function exportSchedule(int $id)
+    {
+        $export = new \App\Exports\ScheduleExport($id);
+        return \Maatwebsite\Excel\Facades\Excel::download($export, 'cronograma-credito-' . $id . '.xlsx');
+    }
 }

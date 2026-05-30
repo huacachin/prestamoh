@@ -18,8 +18,11 @@
     <div class="row my-2">
         <div class="col-12">
             <div class="d-flex gap-2 py-1">
-                <button class="btn btn-sm btn-success" onclick="window.print()">
-                    <i class="ti ti-file-spreadsheet"></i>
+                <a href="{{ route('exports.credits.schedule', $credit->id) }}" target="_blank" class="btn btn-sm btn-success">
+                    <i class="ti ti-file-spreadsheet"></i> Excel
+                </a>
+                <button type="button" class="btn btn-sm btn-secondary" onclick="window.print()">
+                    <i class="ti ti-printer"></i> Imprimir
                 </button>
                 <a href="{{ route('clients.show', $credit->client_id) }}" class="btn btn-sm btn-secondary ms-auto">Regresar</a>
             </div>

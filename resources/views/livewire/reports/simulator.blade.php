@@ -48,6 +48,13 @@
                                 <button type="submit" class="btn btn-primary">
                                     <i class="ti ti-calculator f-s-14"></i> Procesar
                                 </button>
+                                @if($hasResult)
+                                    <a href="{{ route('exports.reports.simulator', ['capital' => $capital, 'tasa' => $interes, 'nombre' => $nombre, 'meses' => 60]) }}"
+                                       target="_blank"
+                                       class="btn btn-success">
+                                        <i class="ti ti-file-spreadsheet f-s-14"></i> Excel
+                                    </a>
+                                @endif
                                 <button type="button" class="btn btn-secondary" onclick="window.print()">
                                     <i class="ti ti-printer f-s-14"></i> Imprimir
                                 </button>
