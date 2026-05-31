@@ -60,7 +60,7 @@
                     </div>
 
                     <div class="table-responsive tableFixHead">
-                        <table class="table table-bordered table-striped table-hover">
+                        <table class="table table-bordered table-striped table-hover" style="min-width: 665px;">
                             <thead class="bg-primary">
                             <tr>
                                 <th>#</th>

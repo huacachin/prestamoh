@@ -79,11 +79,11 @@
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small">Fecha I</label>
-                                <input type="date" class="form-control form-control-sm" wire:model="fechai">
+                                <input type="text" autocomplete="off" class="form-control form-control-sm dates" wire:model="fechai">
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small">Fecha F</label>
-                                <input type="date" class="form-control form-control-sm" wire:model="fechaf">
+                                <input type="text" autocomplete="off" class="form-control form-control-sm dates" wire:model="fechaf">
                             </div>
                             <div class="col-md-2 d-flex align-items-end gap-2">
                                 <button type="submit" class="btn btn-sm btn-primary">

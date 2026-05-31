@@ -42,7 +42,7 @@
                         <div class="row g-2 align-items-end mb-3">
                             <div class="col-md-3">
                                 <label class="form-label mb-0 small"><b>Fecha</b></label>
-                                <input type="date" class="form-control form-control-sm" wire:model="fecha">
+                                <input type="text" autocomplete="off" class="form-control form-control-sm dates" wire:model="fecha">
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small"><b>Venta</b></label>

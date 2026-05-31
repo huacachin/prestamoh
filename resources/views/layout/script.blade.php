@@ -5,6 +5,9 @@
     <script src="{{ asset('assets/js/jquery-3.6.3.min.js') }}"></script>
 @endif
 
+<!-- jQuery UI (datepicker, igual al legacy) -->
+<script src="{{ asset('assets/vendor/jquery-ui/jquery-ui.js') }}"></script>
+
 <!-- Bootstrap js-->
 <script src="{{asset('assets/vendor/bootstrap/bootstrap.bundle.min.js')}}"></script>
 
@@ -42,6 +45,117 @@ document.addEventListener('click', function (e) {
         el.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
 });
+
+/* ── Drag-to-scroll: arrastrar tablas con el mouse apretado ──
+   Aplica a cualquier .table-responsive con scroll horizontal.
+   Delegado en document → funciona también con tablas que Livewire
+   re-renderiza. Cancela el click si hubo arrastre real (umbral 4px)
+   para no abrir links sin querer. */
+(function () {
+    var drag = null; // {el, startX, startLeft, moved}
+
+    document.addEventListener('mousedown', function (e) {
+        if (e.button !== 0) return; // solo botón izquierdo
+        var el = e.target.closest('.table-responsive');
+        if (!el) return;
+        if (el.scrollWidth <= el.clientWidth) return; // sin scroll horizontal, nada que arrastrar
+        drag = { el: el, startX: e.pageX, startLeft: el.scrollLeft, moved: false };
+    });
+
+    document.addEventListener('mousemove', function (e) {
+        if (!drag) return;
+        var dx = e.pageX - drag.startX;
+        if (Math.abs(dx) > 4) {
+            drag.moved = true;
+            drag.el.classList.add('is-dragging');
+            document.body.style.userSelect = 'none';
+        }
+        drag.el.scrollLeft = drag.startLeft - dx;
+    });
+
+    function endDrag() {
+        if (!drag) return;
+        if (drag.moved) {
+            // matar el click inmediato que dispararía un link/botón tras arrastrar
+            var killer = function (ev) {
+                ev.stopPropagation(); ev.preventDefault();
+                document.removeEventListener('click', killer, true);
+            };
+            document.addEventListener('click', killer, true);
+        }
+        drag.el.classList.remove('is-dragging');
+        document.body.style.userSelect = '';
+        drag = null;
+    }
+    document.addEventListener('mouseup', endDrag);
+    document.addEventListener('mouseleave', endDrag);
+
+    // Cursor "grab" solo cuando la tabla realmente tiene scroll horizontal.
+    document.addEventListener('mouseover', function (e) {
+        var el = e.target.closest('.table-responsive');
+        if (!el) return;
+        el.classList.toggle('can-drag', el.scrollWidth > el.clientWidth);
+    });
+})();
+</script>
+<style>
+    .table-responsive.can-drag { cursor: grab; }
+    .table-responsive.is-dragging { cursor: grabbing; }
+</style>
+
+{{-- ── Datepicker jQuery UI en español (réplica del legacy pie.php) ── --}}
+<style> .ui-datepicker { z-index: 9999 !important; } </style>
+<script>
+(function () {
+    if (typeof jQuery === 'undefined' || !jQuery.datepicker) return;
+
+    // Locale español (copiado literal del legacy)
+    jQuery.datepicker.regional['es'] = {
+        closeText: 'Cerrar', prevText: '< Ant', nextText: 'Sig >', currentText: 'Hoy',
+        monthNames: ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'],
+        monthNamesShort: ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'],
+        dayNames: ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'],
+        dayNamesShort: ['dom','lun','mar','mié','jue','vie','sáb'],
+        dayNamesMin: ['D','L','M','X','J','V','S'],
+        weekHeader: 'Sm', dateFormat: 'yy-mm-dd', firstDay: 1,
+        isRTL: false, showMonthAfterYear: false, yearSuffix: ''
+    };
+    jQuery.datepicker.setDefaults(jQuery.datepicker.regional['es']);
+
+    // onSelect: dispara el evento input nativo para que Livewire capture el valor.
+    function syncLivewire(input) {
+        input.dispatchEvent(new Event('input',  { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    function initDatepickers() {
+        // .dates  → libre   .dates3 → máx hoy   .dates2 → mín -2 días
+        jQuery('.dates:not(.hasDatepicker)').datepicker({
+            changeMonth: true, changeYear: true, dateFormat: 'yy-mm-dd',
+            onSelect: function () { syncLivewire(this); }
+        });
+        jQuery('.dates3:not(.hasDatepicker)').datepicker({
+            changeMonth: true, changeYear: true, dateFormat: 'yy-mm-dd', maxDate: 0,
+            onSelect: function () { syncLivewire(this); }
+        });
+        jQuery('.dates2:not(.hasDatepicker)').datepicker({
+            changeMonth: true, changeYear: true, dateFormat: 'yy-mm-dd', minDate: -2,
+            onSelect: function () { syncLivewire(this); }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', initDatepickers);
+    // Re-init tras cada render de Livewire (inputs nuevos en el DOM)
+    document.addEventListener('livewire:navigated', initDatepickers);
+    document.addEventListener('livewire:init', function () {
+        if (window.Livewire && window.Livewire.hook) {
+            window.Livewire.hook('morph.updated', initDatepickers);
+            window.Livewire.hook('commit', function (payload) {
+                if (payload && payload.respond) payload.respond(initDatepickers);
+            });
+        }
+    });
+})();
 </script>
 
 @stack('scripts')

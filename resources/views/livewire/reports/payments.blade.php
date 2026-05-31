@@ -59,11 +59,11 @@
                                 </div>
                                 <div class="flex-shrink-0" style="width: 150px;">
                                     <label class="form-label mb-0 small">Fecha Inicio</label>
-                                    <input type="date" class="form-control form-control-sm" wire:model.live="fei">
+                                    <input type="text" autocomplete="off" class="form-control form-control-sm dates" wire:model.live="fei">
                                 </div>
                                 <div class="flex-shrink-0" style="width: 150px;">
                                     <label class="form-label mb-0 small">Fecha Fin</label>
-                                    <input type="date" class="form-control form-control-sm" wire:model.live="fef">
+                                    <input type="text" autocomplete="off" class="form-control form-control-sm dates" wire:model.live="fef">
                                 </div>
                                 <button class="btn btn-sm btn-dark flex-shrink-0" wire:click="search">
                                     <i class="ti ti-search f-s-12"></i> Buscar

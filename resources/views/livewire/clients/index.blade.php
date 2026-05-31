@@ -69,7 +69,7 @@
 
                     {{-- Tabla Desktop / Cards Mobile --}}
                     <div class="table-responsive d-none d-md-block">
-                        <table class="table table-bordered table-striped table-hover" style="font-size: 11px;">
+                        <table class="table table-bordered table-striped table-hover" style="font-size: 11px; min-width: 1330px;">
                             <thead class="bg-primary">
                                 <tr>
                                     <th class="text-center">N&deg;</th>

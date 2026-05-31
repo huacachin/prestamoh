@@ -52,12 +52,12 @@
 
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small"><b>Fecha Inicio</b></label>
-                                <input type="date" class="form-control form-control-sm" wire:model.defer="fei">
+                                <input type="text" autocomplete="off" class="form-control form-control-sm dates" wire:model.defer="fei">
                             </div>
 
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small"><b>Fecha Fin</b></label>
-                                <input type="date" class="form-control form-control-sm" wire:model.defer="fef">
+                                <input type="text" autocomplete="off" class="form-control form-control-sm dates" wire:model.defer="fef">
                             </div>
                         </div>
                         <div class="d-flex gap-2 mb-2">
@@ -88,7 +88,7 @@
                     {{-- Tabla Desktop con FAB scroll --}}
                     <div class="position-relative d-none d-md-block">
                         <div id="incomesTable" class="table-responsive" style="max-height: 70vh; overflow: auto;">
-                        <table class="table table-bordered table-striped table-hover" style="font-size: 11px;">
+                        <table class="table table-bordered table-striped table-hover" style="font-size: 11px; min-width: 950px;">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
                                     <th class="text-center" width="50">Op</th>

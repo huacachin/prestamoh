@@ -44,12 +44,12 @@
 
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small"><b>Fecha Inicio</b></label>
-                                <input type="date" class="form-control form-control-sm" wire:model.live="fei">
+                                <input type="text" autocomplete="off" class="form-control form-control-sm dates" wire:model.live="fei">
                             </div>
 
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small"><b>Fecha Fin</b></label>
-                                <input type="date" class="form-control form-control-sm" wire:model.live="fef">
+                                <input type="text" autocomplete="off" class="form-control form-control-sm dates" wire:model.live="fef">
                             </div>
                         </div>
                         <div class="d-flex gap-2 mb-2">
@@ -69,7 +69,7 @@
 
                     {{-- Tabla Desktop --}}
                     <div class="table-responsive d-none d-md-block">
-                        <table class="table table-bordered table-striped table-hover" style="font-size: 11px;">
+                        <table class="table table-bordered table-striped table-hover" style="font-size: 11px; min-width: 950px;">
                             <thead class="bg-primary">
                                 <tr>
                                     <th class="text-center" width="50">Op</th>

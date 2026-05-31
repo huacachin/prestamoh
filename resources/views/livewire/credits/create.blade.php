@@ -117,11 +117,11 @@
                     </div>
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">Fecha Registro</label>
-                        <input type="date" class="form-control form-control-sm bg-light" wire:model="fechar" readonly>
+                        <input type="text" autocomplete="off" class="form-control form-control-sm bg-light dates" wire:model="fechar" readonly>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">Fecha Préstamo</label>
-                        <input type="date" class="form-control form-control-sm bg-light" wire:model="fechad" readonly>
+                        <input type="text" autocomplete="off" class="form-control form-control-sm bg-light dates" wire:model="fechad" readonly>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label mb-0 small fw-semibold">Asesor</label>

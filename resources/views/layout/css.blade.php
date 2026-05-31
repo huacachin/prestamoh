@@ -1,6 +1,24 @@
 <!-- Animation css -->
 <link rel="stylesheet" href="{{ asset('assets/vendor/animation/animate.min.css') }}">
 
+<!-- jQuery UI datepicker css -->
+<link rel="stylesheet" href="{{ asset('assets/vendor/jquery-ui/jquery-ui.css') }}">
+<style>
+    /* Icono de calendario dentro del input (réplica del legacy ideasweb.css).
+       Se usa background-image (no el shorthand background) + !important para que
+       ningún script/tema posterior pueda pisarlo al re-renderizar. */
+    input.dates,
+    input.dates2,
+    input.dates3 {
+        background-image: url("{{ asset('assets/vendor/jquery-ui/calen.png') }}") !important;
+        background-repeat: no-repeat !important;
+        background-position: right 8px center !important;
+        background-size: 16px 16px !important;
+        padding-right: 30px !important;
+        cursor: pointer;
+    }
+</style>
+
 <!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

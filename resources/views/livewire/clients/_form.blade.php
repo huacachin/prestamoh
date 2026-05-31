@@ -48,7 +48,7 @@
 
     <div class="col-auto">
         <label class="form-label">Fecha Nac.</label>
-        <input type="date" class="form-control form-control-sm" wire:model.defer="fecha_nacimiento">
+        <input type="text" autocomplete="off" class="form-control form-control-sm dates" wire:model.defer="fecha_nacimiento">
     </div>
 
     <div class="col-auto">

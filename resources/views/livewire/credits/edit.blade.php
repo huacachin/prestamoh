@@ -35,7 +35,7 @@
             <div class="row g-3">
                 <div class="col-auto">
                     <label class="form-label">Fecha Préstamo</label>
-                    <input type="date" class="form-control form-control-sm" wire:model.defer="fecha_prestamo"
+                    <input type="text" autocomplete="off" class="form-control form-control-sm dates" wire:model.defer="fecha_prestamo"
                            @if($hasPayments) disabled style="opacity:.6" @endif>
                 </div>
                 <div class="col-auto">

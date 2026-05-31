@@ -26,7 +26,7 @@
                     <div class="alert alert-light border mb-2" style="background: #fff;">
                         <div class="d-flex flex-wrap align-items-center gap-2" style="color: red; font-weight: bold;">
                             <span>APERTURA DE CAJA FECHA -</span>
-                            <input type="date" class="form-control form-control-sm d-inline-block @error('fechaera') is-invalid @enderror"
+                            <input type="text" autocomplete="off" class="form-control form-control-sm d-inline-block @error('fechaera') is-invalid @enderror dates2"
                                    style="width: 160px;" wire:model="fechaera">
                             <span>Hora - {{ $horaActual }}</span>
                         </div>

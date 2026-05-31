@@ -118,7 +118,7 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label mb-0 small fw-semibold">Fecha de Pago</label>
-                            <input type="date" class="form-control form-control-sm bg-light"
+                            <input type="text" autocomplete="off" class="form-control form-control-sm bg-light dates3"
                                    wire:model="fecpag" readonly>
                         </div>
                     </div>

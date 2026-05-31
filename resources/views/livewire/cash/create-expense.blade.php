@@ -67,8 +67,8 @@
                         <div class="row g-2">
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small fw-semibold">Fecha (*)</label>
-                                <input type="date"
-                                       class="form-control form-control-sm @error('date') is-invalid @enderror @unless($canEditDate) bg-light @endunless"
+                                <input type="text" autocomplete="off"
+                                       class="form-control form-control-sm dates @error('date') is-invalid @enderror @unless($canEditDate) bg-light @endunless"
                                        wire:model.defer="date"
                                        @unless($canEditDate) readonly @endunless>
                             </div>

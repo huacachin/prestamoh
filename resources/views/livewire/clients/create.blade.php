@@ -120,7 +120,7 @@
                     </div>
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">Nacimiento</label>
-                        <input type="date" class="form-control form-control-sm" wire:model.defer="fecha_nacimiento">
+                        <input type="text" autocomplete="off" class="form-control form-control-sm dates" wire:model.defer="fecha_nacimiento">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">DNI / RUC</label>

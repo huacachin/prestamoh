@@ -70,7 +70,7 @@
 
                     {{-- Tabla Desktop --}}
                     <div class="table-responsive d-none d-md-block">
-                        <table class="table table-bordered table-striped table-hover" style="font-size: 11px;">
+                        <table class="table table-bordered table-striped table-hover" style="font-size: 11px; min-width: 855px;">
                             <thead class="bg-primary">
                                 <tr>
                                     <th class="text-center" width="40">Estado</th>

@@ -25,11 +25,11 @@
                             <div class="d-flex flex-wrap align-items-end gap-2 overflow-auto py-1">
                                 <div class="flex-shrink-0" style="width: 170px;">
                                     <label class="form-label mb-0 small">Desde</label>
-                                    <input type="date" class="form-control form-control-sm" wire:model="fecha_desde">
+                                    <input type="text" autocomplete="off" class="form-control form-control-sm dates" wire:model="fecha_desde">
                                 </div>
                                 <div class="flex-shrink-0" style="width: 170px;">
                                     <label class="form-label mb-0 small">Hasta</label>
-                                    <input type="date" class="form-control form-control-sm" wire:model="fecha_hasta">
+                                    <input type="text" autocomplete="off" class="form-control form-control-sm dates" wire:model="fecha_hasta">
                                 </div>
                                 <button class="btn btn-sm btn-dark flex-shrink-0" wire:click="search">
                                     <i class="ti ti-search f-s-12"></i> Buscar

@@ -37,7 +37,7 @@
                         <div class="col-md-auto col-sm-12">
                             <div class="mb-3">
                                 <label class="form-label">Fecha (*)</label>
-                                <input type="date" class="form-control form-control-sm @error('date') is-invalid @enderror"
+                                <input type="text" autocomplete="off" class="form-control form-control-sm @error('date') is-invalid @enderror dates"
                                        wire:model.defer="date">
                                 @error('date') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
