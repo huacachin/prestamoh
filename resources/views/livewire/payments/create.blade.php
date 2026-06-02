@@ -45,9 +45,12 @@
             };
             // Para cancelar el crédito hay que cubrir el saldo. Si "Reserva Mora"
             // está marcada, alcanza con capital+interés (la mora se perdona al
-            // cancelar). Sin reserva, hay que cubrir también la mora. La cobertura
-            // suma todos los inputs de pago (monto + impomora + impointe2).
-            $cobertura = (float) $monto + (float) $impomora + (float) $impointe2;
+            // cancelar). Sin reserva, hay que cubrir también la mora — pero esa
+            // mora (calculada u override) SE COBRA junto con el pago, así que
+            // cuenta como cobertura. La cobertura suma: monto + mora cobrada +
+            // moras manuales (impomora/impointe2).
+            $moraCobrada = $ckmora ? 0.0 : (float) $c['total_mora'];
+            $cobertura = (float) $monto + $moraCobrada + (float) $impomora + (float) $impointe2;
             $cancelDisabled = $ckmora
                 ? ($c['saldo_pendiente'] - $cobertura) > 0.01
                 : ($c['saldo_mora']      - $cobertura) > 0.01;
