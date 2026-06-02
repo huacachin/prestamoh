@@ -108,7 +108,7 @@
                                 @endphp
                                 <tr>
                                     <td class="text-center">{{ $ins->num_cuota }}</td>
-                                    <td class="text-center">{{ $ins->fecha_pago?->format('Y-m-d') }}</td>
+                                    <td class="text-center">{{ $ins->fecha_vencimiento?->format('Y-m-d') }}</td>
                                     <td class="text-end">{{ number_format($cap, 2) }}</td>
                                     <td class="text-end">{{ number_format($int, 2) }}</td>
                                     <td class="text-end">{{ number_format($apli, 2) }}</td>

@@ -14,17 +14,29 @@ class Refinance extends Component
 
     // Datos del nuevo crédito (mostly readonly, replica legacy)
     public $codpre_ = null;         // sin tipo estricto
+
     public $impopres = 0;           // Capital = saldo pendiente
+
     public $cuot = 0;               // Mismas cuotas que el original
+
     public $inte = 0;               // Mismo % interés
+
     public string $seletipl = '3';  // Mensual fijo
+
     public string $fechad = '';     // Fecha = última fecha de pago del original
+
     public string $fechar = '';     // Fecha registro = hoy
+
     public ?string $nomasesores = null; // ÚNICO campo editable
+
     public $moracc = 0;             // Auto
+
     public $moraii = 0;             // Auto
+
     public $intmont = 0;            // Monto interés (cap × tasa / 100)
+
     public bool $morai = true;
+
     public bool $morac = false;
 
     // Datos para mostrar
@@ -53,8 +65,11 @@ class Refinance extends Component
                 - (float) $lastIns->importe_aplicado - (float) $lastIns->interes_aplicado,
                 2
             );
-            $this->fechad = $lastIns->fecha_pago
-                ? Carbon::parse($lastIns->fecha_pago)->format('Y-m-d')
+            // Legacy: Fecha Préstamo del refi = fechapago de la última cuota del original
+            // (= cronograma/periodo). En Laravel ese dato vive en fecha_vencimiento,
+            // NO en fecha_pago (que es NULL mientras la cuota no esté pagada).
+            $this->fechad = $lastIns->fecha_vencimiento
+                ? Carbon::parse($lastIns->fecha_vencimiento)->format('Y-m-d')
                 : $hoy->format('Y-m-d');
             // Legacy: $rowinteress = importe_interes de la última cuota (no recalculado)
             $this->intmont = round((float) $lastIns->importe_interes, 2);
@@ -94,16 +109,19 @@ class Refinance extends Component
     {
         if ($this->importePagadoAlgo <= 0) {
             $this->addError('refinance', 'No se puede refinanciar: el crédito no tiene pagos previos.');
+
             return;
         }
 
-        if (!$this->nomasesores) {
+        if (! $this->nomasesores) {
             $this->addError('nomasesores', 'Indique el asesor.');
+
             return;
         }
 
         if (DB::table('credits')->where('id', $this->codpre_)->exists()) {
             $this->addError('codpre_', 'El código de préstamo ya está utilizado.');
+
             return;
         }
 
@@ -122,36 +140,36 @@ class Refinance extends Component
 
             // INSERT nuevo crédito (refinanciamiento)
             DB::table('credits')->insert([
-                'id'                  => $pid,
-                'client_id'           => $this->credit->client_id,
-                'fecha_prestamo'      => $this->fechad,
-                'importe'             => $impopres,
-                'cuotas'              => $tocuota,
-                'tipo_planilla'       => $tipo,
-                'interes'             => $inte,
-                'interes_total'       => 0,
-                'mora'                => 0,
-                'mora1'               => $this->morai ? $this->moraii : 0,
-                'mora2'               => $this->morac ? $this->moracc : 0,
-                'moneda'              => 'Soles',
-                'situacion'           => 'Activo',
-                'estado'              => 1,
-                'refinanciado'        => 1,
-                'cod_rem'             => 'REF',
-                'gat'                 => 0,
-                'idcan'               => $codigopre,
-                'asesor'              => null,
-                'user_id'             => auth()->id(),
-                'usuario'             => $this->nomasesores,
-                'headquarter_id'      => $hqId, // G2
-                'created_at'          => now(),
-                'updated_at'          => now(),
+                'id' => $pid,
+                'client_id' => $this->credit->client_id,
+                'fecha_prestamo' => $this->fechad,
+                'importe' => $impopres,
+                'cuotas' => $tocuota,
+                'tipo_planilla' => $tipo,
+                'interes' => $inte,
+                'interes_total' => 0,
+                'mora' => 0,
+                'mora1' => $this->moraii, // Pago x día atrasado
+                'mora2' => $this->moracc, // Mora Interés (legacy guarda ambas)
+                'moneda' => 'Soles',
+                'situacion' => 'Activo',
+                'estado' => 1,
+                'refinanciado' => 1,
+                'cod_rem' => 'REF',
+                'gat' => 0,
+                'idcan' => $codigopre,
+                'asesor' => null,
+                'user_id' => auth()->id(),
+                'usuario' => $this->nomasesores,
+                'headquarter_id' => $hqId, // G2
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
 
             // Generar cuotas (siempre Mensual en refi)
             $selano = (int) $fechaBase->format('Y');
             $selmes = (int) $fechaBase->format('m');
-            $selay  = $fechaBase->format('d');
+            $selay = $fechaBase->format('d');
 
             $r = 0;
             $montototal = 0;
@@ -177,8 +195,8 @@ class Refinance extends Component
                 }
                 $mesCuotaStr = str_pad($mesCuotaNum, 2, '0', STR_PAD_LEFT);
 
-                $fechaCandidata = $anoCuota . '-' . $mesCuotaStr . '-' . $selay;
-                if (!checkdate($mesCuotaNum, (int) $selay, $anoCuota)) {
+                $fechaCandidata = $anoCuota.'-'.$mesCuotaStr.'-'.$selay;
+                if (! checkdate($mesCuotaNum, (int) $selay, $anoCuota)) {
                     $aux = Carbon::parse("$anoCuota-$mesCuotaStr-01")->addMonth();
                     $fechaCandidata = $aux->subDay()->format('Y-m-d');
                 }
@@ -194,40 +212,41 @@ class Refinance extends Component
                 $inttotal += $inter;
 
                 DB::table('credit_installments')->insert([
-                    'credit_id'        => $pid,
-                    'num_cuota'        => $r,
-                    'fecha_vencimiento'=> $fecha9,
-                    'fecha_pago'       => $fecha9,
-                    'importe_cuota'    => $moncuo,
-                    'importe_interes'  => $inter,
+                    'credit_id' => $pid,
+                    'num_cuota' => $r,
+                    'fecha_vencimiento' => $fecha9,
+                    'fecha_pago' => null, // cuota recién creada, aún no pagada
+                    'importe_cuota' => $moncuo,
+                    'importe_interes' => $inter,
                     'importe_aplicado' => 0,
                     'interes_aplicado' => 0,
-                    'importe_mora'     => 0,
-                    'pagado'           => false,
-                    'usuario'          => $this->nomasesores,
-                    'created_at'       => now(),
-                    'updated_at'       => now(),
+                    'importe_mora' => 0,
+                    'pagado' => false,
+                    'usuario' => $this->nomasesores,
+                    'created_at' => now(),
+                    'updated_at' => now(),
                 ]);
             }
 
             DB::table('credits')->where('id', $pid)->update([
                 'fecha_vencimiento' => $fecha9,
-                'interes_total'     => $inttotal,
-                'updated_at'        => now(),
+                'interes_total' => $inttotal,
+                'updated_at' => now(),
             ]);
 
             // Marcar el ORIGINAL como Cancelado + REF
             DB::table('credits')->where('id', $codigopre)->update([
-                'situacion'         => 'Cancelado',
-                'estado'            => 0,
-                'refinanciado'      => 1,
-                'cod_rem'           => 'REF',
+                'situacion' => 'Cancelado',
+                'estado' => 0,
+                'refinanciado' => 1,
+                'cod_rem' => 'REF',
                 'fecha_cancelacion' => now()->format('Y-m-d'),
-                'updated_at'        => now(),
+                'updated_at' => now(),
             ]);
         });
 
         session()->flash('credit_success', "Refinanciamiento creado: nuevo crédito #{$this->codpre_}, original #{$this->credit->id} cancelado.");
+
         return redirect()->route('payments.index');
     }
 
