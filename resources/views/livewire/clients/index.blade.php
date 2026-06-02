@@ -69,14 +69,14 @@
 
                     {{-- Tabla Desktop / Cards Mobile --}}
                     <div class="table-responsive d-none d-md-block">
-                        <table class="table table-bordered table-striped table-hover" style="font-size: 11px; min-width: 1330px;">
+                        <table class="table table-bordered table-striped table-hover table-autofit" style="font-size: 11px;">
                             <thead class="bg-primary">
                                 <tr>
                                     <th class="text-center">N&deg;</th>
                                     <th class="text-center">Fecha</th>
                                     <th class="text-center">Usuario</th>
                                     <th class="text-center">Exp.</th>
-                                    <th class="text-center">Nombres Apellidos</th>
+                                    <th class="text-center" width="220">Nombres Apellidos</th>
                                     <th class="text-center">DNI</th>
                                     <th class="text-center">Movil</th>
                                     <th class="text-center">T.Credito</th>

@@ -96,14 +96,14 @@
 
                     {{-- TABLA --}}
                     <div id="tabla-morosidad" class="table-responsive" style="max-height: 70vh; overflow: auto;">
-                        <table class="table table-bordered table-striped table-hover" style="font-size: 11px; min-width: 1900px;">
+                        <table class="table table-bordered table-striped table-hover table-autofit" style="font-size: 11px;">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
                                     <th rowspan="2" class="text-center align-middle" width="40">N°</th>
                                     <th rowspan="2" class="text-center align-middle" width="50">Exp</th>
                                     <th rowspan="2" class="text-center align-middle" width="60">Código</th>
                                     <th rowspan="2" class="text-center align-middle" width="80">DNI</th>
-                                    <th rowspan="2" class="text-center align-middle">Nombre y Apellidos</th>
+                                    <th rowspan="2" width="200" class="text-center align-middle">Nombre y Apellidos</th>
                                     <th rowspan="2" class="text-center align-middle" width="50">Dt.</th>
                                     <th rowspan="2" class="text-center align-middle" width="80">Capital</th>
                                     <th colspan="4" class="text-center">Interés</th>

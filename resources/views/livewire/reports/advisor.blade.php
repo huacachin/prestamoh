@@ -65,7 +65,7 @@
 
                     {{-- TABLA DIARIA --}}
                     <div id="tabla-diaria" class="table-responsive" style="max-height: 650px; overflow:auto;">
-                        <table class="table table-bordered table-striped table-hover" style="font-size: 11px; min-width: 1280px;">
+                        <table class="table table-bordered table-striped table-hover table-autofit" style="font-size: 11px;">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
                                     <th rowspan="2" class="align-middle text-center">N°</th>
@@ -140,7 +140,7 @@
 
                     {{-- TABLA MENSUAL DEL AÑO --}}
                     <div class="table-responsive" style="max-height: 650px; overflow:auto;">
-                        <table class="table table-bordered table-striped table-hover" style="font-size: 11px; min-width: 1280px;">
+                        <table class="table table-bordered table-striped table-hover table-autofit" style="font-size: 11px;">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
                                     <th rowspan="2" class="align-middle text-center">N°</th>

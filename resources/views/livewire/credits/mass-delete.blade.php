@@ -69,7 +69,7 @@
 
                     {{-- Tabla Desktop --}}
                     <div class="table-responsive d-none d-md-block">
-                        <table class="table table-bordered table-striped table-hover" style="font-size: 11px; min-width: 950px;">
+                        <table class="table table-bordered table-striped table-hover table-autofit" style="font-size: 11px;">
                             <thead class="bg-primary">
                                 <tr>
                                     <th class="text-center" width="50">Op</th>
@@ -78,7 +78,7 @@
                                     <th class="text-center" width="80">Hora</th>
                                     <th class="text-center">Usuario</th>
                                     <th class="text-center">Asesor</th>
-                                    <th class="text-center">Cliente</th>
+                                    <th class="text-center" width="220">Cliente</th>
                                     <th class="text-center" width="100">Código</th>
                                     <th class="text-end" width="100">Total</th>
                                 </tr>

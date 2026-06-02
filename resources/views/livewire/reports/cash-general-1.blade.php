@@ -72,7 +72,7 @@
 
                     <div id="printme">
                         <div id="tabla-caja-1" class="table-responsive" style="max-height: 70vh; overflow: auto;">
-                            <table class="table table-bordered table-striped table-hover" style="font-size: 11px; min-width: 1600px;">
+                            <table class="table table-bordered table-striped table-hover table-nowrap" style="font-size: 11px;">
                                 <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                     <tr>
                                         <th rowspan="3" class="align-middle text-center">N°</th>
@@ -86,12 +86,12 @@
                                     </tr>
                                     <tr>
                                         <th rowspan="2" class="align-middle text-center">CDG</th>
-                                        <th rowspan="2" class="align-middle text-center">CLIENTE</th>
+                                        <th rowspan="2" class="align-middle text-center col-cliente">CLIENTE</th>
                                         <th rowspan="2" class="align-middle text-center">DETALLE</th>
                                         <th rowspan="2" class="align-middle text-center">N° CUOTAS</th>
                                         <th colspan="4" class="text-center">CUOTAS</th>
                                         <th rowspan="2" class="align-middle text-center">CDG</th>
-                                        <th rowspan="2" class="align-middle text-center">CLIENTE</th>
+                                        <th rowspan="2" class="align-middle text-center col-cliente">CLIENTE</th>
                                         <th rowspan="2" class="align-middle text-center">MONTO</th>
                                         <th rowspan="2" class="align-middle text-center">%</th>
                                         <th rowspan="2" class="align-middle text-center">S/</th>
@@ -136,7 +136,7 @@
                                                     <td class="text-center">
                                                         <a href="{{ route('credits.show', $ing['credit_id']) }}" target="_blank">{{ $ing['credit_id'] }}</a>
                                                     </td>
-                                                    <td>{{ $ing['cliente'] }}</td>
+                                                    <td class="col-cliente" title="{{ $ing['cliente'] }}"><span class="ellip">{{ $ing['cliente'] }}</span></td>
                                                     <td>{{ $ing['detalle'] }}</td>
                                                     <td class="text-center">{{ $ing['nro_cuotas'] }}</td>
                                                     <td class="text-end"><span class="text-primary">{{ number_format($ing['total'], 2) }}</span></td>
@@ -157,7 +157,7 @@
                                                     <td class="text-center" style="{{ $egrRowStyle }}">
                                                         <a href="{{ route('credits.show', $egr['credit_id']) }}" target="_blank">{{ $egr['credit_id'] }}</a>
                                                     </td>
-                                                    <td style="{{ $egrRowStyle }}">{{ $egr['cliente'] }}</td>
+                                                    <td class="col-cliente" style="{{ $egrRowStyle }}" title="{{ $egr['cliente'] }}"><span class="ellip">{{ $egr['cliente'] }}</span></td>
                                                     <td class="text-end" style="{{ $egrRowStyle }}"><span class="text-primary">{{ number_format($egr['monto'], 2) }}</span></td>
                                                     <td class="text-end" style="color: red;">
                                                         @if((int)$egr['interes_pct'] == (float)$egr['interes_pct'])

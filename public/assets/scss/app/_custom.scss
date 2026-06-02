@@ -8,6 +8,50 @@ table {
     width: 100%;
 }
 
+// --- Listados: tabla siempre al 100%, columnas dimensionadas por contenido ---
+// Replica el comportamiento del legacy (table-layout: auto, sin min-width forzado):
+// la tabla llena la tarjeta y reparte el ancho según el contenido de cada columna.
+// Si el contenido supera el 100%, .table-responsive aporta el scroll horizontal.
+table.table-autofit {
+    width: 100%;
+    table-layout: auto;
+}
+
+// --- Reportes densos: tabla siempre al 100% y celdas en una sola línea ---
+// El contenedor .table-responsive aporta el scroll horizontal cuando el
+// contenido supera el ancho disponible (comportamiento del legacy).
+table.table-nowrap {
+    width: 100% !important;
+}
+table.table-nowrap th,
+table.table-nowrap td {
+    white-space: nowrap !important;
+}
+
+// Columna "shrink-to-fit": se encoge al ancho de su contenido (con nowrap).
+// El espacio sobrante de la tabla 100% lo absorben las columnas sin width.
+.col-shrink {
+    width: 1% !important;
+}
+
+// Columna de nombre acotada: la celda se encoge a su contenido (shrink-to-fit).
+table.table-nowrap td.col-cliente,
+table.table-nowrap th.col-cliente {
+    width: 1%;
+}
+// El tope real va en un span interno: `max-width` en <td> se ignora con
+// table-layout:auto, pero un inline-block sí lo respeta. Al pasar del tope,
+// el nombre envuelve por palabras (la palabra que no cabe salta de línea).
+.ellip {
+    display: inline-block;
+    width: 150px;
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    vertical-align: middle;
+    text-align: center;
+}
+
 th, td {
     padding: 1px !important;
     font-size: 10px !important;

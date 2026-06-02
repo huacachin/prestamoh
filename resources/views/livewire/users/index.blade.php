@@ -48,7 +48,7 @@
                     </div>
 
                     <div class="table-responsive tableFixHead">
-                        <table class="table table-bordered table-striped table-hover" style="min-width: 855px;">
+                        <table class="table table-bordered table-striped table-hover table-autofit" >
                             <thead class="bg-primary">
                             <tr>
                                 <th>#</th>

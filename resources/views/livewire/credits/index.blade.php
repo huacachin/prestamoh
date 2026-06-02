@@ -74,14 +74,14 @@
 
                     {{-- Tabla Desktop --}}
                     <div id="tabla-creditos" class="table-responsive d-none d-md-block" style="max-height: 70vh; overflow: auto;">
-                        <table class="table table-bordered table-striped table-hover" style="font-size: 11px; min-width: 1520px;">
+                        <table class="table table-bordered table-striped table-hover table-autofit" style="font-size: 11px;">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
                                     <th class="text-center" width="40">N°</th>
                                     <th class="text-center" width="80">Fecha</th>
                                     <th class="text-center" width="80">Usuario</th>
                                     <th class="text-center" width="60">Código</th>
-                                    <th class="text-center">Nombre</th>
+                                    <th class="text-center" width="220">Nombre</th>
                                     <th class="text-end" width="80">Capital</th>
                                     <th class="text-center" width="40">%</th>
                                     <th class="text-end" width="80">S/</th>

@@ -57,7 +57,7 @@
                     </div>
 
                     <div id="tabla-pagos" class="table-responsive" style="max-height: 650px; overflow:auto;">
-                        <table class="table table-bordered table-striped table-hover" style="font-size: 11px; min-width: 3600px; table-layout: fixed;">
+                        <table class="table table-bordered table-striped table-hover table-autofit" style="font-size: 11px;">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
                                     <th style="width:40px;">N.</th>

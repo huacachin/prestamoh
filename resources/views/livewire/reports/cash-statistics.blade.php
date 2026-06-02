@@ -52,7 +52,7 @@
                     <div id="printme">
                         {{-- TABLA PRINCIPAL --}}
                         <div id="tabla-mensual" class="table-responsive" style="max-height: 70vh; overflow: auto;">
-                            <table class="table table-bordered table-striped table-hover" style="font-size: 11px; min-width: 1700px;">
+                            <table class="table table-bordered table-striped table-hover table-autofit" style="font-size: 11px;">
                                 <thead class="bg-primary text-center" style="position: sticky; top: 0; z-index: 2;">
                                     <tr>
                                         <th rowspan="5" class="align-middle">Fecha</th>
@@ -235,7 +235,7 @@
                         {{-- TABLA 4: RESUMEN MENSUAL (Enero..mes seleccionado) --}}
                         <h6 class="mt-4 mb-2 fw-bold" style="color:red;">RESUMEN MENSUAL ({{ $year }})</h6>
                         <div class="table-responsive">
-                            <table class="table table-bordered table-striped table-hover" style="font-size: 11px; min-width: 1700px;">
+                            <table class="table table-bordered table-striped table-hover table-autofit" style="font-size: 11px;">
                                 <thead class="bg-primary text-center" style="position: sticky; top: 0;">
                                     <tr>
                                         <th rowspan="5" class="align-middle">Mes</th>
@@ -440,7 +440,7 @@
                         {{-- TABLA: RESUMEN ANUAL --}}
                         <h6 class="mt-4 mb-2 fw-bold" style="color:red;">RESUMEN ANUAL</h6>
                         <div class="table-responsive">
-                            <table class="table table-bordered table-striped table-hover" style="font-size: 11px; min-width: 1700px;">
+                            <table class="table table-bordered table-striped table-hover table-autofit" style="font-size: 11px;">
                                 <thead class="bg-primary text-center" style="position: sticky; top: 0;">
                                     <tr>
                                         <th rowspan="5" class="align-middle">Año</th>
