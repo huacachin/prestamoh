@@ -80,7 +80,7 @@
 
                     {{-- TABLA DIARIA del mes seleccionado --}}
                     <div id="tabla-cred-1" class="table-responsive" style="max-height: 650px; overflow:auto;">
-                        <table class="table table-bordered table-striped table-hover table-autofit" style="font-size: 11px;">
+                        <table class="table table-bordered table-striped table-hover table-fit" style="font-size: 11px;">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
                                     <th rowspan="2" class="text-center align-middle">Fecha</th>
@@ -139,7 +139,7 @@
 
                     {{-- TABLA MENSUAL del año --}}
                     <div class="table-responsive" style="max-height: 650px; overflow:auto;">
-                        <table class="table table-bordered table-striped table-hover table-autofit" style="font-size: 11px;">
+                        <table class="table table-bordered table-striped table-hover table-fit" style="font-size: 11px;">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
                                     <th rowspan="2" class="text-center align-middle">Fecha</th>

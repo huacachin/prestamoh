@@ -17,6 +17,14 @@ table.table-autofit {
     table-layout: auto;
 }
 
+// Variante "hug-content": la tabla se encoge al ancho de su contenido
+// (útil en grillas numéricas donde llenar el 100% deja columnas con huecos).
+table.table-fit {
+    width: auto !important;
+    max-width: 100%;
+    table-layout: auto;
+}
+
 // --- Reportes densos: tabla siempre al 100% y celdas en una sola línea ---
 // El contenedor .table-responsive aporta el scroll horizontal cuando el
 // contenido supera el ancho disponible (comportamiento del legacy).
