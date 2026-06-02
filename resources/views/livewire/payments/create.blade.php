@@ -159,10 +159,27 @@
                     {{-- Fila 4: Total Mora / Saldo P. + Mora --}}
                     <div class="row g-2 mt-2">
                         <div class="col-md-2">
-                            <label class="form-label mb-0 small fw-semibold">Total Mora</label>
-                            <input type="text" class="form-control form-control-sm"
-                                   style="background:#ff0000; color:#fff;"
-                                   value="{{ number_format($c['total_mora'], 2) }}" readonly>
+                            @php $puedeMora = auth()->user()->can('pagos.mora-manual'); @endphp
+                            <label class="form-label mb-0 small fw-semibold">
+                                Total Mora
+                                @if($puedeMora)
+                                    <i class="ti {{ ((float)$monto) > 0 ? 'ti-pencil' : 'ti-lock' }} f-s-12"
+                                       title="{{ ((float)$monto) > 0 ? 'Editable (override gerencial)' : 'Escribe el Monto a Pagar para habilitar' }}"></i>
+                                @endif
+                            </label>
+                            @if($puedeMora)
+                                <input type="number" step="0.01" min="0"
+                                       class="form-control form-control-sm"
+                                       style="background:#ff0000; color:#fff;"
+                                       wire:model.live.debounce.400ms="moraManual"
+                                       placeholder="{{ number_format($c['total_mora_calc'], 2) }}"
+                                       @disabled(((float)$monto) <= 0)
+                                       title="{{ ((float)$monto) > 0 ? 'Total Mora editable (reemplaza la calculada)' : 'Escribe primero el Monto a Pagar' }}">
+                            @else
+                                <input type="text" class="form-control form-control-sm"
+                                       style="background:#ff0000; color:#fff;"
+                                       value="{{ number_format($c['total_mora'], 2) }}" readonly>
+                            @endif
                         </div>
                         <div class="col-md-3">
                             <label class="form-label mb-0 small fw-semibold">Saldo P. + Mora</label>

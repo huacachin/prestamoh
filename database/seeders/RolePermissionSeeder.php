@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 /**
  * Asigna la matriz de permisos a cada rol homologado.
@@ -19,7 +20,7 @@ class RolePermissionSeeder extends Seeder
 {
     public function run(): void
     {
-        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         $allPerms = Permission::where('guard_name', 'web')->pluck('name')->all();
 
@@ -39,6 +40,7 @@ class RolePermissionSeeder extends Seeder
             'gerente' => [
                 'dashboard',
                 'clientes', 'creditos', 'pagos',
+                'pagos.mora-manual',
                 'caja.apertura', 'caja.ingresos', 'caja.egresos',
                 'reportes.cartera', 'reportes.pagos', 'reportes.morosidad', 'reportes.caja',
                 'reportes.asesor', 'reportes.caja-estadistica', 'reportes.credito-estadistica',
@@ -56,7 +58,7 @@ class RolePermissionSeeder extends Seeder
                 'caja.apertura', 'caja.ingresos', 'caja.egresos',
                 'caja.bypass-fecha-anterior', 'caja.editar-historico', 'caja.eliminar',
                 'clientes.eliminar', 'clientes.editar-identidad',
-                'creditos.eliminar', 'pagos.eliminar',
+                'creditos.eliminar', 'pagos.eliminar', 'pagos.mora-manual',
                 'reportes.cartera', 'reportes.pagos', 'reportes.morosidad', 'reportes.caja',
                 'reportes.asesor', 'reportes.caja-estadistica', 'reportes.credito-estadistica',
                 'reportes.caja-general-1', 'reportes.caja-general-2', 'reportes.caja-general-3',
@@ -132,13 +134,14 @@ class RolePermissionSeeder extends Seeder
 
         foreach ($matrix as $roleName => $perms) {
             $role = Role::where('name', $roleName)->where('guard_name', 'web')->first();
-            if (!$role) {
+            if (! $role) {
                 $this->command->warn("Rol '$roleName' no existe — saltando.");
+
                 continue;
             }
             $role->syncPermissions($perms);
         }
 
-        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 }

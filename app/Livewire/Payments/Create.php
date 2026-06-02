@@ -12,19 +12,33 @@ use Livewire\Component;
 class Create extends Component
 {
     public ?Credit $credit = null;
+
     public string $fecpag = '';
+
     public $monto = 0;            // editable, sin tipo estricto (admite "")
+
     public $diasf = 0;            // editable, sin tipo estricto
+
     public bool $ckmora = false;
+
     public bool $cancel = false;
+
     public ?string $latitud = null;
+
     public ?string $longitud = null;
 
     // Inputs adicionales del legacy
     public $impointe2 = 0;        // editable
+
     public $impomora = 0;         // editable
+
     public ?string $obs = null;
+
     public $idpre = null;         // editable, ?int da problemas con select vacío
+
+    // Total Mora editable (override) — solo roles con permiso 'pagos.mora-manual'.
+    // null = usar la mora auto-calculada; valor numérico = reemplaza la mora a cobrar.
+    public $moraManual = null;
 
     public function mount(?int $creditId = null)
     {
@@ -50,14 +64,20 @@ class Create extends Component
      */
     private function ajusteInteresUltimaCuotaDiario(): void
     {
-        if ((int) $this->credit->tipo_planilla !== 4) return;
-        if (!$this->credit->fecha_prestamo) return;
-        if (Carbon::parse($this->credit->fecha_prestamo)->lte(Carbon::parse('2021-10-06'))) return;
+        if ((int) $this->credit->tipo_planilla !== 4) {
+            return;
+        }
+        if (! $this->credit->fecha_prestamo) {
+            return;
+        }
+        if (Carbon::parse($this->credit->fecha_prestamo)->lte(Carbon::parse('2021-10-06'))) {
+            return;
+        }
 
-        $importe   = (float) $this->credit->importe;
+        $importe = (float) $this->credit->importe;
         $interesPct = (float) $this->credit->interes;
-        $interesT  = round(($importe * $interesPct) / 100, 2);
-        $interesC  = round($interesT / 22, 2);
+        $interesT = round(($importe * $interesPct) / 100, 2);
+        $interesC = round($interesT / 22, 2);
         $interesCu = round($interesC * 21, 2);
         $interesUC = round($interesT - $interesCu, 2);
 
@@ -92,16 +112,50 @@ class Create extends Component
             $lastIns = DB::table('credit_installments')->where('credit_id', $this->credit->id)->orderByDesc('id')->first();
             if ($lastIns) {
                 $update = [];
-                if ($diffCuota > 0) $update['importe_cuota'] = $lastIns->importe_cuota + $diffCuota;
-                if ($diffInte > 0)  $update['importe_interes'] = $lastIns->importe_interes + $diffInte;
-                if (!empty($update)) DB::table('credit_installments')->where('id', $lastIns->id)->update($update);
+                if ($diffCuota > 0) {
+                    $update['importe_cuota'] = $lastIns->importe_cuota + $diffCuota;
+                }
+                if ($diffInte > 0) {
+                    $update['importe_interes'] = $lastIns->importe_interes + $diffInte;
+                }
+                if (! empty($update)) {
+                    DB::table('credit_installments')->where('id', $lastIns->id)->update($update);
+                }
             }
+        }
+    }
+
+    /** Solo estos roles (vía permiso) pueden editar/override el Total Mora. */
+    public function canEditMora(): bool
+    {
+        return auth()->user()?->can('pagos.mora-manual') ?? false;
+    }
+
+    /**
+     * Al escribir el Monto a Pagar (>0) se desbloquea el Total Mora para los
+     * roles autorizados, precargado con la mora calculada para que puedan
+     * ajustarlo. Si el monto vuelve a 0/vacío, se rebloquea y vuelve al cálculo.
+     */
+    public function updatedMonto(): void
+    {
+        if (! $this->canEditMora()) {
+            return;
+        }
+
+        if ((float) $this->monto > 0) {
+            if ($this->moraManual === null || $this->moraManual === '') {
+                $this->moraManual = $this->buildCalcs()['total_mora_calc'];
+            }
+        } else {
+            $this->moraManual = null;
         }
     }
 
     private function buildCalcs(): array
     {
-        if (!$this->credit) return $this->emptyCalcs();
+        if (! $this->credit) {
+            return $this->emptyCalcs();
+        }
 
         $importe = (float) $this->credit->importe;
         $interesPct = (float) $this->credit->interes;
@@ -129,7 +183,9 @@ class Create extends Component
                     $cur = Carbon::parse($minFechaStr);
                     for ($i = 1; $i <= $diff; $i++) {
                         $cur->addDay();
-                        if (!in_array($cur->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])) $diasddd++;
+                        if (! in_array($cur->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])) {
+                            $diasddd++;
+                        }
                     }
                 }
             }
@@ -138,44 +194,57 @@ class Create extends Component
 
         $tipoPlani = (int) $this->credit->tipo_planilla;
         $moraRate = (float) (($tipoPlani === 1) ? $this->credit->mora2 : $this->credit->mora1);
-        $totMora = round($diasFinal * $moraRate, 2);
+        $totMoraCalc = round($diasFinal * $moraRate, 2);
+
+        // Override de Total Mora: solo si el usuario tiene permiso y escribió un
+        // valor numérico válido. El gate de permiso vive aquí (servidor), así que
+        // un usuario sin permiso no puede inyectar mora manipulando el front.
+        $usaManual = $this->canEditMora()
+            && $this->moraManual !== null && $this->moraManual !== ''
+            && is_numeric($this->moraManual);
+        $totMora = $usaManual ? round((float) $this->moraManual, 2) : $totMoraCalc;
 
         $moraAcumulada = (float) DB::table('mora_acumulada')->where('credit_id', $this->credit->id)->sum('importe');
 
         return [
-            'importe'=>$importe,'interes_pct'=>$interesPct,'interes_total'=>$interes,'total_credito'=>$totalCredito,
-            'saldo_pendiente'=>round($saldoPendiente,2),'fecha_venc'=>$minFechaStr,
-            'dias_atraso'=>$diasddd,'dias_final'=>$diasFinal,
-            'mora_rate'=>$moraRate,'total_mora'=>$totMora,'mora_acumulada'=>$moraAcumulada,
-            'saldo_mora'=>round($saldoPendiente + $totMora, 2),
-            'asesor_nombre'=>$this->credit->client?->asesor?->name,
+            'importe' => $importe, 'interes_pct' => $interesPct, 'interes_total' => $interes, 'total_credito' => $totalCredito,
+            'saldo_pendiente' => round($saldoPendiente, 2), 'fecha_venc' => $minFechaStr,
+            'dias_atraso' => $diasddd, 'dias_final' => $diasFinal,
+            'mora_rate' => $moraRate, 'total_mora' => $totMora, 'total_mora_calc' => $totMoraCalc,
+            'mora_manual' => $usaManual, 'mora_acumulada' => $moraAcumulada,
+            'saldo_mora' => round($saldoPendiente + $totMora, 2),
+            'asesor_nombre' => $this->credit->client?->asesor?->name,
         ];
     }
 
     private function emptyCalcs(): array
     {
-        return ['importe'=>0,'interes_pct'=>0,'interes_total'=>0,'total_credito'=>0,
-            'saldo_pendiente'=>0,'fecha_venc'=>null,'dias_atraso'=>0,'dias_final'=>0,
-            'mora_rate'=>0,'total_mora'=>0,'mora_acumulada'=>0,'saldo_mora'=>0,'asesor_nombre'=>null];
+        return ['importe' => 0, 'interes_pct' => 0, 'interes_total' => 0, 'total_credito' => 0,
+            'saldo_pendiente' => 0, 'fecha_venc' => null, 'dias_atraso' => 0, 'dias_final' => 0,
+            'mora_rate' => 0, 'total_mora' => 0, 'total_mora_calc' => 0, 'mora_manual' => false,
+            'mora_acumulada' => 0, 'saldo_mora' => 0, 'asesor_nombre' => null];
     }
 
     public function pagar()
     {
-        if (!$this->credit) {
+        if (! $this->credit) {
             $this->dispatch('errorAlert', ['message' => 'No hay crédito seleccionado.']);
+
             return;
         }
 
         $this->validate([
-            'monto'  => 'required|numeric|min:0',
+            'monto' => 'required|numeric|min:0',
             'fecpag' => 'required|date',
+            'moraManual' => 'nullable|numeric|min:0',
         ]);
 
         $user = auth()->user();
-        if (!$user->can('caja.bypass-fecha-anterior')) {
+        if (! $user->can('caja.bypass-fecha-anterior')) {
             $fechaSel = Carbon::parse($this->fecpag);
             if ($fechaSel->format('Ym') < now()->format('Ym')) {
                 $this->dispatch('errorAlert', ['message' => 'No es posible registrar pago en mes anterior.']);
+
                 return;
             }
         }
@@ -183,13 +252,18 @@ class Create extends Component
         $calcs = $this->buildCalcs();
         if ($this->monto > $calcs['saldo_pendiente'] + 0.01) {
             $this->dispatch('errorAlert', ['message' => 'El monto excede el saldo pendiente.']);
+
             return;
         }
 
         DB::transaction(function () use ($calcs) {
             $tipoPlani = (int) $this->credit->tipo_planilla;
-            $obstipo = match ($tipoPlani) {1 => 'S.', 3 => 'M.', 4 => 'D.', default => ''};
-            if ($this->cancel) $obstipo .= 'CANCEL.';
+            $obstipo = match ($tipoPlani) {
+                1 => 'S.', 3 => 'M.', 4 => 'D.', default => ''
+            };
+            if ($this->cancel) {
+                $obstipo .= 'CANCEL.';
+            }
 
             $totCuotas = $this->credit->installments->count();
             $hora = now()->format('H:i:s');
@@ -203,8 +277,8 @@ class Create extends Component
             // ─── 1) DIAS MORA si hay descuento ─────────────────────────────
             if ($diasA > 0) {
                 DB::table('dias_mora')->insert([
-                    'credit_id'=>$this->credit->id,'dias'=>$diasA,'dias_descontados'=>$this->diasf,
-                    'created_at'=>now(),'updated_at'=>now(),
+                    'credit_id' => $this->credit->id, 'dias' => $diasA, 'dias_descontados' => $this->diasf,
+                    'created_at' => now(), 'updated_at' => now(),
                 ]);
             }
 
@@ -221,9 +295,9 @@ class Create extends Component
                 2
             );
             $massHeaderId = DB::table('mass_deletions')->insertGetId([
-                'credit_id'=>$this->credit->id,'amount'=>$totalGeneral,'date'=>$this->fecpag,
-                'time'=>$hora,'user'=>$usuario,'advisor'=>$this->credit->client?->asesor?->name,
-                'performed_by'=>$usuario,'created_at'=>now(),'updated_at'=>now(),
+                'credit_id' => $this->credit->id, 'amount' => $totalGeneral, 'date' => $this->fecpag,
+                'time' => $hora, 'user' => $usuario, 'advisor' => $this->credit->client?->asesor?->name,
+                'performed_by' => $usuario, 'created_at' => now(), 'updated_at' => now(),
             ]);
 
             $isMensualUnaCuota = ($tipoPlani === 3 && (int) $this->credit->cuotas === 1);
@@ -238,7 +312,9 @@ class Create extends Component
                 $remaining = (float) $this->monto;
 
                 foreach ($unpaid as $ins) {
-                    if ($remaining < 0.01) break;
+                    if ($remaining < 0.01) {
+                        break;
+                    }
 
                     if ($isMensualUnaCuota) {
                         // BRANCH ESPECIAL: tipoplani=3 + cuotas=1 → INTERES PRIMERO
@@ -262,17 +338,17 @@ class Create extends Component
 
                     if ($payCap > 0.001) {
                         $p = Payment::create([
-                            'credit_id'=>$this->credit->id,'installment_id'=>$ins->id,
-                            'modo'=>'CREDITO','tipo'=>'CAPITAL','documento'=>'CAPITAL',
-                            'fecha'=>$this->fecpag,'hora'=>$hora,'monto'=>$payCap,'moneda'=>$semodn,
-                            'detalle'=>"Pago : {$this->credit->id} Cuota:  {$ins->num_cuota}/{$totCuotas}",
-                            'asesor'=>$this->credit->asesor,'usuario'=>$usuario,'user_id'=>$userId,
-                            'headquarter_id'=>$hqId,'latitud'=>$this->latitud,'longitud'=>$this->longitud,
+                            'credit_id' => $this->credit->id, 'installment_id' => $ins->id,
+                            'modo' => 'CREDITO', 'tipo' => 'CAPITAL', 'documento' => 'CAPITAL',
+                            'fecha' => $this->fecpag, 'hora' => $hora, 'monto' => $payCap, 'moneda' => $semodn,
+                            'detalle' => "Pago : {$this->credit->id} Cuota:  {$ins->num_cuota}/{$totCuotas}",
+                            'asesor' => $this->credit->asesor, 'usuario' => $usuario, 'user_id' => $userId,
+                            'headquarter_id' => $hqId, 'latitud' => $this->latitud, 'longitud' => $this->longitud,
                         ]);
                         DB::table('mass_deletion_details')->insert([
-                            'mass_deletion_id'=>$massHeaderId,'installment_id'=>$ins->id,'payment_id'=>$p->id,
-                            'amount'=>$payCap,'fecha'=>now(),'tipo'=>'C',
-                            'created_at'=>now(),'updated_at'=>now(),
+                            'mass_deletion_id' => $massHeaderId, 'installment_id' => $ins->id, 'payment_id' => $p->id,
+                            'amount' => $payCap, 'fecha' => now(), 'tipo' => 'C',
+                            'created_at' => now(), 'updated_at' => now(),
                         ]);
                         $ins->importe_aplicado = (float) $ins->importe_aplicado + $payCap;
                     }
@@ -282,17 +358,17 @@ class Create extends Component
                             ? abs((int) Carbon::parse($ins->fecha_vencimiento)->diffInDays(now(), false))
                             : 0;
                         $p = Payment::create([
-                            'credit_id'=>$this->credit->id,'installment_id'=>$ins->id,
-                            'modo'=>'CREDITO','tipo'=>'INTERES','documento'=>'INTERES',
-                            'fecha'=>$this->fecpag,'hora'=>$hora,'monto'=>$payInt,'moneda'=>$semodn,
-                            'detalle'=>"Pago : {$this->credit->id} Interes:  {$ins->num_cuota}/{$totCuotas} Dias : {$diasInt}",
-                            'asesor'=>$this->credit->asesor,'usuario'=>$usuario,'user_id'=>$userId,
-                            'headquarter_id'=>$hqId,'latitud'=>$this->latitud,'longitud'=>$this->longitud,
+                            'credit_id' => $this->credit->id, 'installment_id' => $ins->id,
+                            'modo' => 'CREDITO', 'tipo' => 'INTERES', 'documento' => 'INTERES',
+                            'fecha' => $this->fecpag, 'hora' => $hora, 'monto' => $payInt, 'moneda' => $semodn,
+                            'detalle' => "Pago : {$this->credit->id} Interes:  {$ins->num_cuota}/{$totCuotas} Dias : {$diasInt}",
+                            'asesor' => $this->credit->asesor, 'usuario' => $usuario, 'user_id' => $userId,
+                            'headquarter_id' => $hqId, 'latitud' => $this->latitud, 'longitud' => $this->longitud,
                         ]);
                         DB::table('mass_deletion_details')->insert([
-                            'mass_deletion_id'=>$massHeaderId,'installment_id'=>$ins->id,'payment_id'=>$p->id,
-                            'amount'=>$payInt,'fecha'=>now(),'tipo'=>'I',
-                            'created_at'=>now(),'updated_at'=>now(),
+                            'mass_deletion_id' => $massHeaderId, 'installment_id' => $ins->id, 'payment_id' => $p->id,
+                            'amount' => $payInt, 'fecha' => now(), 'tipo' => 'I',
+                            'created_at' => now(), 'updated_at' => now(),
                         ]);
                         $ins->interes_aplicado = (float) $ins->interes_aplicado + $payInt;
                     }
@@ -328,9 +404,9 @@ class Create extends Component
                     DB::table('credit_installments')->where('id', $insTarget->id)
                         ->increment('mora_interes', $this->impointe2); // C6
                     DB::table('mass_deletion_details')->insert([
-                        'mass_deletion_id'=>$massHeaderId,'installment_id'=>$insTarget->id,'payment_id'=>$p->id,
-                        'amount'=>$this->impointe2,'fecha'=>now(),'tipo'=>'M',
-                        'created_at'=>now(),'updated_at'=>now(),
+                        'mass_deletion_id' => $massHeaderId, 'installment_id' => $insTarget->id, 'payment_id' => $p->id,
+                        'amount' => $this->impointe2, 'fecha' => now(), 'tipo' => 'M',
+                        'created_at' => now(), 'updated_at' => now(),
                     ]);
                 }
             }
@@ -338,17 +414,18 @@ class Create extends Component
             // ─── 5) MORA AUTO-CALCULADA (totmoraapa) ───────────────────────
             // Se asocia a la PRIMERA cuota tocada hoy (origen del atraso) o, si no hay
             // ninguna, a la primera cuota vencida pendiente. Más intuitivo que el legacy.
-            if ($totMora > 0.001 && !$this->ckmora) {
+            if ($totMora > 0.001 && ! $this->ckmora) {
                 $insTarget = $this->primeraCuotaParaMora($touchedThisPayment);
 
-                $p = $this->createMoraPayment('MORA', $totMora, "Mora Acumulada Dias : {$diasA}", $hora, $usuario, $userId, $hqId, $semodn);
+                $moraDetalle = ($calcs['mora_manual'] ?? false) ? 'Mora manual' : "Mora Acumulada Dias : {$diasA}";
+                $p = $this->createMoraPayment('MORA', $totMora, $moraDetalle, $hora, $usuario, $userId, $hqId, $semodn);
                 if ($insTarget) {
                     DB::table('credit_installments')->where('id', $insTarget->id)
                         ->increment('importe_mora', $totMora);
                     DB::table('mass_deletion_details')->insert([
-                        'mass_deletion_id'=>$massHeaderId,'installment_id'=>$insTarget->id,'payment_id'=>$p->id,
-                        'amount'=>$totMora,'fecha'=>now(),'tipo'=>'M',
-                        'created_at'=>now(),'updated_at'=>now(),
+                        'mass_deletion_id' => $massHeaderId, 'installment_id' => $insTarget->id, 'payment_id' => $p->id,
+                        'amount' => $totMora, 'fecha' => now(), 'tipo' => 'M',
+                        'created_at' => now(), 'updated_at' => now(),
                     ]);
                 }
             }
@@ -367,18 +444,18 @@ class Create extends Component
             // sentido dejar mora como deuda futura sobre un crédito que se cierra.
             // Reserva + sin cancelar → acumula en mora_acumulada para cobrarla
             // más adelante (deuda viva).
-            if ($this->ckmora && !$this->cancel && $totMora > 0.001) {
+            if ($this->ckmora && ! $this->cancel && $totMora > 0.001) {
                 $existing = DB::table('mora_acumulada')->where('credit_id', $this->credit->id)->first();
                 if ($existing) {
                     DB::table('mora_acumulada')->where('credit_id', $this->credit->id)->update([
-                        'dias' => DB::raw('dias + ' . (int) $diasA),
-                        'importe' => DB::raw('importe + ' . (float) $totMora),
+                        'dias' => DB::raw('dias + '.(int) $diasA),
+                        'importe' => DB::raw('importe + '.(float) $totMora),
                         'updated_at' => now(),
                     ]);
                 } else {
                     DB::table('mora_acumulada')->insert([
-                        'credit_id'=>$this->credit->id,'importe'=>$totMora,'dias'=>$diasA,
-                        'created_at'=>now(),'updated_at'=>now(),
+                        'credit_id' => $this->credit->id, 'importe' => $totMora, 'dias' => $diasA,
+                        'created_at' => now(), 'updated_at' => now(),
                     ]);
                 }
             }
@@ -400,6 +477,7 @@ class Create extends Component
         });
 
         session()->flash('payment_success', 'Pago registrado correctamente.');
+
         return redirect()->route('credits.show', $this->credit->id);
     }
 
@@ -414,12 +492,14 @@ class Create extends Component
         $cid = $this->credit->id;
         $hoy = now()->toDateString();
 
-        if (!empty($touchedThisPayment)) {
+        if (! empty($touchedThisPayment)) {
             $ins = DB::table('credit_installments')
                 ->where('credit_id', $cid)
                 ->whereIn('id', $touchedThisPayment)
                 ->orderBy('num_cuota')->first();
-            if ($ins) return $ins;
+            if ($ins) {
+                return $ins;
+            }
         }
 
         $ins = DB::table('credit_installments')
@@ -427,7 +507,9 @@ class Create extends Component
             ->where('pagado', 0)
             ->whereDate('fecha_vencimiento', '<', $hoy)
             ->orderBy('num_cuota')->first();
-        if ($ins) return $ins;
+        if ($ins) {
+            return $ins;
+        }
 
         return DB::table('credit_installments')
             ->where('credit_id', $cid)
@@ -438,12 +520,12 @@ class Create extends Component
     private function createMoraPayment(string $documento, float $monto, string $detalleSuffix, string $hora, ?string $usuario, ?int $userId, ?int $hqId, string $semodn): Payment
     {
         return Payment::create([
-            'credit_id'=>$this->credit->id,'installment_id'=>null,
-            'modo'=>'CREDITO','tipo'=>'MORA','documento'=>$documento,
-            'fecha'=>$this->fecpag,'hora'=>$hora,'monto'=>round($monto, 2),'moneda'=>$semodn,
-            'detalle'=>"Pago : {$this->credit->id} {$detalleSuffix}",
-            'asesor'=>$this->credit->asesor,'usuario'=>$usuario,'user_id'=>$userId,
-            'headquarter_id'=>$hqId ?? 1,'latitud'=>$this->latitud,'longitud'=>$this->longitud,
+            'credit_id' => $this->credit->id, 'installment_id' => null,
+            'modo' => 'CREDITO', 'tipo' => 'MORA', 'documento' => $documento,
+            'fecha' => $this->fecpag, 'hora' => $hora, 'monto' => round($monto, 2), 'moneda' => $semodn,
+            'detalle' => "Pago : {$this->credit->id} {$detalleSuffix}",
+            'asesor' => $this->credit->asesor, 'usuario' => $usuario, 'user_id' => $userId,
+            'headquarter_id' => $hqId ?? 1, 'latitud' => $this->latitud, 'longitud' => $this->longitud,
         ]);
     }
 

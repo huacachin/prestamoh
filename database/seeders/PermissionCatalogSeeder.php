@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Permission as Perm;
 use Illuminate\Database\Seeder;
+use Spatie\Permission\PermissionRegistrar;
 
 class PermissionCatalogSeeder extends Seeder
 {
@@ -11,7 +12,7 @@ class PermissionCatalogSeeder extends Seeder
     {
         $guard = 'web';
 
-        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         $items = [
             // ─── Acceso a páginas (singles) ───
@@ -61,24 +62,25 @@ class PermissionCatalogSeeder extends Seeder
             ['name' => 'clientes.scope-propio',         'label' => 'Solo mis clientes',    'module' => 'clientes', 'module_label' => 'Clientes', 'description' => 'Limita la lista a clientes asignados al usuario'],
             ['name' => 'clientes.eliminar',             'label' => 'Eliminar clientes',    'module' => 'clientes', 'module_label' => 'Clientes', 'description' => 'Eliminar clientes y sus adjuntos'],
             ['name' => 'creditos.eliminar',             'label' => 'Eliminar créditos',    'module' => 'creditos', 'module_label' => 'Créditos', 'description' => 'Eliminar registros de créditos'],
-            ['name' => 'creditos.ser-asesor-responsable','label' => 'Ser asesor responsable','module' => 'creditos', 'module_label' => 'Créditos', 'description' => 'El usuario aparece en el select "Asesor responsable" de clientes/créditos/refinanciamientos'],
-            ['name' => 'pagos.eliminar',                'label' => 'Eliminar/anular pagos','module' => 'pagos',    'module_label' => 'Pagos',    'description' => 'Anular o eliminar pagos registrados'],
+            ['name' => 'creditos.ser-asesor-responsable', 'label' => 'Ser asesor responsable', 'module' => 'creditos', 'module_label' => 'Créditos', 'description' => 'El usuario aparece en el select "Asesor responsable" de clientes/créditos/refinanciamientos'],
+            ['name' => 'pagos.eliminar',                'label' => 'Eliminar/anular pagos', 'module' => 'pagos',    'module_label' => 'Pagos',    'description' => 'Anular o eliminar pagos registrados'],
+            ['name' => 'pagos.mora-manual',             'label' => 'Mora manual',          'module' => 'pagos',    'module_label' => 'Pagos',    'description' => 'Editar/override del Total Mora al registrar un pago'],
 
             // ─── Permisos finos transversales ───
             ['name' => 'usuarios.gestionar-permisos', 'label' => 'Gestionar permisos',      'module' => 'configuracion', 'module_label' => 'Configuración',  'description' => 'Modificar la matriz de permisos de otros usuarios'],
-            ['name' => 'transacciones.autorizar',     'label' => 'Autorizar transacciones','module' => 'transacciones', 'module_label' => 'Transacciones', 'description' => 'Autorizar acciones que requieren visto bueno gerencial (anulaciones, ajustes, etc.)'],
+            ['name' => 'transacciones.autorizar',     'label' => 'Autorizar transacciones', 'module' => 'transacciones', 'module_label' => 'Transacciones', 'description' => 'Autorizar acciones que requieren visto bueno gerencial (anulaciones, ajustes, etc.)'],
             ['name' => 'acceso.cross-headquarter',    'label' => 'Ver todas las sedes',    'module' => 'acceso',        'module_label' => 'Acceso',         'description' => 'El usuario ve datos de todas las sucursales (no solo la suya)'],
-            ['name' => 'clientes.editar-identidad',   'label' => 'Editar identidad cliente','module' => 'clientes',     'module_label' => 'Clientes',       'description' => 'Editar campos críticos del cliente: DNI, nombre, apellidos'],
+            ['name' => 'clientes.editar-identidad',   'label' => 'Editar identidad cliente', 'module' => 'clientes',     'module_label' => 'Clientes',       'description' => 'Editar campos críticos del cliente: DNI, nombre, apellidos'],
         ];
 
         foreach ($items as $it) {
             Perm::updateOrCreate(
                 ['name' => $it['name'], 'guard_name' => $guard],
                 [
-                    'module'       => $it['module'] ?? null,
+                    'module' => $it['module'] ?? null,
                     'module_label' => $it['module_label'] ?? null,
-                    'label'        => $it['label'] ?? null,
-                    'description'  => $it['description'] ?? null,
+                    'label' => $it['label'] ?? null,
+                    'description' => $it['description'] ?? null,
                 ]
             );
         }
@@ -87,6 +89,6 @@ class PermissionCatalogSeeder extends Seeder
         $current = collect($items)->pluck('name')->all();
         Perm::where('guard_name', $guard)->whereNotIn('name', $current)->delete();
 
-        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 }
