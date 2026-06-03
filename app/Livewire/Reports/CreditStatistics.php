@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Reports;
 
+use App\Services\CajaDailyService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
@@ -9,22 +10,63 @@ use Livewire\Component;
 class CreditStatistics extends Component
 {
     public $selemes;
+
     public $selecano;
+
     public $seletipl = '';
+
     public $nomasesores = 'Todos';
 
     public array $rates = [0.01, 3, 4, 5, 5.2, 6, 6.5, 7, 8, 10, 12, 15, 16, 20, 24, 36];
 
     public function mount()
     {
-        $this->selemes  = date('m');
+        $this->selemes = date('m');
         $this->selecano = date('Y');
     }
 
     public function search() {}
 
+    /**
+     * Recomputa cache_ingreso_diario (legacy huaca_totalesmor) del mes desde datos
+     * vivos: por día = suma de (total + mora) de los ingresos de caja, idéntico a
+     * lo que reporte1a escribe en totalesmor. Self-healing, sin cron.
+     */
+    private function rebuildIngresoDiario(int $year, int $month, string $endLimit): void
+    {
+        $ingresosPorDia = app(CajaDailyService::class)->ingresosPorDia($year, $month, null, $endLimit);
+
+        $daysInMonth = Carbon::createFromDate($year, $month, 1)->daysInMonth;
+        for ($d = 1; $d <= $daysInMonth; $d++) {
+            $date = Carbon::create($year, $month, $d)->format('Y-m-d');
+            if ($date > $endLimit) {
+                break;
+            }
+
+            $importe = 0.0;
+            foreach ($ingresosPorDia[$date] ?? [] as $i) {
+                $importe += $i['total'] + $i['mora'];
+            }
+
+            DB::table('cache_ingreso_diario')->updateOrInsert(
+                ['fecha' => $date],
+                ['importe' => round($importe, 2), 'updated_at' => now()]
+            );
+        }
+    }
+
     public function render()
     {
+        // Self-healing: "Ingresos Créditos" sale de cache_ingreso_diario (legacy:
+        // huaca_totalesmor, que escribe reporte1a = sub_ingresos + mora por día).
+        // Laravel no la mantenía, así que la recomputamos del mes visto con datos
+        // vivos (servicio compartido) para que cuadre con el legacy balancedia. Sin cron.
+        $year = (int) $this->selecano;
+        $month = (int) $this->selemes;
+        $endMonth = Carbon::create($year, $month)->endOfMonth()->format('Y-m-d');
+        $today = Carbon::today()->format('Y-m-d');
+        $this->rebuildIngresoDiario($year, $month, min($endMonth, $today));
+
         // ─── DAILY TABLE (selected month) ──────────────────────────────
         [$dailyRows, $dailyTotals] = $this->buildDaily();
 
@@ -40,19 +82,19 @@ class CreditStatistics extends Component
         $asesores = DB::table('users')->orderBy('name')->pluck('name', 'username');
 
         return view('livewire.reports.credit-statistics', [
-            'dailyRows'     => $dailyRows,
-            'dailyTotals'   => $dailyTotals,
-            'monthlyRows'   => $monthlyRows,
+            'dailyRows' => $dailyRows,
+            'dailyTotals' => $dailyTotals,
+            'monthlyRows' => $monthlyRows,
             'monthlyTotals' => $monthlyTotals,
-            'rates'         => $this->rates,
-            'months'        => $months,
-            'asesores'      => $asesores,
+            'rates' => $this->rates,
+            'months' => $months,
+            'asesores' => $asesores,
         ]);
     }
 
     private function buildDaily(): array
     {
-        $year  = (int) $this->selecano;
+        $year = (int) $this->selecano;
         $month = (int) $this->selemes;
         $daysInMonth = Carbon::createFromDate($year, $month, 1)->daysInMonth;
 
@@ -103,10 +145,10 @@ class CreditStatistics extends Component
 
         $rows = [];
         $totals = [
-            'ingresos'    => 0,
-            'egresos'     => 0,
-            'rates_cap'   => array_fill_keys(array_map(fn($r) => (string) $r, $this->rates), 0),
-            'rates_int'   => array_fill_keys(array_map(fn($r) => (string) $r, $this->rates), 0),
+            'ingresos' => 0,
+            'egresos' => 0,
+            'rates_cap' => array_fill_keys(array_map(fn ($r) => (string) $r, $this->rates), 0),
+            'rates_int' => array_fill_keys(array_map(fn ($r) => (string) $r, $this->rates), 0),
             'total_inter' => 0,
         ];
 
@@ -115,11 +157,11 @@ class CreditStatistics extends Component
             $isSunday = Carbon::parse($fecha)->dayOfWeek === Carbon::SUNDAY;
 
             $row = [
-                'fecha'    => $fecha,
+                'fecha' => $fecha,
                 'ingresos' => (float) ($ingresos[$fecha] ?? 0),
-                'egresos'  => (float) ($egresos[$fecha] ?? 0),
+                'egresos' => (float) ($egresos[$fecha] ?? 0),
                 'is_sunday' => $isSunday,
-                'rates'    => [],
+                'rates' => [],
                 'total_int' => 0,
             ];
 
@@ -135,8 +177,8 @@ class CreditStatistics extends Component
             }
             $row['total_int'] = $intetotalX;
 
-            $totals['ingresos']    += $row['ingresos'];
-            $totals['egresos']     += $row['egresos'];
+            $totals['ingresos'] += $row['ingresos'];
+            $totals['egresos'] += $row['egresos'];
             $totals['total_inter'] += $intetotalX;
 
             $rows[] = $row;
@@ -190,23 +232,23 @@ class CreditStatistics extends Component
             ->pluck('total', 'mes')
             ->toArray();
 
-        $monthLabels = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+        $monthLabels = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
         $rows = [];
         $totals = [
-            'ingresos'    => 0,
-            'egresos'     => 0,
-            'rates_cap'   => array_fill_keys(array_map(fn($r) => (string) $r, $this->rates), 0),
-            'rates_int'   => array_fill_keys(array_map(fn($r) => (string) $r, $this->rates), 0),
+            'ingresos' => 0,
+            'egresos' => 0,
+            'rates_cap' => array_fill_keys(array_map(fn ($r) => (string) $r, $this->rates), 0),
+            'rates_int' => array_fill_keys(array_map(fn ($r) => (string) $r, $this->rates), 0),
             'total_inter' => 0,
         ];
 
         for ($m = 1; $m <= 12; $m++) {
             $row = [
                 'mes_label' => $monthLabels[$m - 1],
-                'ingresos'  => (float) ($ingresos[$m] ?? 0),
-                'egresos'   => (float) ($egresos[$m] ?? 0),
-                'rates'     => [],
+                'ingresos' => (float) ($ingresos[$m] ?? 0),
+                'egresos' => (float) ($egresos[$m] ?? 0),
+                'rates' => [],
                 'total_int' => 0,
             ];
 
@@ -223,8 +265,8 @@ class CreditStatistics extends Component
             }
             $row['total_int'] = $intetotalX;
 
-            $totals['ingresos']    += $row['ingresos'];
-            $totals['egresos']     += $row['egresos'];
+            $totals['ingresos'] += $row['ingresos'];
+            $totals['egresos'] += $row['egresos'];
             $totals['total_inter'] += $intetotalX;
 
             $rows[] = $row;

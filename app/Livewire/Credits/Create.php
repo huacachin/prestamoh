@@ -4,7 +4,6 @@ namespace App\Livewire\Credits;
 
 use App\Models\Client;
 use App\Models\Credit;
-use App\Models\CreditInstallment;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -14,30 +13,49 @@ class Create extends Component
 {
     // Cliente
     public string $codigoc = '';     // DNI
+
     public ?string $nombreb = null;  // Nombre cliente (auto)
+
     public ?int $codigod = null;     // client_id (auto)
+
     public ?string $dniMsg = null;
+
     public ?string $dniMsgType = null; // 'ok' | 'err'
 
     // Crédito
     public $codpre_ = null;          // Código del préstamo (correlativo)
+
     public string $selecmoned = 'S'; // Moneda fija Soles
+
     public $impopres = 0;            // Capital
+
     public string $selecano = '';    // Año
+
     public string $selecmes = '';    // Mes
+
     public string $seletipl = '';    // Tipo planilla (1, 3, 4)
+
     public $cuot = 0;                // Cuotas
+
     public $inte = 0;                // % interés
+
     public $moracc = 0;              // Mora Capital (auto)
+
     public $moraii = 0;              // Mora Interés (auto)
+
     public string $fechar = '';      // Fecha registro
+
     public string $fechad = '';      // Fecha préstamo
+
     public ?string $nomasesores = null; // Asesor (username)
+
     public ?string $glosa = null;
+
     public $gat = 0;
 
     // Estado de checkboxes (auto-set por tipo)
     public bool $morai = false; // Mora Interés (mora1)
+
     public bool $morac = false; // Mora Capital (mora2)
 
     public function mount(?int $clientId = null)
@@ -72,6 +90,7 @@ class Create extends Component
             $this->nombreb = null;
             $this->dniMsg = null;
             $this->dniMsgType = null;
+
             return;
         }
 
@@ -94,20 +113,34 @@ class Create extends Component
         // Auto-set cuotas y checkboxes según tipo (legacy diariovalida())
         if ($this->seletipl === '4') {
             $this->cuot = 30;
-            $this->morai = true;  $this->morac = false;
+            $this->morai = true;
+            $this->morac = false;
         } elseif ($this->seletipl === '1') {
             $this->cuot = 4;
-            $this->morai = false; $this->morac = true;
+            $this->morai = false;
+            $this->morac = true;
         } elseif ($this->seletipl === '3') {
             $this->cuot = 1;
-            $this->morai = true;  $this->morac = false;
+            $this->morai = true;
+            $this->morac = false;
         }
         $this->recalcMora();
     }
 
-    public function updatedImpopres() { $this->recalcMora(); }
-    public function updatedInte()     { $this->recalcMora(); }
-    public function updatedCuot()     { $this->recalcMora(); }
+    public function updatedImpopres()
+    {
+        $this->recalcMora();
+    }
+
+    public function updatedInte()
+    {
+        $this->recalcMora();
+    }
+
+    public function updatedCuot()
+    {
+        $this->recalcMora();
+    }
 
     private function recalcMora(): void
     {
@@ -135,13 +168,13 @@ class Create extends Component
     protected function rules(): array
     {
         return [
-            'codigoc'     => 'required|string|min:8|max:11',
-            'codigod'     => 'required|integer|exists:clients,id',
-            'codpre_'     => 'required|integer|min:1',
-            'impopres'    => 'required|numeric|gt:0',
-            'cuot'        => 'required|integer|gt:0',
-            'inte'        => 'required|numeric|gte:0',
-            'seletipl'    => 'required|in:1,3,4',
+            'codigoc' => 'required|string|min:8|max:11',
+            'codigod' => 'required|integer|exists:clients,id',
+            'codpre_' => 'required|integer|min:1',
+            'impopres' => 'required|numeric|gt:0',
+            'cuot' => 'required|integer|gt:0',
+            'inte' => 'required|numeric|gte:0',
+            'seletipl' => 'required|in:1,3,4',
             'nomasesores' => 'required|string',
         ];
     }
@@ -149,17 +182,17 @@ class Create extends Component
     protected function messages(): array
     {
         return [
-            'codigoc.required'  => 'Ingrese DNI del cliente.',
-            'codigod.required'  => 'El cliente no está registrado.',
-            'codigod.exists'    => 'El cliente no está registrado.',
-            'codpre_.required'  => 'Falta el código de préstamo.',
+            'codigoc.required' => 'Ingrese DNI del cliente.',
+            'codigod.required' => 'El cliente no está registrado.',
+            'codigod.exists' => 'El cliente no está registrado.',
+            'codpre_.required' => 'Falta el código de préstamo.',
             'impopres.required' => 'Ingrese el importe del crédito.',
-            'impopres.gt'       => 'El importe debe ser mayor a 0.',
-            'cuot.required'     => 'Ingrese la cantidad de cuotas.',
-            'cuot.gt'           => 'Las cuotas deben ser mayor a 0.',
-            'inte.required'     => 'Ingrese el porcentaje de interés.',
+            'impopres.gt' => 'El importe debe ser mayor a 0.',
+            'cuot.required' => 'Ingrese la cantidad de cuotas.',
+            'cuot.gt' => 'Las cuotas deben ser mayor a 0.',
+            'inte.required' => 'Ingrese el porcentaje de interés.',
             'seletipl.required' => 'Seleccione el tipo de planilla.',
-            'seletipl.in'       => 'Seleccione el tipo de planilla.',
+            'seletipl.in' => 'Seleccione el tipo de planilla.',
             'nomasesores.required' => 'Indique el asesor.',
         ];
     }
@@ -171,6 +204,7 @@ class Create extends Component
         // Validar que el código de préstamo no esté en uso (race condition / edición manual)
         if (DB::table('credits')->where('id', $this->codpre_)->exists()) {
             $this->addError('codpre_', 'El código de préstamo ya está utilizado.');
+
             return;
         }
 
@@ -190,41 +224,43 @@ class Create extends Component
 
             // ─── 1) INSERT credit (cabecera) ───────────────────────────────
             DB::table('credits')->insert([
-                'id'                  => $pid,
-                'client_id'           => $this->codigod,
-                'fecha_prestamo'      => $this->fechad,
-                'fecha_actualizacion' => null,
-                'importe'             => $impopres,
-                'cuotas'              => $tocuota,
-                'tipo_planilla'       => $tipo,
-                'interes'             => $inte,
-                'interes_total'       => 0, // se actualiza al final
-                'mora'                => 0,
-                'mora1'               => $this->morai ? $this->moraii : 0,
-                'mora2'               => $this->morac ? $this->moracc : 0,
-                'moneda'              => 'Soles',
-                'documento'           => null,
-                'glosa'               => $this->glosa,
-                'situacion'           => 'Activo',
-                'estado'              => 1,
-                'refinanciado'        => 0,
-                'cod_rem'             => null,
-                'gat'                 => $this->gat ?? 0,
-                'idcan'               => null,
-                'fecha_vencimiento'   => null, // se actualiza al final
-                'fecha_cancelacion'   => null,
-                'asesor'              => null,
-                'user_id'             => auth()->id(),
-                'usuario'             => $this->nomasesores,
-                'headquarter_id'      => 1,
-                'created_at'          => now(),
-                'updated_at'          => now(),
+                'id' => $pid,
+                'client_id' => $this->codigod,
+                'fecha_prestamo' => $this->fechad,
+                // Legacy: en crédito normal fechaactua == fechaprestamo (día que entra
+                // a caja). Los reportes de caja/estadísticas filtran por esta columna.
+                'fecha_actualizacion' => $this->fechad,
+                'importe' => $impopres,
+                'cuotas' => $tocuota,
+                'tipo_planilla' => $tipo,
+                'interes' => $inte,
+                'interes_total' => 0, // se actualiza al final
+                'mora' => 0,
+                'mora1' => $this->morai ? $this->moraii : 0,
+                'mora2' => $this->morac ? $this->moracc : 0,
+                'moneda' => 'Soles',
+                'documento' => null,
+                'glosa' => $this->glosa,
+                'situacion' => 'Activo',
+                'estado' => 1,
+                'refinanciado' => 0,
+                'cod_rem' => null,
+                'gat' => $this->gat ?? 0,
+                'idcan' => null,
+                'fecha_vencimiento' => null, // se actualiza al final
+                'fecha_cancelacion' => null,
+                'asesor' => null,
+                'user_id' => auth()->id(),
+                'usuario' => $this->nomasesores,
+                'headquarter_id' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
 
             // ─── 2) Generar cuotas ─────────────────────────────────────────
             $selano = (int) $fechaBase->format('Y');
             $selmes = (int) $fechaBase->format('m');
-            $selay  = $fechaBase->format('d');
+            $selay = $fechaBase->format('d');
 
             // Para Diario: contar días hábiles hasta cubrir 22 cuotas-base
             if ($tipo === 4) {
@@ -238,12 +274,18 @@ class Create extends Component
                     if ($dow !== Carbon::SATURDAY && $dow !== Carbon::SUNDAY) {
                         $moncuo_n2 += $moncuo_n;
                     }
-                    if ($impopres > $moncuo_n2) $ndiasdias++;
+                    if ($impopres > $moncuo_n2) {
+                        $ndiasdias++;
+                    }
                 }
                 $ndiasdias++;
                 $tocuota = $ndiasdias;
-                if ($ndiasdias >= 33) $tocuota = 32;
-                if ($ndiasdias === 29) $tocuota = 30;
+                if ($ndiasdias >= 33) {
+                    $tocuota = 32;
+                }
+                if ($ndiasdias === 29) {
+                    $tocuota = 30;
+                }
             }
 
             $r = 0;
@@ -286,8 +328,8 @@ class Create extends Component
                 $mesCuotaStr = str_pad($mesCuotaNum, 2, '0', STR_PAD_LEFT);
 
                 // Fecha base mensual: $ano-$mes-$día_original
-                $fechaCandidata = $anoCuota . '-' . $mesCuotaStr . '-' . $selay;
-                if (!checkdate($mesCuotaNum, (int) $selay, $anoCuota)) {
+                $fechaCandidata = $anoCuota.'-'.$mesCuotaStr.'-'.$selay;
+                if (! checkdate($mesCuotaNum, (int) $selay, $anoCuota)) {
                     $aux = Carbon::parse("$anoCuota-$mesCuotaStr-01")->addMonth();
                     $fechaCandidata = $aux->subDay()->format('Y-m-d');
                 }
@@ -339,36 +381,36 @@ class Create extends Component
 
                 if ((int) $moncuo > 0 && $inter > 0) {
                     DB::table('credit_installments')->insert([
-                        'credit_id'        => $pid,
-                        'num_cuota'        => $r,
-                        'fecha_vencimiento'=> $fecha9,
-                        'fecha_pago'       => $fecha9,
-                        'importe_cuota'    => $moncuo,
-                        'importe_interes'  => $inter,
+                        'credit_id' => $pid,
+                        'num_cuota' => $r,
+                        'fecha_vencimiento' => $fecha9,
+                        'fecha_pago' => $fecha9,
+                        'importe_cuota' => $moncuo,
+                        'importe_interes' => $inter,
                         'importe_aplicado' => 0,
                         'interes_aplicado' => 0,
-                        'importe_mora'     => 0,
-                        'pagado'           => false,
-                        'usuario'          => $this->nomasesores,
-                        'created_at'       => now(),
-                        'updated_at'       => now(),
+                        'importe_mora' => 0,
+                        'pagado' => false,
+                        'usuario' => $this->nomasesores,
+                        'created_at' => now(),
+                        'updated_at' => now(),
                     ]);
                 }
                 if ($isWeekend) {
                     DB::table('credit_installments')->insert([
-                        'credit_id'        => $pid,
-                        'num_cuota'        => $r,
-                        'fecha_vencimiento'=> $fecha9,
-                        'fecha_pago'       => $fecha9,
-                        'importe_cuota'    => 0,
-                        'importe_interes'  => 0,
+                        'credit_id' => $pid,
+                        'num_cuota' => $r,
+                        'fecha_vencimiento' => $fecha9,
+                        'fecha_pago' => $fecha9,
+                        'importe_cuota' => 0,
+                        'importe_interes' => 0,
                         'importe_aplicado' => 0,
                         'interes_aplicado' => 0,
-                        'importe_mora'     => 0,
-                        'pagado'           => false,
-                        'usuario'          => $this->nomasesores,
-                        'created_at'       => now(),
-                        'updated_at'       => now(),
+                        'importe_mora' => 0,
+                        'pagado' => false,
+                        'usuario' => $this->nomasesores,
+                        'created_at' => now(),
+                        'updated_at' => now(),
                     ]);
                 }
             }
@@ -376,8 +418,8 @@ class Create extends Component
             // ─── 3) Actualizar credit: fecha_vencimiento + interes_total ──
             DB::table('credits')->where('id', $pid)->update([
                 'fecha_vencimiento' => $fecha9,
-                'interes_total'     => $inttotal,
-                'updated_at'        => now(),
+                'interes_total' => $inttotal,
+                'updated_at' => now(),
             ]);
 
             // ─── 4) Diario: ajustar última cuota con interés residual ─────
@@ -397,7 +439,8 @@ class Create extends Component
             }
         });
 
-        session()->flash('credit_success', 'Crédito #' . $this->codpre_ . ' creado.');
+        session()->flash('credit_success', 'Crédito #'.$this->codpre_.' creado.');
+
         return redirect()->route('credits.show', $this->codpre_);
     }
 

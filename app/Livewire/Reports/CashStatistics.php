@@ -2,10 +2,10 @@
 
 namespace App\Livewire\Reports;
 
-use App\Models\Credit;
 use App\Models\Expense;
 use App\Models\Income;
 use App\Models\Payment;
+use App\Services\CajaDailyService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
@@ -13,15 +13,78 @@ use Livewire\Component;
 class CashStatistics extends Component
 {
     public $month;
+
     public $year;
 
     public function mount(): void
     {
         $this->month = (int) now()->month;
-        $this->year  = (int) now()->year;
+        $this->year = (int) now()->year;
     }
 
     public function search(): void {}
+
+    /**
+     * Reconstruye, desde datos vivos, las caches diarias del mes que este reporte
+     * consume: cache_capital_cobrado (totcaj1a), cache_credit_totals (totcaj3) y
+     * capital_neto (capineto). En el legacy estas las escribe reporte1a / un cron;
+     * en Laravel las recomputamos al abrir el reporte (self-healing) para que la
+     * tabla diaria y el resumen cuadren con cash-general-1 y el legacy. Sin cron.
+     */
+    private function rebuildCajaCaches(int $year, int $month, string $endLimit): void
+    {
+        $svc = app(CajaDailyService::class);
+        $ingresosPorDia = $svc->ingresosPorDia($year, $month, null, $endLimit);
+
+        $daysInMonth = Carbon::create($year, $month)->daysInMonth;
+        for ($d = 1; $d <= $daysInMonth; $d++) {
+            $date = Carbon::create($year, $month, $d)->format('Y-m-d');
+            if ($date > $endLimit) {
+                break;
+            }
+
+            $ings = $ingresosPorDia[$date] ?? [];
+            $capitalCobrado = 0.0;
+            $interesTotalDia = 0.0;
+            $moraTotalDia = 0.0;
+            $byType = [1 => ['s' => 0.0, 'n' => 0], 3 => ['s' => 0.0, 'n' => 0], 4 => ['s' => 0.0, 'n' => 0]];
+            foreach ($ings as $i) {
+                $capitalCobrado += $i['capital'];
+                $interesTotalDia += $i['interes'];
+                $moraTotalDia += $i['mora'];
+                $tp = $i['tipo_planilla'];
+                if (isset($byType[$tp])) {
+                    $byType[$tp]['s'] += $i['interes'];
+                    if ($i['interes'] > 0) {
+                        $byType[$tp]['n']++;
+                    }
+                }
+            }
+
+            DB::table('cache_capital_cobrado')->updateOrInsert(
+                ['fecha' => $date],
+                ['importe' => round($capitalCobrado, 2), 'updated_at' => now()]
+            );
+            DB::table('cache_credit_totals')->updateOrInsert(
+                ['fecha' => $date],
+                [
+                    'interes' => round($interesTotalDia, 2),
+                    'mora' => round($moraTotalDia, 2),
+                    'mensual' => round($byType[3]['s'], 2), 'n_mensual' => $byType[3]['n'],
+                    'semanal' => round($byType[1]['s'], 2), 'n_semanal' => $byType[1]['n'],
+                    'diario' => round($byType[4]['s'], 2), 'n_diario' => $byType[4]['n'],
+                    'updated_at' => now(),
+                ]
+            );
+
+            // NOTA: capital_neto (Capital T.) NO se recomputa aquí. Es un snapshot
+            // diario de la cartera que en el legacy genera data_capineto.php con una
+            // lógica propia (no es la suma de importes). El legacy tampoco lo tiene
+            // para días sin correr ese cron (su última foto es 2026-05-31), así que
+            // se respeta el histórico migrado y se deja en blanco lo no snapshoteado,
+            // igual que el legacy. Portar data_capineto.php es una tarea aparte.
+        }
+    }
 
     /**
      * Recalcula y persiste cache_resumen_mensual para un mes/año, replicando
@@ -31,7 +94,7 @@ class CashStatistics extends Component
     private function recalcularResumenMes(int $year, int $month): void
     {
         $start = Carbon::create($year, $month, 1)->format('Y-m-d');
-        $end   = Carbon::create($year, $month)->endOfMonth()->format('Y-m-d');
+        $end = Carbon::create($year, $month)->endOfMonth()->format('Y-m-d');
 
         // capital cobrado (legacy: $totalImporteG = SUM huaca_totcaj1a)
         $capital = (float) DB::table('cache_capital_cobrado')
@@ -70,17 +133,17 @@ class CashStatistics extends Component
                       + $mora1 + $mora3 + $mora4;
 
         // caja 1 ingresos / egresos por modo (legacy: huaca_ingreso/huaca_entrada modo)
-        $fijoi  = (float) DB::table('incomes')->where('caja', 1)->where('modo', 'Fijos')
+        $fijoi = (float) DB::table('incomes')->where('caja', 1)->where('modo', 'Fijos')
             ->whereBetween('date', [$start, $end])->sum('total');
         $otrosi = (float) DB::table('incomes')->where('caja', 1)->where('modo', 'Otros')
             ->whereBetween('date', [$start, $end])->sum('total');
-        $fijoe  = (float) DB::table('expenses')->where('caja', 1)->where('modo', 'Fijos')
+        $fijoe = (float) DB::table('expenses')->where('caja', 1)->where('modo', 'Fijos')
             ->whereBetween('date', [$start, $end])->sum('total');
         $otrose = (float) DB::table('expenses')->where('caja', 1)->where('modo', 'Otros')
             ->whereBetween('date', [$start, $end])->sum('total');
 
         // caja 3 (legacy: huaca_ingreso3/huaca_entrada3)
-        $otros2  = (float) DB::table('incomes')->where('caja', 3)
+        $otros2 = (float) DB::table('incomes')->where('caja', 3)
             ->whereBetween('date', [$start, $end])->sum('total');
         $egresov = (float) DB::table('expenses')->where('caja', 3)
             ->whereBetween('date', [$start, $end])->sum('total');
@@ -93,7 +156,9 @@ class CashStatistics extends Component
         $capitalActivado = (float) DB::table('credits')
             ->whereYear('fecha_actualizacion', $year)
             ->whereMonth('fecha_actualizacion', $month)
-            ->where(function ($q) { $q->where('cod_rem', '<>', 'REF')->orWhereNull('cod_rem'); })
+            ->where(function ($q) {
+                $q->where('cod_rem', '<>', 'REF')->orWhereNull('cod_rem');
+            })
             ->sum('importe');
         $egreso = $capitalActivado + $fijoe + $otrose;
 
@@ -107,29 +172,29 @@ class CashStatistics extends Component
         DB::table('cache_resumen_mensual')->updateOrInsert(
             ['idmes' => $month, 'idano' => $year],
             [
-                'capital'    => $capital,
-                'recucapi'   => $recucapi,
-                'n1'         => (int) $cct->n1,
-                'n2'         => (int) $cct->n2,
-                'n3'         => (int) $cct->n3,
-                'mensual'    => (float) $cct->ms,
-                'semanal'    => (float) $cct->ss,
-                'diario'     => (float) $cct->ds,
-                'mora1'      => $mora1,
-                'mora3'      => $mora3,
-                'mora4'      => $mora4,
-                'mora'       => $totalCredito,
-                'total'      => $totalCredito,
-                'otros'      => $otros,
-                'egreso'     => $egreso,
-                'utilidad'   => $utilidad,
-                'otros2'     => $otros2,
-                'egresov'    => $egresov,
-                'utilidad2'  => $utilidad2,
-                'fijoi'      => $fijoi,
-                'otrosi'     => $otrosi,
-                'fijoe'      => $fijoe,
-                'otrose'     => $otrose,
+                'capital' => $capital,
+                'recucapi' => $recucapi,
+                'n1' => (int) $cct->n1,
+                'n2' => (int) $cct->n2,
+                'n3' => (int) $cct->n3,
+                'mensual' => (float) $cct->ms,
+                'semanal' => (float) $cct->ss,
+                'diario' => (float) $cct->ds,
+                'mora1' => $mora1,
+                'mora3' => $mora3,
+                'mora4' => $mora4,
+                'mora' => $totalCredito,
+                'total' => $totalCredito,
+                'otros' => $otros,
+                'egreso' => $egreso,
+                'utilidad' => $utilidad,
+                'otros2' => $otros2,
+                'egresov' => $egresov,
+                'utilidad2' => $utilidad2,
+                'fijoi' => $fijoi,
+                'otrosi' => $otrosi,
+                'fijoe' => $fijoe,
+                'otrose' => $otrose,
                 'updated_at' => now(),
             ]
         );
@@ -137,19 +202,22 @@ class CashStatistics extends Component
 
     public function render()
     {
-        $year  = (int) $this->year;
+        $year = (int) $this->year;
         $month = (int) $this->month;
+
+        $startMonth = Carbon::create($year, $month, 1)->format('Y-m-d');
+        $endMonth = Carbon::create($year, $month)->endOfMonth()->format('Y-m-d');
+        $today = Carbon::today()->format('Y-m-d');
+        $endLimit = min($endMonth, $today);
+
+        // Self-healing: recomputa las caches diarias del mes desde datos vivos
+        // (igual que el legacy reporte1a/data_capineto las mantienen). DEBE ir
+        // antes de recalcularResumenMes y de leer las caches para la tabla diaria.
+        $this->rebuildCajaCaches($year, $month, $endLimit);
 
         // Replica el comportamiento del legacy caja-estadistica.php (línea 556):
         // recalcula y persiste el resumen del mes ANTES de leerlo para la tabla 2.
-        // Sin esto, cualquier cambio en expenses/incomes/credits posterior a la
-        // migración deja la tabla 2 leyendo un cache stale.
         $this->recalcularResumenMes($year, $month);
-
-        $startMonth = Carbon::create($year, $month, 1)->format('Y-m-d');
-        $endMonth   = Carbon::create($year, $month)->endOfMonth()->format('Y-m-d');
-        $today      = Carbon::today()->format('Y-m-d');
-        $endLimit   = min($endMonth, $today);
 
         // ─── PRECARGAR DATOS DEL MES (cacheados, igual al legacy) ──────
         // Capital T. (legacy: huaca_capineto)
@@ -227,24 +295,26 @@ class CashStatistics extends Component
         // ─── PROCESAR DÍA POR DÍA ──────────────────────────────────────
         $rows = [];
         $totals = [
-            'capital_t'       => 0, // capital desembolsado
+            'capital_t' => 0, // capital desembolsado
             'capital_cobrado' => 0, // sum CAPITAL payments
-            'mensual_n'       => 0, 'mensual_s'  => 0, 'mensual_mora' => 0,
-            'semanal_n'       => 0, 'semanal_s'  => 0, 'semanal_mora' => 0,
-            'diario_n'        => 0, 'diario_s'   => 0, 'diario_mora'  => 0,
-            'total_credito'   => 0, // sum interés + mora todos
-            'otros_ing'       => 0, // ingreso3
-            'otros_egr'       => 0, // entrada3
-            'utilidad_caja3'  => 0,
-            'ing_fijos'       => 0, 'ing_otros' => 0, 'ing_total' => 0,
-            'egr_fijos'       => 0, 'egr_otros' => 0, 'egr_total' => 0,
+            'mensual_n' => 0, 'mensual_s' => 0, 'mensual_mora' => 0,
+            'semanal_n' => 0, 'semanal_s' => 0, 'semanal_mora' => 0,
+            'diario_n' => 0, 'diario_s' => 0, 'diario_mora' => 0,
+            'total_credito' => 0, // sum interés + mora todos
+            'otros_ing' => 0, // ingreso3
+            'otros_egr' => 0, // entrada3
+            'utilidad_caja3' => 0,
+            'ing_fijos' => 0, 'ing_otros' => 0, 'ing_total' => 0,
+            'egr_fijos' => 0, 'egr_otros' => 0, 'egr_total' => 0,
         ];
 
         $daysInMonth = Carbon::create($year, $month)->daysInMonth;
 
         for ($d = 1; $d <= $daysInMonth; $d++) {
             $date = Carbon::create($year, $month, $d)->format('Y-m-d');
-            if ($date > $today) break;
+            if ($date > $today) {
+                break;
+            }
 
             // Capital T. (legacy: capineto)
             $capitalT = $capitalNetoByDate[$date] ?? 0;
@@ -258,14 +328,14 @@ class CashStatistics extends Component
             $mensualS = (float) ($cache3->mensual ?? 0);
             $semanalN = (int) ($cache3->n_semanal ?? 0);
             $semanalS = (float) ($cache3->semanal ?? 0);
-            $diarioN  = (int) ($cache3->n_diario ?? 0);
-            $diarioS  = (float) ($cache3->diario ?? 0);
+            $diarioN = (int) ($cache3->n_diario ?? 0);
+            $diarioS = (float) ($cache3->diario ?? 0);
 
             // Mora por tipo (calculado de payments)
             $moraDay = $moraByTypeByDate->get($date, collect())->keyBy('tipo_planilla');
             $mensualMora = (float) ($moraDay->get(3)->total ?? 0);
             $semanalMora = (float) ($moraDay->get(1)->total ?? 0);
-            $diarioMora  = (float) ($moraDay->get(4)->total ?? 0);
+            $diarioMora = (float) ($moraDay->get(4)->total ?? 0);
 
             $totalCredito = $mensualS + $mensualMora + $semanalS + $semanalMora + $diarioS + $diarioMora;
 
@@ -285,30 +355,30 @@ class CashStatistics extends Component
             $egrOtros = (float) ($expModos->get('Otros')->total ?? 0);
 
             $row = [
-                'fecha'           => $date,
-                'day'             => $d,
-                'is_sunday'       => Carbon::parse($date)->dayOfWeek === 0,
-                'capital_t'       => $capitalT,
+                'fecha' => $date,
+                'day' => $d,
+                'is_sunday' => Carbon::parse($date)->dayOfWeek === 0,
+                'capital_t' => $capitalT,
                 'capital_cobrado' => $capitalCobrado,
-                'mensual_n'       => $mensualN,
-                'mensual_s'       => $mensualS,
-                'mensual_mora'    => $mensualMora,
-                'semanal_n'       => $semanalN,
-                'semanal_s'       => $semanalS,
-                'semanal_mora'    => $semanalMora,
-                'diario_n'        => $diarioN,
-                'diario_s'        => $diarioS,
-                'diario_mora'     => $diarioMora,
-                'total_credito'   => $totalCredito,
-                'otros_ing'       => $otrosIng,
-                'otros_egr'       => $otrosEgr,
-                'utilidad_caja3'  => $utilidadCaja3,
-                'ing_fijos'       => $ingFijos,
-                'ing_otros'       => $ingOtros,
-                'ing_total'       => $ingFijos + $ingOtros,
-                'egr_fijos'       => $egrFijos,
-                'egr_otros'       => $egrOtros,
-                'egr_total'       => $egrFijos + $egrOtros,
+                'mensual_n' => $mensualN,
+                'mensual_s' => $mensualS,
+                'mensual_mora' => $mensualMora,
+                'semanal_n' => $semanalN,
+                'semanal_s' => $semanalS,
+                'semanal_mora' => $semanalMora,
+                'diario_n' => $diarioN,
+                'diario_s' => $diarioS,
+                'diario_mora' => $diarioMora,
+                'total_credito' => $totalCredito,
+                'otros_ing' => $otrosIng,
+                'otros_egr' => $otrosEgr,
+                'utilidad_caja3' => $utilidadCaja3,
+                'ing_fijos' => $ingFijos,
+                'ing_otros' => $ingOtros,
+                'ing_total' => $ingFijos + $ingOtros,
+                'egr_fijos' => $egrFijos,
+                'egr_otros' => $egrOtros,
+                'egr_total' => $egrFijos + $egrOtros,
             ];
 
             $rows[] = $row;
@@ -322,35 +392,35 @@ class CashStatistics extends Component
         // INGRESO total por categoría
         $ingMS = $totals['mensual_s'] + $totals['mensual_mora']
                + $totals['semanal_s'] + $totals['semanal_mora'];
-        $ingD  = $totals['diario_s'] + $totals['diario_mora'];
+        $ingD = $totals['diario_s'] + $totals['diario_mora'];
         $ingOtrosCat = $totals['otros_ing'];
         $ingTotal = $ingMS + $ingD + $ingOtrosCat;
 
         // EGRESO por aa (Diario, Mensual, D.M)
-        $egrDiario  = (float) Expense::where('caja', 1)
+        $egrDiario = (float) Expense::where('caja', 1)
             ->whereYear('date', $year)->whereMonth('date', $month)
             ->where('reason', 'Diario')->sum('total');
         $egrMensual = (float) Expense::where('caja', 1)
             ->whereYear('date', $year)->whereMonth('date', $month)
             ->where('reason', 'Mensual')->sum('total');
-        $egrDM      = (float) Expense::where('caja', 1)
+        $egrDM = (float) Expense::where('caja', 1)
             ->whereYear('date', $year)->whereMonth('date', $month)
             ->where('reason', 'D.M')->sum('total');
 
         $newvalor2 = round($egrDM / 2, 2);
         $egrMS = $egrMensual + $newvalor2;
-        $egrD  = $egrDiario + $newvalor2;
+        $egrD = $egrDiario + $newvalor2;
         $egrTotalCat = $egrMS + $egrD;
 
         // TOTAL = INGRESO - EGRESO
         $totMS = $ingMS - $egrMS;
-        $totD  = $ingD - $egrD;
+        $totD = $ingD - $egrD;
         $totOtros = $ingOtrosCat;
         $totTotal = $totMS + $totD + $totOtros;
 
         // Porcentajes
         $pctMS = $ingMS > 0 ? round(($totMS * 100) / $ingMS, 2) : 0;
-        $pctD  = $ingD > 0 ? round(($totD * 100) / $ingD, 2) : 0;
+        $pctD = $ingD > 0 ? round(($totD * 100) / $ingD, 2) : 0;
         // Legacy: denominador del % total NO incluye 'otros' (solo MS + D)
         $denomTotal = $ingMS + $ingD;
         $pctTotal = $denomTotal > 0 ? round(($totTotal * 100) / $denomTotal, 2) : 0;
@@ -365,8 +435,8 @@ class CashStatistics extends Component
         // ─── DISTRIBUCIÓN UTILIDAD (legacy usa INGRESO BRUTO, NO el total después de egresos)
         $msDiv2 = $ingMS > 0 ? $ingMS / 2 : 0;
         $msDiv6 = $msDiv2 > 0 ? $msDiv2 / 3 : 0;
-        $dDiv2  = $ingD > 0 ? $ingD / 2 : 0;
-        $dDiv6  = $dDiv2 > 0 ? $dDiv2 / 3 : 0;
+        $dDiv2 = $ingD > 0 ? $ingD / 2 : 0;
+        $dDiv6 = $dDiv2 > 0 ? $dDiv2 / 3 : 0;
 
         $distribution = [
             ['label' => 'Egreso',      'pct' => '16.67%', 'ms' => $msDiv6, 'd' => $dDiv6, 'total' => $msDiv6 + $dDiv6],
@@ -410,40 +480,40 @@ class CashStatistics extends Component
 
         $monthRowsData = [];
         $monthTotals = [
-            'capital'=>0,'recucapi'=>0,'n1'=>0,'mensual'=>0,'mora3'=>0,
-            'n2'=>0,'semanal'=>0,'mora1'=>0,'n3'=>0,'diario'=>0,'mora4'=>0,
-            'total'=>0,'otros2'=>0,'egresov'=>0,'utilidad2'=>0,
-            'fijoi'=>0,'otrosi'=>0,'fijoe'=>0,'otrose'=>0,
+            'capital' => 0, 'recucapi' => 0, 'n1' => 0, 'mensual' => 0, 'mora3' => 0,
+            'n2' => 0, 'semanal' => 0, 'mora1' => 0, 'n3' => 0, 'diario' => 0, 'mora4' => 0,
+            'total' => 0, 'otros2' => 0, 'egresov' => 0, 'utilidad2' => 0,
+            'fijoi' => 0, 'otrosi' => 0, 'fijoe' => 0, 'otrose' => 0,
         ];
         foreach ($resumenMensual as $r) {
             $row = [
-                'idmes'    => $r->idmes,
+                'idmes' => $r->idmes,
                 'mes_nombre' => $months[$r->idmes] ?? '',
                 'capineto' => (float) ($capNetoByMes[$r->idmes] ?? 0),
-                'capital'  => (float) $r->capital,    // capital2 (capital cobrado)
+                'capital' => (float) $r->capital,    // capital2 (capital cobrado)
                 'recucapi' => (float) $r->recucapi,
-                'n1'       => (int) $r->n1,
-                'mensual'  => (float) $r->mensual,
-                'mora3'    => (float) $r->mora3,
-                'n2'       => (int) $r->n2,
-                'semanal'  => (float) $r->semanal,
-                'mora1'    => (float) $r->mora1,
-                'n3'       => (int) $r->n3,
-                'diario'   => (float) $r->diario,
-                'mora4'    => (float) $r->mora4,
-                'total'    => (float) $r->total,
-                'otros2'   => (float) $r->otros2,
-                'egresov'  => (float) $r->egresov,
-                'utilidad2'=> (float) $r->utilidad2,
-                'fijoi'    => (float) $r->fijoi,
-                'otrosi'   => (float) $r->otrosi,
-                'ingT'     => (float) ($r->fijoi + $r->otrosi),
-                'fijoe'    => (float) $r->fijoe,
-                'otrose'   => (float) $r->otrose,
-                'egrT'     => (float) ($r->fijoe + $r->otrose),
+                'n1' => (int) $r->n1,
+                'mensual' => (float) $r->mensual,
+                'mora3' => (float) $r->mora3,
+                'n2' => (int) $r->n2,
+                'semanal' => (float) $r->semanal,
+                'mora1' => (float) $r->mora1,
+                'n3' => (int) $r->n3,
+                'diario' => (float) $r->diario,
+                'mora4' => (float) $r->mora4,
+                'total' => (float) $r->total,
+                'otros2' => (float) $r->otros2,
+                'egresov' => (float) $r->egresov,
+                'utilidad2' => (float) $r->utilidad2,
+                'fijoi' => (float) $r->fijoi,
+                'otrosi' => (float) $r->otrosi,
+                'ingT' => (float) ($r->fijoi + $r->otrosi),
+                'fijoe' => (float) $r->fijoe,
+                'otrose' => (float) $r->otrose,
+                'egrT' => (float) ($r->fijoe + $r->otrose),
             ];
             $monthRowsData[] = $row;
-            foreach (['capital','recucapi','n1','mensual','mora3','n2','semanal','mora1','n3','diario','mora4','total','otros2','egresov','utilidad2','fijoi','otrosi','fijoe','otrose'] as $k) {
+            foreach (['capital', 'recucapi', 'n1', 'mensual', 'mora3', 'n2', 'semanal', 'mora1', 'n3', 'diario', 'mora4', 'total', 'otros2', 'egresov', 'utilidad2', 'fijoi', 'otrosi', 'fijoe', 'otrose'] as $k) {
                 $monthTotals[$k] += $row[$k] ?? 0;
             }
         }
@@ -471,35 +541,35 @@ class CashStatistics extends Component
 
         $yearRowsData = [];
         $yearTotals = [
-            'capineto'=>0,'capital'=>0,'n1'=>0,'mensual'=>0,'mora3'=>0,
-            'n2'=>0,'semanal'=>0,'mora1'=>0,'n3'=>0,'diario'=>0,'mora4'=>0,
-            'total'=>0,'otros2'=>0,'egresov'=>0,'utilidad2'=>0,
-            'fijoi'=>0,'otrosi'=>0,'fijoe'=>0,'otrose'=>0,
+            'capineto' => 0, 'capital' => 0, 'n1' => 0, 'mensual' => 0, 'mora3' => 0,
+            'n2' => 0, 'semanal' => 0, 'mora1' => 0, 'n3' => 0, 'diario' => 0, 'mora4' => 0,
+            'total' => 0, 'otros2' => 0, 'egresov' => 0, 'utilidad2' => 0,
+            'fijoi' => 0, 'otrosi' => 0, 'fijoe' => 0, 'otrose' => 0,
         ];
         foreach ($resumenAnual as $r) {
             $row = [
-                'idano'    => $r->idano,
+                'idano' => $r->idano,
                 'capineto' => (float) ($capNetoByYear[$r->idano] ?? 0),
-                'capital'  => (float) $r->capital,
-                'n1'       => (int) $r->n1,
-                'mensual'  => (float) $r->mensual,
-                'mora3'    => (float) $r->mora3,
-                'n2'       => (int) $r->n2,
-                'semanal'  => (float) $r->semanal,
-                'mora1'    => (float) $r->mora1,
-                'n3'       => (int) $r->n3,
-                'diario'   => (float) $r->diario,
-                'mora4'    => (float) $r->mora4,
-                'total'    => (float) $r->total,
-                'otros2'   => (float) $r->otros2,
-                'egresov'  => (float) $r->egresov,
-                'utilidad2'=> (float) $r->utilidad2,
-                'fijoi'    => (float) $r->fijoi,
-                'otrosi'   => (float) $r->otrosi,
-                'ingT'     => (float) ($r->fijoi + $r->otrosi),
-                'fijoe'    => (float) $r->fijoe,
-                'otrose'   => (float) $r->otrose,
-                'egrT'     => (float) ($r->fijoe + $r->otrose),
+                'capital' => (float) $r->capital,
+                'n1' => (int) $r->n1,
+                'mensual' => (float) $r->mensual,
+                'mora3' => (float) $r->mora3,
+                'n2' => (int) $r->n2,
+                'semanal' => (float) $r->semanal,
+                'mora1' => (float) $r->mora1,
+                'n3' => (int) $r->n3,
+                'diario' => (float) $r->diario,
+                'mora4' => (float) $r->mora4,
+                'total' => (float) $r->total,
+                'otros2' => (float) $r->otros2,
+                'egresov' => (float) $r->egresov,
+                'utilidad2' => (float) $r->utilidad2,
+                'fijoi' => (float) $r->fijoi,
+                'otrosi' => (float) $r->otrosi,
+                'ingT' => (float) ($r->fijoi + $r->otrosi),
+                'fijoe' => (float) $r->fijoe,
+                'otrose' => (float) $r->otrose,
+                'egrT' => (float) ($r->fijoe + $r->otrose),
             ];
             $yearRowsData[] = $row;
             foreach ($yearTotals as $k => $v) {
@@ -512,26 +582,26 @@ class CashStatistics extends Component
         // ─── DETALLES & DISTRIBUCIÓN del MENSUAL ACUMULADO ─────────────
         $ingMS_M = $monthTotals['mensual'] + $monthTotals['mora3']
                  + $monthTotals['semanal'] + $monthTotals['mora1'];
-        $ingD_M  = $monthTotals['diario'] + $monthTotals['mora4'];
+        $ingD_M = $monthTotals['diario'] + $monthTotals['mora4'];
         $ingOtros_M = $monthTotals['otros2'];
         $ingTotal_M = $ingMS_M + $ingD_M + $ingOtros_M;
 
         // Egresos del año seleccionado (todos los meses hasta el seleccionado) por aa
-        $egrDiarioY  = (float) DB::table('expenses')->where('caja',1)->whereYear('date',$year)->where(DB::raw('MONTH(date)'),'<=',$month)->where('reason','Diario')->sum('total');
-        $egrMensualY = (float) DB::table('expenses')->where('caja',1)->whereYear('date',$year)->where(DB::raw('MONTH(date)'),'<=',$month)->where('reason','Mensual')->sum('total');
-        $egrDMY      = (float) DB::table('expenses')->where('caja',1)->whereYear('date',$year)->where(DB::raw('MONTH(date)'),'<=',$month)->where('reason','D.M')->sum('total');
+        $egrDiarioY = (float) DB::table('expenses')->where('caja', 1)->whereYear('date', $year)->where(DB::raw('MONTH(date)'), '<=', $month)->where('reason', 'Diario')->sum('total');
+        $egrMensualY = (float) DB::table('expenses')->where('caja', 1)->whereYear('date', $year)->where(DB::raw('MONTH(date)'), '<=', $month)->where('reason', 'Mensual')->sum('total');
+        $egrDMY = (float) DB::table('expenses')->where('caja', 1)->whereYear('date', $year)->where(DB::raw('MONTH(date)'), '<=', $month)->where('reason', 'D.M')->sum('total');
 
         $newvalor2_M = round($egrDMY / 2, 2);
         $egrMS_M = $egrMensualY + $newvalor2_M;
-        $egrD_M  = $egrDiarioY + $newvalor2_M;
+        $egrD_M = $egrDiarioY + $newvalor2_M;
         $egrTotal_M = $egrMS_M + $egrD_M;
 
         $totMS_M = $ingMS_M - $egrMS_M;
-        $totD_M  = $ingD_M - $egrD_M;
+        $totD_M = $ingD_M - $egrD_M;
         $totTotal_M = $totMS_M + $totD_M + $ingOtros_M;
 
-        $pctMS_M    = $ingMS_M > 0 ? round(($totMS_M * 100) / $ingMS_M, 2) : 0;
-        $pctD_M     = $ingD_M  > 0 ? round(($totD_M * 100) / $ingD_M, 2) : 0;
+        $pctMS_M = $ingMS_M > 0 ? round(($totMS_M * 100) / $ingMS_M, 2) : 0;
+        $pctD_M = $ingD_M > 0 ? round(($totD_M * 100) / $ingD_M, 2) : 0;
         // Legacy: denominador del % total NO incluye 'otros' (solo MS + D)
         $denomTotal_M = $ingMS_M + $ingD_M;
         $pctTotal_M = $denomTotal_M > 0 ? round(($totTotal_M * 100) / $denomTotal_M, 2) : 0;
@@ -546,30 +616,30 @@ class CashStatistics extends Component
         // Distribución del mensual acumulado (usa INGRESO BRUTO igual al legacy)
         $msDiv2_M = $ingMS_M > 0 ? $ingMS_M / 2 : 0;
         $msDiv6_M = $msDiv2_M > 0 ? $msDiv2_M / 3 : 0;
-        $dDiv2_M  = $ingD_M  > 0 ? $ingD_M / 2 : 0;
-        $dDiv6_M  = $dDiv2_M > 0 ? $dDiv2_M / 3 : 0;
+        $dDiv2_M = $ingD_M > 0 ? $ingD_M / 2 : 0;
+        $dDiv6_M = $dDiv2_M > 0 ? $dDiv2_M / 3 : 0;
 
         $distributionMonth = [
             ['label' => 'Egreso',      'pct' => '16.67%', 'ms' => $msDiv6_M, 'd' => $dDiv6_M, 'total' => $msDiv6_M + $dDiv6_M],
             ['label' => 'Sueldo',      'pct' => '16.67%', 'ms' => $msDiv6_M, 'd' => $dDiv6_M, 'total' => $msDiv6_M + $dDiv6_M],
             ['label' => 'Provisiones', 'pct' => '16.67%', 'ms' => $msDiv6_M, 'd' => $dDiv6_M, 'total' => $msDiv6_M + $dDiv6_M],
             ['label' => 'Utilidad',    'pct' => '50.00%', 'ms' => $msDiv2_M, 'd' => $dDiv2_M, 'total' => $msDiv2_M + $dDiv2_M],
-            ['label' => 'Total',       'pct' => '100.00%','ms' => $ingMS_M,  'd' => $ingD_M,  'total' => $ingMS_M + $ingD_M],
+            ['label' => 'Total',       'pct' => '100.00%', 'ms' => $ingMS_M,  'd' => $ingD_M,  'total' => $ingMS_M + $ingD_M],
         ];
 
         return view('livewire.reports.cash-statistics', [
-            'rows'                => $rows,
-            'totals'              => $totals,
-            'detalleSummary'      => $detalleSummary,
-            'distribution'        => $distribution,
-            'months'              => $months,
-            'monthRowsData'       => $monthRowsData,
-            'monthTotals'         => $monthTotals,
-            'monthsCount'         => $monthsCount,
-            'yearRowsData'        => $yearRowsData,
-            'yearTotals'          => $yearTotals,
+            'rows' => $rows,
+            'totals' => $totals,
+            'detalleSummary' => $detalleSummary,
+            'distribution' => $distribution,
+            'months' => $months,
+            'monthRowsData' => $monthRowsData,
+            'monthTotals' => $monthTotals,
+            'monthsCount' => $monthsCount,
+            'yearRowsData' => $yearRowsData,
+            'yearTotals' => $yearTotals,
             'detalleSummaryMonth' => $detalleSummaryMonth,
-            'distributionMonth'   => $distributionMonth,
+            'distributionMonth' => $distributionMonth,
         ]);
     }
 }

@@ -143,6 +143,9 @@ class Refinance extends Component
                 'id' => $pid,
                 'client_id' => $this->credit->client_id,
                 'fecha_prestamo' => $this->fechad,
+                // Legacy fechaactua = día en que entra a caja (para un refi = hoy).
+                // Los reportes de caja/estadísticas filtran por fecha_actualizacion.
+                'fecha_actualizacion' => $this->fechar,
                 'importe' => $impopres,
                 'cuotas' => $tocuota,
                 'tipo_planilla' => $tipo,
