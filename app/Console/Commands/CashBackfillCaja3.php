@@ -16,37 +16,49 @@ use Illuminate\Support\Facades\DB;
  *   - Ingreso Fijos → copia caja3 con el NETO = monto − (factor_egreso × cantidad).
  *   - 'Otros' → NO lleva copia (igual que el legacy).
  *
- * Seguro frente al histórico migrado:
- *   - `--since` (obligatorio): solo procesa filas con created_at >= esa fecha, para
- *     no tocar lo migrado. Usa la fecha/hora posterior a tu última `legacy:migrate`.
- *   - Idempotente: salta si ya existe la copia caja3 enlazada (parent_id).
- *   - Guarda anti-duplicado: salta si ya existe una caja3 "hermana" (misma fecha,
- *     modo, motivo y usuario) aunque no tenga parent_id (caso migrado).
+ * SEGURIDAD FRENTE AL HISTÓRICO MIGRADO (clave):
+ *   Las copias caja3 que trae la migración legacy quedan con `parent_id` NULL; las
+ *   que crea Laravel (al guardar o este comando) llevan `parent_id`. Por eso el
+ *   "piso" de la migración = MAX(created_at) de las caja3 con parent_id NULL. SOLO
+ *   se backfillea lo creado DESPUÉS de ese piso (= nativo de la app). Así nunca se
+ *   tocan los miles de Fijos migrados (que en el legacy no tienen copia caja3).
+ *
+ *   ⚠️ NO usar un --since "a mano": el histórico migrado tiene created_at = fecha de
+ *   la migración (reciente), así que un --since anterior a la migración arrastraría
+ *   TODO el histórico. Por eso el piso se autodetecta.
+ *
+ * Idempotente: salta si ya hay copia caja3 enlazada (parent_id) o una hermana
+ * migrada (misma fecha/modo/motivo/usuario).
  *
  * Uso:
- *   php artisan cash:backfill-caja3 --since=2026-05-31 --dry-run
- *   php artisan cash:backfill-caja3 --since=2026-05-31
+ *   php artisan cash:backfill-caja3 --dry-run     # previsualizar
+ *   php artisan cash:backfill-caja3               # aplicar
+ *   php artisan cash:backfill-caja3 --revert --dry-run   # deshacer un backfill mal hecho
+ *   php artisan cash:backfill-caja3 --revert
  */
 class CashBackfillCaja3 extends Command
 {
     protected $signature = 'cash:backfill-caja3
-        {--since= : Solo movimientos con created_at >= esta fecha (YYYY-MM-DD). Obligatorio.}
+        {--revert : Borra copias caja3 mal creadas (parent_id apuntando a un movimiento migrado).}
         {--dry-run : Muestra qué haría sin escribir.}';
 
-    protected $description = 'Crea las copias en caja 3 faltantes de los movimientos Fijos (egresos/ingresos) creados en Laravel.';
+    protected $description = 'Crea (o revierte) las copias en caja 3 de los movimientos Fijos creados en Laravel, sin tocar el histórico migrado.';
 
     public function handle(): int
     {
-        $since = $this->option('since');
-        if (! $since) {
-            $this->error('--since=YYYY-MM-DD es obligatorio (fecha posterior a tu última migración legacy, para no tocar el histórico).');
-
-            return self::FAILURE;
-        }
         $dry = (bool) $this->option('dry-run');
 
-        $exp = $this->backfillExpenses($since, $dry);
-        $inc = $this->backfillIncomes($since, $dry);
+        if ($this->option('revert')) {
+            $exp = $this->revert('expenses', $dry);
+            $inc = $this->revert('incomes', $dry);
+            $this->newLine();
+            $this->info(($dry ? 'DRY RUN — ' : '✓ ')."Revertido — Egresos: {$exp} · Ingresos: {$inc} copia(s) caja3 mal creadas.");
+
+            return self::SUCCESS;
+        }
+
+        $exp = $this->backfillExpenses($dry);
+        $inc = $this->backfillIncomes($dry);
 
         $this->newLine();
         $this->info(($dry ? 'DRY RUN — ' : '✓ ')."Egresos: {$exp} copia(s) caja3 · Ingresos: {$inc} copia(s) caja3.");
@@ -54,10 +66,25 @@ class CashBackfillCaja3 extends Command
         return self::SUCCESS;
     }
 
-    private function backfillExpenses(string $since, bool $dry): int
+    /**
+     * Piso de la migración para una tabla: MAX(created_at) de las copias caja3 con
+     * parent_id NULL (las que trae la migración). Lo creado después es nativo.
+     */
+    private function migrationFloor(string $table): ?string
     {
-        $rows = DB::table('expenses')->where('caja', 1)->where('modo', 'Fijos')
-            ->where('created_at', '>=', $since)->get();
+        return DB::table($table)->where('caja', 3)->whereNull('parent_id')->max('created_at');
+    }
+
+    private function backfillExpenses(bool $dry): int
+    {
+        $floor = $this->migrationFloor('expenses');
+        $this->line('Piso migración (expenses): '.($floor ?? 'sin histórico migrado — se procesan todos'));
+
+        $q = DB::table('expenses')->where('caja', 1)->where('modo', 'Fijos');
+        if ($floor) {
+            $q->where('created_at', '>', $floor);
+        }
+        $rows = $q->get();
 
         $n = 0;
         foreach ($rows as $e) {
@@ -80,10 +107,16 @@ class CashBackfillCaja3 extends Command
         return $n;
     }
 
-    private function backfillIncomes(string $since, bool $dry): int
+    private function backfillIncomes(bool $dry): int
     {
-        $rows = DB::table('incomes')->where('caja', 1)->where('modo', 'Fijos')
-            ->where('created_at', '>=', $since)->get();
+        $floor = $this->migrationFloor('incomes');
+        $this->line('Piso migración (incomes): '.($floor ?? 'sin histórico migrado — se procesan todos'));
+
+        $q = DB::table('incomes')->where('caja', 1)->where('modo', 'Fijos');
+        if ($floor) {
+            $q->where('created_at', '>', $floor);
+        }
+        $rows = $q->get();
 
         $n = 0;
         foreach ($rows as $i) {
@@ -109,6 +142,39 @@ class CashBackfillCaja3 extends Command
         }
 
         return $n;
+    }
+
+    /**
+     * Revierte un backfill mal hecho: borra las copias caja3 (con parent_id) cuyo
+     * padre es un movimiento MIGRADO (created_at <= piso). Las copias de
+     * movimientos NATIVOS (padre creado después del piso) se conservan.
+     */
+    private function revert(string $table, bool $dry): int
+    {
+        $floor = $this->migrationFloor($table);
+        if (! $floor) {
+            $this->line("Piso migración ({$table}): sin histórico migrado — nada que revertir.");
+
+            return 0;
+        }
+        $this->line("Piso migración ({$table}): {$floor}");
+
+        $ids = DB::table("{$table} as c3")
+            ->join("{$table} as p", 'p.id', '=', 'c3.parent_id')
+            ->where('c3.caja', 3)
+            ->whereNotNull('c3.parent_id')
+            ->where('p.created_at', '<=', $floor)
+            ->pluck('c3.id');
+
+        foreach ($ids as $id) {
+            $this->line("  borrar copia caja3 #{$id} (padre migrado)");
+        }
+
+        if (! $dry && $ids->isNotEmpty()) {
+            DB::table($table)->whereIn('id', $ids)->delete();
+        }
+
+        return $ids->count();
     }
 
     /** True si ya hay copia caja3 enlazada (parent_id) o una hermana migrada (misma fecha/modo/motivo/usuario). */
