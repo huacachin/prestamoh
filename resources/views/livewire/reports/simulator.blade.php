@@ -1,4 +1,8 @@
-<div class="container-fluid">
+<div class="container-fluid" x-data="{
+        open: false, monto: 0, meses: 0,
+        openDetalle(m, n) { this.monto = parseFloat(m) || 0; this.meses = parseInt(n) || 0; this.open = true; },
+        fmt(v) { return Number(v).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+     }">
     <div class="row">
         <div class="col-sm-6">
             <h4 class="main-title title-modules" style="color:red;">SIMULACRO DE CREDITO</h4>
@@ -76,7 +80,7 @@
 
                             @foreach($bloques as $bloque)
                                 @php [$from, $to] = $bloque; @endphp
-                                <table class="table table-bordered table-sm mb-2" style="font-size: 11px;">
+                                <table class="table table-bordered table-sm mb-2 sim-table" style="font-size: 11px;">
                                     <thead>
                                         <tr>
                                             <th colspan="2" class="text-center" style="background-color:#5bc0de;">Monto</th>
@@ -97,7 +101,11 @@
                                         </tr>
                                         <tr>
                                             @for($i = $from; $i <= $to; $i++)
-                                                <td class="text-end">{{ number_format($mensual[$i]['pagar'], 2) }}</td>
+                                                <td class="text-end">
+                                                    <a href="#" class="text-primary fw-semibold text-decoration-underline"
+                                                       @click.prevent="openDetalle({{ $mensual[$i]['pagar'] }}, {{ $i }})"
+                                                       title="Ver detalle">{{ number_format($mensual[$i]['pagar'], 2) }}</a>
+                                                </td>
                                                 <td class="text-end" style="color:red;">{{ number_format($mensual[$i]['mora'], 2) }}</td>
                                             @endfor
                                         </tr>
@@ -110,7 +118,7 @@
 
                             @foreach($bloques as $bloque)
                                 @php [$from, $to] = $bloque; @endphp
-                                <table class="table table-bordered table-sm mb-2" style="font-size: 11px;">
+                                <table class="table table-bordered table-sm mb-2 sim-table" style="font-size: 11px;">
                                     <thead>
                                         <tr>
                                             <th colspan="2" class="text-center" style="background-color:#5bc0de;">Monto</th>
@@ -144,9 +152,68 @@
             </div>
         </div>
     </div>
+
+    {{-- Modal Detalle de Pago (réplica del popup legacy cuenta_por_cobrar_pagado.php).
+         Teletransportado al <body> para que position:fixed se ancle al viewport
+         (centrado real), aunque algún ancestro del layout tenga transform. --}}
+    <template x-teleport="body">
+    <div>
+        {{-- backdrop (fade) --}}
+        <div x-show="open" x-cloak x-transition.opacity.duration.200ms
+             @click="open=false" @keydown.escape.window="open=false"
+             style="position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:1080; background:rgba(0,0,0,.5);"></div>
+        {{-- wrapper de centrado: el translate va AQUÍ (estable, SIN transición) para
+             que el fade de la card no lo pise (evita el "salto"). --}}
+        <div style="position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:1081;">
+            {{-- card: solo fade de opacidad --}}
+            <div x-show="open" x-cloak x-transition.opacity.duration.200ms @click.stop class="card shadow"
+                 style="width:440px; max-width:95vw; margin:0;">
+            <div class="card-header d-flex justify-content-between align-items-center py-2"
+                 style="background:#009bdc; color:#fff;">
+                <b style="font-size:14px;">Detalle de Pago</b>
+                <a href="#" @click.prevent="open=false" style="color:#fff; text-decoration:none; font-size:20px; line-height:1;">&times;</a>
+            </div>
+            <div class="card-body p-2">
+                <table class="table table-bordered table-sm mb-0 text-center sim-table" style="font-size:12px;">
+                    <thead>
+                        <tr>
+                            <th colspan="2" style="background:#009bdc;color:#fff;">MENSUAL</th>
+                            <th colspan="2" style="background:#999191;color:#fff;">SEMANAL</th>
+                            <th colspan="2" style="background:#009bdc;color:#fff;">DIARIO</th>
+                        </tr>
+                        <tr>
+                            <th style="background:#009bdc;color:#fff;">Nº</th><th style="background:#009bdc;color:#fff;">S/</th>
+                            <th style="background:#999191;color:#fff;">Nº</th><th style="background:#999191;color:#fff;">S/</th>
+                            <th style="background:#009bdc;color:#fff;">Nº</th><th style="background:#009bdc;color:#fff;">S/</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><b style="color:red;" x-text="meses"></b></td>
+                            <td><b x-text="fmt(monto)"></b></td>
+                            <td><b style="color:red;" x-text="4*meses"></b></td>
+                            <td><b x-text="fmt(monto/4)"></b></td>
+                            <td><b style="color:red;" x-text="4*meses*6"></b></td>
+                            <td><b x-text="fmt(monto/4/6)"></b></td>
+                        </tr>
+                        <tr>
+                            <td colspan="2"><b x-text="fmt(monto*meses)"></b></td>
+                            <td colspan="2"><b x-text="fmt((monto/4)*(4*meses))"></b></td>
+                            <td colspan="2"><b x-text="fmt((monto/4/6)*(4*meses*6))"></b></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            </div>
+        </div>
+    </div>
+    </template>
 </div>
 
 <style>
+    [x-cloak] { display: none !important; }
+    /* Celdas compactas (el legacy usa celdas chicas) */
+    .sim-table > :not(caption) > * > * { padding: 2px 6px !important; }
     @media print {
         .breadcrumb, .btn, form { display: none !important; }
         #printme { width: 100%; }
