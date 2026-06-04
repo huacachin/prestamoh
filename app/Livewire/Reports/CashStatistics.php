@@ -35,6 +35,9 @@ class CashStatistics extends Component
     {
         $svc = app(CajaDailyService::class);
         $ingresosPorDia = $svc->ingresosPorDia($year, $month, null, $endLimit);
+        // Capital Neto (Capital T.) en vivo: 1 sola lectura de credits, evaluada
+        // por día en memoria (porte de data_capineto.php). Sin cron.
+        $capitalNetoPorDia = $svc->capitalNetoPorDia($year, $month, $endLimit);
 
         $daysInMonth = Carbon::create($year, $month)->daysInMonth;
         for ($d = 1; $d <= $daysInMonth; $d++) {
@@ -77,12 +80,10 @@ class CashStatistics extends Component
                 ]
             );
 
-            // NOTA: capital_neto (Capital T.) NO se recomputa aquí. Es un snapshot
-            // diario de la cartera que en el legacy genera data_capineto.php con una
-            // lógica propia (no es la suma de importes). El legacy tampoco lo tiene
-            // para días sin correr ese cron (su última foto es 2026-05-31), así que
-            // se respeta el histórico migrado y se deja en blanco lo no snapshoteado,
-            // igual que el legacy. Portar data_capineto.php es una tarea aparte.
+            DB::table('capital_neto')->updateOrInsert(
+                ['fecha' => $date],
+                ['importe' => $capitalNetoPorDia[$date] ?? 0, 'updated_at' => now()]
+            );
         }
     }
 

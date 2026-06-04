@@ -131,4 +131,108 @@ class CajaDailyService
 
         return $result;
     }
+
+    /**
+     * Tasas de interés cableadas en el legacy data_capineto.php. El Capital Neto
+     * solo cuenta créditos cuya tasa esté en este set (las demás se excluyen).
+     *
+     * @var list<string>
+     */
+    private const CAPITAL_NETO_RATES = [
+        '0.00', '0.01', '3.00', '4.00', '5.00', '5.20', '6.00', '6.50', '7.00',
+        '8.00', '9.00', '10.00', '12.00', '13.00', '14.00', '15.00', '16.00',
+        '17.00', '18.00', '19.00', '20.00', '24.00', '30.00', '36.00', '54.00', '72.00',
+    ];
+
+    /**
+     * Capital Neto (cartera) por día del mes — réplica del legacy data_capineto:
+     * suma de importe de créditos con tasa en CAPITAL_NETO_RATES, activos a cada
+     * fecha (entraron y NO estaban cancelados ese día). Una sola lectura de credits
+     * y se evalúa cada día en memoria (eficiente para el reporte mensual).
+     *
+     * @return array<string,float> 'Y-m-d' => importe
+     */
+    public function capitalNetoPorDia(int $year, int $month, string $endLimit): array
+    {
+        $relevant = $this->loadCapitalNetoCredits();
+
+        $result = [];
+        $daysInMonth = Carbon::create($year, $month)->daysInMonth;
+        for ($d = 1; $d <= $daysInMonth; $d++) {
+            $date = Carbon::create($year, $month, $d)->format('Y-m-d');
+            if ($date > $endLimit) {
+                break;
+            }
+            $result[$date] = $this->sumCapitalNetoAt($relevant, $date);
+        }
+
+        return $result;
+    }
+
+    /** Capital Neto de una sola fecha (usado por el comando reports:snapshot-capital-neto). */
+    public function capitalNetoEnFecha(string $date): float
+    {
+        return $this->sumCapitalNetoAt($this->loadCapitalNetoCredits(), $date);
+    }
+
+    /**
+     * Carga (1 query) los créditos con tasa válida, ya pre-procesados para evaluar
+     * su estado "a la fecha".
+     *
+     * @return list<array{importe:float, created:?string, cancelled:bool, canDate:?string}>
+     */
+    private function loadCapitalNetoCredits(): array
+    {
+        $rates = array_flip(self::CAPITAL_NETO_RATES);
+        $relevant = [];
+
+        DB::table('credits')
+            ->select('importe', 'interes', 'situacion', 'fecha_cancelacion', 'fecha_prestamo', 'fecha_actualizacion')
+            ->orderBy('id')
+            ->chunk(2000, function ($rows) use ($rates, &$relevant) {
+                foreach ($rows as $r) {
+                    $rate = number_format((float) $r->interes, 2, '.', '');
+                    if (! isset($rates[$rate])) {
+                        continue;
+                    }
+                    $relevant[] = [
+                        'importe' => (float) $r->importe,
+                        'created' => $this->validCapitalDate($r->fecha_actualizacion) ?? $this->validCapitalDate($r->fecha_prestamo),
+                        'cancelled' => $r->situacion === 'Cancelado',
+                        'canDate' => $r->situacion === 'Cancelado' ? $this->validCapitalDate($r->fecha_cancelacion) : null,
+                    ];
+                }
+            });
+
+        return $relevant;
+    }
+
+    /** @param  list<array{importe:float, created:?string, cancelled:bool, canDate:?string}>  $credits */
+    private function sumCapitalNetoAt(array $credits, string $date): float
+    {
+        $sum = 0.0;
+        foreach ($credits as $c) {
+            // No existía aún en la fecha.
+            if ($c['created'] !== null && $c['created'] > $date) {
+                continue;
+            }
+            // Cancelado en la fecha (o cancelación antigua sin fecha válida = ya inactivo).
+            if ($c['cancelled'] && ($c['canDate'] === null || $c['canDate'] <= $date)) {
+                continue;
+            }
+            $sum += $c['importe'];
+        }
+
+        return round($sum, 2);
+    }
+
+    private function validCapitalDate(?string $value): ?string
+    {
+        if ($value === null || $value === '' || $value === '0000-00-00') {
+            return null;
+        }
+        $d = substr($value, 0, 10);
+
+        return $d > '1900-01-01' ? $d : null;
+    }
 }

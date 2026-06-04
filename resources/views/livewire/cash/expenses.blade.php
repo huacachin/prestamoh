@@ -88,33 +88,37 @@
                     {{-- Tabla Desktop con FAB scroll --}}
                     <div class="position-relative d-none d-md-block">
                         <div id="expensesTable" class="table-responsive" style="max-height: 70vh; overflow: auto;">
-                        <table class="table table-bordered table-striped table-hover table-autofit" style="font-size: 11px;">
-                            <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
+                        <table class="table table-bordered table-hover table-autofit expenses-legacy" style="font-size: 11px;">
+                            <thead style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
-                                    <th class="text-center" width="50">Op.</th>
-                                    <th class="text-center" width="50">N°</th>
-                                    <th class="text-center" width="40"><i class="ti ti-camera"></i></th>
-                                    <th class="text-center" width="100">Fecha</th>
-                                    <th class="text-center">Usuario</th>
-                                    <th class="text-center">A</th>
-                                    <th>Motivo</th>
-                                    <th class="text-end" width="100">S/.</th>
-                                    <th class="text-center" width="100">T.Comp.</th>
-                                    <th class="text-center">Respons.</th>
+                                    <th class="text-center" width="50" style="background:#949696;">Op.</th>
+                                    <th class="text-center" width="50" style="background:#005F8C;">N°</th>
+                                    <th class="text-center" width="40" style="background:#949696;"><i class="ti ti-camera"></i></th>
+                                    <th class="text-center" width="100" style="background:#005F8C;">Fecha</th>
+                                    <th class="text-center" style="background:#949696;">Usuario</th>
+                                    <th class="text-center" style="background:#005F8C;">A</th>
+                                    <th style="background:#949696;">Motivo</th>
+                                    <th class="text-end" width="100" style="background:#005F8C;">S/.</th>
+                                    <th class="text-center" width="100" style="background:#949696;">T.Comp.</th>
+                                    <th class="text-center" style="background:#005F8C;">Respons.</th>
                                 </tr>
                             </thead>
                             <tbody>
                             @forelse($expenses as $expense)
                                 @php
-                                    $rowStyle = ($expense->modo === 'Otros') ? 'color: red;' : '';
+                                    // Legacy: filas alternadas $color = ["#ffffff", "#F2F2EC"]
+                                    // ($contador % 2): 1ª fila (contador=1) => #F2F2EC, 2ª => #ffffff
+                                    $rowBg = ($loop->iteration % 2 === 0) ? '#ffffff' : '#F2F2EC';
+                                    $rowColor = ($expense->modo === 'Otros') ? 'color: red;' : '';
                                     $canEdit = $puedeEditarHistorico || (
                                         $expense->date?->format('Y-m-d') === $hoy
                                         && $expense->user_id === $userId
                                     );
                                 @endphp
-                                <tr style="{{ $rowStyle }}"
+                                <tr style="background-color: {{ $rowBg }}; {{ $rowColor }}"
+                                    data-bg="{{ $rowBg }}"
                                     onmouseover="this.style.backgroundColor='#CCFF66'"
-                                    onmouseout="this.style.backgroundColor=''">
+                                    onmouseout="this.style.backgroundColor=this.getAttribute('data-bg')">
                                     <td class="text-center">
                                         @if($canEdit)
                                             <a href="{{ route('cash.expenses.edit', $expense->id) }}" title="Editar">
@@ -152,7 +156,7 @@
                                 </tr>
                             @endforelse
                             </tbody>
-                            <tfoot class="bg-primary">
+                            <tfoot class="expenses-foot">
                                 <tr>
                                     <td colspan="7" class="text-end fw-bold">Total General:</td>
                                     <td class="text-end fw-bold">{{ number_format($totalGeneral, 2) }}</td>
@@ -160,12 +164,12 @@
                                 </tr>
                                 <tr>
                                     <td colspan="7" class="text-end"><b>Fijos:</b></td>
-                                    <td class="text-end" style="color: red;">{{ number_format($tofijo, 2) }}</td>
+                                    <td class="text-end fw-bold"><font color="red">{{ number_format($tofijo, 2) }}</font></td>
                                     <td colspan="2"></td>
                                 </tr>
                                 <tr>
-                                    <td colspan="7" class="text-end" style="color: red;"><b>Otros:</b></td>
-                                    <td class="text-end">{{ number_format($totros, 2) }}</td>
+                                    <td colspan="7" class="text-end"><b><font color="red">Otros:</font></b></td>
+                                    <td class="text-end fw-bold">{{ number_format($totros, 2) }}</td>
                                     <td colspan="2"></td>
                                 </tr>
                                 <tr>
@@ -189,7 +193,7 @@
                                 <tr>
                                     <td colspan="6"></td>
                                     <td class="text-center"><b>Fijos Total</b></td>
-                                    <td colspan="3" class="text-end fw-bold" style="color: red;">{{ number_format($valor3, 2) }}</td>
+                                    <td colspan="3" class="text-end fw-bold"><font color="red">{{ number_format($valor3, 2) }}</font></td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -213,6 +217,17 @@
                     </div>{{-- /position-relative --}}
 
                     <style>
+                        /* Colores legacy (gastos.php): cabecera azul/gris, filas blanco/#F2F2EC */
+                        .expenses-legacy thead th { color: #fff; }
+                        /* tfoot legacy: texto negro sobre fondo claro (no azul) */
+                        .expenses-legacy tfoot.expenses-foot td {
+                            color: #000;
+                            background-color: #F2F2EC;
+                            position: -webkit-sticky;
+                            position: sticky;
+                            bottom: 0;
+                            z-index: 3;
+                        }
                         .expenses-fab {
                             position: fixed;
                             bottom: 24px;

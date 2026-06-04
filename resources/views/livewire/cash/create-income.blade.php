@@ -138,6 +138,98 @@
                                        value="Soles" readonly>
                             </div>
 
+                            {{-- Adjuntos (imágenes) — drag & drop, mismo paso --}}
+                            <div class="col-12 mt-2">
+                                <label class="form-label mb-0 small fw-semibold">
+                                    Adjuntos (imágenes) <span class="text-muted" style="font-weight:400;">— opcional, podés arrastrar varias · JPG/PNG/GIF/WebP · máx 10 MB c/u</span>
+                                </label>
+
+                                <div x-data="{
+                                        drag: false,
+                                        uploading: false,
+                                        openPicker() { if (this.uploading) return; this.$refs.fileInput.click(); },
+                                        onDrop(e) {
+                                            this.drag = false;
+                                            if (this.uploading) return;
+                                            const incoming = Array.from(e.dataTransfer.files || []);
+                                            if (!incoming.length) return;
+                                            const valid = incoming.filter(f => f.type.startsWith('image/'));
+                                            const skipped = incoming.length - valid.length;
+                                            if (!valid.length) { alert('Solo se aceptan imágenes (JPG, PNG, GIF, WebP).'); return; }
+                                            const dt = new DataTransfer();
+                                            for (const f of valid) dt.items.add(f);
+                                            this.$refs.fileInput.files = dt.files;
+                                            this.$refs.fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+                                            if (skipped > 0) alert(skipped + ' archivo(s) ignorados (no son imágenes).');
+                                        }
+                                     }"
+                                     x-init="
+                                        Livewire.hook('commit.prepare', () => uploading = true);
+                                        Livewire.hook('commit', ({ succeed, fail }) => { const done = () => uploading = false; succeed(done); fail(done); });
+                                     "
+                                     @dragover.prevent="drag = true"
+                                     @dragenter.prevent="drag = true"
+                                     @dragleave.prevent="drag = false"
+                                     @drop.prevent="onDrop($event)"
+                                     :class="drag ? 'huac-drop--active' : ''"
+                                     class="huac-drop mt-1"
+                                     @click="openPicker()">
+
+                                    <input type="file" class="d-none" x-ref="fileInput" multiple
+                                           wire:model="files"
+                                           accept="image/jpeg,image/png,image/gif,image/webp">
+
+                                    @if(empty($files))
+                                        <div class="d-flex align-items-center justify-content-center gap-2 flex-wrap">
+                                            <i class="ti ti-cloud-upload" style="font-size:22px; color:#9aa0aa;"></i>
+                                            <span class="fw-semibold small">Arrastrá imágenes aquí</span>
+                                            <span class="text-muted small">
+                                                o <span class="text-primary text-decoration-underline">click para seleccionar</span>
+                                            </span>
+                                        </div>
+                                    @else
+                                        <div>
+                                            <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                                                <span class="small fw-semibold text-success">
+                                                    <i class="ti ti-circle-check"></i>
+                                                    {{ count($files) }} {{ count($files) === 1 ? 'imagen lista' : 'imágenes listas' }}
+                                                </span>
+                                                <span class="small text-muted">Soltá más imágenes para añadirlas.</span>
+                                            </div>
+                                            <div class="row g-2" @click.stop>
+                                                @foreach($files as $i => $f)
+                                                    <div class="col-6 col-sm-3 col-md-2">
+                                                        <div class="position-relative border rounded p-1 bg-white">
+                                                            @php
+                                                                $tmpUrl = null;
+                                                                try { $tmpUrl = $f?->temporaryUrl(); } catch (\Throwable $e) {}
+                                                            @endphp
+                                                            @if($tmpUrl)
+                                                                <img src="{{ $tmpUrl }}" alt="Preview" class="w-100 rounded"
+                                                                     style="height:90px; object-fit:contain; background:#fff;">
+                                                            @else
+                                                                <div class="d-flex align-items-center justify-content-center small text-muted bg-light rounded"
+                                                                     style="height:90px;"><i class="ti ti-photo"></i></div>
+                                                            @endif
+                                                            <button type="button" class="btn btn-danger position-absolute"
+                                                                    style="top:2px; right:2px; padding:0 6px; font-size:10px; line-height:18px;"
+                                                                    wire:click="removeFile({{ $i }})" title="Quitar">
+                                                                <i class="ti ti-x"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    @endif
+                                </div>
+
+                                <div wire:loading wire:target="files" class="text-muted small mt-1">
+                                    <i class="ti ti-loader"></i> Cargando imágenes…
+                                </div>
+                                @error('files.*') <div class="text-danger small mt-1"><i class="ti ti-alert-circle"></i> {{ $message }}</div> @enderror
+                            </div>
+
                         </div>
 
                         {{-- Botones + hint discreto, todo centrado --}}
@@ -145,9 +237,9 @@
                             <div class="d-flex gap-2 justify-content-center flex-wrap">
                                 <button type="button" class="btn btn-sm btn-dark"
                                         wire:click="save"
-                                        wire:loading.attr="disabled" wire:target="save">
+                                        wire:loading.attr="disabled" wire:target="save,files">
                                     <i class="ti ti-device-floppy"></i>
-                                    <span wire:loading.remove wire:target="save">Guardar y subir adjuntos</span>
+                                    <span wire:loading.remove wire:target="save">Guardar</span>
                                     <span wire:loading wire:target="save">Guardando…</span>
                                 </button>
                                 <button type="button" class="btn btn-sm btn-secondary" wire:click="clear">
@@ -159,7 +251,7 @@
                             </div>
                             <small class="text-muted" style="font-size:11px;">
                                 <i class="ti ti-info-circle"></i>
-                                Los adjuntos se cargan en el siguiente paso, después de guardar.
+                                El ingreso y sus imágenes se guardan en un solo paso.
                             </small>
                         </div>
                     @else
@@ -173,5 +265,19 @@
             </div>
         </div>
     </div>
+
+    <style>
+        .huac-drop {
+            border: 2px dashed #cfd5e0; border-radius: 10px;
+            padding: 12px 16px; background: #fafbfc;
+            cursor: pointer; transition: all .15s ease;
+        }
+        .huac-drop:hover { border-color: #6c7a91; background: #f4f6f9; }
+        .huac-drop--active {
+            border-color: #009BDC !important;
+            background: #e8f5fc !important;
+            transform: scale(1.005);
+        }
+    </style>
 
 </div>

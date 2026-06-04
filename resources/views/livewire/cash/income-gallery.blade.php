@@ -125,7 +125,7 @@
                                                 @if($tmpUrl)
                                                     <img src="{{ $tmpUrl }}" alt="Preview"
                                                          class="w-100 rounded"
-                                                         style="height:90px; object-fit:cover;">
+                                                         style="height:90px; object-fit:contain; background:#fff;">
                                                 @else
                                                     <div class="d-flex align-items-center justify-content-center small text-muted bg-light rounded"
                                                          style="height:90px;">
@@ -214,7 +214,7 @@
 
                     <div class="row g-2">
                         @foreach($attachments as $i => $att)
-                            <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                            <div class="col-6 col-sm-4 col-md-4 col-lg-4">
                                 <div class="border rounded p-1 h-100 d-flex flex-column"
                                      style="background:#fafafa;">
                                     <button type="button"
@@ -224,7 +224,7 @@
                                             style="cursor: zoom-in;">
                                         <img src="{{ $att->thumbUrl() }}" alt=""
                                              class="w-100 rounded"
-                                             style="height:140px; object-fit:cover; background:#fff;">
+                                             style="height:280px; object-fit:contain; background:#fff;">
                                     </button>
                                     <div class="d-flex justify-content-between align-items-center mt-1"
                                          style="font-size:10px;">

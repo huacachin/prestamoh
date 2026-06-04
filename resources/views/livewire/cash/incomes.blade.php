@@ -88,33 +88,37 @@
                     {{-- Tabla Desktop con FAB scroll --}}
                     <div class="position-relative d-none d-md-block">
                         <div id="incomesTable" class="table-responsive" style="max-height: 70vh; overflow: auto;">
-                        <table class="table table-bordered table-striped table-hover table-autofit" style="font-size: 11px;">
-                            <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
+                        <table class="table table-bordered table-hover table-autofit incomes-legacy" style="font-size: 11px;">
+                            <thead style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
-                                    <th class="text-center" width="50">Op</th>
-                                    <th class="text-center" width="50">N°</th>
-                                    <th class="text-center" width="40"><i class="ti ti-camera"></i></th>
-                                    <th class="text-center" width="100">Fecha</th>
-                                    <th class="text-center">Usuario</th>
-                                    <th class="text-center">Asesor</th>
-                                    <th class="text-center">A</th>
-                                    <th>Motivo</th>
-                                    <th class="text-end" width="100">S/.</th>
+                                    <th class="text-center" width="50" style="background:#949696;">Op</th>
+                                    <th class="text-center" width="50" style="background:#005F8C;">N°</th>
+                                    <th class="text-center" width="40" style="background:#949696;"><i class="ti ti-camera"></i></th>
+                                    <th class="text-center" width="100" style="background:#005F8C;">Fecha</th>
+                                    <th class="text-center" style="background:#949696;">Usuario</th>
+                                    <th class="text-center" style="background:#005F8C;">Asesor</th>
+                                    <th class="text-center" style="background:#949696;">A</th>
+                                    <th style="background:#005F8C;">Motivo</th>
+                                    <th class="text-end" width="100" style="background:#949696;">S/.</th>
                                 </tr>
                             </thead>
                             <tbody>
                             @forelse($rows as $row)
                                 @php
-                                    $isOtros = $row['modo'] === 'Otros';
-                                    $rowStyle = $isOtros ? 'color: red;' : '';
+                                    // Legacy: striping $color = ["#ffffff", "#F2F2EC"], $contador++ ANTES de pintar
+                                    // → 1ª fila (iteration=1) => #F2F2EC, 2ª => #ffffff
+                                    $rowBg = ($loop->iteration % 2 === 0) ? '#ffffff' : '#F2F2EC';
+                                    // Legacy: solo modo='Otros' en rojo. CREDITO no recibe color especial.
+                                    $rowColor = ($row['modo'] === 'Otros') ? 'color: red;' : '';
                                     $canEdit = $row['editable'] && ($puedeEditarHistorico || (
                                         $row['date']?->format('Y-m-d') === $hoy
                                         && $row['user_id'] === $userId
                                     ));
                                 @endphp
-                                <tr style="{{ $rowStyle }}"
+                                <tr style="background-color: {{ $rowBg }}; {{ $rowColor }}"
+                                    data-bg="{{ $rowBg }}"
                                     onmouseover="this.style.backgroundColor='#CCFF66'"
-                                    onmouseout="this.style.backgroundColor=''">
+                                    onmouseout="this.style.backgroundColor=this.getAttribute('data-bg')">
                                     <td class="text-center">
                                         @if($canEdit)
                                             <a href="{{ route('cash.incomes.edit', $row['id']) }}" title="Editar">
@@ -153,7 +157,7 @@
                                 </tr>
                             @endforelse
                             </tbody>
-                            <tfoot class="bg-light">
+                            <tfoot class="incomes-foot">
                                 <tr>
                                     <td colspan="5" rowspan="6" class="text-center align-middle fw-bold" style="font-size: 14px;">Total</td>
                                     <td></td>
@@ -168,8 +172,9 @@
                                     <td></td>
                                 </tr>
                                 <tr>
-                                    <td class="text-center" style="color: red;"><b>Otros</b></td>
-                                    <td class="text-end fw-bold" style="color: red;">{{ number_format($totros, 2) }}</td>
+                                    {{-- Legacy: solo el rótulo "Otros" va en rojo (<font color=red>), el monto no --}}
+                                    <td class="text-center"><b><font color="red">Otros</font></b></td>
+                                    <td class="text-end fw-bold">{{ number_format($totros, 2) }}</td>
                                     <td></td>
                                     <td></td>
                                 </tr>
@@ -213,6 +218,17 @@
                     </div>{{-- /position-relative --}}
 
                     <style>
+                        /* Colores legacy (ingresos.php): cabecera azul/gris, filas blanco/#F2F2EC */
+                        .incomes-legacy thead th { color: #fff; }
+                        /* tfoot legacy: texto negro sobre fondo claro */
+                        .incomes-legacy tfoot.incomes-foot td {
+                            color: #000;
+                            background-color: #F2F2EC;
+                            position: -webkit-sticky;
+                            position: sticky;
+                            bottom: 0;
+                            z-index: 3;
+                        }
                         .incomes-fab {
                             position: fixed;
                             bottom: 24px;
