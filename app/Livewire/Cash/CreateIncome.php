@@ -205,6 +205,34 @@ class CreateIncome extends Component
                 'headquarter_id' => $user->headquarter_id ?? 1,
             ]);
 
+            // Espejo caja 3 (legacy ingreso-nuevo2.php): modo='Fijos' inserta también en
+            // ingreso3 con el NETO = monto - (factor_egreso × cantidad). Ver L15-18 del legacy
+            // ($montonuevo = $monto - ($egreso * $cant1); $egreso = facdivi = factor_egreso).
+            // modo='Otros' NO genera copia. Sin imágenes.
+            if ($this->modo === 'Fijos') {
+                $concept = Concept::where('type', 'ingreso')
+                    ->where('status', 'active')
+                    ->where('name', $this->reason)
+                    ->first();
+
+                $factorEgreso = $concept ? (float) $concept->factor_egreso : 0.0;
+                $cantidad = (float) $this->cantidad;
+                $neto = (float) $this->total - ($factorEgreso * $cantidad);
+
+                Income::create([
+                    'date' => $this->date,
+                    'modo' => $this->modo,
+                    'documento' => 'GUIA',
+                    'caja' => 3,
+                    'parent_id' => $income->id,
+                    'reason' => $this->reason,
+                    'detail' => $this->detail,
+                    'total' => $neto,
+                    'user_id' => $user->id,
+                    'headquarter_id' => $user->headquarter_id ?? 1,
+                ]);
+            }
+
             // Adjuntos en el MISMO paso (si se cargaron imágenes).
             $count = $this->storeIncomeAttachments($income, $this->files);
 

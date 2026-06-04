@@ -4,6 +4,7 @@ namespace App\Livewire\Cash;
 
 use App\Models\Concept;
 use App\Models\Expense;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -13,39 +14,47 @@ class EditExpense extends Component
     use WithFileUploads;
 
     public Expense $expense;
+
     public int $expenseId;
 
     public string $date = '';
+
     public string $reason = '';
+
     public string $detail = '';
+
     public string $total = '';
+
     public string $document_type = '';
+
     public string $in_charge = '';
+
     public $image;
+
     public ?string $current_image = null;
 
     public function mount(int $id): void
     {
-        $this->expense   = Expense::findOrFail($id);
+        $this->expense = Expense::findOrFail($id);
         $this->expenseId = $id;
 
-        $this->date          = $this->expense->date->format('Y-m-d');
-        $this->reason        = (string) $this->expense->reason;
-        $this->detail        = (string) ($this->expense->detail ?? '');
-        $this->total         = (string) $this->expense->total;
+        $this->date = $this->expense->date->format('Y-m-d');
+        $this->reason = (string) $this->expense->reason;
+        $this->detail = (string) ($this->expense->detail ?? '');
+        $this->total = (string) $this->expense->total;
         $this->document_type = (string) ($this->expense->document_type ?? '');
-        $this->in_charge     = (string) ($this->expense->in_charge ?? '');
+        $this->in_charge = (string) ($this->expense->in_charge ?? '');
         $this->current_image = $this->expense->image_path;
     }
 
     protected $rules = [
-        'date'          => 'required|date',
-        'reason'        => 'required|string|max:255',
-        'detail'        => 'nullable|string|max:500',
-        'total'         => 'required|numeric|min:0.01',
+        'date' => 'required|date',
+        'reason' => 'required|string|max:255',
+        'detail' => 'nullable|string|max:500',
+        'total' => 'required|numeric|min:0.01',
         'document_type' => 'nullable|string|max:100',
-        'in_charge'     => 'nullable|string|max:255',
-        'image'         => 'nullable|image|max:2048',
+        'in_charge' => 'nullable|string|max:255',
+        'image' => 'nullable|image|max:2048',
     ];
 
     public function update(): void
@@ -54,12 +63,12 @@ class EditExpense extends Component
             $this->validate();
 
             $data = [
-                'date'          => $this->date,
-                'reason'        => $this->reason,
-                'detail'        => $this->detail,
-                'total'         => $this->total,
+                'date' => $this->date,
+                'reason' => $this->reason,
+                'detail' => $this->detail,
+                'total' => $this->total,
                 'document_type' => $this->document_type,
-                'in_charge'     => $this->in_charge,
+                'in_charge' => $this->in_charge,
             ];
 
             if ($this->image) {
@@ -68,12 +77,24 @@ class EditExpense extends Component
 
             $this->expense->update($data);
 
+            // Espejo caja 3 (legacy gastos-modificar22.php): al editar un egreso se
+            // sincroniza la copia caja=3 (aa=reason, detalle, totalgeneral=mismo monto).
+            if ($this->expense->modo === 'Fijos') {
+                Expense::where('caja', 3)
+                    ->where('parent_id', $this->expense->id)
+                    ->update([
+                        'reason' => $this->reason,
+                        'detail' => $this->detail,
+                        'total' => $this->total,
+                    ]);
+            }
+
             session()->flash('cash_success', 'Egreso actualizado correctamente.');
             $this->redirectRoute('cash.expenses');
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             throw $e;
         } catch (\Throwable $e) {
-            session()->flash('cash_error', 'Error al actualizar: ' . $e->getMessage());
+            session()->flash('cash_error', 'Error al actualizar: '.$e->getMessage());
         }
     }
 
@@ -85,10 +106,12 @@ class EditExpense extends Component
     #[On('register_destroy')]
     public function destroy(int $id): void
     {
-        if (!auth()->user()?->can('caja.eliminar')) {
+        if (! auth()->user()?->can('caja.eliminar')) {
             abort(403);
         }
 
+        // Espejo caja 3 (legacy gastos-modificar22.php): el borrado elimina entrada Y entrada3.
+        Expense::where('caja', 3)->where('parent_id', $id)->delete();
         Expense::findOrFail($id)->delete();
         session()->flash('cash_success', 'Egreso eliminado correctamente.');
         $this->redirectRoute('cash.expenses');

@@ -208,6 +208,25 @@ class CreateExpense extends Component
                 'headquarter_id' => $user->headquarter_id ?? 1,
             ]);
 
+            // Espejo caja 3 (legacy gastos-nuevo.php): modo='Fijos' inserta también en
+            // entrada3 con el MISMO monto. modo='Otros' NO genera copia. Sin imágenes.
+            if ($this->modo === 'Fijos') {
+                Expense::create([
+                    'date' => $this->date,
+                    'modo' => $this->modo,
+                    'documento' => 'GUIA',
+                    'caja' => 3,
+                    'parent_id' => $expense->id,
+                    'reason' => $this->reason,
+                    'detail' => $this->detail,
+                    'total' => (float) $this->total,
+                    'document_type' => null,
+                    'in_charge' => null,
+                    'user_id' => $user->id,
+                    'headquarter_id' => $user->headquarter_id ?? 1,
+                ]);
+            }
+
             // Adjuntos en el MISMO paso (si se cargaron imágenes).
             $count = $this->storeExpenseAttachments($expense, $this->files);
 
