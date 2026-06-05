@@ -110,7 +110,7 @@
                                     <th class="text-center" style="background:#949696;">Op.</th>
                                     <th class="text-center" style="background:#005F8C;">N°</th>
                                     <th class="text-center" style="background:#949696;"><i class="ti ti-camera"></i></th>
-                                    <th class="text-center" style="background:#005F8C;">Fecha</th>
+                                    <th class="text-center col-fecha" style="background:#005F8C;">Fecha</th>
                                     <th class="text-center" style="background:#949696;">Usuario</th>
                                     <th class="text-center" style="background:#005F8C;">A</th>
                                     <th class="col-wrap" style="background:#949696;">Motivo</th>
@@ -167,7 +167,7 @@
                                             </a>
                                         @endif
                                     </td>
-                                    <td class="text-center">{{ $expense->date?->format('d/m/Y') }}</td>
+                                    <td class="text-center col-fecha">{{ $expense->date?->format('d/m/Y') }}</td>
                                     <td>{{ $expense->user?->username ?? $expense->user?->name ?? '-' }}</td>
                                     <td class="text-center">{{ $expense->reason }}</td>
                                     <td class="col-wrap">{{ $expense->detail }}</td>
@@ -262,6 +262,8 @@
                         .expenses-legacy th.col-wrap, .expenses-legacy td.col-wrap {
                             white-space: normal; min-width: 180px; max-width: 320px;
                         }
+                        /* Fecha: un poco más de aire. */
+                        .expenses-legacy th.col-fecha, .expenses-legacy td.col-fecha { min-width: 92px; }
                         /* tfoot legacy: texto negro sobre fondo claro (no azul) */
                         .expenses-legacy tfoot.expenses-foot td {
                             color: #000;

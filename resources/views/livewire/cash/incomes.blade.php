@@ -110,7 +110,7 @@
                                     <th class="text-center" style="background:#949696;">Op</th>
                                     <th class="text-center" style="background:#005F8C;">N°</th>
                                     <th class="text-center" style="background:#949696;"><i class="ti ti-camera"></i></th>
-                                    <th class="text-center" style="background:#005F8C;">Fecha</th>
+                                    <th class="text-center col-fecha" style="background:#005F8C;">Fecha</th>
                                     <th class="text-center" style="background:#949696;">Usuario</th>
                                     <th class="text-center" style="background:#005F8C;">Asesor</th>
                                     <th class="text-center" style="background:#949696;">A</th>
@@ -169,7 +169,7 @@
                                             @endif
                                         @endif
                                     </td>
-                                    <td class="text-center">{{ $row['date']?->format('d/m/Y') }}</td>
+                                    <td class="text-center col-fecha">{{ $row['date']?->format('d/m/Y') }}</td>
                                     <td>{{ $row['usuario'] }}</td>
                                     <td>{{ $row['asesor'] }}</td>
                                     <td class="text-center">{{ $row['reason'] }}</td>
@@ -263,6 +263,8 @@
                         .incomes-legacy th.col-wrap, .incomes-legacy td.col-wrap {
                             white-space: normal; min-width: 180px; max-width: 320px;
                         }
+                        /* Fecha: un poco más de aire. */
+                        .incomes-legacy th.col-fecha, .incomes-legacy td.col-fecha { min-width: 92px; }
                         /* tfoot legacy: texto negro sobre fondo claro */
                         .incomes-legacy tfoot.incomes-foot td {
                             color: #000;
