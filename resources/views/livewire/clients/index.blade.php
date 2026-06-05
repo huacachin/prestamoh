@@ -99,13 +99,7 @@
                                     <td class="text-center" style="color: inherit;">{{ $loop->iteration }}</td>
                                     <td class="text-center" style="color: inherit;">{{ $client->fecha_registro?->format('Y-m-d') }}</td>
                                     <td class="text-center" style="color: inherit;">{{ $client->usuario }}</td>
-                                    <td class="text-center" style="color: inherit;">
-                                        <a href="{{ route('clients.gallery', $client->id) }}"
-                                           style="color: inherit; text-decoration: underline;"
-                                           title="Ver adjuntos">
-                                            {{ $client->expediente }}
-                                        </a>
-                                    </td>
+                                    <td class="text-center" style="color: inherit;">{{ $client->expediente }}</td>
                                     <td class="col-wrap" style="color: inherit;">
                                         <a href="{{ route('clients.edit', $client->id) }}" style="color: black; text-decoration: none;">
                                             {{ $client->apellido_pat }} {{ $client->apellido_mat }} {{ $client->nombre }}
@@ -193,11 +187,7 @@
                                         <div class="col-6"><b>DNI:</b>
                                             <a href="{{ route('credits.create', $client->id) }}">{{ $client->documento }}</a>
                                         </div>
-                                        <div class="col-6"><b>Exp.:</b>
-                                            <a href="{{ route('clients.gallery', $client->id) }}" title="Ver adjuntos">
-                                                {{ $client->expediente }}
-                                            </a>
-                                        </div>
+                                        <div class="col-6"><b>Exp.:</b> {{ $client->expediente }}</div>
                                         <div class="col-6"><b>Movil:</b> {{ $client->celular1 }}</div>
                                         <div class="col-6"><b>T.Credito:</b> {{ $client->zona }}</div>
                                         <div class="col-6"><b>Giro:</b> {{ $client->giro }}</div>

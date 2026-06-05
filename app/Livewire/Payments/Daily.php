@@ -11,7 +11,9 @@ use Livewire\Component;
 class Daily extends Component
 {
     public $ejecutivo = 'Todos';
+
     public $eestado = 'Vigente'; // Vigente | Cancelado | Vencida
+
     public $codio1 = '';
 
     public function search() {}
@@ -32,7 +34,7 @@ class Daily extends Component
             $query->where('situacion', 'Cancelado');
         } elseif ($this->eestado === 'Vencida') {
             $query->where('situacion', 'Activo')
-                  ->where('fecha_vencimiento', '<', $today);
+                ->where('fecha_vencimiento', '<', $today);
         }
 
         if ($this->ejecutivo !== 'Todos' && $this->ejecutivo !== '') {
@@ -54,7 +56,7 @@ class Daily extends Component
         $minDateByCredit = [];
         $maxDateByCredit = [];
 
-        if (!empty($creditIds)) {
+        if (! empty($creditIds)) {
             $allPays = DB::table('payments')
                 ->whereIn('credit_id', $creditIds)
                 ->whereNotNull('fecha')
@@ -113,11 +115,13 @@ class Daily extends Component
                 $color = '';
                 $weight = '';
                 if ($maxF && $fd > $maxF) {
-                    $bg = '#999'; $color = '#e7e7e7';
+                    $bg = '#999';
+                    $color = '#e7e7e7';
                 } elseif ($dow === Carbon::SUNDAY) {
                     $color = 'red';
                 } elseif ($dow === Carbon::SATURDAY) {
-                    $color = 'green'; $weight = '600';
+                    $color = 'green';
+                    $weight = '600';
                 } elseif ($fd === $today) {
                     $bg = 'yellow';
                 } elseif ($fd < $today && $monto == 0) {
@@ -125,10 +129,10 @@ class Daily extends Component
                 }
 
                 $days[] = [
-                    'fecha'  => $fd,
-                    'monto'  => $monto,
-                    'bg'     => $bg,
-                    'color'  => $color,
+                    'fecha' => $fd,
+                    'monto' => $monto,
+                    'bg' => $bg,
+                    'color' => $color,
                     'weight' => $weight,
                 ];
             }
@@ -151,44 +155,45 @@ class Daily extends Component
 
             $cli = $c->client;
             $row = [
-                'n'           => $n,
-                'fecha'       => $fechaPrestamo,
-                'expediente'  => $cli?->expediente,
-                'has_imagen'  => !empty($cli?->imagen),
-                'codigo'      => $c->id,
-                'cuotas'      => $c->cuotas,
-                'dni'         => $cli?->documento,
-                'cliente'     => trim(($cli?->apellido_pat ?? '') . ' ' . ($cli?->apellido_mat ?? '') . ' ' . ($cli?->nombre ?? '')),
-                'capital'     => $importe,
+                'n' => $n,
+                'fecha' => $fechaPrestamo,
+                'expediente' => $cli?->expediente,
+                'client_id' => $cli?->id,
+                'has_imagen' => ! empty($cli?->imagen),
+                'codigo' => $c->id,
+                'cuotas' => $c->cuotas,
+                'dni' => $cli?->documento,
+                'cliente' => trim(($cli?->apellido_pat ?? '').' '.($cli?->apellido_mat ?? '').' '.($cli?->nombre ?? '')),
+                'capital' => $importe,
                 'interes_pct' => round($interesPct, 0),
-                'interes'     => $interTotal,
-                'apagar'      => $aPagar,
-                'cuota'       => $cuotaCob,
-                'days'        => $days,
-                'pagado'      => $sumDias,
-                'mora'        => (float) $mora,
-                'otros'       => $otros,
-                'saldo'       => $saldo,
+                'interes' => $interTotal,
+                'apagar' => $aPagar,
+                'cuota' => $cuotaCob,
+                'days' => $days,
+                'pagado' => $sumDias,
+                'mora' => (float) $mora,
+                'otros' => $otros,
+                'saldo' => $saldo,
             ];
             $rows[] = $row;
 
             $tot['capital'] += $importe;
             $tot['interes'] += $interTotal;
-            $tot['apagar']  += $aPagar;
-            $tot['cuota']   += $cuotaCob;
-            $tot['pagado']  += $sumDias;
-            $tot['mora']    += $mora;
-            $tot['otros']   += $otros;
-            $tot['saldo']   += $saldo;
+            $tot['apagar'] += $aPagar;
+            $tot['cuota'] += $cuotaCob;
+            $tot['pagado'] += $sumDias;
+            $tot['mora'] += $mora;
+            $tot['otros'] += $otros;
+            $tot['saldo'] += $saldo;
         }
 
         $asesores = User::orderBy('name')->get(['id', 'name']);
 
         return view('livewire.payments.daily', [
-            'rows'     => $rows,
-            'tot'      => $tot,
+            'rows' => $rows,
+            'tot' => $tot,
             'asesores' => $asesores,
-            'today'    => $today,
+            'today' => $today,
         ]);
     }
 }

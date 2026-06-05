@@ -148,7 +148,13 @@
                                     <tr style="{{ $row['bg'] }} color: {{ $row['color_texto'] }};">
                                         <td class="text-center">{{ $row['n'] }}</td>
                                         <td class="text-center" style="color: {{ $row['st_color'] }};">{{ $row['tot2'] }}</td>
-                                        <td>{{ $row['exp'] }}</td>
+                                        <td>
+                                            @if($row['client_id'])
+                                                <a href="{{ route('clients.show', $row['client_id']) }}" target="_blank" style="color:inherit; text-decoration:underline;">{{ $row['exp'] }}</a>
+                                            @else
+                                                {{ $row['exp'] }}
+                                            @endif
+                                        </td>
                                         <td class="text-center">
                                             <a href="#" style="color: inherit;">{{ $row['codigo'] }}</a>
                                         </td>

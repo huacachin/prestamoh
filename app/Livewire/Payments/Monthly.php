@@ -179,6 +179,7 @@ class Monthly extends Component
                 'fecha_pres' => $c->fecha_prestamo?->format('Y-m-d'),
                 'fecha_venc' => $c->fecha_vencimiento?->format('Y-m-d'),
                 'expediente' => $cli?->expediente,
+                'client_id' => $cli?->id,
                 'has_imagen' => ! empty($cli?->imagen),
                 'codigo' => $c->id,
                 'cuotas' => $c->cuotas,

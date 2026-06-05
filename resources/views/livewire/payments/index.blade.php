@@ -71,7 +71,13 @@
                                 <tr onmouseover="this.style.backgroundColor='#CCFF66'"
                                     onmouseout="this.style.backgroundColor=''">
                                     <td class="text-center">{{ $loop->iteration }}</td>
-                                    <td class="text-center">{{ $credit->client?->expediente }}</td>
+                                    <td class="text-center">
+                                        @if($credit->client?->id)
+                                            <a href="{{ route('clients.show', $credit->client->id) }}" target="_blank" style="color:inherit; text-decoration:underline;">{{ $credit->client?->expediente }}</a>
+                                        @else
+                                            {{ $credit->client?->expediente }}
+                                        @endif
+                                    </td>
                                     <td class="text-center">
                                         <a href="{{ route('credits.show', $credit->id) }}" style="color: black;">
                                             {{ $credit->id }}

@@ -10,14 +10,23 @@ use Livewire\Component;
 class Portfolio extends Component
 {
     public $selemes0 = '';
+
     public $selecano0 = '';
+
     public $seletipl0 = '';
+
     public $exp = '';
+
     public $codigo = '';
+
     public $cdni = '';
+
     public $cnombre = '';
+
     public $casesor = '';
+
     public $fechai = '';
+
     public $fechaf = '';
 
     public function search() {}
@@ -34,7 +43,7 @@ class Portfolio extends Component
 
         if ($this->selemes0 !== '' && $this->selecano0 !== '') {
             $query->whereYear('fecha_actualizacion', $this->selecano0)
-                  ->whereMonth('fecha_actualizacion', $this->selemes0);
+                ->whereMonth('fecha_actualizacion', $this->selemes0);
         }
 
         if ($this->exp !== '') {
@@ -50,19 +59,18 @@ class Portfolio extends Component
             $term = $this->cnombre;
             $query->whereHas('client', function ($c) use ($term) {
                 $c->where('nombre', 'like', "%{$term}%")
-                  ->orWhere('apellido_pat', 'like', "%{$term}%")
-                  ->orWhere('apellido_mat', 'like', "%{$term}%");
+                    ->orWhere('apellido_pat', 'like', "%{$term}%")
+                    ->orWhere('apellido_mat', 'like', "%{$term}%");
             });
         }
         if ($this->casesor !== '') {
             $term = $this->casesor;
-            $query->whereHas('client.asesor', fn ($u) =>
-                $u->where('username', 'like', "%{$term}%")->orWhere('name', 'like', "%{$term}%")
+            $query->whereHas('client.asesor', fn ($u) => $u->where('username', 'like', "%{$term}%")->orWhere('name', 'like', "%{$term}%")
             );
         }
         if ($this->fechai !== '' && $this->fechaf !== '') {
             $query->where('fecha_vencimiento', '>=', $this->fechai)
-                  ->where('fecha_vencimiento', '<=', $this->fechaf);
+                ->where('fecha_vencimiento', '<=', $this->fechaf);
         }
 
         $credits = $query->orderBy('fecha_vencimiento', 'asc')->get();
@@ -72,7 +80,7 @@ class Portfolio extends Component
 
         $pagosMap = [];
         $ultPagoMap = [];
-        if (!empty($creditIds)) {
+        if (! empty($creditIds)) {
             // Sum payments by credit_id
             $sumRows = DB::table('credit_installments')
                 ->whereIn('credit_id', $creditIds)
@@ -83,7 +91,7 @@ class Portfolio extends Component
                 ->get();
             foreach ($sumRows as $r) {
                 $pagosMap[$r->credit_id] = [
-                    'iapli'  => (float) $r->iapli,
+                    'iapli' => (float) $r->iapli,
                     'aplido' => (float) $r->aplido,
                 ];
             }
@@ -104,11 +112,11 @@ class Portfolio extends Component
         $rows = [];
 
         $totals = [
-            'capital'  => 0,
-            'interes'  => 0,
-            'total'    => 0,
-            'pago'     => 0,
-            'saldo'    => 0,
+            'capital' => 0,
+            'interes' => 0,
+            'total' => 0,
+            'pago' => 0,
+            'saldo' => 0,
         ];
 
         // Por interés (legacy: huaca_tmp)
@@ -123,10 +131,16 @@ class Portfolio extends Component
         $vignt = $venc = 0;
 
         // Morosidad
-        $morisidad = 0; $persomoro = 0;
-        $impo_2 = 0; $impo_inte = 0; $mes_mes = 0;
-        $morisidadin = 0; $persomoroin = 0;
-        $impo_2in = 0; $impo_intein = 0; $mes_mesin = 0;
+        $morisidad = 0;
+        $persomoro = 0;
+        $impo_2 = 0;
+        $impo_inte = 0;
+        $mes_mes = 0;
+        $morisidadin = 0;
+        $persomoroin = 0;
+        $impo_2in = 0;
+        $impo_intein = 0;
+        $mes_mesin = 0;
 
         $rrrr = 0;
         foreach ($credits as $credit) {
@@ -148,16 +162,22 @@ class Portfolio extends Component
 
             // Acumular por tipo
             if ($tipo === 1) {
-                $sempo++; $totsem += $importe; $totintesem += $int;
+                $sempo++;
+                $totsem += $importe;
+                $totintesem += $int;
             } elseif ($tipo === 3) {
-                $mempo++; $totmen += $importe; $totintemen += $int;
+                $mempo++;
+                $totmen += $importe;
+                $totintemen += $int;
             } elseif ($tipo === 4) {
-                $dempo++; $totdia += $importe; $totintdiario += $int;
+                $dempo++;
+                $totdia += $importe;
+                $totintdiario += $int;
             }
 
             // Por interés %
             $key = (string) $interesPct;
-            if (!isset($byInteres[$key])) {
+            if (! isset($byInteres[$key])) {
                 $byInteres[$key] = ['porce' => $key, 'ncount' => 0, 'capital' => 0, 'interes' => 0, 'pago' => 0, 'total' => 0];
             }
             $byInteres[$key]['ncount']++;
@@ -169,7 +189,11 @@ class Portfolio extends Component
             // Vigente / Vencida
             $fechaFin = $credit->fecha_vencimiento;
             $estd = ($fechaFin && $fechaFin->gt($today)) ? 'Vigente' : 'Vencida';
-            if ($estd === 'Vigente') $vignt++; else $venc++;
+            if ($estd === 'Vigente') {
+                $vignt++;
+            } else {
+                $venc++;
+            }
 
             // Morosidad
             $saldoActual = round($saldo, 2);
@@ -193,43 +217,50 @@ class Portfolio extends Component
             if ($fechaFin) {
                 $diff = $today->diff($fechaFin);
                 $parts = [];
-                if ($diff->y > 0) $parts[] = $diff->y . ' año' . ($diff->y > 1 ? 's' : '');
-                if ($diff->m > 0) $parts[] = $diff->m . ' mes' . ($diff->m > 1 ? 'es' : '');
-                if ($diff->d > 0) $parts[] = $diff->d . ' día' . ($diff->d > 1 ? 's' : '');
+                if ($diff->y > 0) {
+                    $parts[] = $diff->y.' año'.($diff->y > 1 ? 's' : '');
+                }
+                if ($diff->m > 0) {
+                    $parts[] = $diff->m.' mes'.($diff->m > 1 ? 'es' : '');
+                }
+                if ($diff->d > 0) {
+                    $parts[] = $diff->d.' día'.($diff->d > 1 ? 's' : '');
+                }
                 $tiempo = implode(', ', $parts);
             }
 
             $rows[] = [
-                'n'              => $rrrr,
-                'exp'            => $cli?->expediente,
-                'codigo'         => $credit->id,
-                'dni'            => $cli?->documento,
-                'cliente'        => $cli ? trim(($cli->apellido_pat ?? '') . ' ' . ($cli->apellido_mat ?? '') . ' ' . ($cli->nombre ?? '')) : 'N/A',
-                'cod_rem'        => $credit->cod_rem ?? '',
-                'is_refi'        => ($credit->cod_rem ?? '') === 'REF',
-                'capital'        => $importe,
-                'tc_label'       => $tcLabel,
-                'tipo_planilla'  => $tipo,
-                'interes_pct'    => $interesPct,
-                'interes_monto'  => $int,
-                'cuotas'         => $credit->cuotas,
-                'total'          => $total,
-                'pago'           => $pagapaga,
-                'saldo'          => $saldo,
-                'fecha_cred'     => $credit->fecha_actualizacion?->format('Y-m-d'),
-                'fecha_venc'     => $fechaFin?->format('Y-m-d'),
+                'n' => $rrrr,
+                'exp' => $cli?->expediente,
+                'client_id' => $cli?->id,
+                'codigo' => $credit->id,
+                'dni' => $cli?->documento,
+                'cliente' => $cli ? trim(($cli->apellido_pat ?? '').' '.($cli->apellido_mat ?? '').' '.($cli->nombre ?? '')) : 'N/A',
+                'cod_rem' => $credit->cod_rem ?? '',
+                'is_refi' => ($credit->cod_rem ?? '') === 'REF',
+                'capital' => $importe,
+                'tc_label' => $tcLabel,
+                'tipo_planilla' => $tipo,
+                'interes_pct' => $interesPct,
+                'interes_monto' => $int,
+                'cuotas' => $credit->cuotas,
+                'total' => $total,
+                'pago' => $pagapaga,
+                'saldo' => $saldo,
+                'fecha_cred' => $credit->fecha_actualizacion?->format('Y-m-d'),
+                'fecha_venc' => $fechaFin?->format('Y-m-d'),
                 'fecha_ult_pago' => $ultPagoMap[$credit->id] ?? null,
-                'celular'        => $cli?->celular1,
-                'estado'         => $estd,
-                'tiempo'         => $tiempo,
-                'asesor'         => $cli?->asesor?->username ?? $cli?->asesor?->name ?? '',
+                'celular' => $cli?->celular1,
+                'estado' => $estd,
+                'tiempo' => $tiempo,
+                'asesor' => $cli?->asesor?->username ?? $cli?->asesor?->name ?? '',
             ];
 
             $totals['capital'] += $importe;
             $totals['interes'] += $int;
-            $totals['total']   += $total;
-            $totals['pago']    += $pagapaga;
-            $totals['saldo']   += $saldo;
+            $totals['total'] += $total;
+            $totals['pago'] += $pagapaga;
+            $totals['saldo'] += $saldo;
         }
 
         // Ordenar byInteres por porce numérico
@@ -237,14 +268,16 @@ class Portfolio extends Component
 
         // Tipo de cambio para conversión a Dólares
         $tc = (float) (DB::table('exchange_rates')->orderByDesc('fecha')->value('compra') ?? 1);
-        if ($tc <= 0) $tc = 1;
+        if ($tc <= 0) {
+            $tc = 1;
+        }
 
         $totSaldo = $totals['saldo'] > 0 ? $totals['saldo'] : 1;
 
         return view('livewire.reports.portfolio', [
-            'rows'    => $rows,
-            'totals'  => $totals,
-            'tc'      => $tc,
+            'rows' => $rows,
+            'totals' => $totals,
+            'tc' => $tc,
             'byInteres' => array_values($byInteres),
             'tipoTotals' => [
                 'sempo' => $sempo, 'mempo' => $mempo, 'dempo' => $dempo,
@@ -252,25 +285,25 @@ class Portfolio extends Component
                 'totintesem' => $totintesem, 'totintemen' => $totintemen, 'totintdiario' => $totintdiario,
             ],
             'vignt' => $vignt,
-            'venc'  => $venc,
+            'venc' => $venc,
             'morisidad' => [
-                'mora_pct'        => round(($morisidad * 100) / $totSaldo, 2),
-                'mora_count'      => $persomoro,
-                'mora_capital'    => $impo_2,
-                'mora_interes'    => $impo_inte,
-                'mora_total'      => $impo_2 + $impo_inte,
-                'mora_saldo'      => $mes_mes,
-                'activos_pct'     => round(($morisidadin * 100) / $totSaldo, 2),
-                'activos_count'   => $persomoroin,
+                'mora_pct' => round(($morisidad * 100) / $totSaldo, 2),
+                'mora_count' => $persomoro,
+                'mora_capital' => $impo_2,
+                'mora_interes' => $impo_inte,
+                'mora_total' => $impo_2 + $impo_inte,
+                'mora_saldo' => $mes_mes,
+                'activos_pct' => round(($morisidadin * 100) / $totSaldo, 2),
+                'activos_count' => $persomoroin,
                 'activos_capital' => $impo_2in,
                 'activos_interes' => $impo_intein,
-                'activos_total'   => $impo_2in + $impo_intein,
-                'activos_saldo'   => $mes_mesin,
-                'total_count'     => $persomoro + $persomoroin,
-                'total_capital'   => $impo_2 + $impo_2in,
-                'total_interes'   => $impo_inte + $impo_intein,
-                'total_total'     => $impo_2 + $impo_2in + $impo_inte + $impo_intein,
-                'total_saldo'     => $mes_mes + $mes_mesin,
+                'activos_total' => $impo_2in + $impo_intein,
+                'activos_saldo' => $mes_mesin,
+                'total_count' => $persomoro + $persomoroin,
+                'total_capital' => $impo_2 + $impo_2in,
+                'total_interes' => $impo_inte + $impo_intein,
+                'total_total' => $impo_2 + $impo_2in + $impo_inte + $impo_intein,
+                'total_saldo' => $mes_mes + $mes_mesin,
             ],
         ]);
     }

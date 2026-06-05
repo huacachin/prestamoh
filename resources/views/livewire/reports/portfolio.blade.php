@@ -138,7 +138,13 @@
                                     onmouseover="this.style.backgroundColor='#CCFF66'"
                                     onmouseout="this.style.backgroundColor='{{ $r['is_refi'] ? '#ffff00' : '' }}'">
                                     <td class="text-center">{{ $r['n'] }}</td>
-                                    <td class="text-center">{{ $r['exp'] }}</td>
+                                    <td class="text-center">
+                                        @if($r['client_id'])
+                                            <a href="{{ route('clients.show', $r['client_id']) }}" target="_blank" style="color:inherit; text-decoration:underline;">{{ $r['exp'] }}</a>
+                                        @else
+                                            {{ $r['exp'] }}
+                                        @endif
+                                    </td>
                                     <td class="text-center">
                                         <a href="{{ route('credits.show', $r['codigo']) }}" target="_blank">{{ $r['codigo'] }}</a>
                                     </td>

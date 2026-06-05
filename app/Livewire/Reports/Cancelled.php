@@ -194,6 +194,7 @@ class Cancelled extends Component
                 'tot2' => $tot2,
                 'st_color' => $stColor,
                 'exp' => $cli?->expediente,
+                'client_id' => $cli?->id,
                 'codigo' => $c->id,
                 'dni' => $cli?->documento,
                 'nombre' => $cli ? trim(($cli->apellido_pat ?? '').' '.($cli->apellido_mat ?? '').' '.($cli->nombre ?? '')) : 'N/A',

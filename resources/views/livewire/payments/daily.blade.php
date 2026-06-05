@@ -86,7 +86,13 @@
                                     <tr>
                                         <td>{{ $row['n'] }}</td>
                                         <td>{{ $row['fecha'] }}</td>
-                                        <td style="{{ !$row['has_imagen'] ? 'background-color:yellow;' : '' }}">{{ $row['expediente'] }}</td>
+                                        <td style="{{ !$row['has_imagen'] ? 'background-color:yellow;' : '' }}">
+                                            @if($row['client_id'])
+                                                <a href="{{ route('clients.show', $row['client_id']) }}" target="_blank" style="color:inherit; text-decoration:underline;">{{ $row['expediente'] }}</a>
+                                            @else
+                                                {{ $row['expediente'] }}
+                                            @endif
+                                        </td>
                                         <td>
                                             <a href="{{ route('credits.show', $row['codigo']) }}" target="_blank">{{ $row['codigo'] }}</a>
                                         </td>
