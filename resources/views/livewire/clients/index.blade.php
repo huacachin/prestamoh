@@ -252,18 +252,9 @@
     .clients-legacy th, .clients-legacy td {
         padding: 3px 6px; vertical-align: middle; white-space: nowrap;
     }
-    .clients-legacy th { text-transform: uppercase; letter-spacing: .5px; }
     /* Nombres Apellidos: puede ser largo → envuelve con tope, como el legacy. */
     .clients-legacy th.col-wrap, .clients-legacy td.col-wrap {
         white-space: normal; min-width: 180px; max-width: 300px;
     }
-    /* Un poco más de ancho en columnas puntuales (Fecha, Usuario, Exp., Asesor, Opciones). */
-    .clients-legacy tbody td:nth-child(2)  { min-width: 90px; }  /* Fecha */
-    .clients-legacy tbody td:nth-child(3)  { min-width: 78px; }  /* Usuario */
-    .clients-legacy tbody td:nth-child(4)  { min-width: 58px; }  /* Exp. */
-    .clients-legacy tbody td:nth-child(10) { min-width: 82px; }  /* Asesor */
-    .clients-legacy tbody td:nth-child(11),
-    .clients-legacy tbody td:nth-child(12),
-    .clients-legacy tbody td:nth-child(13) { min-width: 74px; }  /* Opciones (botones) */
 </style>
 </div>

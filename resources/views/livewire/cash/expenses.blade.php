@@ -256,7 +256,6 @@
                         .expenses-legacy th, .expenses-legacy td {
                             padding: 3px 6px; vertical-align: top; white-space: nowrap;
                         }
-                        .expenses-legacy th { text-transform: uppercase; letter-spacing: .5px; }
                         /* Motivo/Detalle: texto largo → envuelve (como el legacy), con tope de ancho. */
                         .expenses-legacy th.col-wrap, .expenses-legacy td.col-wrap {
                             white-space: normal; min-width: 180px; max-width: 320px;
