@@ -8,8 +8,11 @@ use Livewire\Component;
 class Expenses extends Component
 {
     public string $tipo = '1';   // 1=A, 2=Motivo, 3=Usuario, 4=Respons.
+
     public string $compra = '';
+
     public string $fei = '';
+
     public string $fef = '';
 
     public function mount(): void
@@ -31,17 +34,17 @@ class Expenses extends Component
             ->where(function ($q) {
                 $q->where('modo', '<>', 'Compra')->orWhereNull('modo');
             })
-            ->with('user:id,name,username')
+            ->with(['user:id,name,username', 'attachments'])
             ->withCount('attachments');
 
-        if (!$crossHQ) {
+        if (! $crossHQ) {
             $query->where('headquarter_id', $hqId);
         }
 
         // Operadores de caja (sin caja.editar-historico): solo sus propios egresos diarios
-        if (!$user->can('caja.editar-historico')) {
+        if (! $user->can('caja.editar-historico')) {
             $query->where('user_id', $user->id)
-                  ->where('reason', 'Diario');
+                ->where('reason', 'Diario');
         }
 
         // Lógica fechas + búsqueda (estilo legacy)
@@ -58,9 +61,8 @@ class Expenses extends Component
             match ($this->tipo) {
                 '1' => $query->where('reason', 'like', "%{$term}%"),
                 '2' => $query->where('detail', 'like', "%{$term}%"),
-                '3' => $query->whereHas('user', fn ($u) =>
-                    $u->where('username', 'like', "%{$term}%")
-                      ->orWhere('name', 'like', "%{$term}%")
+                '3' => $query->whereHas('user', fn ($u) => $u->where('username', 'like', "%{$term}%")
+                    ->orWhere('name', 'like', "%{$term}%")
                 ),
                 '4' => $query->where('in_charge', 'like', "%{$term}%"),
                 default => null,
@@ -70,18 +72,28 @@ class Expenses extends Component
         $expenses = $query->orderBy('date', 'asc')->orderBy('id', 'asc')->get();
 
         // Subtotales
-        $tofijo = 0; $totros = 0;
-        $sumdiario = 0; $summensu = 0; $sumdm = 0;
+        $tofijo = 0;
+        $totros = 0;
+        $sumdiario = 0;
+        $summensu = 0;
+        $sumdm = 0;
         $totalGeneral = 0;
 
         foreach ($expenses as $e) {
             $totalGeneral += (float) $e->total;
-            if ($e->modo === 'Fijos') $tofijo += $e->total;
-            else $totros += $e->total;
+            if ($e->modo === 'Fijos') {
+                $tofijo += $e->total;
+            } else {
+                $totros += $e->total;
+            }
 
-            if ($e->reason === 'Diario') $sumdiario += $e->total;
-            elseif ($e->reason === 'Mensual') $summensu += $e->total;
-            elseif ($e->reason === 'D.M') $sumdm += $e->total;
+            if ($e->reason === 'Diario') {
+                $sumdiario += $e->total;
+            } elseif ($e->reason === 'Mensual') {
+                $summensu += $e->total;
+            } elseif ($e->reason === 'D.M') {
+                $sumdm += $e->total;
+            }
         }
 
         $datos220 = $sumdm / 2;
@@ -89,17 +101,37 @@ class Expenses extends Component
         $valor2 = $summensu + $datos220;
         $valor3 = $valor1 + $valor2;
 
+        // Mapa de galerías por egreso (para el lightbox inline de la lista). Incluye
+        // los adjuntos y, si existe, la imagen única legacy (image_path).
+        $galleries = [];
+        foreach ($expenses as $e) {
+            $items = [];
+            foreach ($e->attachments as $a) {
+                $items[] = ['url' => $a->url(), 'name' => $a->original_name];
+            }
+            if (! empty($e->image_path)) {
+                $items[] = ['url' => '/storage/'.ltrim($e->image_path, '/'), 'name' => 'Imagen'];
+            }
+            if ($items) {
+                $galleries[$e->id] = [
+                    'items' => $items,
+                    'manageUrl' => route('cash.expenses.gallery', $e->id),
+                ];
+            }
+        }
+
         return view('livewire.cash.expenses', [
-            'expenses'     => $expenses,
+            'expenses' => $expenses,
+            'galleries' => $galleries,
             'totalGeneral' => $totalGeneral,
-            'tofijo'       => $tofijo,
-            'totros'       => $totros,
-            'sumdiario'    => $sumdiario,
-            'summensu'     => $summensu,
-            'sumdm'        => $sumdm,
-            'valor1'       => $valor1,
-            'valor2'       => $valor2,
-            'valor3'       => $valor3,
+            'tofijo' => $tofijo,
+            'totros' => $totros,
+            'sumdiario' => $sumdiario,
+            'summensu' => $summensu,
+            'sumdm' => $sumdm,
+            'valor1' => $valor1,
+            'valor2' => $valor2,
+            'valor3' => $valor3,
         ]);
     }
 }

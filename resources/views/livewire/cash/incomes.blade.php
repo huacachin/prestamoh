@@ -1,4 +1,22 @@
-<div class="container-fluid">
+<div class="container-fluid"
+     x-data="{
+        open: false, idx: 0, items: [], manageUrl: '',
+        galleries: @js($galleries),
+        openGallery(id) {
+            const g = this.galleries[id];
+            if (! g || ! g.items.length) return;
+            this.items = g.items;
+            this.manageUrl = g.manageUrl || '';
+            this.idx = 0;
+            this.open = true;
+        },
+        close() { this.open = false; },
+        next() { this.idx = (this.idx + 1) % this.items.length; },
+        prev() { this.idx = (this.idx - 1 + this.items.length) % this.items.length; },
+     }"
+     @keydown.escape.window="open && close()"
+     @keydown.arrow-right.window="open && next()"
+     @keydown.arrow-left.window="open && prev()">
     <div class="row">
         <div class="col-sm-6">
             <h4 class="main-title title-modules" style="color:red;">INGRESOS</h4>
@@ -129,19 +147,25 @@
                                     <td class="text-center">{{ $loop->iteration }}</td>
                                     <td class="text-center">
                                         @if($row['kind'] === 'income')
-                                            <a href="{{ route('cash.incomes.gallery', $row['id']) }}"
-                                               title="Ver/subir adjuntos ({{ $row['attachments_count'] ?? 0 }})">
-                                                @if($row['has_image'])
+                                            @if(isset($galleries[$row['id']]))
+                                                {{-- Tiene fotos → abre el lightbox inline --}}
+                                                <a href="#" @click.prevent="openGallery({{ $row['id'] }})"
+                                                   title="Ver adjuntos ({{ $row['attachments_count'] ?? 0 }})"
+                                                   style="cursor: zoom-in;">
                                                     <i class="ti ti-camera-filled f-s-16 text-info"></i>
-                                                @else
+                                                    @if(($row['attachments_count'] ?? 0) > 0)
+                                                        <span class="badge bg-info" style="font-size:9px; padding:1px 4px;">
+                                                            {{ $row['attachments_count'] }}
+                                                        </span>
+                                                    @endif
+                                                </a>
+                                            @else
+                                                {{-- Sin fotos → va a la galería para subir --}}
+                                                <a href="{{ route('cash.incomes.gallery', $row['id']) }}"
+                                                   title="Subir adjuntos">
                                                     <i class="ti ti-camera f-s-16 text-muted"></i>
-                                                @endif
-                                                @if(($row['attachments_count'] ?? 0) > 0)
-                                                    <span class="badge bg-info" style="font-size:9px; padding:1px 4px;">
-                                                        {{ $row['attachments_count'] }}
-                                                    </span>
-                                                @endif
-                                            </a>
+                                                </a>
+                                            @endif
                                         @endif
                                     </td>
                                     <td class="text-center">{{ $row['date']?->format('d/m/Y') }}</td>
@@ -311,4 +335,7 @@
         </div>
     </div>
 <span id="final"></span>
+
+    {{-- Lightbox compartido (visor de adjuntos al hacer clic en la cámara) --}}
+    @include('livewire.cash.partials._lightbox')
 </div>
