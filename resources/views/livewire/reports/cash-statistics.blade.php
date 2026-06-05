@@ -44,7 +44,7 @@
                                 <button type="button" class="btn btn-sm btn-secondary flex-shrink-0" onclick="window.print()">
                                     <i class="ti ti-printer f-s-12"></i> Imprimir
                                 </button>
-                                <x-scroll-bottom-btn class="flex-shrink-0" />
+                                <x-scroll-bottom-btn class="flex-shrink-0" scrollable="#tabla-mensual" />
                             </div>
                         </div>
                     </form>
