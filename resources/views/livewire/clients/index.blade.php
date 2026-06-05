@@ -69,14 +69,14 @@
 
                     {{-- Tabla Desktop / Cards Mobile --}}
                     <div class="table-responsive d-none d-md-block">
-                        <table class="table table-bordered table-striped table-hover table-autofit" style="font-size: 11px;">
+                        <table class="table table-bordered table-striped table-hover table-autofit clients-legacy">
                             <thead class="bg-primary">
                                 <tr>
                                     <th class="text-center">N&deg;</th>
                                     <th class="text-center">Fecha</th>
                                     <th class="text-center">Usuario</th>
                                     <th class="text-center">Exp.</th>
-                                    <th class="text-center" width="220">Nombres Apellidos</th>
+                                    <th class="text-center col-wrap">Nombres Apellidos</th>
                                     <th class="text-center">DNI</th>
                                     <th class="text-center">Movil</th>
                                     <th class="text-center">T.Credito</th>
@@ -106,7 +106,7 @@
                                             {{ $client->expediente }}
                                         </a>
                                     </td>
-                                    <td style="color: inherit;">
+                                    <td class="col-wrap" style="color: inherit;">
                                         <a href="{{ route('clients.edit', $client->id) }}" style="color: black; text-decoration: none;">
                                             {{ $client->apellido_pat }} {{ $client->apellido_mat }} {{ $client->nombre }}
                                         </a>
@@ -242,4 +242,21 @@
         </div>
     </div>
 <span id="final"></span>
+
+<style>
+    /* Homologado al legacy (cliente.php + ideasweb.css .tableM): fuente Tahoma
+       compacta, cabecera en mayúsculas, columnas ajustadas al contenido en una
+       sola línea y scroll horizontal (.table-responsive) si excede el ancho.
+       Se conserva el zebra (table-striped) que también usa el legacy. */
+    .clients-legacy { font-family: Tahoma, Verdana, Geneva, sans-serif; }
+    .clients-legacy th, .clients-legacy td {
+        padding: 3px 6px; vertical-align: middle; white-space: nowrap;
+    }
+    .clients-legacy td { font-size: 12px; }
+    .clients-legacy th { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; }
+    /* Nombres Apellidos: puede ser largo → envuelve con tope, como el legacy. */
+    .clients-legacy th.col-wrap, .clients-legacy td.col-wrap {
+        white-space: normal; min-width: 180px; max-width: 300px;
+    }
+</style>
 </div>
