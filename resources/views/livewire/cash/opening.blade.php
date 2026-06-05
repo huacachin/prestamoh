@@ -105,7 +105,7 @@
                     </div>
                     <div class="table-responsive d-none d-md-block"
                          id="tabla-apertura" style="max-height: 500px; overflow-y: auto;">
-                        <table class="table table-bordered table-striped table-hover" style="font-size: 11px;">
+                        <table class="table table-bordered table-striped table-hover">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
                                     <th class="text-center" width="50">Id</th>

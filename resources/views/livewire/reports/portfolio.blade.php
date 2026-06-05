@@ -96,7 +96,7 @@
 
                     {{-- TABLA DETALLE --}}
                     <div id="tabla-cartera" class="table-responsive" style="max-height: 70vh; overflow: auto;">
-                        <table class="table table-bordered table-striped table-hover table-nowrap" style="font-size: 11px;">
+                        <table class="table table-bordered table-striped table-hover table-nowrap">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
                                     <th rowspan="2" class="text-center align-middle" width="40">N°</th>

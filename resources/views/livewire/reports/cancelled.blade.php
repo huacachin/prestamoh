@@ -112,7 +112,7 @@
                              semántico (verde refinanciado / amarillo pendiente / rojo capital
                              pendiente) deben conservar su color: el CSS de más abajo hace que esas
                              filas (las únicas con background-color inline) ignoren el rayado. --}}
-                        <table class="table table-bordered table-striped table-hover table-nowrap" style="font-size: 11px;">
+                        <table class="table table-bordered table-striped table-hover table-nowrap">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
                                     <th rowspan="2" colspan="2" class="text-center">N°</th>

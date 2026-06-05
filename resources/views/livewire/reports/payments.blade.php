@@ -83,7 +83,7 @@
 
                     {{-- Tabla --}}
                     <div id="tabla-pagos-rep" class="table-responsive" style="max-height: 650px; overflow:auto;">
-                        <table class="table table-bordered table-striped table-hover table-autofit" style="font-size: 11px;">
+                        <table class="table table-bordered table-striped table-hover table-autofit">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
                                     <th class="text-center" style="background:#949696;">Nº</th>

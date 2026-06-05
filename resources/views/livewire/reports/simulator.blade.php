@@ -80,7 +80,7 @@
 
                             @foreach($bloques as $bloque)
                                 @php [$from, $to] = $bloque; @endphp
-                                <table class="table table-bordered table-sm mb-2 sim-table" style="font-size: 11px;">
+                                <table class="table table-bordered table-sm mb-2 sim-table">
                                     <thead>
                                         <tr>
                                             <th colspan="2" class="text-center" style="background-color:#5bc0de;">Monto</th>
@@ -118,7 +118,7 @@
 
                             @foreach($bloques as $bloque)
                                 @php [$from, $to] = $bloque; @endphp
-                                <table class="table table-bordered table-sm mb-2 sim-table" style="font-size: 11px;">
+                                <table class="table table-bordered table-sm mb-2 sim-table">
                                     <thead>
                                         <tr>
                                             <th colspan="2" class="text-center" style="background-color:#5bc0de;">Monto</th>
