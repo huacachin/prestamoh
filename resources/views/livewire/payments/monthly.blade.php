@@ -108,7 +108,7 @@
                                             @endphp
                                             <td style="{{ $style }}">
                                                 @if($cuota['fecha'])
-                                                    <small style="font-size:9px;">{{ substr($cuota['fecha'], 5) }}</small><br>
+                                                    <small style="font-size:9px;">{{ $cuota['fecha'] }}</small><br>
                                                     {{ number_format($cuota['monto'], 2) }}
                                                 @endif
                                             </td>
