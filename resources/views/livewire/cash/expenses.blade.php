@@ -104,7 +104,7 @@
                     {{-- Tabla Desktop con FAB scroll --}}
                     <div class="position-relative d-none d-md-block">
                         <div id="expensesTable" class="table-responsive" style="max-height: 70vh; overflow: auto;">
-                        <table class="table table-bordered table-hover table-autofit expenses-legacy" style="font-size: 11px;">
+                        <table class="table table-bordered table-hover table-autofit expenses-legacy">
                             <thead style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
                                     <th class="text-center" width="7%" style="background:#949696;">Op.</th>
@@ -244,10 +244,15 @@
                     <style>
                         /* Colores legacy (gastos.php): cabecera azul/gris, filas blanco/#F2F2EC */
                         .expenses-legacy thead th { color: #fff; }
-                        /* Densidad como el legacy (gastos.php): padding 5px 10px, alineado arriba.
-                           Los anchos van en % por columna (escalan en baja resolución); A y Motivo
-                           quedan sin ancho y absorben el sobrante, igual que el legacy. */
-                        .expenses-legacy th, .expenses-legacy td { padding: 5px 10px; vertical-align: top; }
+                        /* Homologado al legacy (gastos.php + ideasweb.css .texto/.tableM): fuente
+                           Tahoma compacta — filas 12px, cabecera 10px mayúsculas. Con los anchos en %
+                           esto reproduce el ancho de texto del sistema viejo y evita el salto a 2
+                           líneas que provoca la fuente (más ancha) del tema. A y Motivo van sin ancho
+                           (absorben el sobrante), igual que el legacy. */
+                        .expenses-legacy { font-family: Tahoma, Verdana, Geneva, sans-serif; }
+                        .expenses-legacy th, .expenses-legacy td { padding: 3px 6px; vertical-align: top; }
+                        .expenses-legacy td { font-size: 12px; }
+                        .expenses-legacy th { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; }
                         /* tfoot legacy: texto negro sobre fondo claro (no azul) */
                         .expenses-legacy tfoot.expenses-foot td {
                             color: #000;

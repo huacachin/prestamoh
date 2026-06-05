@@ -104,7 +104,7 @@
                     {{-- Tabla Desktop con FAB scroll --}}
                     <div class="position-relative d-none d-md-block">
                         <div id="incomesTable" class="table-responsive" style="max-height: 70vh; overflow: auto;">
-                        <table class="table table-bordered table-hover table-autofit incomes-legacy" style="font-size: 11px;">
+                        <table class="table table-bordered table-hover table-autofit incomes-legacy">
                             <thead style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
                                     <th class="text-center" width="7%" style="background:#949696;">Op</th>
@@ -245,10 +245,15 @@
                     <style>
                         /* Colores legacy (ingresos.php): cabecera azul/gris, filas blanco/#F2F2EC */
                         .incomes-legacy thead th { color: #fff; }
-                        /* Densidad como el legacy (ingresos.php): padding 5px 10px, alineado arriba.
-                           Los anchos van en % por columna (escalan en baja resolución); A y Motivo
-                           quedan sin ancho y absorben el sobrante, igual que el legacy. */
-                        .incomes-legacy th, .incomes-legacy td { padding: 5px 10px; vertical-align: top; }
+                        /* Homologado al legacy (ingresos.php + ideasweb.css .texto/.tableM): fuente
+                           Tahoma compacta — filas 12px, cabecera 10px mayúsculas. Con los anchos en %
+                           reproduce el ancho de texto del sistema viejo y evita el salto a 2 líneas
+                           que provoca la fuente (más ancha) del tema. A y Motivo van sin ancho
+                           (absorben el sobrante), igual que el legacy. */
+                        .incomes-legacy { font-family: Tahoma, Verdana, Geneva, sans-serif; }
+                        .incomes-legacy th, .incomes-legacy td { padding: 3px 6px; vertical-align: top; }
+                        .incomes-legacy td { font-size: 12px; }
+                        .incomes-legacy th { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; }
                         /* tfoot legacy: texto negro sobre fondo claro */
                         .incomes-legacy tfoot.incomes-foot td {
                             color: #000;
