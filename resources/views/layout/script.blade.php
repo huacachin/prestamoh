@@ -36,13 +36,39 @@ document.addEventListener('click', function (e) {
     var isCont = btn.getAttribute('data-scroll-cont') === '1';
     var el = document.querySelector(sel);
     if (!el) { console.warn('[scroll-bottom-btn] no se encontró', sel); return; }
+
+    // Toggle: si estás arriba → baja; si estás cerca del fondo → vuelve arriba.
+    var icon = btn.querySelector('i');
+    var setDir = function (dir) {
+        if (icon) {
+            icon.classList.toggle('ti-chevron-down', dir === 'down');
+            icon.classList.toggle('ti-chevron-up', dir === 'up');
+        }
+        // El ícono muestra la acción del PRÓXIMO clic.
+        btn.setAttribute('title', dir === 'up' ? 'Volver al inicio' : 'Ir al final');
+    };
+
     if (isCont) {
-        // scrollTop directo: más compatible que scrollTo({behavior:smooth}) en
-        // contenedores con overflow horizontal + vertical (algunos browsers no
-        // animan correctamente cuando hay ambos).
-        el.scrollTop = el.scrollHeight;
+        var nearBottom = (el.scrollTop + el.clientHeight) >= (el.scrollHeight - 8);
+        if (nearBottom) {
+            el.scrollTop = 0;
+            setDir('down');
+        } else {
+            // scrollTop directo: más compatible que scrollTo({behavior:smooth}) en
+            // contenedores con overflow horizontal + vertical.
+            el.scrollTop = el.scrollHeight;
+            setDir('up');
+        }
     } else {
-        el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        var doc = document.documentElement;
+        var nearBottomDoc = (window.innerHeight + window.scrollY) >= (doc.scrollHeight - 8);
+        if (nearBottomDoc) {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            setDir('down');
+        } else {
+            el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            setDir('up');
+        }
     }
 });
 

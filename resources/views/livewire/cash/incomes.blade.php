@@ -90,7 +90,6 @@
                                class="btn btn-sm btn-success">
                                 <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
                             </a>
-                                <x-scroll-bottom-btn scrollable="#incomesTable" />
                         </div>
                     </form>
 
@@ -225,18 +224,13 @@
                         </table>
                         </div>{{-- /#incomesTable --}}
 
-                        {{-- Botones flotantes para scroll dentro de la tabla --}}
+                        {{-- Botón flotante toggle para scroll dentro de la tabla (1er clic baja, 2do sube) --}}
                         <div class="incomes-fab">
                             <button type="button"
-                                    class="btn btn-sm btn-dark rounded-circle shadow"
-                                    title="Ir al inicio"
-                                    onclick="document.getElementById('incomesTable').scrollTo({top:0, behavior:'smooth'})">
-                                <i class="ti ti-chevron-up"></i>
-                            </button>
-                            <button type="button"
                                     class="btn btn-sm btn-primary rounded-circle shadow"
-                                    title="Ver totales (ir al final)"
-                                    onclick="document.getElementById('incomesTable').scrollTo({top:document.getElementById('incomesTable').scrollHeight, behavior:'smooth'})">
+                                    data-scroll-sel="#incomesTable"
+                                    data-scroll-cont="1"
+                                    title="Ir al final">
                                 <i class="ti ti-chevron-down"></i>
                             </button>
                         </div>
