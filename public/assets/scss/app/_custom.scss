@@ -8,13 +8,13 @@ table {
     width: 100%;
 }
 
-// --- Tamaño de letra UNIFORME en todas las tablas: 10px ---
-// Gana sobre los tamaños por-tabla (12px legacy, 11px inline) para que todos los
-// textos de las tablas se vean del mismo tamaño. Los badges/botones conservan el
-// suyo (tienen su propia regla).
+// --- Tamaño de letra UNIFORME en todas las tablas: 12px ---
+// 12px = como el .texto del legacy. El cliente usa el navegador al 75%, así que a
+// 10px se le veía demasiado chico (~7.5px efectivos); 12px lo deja como el sistema
+// viejo. Los badges/botones conservan el suyo (tienen su propia regla).
 table.table th,
 table.table td {
-    font-size: 10px !important;
+    font-size: 12px !important;
 }
 
 // --- Listados: tabla siempre al 100%, columnas dimensionadas por contenido ---
