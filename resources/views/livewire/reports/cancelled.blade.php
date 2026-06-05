@@ -108,10 +108,11 @@
 
                     {{-- Tabla principal --}}
                     <div id="tabla-cancelados" class="table-responsive" style="max-height: 650px; overflow:auto;">
-                        {{-- Sin table-striped: el reporte colorea filas por estado (verde refinanciado /
-                             amarillo pendiente / rojo capital pendiente), igual que el legacy. El zebra de
-                             Bootstrap superpone una capa en las celdas impares que distorsiona esos colores. --}}
-                        <table class="table table-bordered table-hover table-nowrap" style="font-size: 11px;">
+                        {{-- Zebra (table-striped) para legibilidad, PERO las filas con color
+                             semántico (verde refinanciado / amarillo pendiente / rojo capital
+                             pendiente) deben conservar su color: el CSS de más abajo hace que esas
+                             filas (las únicas con background-color inline) ignoren el rayado. --}}
+                        <table class="table table-bordered table-striped table-hover table-nowrap" style="font-size: 11px;">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
                                     <th rowspan="2" colspan="2" class="text-center">N°</th>
@@ -240,4 +241,14 @@
         </div>
     </div>
 <span id="final"></span>
+
+{{-- Las filas con color de estado (las únicas que llevan background-color inline)
+     anulan el zebra de Bootstrap, que de otro modo las pintaría de gris en las filas
+     impares. Las filas sin color mantienen el rayado normal. --}}
+<style>
+    #tabla-cancelados tbody tr[style*="background-color"] > * {
+        background-color: inherit !important;
+        color: inherit !important;
+    }
+</style>
 </div>
