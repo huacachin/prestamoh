@@ -108,7 +108,10 @@
 
                     {{-- Tabla principal --}}
                     <div id="tabla-cancelados" class="table-responsive" style="max-height: 650px; overflow:auto;">
-                        <table class="table table-bordered table-striped table-hover table-nowrap" style="font-size: 11px;">
+                        {{-- Sin table-striped: el reporte colorea filas por estado (verde refinanciado /
+                             amarillo pendiente / rojo capital pendiente), igual que el legacy. El zebra de
+                             Bootstrap superpone una capa en las celdas impares que distorsiona esos colores. --}}
+                        <table class="table table-bordered table-hover table-nowrap" style="font-size: 11px;">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
                                     <th rowspan="2" colspan="2" class="text-center">N°</th>
