@@ -107,15 +107,15 @@
                         <table class="table table-bordered table-hover table-autofit incomes-legacy">
                             <thead style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
-                                    <th class="text-center" width="7%" style="background:#949696;">Op</th>
-                                    <th class="text-center" width="8%" style="background:#005F8C;">N°</th>
-                                    <th class="text-center" width="3%" style="background:#949696;"><i class="ti ti-camera"></i></th>
-                                    <th class="text-center" width="13%" style="background:#005F8C;">Fecha</th>
-                                    <th class="text-center" width="8%" style="background:#949696;">Usuario</th>
-                                    <th class="text-center" width="10%" style="background:#005F8C;">Asesor</th>
+                                    <th class="text-center" style="background:#949696;">Op</th>
+                                    <th class="text-center" style="background:#005F8C;">N°</th>
+                                    <th class="text-center" style="background:#949696;"><i class="ti ti-camera"></i></th>
+                                    <th class="text-center" style="background:#005F8C;">Fecha</th>
+                                    <th class="text-center" style="background:#949696;">Usuario</th>
+                                    <th class="text-center" style="background:#005F8C;">Asesor</th>
                                     <th class="text-center" style="background:#949696;">A</th>
-                                    <th style="background:#005F8C;">Motivo</th>
-                                    <th class="text-end" width="10%" style="background:#949696;">S/.</th>
+                                    <th class="col-wrap" style="background:#005F8C;">Motivo</th>
+                                    <th class="text-end" style="background:#949696;">S/.</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -173,7 +173,7 @@
                                     <td>{{ $row['usuario'] }}</td>
                                     <td>{{ $row['asesor'] }}</td>
                                     <td class="text-center">{{ $row['reason'] }}</td>
-                                    <td>{{ $row['detail'] }}</td>
+                                    <td class="col-wrap">{{ $row['detail'] }}</td>
                                     <td class="text-end fw-bold">{{ number_format($row['total'], 2) }}</td>
                                 </tr>
                             @empty
@@ -251,9 +251,18 @@
                            que provoca la fuente (más ancha) del tema. A y Motivo van sin ancho
                            (absorben el sobrante), igual que el legacy. */
                         .incomes-legacy { font-family: Tahoma, Verdana, Geneva, sans-serif; }
-                        .incomes-legacy th, .incomes-legacy td { padding: 3px 6px; vertical-align: top; }
+                        /* Cada columna se dimensiona a su contenido (tbody) en una sola línea; si la
+                           tabla excede el ancho, el contenedor .table-responsive da scroll horizontal
+                           (igual que el .table-scroll del legacy). Sin anchos en % que aprieten. */
+                        .incomes-legacy th, .incomes-legacy td {
+                            padding: 3px 6px; vertical-align: top; white-space: nowrap;
+                        }
                         .incomes-legacy td { font-size: 12px; }
                         .incomes-legacy th { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; }
+                        /* Motivo/Detalle: texto largo → envuelve (como el legacy), con tope de ancho. */
+                        .incomes-legacy th.col-wrap, .incomes-legacy td.col-wrap {
+                            white-space: normal; min-width: 180px; max-width: 320px;
+                        }
                         /* tfoot legacy: texto negro sobre fondo claro */
                         .incomes-legacy tfoot.incomes-foot td {
                             color: #000;

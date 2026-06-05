@@ -107,16 +107,16 @@
                         <table class="table table-bordered table-hover table-autofit expenses-legacy">
                             <thead style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
-                                    <th class="text-center" width="7%" style="background:#949696;">Op.</th>
-                                    <th class="text-center" width="13%" style="background:#005F8C;">N°</th>
-                                    <th class="text-center" width="3%" style="background:#949696;"><i class="ti ti-camera"></i></th>
-                                    <th class="text-center" width="13%" style="background:#005F8C;">Fecha</th>
-                                    <th class="text-center" width="8%" style="background:#949696;">Usuario</th>
+                                    <th class="text-center" style="background:#949696;">Op.</th>
+                                    <th class="text-center" style="background:#005F8C;">N°</th>
+                                    <th class="text-center" style="background:#949696;"><i class="ti ti-camera"></i></th>
+                                    <th class="text-center" style="background:#005F8C;">Fecha</th>
+                                    <th class="text-center" style="background:#949696;">Usuario</th>
                                     <th class="text-center" style="background:#005F8C;">A</th>
-                                    <th style="background:#949696;">Motivo</th>
-                                    <th class="text-end" width="10%" style="background:#005F8C;">S/.</th>
-                                    <th class="text-center" width="10%" style="background:#949696;">T.Comp.</th>
-                                    <th class="text-center" width="10%" style="background:#005F8C;">Respons.</th>
+                                    <th class="col-wrap" style="background:#949696;">Motivo</th>
+                                    <th class="text-end" style="background:#005F8C;">S/.</th>
+                                    <th class="text-center" style="background:#949696;">T.Comp.</th>
+                                    <th class="text-center" style="background:#005F8C;">Respons.</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -170,7 +170,7 @@
                                     <td class="text-center">{{ $expense->date?->format('d/m/Y') }}</td>
                                     <td>{{ $expense->user?->username ?? $expense->user?->name ?? '-' }}</td>
                                     <td class="text-center">{{ $expense->reason }}</td>
-                                    <td>{{ $expense->detail }}</td>
+                                    <td class="col-wrap">{{ $expense->detail }}</td>
                                     <td class="text-end fw-bold">{{ number_format($expense->total, 2) }}</td>
                                     <td class="text-center">{{ $expense->document_type }}</td>
                                     <td>{{ $expense->in_charge }}</td>
@@ -250,9 +250,18 @@
                            líneas que provoca la fuente (más ancha) del tema. A y Motivo van sin ancho
                            (absorben el sobrante), igual que el legacy. */
                         .expenses-legacy { font-family: Tahoma, Verdana, Geneva, sans-serif; }
-                        .expenses-legacy th, .expenses-legacy td { padding: 3px 6px; vertical-align: top; }
+                        /* Cada columna se dimensiona a su contenido (tbody) en una sola línea; si la
+                           tabla excede el ancho, el contenedor .table-responsive da scroll horizontal
+                           (igual que el .table-scroll del legacy). Sin anchos en % que aprieten. */
+                        .expenses-legacy th, .expenses-legacy td {
+                            padding: 3px 6px; vertical-align: top; white-space: nowrap;
+                        }
                         .expenses-legacy td { font-size: 12px; }
                         .expenses-legacy th { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; }
+                        /* Motivo/Detalle: texto largo → envuelve (como el legacy), con tope de ancho. */
+                        .expenses-legacy th.col-wrap, .expenses-legacy td.col-wrap {
+                            white-space: normal; min-width: 180px; max-width: 320px;
+                        }
                         /* tfoot legacy: texto negro sobre fondo claro (no azul) */
                         .expenses-legacy tfoot.expenses-foot td {
                             color: #000;
