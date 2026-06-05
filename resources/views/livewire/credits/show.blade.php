@@ -147,6 +147,24 @@
                         </tr>
                     @endforeach
                     </tbody>
+                    @php
+                        $tCap    = $credit->installments->sum('importe_cuota');
+                        $tInt    = $credit->installments->sum('importe_interes');
+                        $tPagCap = $credit->installments->sum('importe_aplicado');
+                        $tPagInt = $credit->installments->sum('interes_aplicado');
+                        $tSaldo  = $credit->installments->sum(fn ($i) => $i->saldoPendiente());
+                    @endphp
+                    <tfoot>
+                        <tr class="fw-bold" style="background:#f0f0f0;">
+                            <td colspan="2" class="text-end">Totales</td>
+                            <td class="text-end">{{ number_format($tCap, 2) }}</td>
+                            <td class="text-end">{{ number_format($tInt, 2) }}</td>
+                            <td class="text-end">{{ number_format($tPagCap, 2) }}</td>
+                            <td class="text-end">{{ number_format($tPagInt, 2) }}</td>
+                            <td class="text-end">{{ number_format($tSaldo, 2) }}</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
         </div>
@@ -212,6 +230,29 @@
                         </tr>
                     @endforelse
                     </tbody>
+                    @if($credit->massDeletions->count())
+                        @php
+                            $pC = $pI = $pM = $pTot = 0;
+                            foreach ($credit->massDeletions as $m) {
+                                foreach ($m->details as $d) {
+                                    if ($d->tipo === 'C') $pC += (float) $d->amount;
+                                    elseif ($d->tipo === 'I') $pI += (float) $d->amount;
+                                    elseif ($d->tipo === 'M') $pM += (float) $d->amount;
+                                }
+                                $pTot += (float) $m->amount;
+                            }
+                        @endphp
+                        <tfoot>
+                            <tr class="fw-bold" style="background:#f0f0f0;">
+                                <td colspan="3" class="text-end">Totales</td>
+                                <td class="text-end">{{ number_format($pC, 2) }}</td>
+                                <td class="text-end">{{ number_format($pI, 2) }}</td>
+                                <td class="text-end">{{ number_format($pM, 2) }}</td>
+                                <td class="text-end">{{ number_format($pTot, 2) }}</td>
+                                <td colspan="2"></td>
+                            </tr>
+                        </tfoot>
+                    @endif
                 </table>
             </div>
         </div>
