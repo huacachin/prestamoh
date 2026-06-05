@@ -252,8 +252,7 @@
     .clients-legacy th, .clients-legacy td {
         padding: 3px 6px; vertical-align: middle; white-space: nowrap;
     }
-    .clients-legacy td { font-size: 12px; }
-    .clients-legacy th { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; }
+    .clients-legacy th { text-transform: uppercase; letter-spacing: .5px; }
     /* Nombres Apellidos: puede ser largo → envuelve con tope, como el legacy. */
     .clients-legacy th.col-wrap, .clients-legacy td.col-wrap {
         white-space: normal; min-width: 180px; max-width: 300px;

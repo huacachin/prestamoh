@@ -8,6 +8,15 @@ table {
     width: 100%;
 }
 
+// --- Tamaño de letra UNIFORME en todas las tablas: 10px ---
+// Gana sobre los tamaños por-tabla (12px legacy, 11px inline) para que todos los
+// textos de las tablas se vean del mismo tamaño. Los badges/botones conservan el
+// suyo (tienen su propia regla).
+table.table th,
+table.table td {
+    font-size: 10px !important;
+}
+
 // --- Listados: tabla siempre al 100%, columnas dimensionadas por contenido ---
 // Replica el comportamiento del legacy (table-layout: auto, sin min-width forzado):
 // la tabla llena la tarjeta y reparte el ancho según el contenido de cada columna.

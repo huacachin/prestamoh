@@ -257,8 +257,7 @@
                         .incomes-legacy th, .incomes-legacy td {
                             padding: 3px 6px; vertical-align: top; white-space: nowrap;
                         }
-                        .incomes-legacy td { font-size: 12px; }
-                        .incomes-legacy th { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; }
+                        .incomes-legacy th { text-transform: uppercase; letter-spacing: .5px; }
                         /* Motivo/Detalle: texto largo → envuelve (como el legacy), con tope de ancho. */
                         .incomes-legacy th.col-wrap, .incomes-legacy td.col-wrap {
                             white-space: normal; min-width: 180px; max-width: 320px;
