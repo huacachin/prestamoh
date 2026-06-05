@@ -11,7 +11,9 @@ use Livewire\Component;
 class Weekly extends Component
 {
     public $ejecutivo = 'Todos';
+
     public $eestado = 'Vigente'; // Vigente | Cancelado | Vencida
+
     public $codio1 = '';
 
     public function search() {}
@@ -30,7 +32,7 @@ class Weekly extends Component
             $query->where('situacion', 'Cancelado');
         } elseif ($this->eestado === 'Vencida') {
             $query->where('situacion', 'Activo')
-                  ->where('fecha_vencimiento', '<', $today);
+                ->where('fecha_vencimiento', '<', $today);
         }
 
         if ($this->ejecutivo !== 'Todos' && $this->ejecutivo !== '') {
@@ -51,7 +53,7 @@ class Weekly extends Component
         $minInstByCredit = [];     // [credit_id] = min fecha_pago de installments
         $otrosByCredit = [];       // [credit_id] = pagos before m1
 
-        if (!empty($creditIds)) {
+        if (! empty($creditIds)) {
             $allIns = DB::table('credit_installments')
                 ->whereIn('credit_id', $creditIds)
                 ->orderBy('credit_id')->orderBy('num_cuota')
@@ -60,13 +62,16 @@ class Weekly extends Component
                 $totalInsByCredit[$ins->credit_id] = ($totalInsByCredit[$ins->credit_id] ?? 0) + 1;
                 $montoSaldoByCredit[$ins->credit_id] = ($montoSaldoByCredit[$ins->credit_id] ?? 0)
                     + (float) $ins->importe_aplicado + (float) $ins->interes_aplicado;
-                if (!$ins->pagado) {
-                    if (!isset($unpaidByCredit[$ins->credit_id]) || count($unpaidByCredit[$ins->credit_id]) < 12) {
+                if (! $ins->pagado) {
+                    if (! isset($unpaidByCredit[$ins->credit_id]) || count($unpaidByCredit[$ins->credit_id]) < 12) {
                         $unpaidByCredit[$ins->credit_id][] = $ins;
                     }
                 }
-                if ($ins->fecha_pago) {
-                    $f = Carbon::parse($ins->fecha_pago)->format('Y-m-d');
+                // Legacy m1 = MIN(fechapago) = primera fecha PROGRAMADA de la cuota.
+                // En Laravel la fecha programada es fecha_vencimiento (fecha_pago es la
+                // fecha de pago REAL y está NULL en cuotas pendientes).
+                if ($ins->fecha_vencimiento) {
+                    $f = Carbon::parse($ins->fecha_vencimiento)->format('Y-m-d');
                     $minInstByCredit[$ins->credit_id] = isset($minInstByCredit[$ins->credit_id])
                         ? min($minInstByCredit[$ins->credit_id], $f)
                         : $f;
@@ -91,13 +96,21 @@ class Weekly extends Component
 
             foreach ($paysByCredit as $cid => $pays) {
                 $minF = $minInstByCredit[$cid] ?? null;
-                $sum = 0;
+                // Legacy pagossemanas.php: OTROS = tgm1 + tgm2.
+                //   tgm1 = pagos >= 2019-01-01 y < primera cuota (m1)
+                //   tgm2 = pagos con fecha FUTURA (> hoy)   <-- esto faltaba
+                // Se suman por separado (igual que el legacy, dos SUM independientes).
+                $sum1 = 0;
+                $sum2 = 0;
                 foreach ($pays as $pp) {
                     if ($pp['fecha'] >= '2019-01-01' && $minF && $pp['fecha'] < $minF) {
-                        $sum += $pp['monto'];
+                        $sum1 += $pp['monto'];
+                    }
+                    if ($pp['fecha'] > $today) {
+                        $sum2 += $pp['monto'];
                     }
                 }
-                $otrosByCredit[$cid] = $sum;
+                $otrosByCredit[$cid] = $sum1 + $sum2;
             }
         }
 
@@ -107,7 +120,7 @@ class Weekly extends Component
             'pagado' => 0, 'mora' => 0, 'otros' => 0, 'saldo' => 0,
         ];
         $sub = [
-            'mora'   => ['n' => 0, 'capital' => 0, 'interes' => 0, 'apagar' => 0, 'cuota' => 0, 'pagado' => 0, 'mora' => 0, 'otros' => 0, 'saldo' => 0],
+            'mora' => ['n' => 0, 'capital' => 0, 'interes' => 0, 'apagar' => 0, 'cuota' => 0, 'pagado' => 0, 'mora' => 0, 'otros' => 0, 'saldo' => 0],
             'activo' => ['n' => 0, 'capital' => 0, 'interes' => 0, 'apagar' => 0, 'cuota' => 0, 'pagado' => 0, 'mora' => 0, 'otros' => 0, 'saldo' => 0],
         ];
 
@@ -133,23 +146,28 @@ class Weekly extends Component
             // 12 columnas de cuotas pendientes
             $cuotaCols = [];
             foreach ($unpaid as $ins) {
-                $fechaPago = $ins->fecha_pago ? Carbon::parse($ins->fecha_pago)->format('Y-m-d') : '';
+                // Fecha PROGRAMADA de la cuota (legacy fechapago). En Laravel es
+                // fecha_vencimiento; fecha_pago está NULL en cuotas pendientes (por eso
+                // las 12 columnas salían vacías).
+                $fechaPago = $ins->fecha_vencimiento ? Carbon::parse($ins->fecha_vencimiento)->format('Y-m-d') : '';
                 $aplicadoTotal = (float) $ins->importe_aplicado + (float) $ins->interes_aplicado;
                 $mcuotas = (float) $ins->importe_cuota + (float) $ins->importe_aplicado;
 
                 $bg = '';
                 $color = '';
                 if ($fechaPago && $fechaPago < $today && (float) $ins->importe_aplicado < $mcuotas) {
-                    $bg = 'red'; $color = 'white';
+                    $bg = 'red';
+                    $color = 'white';
                 } elseif ($fechaPago === $today) {
-                    $bg = 'yellow'; $color = 'black';
+                    $bg = 'yellow';
+                    $color = 'black';
                 }
 
                 $cuotaCols[] = [
-                    'fecha'  => $fechaPago,
-                    'monto'  => $aplicadoTotal,
-                    'bg'     => $bg,
-                    'color'  => $color,
+                    'fecha' => $fechaPago,
+                    'monto' => $aplicadoTotal,
+                    'bg' => $bg,
+                    'color' => $color,
                 ];
             }
             while (count($cuotaCols) < 12) {
@@ -158,62 +176,62 @@ class Weekly extends Component
 
             $cli = $c->client;
             $rows[] = [
-                'n'           => $n,
-                'fecha_pres'  => $c->fecha_prestamo?->format('Y-m-d'),
-                'fecha_venc'  => $c->fecha_vencimiento?->format('Y-m-d'),
-                'expediente'  => $cli?->expediente,
-                'has_imagen'  => !empty($cli?->imagen),
-                'codigo'      => $c->id,
-                'cuotas'      => $c->cuotas,
-                'dni'         => $cli?->documento,
-                'cliente'     => trim(($cli?->apellido_pat ?? '') . ' ' . ($cli?->apellido_mat ?? '') . ' ' . ($cli?->nombre ?? '')),
-                'capital'     => $importe,
+                'n' => $n,
+                'fecha_pres' => $c->fecha_prestamo?->format('Y-m-d'),
+                'fecha_venc' => $c->fecha_vencimiento?->format('Y-m-d'),
+                'expediente' => $cli?->expediente,
+                'has_imagen' => ! empty($cli?->imagen),
+                'codigo' => $c->id,
+                'cuotas' => $c->cuotas,
+                'dni' => $cli?->documento,
+                'cliente' => trim(($cli?->apellido_pat ?? '').' '.($cli?->apellido_mat ?? '').' '.($cli?->nombre ?? '')),
+                'capital' => $importe,
                 'interes_pct' => round($interesPct, 0),
-                'interes'     => $interTotal,
-                'apagar'      => $aPagar,
-                'cuota'       => $cuotaCob,
+                'interes' => $interTotal,
+                'apagar' => $aPagar,
+                'cuota' => $cuotaCob,
                 'cuotas_cols' => $cuotaCols,
-                'pagado'      => $montoSaldo,
-                'mora'        => $mora,
-                'otros'       => $otros,
-                'saldo'       => $saldo,
+                'pagado' => $montoSaldo,
+                'mora' => $mora,
+                'otros' => $otros,
+                'saldo' => $saldo,
             ];
 
             $tot['capital'] += $importe;
             $tot['interes'] += $interTotal;
-            $tot['apagar']  += $aPagar;
-            $tot['cuota']   += $cuotaCob;
-            $tot['pagado']  += $montoSaldo;
-            $tot['mora']    += $mora;
-            $tot['otros']   += $otros;
-            $tot['saldo']   += $saldo;
+            $tot['apagar'] += $aPagar;
+            $tot['cuota'] += $cuotaCob;
+            $tot['pagado'] += $montoSaldo;
+            $tot['mora'] += $mora;
+            $tot['otros'] += $otros;
+            $tot['saldo'] += $saldo;
 
             $vencido = $c->fecha_vencimiento?->format('Y-m-d');
             $bucket = ($vencido && $vencido < $today && $saldo > 0) ? 'mora' : 'activo';
             $sub[$bucket]['n']++;
             $sub[$bucket]['capital'] += $importe;
             $sub[$bucket]['interes'] += $interTotal;
-            $sub[$bucket]['apagar']  += $aPagar;
-            $sub[$bucket]['cuota']   += $cuotaCob;
-            $sub[$bucket]['pagado']  += $montoSaldo;
-            $sub[$bucket]['mora']    += $mora;
-            $sub[$bucket]['otros']   += $otros;
-            $sub[$bucket]['saldo']   += $saldo;
+            $sub[$bucket]['apagar'] += $aPagar;
+            $sub[$bucket]['cuota'] += $cuotaCob;
+            $sub[$bucket]['pagado'] += $montoSaldo;
+            $sub[$bucket]['mora'] += $mora;
+            $sub[$bucket]['otros'] += $otros;
+            $sub[$bucket]['saldo'] += $saldo;
         }
 
         $morosidadPct = $tot['saldo'] > 0 ? ($sub['mora']['saldo'] * 100) / $tot['saldo'] : 0;
-        $activosPct   = $tot['saldo'] > 0 ? ($sub['activo']['saldo'] * 100) / $tot['saldo'] : 0;
+        $activosPct = $tot['saldo'] > 0 ? ($sub['activo']['saldo'] * 100) / $tot['saldo'] : 0;
 
         $asesores = User::orderBy('name')->get(['id', 'name']);
 
         return view('livewire.payments.weekly', [
-            'rows'         => $rows,
-            'tot'          => $tot,
-            'sub'          => $sub,
+            'rows' => $rows,
+            'tot' => $tot,
+            'sub' => $sub,
             'morosidadPct' => $morosidadPct,
-            'activosPct'   => $activosPct,
-            'asesores'     => $asesores,
-            'today'        => $today,
+            'activosPct' => $activosPct,
+            'asesores' => $asesores,
+            'today' => $today,
         ]);
     }
 }
