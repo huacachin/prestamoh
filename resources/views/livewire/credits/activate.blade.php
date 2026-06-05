@@ -48,7 +48,7 @@
                                             <div>
                                                 <span class="fw-bold text-primary">{{ $credit->id }}</span>
                                                 <span class="mx-1">-</span>
-                                                <span>{{ $credit->client?->nombre }} {{ $credit->client?->apellido_pat }} {{ $credit->client?->apellido_mat }}</span>
+                                                <span>{{ $credit->client?->apellido_pat }} {{ $credit->client?->apellido_mat }} {{ $credit->client?->nombre }}</span>
                                                 <small class="text-muted ms-2">({{ $credit->client?->documento }})</small>
                                             </div>
                                             <div class="text-end">
@@ -82,7 +82,7 @@
                         <hr>
                         <div class="alert alert-info d-flex flex-wrap gap-3 align-items-center mb-0">
                             <div><b>Crédito:</b> {{ $selectedCredit->id }}</div>
-                            <div><b>Cliente:</b> {{ $selectedCredit->client?->nombre }} {{ $selectedCredit->client?->apellido_pat }} {{ $selectedCredit->client?->apellido_mat }}</div>
+                            <div><b>Cliente:</b> {{ $selectedCredit->client?->apellido_pat }} {{ $selectedCredit->client?->apellido_mat }} {{ $selectedCredit->client?->nombre }}</div>
                             <div><b>DNI:</b> {{ $selectedCredit->client?->documento }}</div>
                             <div><b>Capital:</b> S/ {{ number_format($selectedCredit->importe, 2) }}</div>
                             <div><b>Cuotas:</b> {{ $selectedCredit->cuotas }}</div>

@@ -25,7 +25,7 @@ class Activate extends Component
 
         $credit = Credit::with('client:id,nombre,apellido_pat,apellido_mat,documento')->find($id);
         if ($credit) {
-            $this->search = $credit->id . ' - ' . ($credit->client?->nombre ?? '') . ' ' . ($credit->client?->apellido_pat ?? '');
+            $this->search = $credit->id . ' - ' . trim(($credit->client?->apellido_pat ?? '') . ' ' . ($credit->client?->apellido_mat ?? '') . ' ' . ($credit->client?->nombre ?? ''));
         }
     }
 

@@ -73,7 +73,7 @@
                                     <th class="text-center">Fecha</th>
                                     <th class="text-center">Usuario</th>
                                     <th class="text-center">Exp.</th>
-                                    <th class="text-center" width="220">Nombres Apellidos</th>
+                                    <th class="text-center" width="220">Apellidos y Nombres</th>
                                     <th class="text-center">DNI</th>
                                     <th class="text-center">Movil</th>
                                     <th class="text-center">Ruta</th>

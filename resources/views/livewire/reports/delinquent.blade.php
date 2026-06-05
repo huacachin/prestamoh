@@ -103,7 +103,7 @@
                                     <th rowspan="2" class="text-center align-middle" width="50">Exp</th>
                                     <th rowspan="2" class="text-center align-middle" width="60">Código</th>
                                     <th rowspan="2" class="text-center align-middle" width="80">DNI</th>
-                                    <th rowspan="2" width="200" class="text-center align-middle">Nombre y Apellidos</th>
+                                    <th rowspan="2" width="200" class="text-center align-middle">Apellidos y Nombres</th>
                                     <th rowspan="2" class="text-center align-middle" width="50">Dt.</th>
                                     <th rowspan="2" class="text-center align-middle" width="80">Capital</th>
                                     <th colspan="4" class="text-center">Interés</th>

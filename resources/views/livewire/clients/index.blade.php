@@ -76,7 +76,7 @@
                                     <th class="text-center">Fecha</th>
                                     <th class="text-center">Usuario</th>
                                     <th class="text-center">Exp.</th>
-                                    <th class="text-center col-wrap">Nombres Apellidos</th>
+                                    <th class="text-center col-wrap">Apellidos y Nombres</th>
                                     <th class="text-center">DNI</th>
                                     <th class="text-center">Movil</th>
                                     <th class="text-center">T.Credito</th>
@@ -252,7 +252,7 @@
     .clients-legacy th, .clients-legacy td {
         padding: 3px 6px; vertical-align: middle; white-space: nowrap;
     }
-    /* Nombres Apellidos: puede ser largo → envuelve con tope, como el legacy. */
+    /* Apellidos y Nombres: puede ser largo → envuelve con tope, como el legacy. */
     .clients-legacy th.col-wrap, .clients-legacy td.col-wrap {
         white-space: normal; min-width: 180px; max-width: 300px;
     }

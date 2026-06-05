@@ -26,7 +26,7 @@ class Client extends Model
 
     public function fullName(): string
     {
-        return trim("{$this->nombre} {$this->apellido_pat} {$this->apellido_mat}");
+        return trim("{$this->apellido_pat} {$this->apellido_mat} {$this->nombre}");
     }
 
     public function asesor(): BelongsTo

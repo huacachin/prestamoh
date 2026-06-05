@@ -36,7 +36,7 @@ class ChangeStatus extends Component
 
         $this->selectedId  = $id;
         $this->showDropdown = false;
-        $this->search = $credit->id . ' - ' . trim(($credit->client?->nombre ?? '') . ' ' . ($credit->client?->apellido_pat ?? ''));
+        $this->search = $credit->id . ' - ' . trim(($credit->client?->apellido_pat ?? '') . ' ' . ($credit->client?->apellido_mat ?? '') . ' ' . ($credit->client?->nombre ?? ''));
     }
 
     public function changeStatus(): void

@@ -151,7 +151,7 @@
                         <div class="col-md-6">
                             <label class="form-label mb-0 small fw-semibold">Nombre del aval</label>
                             <input type="text" class="form-control form-control-sm @error('nombre') is-invalid @enderror"
-                                   wire:model.defer="nombre" placeholder="Nombres y apellidos">
+                                   wire:model.defer="nombre" placeholder="Apellidos y nombres">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label mb-0 small fw-semibold">Teléfono</label>
