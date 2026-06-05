@@ -29,7 +29,7 @@ class CreateIncome extends Component
     // Precio por concepto (legacy: cargaconcepto.php)
     public $cantidad = 1;            // default 1
 
-    public $precio_unitario = 0;     // 0 = libre; >0 = del concepto (readonly)
+    public $precio_unitario = null;  // null/0 = libre; >0 = del concepto (readonly)
 
     // Permisos cacheados
     public bool $canEditDate = false;
@@ -55,7 +55,7 @@ class CreateIncome extends Component
         // Si cambian a Otros, limpiar reason (estaba con valor de Fijos quizás)
         $this->reason = '';
         $this->cantidad = 1;
-        $this->precio_unitario = 0;
+        $this->precio_unitario = null;
         $this->total = '';
         $this->resetErrorBag();
     }
@@ -67,7 +67,7 @@ class CreateIncome extends Component
     public function updatedReason(): void
     {
         if ($this->modo !== 'Fijos' || $this->reason === '') {
-            $this->precio_unitario = 0;
+            $this->precio_unitario = null;
 
             return;
         }
@@ -82,7 +82,7 @@ class CreateIncome extends Component
             $this->precio_unitario = $factor;
             $this->total = number_format($factor, 2, '.', '');
         } else {
-            $this->precio_unitario = 0;
+            $this->precio_unitario = null;
             $this->total = '';  // limpiar para que el usuario sepa que debe escribirlo
         }
     }
@@ -164,7 +164,7 @@ class CreateIncome extends Component
         $this->detail = '';
         $this->total = '';
         $this->cantidad = 1;
-        $this->precio_unitario = 0;
+        $this->precio_unitario = null;
         $this->files = [];
         if ($this->canChooseOtros) {
             $this->modo = '';

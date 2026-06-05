@@ -33,7 +33,7 @@ class CreateExpense extends Component
     // Precio por concepto (legacy: cargaconcepto.php)
     public $cantidad = 1;
 
-    public $precio_unitario = 0;
+    public $precio_unitario = null;
 
     // Permisos cacheados
     public bool $canEditDate = false;
@@ -59,7 +59,7 @@ class CreateExpense extends Component
     {
         $this->reason = '';
         $this->cantidad = 1;
-        $this->precio_unitario = 0;
+        $this->precio_unitario = null;
         $this->total = '';
         $this->resetErrorBag();
     }
@@ -70,7 +70,7 @@ class CreateExpense extends Component
     public function updatedReason(): void
     {
         if ($this->modo !== 'Fijos' || $this->reason === '') {
-            $this->precio_unitario = 0;
+            $this->precio_unitario = null;
 
             return;
         }
@@ -85,7 +85,7 @@ class CreateExpense extends Component
             $this->precio_unitario = $factor;
             $this->total = number_format($factor, 2, '.', '');
         } else {
-            $this->precio_unitario = 0;
+            $this->precio_unitario = null;
             $this->total = '';
         }
     }
@@ -167,7 +167,7 @@ class CreateExpense extends Component
         $this->document_type = '';
         $this->in_charge = '';
         $this->cantidad = 1;
-        $this->precio_unitario = 0;
+        $this->precio_unitario = null;
         $this->files = [];
         if ($this->canChooseOtros) {
             $this->modo = '';

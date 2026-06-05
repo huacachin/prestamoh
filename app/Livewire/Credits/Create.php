@@ -27,7 +27,7 @@ class Create extends Component
 
     public string $selecmoned = 'S'; // Moneda fija Soles
 
-    public $impopres = 0;            // Capital
+    public $impopres = null;         // Capital
 
     public string $selecano = '';    // Año
 
@@ -35,9 +35,9 @@ class Create extends Component
 
     public string $seletipl = '';    // Tipo planilla (1, 3, 4)
 
-    public $cuot = 0;                // Cuotas
+    public $cuot = null;             // Cuotas
 
-    public $inte = 0;                // % interés
+    public $inte = null;             // % interés
 
     public $moracc = 0;              // Mora Capital (auto)
 

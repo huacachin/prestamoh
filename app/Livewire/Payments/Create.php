@@ -15,9 +15,9 @@ class Create extends Component
 
     public string $fecpag = '';
 
-    public $monto = 0;            // editable, sin tipo estricto (admite "")
+    public $monto = null;         // editable, sin tipo estricto (admite "")
 
-    public $diasf = 0;            // editable, sin tipo estricto
+    public $diasf = null;         // editable, sin tipo estricto
 
     public bool $ckmora = false;
 
@@ -28,9 +28,9 @@ class Create extends Component
     public ?string $longitud = null;
 
     // Inputs adicionales del legacy
-    public $impointe2 = 0;        // editable
+    public $impointe2 = null;     // editable
 
-    public $impomora = 0;         // editable
+    public $impomora = null;      // editable
 
     public ?string $obs = null;
 

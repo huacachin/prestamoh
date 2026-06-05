@@ -3,45 +3,52 @@
 namespace App\Livewire\Concepts;
 
 use App\Models\Concept;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
 class Edit extends Component
 {
     public Concept $concept;
+
     public int $conceptId;
 
-    public string $code   = '';
-    public string $name   = '';
+    public string $code = '';
+
+    public string $name = '';
+
     public string $status = 'active';
-    public string $type   = 'ingreso';
-    public $factor_ingreso = 0;
-    public $factor_egreso  = 0;
+
+    public string $type = 'ingreso';
+
+    public $factor_ingreso = null;
+
+    public $factor_egreso = null;
 
     public function mount(int $id): void
     {
-        if (!auth()->user()?->can('configuracion.conceptos')) {
+        if (! auth()->user()?->can('configuracion.conceptos')) {
             abort(403);
         }
 
-        $this->concept   = Concept::findOrFail($id);
+        $this->concept = Concept::findOrFail($id);
         $this->conceptId = $id;
 
-        $this->code           = (string) $this->concept->code;
-        $this->name           = (string) $this->concept->name;
-        $this->status         = (string) $this->concept->status;
-        $this->type           = (string) $this->concept->type;
+        $this->code = (string) $this->concept->code;
+        $this->name = (string) $this->concept->name;
+        $this->status = (string) $this->concept->status;
+        $this->type = (string) $this->concept->type;
         $this->factor_ingreso = (float) $this->concept->factor_ingreso;
-        $this->factor_egreso  = (float) $this->concept->factor_egreso;
+        $this->factor_egreso = (float) $this->concept->factor_egreso;
     }
 
     protected $rules = [
-        'code'           => 'required|string|max:10',
-        'name'           => 'required|string|max:255',
-        'status'         => 'required|in:active,inactive',
-        'type'           => 'required|in:ingreso,egreso',
+        'code' => 'required|string|max:10',
+        'name' => 'required|string|max:255',
+        'status' => 'required|in:active,inactive',
+        'type' => 'required|in:ingreso,egreso',
         'factor_ingreso' => 'nullable|numeric|min:0',
-        'factor_egreso'  => 'nullable|numeric|min:0',
+        'factor_egreso' => 'nullable|numeric|min:0',
     ];
 
     public function questionDelete(int $id): void
@@ -52,7 +59,7 @@ class Edit extends Component
     #[On('register_destroy')]
     public function destroy(int $id): void
     {
-        if (!auth()->user()?->can('configuracion.conceptos')) {
+        if (! auth()->user()?->can('configuracion.conceptos')) {
             abort(403);
         }
 
@@ -67,20 +74,20 @@ class Edit extends Component
             $this->validate();
 
             $this->concept->update([
-                'code'           => $this->code,
-                'name'           => $this->name,
-                'status'         => $this->status,
-                'type'           => $this->type,
+                'code' => $this->code,
+                'name' => $this->name,
+                'status' => $this->status,
+                'type' => $this->type,
                 'factor_ingreso' => $this->factor_ingreso ?: 0,
-                'factor_egreso'  => $this->factor_egreso ?: 0,
+                'factor_egreso' => $this->factor_egreso ?: 0,
             ]);
 
             session()->flash('concept_success', 'Concepto actualizado correctamente.');
             $this->redirectRoute('settings.concepts.index');
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             throw $e;
         } catch (\Throwable $e) {
-            session()->flash('concept_error', 'Error al actualizar: ' . $e->getMessage());
+            session()->flash('concept_error', 'Error al actualizar: '.$e->getMessage());
             $this->redirectRoute('settings.concepts.index');
         }
     }
