@@ -1,12 +1,10 @@
 <div class="container-fluid"
      x-data="{
         open: false, idx: 0, items: [], manageUrl: '',
-        galleries: @js($galleries),
-        openGallery(id) {
-            const g = this.galleries[id];
-            if (! g || ! g.items.length) return;
-            this.items = g.items;
-            this.manageUrl = g.manageUrl || '';
+        openLightbox(items, manageUrl) {
+            if (! items || ! items.length) return;
+            this.items = items;
+            this.manageUrl = manageUrl || '';
             this.idx = 0;
             this.open = true;
         },
@@ -148,8 +146,11 @@
                                     <td class="text-center">
                                         @if($row['kind'] === 'income')
                                             @if(isset($galleries[$row['id']]))
-                                                {{-- Tiene fotos → abre el lightbox inline --}}
-                                                <a href="#" @click.prevent="openGallery({{ $row['id'] }})"
+                                                {{-- Tiene fotos → abre el lightbox inline. Items inline
+                                                     (no mapa x-data) para que Livewire los regenere
+                                                     frescos en cada render/filtro. --}}
+                                                <a href="#"
+                                                   @click.prevent="openLightbox({{ \Illuminate\Support\Js::from($galleries[$row['id']]['items']) }}, {{ \Illuminate\Support\Js::from($galleries[$row['id']]['manageUrl']) }})"
                                                    title="Ver adjuntos ({{ $row['attachments_count'] ?? 0 }})"
                                                    style="cursor: zoom-in;">
                                                     <i class="ti ti-camera-filled f-s-16 text-info"></i>
