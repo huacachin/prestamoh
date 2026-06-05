@@ -9,6 +9,14 @@
     <!-- css start-->
 @include('layout.css')
 <!-- css end-->
+
+    {{-- El ancho del sidebar (13rem) se controla por la variable SCSS $sidebar-width.
+         Aquí solo se ajusta el tamaño de letra del menú (independiente del ancho). --}}
+    <style>
+        nav.dark-sidebar .main-nav a { font-size: 12px; }
+        nav.dark-sidebar .main-nav a i { font-size: 16px; }
+        nav.dark-sidebar .menu-title span { font-size: 10px; letter-spacing: .3px; }
+    </style>
 </head>
 
 <body text="small-text">

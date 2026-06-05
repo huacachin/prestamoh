@@ -3,8 +3,8 @@
 .app-wrapper{
     display: flex;
     .app-content{
-        // padding-left: $sidebar-width;    
-        padding-left: 19rem;
+        // padding-left: $sidebar-width;
+        padding-left: 15rem; // = $sidebar-width (13rem) + 2rem de aire
         padding-top: 100px;
         padding-bottom: 47px;
         padding-right: 2rem;
