@@ -107,15 +107,15 @@
                         <table class="table table-bordered table-hover table-autofit incomes-legacy" style="font-size: 11px;">
                             <thead style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
-                                    <th class="text-center" width="50" style="background:#949696;">Op</th>
-                                    <th class="text-center" width="50" style="background:#005F8C;">N°</th>
-                                    <th class="text-center" width="40" style="background:#949696;"><i class="ti ti-camera"></i></th>
-                                    <th class="text-center" width="100" style="background:#005F8C;">Fecha</th>
-                                    <th class="text-center" style="background:#949696;">Usuario</th>
-                                    <th class="text-center" style="background:#005F8C;">Asesor</th>
+                                    <th class="text-center" width="7%" style="background:#949696;">Op</th>
+                                    <th class="text-center" width="8%" style="background:#005F8C;">N°</th>
+                                    <th class="text-center" width="3%" style="background:#949696;"><i class="ti ti-camera"></i></th>
+                                    <th class="text-center" width="13%" style="background:#005F8C;">Fecha</th>
+                                    <th class="text-center" width="8%" style="background:#949696;">Usuario</th>
+                                    <th class="text-center" width="10%" style="background:#005F8C;">Asesor</th>
                                     <th class="text-center" style="background:#949696;">A</th>
                                     <th style="background:#005F8C;">Motivo</th>
-                                    <th class="text-end" width="100" style="background:#949696;">S/.</th>
+                                    <th class="text-end" width="10%" style="background:#949696;">S/.</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -245,6 +245,10 @@
                     <style>
                         /* Colores legacy (ingresos.php): cabecera azul/gris, filas blanco/#F2F2EC */
                         .incomes-legacy thead th { color: #fff; }
+                        /* Densidad como el legacy (ingresos.php): padding 5px 10px, alineado arriba.
+                           Los anchos van en % por columna (escalan en baja resolución); A y Motivo
+                           quedan sin ancho y absorben el sobrante, igual que el legacy. */
+                        .incomes-legacy th, .incomes-legacy td { padding: 5px 10px; vertical-align: top; }
                         /* tfoot legacy: texto negro sobre fondo claro */
                         .incomes-legacy tfoot.incomes-foot td {
                             color: #000;
