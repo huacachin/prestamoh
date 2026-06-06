@@ -277,7 +277,7 @@ class Create extends Component
             // ─── 1) DIAS MORA si hay descuento ─────────────────────────────
             if ($diasA > 0) {
                 DB::table('dias_mora')->insert([
-                    'credit_id' => $this->credit->id, 'dias' => $diasA, 'dias_descontados' => $this->diasf,
+                    'credit_id' => $this->credit->id, 'dias' => $diasA, 'dias_descontados' => (int) $this->diasf,
                     'created_at' => now(), 'updated_at' => now(),
                 ]);
             }
