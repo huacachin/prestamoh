@@ -114,8 +114,8 @@
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">Sexo</label>
                         <select class="form-select form-select-sm" wire:model.defer="sexo">
-                            <option value="M">Masculino</option>
                             <option value="F">Femenino</option>
+                            <option value="M">Masculino</option>
                         </select>
                     </div>
                     <div class="col-md-2">

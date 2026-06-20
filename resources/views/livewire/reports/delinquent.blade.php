@@ -24,7 +24,7 @@
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small">Mes</label>
                                 <select class="form-select form-select-sm" wire:model="selemes0">
-                                    <option value="">Todos</option>
+                                    <option value="">Seleccione</option>
                                     <option value="01">Enero</option>
                                     <option value="02">Febrero</option>
                                     <option value="03">Marzo</option>
@@ -42,7 +42,7 @@
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small">Año</label>
                                 <select class="form-select form-select-sm" wire:model="selecano0">
-                                    <option value="">Todos</option>
+                                    <option value="">Seleccione</option>
                                     @for($y = (int) date('Y') - 5; $y <= (int) date('Y') + 2; $y++)
                                         <option value="{{ $y }}">{{ $y }}</option>
                                     @endfor
@@ -51,7 +51,7 @@
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small">Tipo</label>
                                 <select class="form-select form-select-sm" wire:model="seletipl0">
-                                    <option value="">Todos</option>
+                                    <option value="">Seleccione</option>
                                     <option value="1">Semanal</option>
                                     <option value="3">Mensual</option>
                                     <option value="4">Diario</option>
@@ -89,6 +89,10 @@
                                 <button type="submit" class="btn btn-sm btn-primary">
                                     <i class="ti ti-search f-s-12"></i> Buscar
                                 </button>
+                                <a href="{{ route('exports.reports.delinquent', ['selemes0' => $selemes0, 'selecano0' => $selecano0, 'seletipl0' => $seletipl0, 'exp' => $exp, 'codigo' => $codigo, 'cdni' => $cdni, 'cnombre' => $cnombre, 'casesor' => $casesor, 'fechai' => $fechai, 'fechaf' => $fechaf]) }}"
+                                   class="btn btn-sm btn-success" target="_blank">
+                                    <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
+                                </a>
                                 <x-scroll-bottom-btn scrollable="#tabla-morosidad" />
                             </div>
                         </div>
@@ -103,7 +107,7 @@
                                     <th rowspan="2" class="text-center align-middle" width="50">Exp</th>
                                     <th rowspan="2" class="text-center align-middle" width="60">Código</th>
                                     <th rowspan="2" class="text-center align-middle" width="80">DNI</th>
-                                    <th rowspan="2" width="200" class="text-center align-middle">Apellidos y Nombres</th>
+                                    <th rowspan="2" width="200" class="text-center align-middle">Nombre y Apellidos</th>
                                     <th rowspan="2" class="text-center align-middle" width="50">Dt.</th>
                                     <th rowspan="2" class="text-center align-middle" width="80">Capital</th>
                                     <th colspan="4" class="text-center">Interés</th>

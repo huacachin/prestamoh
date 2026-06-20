@@ -60,7 +60,8 @@
                                     <i class="ti ti-search f-s-12"></i> Consultar
                                 </button>
                                 <x-scroll-bottom-btn scrollable="#tabla-caja-1" />
-                                <a href="#" class="btn btn-sm btn-success">
+                                <a href="{{ route('exports.reports.cash-general-1', ['selemes' => $selemes, 'selecano' => $selecano, 'seletipl' => $seletipl]) }}"
+                                   class="btn btn-sm btn-success" target="_blank">
                                     <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
                                 </a>
                                 <button type="button" class="btn btn-sm btn-secondary" onclick="window.print()">

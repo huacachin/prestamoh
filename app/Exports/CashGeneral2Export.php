@@ -13,15 +13,26 @@ use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Events\AfterSheet;
 
 /**
- * Excel del /reports/cash-general-2 (balance diario). Título "BALANCE DIARIO".
- * Marca filas SUBTOTAL/BALANCE en celeste.
+ * Excel del /reports/cash-general-2 — réplica de reporte4.php.
+ * Título "REPORTE GENERAL CAJA 2". Cols: Nº, Fecha, DATOS DEL CLIENTE, DETALLES, INGRESO, EGRESO.
+ * Ingresos en azul, egresos en rojo. Por día: filas "TOTAL" y "SALDO FINAL-INICIAL".
+ * Fila final "REPORTE GENERAL CAJA 2 - TOTAL GENERAL" combinada (A:D / E:F).
  */
 class CashGeneral2Export implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithCustomStartCell, WithEvents
 {
     use LegacyExcelStyle;
 
-    /** @var int[] filas (1-based en la hoja) que son subtotal/total */
+    private const COLOR_INGRESO = '0000FF'; // azul
+    private const COLOR_EGRESO  = 'FF0000'; // rojo
+
+    /** @var int[] filas subtotal/total (celeste) */
     protected array $totalRows = [];
+    /** @var int[] filas donde la col E (INGRESO) va en azul */
+    protected array $ingresoRows = [];
+    /** @var int[] filas donde la col F (EGRESO) va en rojo */
+    protected array $egresoRows = [];
+    /** fila final TOTAL GENERAL (merges A:D y E:F) */
+    protected ?int $finalRow = null;
 
     public function __construct(
         protected array $filters = [],
@@ -38,58 +49,51 @@ class CashGeneral2Export implements FromCollection, WithHeadings, WithMapping, S
 
         $flat = collect();
         $rowNum = 2; // fila 1 = título; headers fila 2; datos desde fila 3
+        $n = 0;
         foreach ($report['days'] as $day) {
             foreach ($day['items'] as $item) {
-                $rowNum++;
+                $rowNum++; $n++;
+                $this->ingresoRows[] = $rowNum;
+                $this->egresoRows[]  = $rowNum;
                 $flat->push([
-                    'date'     => $day['date'],
-                    'cliente'  => $item['cliente'] ?? '',
-                    'detalle'  => $item['detalle'] ?? '',
-                    'ingreso'  => (float) ($item['ingreso'] ?? 0),
-                    'egreso'   => (float) ($item['egreso'] ?? 0),
-                    'saldo'    => '',
+                    $n,
+                    $day['date'],
+                    $item['cliente'] ?? '',
+                    $item['detalle'] ?? '',
+                    (float) ($item['ingreso'] ?? 0),
+                    (float) ($item['egreso'] ?? 0),
                 ]);
             }
+            // Fila TOTAL del día
             $rowNum++;
-            $this->totalRows[] = $rowNum;
-            $flat->push([
-                'date'     => $day['date'],
-                'cliente'  => 'SUBTOTAL DEL DÍA',
-                'detalle'  => $day['date_label'] ?? '',
-                'ingreso'  => (float) $day['total_ingreso'],
-                'egreso'   => (float) $day['total_egreso'],
-                'saldo'    => (float) $day['saldo'],
-            ]);
+            $this->totalRows[]   = $rowNum;
+            $this->ingresoRows[] = $rowNum;
+            $this->egresoRows[]  = $rowNum;
+            $flat->push(['', '', '', 'TOTAL', (float) $day['total_ingreso'], (float) $day['total_egreso']]);
+            // Fila SALDO FINAL-INICIAL
+            $rowNum++;
+            $this->totalRows[]   = $rowNum;
+            $this->ingresoRows[] = $rowNum;
+            $flat->push(['', '', '', 'SALDO FINAL-INICIAL', (float) $day['saldo'], '']);
         }
+        // Fila TOTAL GENERAL (label en A para que el merge A:D la muestre)
         $rowNum++;
-        $this->totalRows[] = $rowNum;
-        $flat->push([
-            'date'    => '',
-            'cliente' => 'BALANCE GENERAL',
-            'detalle' => '',
-            'ingreso' => '',
-            'egreso'  => '',
-            'saldo'   => (float) $report['balance_general'],
-        ]);
+        $this->totalRows[]   = $rowNum;
+        $this->ingresoRows[] = $rowNum;
+        $this->finalRow      = $rowNum;
+        $flat->push(['REPORTE GENERAL CAJA 2 - TOTAL GENERAL', '', '', '', (float) $report['balance_general'], '']);
 
         return $flat;
     }
 
     public function headings(): array
     {
-        return ['Fecha', 'Cliente/Usuario', 'Detalle', 'Ingreso', 'Egreso', 'Saldo'];
+        return ['Nº', 'Fecha', 'DATOS DEL CLIENTE', 'DETALLES', 'INGRESO', 'EGRESO'];
     }
 
     public function map($r): array
     {
-        return [
-            $r['date']    ?? '',
-            $r['cliente'] ?? '',
-            $r['detalle'] ?? '',
-            $r['ingreso'],
-            $r['egreso'],
-            $r['saldo'],
-        ];
+        return array_values($r);
     }
 
     public function registerEvents(): array
@@ -97,10 +101,38 @@ class CashGeneral2Export implements FromCollection, WithHeadings, WithMapping, S
         return [
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
-                $this->applyLegacyStyle($sheet, 'BALANCE DIARIO', 'F');
+                $lastCol = 'F';
+
                 foreach ($this->totalRows as $row) {
-                    $this->markTotalRow($sheet, $row, 'F');
+                    $this->markTotalRow($sheet, $row, $lastCol);
                 }
+                foreach ($this->ingresoRows as $row) {
+                    $sheet->getStyle("E{$row}")->getFont()->getColor()->setRGB(self::COLOR_INGRESO);
+                }
+                foreach ($this->egresoRows as $row) {
+                    $sheet->getStyle("F{$row}")->getFont()->getColor()->setRGB(self::COLOR_EGRESO);
+                }
+
+                if ($this->finalRow) {
+                    $sheet->mergeCells("A{$this->finalRow}:D{$this->finalRow}");
+                    $sheet->mergeCells("E{$this->finalRow}:F{$this->finalRow}");
+                    $sheet->getStyle("A{$this->finalRow}:F{$this->finalRow}")->getAlignment()
+                        ->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+                }
+
+                // Formato moneda (E=INGRESO, F=EGRESO) + alineación centrada en datos
+                $highestRow = $sheet->getHighestRow();
+                if ($highestRow >= 3) {
+                    $sheet->getStyle("A3:{$lastCol}{$highestRow}")->getAlignment()
+                        ->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER)
+                        ->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
+                    foreach (['E', 'F'] as $col) {
+                        $sheet->getStyle("{$col}3:{$col}{$highestRow}")
+                            ->getNumberFormat()->setFormatCode('#,##0.00');
+                    }
+                }
+
+                $this->applyLegacyStyle($sheet, 'REPORTE GENERAL CAJA 2', $lastCol);
             },
         ];
     }

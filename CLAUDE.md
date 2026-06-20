@@ -79,8 +79,9 @@ Vite with entry points:
 - Timezone: `America/Lima`
 
 ## Legacy Reference
-Legacy PHP code in `/Users/antonyalfredoculquicarranza/projects/prestamo/`
+Legacy PHP code in `/Users/antony/projects/_legacy-prestamo/`
 - `sistema/` — Backend PHP files
 - `websystem/` — Web frontend
-- `huacachi_prestamo.sql` — Database backup
+- `bd/huacachi_prestamo_dump_2026-06-19.sql` — Database backup (~2.1 GB, fuente de verdad actual)
+- `bd/huacachi_prestamo_legacy_2026-05-30.sql` — Database backup (respaldo, venía con el código)
 - Tables prefixed with `huaca_`

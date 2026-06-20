@@ -45,7 +45,7 @@
 
                         <div class="col-md-3">
                             <div class="mb-3">
-                                <label class="form-label">Motivo (*)</label>
+                                <label class="form-label">A (*)</label>
                                 <select class="form-select form-select-sm @error('reason') is-invalid @enderror"
                                         wire:model.defer="reason">
                                     <option value="">-- Seleccionar --</option>
@@ -79,7 +79,7 @@
 
                         <div class="col-md-auto col-sm-12">
                             <div class="mb-3">
-                                <label class="form-label">Tipo Documento</label>
+                                <label class="form-label">T.Comp.</label>
                                 <input type="text" class="form-control form-control-sm @error('document_type') is-invalid @enderror"
                                        placeholder="Boleta, Factura, etc."
                                        wire:model.defer="document_type">
@@ -89,7 +89,7 @@
 
                         <div class="col-md-auto col-sm-12">
                             <div class="mb-3">
-                                <label class="form-label">Responsable</label>
+                                <label class="form-label">Respons.</label>
                                 <input type="text" class="form-control form-control-sm @error('in_charge') is-invalid @enderror"
                                        placeholder="Nombre del responsable"
                                        wire:model.defer="in_charge">

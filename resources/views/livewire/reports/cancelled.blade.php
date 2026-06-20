@@ -156,7 +156,7 @@
                                             @endif
                                         </td>
                                         <td class="text-center">
-                                            <a href="#" style="color: inherit;">{{ $row['codigo'] }}</a>
+                                            <a href="{{ route('credits.show', $row['codigo']) }}" target="_blank" style="color: inherit;">{{ $row['codigo'] }}</a>
                                         </td>
                                         <td>{{ $row['dni'] }}</td>
                                         <td>

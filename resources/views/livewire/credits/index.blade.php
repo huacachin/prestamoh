@@ -69,7 +69,7 @@
                         $puedeEliminar = auth()->user()->can('creditos.eliminar');
                         $puedeEditarHistorico = auth()->user()->can('caja.editar-historico');
                         $hoy = now()->format('Y-m-d');
-                        $tcLabels = [1 => 'S', 3 => 'M', 4 => 'D'];
+                        $tcLabels = [1 => 'S.', 3 => 'M.', 4 => 'D.'];
                     @endphp
 
                     {{-- Tabla Desktop --}}

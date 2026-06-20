@@ -68,7 +68,7 @@
                                style="background-color:yellow;" min="0" step="0.01" required>
                     </div>
                     <div class="col-md-2">
-                        <label class="form-label mb-0 small fw-semibold">Periodo (Año)</label>
+                        <label class="form-label mb-0 small fw-semibold">Periodo</label>
                         <input type="text" class="form-control form-control-sm bg-light" wire:model="selecano" readonly>
                     </div>
                     <div class="col-md-2">
@@ -98,7 +98,7 @@
                                @if($seletipl === '4') readonly @endif>
                     </div>
                     <div class="col-md-2">
-                        <label class="form-label mb-0 small fw-semibold">Interés %</label>
+                        <label class="form-label mb-0 small fw-semibold">Interés</label>
                         <input type="number" class="form-control form-control-sm @error('inte') is-invalid @enderror"
                                wire:model.live.debounce.500ms="inte"
                                style="background-color:yellow;" min="0" step="0.01" required>

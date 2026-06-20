@@ -5,26 +5,31 @@ namespace App\Exports;
 use App\Exports\Concerns\LegacyExcelStyle;
 use App\Models\Expense;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Events\AfterSheet;
 
 /**
  * Excel del listado /cash/expenses — réplica del legacy gastos_excel.php.
  * Título "EGRESOS" + totales (General, Fijos, Otros, Diario/Mensual/D.M).
  */
-class ExpensesExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithCustomStartCell, WithEvents
+class ExpensesExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
 {
     use LegacyExcelStyle;
 
     protected float $total = 0;
+
     protected float $tofijo = 0;
+
     protected float $totros = 0;
+
     protected float $sumdiario = 0;
+
     protected float $summensu = 0;
+
     protected float $sumdm = 0;
 
     public function __construct(
@@ -32,10 +37,10 @@ class ExpensesExport implements FromCollection, WithHeadings, WithMapping, Shoul
         protected string $compra = '',
         protected string $fei = '',
         protected string $fef = '',
-        protected ?int   $userId = null,
-        protected bool   $crossHQ = false,
-        protected ?int   $hqId = 1,
-        protected bool   $editarHistorico = false,
+        protected ?int $userId = null,
+        protected bool $crossHQ = false,
+        protected ?int $hqId = 1,
+        protected bool $editarHistorico = false,
     ) {}
 
     public function collection()
@@ -49,10 +54,10 @@ class ExpensesExport implements FromCollection, WithHeadings, WithMapping, Shoul
             })
             ->with('user:id,name,username');
 
-        if (!$this->crossHQ) {
+        if (! $this->crossHQ) {
             $query->where('headquarter_id', $this->hqId ?? 1);
         }
-        if (!$this->editarHistorico && $this->userId) {
+        if (! $this->editarHistorico && $this->userId) {
             $query->where('user_id', $this->userId)->where('reason', 'Diario');
         }
 
@@ -68,8 +73,7 @@ class ExpensesExport implements FromCollection, WithHeadings, WithMapping, Shoul
             match ($this->tipo) {
                 '1' => $query->where('reason', 'like', "%{$term}%"),
                 '2' => $query->where('detail', 'like', "%{$term}%"),
-                '3' => $query->whereHas('user', fn ($u) =>
-                    $u->where('username', 'like', "%{$term}%")->orWhere('name', 'like', "%{$term}%")
+                '3' => $query->whereHas('user', fn ($u) => $u->where('username', 'like', "%{$term}%")->orWhere('name', 'like', "%{$term}%")
                 ),
                 '4' => $query->where('in_charge', 'like', "%{$term}%"),
                 default => null,
@@ -81,10 +85,18 @@ class ExpensesExport implements FromCollection, WithHeadings, WithMapping, Shoul
         foreach ($rows as $e) {
             $t = (float) $e->total;
             $this->total += $t;
-            if ($e->modo === 'Fijos') $this->tofijo += $t; else $this->totros += $t;
-            if ($e->reason === 'Diario')  $this->sumdiario += $t;
-            elseif ($e->reason === 'Mensual') $this->summensu += $t;
-            elseif ($e->reason === 'D.M')     $this->sumdm += $t;
+            if ($e->modo === 'Fijos') {
+                $this->tofijo += $t;
+            } else {
+                $this->totros += $t;
+            }
+            if ($e->reason === 'Diario') {
+                $this->sumdiario += $t;
+            } elseif ($e->reason === 'Mensual') {
+                $this->summensu += $t;
+            } elseif ($e->reason === 'D.M') {
+                $this->sumdm += $t;
+            }
         }
 
         return $rows;
@@ -92,7 +104,8 @@ class ExpensesExport implements FromCollection, WithHeadings, WithMapping, Shoul
 
     public function headings(): array
     {
-        return ['Nº', 'Fecha', 'Usuario', 'Responsable', 'Modo', 'Categoría', 'Motivo', 'Documento', 'Total'];
+        // Réplica exacta de gastos_excel.php: Nº, Fecha, Usuario, A, Motivo, S/., T.Comp., Respons.
+        return ['Nº', 'Fecha', 'Usuario', 'A', 'Motivo', 'S/.', 'T.Comp.', 'Respons.'];
     }
 
     public function map($e): array
@@ -104,12 +117,11 @@ class ExpensesExport implements FromCollection, WithHeadings, WithMapping, Shoul
             $i,
             $e->date?->format('d/m/Y'),
             $e->user?->username ?? $e->user?->name ?? '',
-            $e->in_charge,
-            $e->modo,
-            $e->reason,
-            $e->detail,
-            $e->documento,
-            (float) $e->total,
+            $e->reason,          // A
+            $e->detail,          // Motivo
+            (float) $e->total,   // S/.
+            $e->document_type,   // T.Comp.
+            $e->in_charge,       // Respons.
         ];
     }
 
@@ -118,30 +130,34 @@ class ExpensesExport implements FromCollection, WithHeadings, WithMapping, Shoul
         return [
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
-                $lastCol = 'I';
+                $lastCol = 'H';
+
+                // Centrado + moneda en datos (antes de agregar totales).
+                $this->styleDataRange($sheet, $lastCol, ['F']);
+
                 $dm2 = round($this->sumdm / 2, 2);
                 $valor1 = $this->sumdiario + $dm2;
                 $valor2 = $this->summensu + $dm2;
                 $valor3 = $valor1 + $valor2;
 
-                // Filas de totales (réplica de gastos_excel.php)
+                // Filas de totales (réplica de gastos_excel.php). El valor S/. va en la col F.
                 $r = $sheet->getHighestRow();
                 $filas = [
                     ['Total General', number_format($this->total, 2), false],
                     ['Fijos',         number_format($this->tofijo, 2), true],  // rojo
                     ['Otros',         number_format($this->totros, 2), false],
-                    ['Diario → ' . number_format($valor1, 2),   number_format($this->sumdiario, 2), false],
-                    ['Mensual → ' . number_format($valor2, 2),  number_format($this->summensu, 2), false],
-                    ['D.M → ' . number_format($dm2, 2),         number_format($this->sumdm, 2), false],
+                    ['Diario → '.number_format($valor1, 2),   number_format($this->sumdiario, 2), false],
+                    ['Mensual → '.number_format($valor2, 2),  number_format($this->summensu, 2), false],
+                    ['D.M → '.number_format($dm2, 2),         number_format($this->sumdm, 2), false],
                     ['Fijos Total', number_format($valor3, 2), true],         // rojo
                 ];
                 foreach ($filas as $f) {
                     $r++;
                     $sheet->setCellValue("A{$r}", $f[0]);
-                    $sheet->mergeCells("A{$r}:H{$r}");
-                    $sheet->setCellValue("I{$r}", $f[1]);
+                    $sheet->mergeCells("A{$r}:E{$r}");
+                    $sheet->setCellValue("F{$r}", $f[1]);
                     if ($f[2]) {
-                        $sheet->getStyle("A{$r}:I{$r}")->getFont()->getColor()->setRGB('FF0000');
+                        $sheet->getStyle("A{$r}:H{$r}")->getFont()->getColor()->setRGB('FF0000');
                     }
                 }
 

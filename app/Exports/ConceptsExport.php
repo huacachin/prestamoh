@@ -5,17 +5,17 @@ namespace App\Exports;
 use App\Exports\Concerns\LegacyExcelStyle;
 use App\Models\Concept;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Events\AfterSheet;
 
 /**
  * Excel del catálogo de conceptos — réplica de conceptoex.php. Título "CONCEPTOS FIJOS".
  */
-class ConceptsExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithCustomStartCell, WithEvents
+class ConceptsExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
 {
     use LegacyExcelStyle;
 
@@ -45,7 +45,8 @@ class ConceptsExport implements FromCollection, WithHeadings, WithMapping, Shoul
 
     public function headings(): array
     {
-        return ['Nº', 'Código', 'Nombre', 'Tipo', 'Estado'];
+        // Réplica exacta de conceptoex.php: Nº, Codigo, Nombre, Tipo, ING. S/, EGR. S/
+        return ['Nº', 'Código', 'Nombre', 'Tipo', 'ING. S/', 'EGR. S/'];
     }
 
     public function map($c): array
@@ -57,8 +58,9 @@ class ConceptsExport implements FromCollection, WithHeadings, WithMapping, Shoul
             $i,
             $c->code,
             $c->name,
-            $c->type,
-            $c->status === 'active' ? 'Activo' : 'Cesado',
+            strtoupper($c->type) === 'INGRESO' || $c->type === 'ingreso' ? 'INGRESO' : 'EGRESO',
+            $c->factor_ingreso,
+            $c->factor_egreso,
         ];
     }
 
@@ -66,7 +68,10 @@ class ConceptsExport implements FromCollection, WithHeadings, WithMapping, Shoul
     {
         return [
             AfterSheet::class => function (AfterSheet $event) {
-                $this->applyLegacyStyle($event->sheet->getDelegate(), 'CONCEPTOS FIJOS', 'E');
+                $sheet = $event->sheet->getDelegate();
+                // Centrado + moneda en datos (ING. S/ col E, EGR. S/ col F).
+                $this->styleDataRange($sheet, 'F', ['E', 'F']);
+                $this->applyLegacyStyle($sheet, 'CONCEPTOS FIJOS', 'F');
             },
         ];
     }

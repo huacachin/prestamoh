@@ -52,12 +52,6 @@
                                value="{{ number_format($credit->importe, 2) }}" readonly>
                     </div>
                     <div class="col-md-2">
-                        <label class="form-label mb-0 small fw-semibold">Interés %</label>
-                        <input type="text" class="form-control form-control-sm bg-light"
-                               value="{{ round($credit->interes, 2) }}" readonly>
-                    </div>
-
-                    <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">Mora Interés</label>
                         <input type="text" class="form-control form-control-sm bg-light"
                                value="{{ number_format($credit->mora2, 2) }}" readonly>
@@ -66,6 +60,11 @@
                         <label class="form-label mb-0 small fw-semibold">Pago x día atrasado</label>
                         <input type="text" class="form-control form-control-sm bg-light"
                                value="{{ number_format($credit->mora1, 2) }}" readonly>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label mb-0 small fw-semibold">Interés %</label>
+                        <input type="text" class="form-control form-control-sm bg-light"
+                               value="{{ round($credit->interes, 2) }}" readonly>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label mb-0 small fw-semibold">Asesor</label>

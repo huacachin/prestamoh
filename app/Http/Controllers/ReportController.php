@@ -20,6 +20,18 @@ class ReportController extends Controller
     public function cashGeneral3() { return view('reports.cash-general-3'); }
     public function cancelled() { return view('reports.cancelled'); }
 
+    public function exportPortfolio(Request $request)
+    {
+        $export = new \App\Exports\PortfolioExport(filters: $request->query());
+        return Excel::download($export, 'cartera-' . now()->format('Ymd-His') . '.xlsx');
+    }
+
+    public function exportDelinquent(Request $request)
+    {
+        $export = new \App\Exports\DelinquentExport(filters: $request->query());
+        return Excel::download($export, 'pendientes-cobrar-' . now()->format('Ymd-His') . '.xlsx');
+    }
+
     public function exportCancelled(Request $request)
     {
         $export = new \App\Exports\CancelledExport(filters: $request->query());
@@ -30,6 +42,12 @@ class ReportController extends Controller
     {
         $export = new \App\Exports\PaymentsReportExport(filters: $request->query());
         return Excel::download($export, 'reporte-pagos-' . now()->format('Ymd-His') . '.xlsx');
+    }
+
+    public function exportCashGeneral1(Request $request)
+    {
+        $export = new \App\Exports\CashGeneral1Export(filters: $request->query());
+        return Excel::download($export, 'caja-general-1-' . now()->format('Ymd-His') . '.xlsx');
     }
 
     public function exportCashGeneral2(Request $request)

@@ -59,8 +59,8 @@
                                 <label class="form-label">Estado (*)</label>
                                 <select class="form-select form-select-sm @error('status') is-invalid @enderror"
                                         wire:model.defer="status">
-                                    <option value="active">Vigente</option>
-                                    <option value="inactive">Cancelado</option>
+                                    <option value="active">Activo</option>
+                                    <option value="inactive">Cesado</option>
                                 </select>
                                 @error('status') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
@@ -70,7 +70,7 @@
                             <div class="mb-3">
                                 <label class="form-label">Tipo (*)</label>
                                 <select class="form-select form-select-sm @error('type') is-invalid @enderror"
-                                        wire:model.defer="type">
+                                        wire:model.live="type">
                                     <option value="ingreso">Ingreso</option>
                                     <option value="egreso">Egreso</option>
                                 </select>
@@ -84,6 +84,7 @@
                                 <input type="number" step="0.01" min="0"
                                        class="form-control form-control-sm @error('factor_ingreso') is-invalid @enderror"
                                        placeholder="0.00"
+                                       @disabled($type === 'egreso')
                                        wire:model.defer="factor_ingreso">
                                 @error('factor_ingreso') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
@@ -95,6 +96,7 @@
                                 <input type="number" step="0.01" min="0"
                                        class="form-control form-control-sm @error('factor_egreso') is-invalid @enderror"
                                        placeholder="0.00"
+                                       @disabled($type === 'ingreso')
                                        wire:model.defer="factor_egreso">
                                 @error('factor_egreso') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>

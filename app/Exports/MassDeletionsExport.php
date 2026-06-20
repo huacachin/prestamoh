@@ -5,17 +5,17 @@ namespace App\Exports;
 use App\Exports\Concerns\LegacyExcelStyle;
 use App\Models\MassDeletion;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Events\AfterSheet;
 
 /**
  * Excel de pagos masivos — título "ELIMINAR MASIVO" + total de monto.
  */
-class MassDeletionsExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithCustomStartCell, WithEvents
+class MassDeletionsExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
 {
     use LegacyExcelStyle;
 
@@ -37,7 +37,7 @@ class MassDeletionsExport implements FromCollection, WithHeadings, WithMapping, 
             // Solo búsqueda
         } elseif ($this->fei !== '' && $this->fef !== '') {
             $query->whereDate('date', '>=', $this->fei)
-                  ->whereDate('date', '<=', $this->fef);
+                ->whereDate('date', '<=', $this->fef);
         } else {
             $query->whereDate('date', now()->format('Y-m-d'));
         }
@@ -65,7 +65,7 @@ class MassDeletionsExport implements FromCollection, WithHeadings, WithMapping, 
     public function map($r): array
     {
         $cli = $r->credit?->client;
-        $cliente = $cli ? trim($cli->apellido_pat . ' ' . $cli->apellido_mat . ' ' . $cli->nombre) : '';
+        $cliente = $cli ? trim($cli->apellido_pat.' '.$cli->apellido_mat.' '.$cli->nombre) : '';
 
         static $i = 0;
         $i++;
@@ -88,6 +88,9 @@ class MassDeletionsExport implements FromCollection, WithHeadings, WithMapping, 
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
                 $lastCol = 'H';
+
+                // Centrado + moneda en datos (Total col H), antes de la fila de total.
+                $this->styleDataRange($sheet, $lastCol, ['H']);
 
                 $totalRow = $sheet->getHighestRow() + 1;
                 $sheet->setCellValue("A{$totalRow}", 'Total');

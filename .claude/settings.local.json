@@ -91,7 +91,27 @@
       "Bash(./vendor/bin/pint app/Livewire/Payments/Create.php database/seeders/PermissionCatalogSeeder.php database/seeders/RolePermissionSeeder.php)",
       "Bash(./vendor/bin/pint app/Livewire/Payments/Refinance.php)",
       "Bash(./vendor/bin/pint app/Console/Commands/RefinanceRevert.php app/Console/Commands/InstallationSyncCorrelativos.php)",
-      "Bash(./vendor/bin/pint app/Console/Commands/InstallationSyncCorrelativos.php)"
+      "Bash(./vendor/bin/pint app/Console/Commands/InstallationSyncCorrelativos.php)",
+      "Read(//Users/**)",
+      "Read(//Users/antonyalfredoculquicarranza/projects/**)",
+      "Bash(/Users/Shared/DBngin/mysql/8.0.33/bin/mysql -u root -h 127.0.0.1 -P 3306 -N -e 'SELECT COUNT\\(*\\) FROM information_schema.tables WHERE table_schema='\\\\''huacachi_prestamo'\\\\'';')",
+      "Bash(/Users/Shared/DBngin/mysql/8.0.33/bin/mysql -u root -h 127.0.0.1 -P 3306 -N -e 'SELECT ROUND\\(SUM\\(data_length+index_length\\)/1024/1024,1\\) FROM information_schema.tables WHERE table_schema='\\\\''huacachi_prestamo'\\\\'';')",
+      "Bash(/Users/Shared/DBngin/mysql/8.0.33/bin/mysql -u root -h 127.0.0.1 -P 3306 -N -e 'SELECT table_name FROM information_schema.tables WHERE table_schema='\\\\''huacachi_prestamo'\\\\'' LIMIT 8;')",
+      "Bash(/Users/Shared/DBngin/mysql/8.0.33/bin/mysql -u root -h 127.0.0.1 -P 3306 -N -e ' *)",
+      "Bash(xargs -I {} bash -c \"echo '=== {} ===' && grep -h \\\\\"Schema::create\\\\|Schema::table\\\\\" /Users/antony/projects/prestamoh/database/migrations/{} | sed \\\\\"s/.*Schema::\\\\\\\\\\(create\\\\\\\\|table\\\\\\\\\\)\\('\\\\\\([^']*\\\\\\)'.*/\\\\2/\\\\\" | sort -u\")",
+      "Bash(echo \"EXIT_CODE=$?\")",
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(cd /Users/antony/projects/prestamoh/.claude/projects/-Users-antony-projects-prestamoh/memory)",
+      "Bash(ls)",
+      "Bash(ls /Users/antony/.claude/projects/-Users-antony-projects-prestamoh/memory/)",
+      "Bash(echo \"---exit $?---\")",
+      "Bash(grep -rl --include=\"*.php\" \"PENDIENTES POR COBRAR\\\\|x cobrar\\\\|por cobrar\\\\|xcobrar\" sistema websystem)",
+      "Bash(grep -rl \"reporte1_xcobrar\" sistema websystem)",
+      "Bash(break)",
+      "Bash(pkill -f \"artisan tinker\")",
+      "Bash(./vendor/bin/pint app/Exports/Concerns/LegacyExcelStyle.php app/Exports/IncomesExport.php app/Exports/ExpensesExport.php app/Exports/ConceptsExport.php app/Exports/PaymentsExport.php app/Exports/PaymentsReportExport.php app/Exports/MassDeletionsExport.php app/Exports/ClientsExport.php)",
+      "Bash([ -f /tmp/claude-501/-Users-antony-projects-prestamoh/*/tasks/bjgxat99v.output ])",
+      "Bash(:)"
     ]
   }
 }

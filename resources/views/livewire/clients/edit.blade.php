@@ -87,8 +87,8 @@
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">Sexo</label>
                         <select class="form-select form-select-sm" wire:model.defer="sexo">
-                            <option value="M">Masculino</option>
                             <option value="F">Femenino</option>
+                            <option value="M">Masculino</option>
                         </select>
                     </div>
                     <div class="col-md-2">
@@ -149,12 +149,6 @@
                         <input type="text" class="form-control form-control-sm"
                                wire:model.defer="celular2" placeholder="999-999-999">
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label mb-0 small fw-semibold">T. Crédito</label>
-                        <input type="text" class="form-control form-control-sm"
-                               wire:model.defer="zona" placeholder="Zona o ruta">
-                    </div>
-
                     <div class="col-md-6">
                         <label class="form-label mb-0 small fw-semibold">Asesor</label>
                         <select class="form-select form-select-sm" wire:model.defer="asesor_id">
@@ -163,6 +157,12 @@
                                 <option value="{{ $a->id }}">{{ $a->name }}</option>
                             @endforeach
                         </select>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">T.Credito</label>
+                        <input type="text" class="form-control form-control-sm"
+                               wire:model.defer="zona" placeholder="Zona o ruta">
                     </div>
 
                     {{-- Casa / Negocio: solo SuperUsuario y solo si la coord existe --}}

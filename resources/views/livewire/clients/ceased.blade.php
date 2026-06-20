@@ -37,7 +37,7 @@
                                        wire:model="nombre" placeholder="Nombres">
                             </div>
                             <div class="col">
-                                <label class="form-label mb-0 small"><b>Ruta</b></label>
+                                <label class="form-label mb-0 small"><b>T.Credito</b></label>
                                 <input type="text" class="form-control form-control-sm"
                                        wire:model="ruta" placeholder="Ruta">
                             </div>
@@ -76,7 +76,7 @@
                                     <th class="text-center" width="220">Apellidos y Nombres</th>
                                     <th class="text-center">DNI</th>
                                     <th class="text-center">Movil</th>
-                                    <th class="text-center">Ruta</th>
+                                    <th class="text-center">T.Credito</th>
                                     <th class="text-center">Giro</th>
                                     <th class="text-center">Asesor</th>
                                     <th class="text-center" colspan="3">Opciones</th>
@@ -119,13 +119,13 @@
                                     </td>
                                     <td class="text-center">
                                         <a href="{{ route('clients.show', $client->id) }}"
-                                           class="btn btn-xs btn-primary" style="padding: 2px 8px; font-size: 10px;">
+                                           class="btn btn-xs {{ ($client->avales_count ?? 0) > 0 ? 'btn-primary' : 'btn-danger' }}" style="padding: 2px 8px; font-size: 10px;">
                                             Aval
                                         </a>
                                     </td>
                                     <td class="text-center">
                                         <a href="{{ route('clients.show', $client->id) }}"
-                                           class="btn btn-xs btn-primary" style="padding: 2px 8px; font-size: 10px;">
+                                           class="btn btn-xs {{ ($client->attachments_count ?? 0) > 0 ? 'btn-info' : 'btn-danger' }}" style="padding: 2px 8px; font-size: 10px;">
                                             Adjuntos
                                         </a>
                                     </td>
@@ -186,7 +186,7 @@
                                         </div>
                                         <div class="col-6"><b>Exp.:</b> {{ $client->expediente }}</div>
                                         <div class="col-6"><b>Movil:</b> {{ $client->celular1 }}</div>
-                                        <div class="col-6"><b>Ruta:</b> {{ $client->zona }}</div>
+                                        <div class="col-6"><b>T.Credito:</b> {{ $client->zona }}</div>
                                         <div class="col-6"><b>Giro:</b> {{ $client->giro }}</div>
                                         <div class="col-6"><b>Asesor:</b> {{ $client->asesor?->username ?? $client->asesor?->name }}</div>
                                         <div class="col-6"><b>Fecha:</b> {{ $client->fecha_registro?->format('Y-m-d') }}</div>
@@ -212,8 +212,8 @@
                                     </div>
                                     <div class="d-flex gap-1 mt-2">
                                         <a href="{{ route('clients.show', $client->id) }}" class="btn btn-xs btn-primary" style="padding: 2px 8px; font-size: 10px;">Prestamo</a>
-                                        <a href="{{ route('clients.show', $client->id) }}" class="btn btn-xs btn-primary" style="padding: 2px 8px; font-size: 10px;">Aval</a>
-                                        <a href="{{ route('clients.show', $client->id) }}" class="btn btn-xs btn-primary" style="padding: 2px 8px; font-size: 10px;">Adjuntos</a>
+                                        <a href="{{ route('clients.show', $client->id) }}" class="btn btn-xs {{ ($client->avales_count ?? 0) > 0 ? 'btn-primary' : 'btn-danger' }}" style="padding: 2px 8px; font-size: 10px;">Aval</a>
+                                        <a href="{{ route('clients.show', $client->id) }}" class="btn btn-xs {{ ($client->attachments_count ?? 0) > 0 ? 'btn-info' : 'btn-danger' }}" style="padding: 2px 8px; font-size: 10px;">Adjuntos</a>
                                     </div>
                                 </div>
                             </div>

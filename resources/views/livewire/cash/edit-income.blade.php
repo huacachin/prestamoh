@@ -45,7 +45,7 @@
 
                         <div class="col-md-3">
                             <div class="mb-3">
-                                <label class="form-label">Motivo (*)</label>
+                                <label class="form-label">A (*)</label>
                                 <select class="form-select form-select-sm @error('reason') is-invalid @enderror"
                                         wire:model.defer="reason">
                                     <option value="">-- Seleccionar --</option>

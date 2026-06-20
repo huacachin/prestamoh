@@ -49,9 +49,10 @@
                                     <i class="ti ti-search f-s-12"></i> Buscar
                                 </button>
                                 <x-scroll-bottom-btn scrollable="#tabla-pagos" />
-                                <button class="btn btn-sm btn-success flex-shrink-0" onclick="window.print()">
-                                    <i class="ti ti-file-spreadsheet f-s-12"></i>
-                                </button>
+                                <a href="{{ route('exports.payments.weekly', ['ejecutivo' => $ejecutivo, 'eestado' => $eestado, 'codio1' => $codio1]) }}"
+                                   class="btn btn-sm btn-success flex-shrink-0" target="_blank">
+                                    <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
+                                </a>
                             </div>
                         </div>
                     </div>

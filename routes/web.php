@@ -117,11 +117,17 @@ Route::middleware('auth')->group(function () {
     Route::get('/exports/clients', [ClientController::class, 'export'])->name('exports.clients');
     Route::get('/exports/credits', [CreditController::class, 'export'])->name('exports.credits');
     Route::get('/exports/payments', [PaymentController::class, 'export'])->name('exports.payments');
+    Route::get('/exports/payments/daily',   [PaymentController::class, 'exportDaily'])->name('exports.payments.daily');
+    Route::get('/exports/payments/weekly',  [PaymentController::class, 'exportWeekly'])->name('exports.payments.weekly');
+    Route::get('/exports/payments/monthly', [PaymentController::class, 'exportMonthly'])->name('exports.payments.monthly');
     Route::get('/exports/incomes', [CashController::class, 'exportIncomes'])->name('exports.incomes');
     Route::get('/exports/expenses', [CashController::class, 'exportExpenses'])->name('exports.expenses');
     Route::get('/exports/concepts', [ConceptController::class, 'export'])->name('exports.concepts');
+    Route::get('/exports/reports/portfolio',     [ReportController::class, 'exportPortfolio'])->name('exports.reports.portfolio');
+    Route::get('/exports/reports/delinquent',    [ReportController::class, 'exportDelinquent'])->name('exports.reports.delinquent');
     Route::get('/exports/reports/cancelled',     [ReportController::class, 'exportCancelled'])->name('exports.reports.cancelled');
     Route::get('/exports/reports/payments',      [ReportController::class, 'exportPayments'])->name('exports.reports.payments');
+    Route::get('/exports/reports/cash-general-1',[ReportController::class, 'exportCashGeneral1'])->name('exports.reports.cash-general-1');
     Route::get('/exports/reports/cash-general-2',[ReportController::class, 'exportCashGeneral2'])->name('exports.reports.cash-general-2');
     Route::get('/exports/reports/advisor',       [ReportController::class, 'exportAdvisor'])->name('exports.reports.advisor');
     Route::get('/exports/reports/simulator',     [ReportController::class, 'exportSimulator'])->name('exports.reports.simulator');

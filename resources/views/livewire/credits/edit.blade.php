@@ -52,9 +52,9 @@
                     <label class="form-label">Tipo Planilla</label>
                     <select class="form-select form-select-sm" wire:model.defer="tipo_planilla"
                             @if($hasPayments) disabled style="opacity:.6" @endif>
-                        <option value="4">Diario</option>
                         <option value="1">Semanal</option>
                         <option value="3">Mensual</option>
+                        <option value="4">Diario</option>
                     </select>
                 </div>
                 <div class="col-auto">

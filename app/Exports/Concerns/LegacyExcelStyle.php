@@ -2,6 +2,7 @@
 
 namespace App\Exports\Concerns;
 
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -23,9 +24,11 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  */
 trait LegacyExcelStyle
 {
-    public const COLOR_TITULO  = 'FF0000'; // rojo
-    public const COLOR_HEADER  = '2874A6'; // azul
-    public const COLOR_TOTAL   = 'CEE7FF'; // celeste claro
+    public const COLOR_TITULO = 'FF0000'; // rojo
+
+    public const COLOR_HEADER = '2874A6'; // azul
+
+    public const COLOR_TOTAL = 'CEE7FF'; // celeste claro
 
     /** WithCustomStartCell: headers en fila 2, datos desde fila 3 (fila 1 = título). */
     public function startCell(): string
@@ -45,16 +48,16 @@ trait LegacyExcelStyle
         $sheet->setCellValue('A1', $title);
         $sheet->mergeCells("A1:{$lastCol}1");
         $sheet->getStyle('A1')->applyFromArray([
-            'font'      => ['bold' => true, 'size' => 14, 'color' => ['rgb' => self::COLOR_TITULO]],
+            'font' => ['bold' => true, 'size' => 14, 'color' => ['rgb' => self::COLOR_TITULO]],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
         ]);
         $sheet->getRowDimension(1)->setRowHeight(22);
 
         // ── Headers (fila 2) ───────────────────────────────────────────
         $sheet->getStyle("A{$headerRow}:{$lastCol}{$headerRow}")->applyFromArray([
-            'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
-            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::COLOR_HEADER]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::COLOR_HEADER]],
         ]);
 
         // ── Bordes punteados en toda la tabla (headers + datos) ─────────
@@ -64,6 +67,34 @@ trait LegacyExcelStyle
                     'allBorders' => ['borderStyle' => Border::BORDER_DOTTED, 'color' => ['rgb' => '999999']],
                 ],
             ]);
+        }
+    }
+
+    /**
+     * Centra (H+V) el rango de datos y, opcionalmente, aplica formato de moneda
+     * a columnas de montos. Llamar ANTES de agregar las filas de totales (cuando
+     * getHighestRow() aún apunta a la última fila de datos).
+     *
+     * @param  string[]  $moneyCols  Columnas de monto a formatear como #,##0.00
+     */
+    protected function styleDataRange(Worksheet $sheet, string $lastCol, array $moneyCols = [], int $firstDataRow = 3): void
+    {
+        $lastDataRow = $sheet->getHighestRow();
+        if ($lastDataRow < $firstDataRow) {
+            return; // sin filas de datos
+        }
+
+        // Centrado de todo el rango de datos.
+        $sheet->getStyle("A{$firstDataRow}:{$lastCol}{$lastDataRow}")
+            ->getAlignment()
+            ->setHorizontal(Alignment::HORIZONTAL_CENTER)
+            ->setVertical(Alignment::VERTICAL_CENTER);
+
+        // Formato de moneda en columnas de montos.
+        foreach ($moneyCols as $col) {
+            $sheet->getStyle("{$col}{$firstDataRow}:{$col}{$lastDataRow}")
+                ->getNumberFormat()
+                ->setFormatCode('#,##0.00');
         }
     }
 
@@ -79,6 +110,6 @@ trait LegacyExcelStyle
     /** Convierte un número de columna (1-based) a letra Excel (1→A, 27→AA). */
     protected function colLetter(int $n): string
     {
-        return \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($n);
+        return Coordinate::stringFromColumnIndex($n);
     }
 }

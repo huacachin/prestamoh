@@ -24,4 +24,22 @@ class PaymentController extends Controller
         );
         return \Maatwebsite\Excel\Facades\Excel::download($export, 'pagos-' . now()->format('Ymd-His') . '.xlsx');
     }
+
+    public function exportDaily(Request $request)
+    {
+        $export = new \App\Exports\PaymentsDailyExport(filters: $request->query());
+        return \Maatwebsite\Excel\Facades\Excel::download($export, 'pagos-diario-' . now()->format('Ymd-His') . '.xlsx');
+    }
+
+    public function exportWeekly(Request $request)
+    {
+        $export = new \App\Exports\PaymentsWeeklyExport(filters: $request->query());
+        return \Maatwebsite\Excel\Facades\Excel::download($export, 'pagos-semanal-' . now()->format('Ymd-His') . '.xlsx');
+    }
+
+    public function exportMonthly(Request $request)
+    {
+        $export = new \App\Exports\PaymentsMonthlyExport(filters: $request->query());
+        return \Maatwebsite\Excel\Facades\Excel::download($export, 'pagos-mensual-' . now()->format('Ymd-His') . '.xlsx');
+    }
 }

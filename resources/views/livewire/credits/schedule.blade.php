@@ -61,12 +61,12 @@
                     <td>{{ number_format($credit->importe, 2) }}</td>
                 </tr>
                 <tr>
-                    <td style="background-color:#f0f0f0;">N° Crédito</td>
+                    <td style="background-color:#f0f0f0;">N° Cred.</td>
                     <td>
                         <strong>{{ $credit->id }}</strong> - <b>{{ $credit->fecha_prestamo?->format('d/m/Y') }}</b>
                     </td>
                     <td style="background-color:#f0f0f0;">Moneda</td>
-                    <td>{{ $credit->moneda }}</td>
+                    <td>{{ $credit->moneda === 'USD' ? 'Dólares' : 'Soles' }}</td>
                 </tr>
             </table>
         </div>
