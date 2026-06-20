@@ -38,6 +38,8 @@ class CreditsExport implements FromCollection, WithMapping, WithCustomStartCell,
     protected int $rowCount = 0;
     /** @var array<int,array{tipo:int,estado:string,ref:bool}> estilo por fila de datos */
     protected array $rowMeta = [];
+    /** @var array<string,array> desglose por % de interés (key = porce) */
+    protected array $byInteres = [];
 
     // Totales generales
     protected float $totototo = 0;  // Capital
@@ -147,7 +149,21 @@ class CreditsExport implements FromCollection, WithMapping, WithCustomStartCell,
                 4 => [$this->dempo++, $this->totdia += (float) $c->importe, $this->totintdiario += $int],
                 default => null,
             };
+
+            // Desglose por % de interés
+            $key = (string) (float) $c->interes;
+            if (!isset($this->byInteres[$key])) {
+                $this->byInteres[$key] = ['porce' => $key, 'ncount' => 0, 'capital' => 0, 'interes' => 0, 'pago' => 0, 'total' => 0];
+            }
+            $pagapaga = $iapli + $aplido;
+            $this->byInteres[$key]['ncount']++;
+            $this->byInteres[$key]['capital'] += (float) $c->importe;
+            $this->byInteres[$key]['interes'] += $int;
+            $this->byInteres[$key]['pago'] += $pagapaga;
+            $this->byInteres[$key]['total'] += ((float) $c->importe + $int) - $pagapaga;
         }
+
+        ksort($this->byInteres, SORT_NATURAL);
 
         return $credits;
     }
@@ -382,6 +398,54 @@ class CreditsExport implements FromCollection, WithMapping, WithCustomStartCell,
         // ── Tabla resumen 2: por planilla ──
         $r += 5;
         $this->planillaTable($sheet, $r);
+
+        // ── Tabla resumen 3: por % de interés (CRÉDITO) ──
+        $r += 8;
+        $this->interesTable($sheet, $r);
+    }
+
+    /** Tabla por % de interés: CRÉDITO (%, Cnt., Capital, Interés, Pagado, Total). */
+    private function interesTable(Worksheet $sheet, int $start): void
+    {
+        $sheet->mergeCells("A{$start}:F{$start}");
+        $sheet->setCellValue("A{$start}", 'CRÉDITO');
+        $head = ['%', 'Cnt.', 'Capital', 'Interés', 'Pagado', 'Total'];
+        $hr = $start + 1;
+        foreach ($head as $i => $h) {
+            $sheet->setCellValue($this->colLetter($i + 1) . $hr, $h);
+        }
+        $sheet->getStyle("A{$start}:F{$hr}")->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::COLOR_HEADER]],
+        ]);
+
+        $sumCnt = 0; $sumCap = 0; $sumInt = 0; $sumPag = 0; $sumTot = 0;
+        $r = $hr;
+        foreach ($this->byInteres as $b) {
+            $r++;
+            $sheet->setCellValue("A{$r}", $b['porce'] ?? '');
+            $sheet->setCellValue("B{$r}", $b['ncount'] ?? 0);
+            $sheet->setCellValue("C{$r}", number_format($b['capital'] ?? 0, 2));
+            $sheet->setCellValue("D{$r}", number_format($b['interes'] ?? 0, 2));
+            $sheet->setCellValue("E{$r}", number_format($b['pago'] ?? 0, 2));
+            $sheet->setCellValue("F{$r}", number_format($b['total'] ?? 0, 2));
+            $sumCnt += $b['ncount'] ?? 0; $sumCap += $b['capital'] ?? 0; $sumInt += $b['interes'] ?? 0;
+            $sumPag += $b['pago'] ?? 0; $sumTot += $b['total'] ?? 0;
+        }
+        $r++;
+        $sheet->setCellValue("A{$r}", 'Total');
+        $sheet->setCellValue("B{$r}", $sumCnt);
+        $sheet->setCellValue("C{$r}", number_format($sumCap, 2));
+        $sheet->setCellValue("D{$r}", number_format($sumInt, 2));
+        $sheet->setCellValue("E{$r}", number_format($sumPag, 2));
+        $sheet->setCellValue("F{$r}", number_format($sumTot, 2));
+        $this->markTotalRow($sheet, $r, 'F');
+
+        $sheet->getStyle("A{$start}:F{$r}")->applyFromArray([
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_DOTTED, 'color' => ['rgb' => '999999']]],
+        ]);
     }
 
     /** Tabla resumen simple (cabecera azul + filas, última = Total celeste). */
