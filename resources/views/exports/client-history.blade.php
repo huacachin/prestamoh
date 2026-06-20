@@ -72,30 +72,36 @@
         </thead>
         <tbody>
             @forelse($rows as $r)
-                <tr>
-                    <td {!! $cell !!}>{{ $r['n'] }}</td>
-                    <td {!! $cell !!}>{{ $r['usuario'] }}</td>
-                    <td {!! $cell !!}>{{ $r['codigo'] }}</td>
-                    <td {!! $cell !!}>{{ $r['cod_ant'] }}</td>
-                    <td {!! $cell !!}>{{ $r['f_credito'] }}</td>
-                    <td {!! $cell !!}>{{ $r['f_vcto'] }}</td>
-                    <td {!! $cell !!}>{{ $r['f_pago'] }}</td>
-                    <td {!! $cell !!}>{{ $r['f_cancelado'] }}</td>
-                    <td {!! $cell !!}>{{ number_format($r['capital'], 2) }}</td>
-                    <td {!! $cell !!}>{{ number_format($r['pct'], 2) }}</td>
-                    <td {!! $cell !!}>{{ number_format($r['interes'], 2) }}</td>
-                    <td {!! $cell !!}>{{ $r['cuotas'] }}</td>
-                    <td {!! $cell !!}>{{ number_format($r['total'], 2) }}</td>
-                    <td {!! $cell !!}>{{ number_format($r['capital_r'], 2) }}</td>
-                    <td {!! $cell !!}>{{ number_format($r['interes_g'], 2) }}</td>
-                    <td {!! $cell !!}>{{ $r['mora'] }}</td>
-                    <td {!! $cell !!}>{{ number_format($r['total_gan'], 2) }}</td>
-                    <td {!! $cell !!}>{{ number_format($r['saldo'], 2) }}</td>
-                    <td {!! $cell !!}>{{ $r['s'] }}</td>
-                    <td {!! $cell !!}>{{ $r['mxd'] }}</td>
-                    <td {!! $cell !!}>{{ $r['dias'] }}</td>
-                    <td {!! $cell !!}>{{ $r['gat'] }}</td>
-                    <td {!! $cell !!}>{{ $r['asesor'] }}</td>
+                @php
+                    $rowBg = ! empty($r['bg']) ? 'bgcolor="'.$r['bg'].'"' : '';
+                    $cBg   = ! empty($r['bg']) ? 'background-color:'.$r['bg'].';' : '';
+                    $cFg   = 'color:'.($r['color'] ?? 'black').';';
+                    $rc    = 'style="border-style:dotted solid dotted solid;text-align:center;'.$cBg.$cFg.'"';
+                @endphp
+                <tr {!! $rowBg !!}>
+                    <td {!! $rc !!}>{{ $r['n'] }}</td>
+                    <td {!! $rc !!}>{{ $r['usuario'] }}</td>
+                    <td {!! $rc !!}>{{ $r['codigo'] }}</td>
+                    <td {!! $rc !!}>{{ $r['cod_ant'] }}</td>
+                    <td {!! $rc !!}>{{ $r['f_credito'] }}</td>
+                    <td {!! $rc !!}>{{ $r['f_vcto'] }}</td>
+                    <td {!! $rc !!}>{{ $r['f_pago'] }}</td>
+                    <td {!! $rc !!}>{{ $r['f_cancelado'] }}</td>
+                    <td {!! $rc !!}>{{ number_format($r['capital'], 2) }}</td>
+                    <td {!! $rc !!}>{{ number_format($r['pct'], 2) }}</td>
+                    <td {!! $rc !!}>{{ number_format($r['interes'], 2) }}</td>
+                    <td {!! $rc !!}>{{ $r['cuotas'] }}</td>
+                    <td {!! $rc !!}>{{ number_format($r['total'], 2) }}</td>
+                    <td {!! $rc !!}>{{ number_format($r['capital_r'], 2) }}</td>
+                    <td {!! $rc !!}>{{ number_format($r['interes_g'], 2) }}</td>
+                    <td {!! $rc !!}>{{ $r['mora'] }}</td>
+                    <td {!! $rc !!}>{{ number_format($r['total_gan'], 2) }}</td>
+                    <td {!! $rc !!}>{{ number_format($r['saldo'], 2) }}</td>
+                    <td {!! $rc !!}>{{ $r['s'] }}</td>
+                    <td {!! $rc !!}>{{ $r['mxd'] }}</td>
+                    <td {!! $rc !!}>{{ $r['dias'] }}</td>
+                    <td {!! $rc !!}>{{ $r['gat'] }}</td>
+                    <td {!! $rc !!}>{{ $r['asesor'] }}</td>
                 </tr>
             @empty
                 <tr><td colspan="23" {!! $cell !!}>Sin resultados</td></tr>

@@ -42,7 +42,7 @@
                     <td {!! $cell !!}>{{ $r['n'] }}</td>
                     <td {!! $cell !!}>{{ $r['fecha_pres'] }}</td>
                     <td {!! $cell !!}>{{ $r['fecha_venc'] }}</td>
-                    <td {!! $cell !!}>{{ $r['expediente'] }}</td>
+                    <td style="border-style:dotted solid dotted solid;text-align:center;vertical-align:middle;{{ empty($r['has_imagen']) ? 'background-color:yellow;' : '' }}">{{ $r['expediente'] }}</td>
                     <td {!! $cell !!}>{{ $r['codigo'] }}</td>
                     <td {!! $cell !!}>{{ $r['cuotas'] }}</td>
                     <td {!! $cell !!} class="txt">{{ $r['dni'] }}</td>

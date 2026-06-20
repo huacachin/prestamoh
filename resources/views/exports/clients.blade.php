@@ -29,17 +29,19 @@
                         $nombre = trim(($c->apellido_pat ?? '').' '.($c->apellido_mat ?? '').' '.($c->nombre ?? ''));
                         $fecha = $c->fecha_registro ? \Illuminate\Support\Carbon::parse($c->fecha_registro)->format('Y-m-d') : '';
                         $asesor = $c->asesor?->username ?? $c->asesor?->name ?? '';
+                        $hasCredit = isset($clientsWithCredit[$c->id]);
+                        $rowColor = $hasCredit ? null : '#dc3545';
                     @endphp
-                    <tr>
-                        <td {!! $cell !!}>{{ $i + 1 }}</td>
-                        <td {!! $cell !!} class="txt">{{ $fecha }}</td>
-                        <td {!! $cell !!}>{{ $c->usuario }}</td>
-                        <td {!! $cell !!}>{{ $c->expediente }}</td>
-                        <td {!! $cell !!}>{{ $nombre }}</td>
-                        <td {!! $cell !!} class="txt">{{ $c->documento }}</td>
-                        <td {!! $cell !!} class="txt">{{ $c->celular1 }}</td>
-                        <td {!! $cell !!} class="txt">{{ $c->celular2 }}</td>
-                        <td {!! $cell !!}>{{ $asesor }}</td>
+                    <tr @if($rowColor) style="color:{{ $rowColor }};" @endif>
+                        <td {!! $cell !!}>@if($rowColor)<font color="{{ $rowColor }}">{{ $i + 1 }}</font>@else{{ $i + 1 }}@endif</td>
+                        <td {!! $cell !!} class="txt">@if($rowColor)<font color="{{ $rowColor }}">{{ $fecha }}</font>@else{{ $fecha }}@endif</td>
+                        <td {!! $cell !!}>@if($rowColor)<font color="{{ $rowColor }}">{{ $c->usuario }}</font>@else{{ $c->usuario }}@endif</td>
+                        <td {!! $cell !!}>@if($rowColor)<font color="{{ $rowColor }}">{{ $c->expediente }}</font>@else{{ $c->expediente }}@endif</td>
+                        <td {!! $cell !!}>@if($rowColor)<font color="{{ $rowColor }}">{{ $nombre }}</font>@else{{ $nombre }}@endif</td>
+                        <td {!! $cell !!} class="txt">@if($rowColor)<font color="{{ $rowColor }}">{{ $c->documento }}</font>@else{{ $c->documento }}@endif</td>
+                        <td {!! $cell !!} class="txt">@if($rowColor)<font color="{{ $rowColor }}">{{ $c->celular1 }}</font>@else{{ $c->celular1 }}@endif</td>
+                        <td {!! $cell !!} class="txt">@if($rowColor)<font color="{{ $rowColor }}">{{ $c->celular2 }}</font>@else{{ $c->celular2 }}@endif</td>
+                        <td {!! $cell !!}>@if($rowColor)<font color="{{ $rowColor }}">{{ $asesor }}</font>@else{{ $asesor }}@endif</td>
                     </tr>
                 @endforeach
             </tbody>
@@ -69,19 +71,21 @@
                         $nombre = trim(($c->apellido_pat ?? '').' '.($c->apellido_mat ?? '').' '.($c->nombre ?? ''));
                         $fecha = $c->fecha_registro ? \Illuminate\Support\Carbon::parse($c->fecha_registro)->format('Y-m-d') : '';
                         $asesor = $c->asesor?->username ?? $c->asesor?->name ?? '';
+                        $hasCredit = isset($clientsWithCredit[$c->id]);
+                        $rowColor = $hasCredit ? null : '#dc3545';
                     @endphp
-                    <tr>
-                        <td {!! $cell !!}>{{ $i + 1 }}</td>
-                        <td {!! $cell !!} class="txt">{{ $fecha }}</td>
-                        <td {!! $cell !!}>{{ $c->usuario }}</td>
-                        <td {!! $cell !!}>{{ $c->expediente }}</td>
-                        <td {!! $cell !!}>{{ $nombre }}</td>
-                        <td {!! $cell !!} class="txt">{{ $c->documento }}</td>
-                        <td {!! $cell !!} class="txt">{{ $c->celular1 }}</td>
-                        <td {!! $cell !!}>{{ $c->zona }}</td>
-                        <td {!! $cell !!}>{{ $c->giro }}</td>
-                        <td {!! $cell !!}>{{ $asesor }}</td>
-                        <td {!! $cell !!}>{{ $c->direccion }}</td>
+                    <tr @if($rowColor) style="color:{{ $rowColor }};" @endif>
+                        <td {!! $cell !!}>@if($rowColor)<font color="{{ $rowColor }}">{{ $i + 1 }}</font>@else{{ $i + 1 }}@endif</td>
+                        <td {!! $cell !!} class="txt">@if($rowColor)<font color="{{ $rowColor }}">{{ $fecha }}</font>@else{{ $fecha }}@endif</td>
+                        <td {!! $cell !!}>@if($rowColor)<font color="{{ $rowColor }}">{{ $c->usuario }}</font>@else{{ $c->usuario }}@endif</td>
+                        <td {!! $cell !!}>@if($rowColor)<font color="{{ $rowColor }}">{{ $c->expediente }}</font>@else{{ $c->expediente }}@endif</td>
+                        <td {!! $cell !!}>@if($rowColor)<font color="{{ $rowColor }}">{{ $nombre }}</font>@else{{ $nombre }}@endif</td>
+                        <td {!! $cell !!} class="txt">@if($rowColor)<font color="{{ $rowColor }}">{{ $c->documento }}</font>@else{{ $c->documento }}@endif</td>
+                        <td {!! $cell !!} class="txt">@if($rowColor)<font color="{{ $rowColor }}">{{ $c->celular1 }}</font>@else{{ $c->celular1 }}@endif</td>
+                        <td {!! $cell !!}>@if($rowColor)<font color="{{ $rowColor }}">{{ $c->zona }}</font>@else{{ $c->zona }}@endif</td>
+                        <td {!! $cell !!}>@if($rowColor)<font color="{{ $rowColor }}">{{ $c->giro }}</font>@else{{ $c->giro }}@endif</td>
+                        <td {!! $cell !!}>@if($rowColor)<font color="{{ $rowColor }}">{{ $asesor }}</font>@else{{ $asesor }}@endif</td>
+                        <td {!! $cell !!}>@if($rowColor)<font color="{{ $rowColor }}">{{ $c->direccion }}</font>@else{{ $c->direccion }}@endif</td>
                     </tr>
                 @endforeach
             </tbody>

@@ -66,9 +66,22 @@ class ClientController extends Controller
         $esCesado = $status === 'inactive';
         $filename = $esCesado ? 'Clientes Cesados.xls' : 'Clientes.xls';
 
+        // IDs de clientes con crédito vigente (para colorear filas, homologa pantalla)
+        $clientIds = $clients->pluck('id')->toArray();
+        $clientsWithCredit = [];
+        if (! empty($clientIds)) {
+            $clientsWithCredit = Credit::whereIn('client_id', $clientIds)
+                ->where('situacion', 'Activo')
+                ->distinct()
+                ->pluck('client_id')
+                ->flip()
+                ->toArray();
+        }
+
         return XlsResponse::make('exports.clients', [
-            'clients'  => $clients,
-            'esCesado' => $esCesado,
+            'clients'           => $clients,
+            'esCesado'          => $esCesado,
+            'clientsWithCredit' => $clientsWithCredit,
         ], $filename);
     }
 
@@ -83,6 +96,12 @@ class ClientController extends Controller
         $paySinMora = [];
         $payMora = [];
         $maxFecha = [];
+        $idcanRefSet = [];   // créditos referenciados como idcan (refinanciados) → revierten color
+        if (! empty($ids)) {
+            $refs = DB::table('credits')->whereIn('idcan', $ids)
+                ->pluck('idcan')->unique()->all();
+            $idcanRefSet = array_flip($refs);
+        }
         if (! empty($ids)) {
             foreach (DB::table('payments')->whereIn('credit_id', $ids)
                 ->where(function ($q) { $q->whereNull('documento')->orWhere('documento', 'NOT LIKE', 'MORA%'); })
@@ -118,6 +137,22 @@ class ClientController extends Controller
             $totalCred = $importe + $tintere;
             $totalGan  = $rftq + $iminte + $mora;
             $saldo2    = $importe + $tintere - $rftq - $iminte;
+
+            // Colores condicionales por fila (homologa pantalla Historial / legacy cliente_viewexcel)
+            $bg = '';
+            $color = 'black';
+            if (round($saldo2, 2) > 0) {
+                $bg = 'red';
+                $color = 'white';
+                if (isset($idcanRefSet[$c->id])) {  // refinanciado → revierte
+                    $bg = '';
+                    $color = 'black';
+                }
+            }
+            if ((int) $c->estado === 1) {           // desactivado → amarillo/rojo (override)
+                $bg = 'yellow';
+                $color = 'red';
+            }
 
             $newdias = 0;
             if ($c->fecha_cancelacion && $c->fecha_vencimiento) {
@@ -162,6 +197,8 @@ class ClientController extends Controller
                 'dias'        => $dias,
                 'gat'         => $c->gat,
                 'asesor'      => $c->asesor ?? '',
+                'bg'          => $bg,
+                'color'       => $color,
             ];
         }
 

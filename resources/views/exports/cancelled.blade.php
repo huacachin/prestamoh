@@ -41,8 +41,8 @@
         <tbody>
             @forelse($rows as $r)
                 @php
-                    $bg    = ($r['bg'] ?? '') !== '' ? "style='".$r['bg']."'" : '';
-                    $stc   = "style='color:".($r['st_color'] ?? 'black').";'";
+                    $rowStyle = ($r['bg'] ?? '').' color:'.($r['color_texto'] ?? 'black').';';
+                    $bg    = trim($rowStyle) !== 'color:black;' || ($r['bg'] ?? '') !== '' ? "style='".$rowStyle."'" : '';
                 @endphp
                 <tr {!! $bg !!}>
                     <td {!! $cell !!}>{{ $r['n'] }}</td>
@@ -73,7 +73,7 @@
             @endforelse
 
             {{-- Total General (2 filas) --}}
-            <tr bgcolor="#CEE7FF">
+            <tr bgcolor="#f0f0f0">
                 <td colspan="6" rowspan="2" align="center" style="vertical-align:middle;">Total General</td>
                 <td rowspan="2" align="center" style="vertical-align:middle;">{{ number_format($totals['cancecapi'] ?? 0, 2) }}</td>
                 <td rowspan="2" align="center" style="vertical-align:middle;">{{ number_format($totals['canceinteg'] ?? 0, 2) }}</td>
@@ -85,7 +85,7 @@
                 <td rowspan="2" style="vertical-align:middle;">{{ number_format($totals['montomorxdia'] ?? 0, 2) }}</td>
                 <td rowspan="2" colspan="7" style="vertical-align:middle;"></td>
             </tr>
-            <tr bgcolor="#CEE7FF">
+            <tr bgcolor="#f0f0f0">
                 <td colspan="3" align="center" style="vertical-align:middle;">{{ number_format(($totals['canceinte'] ?? 0) + ($totals['cancemora'] ?? 0) + ($totals['total_gat'] ?? 0), 2) }}</td>
             </tr>
 
