@@ -27,8 +27,8 @@
                 @foreach($clients as $i => $c)
                     @php
                         $nombre = trim(($c->apellido_pat ?? '').' '.($c->apellido_mat ?? '').' '.($c->nombre ?? ''));
-                        $fecha = $c->fecha_registro ? \Illuminate\Support\Carbon::parse($c->fecha_registro)->format('d/m/Y') : '';
-                        $asesor = $c->asesor?->name ?? $c->asesor?->username ?? '';
+                        $fecha = $c->fecha_registro ? \Illuminate\Support\Carbon::parse($c->fecha_registro)->format('Y-m-d') : '';
+                        $asesor = $c->asesor?->username ?? $c->asesor?->name ?? '';
                     @endphp
                     <tr>
                         <td {!! $cell !!}>{{ $i + 1 }}</td>
@@ -67,8 +67,8 @@
                 @foreach($clients as $i => $c)
                     @php
                         $nombre = trim(($c->apellido_pat ?? '').' '.($c->apellido_mat ?? '').' '.($c->nombre ?? ''));
-                        $fecha = $c->fecha_registro ? \Illuminate\Support\Carbon::parse($c->fecha_registro)->format('d/m/Y') : '';
-                        $asesor = $c->asesor?->name ?? $c->asesor?->username ?? '';
+                        $fecha = $c->fecha_registro ? \Illuminate\Support\Carbon::parse($c->fecha_registro)->format('Y-m-d') : '';
+                        $asesor = $c->asesor?->username ?? $c->asesor?->name ?? '';
                     @endphp
                     <tr>
                         <td {!! $cell !!}>{{ $i + 1 }}</td>

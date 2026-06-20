@@ -31,7 +31,7 @@
                     <td {!! $cell !!}>{{ $r['asesor'] }}</td>
                     <td {!! $cell !!}>{{ $r['cliente'] }}</td>
                     <td {!! $cell !!}>{{ $r['detalle'] }}</td>
-                    <td {!! $cell !!}>{{ $r['moneda'] === 'Soles' || $r['moneda'] === '' ? number_format($r['monto'], 2) : '' }}</td>
+                    <td {!! $cell !!}>{{ number_format($r['monto'], 2) }}</td>
                 </tr>
             @endforeach
 
@@ -45,6 +45,7 @@
             <tr>
                 <td align="center"><b>Fijos</b></td>
                 <td align="center"><b>{{ number_format($totals['fijos'] ?? 0, 2) }}</b></td>
+                <td></td>
             </tr>
             <tr>
                 <td align="center"><font color="red"><b>Otros</b></font></td>

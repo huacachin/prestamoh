@@ -120,7 +120,8 @@
       "Bash(bc)",
       "Bash(xargs -n1 basename)",
       "Bash(perl -0pi -e 's/\\\\/\\\\*\\\\* Formato de moneda \\\\+ alineación centrada en el rango de datos \\\\\\(ShouldAutoSize maneja anchos\\\\\\)\\\\. \\\\*\\\\//\\\\/** Formato de moneda + alineación centrada en el rango de datos. *\\\\//' app/Exports/CancelledExport.php app/Exports/ClientHistoryExport.php)",
-      "Bash(./vendor/bin/pint app/Http/Controllers/PaymentController.php app/Http/Controllers/ReportController.php)"
+      "Bash(./vendor/bin/pint app/Http/Controllers/PaymentController.php app/Http/Controllers/ReportController.php)",
+      "Bash(awk *)"
     ]
   }
 }

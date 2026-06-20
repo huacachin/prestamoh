@@ -31,8 +31,8 @@
                     <td {!! $cell !!}>{{ $c->code }}</td>
                     <td {!! $cell !!}>{{ $c->name }}</td>
                     <td {!! $cell !!}>{{ $tipoLabel }}</td>
-                    <td {!! $cell !!}>{{ $c->factor_ingreso }}</td>
-                    <td {!! $cell !!}>{{ $c->factor_egreso }}</td>
+                    <td {!! $cell !!}>{{ number_format($c->factor_ingreso, 2) }}</td>
+                    <td {!! $cell !!}>{{ number_format($c->factor_egreso, 2) }}</td>
                 </tr>
             @empty
                 <tr>

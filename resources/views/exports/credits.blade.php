@@ -42,17 +42,17 @@
                 <tr>
                     <td {!! $cell !!}>{{ $i + 1 }}</td>
                     <td {!! $cell !!}>{{ $c->fecha_prestamo?->format('d/m/Y') }}</td>
-                    <td {!! $cell !!}>{{ $c->usuario }}</td>
+                    <td {!! $cell !!}>{{ $c->user?->username ?? $c->user?->name ?? $c->usuario }}</td>
                     <td {!! $cell !!}>{{ $c->id }}</td>
                     <td style="border-style:dotted solid dotted solid;">{{ $nombre }}</td>
                     <td {!! $cell !!}>{{ number_format($c->importe, 2) }}</td>
-                    <td {!! $cell !!}>{{ number_format($c->interes, 0) }}</td>
+                    <td {!! $cell !!}>{{ (int) $c->interes == (float) $c->interes ? (int) $c->interes : number_format($c->interes, 2) }}</td>
                     <td {!! $cell !!}>{{ number_format($inter, 2) }}</td>
                     <td {!! $cell !!}>{{ $c->cuotas }}</td>
                     <td {!! $cell !!}>{{ number_format($total, 2) }}</td>
                     <td {!! $cell !!}>{{ number_format($pago, 2) }}</td>
                     <td {!! $cell !!}>{{ number_format($saldo, 2) }}</td>
-                    <td {!! $cell !!}>{{ $cli?->asesor?->name ?? $cli?->asesor?->username ?? '' }}</td>
+                    <td {!! $cell !!}>{{ $cli?->asesor?->username ?? $cli?->asesor?->name ?? '' }}</td>
                     <td {!! $cell !!}>{{ $tcLabels[(int) $c->tipo_planilla] ?? '' }}</td>
                 </tr>
             @empty

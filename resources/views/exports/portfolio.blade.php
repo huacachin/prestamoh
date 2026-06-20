@@ -46,6 +46,8 @@
                     $tipo  = (int) ($r['tipo_planilla'] ?? 0);
                     $tcSt  = $tipo === 1 ? "style='color:blue;'" : ($tipo === 3 ? "style='color:red;'" : '');
                     $estSt = ($r['estado'] ?? '') === 'Vencida' ? "style='color:red;'" : '';
+                    $pct   = (float) ($r['interes_pct'] ?? 0);
+                    $pctTxt = (intval($pct) == $pct) ? (string) intval($pct) : number_format($pct, 2);
                 @endphp
                 <tr {!! $bgrow !!}>
                     <td {!! $cell !!}>{{ $r['n'] }}</td>
@@ -56,7 +58,7 @@
                     <td {!! $cell !!}><font color="red">{{ $r['cod_rem'] }}</font></td>
                     <td {!! $cell !!}>{{ number_format($r['capital'], 2) }}</td>
                     <td {!! $tcSt !!} style="border-style:dotted solid dotted solid;text-align:center;"><b>{{ $r['tc_label'] }}{{ $r['tc_label'] !== '' ? '.' : '' }}</b></td>
-                    <td {!! $cell !!}>{{ number_format($r['interes_pct'], 2) }}</td>
+                    <td {!! $cell !!}>{{ $pctTxt }}</td>
                     <td {!! $cell !!}>{{ number_format($r['interes_monto'], 2) }}</td>
                     <td {!! $cell !!}>{{ $r['cuotas'] }}</td>
                     <td {!! $cell !!}>{{ number_format($r['total'], 2) }}</td>

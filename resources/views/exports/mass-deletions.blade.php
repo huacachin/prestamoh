@@ -34,7 +34,7 @@
                     <td {!! $cell !!}>{{ $r->advisor }}</td>
                     <td {!! $cell !!}>{{ $cliente }}</td>
                     <td {!! $cell !!}>{{ $r->credit_id }}</td>
-                    <td {!! $cell !!}>{{ $r->amount }}</td>
+                    <td {!! $cell !!}>{{ number_format($r->amount, 2) }}</td>
                 </tr>
             @empty
                 <tr><td colspan="8" {!! $cell !!}>Sin resultados</td></tr>

@@ -57,7 +57,7 @@
                     <td {!! $tcSt !!} style="border-style:dotted solid dotted solid;text-align:center;"><b>{{ $r['tc_label'] }}{{ $r['tc_label'] !== '' ? '.' : '' }}</b></td>
                     <td {!! $cell !!}>{{ $pctTxt }}</td>
                     <td {!! $cell !!}>{{ number_format($r['interes_monto'], 2) }}</td>
-                    <td {!! $cell !!}></td>
+                    <td {!! $cell !!}>{{ $r['cuotas'] }}</td>
                     <td {!! $cell !!}>{{ number_format($r['total'], 2) }}</td>
                     <td {!! $cell !!}>{{ number_format($r['pago'], 2) }}</td>
                     <td {!! $cell !!}>{{ number_format($r['saldo'], 2) }}</td>
