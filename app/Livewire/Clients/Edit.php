@@ -158,6 +158,8 @@ class Edit extends Component
 
         $this->client->update($data);
 
+        \App\Support\Audit::log('Editó el cliente '.$this->client->fullName(), $this->client);
+
         session()->flash('client_success', 'Cliente actualizado correctamente.');
         return redirect()->route('clients.index');
     }
@@ -171,6 +173,7 @@ class Edit extends Component
     public function destroy(int $id): void
     {
         Client::findOrFail($id)->update(['status' => 'inactive']);
+        \App\Support\Audit::log("Desactivó el cliente #{$id}");
         session()->flash('client_success', 'Cliente desactivado correctamente.');
         $this->redirectRoute('clients.index');
     }

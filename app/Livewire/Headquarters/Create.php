@@ -37,11 +37,13 @@ class Create extends Component
         try {
             $this->validate();
 
-            Headquarter::create([
+            $headquarter = Headquarter::create([
                 'name'       => $this->name,
                 'sort_order' => $this->sort_order,
                 'status'     => $this->status,
             ]);
+
+            \App\Support\Audit::log("Creó la sucursal {$this->name}", $headquarter);
 
             session()->flash('headquarter_success', 'Sucursal creada correctamente.');
             $this->redirectRoute('settings.headquarters.index');

@@ -248,6 +248,8 @@ class Refinance extends Component
             ]);
         });
 
+        \App\Support\Audit::log("Refinanció el crédito #{$this->credit->id}", $this->credit);
+
         session()->flash('credit_success', "Refinanciamiento creado: nuevo crédito #{$this->codpre_}, original #{$this->credit->id} cancelado.");
 
         return redirect()->route('payments.index');

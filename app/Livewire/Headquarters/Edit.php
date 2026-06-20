@@ -48,6 +48,7 @@ class Edit extends Component
         }
 
         Headquarter::findOrFail($id)->delete();
+        \App\Support\Audit::log("Eliminó la sucursal #{$id}");
         session()->flash('headquarter_success', 'Sucursal eliminada correctamente.');
         $this->redirectRoute('settings.headquarters.index');
     }
@@ -62,6 +63,8 @@ class Edit extends Component
                 'sort_order' => $this->sort_order,
                 'status'     => $this->status,
             ]);
+
+            \App\Support\Audit::log("Editó la sucursal {$this->name}", $this->headquarter);
 
             session()->flash('headquarter_success', 'Sucursal actualizada correctamente.');
             $this->redirectRoute('settings.headquarters.index');

@@ -439,6 +439,8 @@ class Create extends Component
             }
         });
 
+        \App\Support\Audit::log('Creó el crédito #'.$this->codpre_);
+
         session()->flash('credit_success', 'Crédito #'.$this->codpre_.' creado.');
 
         return redirect()->route('credits.show', $this->codpre_);

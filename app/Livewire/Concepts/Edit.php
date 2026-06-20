@@ -64,6 +64,7 @@ class Edit extends Component
         }
 
         Concept::findOrFail($id)->delete();
+        \App\Support\Audit::log("Eliminó el concepto #{$id}");
         session()->flash('concept_success', 'Concepto eliminado correctamente.');
         $this->redirectRoute('settings.concepts.index');
     }
@@ -81,6 +82,8 @@ class Edit extends Component
                 'factor_ingreso' => $this->factor_ingreso ?: 0,
                 'factor_egreso' => $this->factor_egreso ?: 0,
             ]);
+
+            \App\Support\Audit::log("Editó el concepto {$this->code} - {$this->name}", $this->concept);
 
             session()->flash('concept_success', 'Concepto actualizado correctamente.');
             $this->redirectRoute('settings.concepts.index');

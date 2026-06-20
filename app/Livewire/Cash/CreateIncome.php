@@ -236,6 +236,8 @@ class CreateIncome extends Component
             // Adjuntos en el MISMO paso (si se cargaron imágenes).
             $count = $this->storeIncomeAttachments($income, $this->files);
 
+            \App\Support\Audit::log('Registró ingreso de '.(float) $this->total, $income);
+
             $msg = $count > 0
                 ? "Ingreso registrado con {$count} ".($count === 1 ? 'imagen' : 'imágenes').'.'
                 : 'Ingreso registrado.';

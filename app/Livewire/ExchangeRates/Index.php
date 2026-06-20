@@ -32,10 +32,12 @@ class Index extends Component
     {
         $this->validate();
 
-        ExchangeRate::updateOrCreate(
+        $rate = ExchangeRate::updateOrCreate(
             ['fecha' => $this->fecha],
             ['compra' => $this->compra, 'venta' => $this->venta]
         );
+
+        \App\Support\Audit::log("Actualizó el tipo de cambio {$this->fecha} (compra {$this->compra} / venta {$this->venta})", $rate);
 
         $this->saved = true;
         $this->dispatch('successAlert', ['message' => 'Se actualizó el Tipo de Cambio con éxito']);

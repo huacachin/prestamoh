@@ -255,6 +255,9 @@ class Create extends Component
             $this->newClientId = $clientId;
         });
 
+        $createdClient = Client::find($this->newClientId);
+        \App\Support\Audit::log('Creó el cliente '.($createdClient?->fullName() ?? $this->documento), $createdClient);
+
         return redirect()->route('clients.gallery', $this->newClientId);
     }
 

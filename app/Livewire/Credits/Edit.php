@@ -63,6 +63,8 @@ class Edit extends Component
             'situacion'      => $this->situacion,
         ]);
 
+        \App\Support\Audit::log("Editó el crédito #{$this->credit->id}", $this->credit);
+
         session()->flash('credit_success', 'Crédito actualizado correctamente.');
         return redirect()->route('credits.show', $this->creditId);
     }
@@ -77,6 +79,7 @@ class Edit extends Component
     {
         $credit = Credit::findOrFail($id);
         $credit->update(['situacion' => 'Eliminado']);
+        \App\Support\Audit::log("Eliminó el crédito #{$id}", $credit);
         session()->flash('credit_success', 'Crédito eliminado.');
         $this->redirectRoute('credits.index');
     }

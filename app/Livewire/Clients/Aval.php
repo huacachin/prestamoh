@@ -161,13 +161,15 @@ class Aval extends Component
             return;
         }
 
-        ClientAval::create([
+        $aval = ClientAval::create([
             'client_id' => $this->clientId,
             'dni'       => $doc,
             'nombre'    => $this->nombre,
             'direccion' => $this->direccion,
             'telefono'  => $this->telefono,
         ]);
+
+        \App\Support\Audit::log("Agregó un aval al cliente #{$this->clientId}", $aval);
 
         $this->resetCamposAval();
         $this->dni = '';
@@ -189,6 +191,7 @@ class Aval extends Component
     {
         if (!$this->puedeEditar) return;
         ClientAval::where('client_id', $this->clientId)->where('id', $id)->delete();
+        \App\Support\Audit::log("Eliminó el aval #{$id}");
         // El custom.js ya muestra "Eliminado!" — no dispatcheamos successAlert para no duplicar.
     }
 

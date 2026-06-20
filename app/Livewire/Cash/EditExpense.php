@@ -115,6 +115,7 @@ class EditExpense extends Component
         // Espejo caja 3 (legacy gastos-modificar22.php): el borrado elimina entrada Y entrada3.
         Expense::where('caja', 3)->where('parent_id', $id)->delete();
         Expense::findOrFail($id)->delete();
+        \App\Support\Audit::log("Eliminó el egreso #{$id}");
         session()->flash('cash_success', 'Egreso eliminado correctamente.');
         $this->redirectRoute('cash.expenses');
     }

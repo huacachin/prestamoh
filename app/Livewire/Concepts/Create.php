@@ -57,7 +57,7 @@ class Create extends Component
         try {
             $this->validate();
 
-            Concept::create([
+            $concept = Concept::create([
                 'code' => $this->code,
                 'name' => $this->name,
                 'status' => $this->status,
@@ -65,6 +65,8 @@ class Create extends Component
                 'factor_ingreso' => $this->factor_ingreso ?: 0,
                 'factor_egreso' => $this->factor_egreso ?: 0,
             ]);
+
+            \App\Support\Audit::log("Creó el concepto {$this->code} - {$this->name}", $concept);
 
             session()->flash('concept_success', 'Concepto creado correctamente.');
             $this->redirectRoute('settings.concepts.index');

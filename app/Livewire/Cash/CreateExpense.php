@@ -230,6 +230,8 @@ class CreateExpense extends Component
             // Adjuntos en el MISMO paso (si se cargaron imágenes).
             $count = $this->storeExpenseAttachments($expense, $this->files);
 
+            \App\Support\Audit::log('Registró egreso de '.(float) $this->total, $expense);
+
             $msg = $count > 0
                 ? "Egreso registrado con {$count} ".($count === 1 ? 'imagen' : 'imágenes').'.'
                 : 'Egreso registrado.';

@@ -94,6 +94,7 @@ class EditIncome extends Component
         // (Nota: el legacy NO sincroniza caja3 al EDITAR un ingreso, por eso update() no la toca.)
         Income::where('caja', 3)->where('parent_id', $id)->delete();
         Income::findOrFail($id)->delete();
+        \App\Support\Audit::log("Eliminó el ingreso #{$id}");
         session()->flash('cash_success', 'Ingreso eliminado correctamente.');
         $this->redirectRoute('cash.incomes');
     }
