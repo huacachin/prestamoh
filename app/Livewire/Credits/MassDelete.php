@@ -2,10 +2,8 @@
 
 namespace App\Livewire\Credits;
 
-use App\Exports\MassDeletionsExport;
 use App\Models\MassDeletion;
 use Livewire\Component;
-use Maatwebsite\Excel\Facades\Excel;
 
 class MassDelete extends Component
 {
@@ -22,10 +20,35 @@ class MassDelete extends Component
 
     public function exportExcel()
     {
-        return Excel::download(
-            new MassDeletionsExport($this->tipo, $this->compra, $this->fei, $this->fef),
-            'eliminar-masivo-' . now()->format('Y-m-d') . '.xlsx'
-        );
+        $term = trim($this->compra);
+
+        $query = MassDeletion::query()->with(['credit.client']);
+
+        if ($term !== '' && ($this->fei === '' || $this->fef === '')) {
+            // Solo búsqueda, sin filtro de fecha
+        } elseif ($this->fei !== '' && $this->fef !== '') {
+            $query->where('date', '>=', $this->fei)
+                  ->where('date', '<=', $this->fef);
+        } else {
+            $query->where('date', now()->format('Y-m-d'));
+        }
+
+        if ($term !== '') {
+            match ($this->tipo) {
+                '1' => $query->where('credit_id', 'like', "%{$term}%"),
+                '2' => $query->where('advisor', 'like', "%{$term}%"),
+                '3' => $query->where('performed_by', 'like', "%{$term}%"),
+                default => null,
+            };
+        }
+
+        $records = $query->orderBy('date', 'asc')->get();
+        $totalSum = $records->sum('amount');
+
+        return \App\Support\XlsResponse::make('exports.mass-deletions', [
+            'records'  => $records,
+            'totalSum' => $totalSum,
+        ], 'Eliminar Masivo.xls');
     }
 
     public function render()

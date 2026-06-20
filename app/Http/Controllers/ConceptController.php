@@ -12,11 +12,27 @@ class ConceptController extends Controller
 
     public function export(Request $request)
     {
-        $export = new \App\Exports\ConceptsExport(
-            tipo:    (string) $request->query('tipo', '2'),
-            compra:  (string) $request->query('compra', ''),
-            estados: (string) $request->query('estados', 'Activo'),
-        );
-        return \Maatwebsite\Excel\Facades\Excel::download($export, 'conceptos-' . now()->format('Ymd-His') . '.xlsx');
+        $tipo    = (string) $request->query('tipo', '2');
+        $compra  = (string) $request->query('compra', '');
+        $estados = (string) $request->query('estados', 'Activo');
+
+        $query = \App\Models\Concept::query();
+
+        if (trim($compra) !== '') {
+            $t = trim($compra);
+            if ($tipo === '1') {
+                $query->where('code', 'like', "%{$t}%");
+            } else {
+                $query->where('name', 'like', "%{$t}%");
+            }
+        }
+
+        $query->where('status', $estados === 'Cesado' ? 'inactive' : 'active');
+
+        $concepts = $query->orderBy('code', 'asc')->get();
+
+        return \App\Support\XlsResponse::make('exports.concepts', [
+            'concepts' => $concepts,
+        ], 'Conceptos Fijos.xls');
     }
 }
