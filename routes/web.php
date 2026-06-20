@@ -132,6 +132,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/exports/reports/payments',      [ReportController::class, 'exportPayments'])->name('exports.reports.payments');
     Route::get('/exports/reports/cash-general-1',[ReportController::class, 'exportCashGeneral1'])->name('exports.reports.cash-general-1');
     Route::get('/exports/reports/cash-general-2',[ReportController::class, 'exportCashGeneral2'])->name('exports.reports.cash-general-2');
+    Route::get('/exports/reports/cash-general-3',[ReportController::class, 'exportCashGeneral3'])->name('exports.reports.cash-general-3');
     Route::get('/exports/reports/advisor',       [ReportController::class, 'exportAdvisor'])->name('exports.reports.advisor');
     Route::get('/exports/reports/simulator',     [ReportController::class, 'exportSimulator'])->name('exports.reports.simulator');
     Route::get('/exports/credits/{id}/schedule', [CreditController::class, 'exportSchedule'])->name('exports.credits.schedule');

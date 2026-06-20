@@ -199,6 +199,19 @@ class ReportController extends Controller
         ], 'Reporte General Caja 2.xls');
     }
 
+    public function exportCashGeneral3(Request $request)
+    {
+        $c = new \App\Livewire\Reports\CashGeneral3;
+        $c->month = (int) $request->query('month', now()->month);
+        $c->year = (int) $request->query('year', now()->year);
+
+        $d = $c->render()->getData();
+
+        return XlsResponse::make('exports.reports.cash-general-3', [
+            'report' => $d['report'],
+        ], 'Reporte General Caja 3.xls');
+    }
+
     public function exportAdvisor(Request $request)
     {
         $c = new Advisor;
