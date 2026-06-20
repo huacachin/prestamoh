@@ -5,7 +5,6 @@ namespace App\Exports;
 use App\Exports\Concerns\LegacyExcelStyle;
 use App\Models\Concept;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -15,7 +14,7 @@ use Maatwebsite\Excel\Events\AfterSheet;
 /**
  * Excel del catálogo de conceptos — réplica de conceptoex.php. Título "CONCEPTOS FIJOS".
  */
-class ConceptsExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
+class ConceptsExport implements FromCollection, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
 {
     use LegacyExcelStyle;
 

@@ -6,7 +6,6 @@ use App\Exports\Concerns\LegacyExcelStyle;
 use App\Livewire\Reports\Advisor as AdvisorLivewire;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Events\AfterSheet;
@@ -20,7 +19,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * Título "REPORTE DE ASESOR". DOS tablas (diaria + mensual) con cabecera multi-fila
  * (CLIENTES / COBRADOS / NO COBRADOS) y filas Totales + Promedio en cada una.
  */
-class AdvisorExport implements FromCollection, WithMapping, ShouldAutoSize, WithCustomStartCell, WithEvents
+class AdvisorExport implements FromCollection, WithMapping, WithCustomStartCell, WithEvents
 {
     use LegacyExcelStyle;
 

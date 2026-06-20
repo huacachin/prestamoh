@@ -9,7 +9,6 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Events\AfterSheet;
@@ -22,7 +21,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * Excel del historial crediticio de un cliente (/clients/{id}) — réplica de cliente_viewexcel.php.
  * Panel de datos del cliente + "HISTORIAL DE PAGOS" + tabla de 23 columnas + fila de totales.
  */
-class ClientHistoryExport implements FromCollection, WithMapping, ShouldAutoSize, WithCustomStartCell, WithEvents
+class ClientHistoryExport implements FromCollection, WithMapping, WithCustomStartCell, WithEvents
 {
     use LegacyExcelStyle;
 
@@ -208,7 +207,7 @@ class ClientHistoryExport implements FromCollection, WithMapping, ShouldAutoSize
         ]);
     }
 
-    /** Formato de moneda + alineación centrada en el rango de datos (ShouldAutoSize maneja anchos). */
+    /** Formato de moneda + alineación centrada en el rango de datos. */
     private function buildDataStyles(Worksheet $sheet, string $lastCol): void
     {
         if ($this->rowCount < 1) {

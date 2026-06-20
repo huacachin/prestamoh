@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Events\AfterSheet;
@@ -19,7 +18,7 @@ use Maatwebsite\Excel\Events\AfterSheet;
  * Título "REPORTE DE PAGO". Domingos en rojo / sábados en verde. Total (2 filas).
  * Créditos diarios (tipoplani=4): filas extra de pagos antes/después del cronograma + Totales.
  */
-class ScheduleExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithCustomStartCell, WithEvents
+class ScheduleExport implements FromCollection, WithHeadings, WithMapping, WithCustomStartCell, WithEvents
 {
     use LegacyExcelStyle;
 

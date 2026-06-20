@@ -119,16 +119,43 @@ trait LegacyExcelStyle
     /**
      * Estilo base común a TODOS los exports:
      *  - Fuente tamaño 10 en todo el libro (default style).
-     *  - Auto-ajuste de ancho al contenido en todas las columnas usadas.
-     * Llamar al FINAL del AfterSheet (cuando ya está todo escrito).
+     *  - Ancho de columna ajustado al contenido, con un tope máximo (evita columnas
+     *    absurdamente anchas por un texto largo) y un mínimo. Ignora las celdas
+     *    combinadas (título, totales, grupos) para que no inflen el ancho.
+     * Llamar al FINAL del AfterSheet (cuando ya está todo escrito). Los exports NO
+     * deben implementar ShouldAutoSize (sobrescribiría estos anchos).
      */
-    protected function applyBaseFontAndAutosize(Worksheet $sheet): void
+    protected function applyBaseFontAndAutosize(Worksheet $sheet, int $maxWidth = 48, int $minWidth = 5): void
     {
         $sheet->getParent()->getDefaultStyle()->getFont()->setSize(10);
 
-        $highest = Coordinate::columnIndexFromString($sheet->getHighestColumn());
-        for ($i = 1; $i <= $highest; $i++) {
-            $sheet->getColumnDimensionByColumn($i)->setAutoSize(true);
+        // Celdas dentro de un merge no cuentan para el ancho de su columna.
+        $merged = [];
+        foreach ($sheet->getMergeCells() as $range) {
+            foreach (Coordinate::extractAllCellReferencesInRange($range) as $ref) {
+                $merged[$ref] = true;
+            }
+        }
+
+        $highestCol = Coordinate::columnIndexFromString($sheet->getHighestColumn());
+        $highestRow = $sheet->getHighestRow();
+
+        for ($cI = 1; $cI <= $highestCol; $cI++) {
+            $col = Coordinate::stringFromColumnIndex($cI);
+            $maxLen = 0;
+            for ($r = 2; $r <= $highestRow; $r++) { // r=2: omite la fila 1 (título)
+                $ref = $col . $r;
+                if (isset($merged[$ref]) || ! $sheet->cellExists($ref)) {
+                    continue;
+                }
+                $len = mb_strlen((string) $sheet->getCell($ref)->getFormattedValue());
+                if ($len > $maxLen) {
+                    $maxLen = $len;
+                }
+            }
+            $dim = $sheet->getColumnDimension($col);
+            $dim->setAutoSize(false);
+            $dim->setWidth(max($minWidth, min($maxWidth, $maxLen + 2)));
         }
     }
 }

@@ -5,7 +5,6 @@ namespace App\Exports;
 use App\Exports\Concerns\LegacyExcelStyle;
 use App\Models\MassDeletion;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -15,7 +14,7 @@ use Maatwebsite\Excel\Events\AfterSheet;
 /**
  * Excel de pagos masivos — título "ELIMINAR MASIVO" + total de monto.
  */
-class MassDeletionsExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
+class MassDeletionsExport implements FromCollection, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
 {
     use LegacyExcelStyle;
 

@@ -7,7 +7,6 @@ use App\Livewire\Reports\CashGeneral2 as CashGeneral2Livewire;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Events\AfterSheet;
@@ -18,7 +17,7 @@ use Maatwebsite\Excel\Events\AfterSheet;
  * Ingresos en azul, egresos en rojo. Por día: filas "TOTAL" y "SALDO FINAL-INICIAL".
  * Fila final "REPORTE GENERAL CAJA 2 - TOTAL GENERAL" combinada (A:D / E:F).
  */
-class CashGeneral2Export implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithCustomStartCell, WithEvents
+class CashGeneral2Export implements FromCollection, WithHeadings, WithMapping, WithCustomStartCell, WithEvents
 {
     use LegacyExcelStyle;
 

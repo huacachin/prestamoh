@@ -5,7 +5,6 @@ namespace App\Exports;
 use App\Exports\Concerns\LegacyExcelStyle;
 use App\Models\Credit;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -16,7 +15,7 @@ use Maatwebsite\Excel\Events\AfterSheet;
  * Excel del listado /payments — calca la pantalla "PAGO/CREDITO" (8 columnas).
  * Selección de créditos activos para registrar pago.
  */
-class PaymentsExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
+class PaymentsExport implements FromCollection, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
 {
     use LegacyExcelStyle;
 

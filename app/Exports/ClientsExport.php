@@ -6,7 +6,6 @@ use App\Exports\Concerns\LegacyExcelStyle;
 use App\Models\Client;
 use Illuminate\Support\Carbon;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithColumnFormatting;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
@@ -19,7 +18,7 @@ use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
  * Excel del listado /clients (y /clients/ceased) — réplica de clienteex.php.
  * Título "CLIENTES". DNI como texto (no pierde ceros a la izquierda).
  */
-class ClientsExport implements FromCollection, ShouldAutoSize, WithColumnFormatting, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
+class ClientsExport implements FromCollection, WithColumnFormatting, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
 {
     use LegacyExcelStyle;
 

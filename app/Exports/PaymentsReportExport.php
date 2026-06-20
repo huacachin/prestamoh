@@ -5,7 +5,6 @@ namespace App\Exports;
 use App\Exports\Concerns\LegacyExcelStyle;
 use App\Livewire\Reports\Payments as PaymentsLivewire;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -16,7 +15,7 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 /**
  * Excel del reporte /reports/payments — título "REPORTE DE PAGO" + total.
  */
-class PaymentsReportExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
+class PaymentsReportExport implements FromCollection, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
 {
     use LegacyExcelStyle;
 

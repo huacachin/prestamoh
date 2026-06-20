@@ -6,7 +6,6 @@ use App\Exports\Concerns\LegacyExcelStyle;
 use App\Livewire\Reports\Cancelled;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Events\AfterSheet;
@@ -20,7 +19,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * Título "CREDITO CANCELADO". Cabecera de 2 filas (Capital / Interes Ganado / Mora x Cob.),
  * 22 columnas (Nº ocupa 2: global + por día), total general de 2 filas y tabla de distribución.
  */
-class CancelledExport implements FromCollection, WithMapping, ShouldAutoSize, WithCustomStartCell, WithEvents
+class CancelledExport implements FromCollection, WithMapping, WithCustomStartCell, WithEvents
 {
     use LegacyExcelStyle;
 
@@ -170,7 +169,7 @@ class CancelledExport implements FromCollection, WithMapping, ShouldAutoSize, Wi
         }
     }
 
-    /** Formato de moneda + alineación centrada en el rango de datos (ShouldAutoSize maneja anchos). */
+    /** Formato de moneda + alineación centrada en el rango de datos. */
     private function buildDataStyles(Worksheet $sheet): void
     {
         if ($this->rowCount < 1) {

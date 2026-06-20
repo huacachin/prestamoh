@@ -7,7 +7,6 @@ use App\Models\Income;
 use App\Models\Payment;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -18,7 +17,7 @@ use Maatwebsite\Excel\Events\AfterSheet;
  * Excel del listado /cash/incomes — réplica del legacy ingreso_excel.php.
  * Título "INGRESOS" + totales (General, Fijos, Otros, Capital, Interés, Mora).
  */
-class IncomesExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
+class IncomesExport implements FromCollection, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
 {
     use LegacyExcelStyle;
 

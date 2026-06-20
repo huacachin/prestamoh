@@ -6,7 +6,6 @@ use App\Exports\Concerns\LegacyExcelStyle;
 use App\Models\Credit;
 use App\Models\CreditInstallment;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -17,7 +16,7 @@ use Maatwebsite\Excel\Events\AfterSheet;
  * Excel del listado /credits — calca la pantalla "PRESTAMOS" (14 columnas + TOTALES).
  * (El resumen de 21 columnas vive en el reporte de Cartera / PortfolioExport.)
  */
-class CreditsExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
+class CreditsExport implements FromCollection, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
 {
     use LegacyExcelStyle;
 

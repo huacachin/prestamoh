@@ -5,7 +5,6 @@ namespace App\Exports;
 use App\Exports\Concerns\LegacyExcelStyle;
 use App\Models\Expense;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -16,7 +15,7 @@ use Maatwebsite\Excel\Events\AfterSheet;
  * Excel del listado /cash/expenses — réplica del legacy gastos_excel.php.
  * Título "EGRESOS" + totales (General, Fijos, Otros, Diario/Mensual/D.M).
  */
-class ExpensesExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
+class ExpensesExport implements FromCollection, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
 {
     use LegacyExcelStyle;
 
