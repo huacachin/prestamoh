@@ -49,6 +49,8 @@ class Activate extends Component
             'fecha_cancelacion' => null,
         ]);
 
+        \App\Support\Audit::log("Re-activó el crédito #{$credit->id}", $credit);
+
         $this->selectedId = null;
         $this->search = '';
         $this->showDropdown = false;

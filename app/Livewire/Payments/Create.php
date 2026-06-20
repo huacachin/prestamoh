@@ -476,6 +476,12 @@ class Create extends Component
             }
         });
 
+        \App\Support\Audit::log(
+            "Registró pago de {$this->monto} en el crédito #{$this->credit->id}" . ($this->cancel ? ' (canceló el crédito)' : ''),
+            $this->credit,
+            ['monto' => $this->monto, 'fecha' => $this->fecpag]
+        );
+
         session()->flash('payment_success', 'Pago registrado correctamente.');
 
         return redirect()->route('credits.show', $this->credit->id);

@@ -29,6 +29,9 @@ Route::middleware('auth')->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
 
+    // Auditoría (solo rol director)
+    Route::get('audit', fn () => view('audit.index'))->name('audit.index')->middleware('role:director');
+
     // Clientes
     Route::get('clients/ceased', [ClientController::class, 'ceased'])->name('clients.ceased')->middleware('permission:registro.cesados');
     Route::middleware('permission:clientes')->group(function () {

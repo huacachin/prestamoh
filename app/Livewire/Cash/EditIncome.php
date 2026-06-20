@@ -67,6 +67,8 @@ class EditIncome extends Component
 
             $this->income->update($data);
 
+            \App\Support\Audit::log("Editó el ingreso #{$this->income->id} (monto {$this->total})", $this->income);
+
             session()->flash('cash_success', 'Ingreso actualizado correctamente.');
             $this->redirectRoute('cash.incomes');
         } catch (ValidationException $e) {

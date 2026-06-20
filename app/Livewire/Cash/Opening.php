@@ -54,9 +54,10 @@ class Opening extends Component
             }
 
             $existing->update(['saldo_inicial' => $importe]);
+            \App\Support\Audit::log("Actualizó apertura de caja ({$fecha}) a {$importe}", $existing);
             $this->dispatch('successAlert', ['message' => 'Se actualizó la caja con éxito']);
         } else {
-            CashOpening::create([
+            $opening = CashOpening::create([
                 'fecha'          => $fecha,
                 'hora'           => $hora,
                 'saldo_inicial'  => $importe,
@@ -66,6 +67,7 @@ class Opening extends Component
                 'user_id'        => $user->id,
                 'headquarter_id' => $hqId,
             ]);
+            \App\Support\Audit::log("Aperturó caja ({$fecha}) con {$importe}", $opening);
             $this->dispatch('successAlert', ['message' => 'Se aperturó la caja con éxito']);
         }
 

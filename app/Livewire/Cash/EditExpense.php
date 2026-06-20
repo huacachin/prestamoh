@@ -89,6 +89,8 @@ class EditExpense extends Component
                     ]);
             }
 
+            \App\Support\Audit::log("Editó el egreso #{$this->expense->id} (monto {$this->total})", $this->expense);
+
             session()->flash('cash_success', 'Egreso actualizado correctamente.');
             $this->redirectRoute('cash.expenses');
         } catch (ValidationException $e) {

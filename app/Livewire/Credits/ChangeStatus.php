@@ -71,6 +71,8 @@ class ChangeStatus extends Component
             'fecha_cancelacion' => $this->fecha,
         ]);
 
+        \App\Support\Audit::log("Anuló (canceló) el crédito #{$credit->id} con fecha {$this->fecha}", $credit);
+
         $this->reset(['selectedId', 'search', 'showDropdown']);
         $this->fecha = now()->format('Y-m-d');
         $this->dispatch('successAlert', ['message' => 'Cambio realizado Satisfactoriamente']);

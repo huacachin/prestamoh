@@ -95,6 +95,8 @@ class Edit extends Component
         }
         $this->user->syncRoles($roleName ? [$roleName] : []);
 
+        \App\Support\Audit::log("Editó el usuario {$this->user->username} ({$this->user->name})", $this->user);
+
         session()->flash('user_success', 'Usuario actualizado correctamente.');
         return redirect()->route('settings.users.index');
     }

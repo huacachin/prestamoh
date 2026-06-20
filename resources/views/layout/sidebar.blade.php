@@ -75,6 +75,14 @@
                 ['title' => 'Simulacro de Crédito',    'route' => 'reports.simulator',            'can' => 'reportes.simulador'],
             ],
         ],
+
+        [
+            'id'    => 'auditoria',
+            'title' => 'Auditoría',
+            'icon'  => 'ti ti-shield-lock',
+            'route' => 'audit.index',
+            'role'  => 'director',
+        ],
     ];
 @endphp
 

@@ -26,6 +26,7 @@ class Index extends Component
         }
 
         $user->update(['status' => 'inactive']);
+        \App\Support\Audit::log("Desactivó el usuario {$user->username} ({$user->name})", $user);
         $this->dispatch('successAlert', ['message' => 'Usuario desactivado correctamente']);
     }
 
@@ -35,7 +36,9 @@ class Index extends Component
             abort(403);
         }
 
-        User::findOrFail($id)->update(['status' => 'active']);
+        $user = User::findOrFail($id);
+        $user->update(['status' => 'active']);
+        \App\Support\Audit::log("Reactivó el usuario {$user->username} ({$user->name})", $user);
         $this->dispatch('successAlert', ['message' => 'Usuario reactivado correctamente']);
     }
 

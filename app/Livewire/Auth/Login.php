@@ -60,6 +60,8 @@ class Login extends Component
         RateLimiter::clear($this->throttleKey());
         session()->regenerate();
 
+        \App\Support\Audit::log('Inicio de sesión');
+
         return redirect()->intended('/dashboard');
     }
 

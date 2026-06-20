@@ -81,6 +81,8 @@ class Create extends Component
             }
         }
 
+        \App\Support\Audit::log("Creó el usuario {$user->username} ({$user->name})", $user);
+
         session()->flash('user_success', 'Usuario creado correctamente.');
         return redirect()->route('settings.users.index');
     }
