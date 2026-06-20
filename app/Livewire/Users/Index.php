@@ -10,6 +10,8 @@ class Index extends Component
 {
     public $search = '';
 
+    public $estado = 'active'; // active | inactive | all
+
     #[On('register_destroy')]
     public function destroy(int $id): void
     {
@@ -27,6 +29,16 @@ class Index extends Component
         $this->dispatch('successAlert', ['message' => 'Usuario desactivado correctamente']);
     }
 
+    public function reactivate(int $id): void
+    {
+        if (!auth()->user()?->can('configuracion.usuarios')) {
+            abort(403);
+        }
+
+        User::findOrFail($id)->update(['status' => 'active']);
+        $this->dispatch('successAlert', ['message' => 'Usuario reactivado correctamente']);
+    }
+
     public function questionDelete(int $id, string $name = ''): void
     {
         $this->dispatch('questionDelete', ['id' => $id, 'name' => $name]);
@@ -37,7 +49,7 @@ class Index extends Component
         $term = trim($this->search);
 
         $users = User::query()
-            ->where('status', 'active')
+            ->when($this->estado !== 'all', fn ($q) => $q->where('status', $this->estado))
             ->when($term !== '', fn ($q) =>
                 $q->where(fn ($w) =>
                     $w->where('username', 'like', "%{$term}%")

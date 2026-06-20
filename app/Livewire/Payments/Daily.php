@@ -88,6 +88,10 @@ class Daily extends Component
             'capital' => 0, 'interes' => 0, 'apagar' => 0, 'cuota' => 0,
             'pagado' => 0, 'mora' => 0, 'otros' => 0, 'saldo' => 0,
         ];
+        $sub = [
+            'mora' => ['n' => 0, 'capital' => 0, 'interes' => 0, 'apagar' => 0, 'cuota' => 0, 'pagado' => 0, 'mora' => 0, 'otros' => 0, 'saldo' => 0],
+            'activo' => ['n' => 0, 'capital' => 0, 'interes' => 0, 'apagar' => 0, 'cuota' => 0, 'pagado' => 0, 'mora' => 0, 'otros' => 0, 'saldo' => 0],
+        ];
 
         $n = 0;
         foreach ($credits as $c) {
@@ -185,13 +189,31 @@ class Daily extends Component
             $tot['mora'] += $mora;
             $tot['otros'] += $otros;
             $tot['saldo'] += $saldo;
+
+            $vencido = $c->fecha_vencimiento?->format('Y-m-d');
+            $bucket = ($vencido && $vencido < $today && $saldo > 0) ? 'mora' : 'activo';
+            $sub[$bucket]['n']++;
+            $sub[$bucket]['capital'] += $importe;
+            $sub[$bucket]['interes'] += $interTotal;
+            $sub[$bucket]['apagar'] += $aPagar;
+            $sub[$bucket]['cuota'] += $cuotaCob;
+            $sub[$bucket]['pagado'] += $sumDias;
+            $sub[$bucket]['mora'] += $mora;
+            $sub[$bucket]['otros'] += $otros;
+            $sub[$bucket]['saldo'] += $saldo;
         }
+
+        $morosidadPct = $tot['saldo'] > 0 ? ($sub['mora']['saldo'] * 100) / $tot['saldo'] : 0;
+        $activosPct = $tot['saldo'] > 0 ? ($sub['activo']['saldo'] * 100) / $tot['saldo'] : 0;
 
         $asesores = User::orderBy('name')->get(['id', 'name']);
 
         return view('livewire.payments.daily', [
             'rows' => $rows,
             'tot' => $tot,
+            'sub' => $sub,
+            'morosidadPct' => $morosidadPct,
+            'activosPct' => $activosPct,
             'asesores' => $asesores,
             'today' => $today,
         ]);

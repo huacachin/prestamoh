@@ -143,6 +143,32 @@
                                         <td class="text-end">{{ number_format($tot['otros'], 2) }}</td>
                                         <td class="text-end">{{ number_format($tot['saldo'], 2) }}</td>
                                     </tr>
+
+                                    @php
+                                        $morBlocks = [
+                                            ['pct' => $morosidadPct, 'pctColor' => 'red', 'lbl' => 'MORA', 'lblBg' => 'red', 'tot' => 'TOTAL MORA', 'd' => $sub['mora']],
+                                            ['pct' => $activosPct, 'pctColor' => 'green', 'lbl' => 'ACTIVOS', 'lblBg' => 'green', 'tot' => 'TOTAL ACTIVOS', 'd' => $sub['activo']],
+                                            ['pct' => 100, 'pctColor' => 'blue', 'lbl' => 'TOTAL', 'lblBg' => '#005F8C', 'tot' => 'TOTAL', 'd' => $tot + ['n' => $sub['mora']['n'] + $sub['activo']['n']]],
+                                        ];
+                                    @endphp
+                                    @foreach($morBlocks as $b)
+                                        <tr>
+                                            <td colspan="3" style="color:{{ $b['pctColor'] }}; text-align:center;"><b>{{ number_format($b['pct'], 2) }}%</b></td>
+                                            <td style="background-color:{{ $b['lblBg'] }}; color:white;">{{ $b['lbl'] }}</td>
+                                            <td style="background-color:#005F8C; color:white;">{{ $b['d']['n'] ?? 0 }}</td>
+                                            <td colspan="2" style="background-color:#005F8C; color:white;">{{ $b['tot'] }}</td>
+                                            <td class="text-end" style="background-color:yellow; color:red;"><b>{{ number_format($b['d']['capital'], 2) }}</b></td>
+                                            <td style="background-color:yellow;"></td>
+                                            <td class="text-end" style="background-color:yellow;"><b>{{ number_format($b['d']['interes'], 2) }}</b></td>
+                                            <td class="text-end" style="background-color:yellow; color:red;"><b>{{ number_format($b['d']['apagar'], 2) }}</b></td>
+                                            <td class="text-end" style="background-color:yellow;"><b>{{ number_format($b['d']['cuota'], 2) }}</b></td>
+                                            <td colspan="32" style="background-color:yellow;"></td>
+                                            <td class="text-end" style="background-color:yellow;"><b>{{ number_format($b['d']['pagado'], 2) }}</b></td>
+                                            <td class="text-end" style="background-color:yellow;"><b>{{ number_format($b['d']['mora'], 2) }}</b></td>
+                                            <td class="text-end" style="background-color:yellow;"><b>{{ number_format($b['d']['otros'], 2) }}</b></td>
+                                            <td class="text-end" style="background-color:yellow; color:red;"><b>{{ number_format($b['d']['saldo'], 2) }}</b></td>
+                                        </tr>
+                                    @endforeach
                                 @endif
 
                             </tbody>

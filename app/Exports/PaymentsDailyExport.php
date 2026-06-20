@@ -25,8 +25,14 @@ class PaymentsDailyExport implements FromCollection, WithEvents
     private const DAYS = 32;
     private const LASTCOL_IDX = 48;    // 12 + 32 + 4
 
+    private const DARK = '005F8C';
+    private const YELLOW = 'FFFF00';
+
     protected array $rows = [];
     protected array $tot = [];
+    protected array $sub = [];
+    protected float $morosidadPct = 0;
+    protected float $activosPct = 0;
     protected string $today = '';
 
     public function __construct(
@@ -43,6 +49,9 @@ class PaymentsDailyExport implements FromCollection, WithEvents
         $data = $c->render()->getData();
         $this->rows = $data['rows'] ?? [];
         $this->tot = $data['tot'] ?? [];
+        $this->sub = $data['sub'] ?? ['mora' => [], 'activo' => []];
+        $this->morosidadPct = (float) ($data['morosidadPct'] ?? 0);
+        $this->activosPct = (float) ($data['activosPct'] ?? 0);
         $this->today = $data['today'] ?? now()->format('Y-m-d');
 
         return collect();
@@ -62,7 +71,11 @@ class PaymentsDailyExport implements FromCollection, WithEvents
                     $r++;
                 }
                 $lastData = $r - 1;
-                $this->buildTotal($sheet, $r, $last);
+                if (! empty($this->rows)) {
+                    $this->buildTotal($sheet, $r, $last);
+                    $r++;
+                    $this->buildMorosidad($sheet, $r);
+                }
                 $this->finishStyles($sheet, $first, $lastData, $last);
             },
         ];
@@ -177,9 +190,59 @@ class PaymentsDailyExport implements FromCollection, WithEvents
         $this->markTotalRow($sheet, $r, $last);
     }
 
+    private function buildMorosidad(Worksheet $sheet, int &$r): void
+    {
+        $mora = $this->sub['mora'] ?? [];
+        $activo = $this->sub['activo'] ?? [];
+        $t = $this->tot;
+        $totN = (int) ($mora['n'] ?? 0) + (int) ($activo['n'] ?? 0);
+        $dayStart = $this->colLetter(self::FIXED + 1);
+        $dayEnd = $this->colLetter(self::FIXED + self::DAYS);
+        $lastCol = $this->colLetter(self::LASTCOL_IDX);
+
+        $blocks = [
+            ['pct' => $this->morosidadPct, 'pctColor' => 'FF0000', 'lbl' => 'MORA', 'lblColor' => 'FF0000', 'n' => $mora['n'] ?? 0, 'totLbl' => 'TOTAL MORA', 'd' => $mora],
+            ['pct' => $this->activosPct, 'pctColor' => '008000', 'lbl' => 'ACTIVOS', 'lblColor' => '008000', 'n' => $activo['n'] ?? 0, 'totLbl' => 'TOTAL ACTIVOS', 'd' => $activo],
+            ['pct' => 100, 'pctColor' => '0000FF', 'lbl' => 'TOTAL', 'lblColor' => self::DARK, 'n' => $totN, 'totLbl' => 'TOTAL', 'd' => $t],
+        ];
+
+        foreach ($blocks as $b) {
+            $d = $b['d'];
+            $sheet->mergeCells("A{$r}:C{$r}");
+            $sheet->setCellValue("A{$r}", number_format($b['pct'], 2) . '%');
+            $sheet->getStyle("A{$r}")->applyFromArray(['font' => ['bold' => true, 'color' => ['rgb' => $b['pctColor']]], 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER]]);
+
+            $sheet->setCellValue("D{$r}", $b['lbl']);
+            $sheet->getStyle("D{$r}")->applyFromArray(['font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']], 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $b['lblColor']]]]);
+
+            $sheet->setCellValue("E{$r}", $b['n']);
+            $sheet->mergeCells("F{$r}:G{$r}");
+            $sheet->setCellValue("F{$r}", $b['totLbl']);
+            $sheet->getStyle("E{$r}:G{$r}")->applyFromArray(['font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']], 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::DARK]]]);
+
+            $sheet->setCellValue("H{$r}", (float) ($d['capital'] ?? 0));
+            $sheet->setCellValue("J{$r}", (float) ($d['interes'] ?? 0));
+            $sheet->setCellValue("K{$r}", (float) ($d['apagar'] ?? 0));
+            $sheet->setCellValue("L{$r}", (float) ($d['cuota'] ?? 0));
+            $base = self::FIXED + self::DAYS;
+            $sheet->setCellValue($this->colLetter($base + 1) . $r, (float) ($d['pagado'] ?? 0));
+            $sheet->setCellValue($this->colLetter($base + 2) . $r, (float) ($d['mora'] ?? 0));
+            $sheet->setCellValue($this->colLetter($base + 3) . $r, (float) ($d['otros'] ?? 0));
+            $sheet->setCellValue($this->colLetter($base + 4) . $r, (float) ($d['saldo'] ?? 0));
+
+            $sheet->mergeCells("{$dayStart}{$r}:{$dayEnd}{$r}");
+            $sheet->getStyle("H{$r}:{$lastCol}{$r}")->applyFromArray(['font' => ['bold' => true], 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::YELLOW]]]);
+            foreach (['H', 'K', $lastCol] as $rc) {
+                $sheet->getStyle("{$rc}{$r}")->getFont()->getColor()->setRGB('FF0000');
+            }
+            $r++;
+        }
+    }
+
     private function finishStyles(Worksheet $sheet, int $first, int $lastData, string $last): void
     {
         $end = $lastData >= $first ? $lastData : ($first - 1);
+        $highest = $sheet->getHighestRow();
         // Formato de moneda: H,J,K,L + días + TOTAL/MORA/OTROS/SALDOS
         $moneyCols = ['H', 'J', 'K', 'L'];
         for ($d = 1; $d <= self::DAYS; $d++) {
@@ -188,12 +251,11 @@ class PaymentsDailyExport implements FromCollection, WithEvents
         for ($i = 1; $i <= 4; $i++) {
             $moneyCols[] = $this->colLetter(self::FIXED + self::DAYS + $i);
         }
-        $totalRow = $lastData + 1;
         foreach ($moneyCols as $col) {
-            $sheet->getStyle("{$col}3:{$col}{$totalRow}")->getNumberFormat()->setFormatCode('#,##0.00');
+            $sheet->getStyle("{$col}3:{$col}{$highest}")->getNumberFormat()->setFormatCode('#,##0.00');
         }
         // Bordes punteados en cabecera + datos
-        $sheet->getStyle("A2:{$last}{$totalRow}")->applyFromArray([
+        $sheet->getStyle("A2:{$last}{$highest}")->applyFromArray([
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_DOTTED, 'color' => ['rgb' => '999999']]],
         ]);
         if ($end >= $first) {

@@ -112,7 +112,9 @@
       "Bash(./vendor/bin/pint app/Exports/Concerns/LegacyExcelStyle.php app/Exports/IncomesExport.php app/Exports/ExpensesExport.php app/Exports/ConceptsExport.php app/Exports/PaymentsExport.php app/Exports/PaymentsReportExport.php app/Exports/MassDeletionsExport.php app/Exports/ClientsExport.php)",
       "Bash([ -f /tmp/claude-501/-Users-antony-projects-prestamoh/*/tasks/bjgxat99v.output ])",
       "Bash(:)",
-      "Bash(gh auth *)"
+      "Bash(gh auth *)",
+      "Bash(git fetch *)",
+      "Bash(git rev-list *)"
     ]
   }
 }

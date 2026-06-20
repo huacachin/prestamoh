@@ -33,6 +33,14 @@
                                            placeholder="Buscar..." wire:model="search">
                                 </div>
 
+                                <div class="flex-shrink-0" style="width: 140px;">
+                                    <select class="form-select form-select-sm" wire:model.live="estado">
+                                        <option value="active">Activos</option>
+                                        <option value="inactive">Cesados</option>
+                                        <option value="all">Todos</option>
+                                    </select>
+                                </div>
+
                                 <button class="btn btn-sm btn-dark flex-shrink-0" wire:click="$refresh">
                                     <i class="ti ti-search f-s-12"></i>
                                 </button>
@@ -58,6 +66,7 @@
                                 <th>Sede</th>
                                 <th>Rol</th>
                                 <th>Permisos</th>
+                                <th>Estado</th>
                                 <th></th>
                             </tr>
                             </thead>
@@ -73,6 +82,13 @@
                                     <td>
                                         <span class="badge bg-dark">{{ $user->permissions->count() }} permisos</span>
                                     </td>
+                                    <td>
+                                        @if($user->status === 'active')
+                                            <span class="badge bg-success">Activo</span>
+                                        @else
+                                            <span class="badge bg-warning text-dark">Cesado</span>
+                                        @endif
+                                    </td>
                                     <td class="text-nowrap">
                                         @can('configuracion.usuarios')
                                         <a class="btn btn-sm btn-outline-success me-1" title="Editar datos"
@@ -83,18 +99,25 @@
                                            href="{{ route('settings.users.perms', $user->id) }}" target="_blank">
                                             <i class="ti ti-shield-lock"></i>
                                         </a>
-                                        @if(!$user->hasRole('director'))
-                                        <button class="btn btn-sm btn-outline-danger ms-1" title="Desactivar"
-                                                wire:click="questionDelete({{ $user->id }}, '{{ $user->name }}')">
-                                            <i class="ti ti-trash"></i>
-                                        </button>
+                                        @if($user->status === 'active')
+                                            @if(!$user->hasRole('director'))
+                                            <button class="btn btn-sm btn-outline-danger ms-1" title="Desactivar"
+                                                    wire:click="questionDelete({{ $user->id }}, '{{ $user->name }}')">
+                                                <i class="ti ti-trash"></i>
+                                            </button>
+                                            @endif
+                                        @else
+                                            <button class="btn btn-sm btn-outline-success ms-1" title="Re-activar"
+                                                    wire:click="reactivate({{ $user->id }})">
+                                                <i class="ti ti-restore"></i>
+                                            </button>
                                         @endif
                                         @endcan
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="py-4 text-muted">No se encontraron resultados</td>
+                                    <td colspan="9" class="py-4 text-muted">No se encontraron resultados</td>
                                 </tr>
                             @endforelse
                             </tbody>
@@ -102,7 +125,7 @@
                             <tr>
                                 <td></td>
                                 <td>TOTAL USUARIOS</td>
-                                <td colspan="4"></td>
+                                <td colspan="5"></td>
                                 <td>{{ $users->count() }}</td>
                                 <td></td>
                             </tr>

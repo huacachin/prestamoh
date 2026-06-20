@@ -249,7 +249,6 @@ abstract class PaymentsPeriodExport implements FromCollection, WithEvents
 
     private function finishStyles(Worksheet $sheet, int $first, int $lastData, string $last): void
     {
-        $totalRow = $lastData + 1;
         $moneyCols = ['I', 'K', 'L', 'M'];
         for ($d = 1; $d <= self::PERIODS; $d++) {
             $moneyCols[] = $this->periodCol($d);
@@ -257,14 +256,13 @@ abstract class PaymentsPeriodExport implements FromCollection, WithEvents
         for ($i = 1; $i <= 4; $i++) {
             $moneyCols[] = $this->tailCol($i);
         }
-        // Formato sobre datos + fila Total (las filas de morosidad ya tienen sus valores numéricos)
-        $fmtLast = $lastData >= $first ? $totalRow : 2;
-        if ($fmtLast >= 3) {
+        // Formato sobre datos + Total + filas de morosidad
+        $highest = $sheet->getHighestRow();
+        if ($lastData >= $first) {
             foreach ($moneyCols as $col) {
-                $sheet->getStyle("{$col}3:{$col}{$fmtLast}")->getNumberFormat()->setFormatCode('#,##0.00');
+                $sheet->getStyle("{$col}3:{$col}{$highest}")->getNumberFormat()->setFormatCode('#,##0.00');
             }
         }
-        $highest = $sheet->getHighestRow();
         $sheet->getStyle("A2:{$last}{$highest}")->applyFromArray([
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_DOTTED, 'color' => ['rgb' => '999999']]],
         ]);
