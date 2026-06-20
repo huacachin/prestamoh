@@ -9,18 +9,18 @@
     @if($esCesado)
         {{-- clienteex_x.php (9 cols) --}}
         <center><font color="red"><b>CLIENTES CESADOS</b></font></center>
-        <table border="1" cellspacing="0" width="100%">
+        <table border="1" cellspacing="0">
             <thead>
                 <tr>
-                    <th {!! $hd !!} width="50">Item</th>
-                    <th {!! $hd !!} width="120">Fecha</th>
-                    <th {!! $hd !!} width="100">Usuario</th>
-                    <th {!! $hd !!} width="50">Exp.</th>
-                    <th {!! $hd !!} width="300">Nombres Apellidos</th>
-                    <th {!! $hd !!} width="100">DNI</th>
-                    <th {!! $hd !!} width="120">Movil</th>
-                    <th {!! $hd !!} width="120">Telefono</th>
-                    <th {!! $hd !!} width="120">Asesor</th>
+                    <th {!! $hd !!}>Item</th>
+                    <th {!! $hd !!}>Fecha</th>
+                    <th {!! $hd !!}>Usuario</th>
+                    <th {!! $hd !!}>Exp.</th>
+                    <th {!! $hd !!}>Nombres Apellidos</th>
+                    <th {!! $hd !!}>DNI</th>
+                    <th {!! $hd !!}>Movil</th>
+                    <th {!! $hd !!}>Telefono</th>
+                    <th {!! $hd !!}>Asesor</th>
                 </tr>
             </thead>
             <tbody>
@@ -32,7 +32,7 @@
                     @endphp
                     <tr>
                         <td {!! $cell !!}>{{ $i + 1 }}</td>
-                        <td {!! $cell !!}>{{ $fecha }}</td>
+                        <td {!! $cell !!} class="txt">{{ $fecha }}</td>
                         <td {!! $cell !!}>{{ $c->usuario }}</td>
                         <td {!! $cell !!}>{{ $c->expediente }}</td>
                         <td {!! $cell !!}>{{ $nombre }}</td>
@@ -47,20 +47,20 @@
     @else
         {{-- clienteex.php (11 cols) --}}
         <center><font color="red"><b>CLIENTES</b></font></center>
-        <table width="800" cellspacing="0" border="1">
+        <table cellspacing="0" border="1">
             <thead>
                 <tr>
-                    <th {!! $hd !!} width="50">N&deg;</th>
-                    <th {!! $hd !!} width="150">Fecha</th>
-                    <th {!! $hd !!} width="150">Usuario</th>
-                    <th {!! $hd !!} width="50">Exp.</th>
+                    <th {!! $hd !!}>N&deg;</th>
+                    <th {!! $hd !!}>Fecha</th>
+                    <th {!! $hd !!}>Usuario</th>
+                    <th {!! $hd !!}>Exp.</th>
                     <th {!! $hd !!}>Nombres Apellidos</th>
-                    <th {!! $hd !!} width="80">DNI</th>
-                    <th {!! $hd !!} width="80">Movil</th>
-                    <th {!! $hd !!} width="100">T.Credito</th>
-                    <th {!! $hd !!} width="80">Giro</th>
-                    <th {!! $hd !!} width="380">Asesor</th>
-                    <th {!! $hd !!} width="380">Direccion</th>
+                    <th {!! $hd !!}>DNI</th>
+                    <th {!! $hd !!}>Movil</th>
+                    <th {!! $hd !!}>T.Credito</th>
+                    <th {!! $hd !!}>Giro</th>
+                    <th {!! $hd !!}>Asesor</th>
+                    <th {!! $hd !!}>Direccion</th>
                 </tr>
             </thead>
             <tbody>
@@ -72,14 +72,14 @@
                     @endphp
                     <tr>
                         <td {!! $cell !!}>{{ $i + 1 }}</td>
-                        <td {!! $cell !!}>{{ $fecha }}</td>
+                        <td {!! $cell !!} class="txt">{{ $fecha }}</td>
                         <td {!! $cell !!}>{{ $c->usuario }}</td>
                         <td {!! $cell !!}>{{ $c->expediente }}</td>
                         <td {!! $cell !!}>{{ $nombre }}</td>
                         <td {!! $cell !!} class="txt">{{ $c->documento }}</td>
                         <td {!! $cell !!} class="txt">{{ $c->celular1 }}</td>
                         <td {!! $cell !!}>{{ $c->zona }}</td>
-                        <td {!! $cell !!} class="txt">{{ $c->celular2 }}</td>
+                        <td {!! $cell !!}>{{ $c->giro }}</td>
                         <td {!! $cell !!}>{{ $asesor }}</td>
                         <td {!! $cell !!}>{{ $c->direccion }}</td>
                     </tr>
