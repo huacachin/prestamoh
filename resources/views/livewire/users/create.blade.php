@@ -19,7 +19,7 @@
                 <div class="perm-row">
                     <div class="perm-col-title">Nombre</div>
                     <div class="perm-col-controls">
-                        <input type="text" class="form-control form-control-sm" placeholder="Ingresar nombre" wire:model.live="name">
+                        <input type="text" class="form-control form-control-sm" placeholder="Ingresar nombre" wire:model.live="name" name="name" autocomplete="name">
                         @error('name') <span class="title-modules small">{{ $message }}</span> @enderror
                     </div>
                 </div>
@@ -27,7 +27,7 @@
                 <div class="perm-row">
                     <div class="perm-col-title">Usuario</div>
                     <div class="perm-col-controls">
-                        <input type="text" class="form-control form-control-sm" placeholder="Ingresar usuario" wire:model="username">
+                        <input type="text" class="form-control form-control-sm" placeholder="Ingresar usuario" wire:model="username" name="username" autocomplete="username">
                         @error('username') <span class="title-modules small">{{ $message }}</span> @enderror
                     </div>
                 </div>
@@ -46,7 +46,7 @@
                     <div class="perm-col-title">Contraseña</div>
                     <div class="perm-col-controls">
                         <div class="input-group input-group-sm">
-                            <input :type="show ? 'text' : 'password'" class="form-control form-control-sm" placeholder="Ingresar contraseña" wire:model.live="pwd">
+                            <input :type="show ? 'text' : 'password'" class="form-control form-control-sm" placeholder="Ingresar contraseña" wire:model.live="pwd" name="pwd" autocomplete="new-password">
                             <button class="btn btn-outline-secondary" type="button" @click="show = !show"><i class="ti" :class="show ? 'ti-eye-off' : 'ti-eye'"></i></button>
                             <button class="btn btn-outline-primary" type="button" @click="generate()"><i class="ti ti-key"></i> Generar</button>
                         </div>
@@ -61,7 +61,7 @@
                 <div class="perm-row">
                     <div class="perm-col-title">Email</div>
                     <div class="perm-col-controls">
-                        <input type="email" class="form-control form-control-sm" placeholder="Ingresar email" wire:model="email">
+                        <input type="email" class="form-control form-control-sm" placeholder="Ingresar email" wire:model="email" name="email" autocomplete="email">
                         @error('email') <span class="title-modules small">{{ $message }}</span> @enderror
                     </div>
                 </div>
@@ -81,7 +81,7 @@
                 <div class="perm-row">
                     <div class="perm-col-title">N° Documento</div>
                     <div class="perm-col-controls">
-                        <input type="text" class="form-control form-control-sm" placeholder="Ingresar número" wire:model="document_number">
+                        <input type="text" class="form-control form-control-sm" placeholder="Ingresar número" wire:model="document_number" name="document_number" autocomplete="off">
                         @error('document_number') <span class="title-modules small">{{ $message }}</span> @enderror
                     </div>
                 </div>
@@ -89,7 +89,7 @@
                 <div class="perm-row">
                     <div class="perm-col-title">Teléfono</div>
                     <div class="perm-col-controls">
-                        <input type="text" class="form-control form-control-sm" placeholder="Ingresar teléfono" wire:model="phone">
+                        <input type="text" class="form-control form-control-sm" placeholder="Ingresar teléfono" wire:model="phone" name="phone" autocomplete="tel">
                         @error('phone') <span class="title-modules small">{{ $message }}</span> @enderror
                     </div>
                 </div>

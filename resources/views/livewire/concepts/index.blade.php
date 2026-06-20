@@ -37,7 +37,7 @@
                                         <label class="form-check-label small " for="tipoNombre">Nombre</label>
                                     </div>
                                 </div>
-                                <input type="text" class="form-control form-control-sm"
+                                <input type="text" name="compra" autocomplete="off" class="form-control form-control-sm"
                                        wire:model.live.debounce.300ms="compra"
                                        placeholder="Ingrese el texto a buscar">
                             </div>

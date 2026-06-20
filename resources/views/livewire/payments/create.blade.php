@@ -116,14 +116,14 @@
                         </div>
                         <div class="col-md-2">
                             <label class="form-label mb-0 small fw-semibold">Monto a Pagar</label>
-                            <input type="number" class="form-control form-control-sm"
+                            <input type="number" name="monto" autocomplete="off" class="form-control form-control-sm"
                                    wire:model.live.debounce.400ms="monto"
                                    min="0.00" max="{{ $c['saldo_pendiente'] }}" step="0.01"
                                    style="background:yellow;">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label mb-0 small fw-semibold">Fecha de Pago</label>
-                            <input type="text" autocomplete="off" class="form-control form-control-sm bg-light dates3"
+                            <input type="text" name="fecpag" autocomplete="off" class="form-control form-control-sm bg-light dates3"
                                    wire:model="fecpag" readonly>
                         </div>
                     </div>
@@ -143,7 +143,7 @@
                         </div>
                         <div class="col-md-2">
                             <label class="form-label mb-0 small fw-semibold">Descontar Días</label>
-                            <input type="number" class="form-control form-control-sm"
+                            <input type="number" name="diasf" autocomplete="off" class="form-control form-control-sm"
                                    wire:model.live.debounce.400ms="diasf"
                                    min="0" style="background:yellow;">
                         </div>
@@ -173,7 +173,7 @@
                                 @endif
                             </label>
                             @if($puedeMora)
-                                <input type="number" step="0.01" min="0"
+                                <input type="number" name="moraManual" autocomplete="off" step="0.01" min="0"
                                        class="form-control form-control-sm"
                                        style="background:#ff0000; color:#fff;"
                                        wire:model.live.debounce.400ms="moraManual"

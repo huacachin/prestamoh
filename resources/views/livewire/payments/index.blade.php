@@ -23,17 +23,17 @@
                         <div class="row g-2 align-items-end mb-2">
                             <div class="col-md-3">
                                 <label class="form-label mb-0 small"><b>DNI</b></label>
-                                <input type="text" class="form-control form-control-sm"
+                                <input type="text" name="nombre" autocomplete="off" class="form-control form-control-sm"
                                        wire:model.live.debounce.300ms="nombre" placeholder="DNI">
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label mb-0 small"><b>Nombre</b></label>
-                                <input type="text" class="form-control form-control-sm"
+                                <input type="text" name="nombre1" autocomplete="off" class="form-control form-control-sm"
                                        wire:model.live.debounce.300ms="nombre1" placeholder="Nombre">
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label mb-0 small"><b>Código</b></label>
-                                <input type="text" class="form-control form-control-sm"
+                                <input type="text" name="codigo1" autocomplete="off" class="form-control form-control-sm"
                                        wire:model.live.debounce.300ms="codigo1" placeholder="Código">
                             </div>
                         </div>

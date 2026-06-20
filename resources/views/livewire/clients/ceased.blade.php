@@ -24,22 +24,22 @@
                             <div class="col">
                                 <label class="form-label mb-0 small"><b>Expediente</b></label>
                                 <input type="text" class="form-control form-control-sm"
-                                       wire:model="nexpediente" placeholder="Numero Expediente">
+                                       wire:model="nexpediente" name="nexpediente" autocomplete="off" placeholder="Numero Expediente">
                             </div>
                             <div class="col">
                                 <label class="form-label mb-0 small"><b>DNI</b></label>
                                 <input type="text" class="form-control form-control-sm"
-                                       wire:model="documento" placeholder="DNI">
+                                       wire:model="documento" name="documento" autocomplete="off" placeholder="DNI">
                             </div>
                             <div class="col">
                                 <label class="form-label mb-0 small"><b>Nombre</b></label>
                                 <input type="text" class="form-control form-control-sm"
-                                       wire:model="nombre" placeholder="Nombres">
+                                       wire:model="nombre" name="nombre" autocomplete="off" placeholder="Nombres">
                             </div>
                             <div class="col">
                                 <label class="form-label mb-0 small"><b>T.Credito</b></label>
                                 <input type="text" class="form-control form-control-sm"
-                                       wire:model="ruta" placeholder="Ruta">
+                                       wire:model="ruta" name="ruta" autocomplete="off" placeholder="Ruta">
                             </div>
                             <div class="col">
                                 <label class="form-label mb-0 small"><b>Asesor</b></label>

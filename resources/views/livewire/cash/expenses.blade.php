@@ -61,19 +61,19 @@
                                         <label class="form-check-label small" for="tipoRespons">Respons.</label>
                                     </div>
                                 </div>
-                                <input type="text" class="form-control form-control-sm"
+                                <input type="text" name="compra" autocomplete="off" class="form-control form-control-sm"
                                        wire:model.defer="compra"
                                        placeholder="Ingrese el texto a buscar">
                             </div>
 
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small"><b>Fecha Inicio</b></label>
-                                <input type="text" autocomplete="off" class="form-control form-control-sm dates" wire:model.defer="fei">
+                                <input type="text" name="fei" autocomplete="off" class="form-control form-control-sm dates" wire:model.defer="fei">
                             </div>
 
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small"><b>Fecha Fin</b></label>
-                                <input type="text" autocomplete="off" class="form-control form-control-sm dates" wire:model.defer="fef">
+                                <input type="text" name="fef" autocomplete="off" class="form-control form-control-sm dates" wire:model.defer="fef">
                             </div>
                         </div>
                         <div class="d-flex gap-2 mb-2">

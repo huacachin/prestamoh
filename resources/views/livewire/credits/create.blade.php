@@ -33,7 +33,7 @@
                     {{-- ─── Cliente ─── --}}
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">DNI</label>
-                        <input type="text" class="form-control form-control-sm @error('codigoc') is-invalid @enderror @error('codigod') is-invalid @enderror"
+                        <input type="text" name="codigoc" autocomplete="off" class="form-control form-control-sm @error('codigoc') is-invalid @enderror @error('codigod') is-invalid @enderror"
                                wire:model.live.debounce.500ms="codigoc"
                                style="background-color:yellow;" maxlength="11" required>
                     </div>
@@ -51,7 +51,7 @@
                     </div>
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">Código Préstamo</label>
-                        <input type="number" class="form-control form-control-sm @error('codpre_') is-invalid @enderror"
+                        <input type="number" name="codpre_" autocomplete="off" class="form-control form-control-sm @error('codpre_') is-invalid @enderror"
                                wire:model.defer="codpre_"
                                style="background-color:yellow;" required>
                     </div>
@@ -63,13 +63,13 @@
                     {{-- ─── Capital y Periodo ─── --}}
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">Capital</label>
-                        <input type="number" class="form-control form-control-sm @error('impopres') is-invalid @enderror"
+                        <input type="number" name="impopres" autocomplete="off" class="form-control form-control-sm @error('impopres') is-invalid @enderror"
                                wire:model.live.debounce.500ms="impopres"
                                style="background-color:yellow;" min="0" step="0.01" required>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">Periodo</label>
-                        <input type="text" class="form-control form-control-sm bg-light" wire:model="selecano" readonly>
+                        <input type="text" name="selecano" autocomplete="off" class="form-control form-control-sm bg-light" wire:model="selecano" readonly>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">Mes</label>
@@ -92,14 +92,14 @@
                     </div>
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">Cuotas</label>
-                        <input type="number" class="form-control form-control-sm @error('cuot') is-invalid @enderror"
+                        <input type="number" name="cuot" autocomplete="off" class="form-control form-control-sm @error('cuot') is-invalid @enderror"
                                wire:model.live.debounce.500ms="cuot"
                                style="background-color:yellow;" min="1" required
                                @if($seletipl === '4') readonly @endif>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">Interés</label>
-                        <input type="number" class="form-control form-control-sm @error('inte') is-invalid @enderror"
+                        <input type="number" name="inte" autocomplete="off" class="form-control form-control-sm @error('inte') is-invalid @enderror"
                                wire:model.live.debounce.500ms="inte"
                                style="background-color:yellow;" min="0" step="0.01" required>
                     </div>
@@ -117,11 +117,11 @@
                     </div>
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">Fecha Registro</label>
-                        <input type="text" autocomplete="off" class="form-control form-control-sm bg-light dates" wire:model="fechar" readonly>
+                        <input type="text" name="fechar" autocomplete="off" class="form-control form-control-sm bg-light dates" wire:model="fechar" readonly>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">Fecha Préstamo</label>
-                        <input type="text" autocomplete="off" class="form-control form-control-sm bg-light dates" wire:model="fechad" readonly>
+                        <input type="text" name="fechad" autocomplete="off" class="form-control form-control-sm bg-light dates" wire:model="fechad" readonly>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label mb-0 small fw-semibold">Asesor</label>

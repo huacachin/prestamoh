@@ -37,7 +37,7 @@
                         <div class="col-md-auto col-sm-12">
                             <div class="mb-3">
                                 <label class="form-label">Código (*)</label>
-                                <input type="text" class="form-control form-control-sm @error('code') is-invalid @enderror"
+                                <input type="text" name="code" autocomplete="off" class="form-control form-control-sm @error('code') is-invalid @enderror"
                                        placeholder="Ingresar Código"
                                        wire:model.defer="code">
                                 @error('code') <div class="invalid-feedback">{{ $message }}</div> @enderror
@@ -47,7 +47,7 @@
                         <div class="col-md-3">
                             <div class="mb-3">
                                 <label class="form-label">Nombre del Concepto (*)</label>
-                                <input type="text" class="form-control form-control-sm @error('name') is-invalid @enderror"
+                                <input type="text" name="name" autocomplete="on" class="form-control form-control-sm @error('name') is-invalid @enderror"
                                        placeholder="Ingresar Nombre"
                                        wire:model.defer="name">
                                 @error('name') <div class="invalid-feedback">{{ $message }}</div> @enderror
@@ -81,7 +81,7 @@
                         <div class="col-md-2">
                             <div class="mb-3">
                                 <label class="form-label">ING. S/</label>
-                                <input type="number" step="0.01" min="0"
+                                <input type="number" step="0.01" min="0" name="factor_ingreso" autocomplete="off"
                                        class="form-control form-control-sm @error('factor_ingreso') is-invalid @enderror"
                                        placeholder="0.00"
                                        @disabled($type === 'egreso')
@@ -93,7 +93,7 @@
                         <div class="col-md-2">
                             <div class="mb-3">
                                 <label class="form-label">EGR. S/</label>
-                                <input type="number" step="0.01" min="0"
+                                <input type="number" step="0.01" min="0" name="factor_egreso" autocomplete="off"
                                        class="form-control form-control-sm @error('factor_egreso') is-invalid @enderror"
                                        placeholder="0.00"
                                        @disabled($type === 'ingreso')

@@ -85,7 +85,7 @@
                                         @endforeach
                                     </select>
                                 @else
-                                    <input type="text"
+                                    <input type="text" name="reason" autocomplete="on"
                                            class="form-control form-control-sm @error('reason') is-invalid @enderror"
                                            wire:model.defer="reason"
                                            placeholder="Motivo libre (proveedor, ej. 'Recarga teléfono')"
@@ -96,13 +96,13 @@
                             @if($modo === 'Fijos')
                                 <div class="col-md-1">
                                     <label class="form-label mb-0 small fw-semibold">Cant.</label>
-                                    <input type="number" min="1" step="1"
+                                    <input type="number" min="1" step="1" name="cantidad" autocomplete="off"
                                            class="form-control form-control-sm"
                                            wire:model.live.debounce.400ms="cantidad">
                                 </div>
                                 <div class="col-md-2">
                                     <label class="form-label mb-0 small fw-semibold">Precio</label>
-                                    <input type="number" min="0" step="0.01"
+                                    <input type="number" min="0" step="0.01" name="precio_unitario" autocomplete="off"
                                            class="form-control form-control-sm"
                                            wire:model.live.debounce.400ms="precio_unitario"
                                            placeholder="0.00">
@@ -111,7 +111,7 @@
 
                             <div class="col-md-{{ $modo === 'Fijos' ? 4 : 6 }}">
                                 <label class="form-label mb-0 small fw-semibold">Detalle (*)</label>
-                                <input type="text"
+                                <input type="text" name="detail" autocomplete="on"
                                        class="form-control form-control-sm @error('detail') is-invalid @enderror"
                                        wire:model.defer="detail"
                                        placeholder="Descripción del egreso"
@@ -120,7 +120,7 @@
 
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small fw-semibold">Monto (*)</label>
-                                <input type="number" step="0.01" min="0.01"
+                                <input type="number" step="0.01" min="0.01" name="total" autocomplete="off"
                                        class="form-control form-control-sm @error('total') is-invalid @enderror"
                                        wire:model.defer="total"
                                        placeholder="0.00"
@@ -141,7 +141,7 @@
                             {{-- Campos exclusivos del legacy de gastos --}}
                             <div class="col-md-3">
                                 <label class="form-label mb-0 small fw-semibold">T.Comp.</label>
-                                <input type="text"
+                                <input type="text" name="document_type" autocomplete="on"
                                        class="form-control form-control-sm @error('document_type') is-invalid @enderror"
                                        wire:model.defer="document_type"
                                        placeholder="Boleta, Factura, Recibo, etc."
@@ -150,7 +150,7 @@
 
                             <div class="col-md-4">
                                 <label class="form-label mb-0 small fw-semibold">Respons.</label>
-                                <input type="text"
+                                <input type="text" name="in_charge" autocomplete="name"
                                        class="form-control form-control-sm @error('in_charge') is-invalid @enderror"
                                        wire:model.defer="in_charge"
                                        placeholder="Nombre del responsable"

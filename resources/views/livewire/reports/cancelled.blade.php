@@ -84,23 +84,23 @@
                             <div class="d-flex flex-wrap align-items-end gap-2 overflow-auto py-1">
                                 <div class="flex-shrink-0" style="width: 110px;">
                                     <label class="form-label mb-0 small">Exp</label>
-                                    <input type="text" class="form-control form-control-sm" wire:model.live.debounce.500ms="exp">
+                                    <input type="text" name="exp" autocomplete="off" class="form-control form-control-sm" wire:model.live.debounce.500ms="exp">
                                 </div>
                                 <div class="flex-shrink-0" style="width: 110px;">
                                     <label class="form-label mb-0 small">Codigo</label>
-                                    <input type="text" class="form-control form-control-sm" wire:model.live.debounce.500ms="codigo">
+                                    <input type="text" name="codigo" autocomplete="off" class="form-control form-control-sm" wire:model.live.debounce.500ms="codigo">
                                 </div>
                                 <div class="flex-shrink-0" style="width: 130px;">
                                     <label class="form-label mb-0 small">Dni</label>
-                                    <input type="text" class="form-control form-control-sm" wire:model.live.debounce.500ms="cdni">
+                                    <input type="text" name="cdni" autocomplete="off" class="form-control form-control-sm" wire:model.live.debounce.500ms="cdni">
                                 </div>
                                 <div class="flex-shrink-0" style="width: 220px;">
                                     <label class="form-label mb-0 small">Nombre</label>
-                                    <input type="text" class="form-control form-control-sm" wire:model.live.debounce.500ms="cnombre">
+                                    <input type="text" name="cnombre" autocomplete="off" class="form-control form-control-sm" wire:model.live.debounce.500ms="cnombre">
                                 </div>
                                 <div class="flex-shrink-0" style="width: 180px;">
                                     <label class="form-label mb-0 small">Asesor</label>
-                                    <input type="text" class="form-control form-control-sm" wire:model.live.debounce.500ms="casesor">
+                                    <input type="text" name="casesor" autocomplete="off" class="form-control form-control-sm" wire:model.live.debounce.500ms="casesor">
                                 </div>
                             </div>
                         </div>

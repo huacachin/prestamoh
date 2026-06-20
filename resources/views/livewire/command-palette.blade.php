@@ -13,6 +13,7 @@
             <div class="cmdk-search">
                 <i class="ti ti-search cmdk-search__icon"></i>
                 <input type="text"
+                       name="query"
                        x-ref="searchInput"
                        wire:model.live.debounce.250ms="query"
                        @keydown.arrow-down.prevent="moveDown()"

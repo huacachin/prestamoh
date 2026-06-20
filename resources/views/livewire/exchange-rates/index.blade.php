@@ -42,16 +42,16 @@
                         <div class="row g-2 align-items-end mb-3">
                             <div class="col-md-3">
                                 <label class="form-label mb-0 small"><b>Fecha</b></label>
-                                <input type="text" autocomplete="off" class="form-control form-control-sm dates" wire:model="fecha">
+                                <input type="text" name="fecha" autocomplete="off" class="form-control form-control-sm dates" wire:model="fecha">
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small"><b>Venta</b></label>
-                                <input type="number" step="0.0001" min="0" class="form-control form-control-sm"
+                                <input type="number" step="0.0001" min="0" name="venta" autocomplete="off" class="form-control form-control-sm"
                                        placeholder="0.0000" wire:model="venta">
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small"><b>Compra</b></label>
-                                <input type="number" step="0.0001" min="0" class="form-control form-control-sm"
+                                <input type="number" step="0.0001" min="0" name="compra" autocomplete="off" class="form-control form-control-sm"
                                        placeholder="0.0000" wire:model="compra">
                             </div>
                             <div class="col-md-auto d-flex gap-2">

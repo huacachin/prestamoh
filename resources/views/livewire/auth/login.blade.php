@@ -18,10 +18,10 @@
                                     <form wire:submit.prevent="authenticate" class="app-form">
                                         @csrf
                                         <div class="mb-3">
-                                            <input  wire:model.defer="username" placeholder="USUARIO" id="username"  type="text" class="form-control" autofocus>
+                                            <input  wire:model.defer="username" name="username" autocomplete="username" placeholder="USUARIO" id="username"  type="text" class="form-control" autofocus>
                                         </div>
                                         <div class="mb-3">
-                                            <input wire:model.defer="password" placeholder="CONTRASEÑA" id="password" type="password" class="form-control">
+                                            <input wire:model.defer="password" name="password" autocomplete="current-password" placeholder="CONTRASEÑA" id="password" type="password" class="form-control">
                                         </div>
                                         <!--div class="mb-3 form-check">
                                             <input wire:model="remember" type="checkbox" class="form-check-input" >

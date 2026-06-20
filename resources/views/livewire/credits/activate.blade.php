@@ -30,7 +30,7 @@
                         {{-- Búsqueda con dropdown --}}
                         <div class="col-md-6 position-relative">
                             <label class="form-label"><b>Préstamo</b></label>
-                            <input type="text" class="form-control"
+                            <input type="text" name="search" class="form-control"
                                    wire:model.live.debounce.300ms="search"
                                    placeholder="Escriba ID, nombre o DNI para buscar..."
                                    autocomplete="off">

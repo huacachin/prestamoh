@@ -108,6 +108,7 @@
                             <label class="form-label mb-0 small fw-semibold">DNI / RUC</label>
                             <input type="text" class="form-control form-control-sm @error('dni') is-invalid @enderror"
                                    wire:model.defer="dni"
+                                   name="dni" autocomplete="off"
                                    placeholder="DNI (8) o RUC (11)"
                                    maxlength="11"
                                    wire:keydown.enter.prevent="consultarDni">
@@ -151,17 +152,17 @@
                         <div class="col-md-6">
                             <label class="form-label mb-0 small fw-semibold">Nombre</label>
                             <input type="text" class="form-control form-control-sm @error('nombre') is-invalid @enderror"
-                                   wire:model.defer="nombre" placeholder="Apellidos y nombres">
+                                   wire:model.defer="nombre" name="nombre" autocomplete="name" placeholder="Apellidos y nombres">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label mb-0 small fw-semibold">Dirección</label>
                             <input type="text" class="form-control form-control-sm"
-                                   wire:model.defer="direccion" placeholder="Av. Arequipa Nro. 3400">
+                                   wire:model.defer="direccion" name="direccion" autocomplete="street-address" placeholder="Av. Arequipa Nro. 3400">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label mb-0 small fw-semibold">Teléfono</label>
                             <input type="text" class="form-control form-control-sm"
-                                   wire:model.defer="telefono" placeholder="999-999-999">
+                                   wire:model.defer="telefono" name="telefono" autocomplete="tel" placeholder="999-999-999">
                         </div>
                     </div>
 

@@ -46,7 +46,7 @@
                             @endif
                         </label>
                         <input type="text" class="form-control form-control-sm @error('apellido_pat') is-invalid @enderror @unless($puedeEditarIdentidad) bg-light @endunless"
-                               wire:model.defer="apellido_pat" placeholder="Apellido Paterno"
+                               wire:model.defer="apellido_pat" name="apellido_pat" autocomplete="family-name" placeholder="Apellido Paterno"
                                @unless($puedeEditarIdentidad) readonly @endunless>
                     </div>
                     <div class="col-md-3">
@@ -54,7 +54,7 @@
                             Apellido Materno <span class="text-muted small">(opcional)</span>
                         </label>
                         <input type="text" class="form-control form-control-sm @unless($puedeEditarIdentidad) bg-light @endunless"
-                               wire:model.defer="apellido_mat" placeholder="Apellido Materno"
+                               wire:model.defer="apellido_mat" name="apellido_mat" autocomplete="off" placeholder="Apellido Materno"
                                @unless($puedeEditarIdentidad) readonly @endunless>
                     </div>
                     <div class="col-md-3">
@@ -63,6 +63,7 @@
                         </label>
                         <input type="text" class="form-control form-control-sm @error('nombre') is-invalid @enderror @unless($puedeEditarIdentidad) bg-light @endunless"
                                wire:model.defer="nombre"
+                               name="nombre" autocomplete="given-name"
                                placeholder="{{ $tipo_documento === 'RUC' ? 'Razón social' : 'Nombres' }}"
                                @unless($puedeEditarIdentidad) readonly @endunless>
                     </div>
@@ -93,12 +94,12 @@
                     </div>
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">Nacimiento</label>
-                        <input type="text" autocomplete="off" class="form-control form-control-sm dates" wire:model.defer="fecha_nacimiento">
+                        <input type="text" autocomplete="off" name="fecha_nacimiento" class="form-control form-control-sm dates" wire:model.defer="fecha_nacimiento">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">DNI / RUC</label>
                         <input type="text" class="form-control form-control-sm @error('documento') is-invalid @enderror @unless($puedeEditarIdentidad) bg-light @endunless"
-                               wire:model.defer="documento" placeholder="Número de documento" maxlength="11"
+                               wire:model.defer="documento" name="documento" autocomplete="off" placeholder="Número de documento" maxlength="11"
                                @unless($puedeEditarIdentidad) readonly @endunless>
                     </div>
                     <div class="col-md-2">
@@ -121,33 +122,33 @@
                     <div class="col-md-5">
                         <label class="form-label mb-0 small fw-semibold">Dirección</label>
                         <input type="text" class="form-control form-control-sm"
-                               wire:model.defer="direccion" placeholder="Av. Arequipa Nro. 3400">
+                               wire:model.defer="direccion" name="direccion" autocomplete="street-address" placeholder="Av. Arequipa Nro. 3400">
                     </div>
                     <div class="col-md-4">
                         <label class="form-label mb-0 small fw-semibold">Referencia</label>
                         <input type="text" class="form-control form-control-sm"
-                               wire:model.defer="referencia" placeholder="Cerca de…">
+                               wire:model.defer="referencia" name="referencia" autocomplete="off" placeholder="Cerca de…">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">Giro</label>
                         <input type="text" class="form-control form-control-sm"
-                               wire:model.defer="giro" placeholder="Giro del negocio">
+                               wire:model.defer="giro" name="giro" autocomplete="on" placeholder="Giro del negocio">
                     </div>
 
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">Teléfono Secundario</label>
                         <input type="text" class="form-control form-control-sm"
-                               wire:model.defer="telefono_secundario" placeholder="999-9999">
+                               wire:model.defer="telefono_secundario" name="telefono_secundario" autocomplete="tel" placeholder="999-9999">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">Celular / Whatsapp</label>
                         <input type="text" class="form-control form-control-sm"
-                               wire:model.defer="celular1" placeholder="999-999-999">
+                               wire:model.defer="celular1" name="celular1" autocomplete="tel" placeholder="999-999-999">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">Celular Secundario</label>
                         <input type="text" class="form-control form-control-sm"
-                               wire:model.defer="celular2" placeholder="999-999-999">
+                               wire:model.defer="celular2" name="celular2" autocomplete="tel" placeholder="999-999-999">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label mb-0 small fw-semibold">Asesor</label>
@@ -162,7 +163,7 @@
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">T.Credito</label>
                         <input type="text" class="form-control form-control-sm"
-                               wire:model.defer="zona" placeholder="Zona o ruta">
+                               wire:model.defer="zona" name="zona" autocomplete="on" placeholder="Zona o ruta">
                     </div>
 
                     {{-- Casa / Negocio: solo SuperUsuario y solo si la coord existe --}}

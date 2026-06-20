@@ -39,7 +39,7 @@
                         <div class="col-12">
                             <div class="d-flex flex-wrap align-items-end gap-2 overflow-auto py-1">
                                 <div class="flex-shrink-0" style="width: 260px;">
-                                    <input type="search"
+                                    <input type="search" name="search" autocomplete="off"
                                            class="form-control form-control-sm"
                                            placeholder="Buscar por nombre"
                                            wire:model="search">

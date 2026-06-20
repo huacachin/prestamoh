@@ -43,7 +43,7 @@
                                 </div>
                                 <div class="flex-shrink-0" style="width: 140px;">
                                     <label class="form-label mb-0 small">Codigo</label>
-                                    <input type="text" class="form-control form-control-sm" wire:model="codio1" wire:keydown.enter="search">
+                                    <input type="text" name="codio1" autocomplete="off" class="form-control form-control-sm" wire:model="codio1" wire:keydown.enter="search">
                                 </div>
                                 <button class="btn btn-sm btn-dark flex-shrink-0" wire:click="search" wire:loading.attr="disabled">
                                     <i class="ti ti-search f-s-12"></i> Buscar

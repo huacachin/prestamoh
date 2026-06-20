@@ -60,7 +60,7 @@
                         <div class="col-md-3">
                             <div class="mb-3">
                                 <label class="form-label">Detalle</label>
-                                <input type="text" class="form-control form-control-sm @error('detail') is-invalid @enderror"
+                                <input type="text" name="detail" autocomplete="on" class="form-control form-control-sm @error('detail') is-invalid @enderror"
                                        placeholder="Detalle del egreso"
                                        wire:model.defer="detail">
                                 @error('detail') <div class="invalid-feedback">{{ $message }}</div> @enderror
@@ -70,7 +70,7 @@
                         <div class="col-md-auto col-sm-12">
                             <div class="mb-3">
                                 <label class="form-label">Total (*)</label>
-                                <input type="number" step="0.01" class="form-control form-control-sm @error('total') is-invalid @enderror"
+                                <input type="number" step="0.01" name="total" autocomplete="off" class="form-control form-control-sm @error('total') is-invalid @enderror"
                                        placeholder="0.00"
                                        wire:model.defer="total">
                                 @error('total') <div class="invalid-feedback">{{ $message }}</div> @enderror
@@ -80,7 +80,7 @@
                         <div class="col-md-auto col-sm-12">
                             <div class="mb-3">
                                 <label class="form-label">T.Comp.</label>
-                                <input type="text" class="form-control form-control-sm @error('document_type') is-invalid @enderror"
+                                <input type="text" name="document_type" autocomplete="on" class="form-control form-control-sm @error('document_type') is-invalid @enderror"
                                        placeholder="Boleta, Factura, etc."
                                        wire:model.defer="document_type">
                                 @error('document_type') <div class="invalid-feedback">{{ $message }}</div> @enderror
@@ -90,7 +90,7 @@
                         <div class="col-md-auto col-sm-12">
                             <div class="mb-3">
                                 <label class="form-label">Respons.</label>
-                                <input type="text" class="form-control form-control-sm @error('in_charge') is-invalid @enderror"
+                                <input type="text" name="in_charge" autocomplete="name" class="form-control form-control-sm @error('in_charge') is-invalid @enderror"
                                        placeholder="Nombre del responsable"
                                        wire:model.defer="in_charge">
                                 @error('in_charge') <div class="invalid-feedback">{{ $message }}</div> @enderror

@@ -37,7 +37,7 @@
                         <div class="col-md-auto">
                             <div class="mb-3">
                                 <label class="form-label">Orden (*)</label>
-                                <input type="number" class="form-control form-control-sm @error('sort_order') is-invalid @enderror"
+                                <input type="number" name="sort_order" autocomplete="off" class="form-control form-control-sm @error('sort_order') is-invalid @enderror"
                                        placeholder="0"
                                        wire:model.defer="sort_order">
                                 @error('sort_order') <div class="invalid-feedback">{{ $message }}</div> @enderror
@@ -47,7 +47,7 @@
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label class="form-label">Nombre (*)</label>
-                                <input type="text" class="form-control form-control-sm @error('name') is-invalid @enderror"
+                                <input type="text" name="name" autocomplete="on" class="form-control form-control-sm @error('name') is-invalid @enderror"
                                        placeholder="Nombre de la sucursal"
                                        wire:model.defer="name">
                                 @error('name') <div class="invalid-feedback">{{ $message }}</div> @enderror

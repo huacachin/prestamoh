@@ -59,31 +59,31 @@
                             </div>
                             <div class="col-md-1">
                                 <label class="form-label mb-0 small">Exp</label>
-                                <input type="text" class="form-control form-control-sm" wire:model="exp">
+                                <input type="text" name="exp" autocomplete="off" class="form-control form-control-sm" wire:model="exp">
                             </div>
                             <div class="col-md-1">
                                 <label class="form-label mb-0 small">Código</label>
-                                <input type="text" class="form-control form-control-sm" wire:model="codigo">
+                                <input type="text" name="codigo" autocomplete="off" class="form-control form-control-sm" wire:model="codigo">
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small">DNI</label>
-                                <input type="text" class="form-control form-control-sm" wire:model="cdni">
+                                <input type="text" name="cdni" autocomplete="off" class="form-control form-control-sm" wire:model="cdni">
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small">Nombre</label>
-                                <input type="text" class="form-control form-control-sm" wire:model="cnombre">
+                                <input type="text" name="cnombre" autocomplete="off" class="form-control form-control-sm" wire:model="cnombre">
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small">Asesor</label>
-                                <input type="text" class="form-control form-control-sm" wire:model="casesor">
+                                <input type="text" name="casesor" autocomplete="off" class="form-control form-control-sm" wire:model="casesor">
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small">Fecha I</label>
-                                <input type="text" autocomplete="off" class="form-control form-control-sm dates" wire:model="fechai">
+                                <input type="text" name="fechai" autocomplete="off" class="form-control form-control-sm dates" wire:model="fechai">
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small">Fecha F</label>
-                                <input type="text" autocomplete="off" class="form-control form-control-sm dates" wire:model="fechaf">
+                                <input type="text" name="fechaf" autocomplete="off" class="form-control form-control-sm dates" wire:model="fechaf">
                             </div>
                             <div class="col-md-2 d-flex align-items-end gap-2">
                                 <button type="submit" class="btn btn-sm btn-primary">

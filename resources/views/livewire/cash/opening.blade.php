@@ -26,7 +26,7 @@
                     <div class="alert alert-light border mb-2" style="background: #fff;">
                         <div class="d-flex flex-wrap align-items-center gap-2" style="color: red; font-weight: bold;">
                             <span>APERTURA DE CAJA FECHA -</span>
-                            <input type="text" autocomplete="off" class="form-control form-control-sm d-inline-block @error('fechaera') is-invalid @enderror dates2"
+                            <input type="text" name="fechaera" autocomplete="off" class="form-control form-control-sm d-inline-block @error('fechaera') is-invalid @enderror dates2"
                                    style="width: 160px;" wire:model="fechaera">
                             <span>Hora - {{ $horaActual }}</span>
                         </div>
@@ -66,7 +66,7 @@
                                 @if($currentMonth && !$puedeEditar)
                                     <h5 class="mb-0">: {{ number_format($currentMonth->saldo_inicial, 2) }}</h5>
                                 @else
-                                    <input type="number" step="0.01" min="0"
+                                    <input type="number" step="0.01" min="0" name="solesm" autocomplete="off"
                                            class="form-control form-control-sm @error('solesm') is-invalid @enderror"
                                            placeholder="0.00"
                                            value="{{ $currentMonth?->saldo_inicial }}"
@@ -129,7 +129,7 @@
                                     <td>{{ $row->user?->username ?? $row->user?->name ?? '-' }}</td>
                                     <td class="text-end">
                                         @if($puedeEditar && $editingId === $row->id)
-                                            <input type="number" step="0.01" class="form-control form-control-sm"
+                                            <input type="number" step="0.01" name="editingValue" autocomplete="off" class="form-control form-control-sm"
                                                    wire:model="editingValue"
                                                    wire:keydown.enter="updateInline({{ $row->id }})"
                                                    wire:keydown.escape="cancelEdit">

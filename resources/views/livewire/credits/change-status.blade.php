@@ -30,13 +30,13 @@
                         {{-- Fecha de Pago --}}
                         <div class="col-md-2">
                             <label class="form-label"><b>Fecha de Pago</b></label>
-                            <input type="text" autocomplete="off" class="form-control dates" wire:model.live="fecha">
+                            <input type="text" name="fecha" autocomplete="off" class="form-control dates" wire:model.live="fecha">
                         </div>
 
                         {{-- Código - búsqueda con dropdown --}}
                         <div class="col-md-4 position-relative">
                             <label class="form-label"><b>Codigo</b></label>
-                            <input type="text" class="form-control"
+                            <input type="text" name="search" class="form-control"
                                    wire:model.live.debounce.300ms="search"
                                    placeholder="Escriba ID, nombre o DNI para buscar..."
                                    autocomplete="off">

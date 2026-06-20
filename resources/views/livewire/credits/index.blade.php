@@ -23,12 +23,12 @@
                         <div class="row g-2 align-items-end mb-2">
                             <div class="col-md-3">
                                 <label class="form-label mb-0 small"><b>Nombre</b></label>
-                                <input type="text" class="form-control form-control-sm"
+                                <input type="text" name="nombre" autocomplete="off" class="form-control form-control-sm"
                                        wire:model.live.debounce.300ms="nombre" placeholder="Nombres">
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small"><b>Código</b></label>
-                                <input type="text" class="form-control form-control-sm"
+                                <input type="text" name="codigo" autocomplete="off" class="form-control form-control-sm"
                                        wire:model.live.debounce.300ms="codigo" placeholder="Código">
                             </div>
                             <div class="col-md-3">

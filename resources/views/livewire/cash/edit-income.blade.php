@@ -60,7 +60,7 @@
                         <div class="col-md-3">
                             <div class="mb-3">
                                 <label class="form-label">Detalle</label>
-                                <input type="text" class="form-control form-control-sm @error('detail') is-invalid @enderror"
+                                <input type="text" name="detail" autocomplete="on" class="form-control form-control-sm @error('detail') is-invalid @enderror"
                                        placeholder="Detalle del ingreso"
                                        wire:model.defer="detail">
                                 @error('detail') <div class="invalid-feedback">{{ $message }}</div> @enderror
@@ -70,7 +70,7 @@
                         <div class="col-md-auto col-sm-12">
                             <div class="mb-3">
                                 <label class="form-label">Total (*)</label>
-                                <input type="number" step="0.01" class="form-control form-control-sm @error('total') is-invalid @enderror"
+                                <input type="number" step="0.01" name="total" autocomplete="off" class="form-control form-control-sm @error('total') is-invalid @enderror"
                                        placeholder="0.00"
                                        wire:model.defer="total">
                                 @error('total') <div class="invalid-feedback">{{ $message }}</div> @enderror

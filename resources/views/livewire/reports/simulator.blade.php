@@ -29,21 +29,21 @@
                         <div class="row g-2 align-items-end mb-3">
                             <div class="col-md-4">
                                 <label class="form-label mb-1"><b>Nombre</b></label>
-                                <input type="text" class="form-control"
+                                <input type="text" name="nombre" autocomplete="name" class="form-control"
                                        wire:model="nombre" placeholder="Nombres"
                                        style="background-color: yellow; font-weight: 600;">
                                 @error('nombre') <small class="text-danger">{{ $message }}</small> @enderror
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label mb-1"><b>Capital</b></label>
-                                <input type="number" step="0.01" min="1" class="form-control"
+                                <input type="number" step="0.01" min="1" name="capital" autocomplete="off" class="form-control"
                                        wire:model="capital" placeholder="Capital"
                                        style="background-color: yellow; font-weight: 600;">
                                 @error('capital') <small class="text-danger">{{ $message }}</small> @enderror
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label mb-1"><b>%</b></label>
-                                <input type="number" step="0.01" min="0" class="form-control"
+                                <input type="number" step="0.01" min="0" name="interes" autocomplete="off" class="form-control"
                                        wire:model="interes" placeholder="%"
                                        style="background-color: yellow; font-weight: 600;">
                                 @error('interes') <small class="text-danger">{{ $message }}</small> @enderror

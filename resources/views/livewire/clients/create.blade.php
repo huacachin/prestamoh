@@ -29,6 +29,7 @@
                         <input type="text"
                                class="form-control form-control-sm"
                                wire:model.defer="docBuscar"
+                               name="docBuscar" autocomplete="off"
                                placeholder="DNI (8) o RUC (11)"
                                maxlength="11"
                                wire:keydown.enter.prevent="consultarDocumento"
@@ -88,14 +89,14 @@
                             @endif
                         </label>
                         <input type="text" class="form-control form-control-sm @error('apellido_pat') is-invalid @enderror"
-                               wire:model.defer="apellido_pat" placeholder="Apellido Paterno">
+                               wire:model.defer="apellido_pat" name="apellido_pat" autocomplete="family-name" placeholder="Apellido Paterno">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">
                             Apellido Materno <span class="text-muted small">(opcional)</span>
                         </label>
                         <input type="text" class="form-control form-control-sm"
-                               wire:model.defer="apellido_mat" placeholder="Apellido Materno">
+                               wire:model.defer="apellido_mat" name="apellido_mat" autocomplete="off" placeholder="Apellido Materno">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">
@@ -103,6 +104,7 @@
                         </label>
                         <input type="text" class="form-control form-control-sm @error('nombre') is-invalid @enderror"
                                wire:model.defer="nombre"
+                               name="nombre" autocomplete="given-name"
                                placeholder="{{ $tipo_documento === 'RUC' ? 'Razón social' : 'Nombres' }}">
                     </div>
                     <div class="col-md-3">
@@ -120,17 +122,17 @@
                     </div>
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">Nacimiento</label>
-                        <input type="text" autocomplete="off" class="form-control form-control-sm dates" wire:model.defer="fecha_nacimiento">
+                        <input type="text" autocomplete="off" name="fecha_nacimiento" class="form-control form-control-sm dates" wire:model.defer="fecha_nacimiento">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">DNI / RUC</label>
                         <input type="text" class="form-control form-control-sm @error('documento') is-invalid @enderror"
-                               wire:model.defer="documento" placeholder="Número de documento" maxlength="11">
+                               wire:model.defer="documento" name="documento" autocomplete="off" placeholder="Número de documento" maxlength="11">
                     </div>
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">Expediente</label>
                         <input type="number" class="form-control form-control-sm @error('expediente') is-invalid @enderror"
-                               wire:model.defer="expediente" min="1">
+                               wire:model.defer="expediente" name="expediente" autocomplete="off" min="1">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">Tipo</label>
@@ -147,28 +149,28 @@
                     <div class="col-md-6">
                         <label class="form-label mb-0 small fw-semibold">Dirección</label>
                         <input type="text" class="form-control form-control-sm"
-                               wire:model.defer="direccion" placeholder="Av. Arequipa Nro. 3400">
+                               wire:model.defer="direccion" name="direccion" autocomplete="street-address" placeholder="Av. Arequipa Nro. 3400">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">Giro</label>
                         <input type="text" class="form-control form-control-sm"
-                               wire:model.defer="giro" placeholder="Giro del negocio">
+                               wire:model.defer="giro" name="giro" autocomplete="on" placeholder="Giro del negocio">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">T. Crédito</label>
                         <input type="text" class="form-control form-control-sm"
-                               wire:model.defer="zona" placeholder="Zona o ruta">
+                               wire:model.defer="zona" name="zona" autocomplete="on" placeholder="Zona o ruta">
                     </div>
 
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">Celular / Whatsapp</label>
                         <input type="text" class="form-control form-control-sm"
-                               wire:model.defer="celular1" placeholder="999-999-999">
+                               wire:model.defer="celular1" name="celular1" autocomplete="tel" placeholder="999-999-999">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">Celular Secundario</label>
                         <input type="text" class="form-control form-control-sm"
-                               wire:model.defer="celular2" placeholder="999-999-999">
+                               wire:model.defer="celular2" name="celular2" autocomplete="tel" placeholder="999-999-999">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label mb-0 small fw-semibold">Ejecutivo / Asesor</label>

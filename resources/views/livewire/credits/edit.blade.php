@@ -35,17 +35,17 @@
             <div class="row g-3">
                 <div class="col-auto">
                     <label class="form-label">Fecha Préstamo</label>
-                    <input type="text" autocomplete="off" class="form-control form-control-sm dates" wire:model.defer="fecha_prestamo"
+                    <input type="text" name="fecha_prestamo" autocomplete="off" class="form-control form-control-sm dates" wire:model.defer="fecha_prestamo"
                            @if($hasPayments) disabled style="opacity:.6" @endif>
                 </div>
                 <div class="col-auto">
                     <label class="form-label">Importe</label>
-                    <input type="number" step="0.01" class="form-control form-control-sm" wire:model.defer="importe"
+                    <input type="number" name="importe" autocomplete="off" step="0.01" class="form-control form-control-sm" wire:model.defer="importe"
                            @if($hasPayments) disabled style="opacity:.6" @endif>
                 </div>
                 <div class="col-auto">
                     <label class="form-label">Cuotas</label>
-                    <input type="number" class="form-control form-control-sm" wire:model.defer="cuotas"
+                    <input type="number" name="cuotas" autocomplete="off" class="form-control form-control-sm" wire:model.defer="cuotas"
                            @if($hasPayments) disabled style="opacity:.6" @endif>
                 </div>
                 <div class="col-auto">
@@ -59,7 +59,7 @@
                 </div>
                 <div class="col-auto">
                     <label class="form-label">Interés %</label>
-                    <input type="number" step="0.01" class="form-control form-control-sm" wire:model.defer="interes"
+                    <input type="number" name="interes" autocomplete="off" step="0.01" class="form-control form-control-sm" wire:model.defer="interes"
                            @if($hasPayments) disabled style="opacity:.6" @endif>
                 </div>
                 <div class="col-auto">
@@ -71,11 +71,11 @@
                 </div>
                 <div class="col-auto">
                     <label class="form-label">Documento</label>
-                    <input type="text" class="form-control form-control-sm" wire:model.defer="documento">
+                    <input type="text" name="documento" autocomplete="off" class="form-control form-control-sm" wire:model.defer="documento">
                 </div>
                 <div class="col-12 col-md-4">
                     <label class="form-label">Glosa</label>
-                    <input type="text" class="form-control form-control-sm" wire:model.defer="glosa">
+                    <input type="text" name="glosa" autocomplete="on" class="form-control form-control-sm" wire:model.defer="glosa">
                 </div>
                 <div class="col-auto">
                     <label class="form-label">Situación</label>
