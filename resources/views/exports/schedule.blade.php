@@ -73,6 +73,15 @@
                     <th></th>
                 </tr>
             @endif
+
+            {{-- Saldo (igual que la pantalla: rojo) --}}
+            @if(count($rows) > 0 || count($dailyExtras) > 0)
+                <tr bgcolor="#F0F0F0">
+                    <td colspan="5" style="text-align:center;color:red;"><b>Saldo</b></td>
+                    <td colspan="2" style="text-align:center;color:red;"><b>{{ number_format(abs($saldo), 2) }}</b></td>
+                    <td></td>
+                </tr>
+            @endif
         </tbody>
     </table>
 @endsection

@@ -77,6 +77,7 @@ class CreditController extends Controller
             'dailyExtras'  => $dailyExtras,
             'sumMoraExtra' => $d['sumOtrosMora'],
             'sumImpoExtra' => $d['sumOtros'],
+            'saldo'        => $d['saldo'],
         ], 'Cronograma.xls');
     }
 }

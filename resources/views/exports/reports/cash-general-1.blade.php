@@ -95,7 +95,7 @@
                 @endif
 
                 {{-- SUB TOTAL del día --}}
-                <tr>
+                <tr bgcolor="#F0F0F0">
                     <td></td>
                     <td colspan="4"><b>SUB TOTAL</b></td>
                     <td><b>{{ number_format($day['sub_ingresos'], 2) }}</b></td>
