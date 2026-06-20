@@ -4,7 +4,6 @@ namespace App\Exports;
 
 use App\Exports\Concerns\LegacyExcelStyle;
 use App\Models\Credit;
-use App\Models\CreditInstallment;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
@@ -14,25 +13,14 @@ use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Events\AfterSheet;
 
 /**
- * Excel del listado /payments (créditos activos para pago) — réplica de pagosex.php.
- * Título "PRESTAMOS". 14 cols + fila de Totales (Capital, S/, Total, Pago, Saldo).
+ * Excel del listado /payments — calca la pantalla "PAGO/CREDITO" (8 columnas).
+ * Selección de créditos activos para registrar pago.
  */
 class PaymentsExport implements FromCollection, ShouldAutoSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
 {
     use LegacyExcelStyle;
 
-    /** @var array<int, array{iapli: float, aplido: float}> */
-    protected array $pagosMap = [];
-
     protected float $sumCapital = 0;
-
-    protected float $sumInteres = 0;
-
-    protected float $sumTotal = 0;
-
-    protected float $sumPago = 0;
-
-    protected float $sumSaldo = 0;
 
     public function __construct(
         protected ?string $nombre = '',
@@ -45,10 +33,7 @@ class PaymentsExport implements FromCollection, ShouldAutoSize, WithCustomStartC
     public function collection()
     {
         $query = Credit::query()
-            ->with([
-                'client:id,expediente,nombre,apellido_pat,apellido_mat,documento,asesor_id',
-                'client.asesor:id,name,username',
-            ])
+            ->with(['client:id,expediente,nombre,apellido_pat,apellido_mat,documento,asesor_id'])
             ->where('situacion', '<>', 'Cancelado');
 
         if ($this->scopePropio && $this->userId) {
@@ -70,39 +55,16 @@ class PaymentsExport implements FromCollection, ShouldAutoSize, WithCustomStartC
             $query->where('id', 'like', '%'.trim((string) $this->codigo).'%');
         }
 
-        $credits = $query->orderByDesc('fecha_prestamo')->get();
-
-        // Sums de pagos por crédito (cuotas)
-        $ids = $credits->pluck('id')->all();
-        if (! empty($ids)) {
-            $sums = CreditInstallment::whereIn('credit_id', $ids)
-                ->selectRaw('credit_id, sum(importe_aplicado) as iapli, sum(interes_aplicado) as aplido')
-                ->groupBy('credit_id')->get();
-            foreach ($sums as $s) {
-                $this->pagosMap[$s->credit_id] = ['iapli' => (float) $s->iapli, 'aplido' => (float) $s->aplido];
-            }
-        }
-
-        foreach ($credits as $c) {
-            $iapli = $this->pagosMap[$c->id]['iapli'] ?? 0;
-            $aplido = $this->pagosMap[$c->id]['aplido'] ?? 0;
-            $inter = round(($c->importe * $c->interes) / 100, 2);
-            $pend = (float) $c->importe - $iapli - $aplido + $inter;
-
-            $this->sumCapital += (float) $c->importe;
-            $this->sumInteres += $inter;
-            $this->sumTotal += (float) $c->importe + $inter;
-            $this->sumPago += $iapli + $aplido;
-            $this->sumSaldo += $pend;
-        }
+        $credits = $query->orderBy('id', 'asc')->get();
+        $this->sumCapital = (float) $credits->sum('importe');
 
         return $credits;
     }
 
     public function headings(): array
     {
-        // Réplica de pagosex.php: Nº, Fecha, Usuario, Codigo, Nombre, Capital, %, S/, C., Total, Pago, Saldo, Asesor, T.C.
-        return ['Nº', 'Fecha', 'Usuario', 'Código', 'Nombre', 'Capital', '%', 'S/', 'C.', 'Total', 'Pago', 'Saldo', 'Asesor', 'T.C.'];
+        // Pantalla PAGO/CREDITO: Nº, Exp., Código, Nombre, Moneda, Capital, %, C.
+        return ['Nº', 'Exp.', 'Código', 'Nombre', 'Moneda', 'Capital', '%', 'C.'];
     }
 
     public function map($c): array
@@ -113,30 +75,15 @@ class PaymentsExport implements FromCollection, ShouldAutoSize, WithCustomStartC
         $cli = $c->client;
         $nombre = $cli ? trim(($cli->apellido_pat ?? '').' '.($cli->apellido_mat ?? '').' '.($cli->nombre ?? '')) : '';
 
-        $iapli = $this->pagosMap[$c->id]['iapli'] ?? 0;
-        $aplido = $this->pagosMap[$c->id]['aplido'] ?? 0;
-        $inter = round(($c->importe * $c->interes) / 100, 2);
-        $pend = (float) $c->importe - $iapli - $aplido + $inter;
-
-        $tc = match ((int) $c->tipo_planilla) {
-            1 => 'S.', 3 => 'M.', 4 => 'D.', default => '',
-        };
-
         return [
-            $i,                                       // Nº
-            $c->fecha_prestamo?->format('d/m/Y'),     // Fecha
-            $c->usuario,                              // Usuario
-            $c->id,                                   // Código
-            $nombre,                                  // Nombre
-            (float) $c->importe,                      // Capital
-            round((float) $c->interes, 0),            // %
-            $inter,                                   // S/
-            (int) $c->cuotas,                         // C.
-            (float) $c->importe + $inter,             // Total
-            $iapli + $aplido,                         // Pago
-            $pend,                                    // Saldo
-            $cli?->asesor?->name ?? $cli?->asesor?->username ?? '', // Asesor
-            $tc,                                      // T.C.
+            $i,                              // Nº
+            $cli?->expediente,              // Exp.
+            $c->id,                         // Código
+            $nombre,                        // Nombre
+            $c->moneda,                     // Moneda
+            (float) $c->importe,            // Capital
+            round((float) $c->interes, 0),  // %
+            (int) $c->cuotas,               // C.
         ];
     }
 
@@ -145,22 +92,17 @@ class PaymentsExport implements FromCollection, ShouldAutoSize, WithCustomStartC
         return [
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
-                $lastCol = 'N';
+                $lastCol = 'H';
 
-                // Centrado + moneda en datos (antes de agregar la fila de totales).
-                $this->styleDataRange($sheet, $lastCol, ['F', 'H', 'J', 'K', 'L']);
+                $this->styleDataRange($sheet, $lastCol, ['F']);
 
-                // Fila de totales (legacy: A:D vacío, "Totales" en E, valores en F/H/J/K/L)
+                // Fila de Totales (Capital)
                 $r = $sheet->getHighestRow() + 1;
-                $sheet->mergeCells("A{$r}:D{$r}");
-                $sheet->setCellValue("E{$r}", 'Totales');
+                $sheet->mergeCells("A{$r}:E{$r}");
+                $sheet->setCellValue("A{$r}", 'Totales');
                 $sheet->setCellValue("F{$r}", number_format($this->sumCapital, 2));
-                $sheet->setCellValue("H{$r}", number_format($this->sumInteres, 2));
-                $sheet->setCellValue("J{$r}", number_format($this->sumTotal, 2));
-                $sheet->setCellValue("K{$r}", number_format($this->sumPago, 2));
-                $sheet->setCellValue("L{$r}", number_format($this->sumSaldo, 2));
 
-                $this->applyLegacyStyle($sheet, 'PRESTAMOS', $lastCol);
+                $this->applyLegacyStyle($sheet, 'PAGO/CREDITO', $lastCol);
                 $this->markTotalRow($sheet, $r, $lastCol);
             },
         ];

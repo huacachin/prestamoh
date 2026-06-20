@@ -130,6 +130,8 @@ class ScheduleExport implements FromCollection, WithHeadings, WithMapping, Shoul
                 if ($this->credit && (int) $this->credit->tipo_planilla === 4) {
                     $this->buildDailyExtras($sheet, $r2 + 1, $lastCol);
                 }
+
+                $this->applyBaseFontAndAutosize($sheet);
             },
         ];
     }

@@ -118,6 +118,7 @@ class CancelledExport implements FromCollection, WithMapping, ShouldAutoSize, Wi
                 $this->buildDataStyles($sheet);
                 $this->buildRowHighlights($sheet, $lastCol);
                 $this->buildTotals($sheet, $lastCol);
+                $this->applyBaseFontAndAutosize($sheet);
             },
         ];
     }

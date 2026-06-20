@@ -75,9 +75,7 @@ class SimulatorExport implements FromCollection, WithEvents
                     $this->block($sheet, $r, $start, true);
                 }
 
-                foreach (range('A', 'Z') as $col) {
-                    $sheet->getColumnDimension($col)->setWidth(10);
-                }
+                $this->applyBaseFontAndAutosize($sheet);
             },
         ];
     }

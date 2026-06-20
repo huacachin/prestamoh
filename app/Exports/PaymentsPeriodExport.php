@@ -78,6 +78,7 @@ abstract class PaymentsPeriodExport implements FromCollection, WithEvents
                     $this->buildMorosidad($sheet, $r);
                 }
                 $this->finishStyles($sheet, $first, $lastData, $last);
+                $this->applyBaseFontAndAutosize($sheet);
             },
         ];
     }

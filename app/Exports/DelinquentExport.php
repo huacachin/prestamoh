@@ -98,6 +98,7 @@ class DelinquentExport implements FromCollection, WithMapping, WithCustomStartCe
                 $this->buildTitleAndHeader($sheet, 'T');
                 $this->buildDataStyles($sheet);
                 $this->buildTotals($sheet);
+                $this->applyBaseFontAndAutosize($sheet);
             },
         ];
     }

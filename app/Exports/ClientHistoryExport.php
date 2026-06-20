@@ -152,6 +152,7 @@ class ClientHistoryExport implements FromCollection, WithMapping, ShouldAutoSize
                 $this->buildPanelAndHeader($sheet, $lastCol);
                 $this->buildDataStyles($sheet, $lastCol);
                 $this->buildTotalRow($sheet, $lastCol);
+                $this->applyBaseFontAndAutosize($sheet);
             },
         ];
     }

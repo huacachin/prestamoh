@@ -68,6 +68,9 @@ trait LegacyExcelStyle
                 ],
             ]);
         }
+
+        // Fuente base 10 + auto-ancho (común a todos los exports)
+        $this->applyBaseFontAndAutosize($sheet);
     }
 
     /**
@@ -111,5 +114,21 @@ trait LegacyExcelStyle
     protected function colLetter(int $n): string
     {
         return Coordinate::stringFromColumnIndex($n);
+    }
+
+    /**
+     * Estilo base común a TODOS los exports:
+     *  - Fuente tamaño 10 en todo el libro (default style).
+     *  - Auto-ajuste de ancho al contenido en todas las columnas usadas.
+     * Llamar al FINAL del AfterSheet (cuando ya está todo escrito).
+     */
+    protected function applyBaseFontAndAutosize(Worksheet $sheet): void
+    {
+        $sheet->getParent()->getDefaultStyle()->getFont()->setSize(10);
+
+        $highest = Coordinate::columnIndexFromString($sheet->getHighestColumn());
+        for ($i = 1; $i <= $highest; $i++) {
+            $sheet->getColumnDimensionByColumn($i)->setAutoSize(true);
+        }
     }
 }

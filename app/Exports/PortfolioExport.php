@@ -119,6 +119,7 @@ class PortfolioExport implements FromCollection, WithMapping, WithCustomStartCel
                 $this->buildTitleAndHeader($sheet, 'U');
                 $this->buildDataStyles($sheet);
                 $this->buildTotals($sheet);
+                $this->applyBaseFontAndAutosize($sheet);
             },
         ];
     }

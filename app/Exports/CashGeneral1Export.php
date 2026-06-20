@@ -66,6 +66,7 @@ class CashGeneral1Export implements FromCollection, WithEvents
                 }
                 $this->buildGrandTotals($sheet, $r);
                 $this->finishStyles($sheet, $first, $r - 1);
+                $this->applyBaseFontAndAutosize($sheet);
             },
         ];
     }

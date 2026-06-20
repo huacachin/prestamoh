@@ -164,6 +164,7 @@ class AdvisorExport implements FromCollection, WithMapping, ShouldAutoSize, With
                 $this->totalRow($sheet, $rr, 'Totales', $this->monthly['tot'] ?? []);
                 $rr++;
                 $this->totalRow($sheet, $rr, 'Promedio', $this->monthly['avg'] ?? []);
+                $this->applyBaseFontAndAutosize($sheet);
             },
         ];
     }
