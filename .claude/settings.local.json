@@ -114,7 +114,8 @@
       "Bash(:)",
       "Bash(gh auth *)",
       "Bash(git fetch *)",
-      "Bash(git rev-list *)"
+      "Bash(git rev-list *)",
+      "Bash(echo \"exit=$?\")"
     ]
   }
 }

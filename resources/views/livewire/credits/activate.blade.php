@@ -1,7 +1,7 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-sm-6">
-            <h4 class="main-title title-modules" style="color:red;">Activar Prestamo</h4>
+            <h4 class="main-title title-modules" style="color:red;">Activar Préstamo</h4>
         </div>
         <div class="col-sm-6 mt-sm-2">
             <ul class="breadcrumb breadcrumb-start float-sm-end">
@@ -9,7 +9,7 @@
                     <i class="ti ti-file-text f-s-16"></i>
                     <a href="#" class="f-s-14 d-flex gap-2"><span class="d-none d-md-block">Registro</span></a>
                 </li>
-                <li class="breadcrumb-item active"><span>Activar Prestamo</span></li>
+                <li class="breadcrumb-item active"><span>Activar Préstamo</span></li>
             </ul>
         </div>
     </div>
@@ -23,13 +23,13 @@
                         <div class="col-md-2">
                             <label class="form-label"><b>Tipo</b></label>
                             <select class="form-select" wire:model="tipoe">
-                                <option value="Pago-Credito" selected>Prestamo</option>
+                                <option value="Pago-Credito" selected>Préstamo</option>
                             </select>
                         </div>
 
                         {{-- Búsqueda con dropdown --}}
                         <div class="col-md-6 position-relative">
-                            <label class="form-label"><b>Prestamo</b></label>
+                            <label class="form-label"><b>Préstamo</b></label>
                             <input type="text" class="form-control"
                                    wire:model.live.debounce.300ms="search"
                                    placeholder="Escriba ID, nombre o DNI para buscar..."

@@ -99,7 +99,9 @@
                         </div>
                     </div>
 
-                    {{-- Fila 2: Ejecutivo / Saldo / Monto / Mora? / Fecha Pago --}}
+                    {{-- Fila 2: Ejecutivo / Saldo Pendiente / Monto a Pagar / Fecha de Pago.
+                         (El legacy tenía "Mora ¿?" para la mora extra al sobrepagar; aquí el
+                         sobrepago está bloqueado —Monto ≤ Saldo— y la mora va en la Fila 4.) --}}
                     <div class="row g-2 mt-2">
                         <div class="col-md-3">
                             <label class="form-label mb-0 small fw-semibold">Ejecutivo</label>

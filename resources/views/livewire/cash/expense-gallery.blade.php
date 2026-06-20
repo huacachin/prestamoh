@@ -88,7 +88,7 @@
                         @if(empty($files))
                             <div class="d-flex align-items-center justify-content-center gap-2 flex-wrap">
                                 <i class="ti ti-cloud-upload" style="font-size:22px; color:#9aa0aa;"></i>
-                                <span class="fw-semibold small">Arrastrá imágenes aquí</span>
+                                <span class="fw-semibold small">Arrastra imágenes aquí</span>
                                 <span class="text-muted small">
                                     o <span class="text-primary text-decoration-underline">click para seleccionar</span> · JPG/PNG/GIF/WebP · máx. 10 MB c/u
                                 </span>
@@ -103,7 +103,7 @@
                                         {{ count($files) }} {{ count($files) === 1 ? 'imagen lista' : 'imágenes listas' }}
                                     </span>
                                     <span class="small text-muted">
-                                        Soltá más imágenes para añadirlas — o click acá afuera de las miniaturas para seleccionar.
+                                        Suelta más imágenes para añadirlas — o haz clic fuera de las miniaturas para seleccionar.
                                     </span>
                                 </div>
                                 <div class="row g-2" @click.stop>
