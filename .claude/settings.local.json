@@ -115,7 +115,8 @@
       "Bash(gh auth *)",
       "Bash(git fetch *)",
       "Bash(git rev-list *)",
-      "Bash(echo \"exit=$?\")"
+      "Bash(echo \"exit=$?\")",
+      "Bash(perl -i -pe \"s/\\\\@section\\\\\\('title', 'Activar Prestamos'\\\\\\)/\\\\@section\\('title', 'Activar Préstamo'\\)/\" resources/views/credits/activate.blade.php)"
     ]
   }
 }
