@@ -222,13 +222,22 @@ class Create extends Component
 
         $moraAcumulada = (float) DB::table('mora_acumulada')->where('credit_id', $this->credit->id)->sum('importe');
 
+        // Homologado al legacy calimp(): al escribir el Monto a Pagar, el Saldo
+        // Pendiente mostrado refleja lo que quedaría DESPUÉS del pago
+        // (saldo - monto), y el Saldo P.+Mora usa ese restante. saldo_pendiente
+        // (completo) se conserva aparte para validación y la lógica de Cancelado.
+        $montoNum = (float) $this->monto;
+        $saldoRestante = round($saldoPendiente - $montoNum, 2);
+
         return [
             'importe' => $importe, 'interes_pct' => $interesPct, 'interes_total' => $interes, 'total_credito' => $totalCredito,
             'saldo_pendiente' => round($saldoPendiente, 2), 'fecha_venc' => $minFechaStr,
+            'saldo_restante' => $saldoRestante,
             'dias_atraso' => $diasddd, 'dias_final' => $diasFinal,
             'mora_rate' => $moraRate, 'total_mora' => $totMora, 'total_mora_calc' => $totMoraCalc,
             'mora_manual' => $usaManual, 'mora_acumulada' => $moraAcumulada,
             'saldo_mora' => round($saldoPendiente + $totMora, 2),
+            'saldo_mora_restante' => round($saldoRestante + $totMora, 2),
             'asesor_nombre' => $this->credit->client?->asesor?->name,
         ];
     }
@@ -236,9 +245,9 @@ class Create extends Component
     private function emptyCalcs(): array
     {
         return ['importe' => 0, 'interes_pct' => 0, 'interes_total' => 0, 'total_credito' => 0,
-            'saldo_pendiente' => 0, 'fecha_venc' => null, 'dias_atraso' => 0, 'dias_final' => 0,
+            'saldo_pendiente' => 0, 'fecha_venc' => null, 'saldo_restante' => 0, 'dias_atraso' => 0, 'dias_final' => 0,
             'mora_rate' => 0, 'total_mora' => 0, 'total_mora_calc' => 0, 'mora_manual' => false,
-            'mora_acumulada' => 0, 'saldo_mora' => 0, 'asesor_nombre' => null];
+            'mora_acumulada' => 0, 'saldo_mora' => 0, 'saldo_mora_restante' => 0, 'asesor_nombre' => null];
     }
 
     public function pagar()
