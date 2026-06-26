@@ -15,6 +15,12 @@ class Index extends Component
     public $ruta = '';
     public $ejecutivo = '';
 
+    // Modal de coordenadas (Casa / Negocio)
+    public ?int $coordClientId = null;
+    public string $coordTipo = '';        // 'casa' | 'negocio'
+    public ?string $coordClientName = null;
+    public string $coordPaste = '';
+
     #[On('register_destroy')]
     public function destroy(int $id): void
     {
@@ -23,6 +29,90 @@ class Index extends Component
         }
         Client::findOrFail($id)->update(['status' => 'inactive']);
         $this->dispatch('successAlert', ['message' => 'Cliente desactivado correctamente']);
+    }
+
+    /** Mismo gate que el botón Guardar de /clients/edit. */
+    private function puedeGuardarCoords(): bool
+    {
+        return !(auth()->user()?->can('clientes.scope-propio') ?? false);
+    }
+
+    public function openCoord(int $id, string $tipo): void
+    {
+        if (!$this->puedeGuardarCoords()) {
+            $this->dispatch('errorAlert', ['message' => 'No tienes permiso para registrar coordenadas.']);
+            return;
+        }
+        if (!in_array($tipo, ['casa', 'negocio'], true)) {
+            return;
+        }
+
+        $client = Client::select('id', 'apellido_pat', 'apellido_mat', 'nombre')->findOrFail($id);
+
+        $this->coordClientId   = $client->id;
+        $this->coordTipo       = $tipo;
+        $this->coordClientName = trim("{$client->apellido_pat} {$client->apellido_mat} {$client->nombre}");
+        $this->coordPaste      = '';
+        $this->resetErrorBag();
+
+        $this->dispatch('coord-open');
+    }
+
+    public function saveCoord(): void
+    {
+        if (!$this->puedeGuardarCoords()) {
+            $this->dispatch('errorAlert', ['message' => 'No tienes permiso para registrar coordenadas.']);
+            return;
+        }
+        if (!$this->coordClientId || !in_array($this->coordTipo, ['casa', 'negocio'], true)) {
+            return;
+        }
+
+        $coords = $this->parseCoords($this->coordPaste);
+        if (!$coords) {
+            $this->dispatch('errorAlert', ['message' => 'Formato inválido. Pega las coordenadas como: -12.014431, -76.824936']);
+            return;
+        }
+        [$lat, $lng] = $coords;
+
+        $client = Client::findOrFail($this->coordClientId);
+        if ($this->coordTipo === 'casa') {
+            $client->update(['latitud' => $lat, 'longitud' => $lng]);
+            $etiqueta = 'Casa';
+        } else {
+            $client->update(['latitud2' => $lat, 'longitud2' => $lng]);
+            $etiqueta = 'Negocio';
+        }
+
+        \App\Support\Audit::log("Registró coordenadas ({$etiqueta}) del cliente ".$client->fullName(), $client);
+
+        $this->dispatch('coord-close');
+        $this->reset(['coordClientId', 'coordTipo', 'coordClientName', 'coordPaste']);
+        $this->dispatch('successAlert', ['message' => "Coordenadas de {$etiqueta} guardadas correctamente"]);
+    }
+
+    /**
+     * Normaliza un texto pegado a [lat, lng]. Acepta "lat, lng", separados por
+     * espacio, paréntesis o incluso una URL de Google Maps. Solo considera
+     * números con decimales (ignora enteros sueltos como el zoom "17z" o números
+     * de dirección). Devuelve null si no hay 2 coordenadas válidas en rango.
+     */
+    private function parseCoords(string $raw): ?array
+    {
+        preg_match_all('/-?\d+\.\d+/', trim($raw), $m);
+        $nums = $m[0] ?? [];
+        if (count($nums) < 2) {
+            return null;
+        }
+
+        $lat = (float) $nums[0];
+        $lng = (float) $nums[1];
+
+        if ($lat < -90 || $lat > 90 || $lng < -180 || $lng > 180) {
+            return null;
+        }
+
+        return [round($lat, 7), round($lng, 7)];
     }
 
     public function render()
@@ -84,6 +174,8 @@ class Index extends Component
                 ->toArray();
         }
 
-        return view('livewire.clients.index', compact('clients', 'asesores', 'clientsWithCredit'));
+        $puedeCoords = $this->puedeGuardarCoords();
+
+        return view('livewire.clients.index', compact('clients', 'asesores', 'clientsWithCredit', 'puedeCoords'));
     }
 }

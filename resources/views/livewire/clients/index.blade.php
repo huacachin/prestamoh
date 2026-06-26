@@ -137,6 +137,10 @@
                                             <a href="https://maps.google.com/?q={{ $client->latitud }},{{ $client->longitud }}" target="_blank">
                                                 <i class="ti ti-map-pin f-s-18 text-success"></i>
                                             </a>
+                                        @elseif($puedeCoords)
+                                            <i class="ti ti-map-pin-off f-s-18 text-danger" style="cursor:pointer;"
+                                               title="Agregar coordenadas de Casa"
+                                               wire:click="openCoord({{ $client->id }}, 'casa')"></i>
                                         @else
                                             <i class="ti ti-map-pin-off f-s-18 text-danger"></i>
                                         @endif
@@ -146,6 +150,10 @@
                                             <a href="https://maps.google.com/?q={{ $client->latitud2 }},{{ $client->longitud2 }}" target="_blank">
                                                 <i class="ti ti-map-pin f-s-18 text-success"></i>
                                             </a>
+                                        @elseif($puedeCoords)
+                                            <i class="ti ti-map-pin-off f-s-18 text-danger" style="cursor:pointer;"
+                                               title="Agregar coordenadas de Negocio"
+                                               wire:click="openCoord({{ $client->id }}, 'negocio')"></i>
                                         @else
                                             <i class="ti ti-map-pin-off f-s-18 text-danger"></i>
                                         @endif
@@ -199,6 +207,10 @@
                                                 <a href="https://maps.google.com/?q={{ $client->latitud }},{{ $client->longitud }}" target="_blank">
                                                     <i class="ti ti-map-pin f-s-14 text-success"></i> Casa
                                                 </a>
+                                            @elseif($puedeCoords)
+                                                <span style="cursor:pointer;" wire:click="openCoord({{ $client->id }}, 'casa')">
+                                                    <i class="ti ti-map-pin-off f-s-14 text-danger"></i> Casa
+                                                </span>
                                             @else
                                                 <i class="ti ti-map-pin-off f-s-14 text-danger"></i> Casa
                                             @endif
@@ -208,6 +220,10 @@
                                                 <a href="https://maps.google.com/?q={{ $client->latitud2 }},{{ $client->longitud2 }}" target="_blank">
                                                     <i class="ti ti-map-pin f-s-14 text-success"></i> Trabajo
                                                 </a>
+                                            @elseif($puedeCoords)
+                                                <span style="cursor:pointer;" wire:click="openCoord({{ $client->id }}, 'negocio')">
+                                                    <i class="ti ti-map-pin-off f-s-14 text-danger"></i> Trabajo
+                                                </span>
                                             @else
                                                 <i class="ti ti-map-pin-off f-s-14 text-danger"></i> Trabajo
                                             @endif
@@ -231,6 +247,45 @@
             </div>
         </div>
     </div>
+    {{-- Modal: pegar/registrar coordenadas (Casa / Negocio) --}}
+    <div class="modal fade" id="coordModal" tabindex="-1" aria-hidden="true" wire:ignore.self
+         x-data="{ modal: null }"
+         x-init="modal = bootstrap.Modal.getOrCreateInstance($el);
+                 $el.addEventListener('shown.bs.modal', () => $refs.paste && $refs.paste.focus());"
+         x-on:coord-open.window="modal.show()"
+         x-on:coord-close.window="modal.hide()">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title mb-0">
+                        <i class="ti ti-map-pin text-success"></i>
+                        Coordenadas {{ $coordTipo === 'negocio' ? 'Negocio' : 'Casa' }}
+                    </h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    @if($coordClientName)
+                        <p class="small text-muted mb-2"><b>Cliente:</b> {{ $coordClientName }}</p>
+                    @endif
+                    <label class="form-label small fw-semibold mb-1">Pega aquí las coordenadas</label>
+                    <textarea class="form-control form-control-sm" id="coordPaste" rows="2"
+                              x-ref="paste" wire:model="coordPaste"
+                              placeholder="-12.014431, -76.824936"></textarea>
+                    <div class="form-text">
+                        Formato: <code>latitud, longitud</code>. También admite pegar un enlace de Google Maps.
+                    </div>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-sm btn-dark" wire:click="saveCoord" wire:loading.attr="disabled" wire:target="saveCoord">
+                        <span wire:loading.remove wire:target="saveCoord">Guardar</span>
+                        <span wire:loading wire:target="saveCoord">Guardando…</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 <span id="final"></span>
 
 <style>
