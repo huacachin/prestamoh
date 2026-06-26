@@ -249,9 +249,9 @@ class Create extends Component
                 'idcan' => null,
                 'fecha_vencimiento' => null, // se actualiza al final
                 'fecha_cancelacion' => null,
-                'asesor' => null,
+                'asesor' => \Illuminate\Support\Str::ucfirst($this->nomasesores),
                 'user_id' => auth()->id(),
-                'usuario' => $this->nomasesores,
+                'usuario' => \Illuminate\Support\Str::ucfirst(auth()->user()->username),
                 'headquarter_id' => 1,
                 'created_at' => now(),
                 'updated_at' => now(),

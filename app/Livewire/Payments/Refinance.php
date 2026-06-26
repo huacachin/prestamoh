@@ -161,9 +161,9 @@ class Refinance extends Component
                 'cod_rem' => 'REF',
                 'gat' => 0,
                 'idcan' => $codigopre,
-                'asesor' => null,
+                'asesor' => \Illuminate\Support\Str::ucfirst($this->nomasesores),
                 'user_id' => auth()->id(),
-                'usuario' => $this->nomasesores,
+                'usuario' => \Illuminate\Support\Str::ucfirst(auth()->user()->username),
                 'headquarter_id' => $hqId, // G2
                 'created_at' => now(),
                 'updated_at' => now(),
