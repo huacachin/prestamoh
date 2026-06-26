@@ -204,6 +204,11 @@ class Create extends Component
                         }
                     }
                 }
+            } elseif ($diff < 0) {
+                // Aún no vence: mostrar los días que faltan en negativo (como el
+                // legacy restaFechas = hoy - vencimiento). Sin ajuste de fin de
+                // semana y sin generar mora (diasFinal queda en 0 por el max).
+                $diasddd = $diff;
             }
         }
         $diasFinal = max(0, (int) $diasddd - (int) $this->diasf);
