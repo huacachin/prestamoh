@@ -363,9 +363,8 @@
                                 <td></td>
                                 <td></td>
                                 <td class="text-end" style="color:red;">{{ number_format($intNoPagadoHoy, 2) }}</td>
-                                <td></td>
                                 <td class="text-end" style="color:red;">{{ number_format($c['total_mora'], 2) }}</td>
-                                <td colspan="2"></td>
+                                <td colspan="3"></td>
                             </tr>
                         </tfoot>
                     </table>
