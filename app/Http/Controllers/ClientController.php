@@ -94,6 +94,7 @@ class ClientController extends Controller
 
         $ids = $credits->pluck('id')->all();
         $paySinMora = [];
+        $payInteres = [];   // interés realmente pagado (pagos documento=INTERES)
         $payMora = [];
         $maxFecha = [];
         $idcanRefSet = [];   // créditos referenciados como idcan (refinanciados) → revierten color
@@ -114,6 +115,11 @@ class ClientController extends Controller
                 $payMora[$r->credit_id] = (float) $r->t;
             }
             foreach (DB::table('payments')->whereIn('credit_id', $ids)
+                ->where('documento', 'INTERES')
+                ->selectRaw('credit_id, SUM(monto) t')->groupBy('credit_id')->get() as $r) {
+                $payInteres[$r->credit_id] = (float) $r->t;
+            }
+            foreach (DB::table('payments')->whereIn('credit_id', $ids)
                 ->selectRaw('credit_id, MAX(fecha) m')->groupBy('credit_id')->get() as $r) {
                 $maxFecha[$r->credit_id] = $r->m;
             }
@@ -129,10 +135,11 @@ class ClientController extends Controller
             $tintere   = round($importe * $intPct / 100, 2);
             $apSinMora = $paySinMora[$c->id] ?? 0;
             $mora      = $payMora[$c->id] ?? 0;
-            $difeinter = $tintere - $apSinMora;
 
-            if ($difeinter <= 0) { $rftq = abs($difeinter); $iminte = $tintere; }
-            else                 { $rftq = 0;               $iminte = $apSinMora; }
+            // Interés G. = interés realmente pagado (no un solo período); Capital R.
+            // = resto de lo pagado no-mora. Igual que la pantalla Historial.
+            $iminte = min((float) ($payInteres[$c->id] ?? 0), (float) $apSinMora);
+            $rftq   = $apSinMora - $iminte;
 
             $totalCred = $importe + $tintere;
             $totalGan  = $rftq + $iminte + $mora;

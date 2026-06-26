@@ -29,6 +29,7 @@ class Show extends Component
 
         // Pre-cargar pagos relevantes (no-Gat) por crédito
         $sumNoMoraByCredit = []; // ap = sum(totalgeneral) WHERE NOT MORA y NOT Gat
+        $sumInteresByCredit = []; // interés realmente pagado (pagos documento=INTERES)
         $sumMoraByCredit = [];   // mora total
         $maxFechaByCredit = [];  // max fecha de pago (no Gat)
         $idcanRefSet = [];       // ids que han sido referenciados como idcan (para "verSt")
@@ -46,6 +47,9 @@ class Show extends Component
                     $sumMoraByCredit[$p->credit_id] = ($sumMoraByCredit[$p->credit_id] ?? 0) + (float) $p->monto;
                 } else {
                     $sumNoMoraByCredit[$p->credit_id] = ($sumNoMoraByCredit[$p->credit_id] ?? 0) + (float) $p->monto;
+                    if (strtoupper($p->documento ?? '') === 'INTERES') {
+                        $sumInteresByCredit[$p->credit_id] = ($sumInteresByCredit[$p->credit_id] ?? 0) + (float) $p->monto;
+                    }
                 }
                 if ($p->fecha) {
                     $f = Carbon::parse($p->fecha)->format('Y-m-d');
@@ -84,18 +88,16 @@ class Show extends Component
             $apSum = (float) ($sumNoMoraByCredit[$cr->id] ?? 0); // suma pagos no-MORA
             $moraSum = (float) ($sumMoraByCredit[$cr->id] ?? 0);
 
-            // Lógica legacy
             $totinteres = round($importe * ($interesPct / 100), 2);
-            $difeinter  = $totinteres - $apSum;
             $tintere    = $totinteres;
 
-            if ($difeinter <= 0) {
-                $rftq   = abs($difeinter);
-                $iminte = $totinteres;
-            } else {
-                $rftq   = 0;
-                $iminte = $apSum;
-            }
+            // Interés G. (ganado) = interés REALMENTE pagado (suma de pagos INTERES),
+            // no un solo período. Corrige el bug legacy que solo mostraba importe×%
+            // de una cuota en créditos de varias cuotas. Capital R. = resto de lo
+            // pagado no-mora. Como rftq + iminte siguen sumando apSum, el Total
+            // Pagado y el Saldo no cambian respecto al legacy.
+            $iminte = min((float) ($sumInteresByCredit[$cr->id] ?? 0), $apSum);
+            $rftq   = $apSum - $iminte;
 
             $saldo2 = $importe + $tintere - $rftq - $iminte;
 
