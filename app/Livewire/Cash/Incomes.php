@@ -20,6 +20,22 @@ class Incomes extends Component
     {
         $this->fei = now()->format('Y-m-d');
         $this->fef = now()->format('Y-m-d');
+
+        // Permite enlazar desde el Reporte Caja 1 (CDG de INGRESOS), igual que el
+        // legacy: ingresos.php?compra={credito}&tipo=2&fei={fecha}&fef={fecha}
+        $q = request()->query();
+        if (isset($q['compra'])) {
+            $this->compra = (string) $q['compra'];
+        }
+        if (isset($q['tipo']) && $q['tipo'] !== '') {
+            $this->tipo = (string) $q['tipo'];
+        }
+        if (isset($q['fei']) && $q['fei'] !== '') {
+            $this->fei = (string) $q['fei'];
+        }
+        if (isset($q['fef']) && $q['fef'] !== '') {
+            $this->fef = (string) $q['fef'];
+        }
     }
 
     public function render()
