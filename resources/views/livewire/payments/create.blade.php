@@ -229,6 +229,11 @@
                             <span wire:loading.remove wire:target="pagar">Pagar</span>
                             <span wire:loading wire:target="pagar">Procesando…</span>
                         </button>
+                        @if($credit->situacion !== 'Cancelado')
+                            <a href="{{ route('payments.refinance', $credit->id) }}" class="btn btn-sm btn-warning">
+                                <i class="ti ti-refresh"></i> Refinanciar
+                            </a>
+                        @endif
                         <a href="#" class="btn btn-sm btn-success disabled" title="Próximamente">
                             <i class="ti ti-file-spreadsheet"></i> Excel
                         </a>
