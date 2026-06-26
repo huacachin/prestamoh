@@ -57,7 +57,11 @@
         @endphp
 
         {{-- Formulario --}}
-        <form wire:submit.prevent="pagar">
+        <form wire:submit.prevent="pagar" class="pago-form">
+            <style>
+                /* Inputs sin negrita en el value y un punto más grande (10px → 11px). */
+                .pago-form .form-control { font-size: 11px !important; font-weight: 400 !important; }
+            </style>
             <div class="card shadow-sm">
                 <div class="card-body">
 
@@ -94,7 +98,7 @@
                         <div class="col-md-2">
                             <label class="form-label mb-0 small fw-semibold">Pago x día atrasado</label>
                             <input type="text" class="form-control form-control-sm bg-light"
-                                   style="color:red; font-weight:600;"
+                                   style="color:red;"
                                    value="{{ number_format($c['mora_rate'], 2) }}" readonly>
                         </div>
                     </div>
@@ -111,7 +115,7 @@
                         <div class="col-md-2">
                             <label class="form-label mb-0 small fw-semibold">Saldo Pendiente</label>
                             <input type="text" class="form-control form-control-sm bg-light"
-                                   style="color:red; font-weight:bold;"
+                                   style="color:red;"
                                    value="{{ number_format($c['saldo_restante'], 2) }}" readonly>
                         </div>
                         <div class="col-md-2">
@@ -189,7 +193,7 @@
                         <div class="col-md-3">
                             <label class="form-label mb-0 small fw-semibold">Saldo P. + Mora</label>
                             <input type="text" class="form-control form-control-sm bg-light"
-                                   style="color:red; font-weight:bold;"
+                                   style="color:red;"
                                    value="{{ number_format($c['saldo_mora_restante'], 2) }}" readonly>
                         </div>
                     </div>
