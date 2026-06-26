@@ -74,7 +74,13 @@
                     <td style="background-color:#f0f0f0;">Registrado el</td>
                     <td>{{ $client->fecha_registro ? $client->fecha_registro->format('d/m/Y') : '' }}</td>
                     <td style="background-color:#f0f0f0;">DNI</td>
-                    <td>{{ $client->documento }}</td>
+                    <td>
+                        <a href="{{ route('credits.create', $client->id) }}"
+                           title="Crear nuevo crédito"
+                           style="color:#0d6efd; text-decoration:underline;">
+                            {{ $client->documento }}
+                        </a>
+                    </td>
                 </tr>
                 <tr>
                     <td colspan="4" style="background-color:#e9ecef; font-weight:500; padding:6px 12px;">Historial de Pagos</td>
