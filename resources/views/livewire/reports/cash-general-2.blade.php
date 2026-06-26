@@ -71,8 +71,8 @@
                                         <th class="text-center">FECHA</th>
                                         <th class="text-center">DATOS DEL CLIENTE</th>
                                         <th class="text-center">DETALLES</th>
-                                        <th class="text-center">INGRESO</th>
-                                        <th class="text-center">EGRESO</th>
+                                        <th class="text-center text-nowrap" style="min-width:120px;">INGRESO</th>
+                                        <th class="text-center text-nowrap" style="min-width:120px;">EGRESO</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -84,12 +84,12 @@
                                                 <td><strong>{{ $item['fecha'] }}</strong></td>
                                                 <td class="text-start">{{ $item['cliente'] }}</td>
                                                 <td class="text-start">{{ $item['detalle'] }}</td>
-                                                <td class="text-end">
+                                                <td class="text-end text-nowrap">
                                                     @if($item['ingreso'] > 0)
                                                         <span class="text-primary">{{ number_format($item['ingreso'], 2) }}</span>
                                                     @endif
                                                 </td>
-                                                <td class="text-end">
+                                                <td class="text-end text-nowrap">
                                                     @if($item['egreso'] > 0)
                                                         <span class="text-danger">{{ number_format($item['egreso'], 2) }}</span>
                                                     @endif
@@ -102,10 +102,10 @@
                                             <td></td>
                                             <td></td>
                                             <td><strong>TOTAL</strong></td>
-                                            <td class="text-end">
+                                            <td class="text-end text-nowrap">
                                                 <strong><span class="text-primary">{{ number_format($day['total_ingreso'], 2) }}</span></strong>
                                             </td>
-                                            <td class="text-end">
+                                            <td class="text-end text-nowrap">
                                                 <strong><span class="text-danger">{{ number_format($day['total_egreso'], 2) }}</span></strong>
                                             </td>
                                         </tr>
@@ -114,7 +114,7 @@
                                             <td></td>
                                             <td></td>
                                             <td><strong>SALDO <span class="text-danger">FINAL-INICIAL</span></strong></td>
-                                            <td class="text-end">
+                                            <td class="text-end text-nowrap">
                                                 <strong><span class="text-primary">{{ number_format($day['saldo'], 2) }}</span></strong>
                                             </td>
                                             <td></td>
@@ -135,7 +135,7 @@
                                             <td colspan="4" style="color:#000;">
                                                 <strong>REPORTE GENERAL <span style="color:#dc3545;">CAJA 2 - </span>TOTAL <span style="color:#dc3545;">GENERAL</span></strong>
                                             </td>
-                                            <td class="text-end" colspan="2" style="color:#0d6efd;">
+                                            <td class="text-end text-nowrap" colspan="2" style="color:#0d6efd;">
                                                 <strong>{{ number_format($report['balance_general'], 2) }}</strong>
                                             </td>
                                         </tr>
