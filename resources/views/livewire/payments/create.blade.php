@@ -284,7 +284,6 @@
                             <th>Pagado Int.</th>
                             <th>Pagado</th>
                             <th>Saldo</th>
-                            <th>Saldo Cap.</th>
                             <th>Estado</th>
                             <th>Fecha Pago</th>
                         </tr>
@@ -304,7 +303,6 @@
                                 <td class="text-end">{{ number_format($inst->interes_aplicado, 2) }}</td>
                                 <td class="text-end">{{ number_format($inst->importe_aplicado + $inst->interes_aplicado, 2) }}</td>
                                 <td class="text-end">{{ number_format($saldo, 2) }}</td>
-                                <td class="text-end">{{ number_format($inst->importe_cuota - $inst->importe_aplicado, 2) }}</td>
                                 <td>
                                     @if($inst->pagado)
                                         <span class="badge bg-success">Pagado</span>
@@ -334,9 +332,13 @@
                                 <td class="text-end">{{ number_format($tPagInt, 2) }}</td>
                                 <td class="text-end">{{ number_format($tPagCap + $tPagInt, 2) }}</td>
                                 <td class="text-end">{{ number_format($tSaldo, 2) }}</td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                            <tr class="fw-bold" style="background:#e9ecef;">
+                                <td colspan="2" class="text-end">Saldo Capital (Capital − Pagado Cap.)</td>
                                 <td class="text-end">{{ number_format($tCap - $tPagCap, 2) }}</td>
-                                <td></td>
-                                <td></td>
+                                <td colspan="7"></td>
                             </tr>
                         </tfoot>
                     </table>
