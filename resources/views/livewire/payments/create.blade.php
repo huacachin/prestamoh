@@ -282,6 +282,7 @@
                             <th>Interés</th>
                             <th>Pagado Cap.</th>
                             <th>Pagado Int.</th>
+                            <th>Pagado</th>
                             <th>Saldo</th>
                             <th>Estado</th>
                             <th>Fecha Pago</th>
@@ -300,6 +301,7 @@
                                 <td class="text-end">{{ number_format($inst->importe_interes, 2) }}</td>
                                 <td class="text-end">{{ number_format($inst->importe_aplicado, 2) }}</td>
                                 <td class="text-end">{{ number_format($inst->interes_aplicado, 2) }}</td>
+                                <td class="text-end">{{ number_format($inst->importe_aplicado + $inst->interes_aplicado, 2) }}</td>
                                 <td class="text-end">{{ number_format($saldo, 2) }}</td>
                                 <td>
                                     @if($inst->pagado)
@@ -328,6 +330,7 @@
                                 <td class="text-end">{{ number_format($tInt, 2) }}</td>
                                 <td class="text-end">{{ number_format($tPagCap, 2) }}</td>
                                 <td class="text-end">{{ number_format($tPagInt, 2) }}</td>
+                                <td class="text-end">{{ number_format($tPagCap + $tPagInt, 2) }}</td>
                                 <td class="text-end">{{ number_format($tSaldo, 2) }}</td>
                                 <td></td>
                                 <td></td>
