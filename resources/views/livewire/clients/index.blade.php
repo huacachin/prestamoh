@@ -42,6 +42,11 @@
                                        wire:model="ruta" name="ruta" autocomplete="off" placeholder="Ruta">
                             </div>
                             <div class="col">
+                                <label class="form-label mb-0 small"><b>Giro</b></label>
+                                <input type="text" class="form-control form-control-sm"
+                                       wire:model="giro" name="giro" autocomplete="off" placeholder="Giro">
+                            </div>
+                            <div class="col">
                                 <label class="form-label mb-0 small"><b>Asesor</b></label>
                                 <select class="form-select form-select-sm" wire:model="ejecutivo">
                                     <option value="">Todos</option>
@@ -56,7 +61,7 @@
                             <button type="submit" class="btn btn-sm btn-primary">
                                 <i class="ti ti-search f-s-12"></i> Buscar
                             </button>
-                            <a href="{{ route('exports.clients') }}?nexpediente={{ $nexpediente }}&documento={{ $documento }}&nombre={{ $nombre }}&ruta={{ $ruta }}&ejecutivo={{ $ejecutivo }}"
+                            <a href="{{ route('exports.clients') }}?nexpediente={{ $nexpediente }}&documento={{ $documento }}&nombre={{ $nombre }}&ruta={{ $ruta }}&giro={{ $giro }}&ejecutivo={{ $ejecutivo }}"
                                class="btn btn-sm btn-success" target="_blank">
                                 <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
                             </a>

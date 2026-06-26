@@ -26,6 +26,7 @@ class ClientController extends Controller
         $documento   = (string) $request->query('documento', '');
         $nombre      = (string) $request->query('nombre', '');
         $ruta        = (string) $request->query('ruta', '');
+        $giro        = (string) $request->query('giro', '');
         $ejecutivo   = (string) $request->query('ejecutivo', '');
         $scopePropio = $user?->can('clientes.scope-propio') ?? false;
 
@@ -59,6 +60,9 @@ class ClientController extends Controller
         }
         if (trim($ruta) !== '') {
             $query->where('zona', 'like', '%'.trim($ruta).'%');
+        }
+        if (trim($giro) !== '') {
+            $query->where('giro', 'like', '%'.trim($giro).'%');
         }
 
         $clients = $query->orderByRaw('CAST(expediente AS UNSIGNED) ASC')->get();

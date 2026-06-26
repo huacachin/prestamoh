@@ -13,6 +13,7 @@ class Index extends Component
     public $documento = '';
     public $nombre = '';
     public $ruta = '';
+    public $giro = '';
     public $ejecutivo = '';
 
     // Modal de coordenadas (Casa / Negocio)
@@ -152,6 +153,9 @@ class Index extends Component
         }
         if (trim($this->ruta) !== '') {
             $query->where('zona', 'like', '%' . trim($this->ruta) . '%');
+        }
+        if (trim($this->giro) !== '') {
+            $query->where('giro', 'like', '%' . trim($this->giro) . '%');
         }
 
         $clients = $query->orderByRaw('CAST(expediente AS UNSIGNED) ASC')->get();
