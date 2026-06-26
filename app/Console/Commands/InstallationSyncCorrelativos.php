@@ -22,15 +22,18 @@ class InstallationSyncCorrelativos extends Command
         // ignorando outliers lejanos (ids aislados muy por encima del resto, p.ej.
         // un crédito legacy con id=87421 cuando la secuencia real va por ~29143).
         // No depende de la conexión legacy.
+        // Crédito: el correlativo maneja el id del crédito (credits.id).
+        // Cliente: el correlativo maneja el EXPEDIENTE (no el id de la fila, que
+        // es otra secuencia). Por eso cada uno resuelve sobre su propia columna.
         $map = [
-            'Cliente' => ['table' => 'clients', 'option' => 'cliente'],
-            'Credito' => ['table' => 'credits', 'option' => 'credito'],
+            'Cliente' => ['table' => 'clients', 'option' => 'cliente', 'expr' => 'CAST(expediente AS UNSIGNED)'],
+            'Credito' => ['table' => 'credits', 'option' => 'credito', 'expr' => 'id'],
         ];
 
         $changes = [];
         foreach ($map as $tipo => $cfg) {
             $current = (int) DB::table('correlativos')->where('tipo', $tipo)->value('correl');
-            $target = $this->resolveTarget($cfg['option'], $cfg['table']);
+            $target = $this->resolveTarget($cfg['option'], $cfg['table'], $cfg['expr']);
 
             // Permitimos bajar el correlativo (corregir uno envenenado), no solo subir.
             if ($target > 0 && $target !== $current) {
@@ -87,14 +90,18 @@ class InstallationSyncCorrelativos extends Command
      *
      * Override manual opcional: --credito=N / --cliente=N.
      */
-    private function resolveTarget(string $option, string $table): int
+    private function resolveTarget(string $option, string $table, string $expr = 'id'): int
     {
         $override = $this->option($option);
         if ($override !== null && $override !== '') {
             return (int) $override;
         }
 
-        $ids = DB::table($table)->orderByDesc('id')->pluck('id')
+        $ids = DB::table($table)
+            ->selectRaw("$expr AS v")
+            ->whereRaw("$expr IS NOT NULL")
+            ->orderByRaw("$expr DESC")
+            ->pluck('v')
             ->map(fn ($x) => (int) $x)->values();
 
         if ($ids->isEmpty()) {
