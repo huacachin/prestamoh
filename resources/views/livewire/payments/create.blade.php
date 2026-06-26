@@ -284,6 +284,7 @@
                             <th>Pagado Int.</th>
                             <th>Saldo</th>
                             <th>Estado</th>
+                            <th>Fecha Pago</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -309,6 +310,7 @@
                                         <span class="badge bg-warning">Pendiente</span>
                                     @endif
                                 </td>
+                                <td>{{ $inst->fecha_pago?->format('d/m/Y') }}</td>
                             </tr>
                         @endforeach
                         </tbody>
@@ -327,6 +329,7 @@
                                 <td class="text-end">{{ number_format($tPagCap, 2) }}</td>
                                 <td class="text-end">{{ number_format($tPagInt, 2) }}</td>
                                 <td class="text-end">{{ number_format($tSaldo, 2) }}</td>
+                                <td></td>
                                 <td></td>
                             </tr>
                         </tfoot>
