@@ -322,6 +322,11 @@
                             $tPagCap = $credit->installments->sum('importe_aplicado');
                             $tPagInt = $credit->installments->sum('interes_aplicado');
                             $tSaldo  = $credit->installments->sum(fn ($i) => $i->saldoPendiente());
+                            // Interés no pagado hasta la fecha: cuotas ya vencidas (a hoy)
+                            // cuyo interés aún no se cubrió.
+                            $intNoPagadoHoy = $credit->installments
+                                ->filter(fn ($i) => $i->fecha_vencimiento && $i->fecha_vencimiento->lte(now()))
+                                ->sum(fn ($i) => max(0, (float) $i->importe_interes - (float) $i->interes_aplicado));
                         @endphp
                         <tfoot>
                             <tr class="fw-bold" style="background:#f0f0f0;">
@@ -336,9 +341,10 @@
                                 <td></td>
                             </tr>
                             <tr class="fw-bold" style="background:#e9ecef;">
-                                <td colspan="2" class="text-end">Saldo Capital (Capital − Pagado Cap.)</td>
+                                <td colspan="2" class="text-end">No pagado a la fecha (Cap. / Int.)</td>
                                 <td class="text-end">{{ number_format($tCap - $tPagCap, 2) }}</td>
-                                <td colspan="7"></td>
+                                <td class="text-end">{{ number_format($intNoPagadoHoy, 2) }}</td>
+                                <td colspan="6"></td>
                             </tr>
                         </tfoot>
                     </table>
