@@ -359,10 +359,10 @@
                             </tr>
                             <tr class="fw-bold" style="background:#e9ecef;">
                                 <td colspan="2" class="text-end">No pagado a la fecha (Cap. / Int.)</td>
-                                <td class="text-end">{{ number_format($tCap - $tPagCap, 2) }}</td>
+                                <td class="text-end" style="color:red;">{{ number_format($tCap - $tPagCap, 2) }}</td>
                                 <td></td>
                                 <td></td>
-                                <td class="text-end">{{ number_format($intNoPagadoHoy, 2) }}</td>
+                                <td class="text-end" style="color:red;">{{ number_format($intNoPagadoHoy, 2) }}</td>
                                 <td colspan="4"></td>
                             </tr>
                         </tfoot>
