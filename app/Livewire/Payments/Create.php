@@ -151,6 +151,22 @@ class Create extends Component
         }
     }
 
+    /**
+     * Homologado al legacy diasatraso(): al cambiar "Descontar Días" la mora se
+     * recalcula (días final × tasa) y reescribe el Total Mora, para que Total
+     * Mora y Saldo P.+Mora reflejen el nuevo cálculo en vivo. Sin esto, el
+     * override auto-precargado en updatedMonto() congelaba la mora y los totales
+     * dejaban de recalcular para los roles con permiso 'pagos.mora-manual'.
+     */
+    public function updatedDiasf(): void
+    {
+        if ($this->canEditMora() && (float) $this->monto > 0) {
+            $this->moraManual = $this->buildCalcs()['total_mora_calc'];
+        } else {
+            $this->moraManual = null;
+        }
+    }
+
     private function buildCalcs(): array
     {
         if (! $this->credit) {
