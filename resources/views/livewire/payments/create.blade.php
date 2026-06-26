@@ -261,110 +261,71 @@
         </script>
         @endscript
 
-        {{-- Tabla cronograma --}}
+        {{-- Cronograma de cuotas (homologado con /credits/{id}) --}}
         <div class="card shadow-sm mt-2">
             <div class="card-body pb-2">
-                <div class="d-flex justify-content-end mb-1"><x-scroll-bottom-btn scrollable="#tabla-cronograma" /></div>
-                    <div id="tabla-cronograma" class="table-responsive" style="max-height: 500px; overflow:auto;">
-                    <table class="table table-bordered table-hover" style="font-size: 11px;">
-                        <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
-                            <tr>
-                                <th class="text-center" style="width:80px;">N° Cuota</th>
-                                <th class="text-center" style="width:110px;">Periodo</th>
-                                <th class="text-center" style="width:100px;">Capital</th>
-                                <th class="text-center" style="width:100px;">Interés</th>
-                                <th class="text-center" style="width:110px;">Total</th>
-                                <th class="text-center" style="width:90px;">Mora</th>
-                                <th class="text-center" style="width:110px;">Pagado</th>
-                                <th class="text-center" style="width:120px;">Fecha Pago</th>
-                            </tr>
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <h6 class="mb-0">CRONOGRAMA DE CUOTAS</h6>
+                    <x-scroll-bottom-btn scrollable="#tabla-cronograma" />
+                </div>
+                <div id="tabla-cronograma" class="table-responsive tableFixHead" style="max-height: 500px; overflow:auto;">
+                    <table class="table table-bordered table-striped table-hover">
+                        <thead class="bg-primary">
+                        <tr>
+                            <th>Cuota</th>
+                            <th>Fecha Venc.</th>
+                            <th>Capital</th>
+                            <th>Interés</th>
+                            <th>Pagado Cap.</th>
+                            <th>Pagado Int.</th>
+                            <th>Saldo</th>
+                            <th>Estado</th>
+                        </tr>
                         </thead>
                         <tbody>
+                        @foreach($credit->installments as $inst)
                             @php
-                                $sumCap = 0; $sumInt = 0; $sumPag = 0; $sumMora = 0;
-                                $todayStr = now()->format('Y-m-d');
-                                // Suma de cuotas vencidas (cronograma "Retraso")
-                                $retrasoCap = 0; $retrasoInt = 0; $retrasoTotal = 0;
-                                $contrd2 = 0; // contador legacy de cuotas atrasadas numeradas
+                                $saldo = $inst->saldoPendiente();
+                                $vencida = !$inst->pagado && $inst->fecha_vencimiento?->isPast();
                             @endphp
-                            @foreach($credit->installments as $ins)
-                                @php
-                                    $fechaVenc = $ins->fecha_vencimiento ? $ins->fecha_vencimiento->format('Y-m-d') : '';
-                                    $fechaPagoReal = $ins->fecha_pago ? $ins->fecha_pago->format('Y-m-d') : '';
-                                    $dow = $fechaVenc ? \Carbon\Carbon::parse($fechaVenc)->dayOfWeek : null;
-
-                                    $cap = round((float) $ins->importe_cuota, 2);
-                                    $int = round((float) $ins->importe_interes, 2);
-                                    $apli = round((float) $ins->importe_aplicado, 2);
-                                    $iapli = round((float) $ins->interes_aplicado, 2);
-                                    $mora = round((float) $ins->importe_mora, 2);
-                                    // Pagado = solo capital aplicado + interés aplicado (sin mora)
-                                    $pagado = round($apli + $iapli, 2);
-                                    $totalCuota = round($cap + $int, 2);
-                                    $saldoCuota = round($totalCuota - $apli - $iapli, 2);
-
-                                    // Cuota vencida = no pagada Y fecha_vencimiento < hoy
-                                    $vencida = (!$ins->pagado && $fechaVenc && $fechaVenc < $todayStr && $saldoCuota > 0.01);
-
-                                    if ($vencida) {
-                                        $contrd2++;
-                                        $retrasoCap += $cap - $apli;
-                                        $retrasoInt += $int - $iapli;
-                                        $retrasoTotal += $saldoCuota;
-                                    }
-
-                                    if ($vencida) {
-                                        $rowStyle = 'background-color:#dc3545; color:#fff;';
-                                    } elseif ($dow === \Carbon\Carbon::SUNDAY) {
-                                        $rowStyle = 'color:red;';
-                                    } elseif ($dow === \Carbon\Carbon::SATURDAY) {
-                                        $rowStyle = 'color:green;';
-                                    } else {
-                                        $rowStyle = '';
-                                    }
-
-                                    $sumCap += $cap; $sumInt += $int; $sumPag += $pagado; $sumMora += $mora;
-                                @endphp
-                                <tr style="{{ $rowStyle }}">
-                                    <td class="text-center">
-                                        {{ $ins->num_cuota }}
-                                        @if($vencida)
-                                            <span style="font-weight:bold;">[{{ $contrd2 }}-]</span>
-                                        @endif
-                                    </td>
-                                    <td class="text-center">{{ $fechaVenc }}</td>
-                                    <td class="text-end">{{ number_format($cap, 2) }}</td>
-                                    <td class="text-end">{{ number_format($int, 2) }}</td>
-                                    <td class="text-end">{{ number_format($totalCuota, 2) }}</td>
-                                    <td class="text-end">{{ number_format($mora, 2) }}</td>
-                                    <td class="text-end">{{ number_format($pagado, 2) }}</td>
-                                    <td class="text-center">{{ $ins->pagado ? ($fechaPagoReal ?: $fechaVenc) : '' }}</td>
-                                </tr>
-                            @endforeach
-
-                            {{-- Fila "Retraso" — suma de cuotas vencidas pendientes --}}
-                            @if($contrd2 > 0)
-                                <tr style="background-color:#fff3cd; color:#856404; font-weight:600;">
-                                    <td colspan="2" class="text-center">
-                                        Retraso ({{ $contrd2 }} {{ $contrd2 === 1 ? 'cuota' : 'cuotas' }})
-                                    </td>
-                                    <td class="text-end">{{ number_format($retrasoCap, 2) }}</td>
-                                    <td class="text-end">{{ number_format($retrasoInt, 2) }}</td>
-                                    <td class="text-end">{{ number_format($retrasoTotal, 2) }}</td>
-                                    <td colspan="3"></td>
-                                </tr>
-                            @endif
-
-                            <tr style="background-color:#f0f0f0; font-weight:500;">
-                                <td colspan="2" class="text-center">Total</td>
-                                <td class="text-end">{{ number_format($sumCap, 2) }}</td>
-                                <td class="text-end">{{ number_format($sumInt, 2) }}</td>
-                                <td class="text-end">{{ number_format($sumCap + $sumInt, 2) }}</td>
-                                <td class="text-end">{{ number_format($sumMora, 2) }}</td>
-                                <td class="text-end">{{ number_format($sumPag, 2) }}</td>
+                            <tr class="{{ $vencida ? 'table-danger' : '' }}">
+                                <td>{{ $inst->num_cuota }}</td>
+                                <td>{{ $inst->fecha_vencimiento?->format('d/m/Y') }}</td>
+                                <td class="text-end">{{ number_format($inst->importe_cuota, 2) }}</td>
+                                <td class="text-end">{{ number_format($inst->importe_interes, 2) }}</td>
+                                <td class="text-end">{{ number_format($inst->importe_aplicado, 2) }}</td>
+                                <td class="text-end">{{ number_format($inst->interes_aplicado, 2) }}</td>
+                                <td class="text-end">{{ number_format($saldo, 2) }}</td>
+                                <td>
+                                    @if($inst->pagado)
+                                        <span class="badge bg-success">Pagado</span>
+                                    @elseif($vencida)
+                                        <span class="badge bg-danger">Vencida</span>
+                                    @else
+                                        <span class="badge bg-warning">Pendiente</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                        </tbody>
+                        @php
+                            $tCap    = $credit->installments->sum('importe_cuota');
+                            $tInt    = $credit->installments->sum('importe_interes');
+                            $tPagCap = $credit->installments->sum('importe_aplicado');
+                            $tPagInt = $credit->installments->sum('interes_aplicado');
+                            $tSaldo  = $credit->installments->sum(fn ($i) => $i->saldoPendiente());
+                        @endphp
+                        <tfoot>
+                            <tr class="fw-bold" style="background:#f0f0f0;">
+                                <td colspan="2" class="text-end">Totales</td>
+                                <td class="text-end">{{ number_format($tCap, 2) }}</td>
+                                <td class="text-end">{{ number_format($tInt, 2) }}</td>
+                                <td class="text-end">{{ number_format($tPagCap, 2) }}</td>
+                                <td class="text-end">{{ number_format($tPagInt, 2) }}</td>
+                                <td class="text-end">{{ number_format($tSaldo, 2) }}</td>
                                 <td></td>
                             </tr>
-                        </tbody>
+                        </tfoot>
                     </table>
                 </div>
             </div>
