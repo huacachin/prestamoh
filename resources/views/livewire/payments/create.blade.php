@@ -59,8 +59,11 @@
         {{-- Formulario --}}
         <form wire:submit.prevent="pagar" class="pago-form">
             <style>
-                /* Inputs sin negrita en el value y un punto más grande (10px → 11px). */
-                .pago-form .form-control { font-size: 11px !important; font-weight: 400 !important; }
+                /* Inputs sin negrita en el value. Desktop 14px, mobile 11px. */
+                .pago-form .form-control { font-size: 14px !important; font-weight: 400 !important; }
+                @media (max-width: 767.98px) {
+                    .pago-form .form-control { font-size: 11px !important; }
+                }
             </style>
             <div class="card shadow-sm">
                 <div class="card-body">
