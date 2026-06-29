@@ -59,10 +59,11 @@
         {{-- Formulario --}}
         <form wire:submit.prevent="pagar" class="pago-form">
             <style>
-                /* Inputs sin negrita en el value. Desktop 14px, mobile 11px. */
-                .pago-form .form-control { font-size: 14px !important; font-weight: 400 !important; }
+                /* Inputs sin negrita en el value. Desktop 14px, mobile 11px.
+                   Selector con form-control-sm para superar la regla del tema. */
+                .pago-form .form-control.form-control-sm { font-size: 14px !important; font-weight: 400 !important; }
                 @media (max-width: 767.98px) {
-                    .pago-form .form-control { font-size: 11px !important; }
+                    .pago-form .form-control.form-control-sm { font-size: 11px !important; }
                 }
             </style>
             <div class="card shadow-sm">
