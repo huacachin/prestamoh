@@ -362,19 +362,49 @@
                     {{-- Escenario 3: cancelar el crédito --}}
                     <div class="col-md-4">
                         <div class="border rounded p-2 h-100 d-flex flex-column">
+                            @php
+                                // Interés: a la fecha, o todo el pendiente del cronograma
+                                // (saldo_credito = cap + int pendientes) si se marca el check.
+                                $intCancelar = $cancelUltimaCuota
+                                    ? round($sim['saldo_credito'] - $sim['cap_pendiente_total'], 2)
+                                    : $sim['int_hoy'];
+                                $morasCancelar = $cancelSinMora ? 0.0 : round($sim['mora'] + $moraAcumTotal, 2);
+                                $capIntCancelar = round($sim['cap_pendiente_total'] + $intCancelar, 2);
+                                $totalCancelarCard = round($capIntCancelar + $morasCancelar, 2);
+                                $tachado = 'color:red; text-decoration:line-through; opacity:.6;';
+                            @endphp
                             <div class="fw-bold small text-uppercase mb-1">Cancelar crédito</div>
                             <div class="d-flex justify-content-between small"><span>Capital pendiente</span><span>{{ number_format($sim['cap_pendiente_total'], 2) }}</span></div>
-                            <div class="d-flex justify-content-between small"><span>Interés a la fecha</span><span>{{ number_format($sim['int_hoy'], 2) }}</span></div>
-                            <div class="d-flex justify-content-between small"><span>Mora</span><span style="color:red;">{{ number_format($sim['mora'], 2) }}</span></div>
-                            <div class="d-flex justify-content-between small"><span>Mora acumulada</span><span style="color:#b8860b;">{{ number_format($moraAcumTotal, 2) }}</span></div>
-                            <div class="d-flex justify-content-between fw-bold border-top mt-1 pt-1"><span>Total</span><span>{{ number_format($sim['total_cancelar'] + $moraAcumTotal, 2) }}</span></div>
-                            <div class="small text-muted mt-1">
-                                Todo el capital pendiente + interés corrido a la fecha + moras
+                            <div class="d-flex justify-content-between small">
+                                <span>{{ $cancelUltimaCuota ? 'Interés hasta la última cuota' : 'Interés a la fecha' }}</span>
+                                <span>{{ number_format($intCancelar, 2) }}</span>
                             </div>
+                            <div class="d-flex justify-content-between small"><span>Mora</span><span style="{{ $cancelSinMora ? $tachado : 'color:red;' }}">{{ number_format($sim['mora'], 2) }}</span></div>
+                            <div class="d-flex justify-content-between small"><span>Mora acumulada</span><span style="{{ $cancelSinMora ? $tachado : 'color:#b8860b;' }}">{{ number_format($moraAcumTotal, 2) }}</span></div>
+                            <div class="d-flex justify-content-between fw-bold border-top mt-1 pt-1"><span>Total</span><span>{{ number_format($totalCancelarCard, 2) }}</span></div>
+
+                            {{-- Opciones de la cotización --}}
+                            <div class="rounded p-2 mt-2 mb-2" style="background:#f2f4f7;">
+                                <div class="form-check form-switch mb-1">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                           id="cancelSinMora" wire:model.live="cancelSinMora">
+                                    <label class="form-check-label small fw-semibold" for="cancelSinMora">
+                                        Quitar mora y mora acumulada
+                                    </label>
+                                </div>
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                           id="cancelUltimaCuota" wire:model.live="cancelUltimaCuota">
+                                    <label class="form-check-label small fw-semibold" for="cancelUltimaCuota">
+                                        Cancelar hasta la última cuota
+                                    </label>
+                                </div>
+                            </div>
+
                             @if($simEsHoy)
                                 <button type="button" class="btn btn-sm btn-dark mt-auto"
-                                        wire:click="usarMonto({{ $sim['cancelar_cap_int'] }})">
-                                    Usar {{ number_format($sim['cancelar_cap_int'], 2) }} en Monto a Pagar
+                                        wire:click="usarMonto({{ $capIntCancelar }})">
+                                    Usar {{ number_format($capIntCancelar, 2) }} en Monto a Pagar
                                 </button>
                             @endif
                         </div>

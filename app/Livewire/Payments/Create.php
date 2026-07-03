@@ -43,6 +43,11 @@ class Create extends Component
     // Fecha "Calcular al" de las tarjetas de escenario (simulador de cotización).
     public string $fecsim = '';
 
+    // Opciones de la tarjeta "Cancelar crédito" (solo afectan la cotización)
+    public bool $cancelSinMora = false;     // quitar mora y mora acumulada del total
+
+    public bool $cancelUltimaCuota = false; // interés de todo el cronograma, no solo a la fecha
+
     public function mount(?int $creditId = null)
     {
         $this->fecpag = now()->format('Y-m-d');
