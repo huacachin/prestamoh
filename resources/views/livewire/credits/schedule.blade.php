@@ -93,7 +93,8 @@
                         {{-- Cuotas regulares --}}
                         @foreach($rows as $row)
                             @php $st = $row['color'] ? 'color:'.$row['color'].';' : ''; @endphp
-                            <tr>
+                            {{-- Amarillo: pago realizado después de la fecha de vencimiento --}}
+                            <tr @if($row['tarde']) style="background-color:#fff3cd;" @endif>
                                 <td style="{{ $st }}" class="text-center">{{ $row['n'] }}</td>
                                 <td style="{{ $st }}" class="text-center">{{ $row['periodo'] }}</td>
                                 <td style="{{ $st }}" class="text-end">{{ number_format($row['capital'], 2) }}</td>

@@ -136,10 +136,12 @@ class Schedule extends Component
             $totals['mora'] += $mora;
             $totals['pagado'] += $pagado;
 
+            $venc = $ins->fecha_vencimiento ? Carbon::parse($ins->fecha_vencimiento)->format('Y-m-d') : '';
+
             $rows[] = [
                 'tipo' => 'cuota',
                 'n' => $tt,
-                'periodo' => $ins->fecha_vencimiento ? Carbon::parse($ins->fecha_vencimiento)->format('Y-m-d') : '',
+                'periodo' => $venc,
                 'capital' => $cap,
                 'interes' => $int,
                 'total' => $cap + $int,
@@ -148,6 +150,7 @@ class Schedule extends Component
                 'hora' => $hora,
                 'fecha_pago' => $fechaPago,
                 'color' => $color,
+                'tarde' => $fechaPago !== '' && $venc !== '' && $fechaPago > $venc,
             ];
         }
 
