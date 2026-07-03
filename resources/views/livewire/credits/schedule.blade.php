@@ -102,7 +102,7 @@
                                 <td style="{{ $st }}" class="text-end">{{ number_format($row['interes'], 2) }}</td>
                                 <td style="{{ $st }}" class="text-end">{{ number_format($row['total'], 2) }}</td>
                                 <td style="{{ $st }}" class="text-end">{{ number_format($row['mora'], 2) }}</td>
-                                <td class="text-end" style="color:red; white-space:nowrap;">{{ number_format($row['mora_exon'], 2) }}@if($row['mora_exon_dias'] > 0) - D: {{ $row['mora_exon_dias'] }}@endif</td>
+                                <td class="text-end" style="color:red; white-space:nowrap;">{{ number_format($row['mora_exon'], 2) }}@if($row['mora_exon_dias'] > 0) - D. {{ $row['mora_exon_dias'] }}@endif</td>
                                 <td style="{{ $st }}" class="text-end">{{ number_format($row['pagado'], 2) }}</td>
                                 <td style="{{ $st }}">
                                     {{ $row['fecha_pago'] }}
@@ -122,7 +122,7 @@
                                 <td class="text-center"><b>0.00</b></td>
                                 <td class="text-center"><b>0.00</b></td>
                                 <td class="text-end"><b>{{ number_format($row['mora'], 2) }}</b></td>
-                                <td class="text-end" style="color:red; white-space:nowrap;"><b>{{ number_format($row['mora_exon'], 2) }}@if($row['mora_exon_dias'] > 0) - D: {{ $row['mora_exon_dias'] }}@endif</b></td>
+                                <td class="text-end" style="color:red; white-space:nowrap;"><b>{{ number_format($row['mora_exon'], 2) }}@if($row['mora_exon_dias'] > 0) - D. {{ $row['mora_exon_dias'] }}@endif</b></td>
                                 <td class="text-end"><b>{{ number_format($row['pagado'], 2) }}</b></td>
                                 <td>
                                     <b>{{ $row['fecha_pago'] }}</b>
@@ -148,7 +148,7 @@
                                 <td class="text-end"><b>{{ number_format($totals['capital'] + $totals['interes'], 2) }}</b></td>
                                 <td class="text-end"><b>{{ number_format($moraGlobal, 2) }}</b></td>
                                 {{-- Mora exonerada: informativa, NO suma a los demás totales --}}
-                                <td class="text-end" style="color:red; white-space:nowrap;"><b>{{ number_format($exonGlobal, 2) }}@if($exonDiasGlobal > 0) - D: {{ $exonDiasGlobal }}@endif</b></td>
+                                <td class="text-end" style="color:red; white-space:nowrap;"><b>{{ number_format($exonGlobal, 2) }}@if($exonDiasGlobal > 0) - D. {{ $exonDiasGlobal }}@endif</b></td>
                                 <td class="text-end"><b>{{ number_format($pagadoGlobal, 2) }}</b></td>
                                 <td></td>
                             </tr>
