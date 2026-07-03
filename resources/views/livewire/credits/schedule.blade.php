@@ -111,25 +111,6 @@
                             </tr>
                         @endforeach
 
-                        @if(count($rows) > 0)
-                            {{-- Totales del cronograma --}}
-                            <tr style="background-color:#f0f0f0; font-weight:500;">
-                                <td colspan="2" rowspan="2" class="text-center"><b>Total</b></td>
-                                <td rowspan="2" class="text-end"><b>{{ number_format($totals['capital'], 2) }}</b></td>
-                                <td rowspan="2" class="text-end"><b>{{ number_format($totals['interes'], 2) }}</b></td>
-                                <td rowspan="2" class="text-end"><b>{{ number_format($totals['capital'] + $totals['interes'], 2) }}</b></td>
-                                <td class="text-end"><b>{{ number_format($totals['mora'], 2) }}</b></td>
-                                <td class="text-end"><b>{{ number_format($totals['pagado'], 2) }}</b></td>
-                                <td></td>
-                            </tr>
-                            <tr style="background-color:#f0f0f0; font-weight:500;">
-                                <td colspan="2" class="text-center">
-                                    <b>{{ number_format($totals['mora'] + $totals['pagado'], 2) }}</b>
-                                </td>
-                                <td></td>
-                            </tr>
-                        @endif
-
                         {{-- Pagos OTROS (fuera del cronograma) --}}
                         @foreach($otrosRows as $row)
                             <tr>
@@ -149,27 +130,32 @@
                             </tr>
                         @endforeach
 
-                        @if(count($otrosRows) > 0 || count($rows) > 0)
-                            {{-- Totales pagos OTROS --}}
+                        @if(count($rows) > 0)
+                            {{-- Totales: suma literal de cada columna (cuotas + filas OTROS) --}}
+                            @php
+                                $moraGlobal = $totals['mora'] + $sumOtrosMora;
+                                $pagadoGlobal = $totals['pagado'] + $sumOtros;
+                            @endphp
                             <tr style="background-color:#f0f0f0; font-weight:500;">
-                                <th colspan="5" rowspan="3" class="text-center"><b>Totales</b></th>
-                                <th class="text-center"><b>{{ number_format($sumOtrosMora, 2) }}</b></th>
-                                <th class="text-center"><b>{{ number_format($sumOtros, 2) }}</b></th>
-                                <th></th>
-                            </tr>
-                            <tr style="background-color:#f0f0f0; font-weight:500;">
-                                <td colspan="2" class="text-center">
-                                    <b>{{ number_format($sumOtros + $sumOtrosMora, 2) }}</b>
-                                </td>
+                                <td colspan="2" class="text-center"><b>Totales</b></td>
+                                <td class="text-end"><b>{{ number_format($totals['capital'], 2) }}</b></td>
+                                <td class="text-end"><b>{{ number_format($totals['interes'], 2) }}</b></td>
+                                <td class="text-end"><b>{{ number_format($totals['capital'] + $totals['interes'], 2) }}</b></td>
+                                <td class="text-end"><b>{{ number_format($moraGlobal, 2) }}</b></td>
+                                <td class="text-end"><b>{{ number_format($pagadoGlobal, 2) }}</b></td>
                                 <td></td>
                             </tr>
-                            <tr style="background-color:#f0f0f0; font-weight:500;">
-                                <td colspan="2" class="text-center">
-                                    <b>{{ number_format($totalGeneral, 2) }}</b>
-                                </td>
-                                <td></td>
-                            </tr>
-                            {{-- Saldo --}}
+                            {{-- Total recibido: solo aporta cuando hay mora (pagos + mora) --}}
+                            @if($moraGlobal > 0)
+                                <tr style="background-color:#f0f0f0; font-weight:500;">
+                                    <td colspan="5" class="text-center"><b>Total pagado + mora</b></td>
+                                    <td colspan="2" class="text-center">
+                                        <b>{{ number_format($totalGeneral, 2) }}</b>
+                                    </td>
+                                    <td></td>
+                                </tr>
+                            @endif
+                            {{-- Saldo = capital + interés − pagado (la mora se cobra aparte) --}}
                             <tr style="background-color:#f0f0f0; font-weight:500;">
                                 <td colspan="5" class="text-center" style="color:red;"><b>Saldo</b></td>
                                 <td colspan="2" class="text-center" style="color:red;">
