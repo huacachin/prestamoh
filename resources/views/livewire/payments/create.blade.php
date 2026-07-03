@@ -65,14 +65,15 @@
             <div class="card shadow-sm">
                 <div class="card-body">
 
-                    {{-- Fila 1: Expediente / Cliente / DNI / Moneda / Capital(4) / Pago x día --}}
+                    {{-- ── Datos del Crédito (solo lectura) ── --}}
+                    <h6 class="mb-1" style="color:red;">Datos del Crédito</h6>
                     <div class="row g-2">
-                        <div class="col-md-2">
+                        <div class="col-md-1">
                             <label class="form-label mb-0 small fw-semibold">Expediente</label>
                             <input type="text" class="form-control form-control-sm bg-light"
                                    value="{{ $credit->client?->expediente }}" readonly>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-4">
                             <label class="form-label mb-0 small fw-semibold">Cliente</label>
                             <input type="text" class="form-control form-control-sm bg-light"
                                    value="{{ $credit->id }}-{{ $credit->client?->fullName() }}" readonly>
@@ -82,114 +83,80 @@
                             <input type="text" class="form-control form-control-sm bg-light"
                                    value="{{ $credit->client?->documento }}" maxlength="8" readonly>
                         </div>
-                        <div class="col-md-1">
-                            <label class="form-label mb-0 small fw-semibold">Moneda</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   value="{{ $credit->moneda ?: 'Soles' }}" readonly>
-                        </div>
-                        <div class="col-md-3">
-                            {{-- Cada valor con su label encima para que queden alineados --}}
-                            <div class="d-flex gap-1">
-                                <div style="flex:1 1 80px;">
-                                    <label class="form-label mb-0 small fw-semibold">Capital</label>
-                                    <input type="text" class="form-control form-control-sm bg-light"
-                                           value="{{ number_format($c['importe'], 2) }}" readonly>
-                                </div>
-                                <div style="flex:0 0 50px;">
-                                    <label class="form-label mb-0 small fw-semibold">%</label>
-                                    <input type="text" class="form-control form-control-sm bg-light"
-                                           value="{{ number_format($c['interes_pct'], 0) }}" readonly>
-                                </div>
-                                <div style="flex:1 1 80px;">
-                                    <label class="form-label mb-0 small fw-semibold">Interés</label>
-                                    <input type="text" class="form-control form-control-sm bg-light"
-                                           value="{{ number_format($c['interes_total'], 2) }}" readonly>
-                                </div>
-                                <div style="flex:1 1 90px;">
-                                    <label class="form-label mb-0 small fw-semibold">Total</label>
-                                    <input type="text" class="form-control form-control-sm bg-light"
-                                           value="{{ number_format($c['total_credito'], 2) }}" readonly>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-1">
-                            <label class="form-label mb-0 small fw-semibold">MOR. %</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   value="{{ \App\Models\Credit::TASA_MORA_PCT }}%" readonly>
-                        </div>
-                        <div class="col-md-1">
-                            <label class="form-label mb-0 small fw-semibold">Pago x día</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   style="color:red;"
-                                   value="{{ number_format($c['mora_rate'], 2) }}" readonly>
-                        </div>
-                    </div>
-
-                    {{-- Fila 2: Ejecutivo / Saldo Pendiente / Monto a Pagar / Fecha de Pago.
-                         (El legacy tenía "Mora ¿?" para la mora extra al sobrepagar; aquí el
-                         sobrepago está bloqueado —Monto ≤ Saldo— y la mora va en la Fila 4.) --}}
-                    <div class="row g-2 mt-2">
                         <div class="col-md-3">
                             <label class="form-label mb-0 small fw-semibold">Ejecutivo</label>
                             <input type="text" class="form-control form-control-sm bg-light"
                                    value="{{ $c['asesor_nombre'] }}" readonly>
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label mb-0 small fw-semibold">Saldo Pendiente</label>
+                            <label class="form-label mb-0 small fw-semibold">Moneda</label>
                             <input type="text" class="form-control form-control-sm bg-light"
-                                   style="color:red;"
-                                   value="{{ number_format($c['saldo_restante'], 2) }}" readonly>
+                                   value="{{ $credit->moneda ?: 'Soles' }}" readonly>
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label mb-0 small fw-semibold">Capital</label>
+                            <input type="text" class="form-control form-control-sm bg-light"
+                                   value="{{ number_format($c['importe'], 2) }}" readonly>
+                        </div>
+                        <div class="col-md-1">
+                            <label class="form-label mb-0 small fw-semibold">INT. %</label>
+                            <input type="text" class="form-control form-control-sm bg-light"
+                                   value="{{ number_format($c['interes_pct'], 0) }}" readonly>
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label mb-0 small fw-semibold">Monto a Pagar</label>
-                            <input type="number" name="monto" autocomplete="off" class="form-control form-control-sm"
-                                   wire:model.live.debounce.400ms="monto"
-                                   min="0.00" max="{{ $c['saldo_pendiente'] }}" step="0.01"
-                                   style="background:yellow;">
+                            <label class="form-label mb-0 small fw-semibold">Interés</label>
+                            <input type="text" class="form-control form-control-sm bg-light"
+                                   value="{{ number_format($c['interes_total'], 2) }}" readonly>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label mb-0 small fw-semibold">Fecha de Pago</label>
-                            <input type="text" name="fecpag" autocomplete="off" class="form-control form-control-sm bg-light dates3"
-                                   wire:model="fecpag" readonly>
+                        <div class="col-md-2">
+                            <label class="form-label mb-0 small fw-semibold">Total</label>
+                            <input type="text" class="form-control form-control-sm bg-light"
+                                   value="{{ number_format($c['total_credito'], 2) }}" readonly>
                         </div>
-                    </div>
-
-                    {{-- Fila 3: Fecha Vcto / Días Transc. / Descontar / Días Final / Tiempo --}}
-                    <div class="row g-2 mt-2">
+                        <div class="col-md-1">
+                            <label class="form-label mb-0 small fw-semibold">MOR. %</label>
+                            <input type="text" class="form-control form-control-sm bg-light"
+                                   value="{{ \App\Models\Credit::TASA_MORA_PCT }}%" readonly>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label mb-0 small fw-semibold">Pago x día</label>
+                            <input type="text" class="form-control form-control-sm bg-light"
+                                   style="color:red;"
+                                   value="{{ number_format($c['mora_rate'], 2) }}" readonly>
+                        </div>
                         <div class="col-md-2">
                             <label class="form-label mb-0 small fw-semibold">Fecha de Vencimiento</label>
                             <input type="text" class="form-control form-control-sm bg-light"
                                    value="{{ $c['fecha_venc'] }}" readonly>
                         </div>
+                    </div>
+
+                    {{-- ── Atraso ── --}}
+                    <h6 class="mb-1 mt-3" style="color:red;">Atraso</h6>
+                    <div class="row g-2">
                         <div class="col-md-2">
                             <label class="form-label mb-0 small fw-semibold">Días Transcurridos</label>
-                            <input type="text" class="form-control form-control-sm"
-                                   style="background:#ff0000; color:#fff;"
+                            <input type="text" class="form-control form-control-sm bg-danger text-white"
                                    value="{{ $c['dias_atraso'] }}" readonly>
                         </div>
                         <div class="col-md-2">
                             <label class="form-label mb-0 small fw-semibold">Descontar Días</label>
                             <input type="number" name="diasf" autocomplete="off" class="form-control form-control-sm"
                                    wire:model.live.debounce.400ms="diasf"
-                                   min="0" style="background:yellow;">
+                                   min="0" style="background:#fff9c4;">
                         </div>
                         <div class="col-md-2">
                             <label class="form-label mb-0 small fw-semibold">Días Final</label>
-                            <input type="text" class="form-control form-control-sm"
-                                   style="background:#ff0000; color:#fff;"
+                            <input type="text" class="form-control form-control-sm bg-danger text-white"
                                    value="{{ $c['dias_final'] }}" readonly>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label mb-0 small fw-semibold">Tiempo Transcurridos</label>
-                            <input type="text" class="form-control form-control-sm"
-                                   style="background:#ff0000; color:#fff;"
+                        <div class="col-md-3">
+                            <label class="form-label mb-0 small fw-semibold">Tiempo Transcurrido</label>
+                            <input type="text" class="form-control form-control-sm bg-danger text-white"
                                    value="{{ $validosdoc($c['dias_atraso']) }}" readonly>
                         </div>
-                    </div>
-
-                    {{-- Fila 4: Total Mora / Saldo P. + Mora --}}
-                    <div class="row g-2 mt-2">
-                        <div class="col-md-2">
+                        <div class="col-md-3">
                             @php $puedeMora = auth()->user()->can('pagos.mora-manual'); @endphp
                             <label class="form-label mb-0 small fw-semibold">
                                 Total Mora
@@ -200,23 +167,46 @@
                             </label>
                             @if($puedeMora)
                                 <input type="number" name="moraManual" autocomplete="off" step="0.01" min="0"
-                                       class="form-control form-control-sm"
-                                       style="background:#ff0000; color:#fff;"
+                                       class="form-control form-control-sm bg-danger text-white"
                                        wire:model.live.debounce.400ms="moraManual"
                                        placeholder="{{ number_format($c['total_mora_calc'], 2) }}"
                                        @disabled(((float)$monto) <= 0)
                                        title="{{ ((float)$monto) > 0 ? 'Total Mora editable (reemplaza la calculada)' : 'Escribe primero el Monto a Pagar' }}">
                             @else
-                                <input type="text" class="form-control form-control-sm"
-                                       style="background:#ff0000; color:#fff;"
+                                <input type="text" class="form-control form-control-sm bg-danger text-white"
                                        value="{{ number_format($c['total_mora'], 2) }}" readonly>
                             @endif
                         </div>
-                        <div class="col-md-3">
+                    </div>
+
+                    {{-- ── Registrar Pago ──
+                         (El legacy tenía "Mora ¿?" para la mora extra al sobrepagar; aquí el
+                         sobrepago está bloqueado —Monto ≤ Saldo— y la mora va en Total Mora.) --}}
+                    <h6 class="mb-1 mt-3" style="color:red;">Registrar Pago</h6>
+                    <div class="row g-2">
+                        <div class="col-md-2">
+                            <label class="form-label mb-0 small fw-semibold">Saldo Pendiente</label>
+                            <input type="text" class="form-control form-control-sm bg-light"
+                                   style="color:red;"
+                                   value="{{ number_format($c['saldo_restante'], 2) }}" readonly>
+                        </div>
+                        <div class="col-md-2">
                             <label class="form-label mb-0 small fw-semibold">Saldo P. + Mora</label>
                             <input type="text" class="form-control form-control-sm bg-light"
                                    style="color:red;"
                                    value="{{ number_format($c['saldo_mora_restante'], 2) }}" readonly>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label mb-0 small fw-semibold">Monto a Pagar</label>
+                            <input type="number" name="monto" autocomplete="off" class="form-control form-control-sm"
+                                   wire:model.live.debounce.400ms="monto"
+                                   min="0.00" max="{{ $c['saldo_pendiente'] }}" step="0.01"
+                                   style="background:#fff9c4;">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label mb-0 small fw-semibold">Fecha de Pago</label>
+                            <input type="text" name="fecpag" autocomplete="off" class="form-control form-control-sm bg-light dates3"
+                                   wire:model="fecpag" readonly>
                         </div>
                     </div>
 
