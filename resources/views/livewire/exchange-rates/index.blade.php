@@ -146,7 +146,7 @@
             </div>
         </div>
 
-        {{-- CALCULADORA --}}
+        {{-- CALCULADORA (diseño iOS) --}}
         <div class="col-xl-5 mt-3 mt-xl-0">
             <div class="card shadow-sm h-100" x-data="calc()">
                 <div class="card-body">
@@ -154,59 +154,126 @@
                         <i class="ti ti-calculator"></i> Calculadora
                     </h5>
 
-                    {{-- Expresión EDITABLE con estilo display (negro/blanco, monospace).
-                         Es <textarea> para que ocupe toda la línea y haga wrap si
-                         se queda sin espacio. Auto-ajusta su alto al contenido. --}}
-                    <label class="form-label mb-1 small text-muted">
-                        Expresión <span class="text-info">(editable)</span>
-                    </label>
-                    <textarea
-                           class="form-control text-end fw-bold mb-2 bg-dark text-white border-0"
-                           style="font-family: 'Courier New', monospace; font-size: 1.05rem; resize: none; overflow: hidden; line-height: 1.3;"
-                           rows="1"
-                           x-model="expr"
-                           x-init="$watch('expr', () => { $el.style.height='auto'; $el.style.height=$el.scrollHeight+'px'; }); $nextTick(() => { $el.style.height='auto'; $el.style.height=$el.scrollHeight+'px'; })"
-                           placeholder="ej: 20 + 30 + 90 - 30"
-                           @keydown.enter.prevent="equal()"
-                           @keydown.escape="clear()"></textarea>
+                    <div class="ios-calc mx-auto">
+                        {{-- Expresión EDITABLE (línea gris arriba del resultado, como el
+                             historial de iOS). Es <textarea> para que haga wrap y
+                             auto-ajuste su alto al contenido. --}}
+                        <textarea
+                               class="ios-calc-expr"
+                               rows="1"
+                               x-model="expr"
+                               x-init="$watch('expr', () => { $el.style.height='auto'; $el.style.height=$el.scrollHeight+'px'; }); $nextTick(() => { $el.style.height='auto'; $el.style.height=$el.scrollHeight+'px'; })"
+                               placeholder="ej: 20 + 30 + 90 - 30"
+                               @keydown.enter.prevent="equal()"
+                               @keydown.escape="clear()"></textarea>
 
-                    {{-- Resultado --}}
-                    <div class="bg-dark text-white text-end px-3 py-3 mb-2 rounded"
-                         style="font-family: 'Courier New', monospace; font-size: 1.8rem; min-height: 60px; line-height: 1;">
-                        <span x-text="display"></span>
-                    </div>
+                        {{-- Resultado --}}
+                        <div class="ios-calc-display" x-text="display"></div>
 
-                    {{-- Teclado --}}
-                    <div class="d-grid gap-2" style="grid-template-columns: repeat(4, 1fr); display: grid;">
-                        <button type="button" class="btn btn-warning"  @click="clear()">C</button>
-                        <button type="button" class="btn btn-warning"  @click="back()"><i class="ti ti-backspace"></i></button>
-                        <button type="button" class="btn btn-warning"  @click="percent()">%</button>
-                        <button type="button" class="btn btn-primary"  @click="op('/')">÷</button>
+                        {{-- Teclado: AC se vuelve ⌫ cuando hay algo escrito (como iOS 18) --}}
+                        <div class="ios-calc-grid">
+                            <button type="button" class="ios-btn fn" :title="expr === '' ? 'Borrar todo' : 'Borrar último (Esc limpia todo)'"
+                                    @click="expr === '' ? clear() : back()">
+                                <span x-show="expr === ''">AC</span>
+                                <i class="ti ti-backspace" x-show="expr !== ''" x-cloak></i>
+                            </button>
+                            <button type="button" class="ios-btn fn" @click="negate()">±</button>
+                            <button type="button" class="ios-btn fn" @click="percent()">%</button>
+                            <button type="button" class="ios-btn op" @click="op('/')">÷</button>
 
-                        <button type="button" class="btn btn-light"    @click="push('7')">7</button>
-                        <button type="button" class="btn btn-light"    @click="push('8')">8</button>
-                        <button type="button" class="btn btn-light"    @click="push('9')">9</button>
-                        <button type="button" class="btn btn-primary"  @click="op('*')">×</button>
+                            <button type="button" class="ios-btn" @click="push('7')">7</button>
+                            <button type="button" class="ios-btn" @click="push('8')">8</button>
+                            <button type="button" class="ios-btn" @click="push('9')">9</button>
+                            <button type="button" class="ios-btn op" @click="op('*')">×</button>
 
-                        <button type="button" class="btn btn-light"    @click="push('4')">4</button>
-                        <button type="button" class="btn btn-light"    @click="push('5')">5</button>
-                        <button type="button" class="btn btn-light"    @click="push('6')">6</button>
-                        <button type="button" class="btn btn-primary"  @click="op('-')">−</button>
+                            <button type="button" class="ios-btn" @click="push('4')">4</button>
+                            <button type="button" class="ios-btn" @click="push('5')">5</button>
+                            <button type="button" class="ios-btn" @click="push('6')">6</button>
+                            <button type="button" class="ios-btn op" @click="op('-')">−</button>
 
-                        <button type="button" class="btn btn-light"    @click="push('1')">1</button>
-                        <button type="button" class="btn btn-light"    @click="push('2')">2</button>
-                        <button type="button" class="btn btn-light"    @click="push('3')">3</button>
-                        <button type="button" class="btn btn-primary"  @click="op('+')">+</button>
+                            <button type="button" class="ios-btn" @click="push('1')">1</button>
+                            <button type="button" class="ios-btn" @click="push('2')">2</button>
+                            <button type="button" class="ios-btn" @click="push('3')">3</button>
+                            <button type="button" class="ios-btn op" @click="op('+')">+</button>
 
-                        <button type="button" class="btn btn-light"    @click="negate()">±</button>
-                        <button type="button" class="btn btn-light"    @click="push('0')">0</button>
-                        <button type="button" class="btn btn-light"    @click="push('.')">.</button>
-                        <button type="button" class="btn btn-success"  @click="equal()">=</button>
+                            <button type="button" class="ios-btn zero" @click="push('0')">0</button>
+                            <button type="button" class="ios-btn" @click="push('.')">.</button>
+                            <button type="button" class="ios-btn op" @click="equal()">=</button>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <style>
+        [x-cloak] { display: none !important; }
+
+        .ios-calc {
+            background: #000;
+            border-radius: 1.75rem;
+            padding: 1.25rem 1rem 1rem;
+            width: 100%;
+            max-width: 340px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+        }
+        .ios-calc-expr {
+            width: 100%;
+            background: transparent;
+            border: 0;
+            outline: none;
+            resize: none;
+            overflow: hidden;
+            color: #8e8e93;
+            text-align: right;
+            font-size: 1.05rem;
+            line-height: 1.3;
+            font-variant-numeric: tabular-nums;
+        }
+        .ios-calc-expr::placeholder { color: #48484a; }
+        .ios-calc-display {
+            color: #fff;
+            text-align: right;
+            font-size: 2.6rem;
+            font-weight: 300;
+            line-height: 1.15;
+            min-height: 3rem;
+            padding: 0 .25rem .75rem;
+            word-break: break-all;
+            font-variant-numeric: tabular-nums;
+        }
+        .ios-calc-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: .65rem;
+        }
+        .ios-btn {
+            border: 0;
+            border-radius: 50%;
+            aspect-ratio: 1 / 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.45rem;
+            font-weight: 400;
+            background: #333333;
+            color: #fff;
+            transition: background-color .12s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .ios-btn:active { background: #737373; }
+        .ios-btn.fn { background: #a5a5a5; color: #000; font-size: 1.25rem; }
+        .ios-btn.fn:active { background: #d9d9d9; }
+        .ios-btn.op { background: #ff9f0a; color: #fff; font-size: 1.6rem; font-weight: 500; }
+        .ios-btn.op:active { background: #fcc78d; }
+        .ios-btn.zero {
+            aspect-ratio: auto;
+            grid-column: span 2;
+            border-radius: 999px;
+            justify-content: flex-start;
+            padding-left: 1.7rem;
+        }
+    </style>
 
     <span id="final"></span>
 </div>
