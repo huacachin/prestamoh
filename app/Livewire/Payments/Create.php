@@ -746,7 +746,6 @@ class Create extends Component
 
         return view('livewire.payments.create', [
             'calcs' => $this->buildCalcs(),
-            'deuda' => $this->deudaCalcs(),        // a hoy: filas del tfoot
             'sim' => $this->deudaCalcs($alSim),    // a la fecha simulada: tarjetas
             'fecsimMin' => $fecsimMin,
             'moraExon' => $this->credit ? MoraExonerada::porCuota($this->credit) : [],

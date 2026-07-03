@@ -525,31 +525,6 @@
                                 <td></td>
                                 <td></td>
                             </tr>
-                            <tr class="fw-bold" style="background:#e9ecef;">
-                                <td colspan="2" class="text-end">No pagado a la fecha (Cap. / Int. / Mora / Total)</td>
-                                <td class="text-end" style="color:red;">{{ number_format($deuda['cap_hoy'], 2) }}</td>
-                                <td></td>
-                                <td></td>
-                                <td class="text-end" style="color:red;">{{ number_format($deuda['int_hoy'], 2) }}</td>
-                                <td class="text-end" style="color:red;">{{ number_format($c['total_mora'], 2) }}</td>
-                                <td class="text-end" style="color:red;">{{ number_format($deuda['cap_hoy'] + $deuda['int_hoy'] + $c['total_mora'], 2) }}</td>
-                                <td colspan="3"></td>
-                            </tr>
-                            <tr class="fw-bold" style="background:#e9ecef;">
-                                <td colspan="2" class="text-end">No pagado a la próx. cuota (Cap. / Int. / Mora / Total)</td>
-                                <td class="text-end" style="color:red;">{{ number_format($deuda['cap_prox'], 2) }}</td>
-                                <td></td>
-                                <td></td>
-                                <td class="text-end" style="color:red;">{{ number_format($deuda['int_prox'], 2) }}</td>
-                                <td class="text-end" style="color:red;">{{ number_format($c['total_mora'], 2) }}</td>
-                                <td class="text-end" style="color:red;">{{ number_format($deuda['cap_prox'] + $deuda['int_prox'] + $c['total_mora'], 2) }}</td>
-                                <td colspan="3"></td>
-                            </tr>
-                            <tr class="fw-bold" style="background:#e9ecef;">
-                                <td colspan="2" class="text-end">Capital pendiente total</td>
-                                <td class="text-end" style="color:red;">{{ number_format($deuda['cap_pendiente_total'], 2) }}</td>
-                                <td colspan="8"></td>
-                            </tr>
                         </tfoot>
                     </table>
                 </div>
