@@ -366,9 +366,10 @@
                             <div class="d-flex justify-content-between small"><span>Capital pendiente</span><span>{{ number_format($sim['cap_pendiente_total'], 2) }}</span></div>
                             <div class="d-flex justify-content-between small"><span>Interés a la fecha</span><span>{{ number_format($sim['int_hoy'], 2) }}</span></div>
                             <div class="d-flex justify-content-between small"><span>Mora</span><span style="color:red;">{{ number_format($sim['mora'], 2) }}</span></div>
-                            <div class="d-flex justify-content-between fw-bold border-top mt-1 pt-1"><span>Total</span><span>{{ number_format($sim['total_cancelar'], 2) }}</span></div>
+                            <div class="d-flex justify-content-between small"><span>Mora acumulada</span><span style="color:#b8860b;">{{ number_format($moraAcumTotal, 2) }}</span></div>
+                            <div class="d-flex justify-content-between fw-bold border-top mt-1 pt-1"><span>Total</span><span>{{ number_format($sim['total_cancelar'] + $moraAcumTotal, 2) }}</span></div>
                             <div class="small text-muted mt-1">
-                                Todo el capital pendiente + interés corrido a la fecha
+                                Todo el capital pendiente + interés corrido a la fecha + moras
                             </div>
                             @if($simEsHoy)
                                 <button type="button" class="btn btn-sm btn-dark mt-auto"
