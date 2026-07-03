@@ -6,6 +6,7 @@ use App\Models\Credit;
 use App\Models\CreditInstallment;
 use App\Models\Payment;
 use App\Support\Audit;
+use App\Support\MoraExonerada;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
@@ -745,6 +746,7 @@ class Create extends Component
             'deuda' => $this->deudaCalcs(),        // a hoy: filas del tfoot
             'sim' => $this->deudaCalcs($alSim),    // a la fecha simulada: tarjetas
             'fecsimMin' => $fecsimMin,
+            'moraExon' => $this->credit ? MoraExonerada::porCuota($this->credit) : [],
         ]);
     }
 }

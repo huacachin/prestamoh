@@ -385,6 +385,7 @@
                             <th>Pagado Int.</th>
                             <th>Pagado</th>
                             <th>Saldo</th>
+                            <th style="color:#ffd6d6;">Mora Exon.</th>
                             <th>Estado</th>
                             <th>Fecha Pago</th>
                         </tr>
@@ -404,6 +405,8 @@
                                 <td class="text-end">{{ number_format($inst->interes_aplicado, 2) }}</td>
                                 <td class="text-end">{{ number_format($inst->importe_aplicado + $inst->interes_aplicado, 2) }}</td>
                                 <td class="text-end">{{ number_format($saldo, 2) }}</td>
+                                @php $me = $moraExon[$inst->num_cuota] ?? null; @endphp
+                                <td class="text-end" style="color:red; white-space:nowrap;">{{ number_format($me['monto'] ?? 0, 2) }}@if($me) - D. {{ $me['dias'] }}@endif</td>
                                 <td>
                                     @if($inst->pagado)
                                         <span class="badge bg-success">Pagado</span>
@@ -433,6 +436,12 @@
                                 <td class="text-end">{{ number_format($tPagInt, 2) }}</td>
                                 <td class="text-end">{{ number_format($tPagCap + $tPagInt, 2) }}</td>
                                 <td class="text-end">{{ number_format($tSaldo, 2) }}</td>
+                                @php
+                                    $tExon = collect($moraExon)->sum('monto');
+                                    $tExonDias = collect($moraExon)->sum('dias');
+                                @endphp
+                                {{-- Mora exonerada: informativa, no suma a los demás totales --}}
+                                <td class="text-end" style="color:red; white-space:nowrap;">{{ number_format($tExon, 2) }}@if($tExonDias > 0) - D. {{ $tExonDias }}@endif</td>
                                 <td></td>
                                 <td></td>
                             </tr>
@@ -444,7 +453,7 @@
                                 <td class="text-end" style="color:red;">{{ number_format($deuda['int_hoy'], 2) }}</td>
                                 <td class="text-end" style="color:red;">{{ number_format($c['total_mora'], 2) }}</td>
                                 <td class="text-end" style="color:red;">{{ number_format($deuda['cap_hoy'] + $deuda['int_hoy'] + $c['total_mora'], 2) }}</td>
-                                <td colspan="2"></td>
+                                <td colspan="3"></td>
                             </tr>
                             <tr class="fw-bold" style="background:#e9ecef;">
                                 <td colspan="2" class="text-end">No pagado a la próx. cuota (Cap. / Int. / Mora / Total)</td>
@@ -454,12 +463,12 @@
                                 <td class="text-end" style="color:red;">{{ number_format($deuda['int_prox'], 2) }}</td>
                                 <td class="text-end" style="color:red;">{{ number_format($c['total_mora'], 2) }}</td>
                                 <td class="text-end" style="color:red;">{{ number_format($deuda['cap_prox'] + $deuda['int_prox'] + $c['total_mora'], 2) }}</td>
-                                <td colspan="2"></td>
+                                <td colspan="3"></td>
                             </tr>
                             <tr class="fw-bold" style="background:#e9ecef;">
                                 <td colspan="2" class="text-end">Capital pendiente total</td>
                                 <td class="text-end" style="color:red;">{{ number_format($deuda['cap_pendiente_total'], 2) }}</td>
-                                <td colspan="7"></td>
+                                <td colspan="8"></td>
                             </tr>
                         </tfoot>
                     </table>
