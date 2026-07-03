@@ -304,6 +304,17 @@ class Create extends Component
             return;
         }
 
+        // Gate servidor del switch Cancelado (espejo del disabled del front):
+        // el monto debe cubrir al menos capital pendiente + interés a la fecha.
+        if ($this->cancel) {
+            $cancelarHoy = $this->deudaCalcs()['cancelar_cap_int'];
+            if ($cancelarHoy - (float) $this->monto > 0.01) {
+                $this->dispatch('errorAlert', ['message' => 'Para cancelar debes cubrir capital pendiente + interés a la fecha ('.number_format($cancelarHoy, 2).').']);
+
+                return;
+            }
+        }
+
         DB::transaction(function () use ($calcs) {
             $tipoPlani = (int) $this->credit->tipo_planilla;
             $obstipo = match ($tipoPlani) {
@@ -349,6 +360,15 @@ class Create extends Component
             ]);
 
             $isMensualUnaCuota = ($tipoPlani === 3 && (int) $this->credit->cuotas === 1);
+
+            // ─── 2b) CANCELACIÓN ANTICIPADA: condonar interés no corrido ───
+            // Si el monto cubre la cancelación a la fecha pero no el cronograma
+            // completo, la diferencia es interés futuro no devengado: se rebaja
+            // de las últimas cuotas impagas para que el pago cierre el crédito
+            // con saldo 0.
+            if ($this->cancel) {
+                $this->condonarInteresFuturo();
+            }
 
             // ─── 3) DISTRIBUCIÓN DEL MONTO ─────────────────────────────────
             // Track de cuotas tocadas EN ESTE pago (para asociar mora a la primera de ESTE lote).
@@ -533,6 +553,51 @@ class Create extends Component
         session()->flash('payment_success', 'Pago registrado correctamente.');
 
         return redirect()->route('credits.show', $this->credit->id);
+    }
+
+    /**
+     * Cancelación anticipada: condona el interés futuro no devengado.
+     * Descuento = saldo pendiente del cronograma − monto pagado. Se rebaja
+     * del interés de las cuotas impagas empezando por la ÚLTIMA (el interés
+     * más lejano es el menos devengado), y queda auditado.
+     */
+    private function condonarInteresFuturo(): void
+    {
+        $saldoPend = (float) DB::table('credit_installments')
+            ->where('credit_id', $this->credit->id)
+            ->selectRaw('SUM(importe_cuota + importe_interes - importe_aplicado - interes_aplicado) s')
+            ->value('s');
+        $descuento = round($saldoPend - (float) $this->monto, 2);
+        if ($descuento <= 0.01) {
+            return; // el monto cubre el cronograma completo: nada que condonar
+        }
+
+        $porCondonar = $descuento;
+        $unpaid = DB::table('credit_installments')
+            ->where('credit_id', $this->credit->id)
+            ->where('pagado', 0)
+            ->orderByDesc('num_cuota')
+            ->get(['id', 'importe_interes', 'interes_aplicado']);
+
+        foreach ($unpaid as $ins) {
+            if ($porCondonar <= 0.005) {
+                break;
+            }
+            $intPend = max(0, (float) $ins->importe_interes - (float) $ins->interes_aplicado);
+            if ($intPend <= 0) {
+                continue;
+            }
+            $rebaja = min($intPend, $porCondonar);
+            DB::table('credit_installments')->where('id', $ins->id)
+                ->update(['importe_interes' => round((float) $ins->importe_interes - $rebaja, 2)]);
+            $porCondonar = round($porCondonar - $rebaja, 2);
+        }
+
+        Audit::log(sprintf(
+            'Cancelación anticipada del crédito %d: descuento de interés no devengado %s',
+            $this->credit->id,
+            number_format($descuento - max(0, $porCondonar), 2)
+        ), $this->credit);
     }
 
     /**
@@ -758,6 +823,7 @@ class Create extends Component
         return view('livewire.payments.create', [
             'calcs' => $this->buildCalcs(),
             'sim' => $this->deudaCalcs($alSim),    // a la fecha simulada: tarjetas
+            'cancelarHoy' => $this->deudaCalcs()['cancelar_cap_int'], // gate del switch Cancelado
             'fecsimMin' => $fecsimMin,
             'moraExon' => $this->credit ? MoraExonerada::porCuota($this->credit) : [],
         ]);

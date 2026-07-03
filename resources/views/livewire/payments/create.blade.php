@@ -26,17 +26,11 @@
         @php $c = $calcs; @endphp
 
         @php
-            // Para cancelar el crédito hay que cubrir el saldo. Si "Reserva Mora"
-            // está marcada, alcanza con capital+interés (la mora se perdona al
-            // cancelar). Sin reserva, hay que cubrir también la mora — pero esa
-            // mora (calculada u override) SE COBRA junto con el pago, así que
-            // cuenta como cobertura. La cobertura suma: monto + mora cobrada +
-            // moras manuales (impomora/impointe2).
-            $moraCobrada = $ckmora ? 0.0 : (float) $c['total_mora'];
-            $cobertura = (float) $monto + $moraCobrada + (float) $impomora + (float) $impointe2;
-            $cancelDisabled = $ckmora
-                ? ($c['saldo_pendiente'] - $cobertura) > 0.01
-                : ($c['saldo_mora']      - $cobertura) > 0.01;
+            // Para cancelar el crédito el Monto a Pagar debe cubrir el capital
+            // pendiente + interés a la fecha ($cancelarHoy). El interés futuro
+            // no devengado se condona al pagar; la mora se cobra o reserva
+            // aparte (switch "Reserva Mora").
+            $cancelDisabled = ($cancelarHoy - (float) $monto) > 0.01;
         @endphp
 
         {{-- Formulario --}}
@@ -245,7 +239,7 @@
                                 Cancelado
                                 @if($cancelDisabled)
                                     <small class="text-muted">
-                                        (se habilita al cubrir {{ $ckmora ? 'capital + interés' : 'capital + interés + mora' }})
+                                        (se habilita al cubrir capital + interés a la fecha: {{ number_format($cancelarHoy, 2) }})
                                     </small>
                                 @endif
                             </label>
@@ -395,6 +389,10 @@
                                 $morasCancelar = $cancelSinMora ? 0.0 : round($sim['mora'] + $moraAcumTotal, 2);
                                 $capIntCancelar = round($sim['cap_pendiente_total'] + $intCancelar, 2);
                                 $totalCancelarCard = round($capIntCancelar + $morasCancelar, 2);
+                                // El botón llena el Total del card MENOS la mora vigente
+                                // (esa el motor la cobra aparte vía Total Mora): al pagar,
+                                // caja recibe exactamente el Total mostrado.
+                                $montoBtnCancelar = round($capIntCancelar + ($cancelSinMora ? 0.0 : $moraAcumTotal), 2);
                                 $tachado = 'color:red; text-decoration:line-through; opacity:.6;';
                             @endphp
                             <div class="fw-bold small text-uppercase mb-1">Cancelar crédito</div>
@@ -446,8 +444,8 @@
 
                             @if($simEsHoy)
                                 <button type="button" class="btn btn-sm btn-dark mt-auto"
-                                        wire:click="usarMonto({{ $capIntCancelar }})">
-                                    Usar {{ number_format($capIntCancelar, 2) }} en Monto a Pagar
+                                        wire:click="usarMonto({{ $montoBtnCancelar }})">
+                                    Usar {{ number_format($montoBtnCancelar, 2) }} en Monto a Pagar
                                 </button>
                             @endif
                         </div>
