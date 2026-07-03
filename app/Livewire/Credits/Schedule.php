@@ -71,32 +71,8 @@ class Schedule extends Component
             ? (float) $installments[0]->importe_cuota + (float) $installments[0]->importe_interes
             : 0.0;
 
-        foreach ($eventos as $e => $p) {
-            // Atraso del evento contra la cuota impaga más antigua en ese
-            // momento (mismas reglas del motor de mora: días calendario para
-            // mensual, hábiles sin sáb/dom para el resto).
-            $eventos[$e]['dias_atraso'] = 0;
-            if ($idx < $n && $p['fecha'] !== '' && $installments[$idx]->fecha_vencimiento) {
-                $venc = Carbon::parse($installments[$idx]->fecha_vencimiento);
-                $fpago = Carbon::parse($p['fecha']);
-                $diff = (int) floor($venc->diffInDays($fpago, false));
-                if ($diff > 0) {
-                    if ($tipoPlanilla === 3) {
-                        $eventos[$e]['dias_atraso'] = $diff;
-                    } else {
-                        $cur = $venc->copy();
-                        for ($i = 1; $i <= $diff; $i++) {
-                            $cur->addDay();
-                            if (! in_array($cur->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])) {
-                                $eventos[$e]['dias_atraso']++;
-                            }
-                        }
-                    }
-                }
-            }
-
+        foreach ($eventos as $p) {
             $rem = $p['monto'];
-            $eventos[$e]['ultima_cuota'] = null; // idx de la última cuota que tocó
             while ($rem > 0.005 && $idx < $n) {
                 $take = min($rem, $capacidad);
                 if ($take > 0) {
@@ -109,7 +85,6 @@ class Schedule extends Component
                     if ($p['fecha']) {
                         $moraCuota[$idx][$p['fecha']] = true;
                     }
-                    $eventos[$e]['ultima_cuota'] = $idx;
                     $rem -= $take;
                     $capacidad -= $take;
                 }
@@ -130,47 +105,8 @@ class Schedule extends Component
             }
         }
 
-        // ─── Mora exonerada por evento ───────────────────────────────────
-        // Mora generada por el atraso de cada pago pero NO cobrada (el switch
-        // "Reserva Mora" la deja como deuda viva en mora_acumulada). Si las
-        // filas registradas en dias_mora cuadran 1:1 con los eventos con
-        // atraso, se usan sus días reales (con descuentos de gracia); si no,
-        // se usan los días calculados. Informativa: NO afecta los totales.
+        // Tarifa diaria de mora (mora2 para semanales, mora1 para el resto)
         $moraRate = (float) ($tipoPlanilla === 1 ? $this->credit->mora2 : $this->credit->mora1);
-        $diasMoraRows = DB::table('dias_mora')->where('credit_id', $creditId)
-            ->orderBy('id')->get()->values();
-        $eventosAtraso = array_values(array_filter($eventos, fn ($e) => $e['dias_atraso'] > 0));
-        $usaRegistrado = $diasMoraRows->count() > 0 && $diasMoraRows->count() === count($eventosAtraso);
-
-        $exonCuota = []; // idx cuota => ['monto', 'dias'] exonerado
-        $exonResto = []; // [Y-m-d] => ['monto', 'dias'] (evento que cayó todo en OTROS)
-        $moraPagadaLibre = $payMora; // se consume para restar lo que sí se cobró
-        foreach ($eventosAtraso as $i => $e) {
-            $dias = $usaRegistrado
-                ? max(0, (int) $diasMoraRows[$i]->dias - (int) $diasMoraRows[$i]->dias_descontados)
-                : $e['dias_atraso'];
-            $exon = $dias * $moraRate;
-            if ($exon <= 0) {
-                continue;
-            }
-            // Restar la mora efectivamente cobrada ese día (una sola vez)
-            if ($e['fecha'] !== '' && ($moraPagadaLibre[$e['fecha']] ?? 0) > 0) {
-                $usado = min($exon, $moraPagadaLibre[$e['fecha']]);
-                $exon -= $usado;
-                $moraPagadaLibre[$e['fecha']] -= $usado;
-            }
-            if ($exon <= 0.005) {
-                continue;
-            }
-            if ($e['ultima_cuota'] !== null) {
-                $k = $e['ultima_cuota'];
-                $exonCuota[$k]['monto'] = ($exonCuota[$k]['monto'] ?? 0) + $exon;
-                $exonCuota[$k]['dias'] = ($exonCuota[$k]['dias'] ?? 0) + $dias;
-            } elseif ($e['fecha'] !== '') {
-                $exonResto[$e['fecha']]['monto'] = ($exonResto[$e['fecha']]['monto'] ?? 0) + $exon;
-                $exonResto[$e['fecha']]['dias'] = ($exonResto[$e['fecha']]['dias'] ?? 0) + $dias;
-            }
-        }
 
         // ─── Filas del cronograma ────────────────────────────────────────
         $rows = [];
@@ -205,8 +141,33 @@ class Schedule extends Component
             $cap = (float) $ins->importe_cuota;
             $int = (float) $ins->importe_interes;
 
-            $moraExon = round($exonCuota[$k]['monto'] ?? 0, 2);
-            $moraExonDias = (int) ($exonCuota[$k]['dias'] ?? 0);
+            // Mora exonerada teórica POR CUOTA: días de atraso entre su
+            // vencimiento y su fecha de pago real (calendario para mensual,
+            // hábiles sin sáb/dom para el resto) × tarifa, menos la mora que
+            // sí se cobró en la cuota. Informativa: no afecta los totales.
+            $moraExon = 0.0;
+            $moraExonDias = 0;
+            if ($fechaPago !== '' && $ins->fecha_vencimiento && $moraRate > 0) {
+                $vencC = Carbon::parse($ins->fecha_vencimiento);
+                $diff = (int) floor($vencC->diffInDays(Carbon::parse($fechaPago), false));
+                if ($diff > 0) {
+                    if ($tipoPlanilla === 3) {
+                        $moraExonDias = $diff;
+                    } else {
+                        $cur = $vencC->copy();
+                        for ($i = 1; $i <= $diff; $i++) {
+                            $cur->addDay();
+                            if (! in_array($cur->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])) {
+                                $moraExonDias++;
+                            }
+                        }
+                    }
+                    $moraExon = round(max(0, $moraExonDias * $moraRate - $mora), 2);
+                    if ($moraExon <= 0) {
+                        $moraExonDias = 0;
+                    }
+                }
+            }
 
             $totals['capital'] += $cap;
             $totals['interes'] += $int;
@@ -253,8 +214,9 @@ class Schedule extends Component
             $tt++;
             $mora = isset($moraUsada[$f]) ? 0.0 : (float) ($payMora[$f] ?? 0);
             $moraUsada[$f] = true;
-            $moraExon = round($exonResto[$f]['monto'] ?? 0, 2);
-            $moraExonDias = (int) ($exonResto[$f]['dias'] ?? 0);
+            // Sin cuota de referencia no hay vencimiento contra el cual medir atraso
+            $moraExon = 0.0;
+            $moraExonDias = 0;
             $sumOtros += (float) $info['monto'];
             $sumOtrosMora += $mora;
             $sumOtrosExon += $moraExon;
