@@ -85,6 +85,7 @@
                             <th class="text-center">Interés</th>
                             <th class="text-center">Total</th>
                             <th class="text-center">Mora</th>
+                            <th class="text-center" style="color:#ffd6d6;">Mora Exon.</th>
                             <th class="text-center">Pagado</th>
                             <th class="text-center">Fecha Pago</th>
                         </tr>
@@ -101,6 +102,7 @@
                                 <td style="{{ $st }}" class="text-end">{{ number_format($row['interes'], 2) }}</td>
                                 <td style="{{ $st }}" class="text-end">{{ number_format($row['total'], 2) }}</td>
                                 <td style="{{ $st }}" class="text-end">{{ number_format($row['mora'], 2) }}</td>
+                                <td class="text-end" style="color:red;">{{ number_format($row['mora_exon'], 2) }}</td>
                                 <td style="{{ $st }}" class="text-end">{{ number_format($row['pagado'], 2) }}</td>
                                 <td style="{{ $st }}">
                                     {{ $row['fecha_pago'] }}
@@ -120,6 +122,7 @@
                                 <td class="text-center"><b>0.00</b></td>
                                 <td class="text-center"><b>0.00</b></td>
                                 <td class="text-end"><b>{{ number_format($row['mora'], 2) }}</b></td>
+                                <td class="text-end" style="color:red;"><b>{{ number_format($row['mora_exon'], 2) }}</b></td>
                                 <td class="text-end"><b>{{ number_format($row['pagado'], 2) }}</b></td>
                                 <td>
                                     <b>{{ $row['fecha_pago'] }}</b>
@@ -134,6 +137,7 @@
                             {{-- Totales: suma literal de cada columna (cuotas + filas OTROS) --}}
                             @php
                                 $moraGlobal = $totals['mora'] + $sumOtrosMora;
+                                $exonGlobal = $totals['mora_exon'] + $sumOtrosExon;
                                 $pagadoGlobal = $totals['pagado'] + $sumOtros;
                             @endphp
                             <tr style="background-color:#f0f0f0; font-weight:500;">
@@ -142,6 +146,8 @@
                                 <td class="text-end"><b>{{ number_format($totals['interes'], 2) }}</b></td>
                                 <td class="text-end"><b>{{ number_format($totals['capital'] + $totals['interes'], 2) }}</b></td>
                                 <td class="text-end"><b>{{ number_format($moraGlobal, 2) }}</b></td>
+                                {{-- Mora exonerada: informativa, NO suma a los demás totales --}}
+                                <td class="text-end" style="color:red;"><b>{{ number_format($exonGlobal, 2) }}</b></td>
                                 <td class="text-end"><b>{{ number_format($pagadoGlobal, 2) }}</b></td>
                                 <td></td>
                             </tr>
@@ -149,7 +155,7 @@
                             @if($moraGlobal > 0)
                                 <tr style="background-color:#f0f0f0; font-weight:500;">
                                     <td colspan="5" class="text-center"><b>Total pagado + mora</b></td>
-                                    <td colspan="2" class="text-center">
+                                    <td colspan="3" class="text-center">
                                         <b>{{ number_format($totalGeneral, 2) }}</b>
                                     </td>
                                     <td></td>
@@ -158,7 +164,7 @@
                             {{-- Saldo = capital + interés − pagado (la mora se cobra aparte) --}}
                             <tr style="background-color:#f0f0f0; font-weight:500;">
                                 <td colspan="5" class="text-center" style="color:red;"><b>Saldo</b></td>
-                                <td colspan="2" class="text-center" style="color:red;">
+                                <td colspan="3" class="text-center" style="color:red;">
                                     <b>{{ number_format(abs($saldo), 2) }}</b>
                                 </td>
                                 <td></td>
