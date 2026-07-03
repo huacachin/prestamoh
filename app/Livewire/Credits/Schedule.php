@@ -142,8 +142,8 @@ class Schedule extends Component
         $eventosAtraso = array_values(array_filter($eventos, fn ($e) => $e['dias_atraso'] > 0));
         $usaRegistrado = $diasMoraRows->count() > 0 && $diasMoraRows->count() === count($eventosAtraso);
 
-        $exonCuota = []; // idx cuota => monto exonerado
-        $exonResto = []; // [Y-m-d] => monto exonerado (evento que cayó todo en OTROS)
+        $exonCuota = []; // idx cuota => ['monto', 'dias'] exonerado
+        $exonResto = []; // [Y-m-d] => ['monto', 'dias'] (evento que cayó todo en OTROS)
         $moraPagadaLibre = $payMora; // se consume para restar lo que sí se cobró
         foreach ($eventosAtraso as $i => $e) {
             $dias = $usaRegistrado
@@ -163,15 +163,18 @@ class Schedule extends Component
                 continue;
             }
             if ($e['ultima_cuota'] !== null) {
-                $exonCuota[$e['ultima_cuota']] = ($exonCuota[$e['ultima_cuota']] ?? 0) + $exon;
+                $k = $e['ultima_cuota'];
+                $exonCuota[$k]['monto'] = ($exonCuota[$k]['monto'] ?? 0) + $exon;
+                $exonCuota[$k]['dias'] = ($exonCuota[$k]['dias'] ?? 0) + $dias;
             } elseif ($e['fecha'] !== '') {
-                $exonResto[$e['fecha']] = ($exonResto[$e['fecha']] ?? 0) + $exon;
+                $exonResto[$e['fecha']]['monto'] = ($exonResto[$e['fecha']]['monto'] ?? 0) + $exon;
+                $exonResto[$e['fecha']]['dias'] = ($exonResto[$e['fecha']]['dias'] ?? 0) + $dias;
             }
         }
 
         // ─── Filas del cronograma ────────────────────────────────────────
         $rows = [];
-        $totals = ['capital' => 0, 'interes' => 0, 'total' => 0, 'mora' => 0, 'pagado' => 0, 'mora_exon' => 0];
+        $totals = ['capital' => 0, 'interes' => 0, 'total' => 0, 'mora' => 0, 'pagado' => 0, 'mora_exon' => 0, 'mora_exon_dias' => 0];
         $moraUsada = []; // fechas de mora ya colgadas a una cuota
         $tt = 0;
 
@@ -202,7 +205,8 @@ class Schedule extends Component
             $cap = (float) $ins->importe_cuota;
             $int = (float) $ins->importe_interes;
 
-            $moraExon = round($exonCuota[$k] ?? 0, 2);
+            $moraExon = round($exonCuota[$k]['monto'] ?? 0, 2);
+            $moraExonDias = (int) ($exonCuota[$k]['dias'] ?? 0);
 
             $totals['capital'] += $cap;
             $totals['interes'] += $int;
@@ -210,6 +214,7 @@ class Schedule extends Component
             $totals['mora'] += $mora;
             $totals['pagado'] += $pagado;
             $totals['mora_exon'] += $moraExon;
+            $totals['mora_exon_dias'] += $moraExonDias;
 
             $venc = $ins->fecha_vencimiento ? Carbon::parse($ins->fecha_vencimiento)->format('Y-m-d') : '';
 
@@ -222,6 +227,7 @@ class Schedule extends Component
                 'total' => $cap + $int,
                 'mora' => $mora,
                 'mora_exon' => $moraExon,
+                'mora_exon_dias' => $moraExonDias,
                 'pagado' => $pagado,
                 'hora' => $hora,
                 'fecha_pago' => $fechaPago,
@@ -241,15 +247,18 @@ class Schedule extends Component
             }
         }
         $sumOtrosExon = 0;
+        $sumOtrosExonDias = 0;
         ksort($restos);
         foreach ($restos as $f => $info) {
             $tt++;
             $mora = isset($moraUsada[$f]) ? 0.0 : (float) ($payMora[$f] ?? 0);
             $moraUsada[$f] = true;
-            $moraExon = round($exonResto[$f] ?? 0, 2);
+            $moraExon = round($exonResto[$f]['monto'] ?? 0, 2);
+            $moraExonDias = (int) ($exonResto[$f]['dias'] ?? 0);
             $sumOtros += (float) $info['monto'];
             $sumOtrosMora += $mora;
             $sumOtrosExon += $moraExon;
+            $sumOtrosExonDias += $moraExonDias;
             $otrosRows[] = [
                 'tipo' => 'otro',
                 'n' => $tt,
@@ -259,6 +268,7 @@ class Schedule extends Component
                 'total' => 0,
                 'mora' => $mora,
                 'mora_exon' => $moraExon,
+                'mora_exon_dias' => $moraExonDias,
                 'pagado' => (float) $info['monto'],
                 'hora' => $info['hora'],
                 'fecha_pago' => $f,
@@ -277,6 +287,7 @@ class Schedule extends Component
             'sumOtros' => $sumOtros,
             'sumOtrosMora' => $sumOtrosMora,
             'sumOtrosExon' => $sumOtrosExon,
+            'sumOtrosExonDias' => $sumOtrosExonDias,
             'saldo' => $saldo,
             'totalGeneral' => $totalGeneral,
         ]);
