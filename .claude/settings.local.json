@@ -122,20 +122,13 @@
       "Bash(perl -0pi -e 's/\\\\/\\\\*\\\\* Formato de moneda \\\\+ alineación centrada en el rango de datos \\\\\\(ShouldAutoSize maneja anchos\\\\\\)\\\\. \\\\*\\\\//\\\\/** Formato de moneda + alineación centrada en el rango de datos. *\\\\//' app/Exports/CancelledExport.php app/Exports/ClientHistoryExport.php)",
       "Bash(./vendor/bin/pint app/Http/Controllers/PaymentController.php app/Http/Controllers/ReportController.php)",
       "Bash(awk *)",
-      "Bash(echo \"ARTISAN_EXIT=$?\")",
-      "Bash(echo \"RUNALL_EXIT=$?\")",
-      "Read(//usr/local/mysql/bin/**)",
-      "Bash(mysqldump --version)",
-      "Read(//opt/homebrew/opt/mysql/bin/**)",
-      "Read(//opt/homebrew/Cellar/**)",
-      "Bash(lsof -nP -iTCP:3306 -sTCP:LISTEN)",
-      "Bash(gzip -t laravel_prestamo_2026-06-21.sql.gz)",
-      "Bash(gzip -dc laravel_prestamo_2026-06-21.sql.gz)",
-      "Bash(echo \"tablas: $\\(gzip -dc laravel_prestamo_2026-06-21.sql.gz)",
-      "Bash(git restore *)",
-      "Bash(tee /private/tmp/claude-501/-Users-antony-projects-prestamoh/f760989d-db9f-4fa0-b62f-73198af1cef6/scratchpad/expedientes_duplicados.txt)",
-      "Bash(./vendor/bin/pint app/Livewire/Payments/Create.php)",
-      "Bash(git checkout *)"
+      "Bash(git -C /Users/antony/projects/prestamoh branch --show-current)",
+      "Bash(git -C /Users/antony/projects/prestamoh log --oneline -3 main)",
+      "Bash(git *)",
+      "Bash(/Users/antony/Library/Application Support/Herd/bin/php84 artisan *)",
+      "Bash(\"/Users/antony/Library/Application Support/Herd/bin/php84\" artisan migrate --force)",
+      "Bash('/Users/antony/Library/Application Support/Herd/bin/php84' artisan tinker '--execute= *)",
+      "Bash(./vendor/bin/pint --dirty)"
     ]
   }
 }
