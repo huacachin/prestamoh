@@ -8,9 +8,10 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Mora exonerada teórica por cuota: días de atraso entre el vencimiento y la
- * fecha de pago real × tarifa diaria (mora2 semanal / mora1 resto), menos la
- * mora cobrada en la cuota. La fecha de pago real se reconstruye con FIFO
- * porque installments.fecha_pago guarda el vencimiento, no el día del pago.
+ * fecha de pago real × mora diaria (5% de la cuota ÷7 semanal / ÷30 mensual;
+ * diarios con su mora1 histórico — ver Credit::moraDiaria()), menos la mora
+ * cobrada en la cuota. La fecha de pago real se reconstruye con FIFO porque
+ * installments.fecha_pago guarda el vencimiento, no el día del pago.
  *
  * Misma lógica que el cronograma público (App\Livewire\Credits\Schedule);
  * si se ajusta una, ajustar la otra.
@@ -21,11 +22,6 @@ class MoraExonerada
     public static function porCuota(Credit $credit): array
     {
         $tipoPlanilla = (int) $credit->tipo_planilla;
-        $rate = (float) ($tipoPlanilla === 1 ? $credit->mora2 : $credit->mora1);
-
-        if ($rate <= 0) {
-            return [];
-        }
 
         $installments = DB::table('credit_installments')
             ->where('credit_id', $credit->id)
@@ -133,6 +129,7 @@ class MoraExonerada
                 }
             }
 
+            $rate = $credit->moraDiaria((float) $ins->importe_cuota + (float) $ins->importe_interes);
             $monto = round(max(0, $dias * $rate - $mora), 2);
             if ($monto > 0) {
                 $out[(int) $ins->num_cuota] = ['monto' => $monto, 'dias' => $dias];

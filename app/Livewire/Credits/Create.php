@@ -5,8 +5,10 @@ namespace App\Livewire\Credits;
 use App\Models\Client;
 use App\Models\Credit;
 use App\Models\User;
+use App\Support\Audit;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Livewire\Component;
 
 class Create extends Component
@@ -148,14 +150,17 @@ class Create extends Component
         $intePct = (float) $this->inte;
         $interes2 = $cap * $intePct / 100;
         $tipo = $this->seletipl;
+        $nCuotas = max(1, (int) $this->cuot);
+        // Regla vigente: mora diaria = 5% de la cuota ÷7 (semanal) / ÷30 (mensual).
+        // Los diarios mantienen la fórmula legacy (interés/26).
+        $cuota = ($cap + $interes2) / $nCuotas;
 
         if ($tipo === '1') {           // Semanal
-            $cuota = ($cap + $interes2) / 4;
-            $this->moracc = round($cuota * ($intePct * 2) / 100 / 30, 2);
+            $this->moracc = round($cuota * Credit::TASA_MORA_PCT / 100 / 7, 2);
             $this->moraii = round($interes2 / 30, 2);
         } elseif ($tipo === '3') {     // Mensual
             $this->moracc = round($interes2 * ($intePct * 2) / 100 / 30, 2);
-            $this->moraii = round($interes2 / 30, 2);
+            $this->moraii = round($cuota * Credit::TASA_MORA_PCT / 100 / 30, 2);
         } elseif ($tipo === '4') {     // Diario
             $this->moracc = round($interes2 / 26, 2);
             $this->moraii = round($interes2 / 26, 2);
@@ -249,9 +254,9 @@ class Create extends Component
                 'idcan' => null,
                 'fecha_vencimiento' => null, // se actualiza al final
                 'fecha_cancelacion' => null,
-                'asesor' => \Illuminate\Support\Str::ucfirst($this->nomasesores),
+                'asesor' => Str::ucfirst($this->nomasesores),
                 'user_id' => auth()->id(),
-                'usuario' => \Illuminate\Support\Str::ucfirst(auth()->user()->username),
+                'usuario' => Str::ucfirst(auth()->user()->username),
                 'headquarter_id' => 1,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -439,7 +444,7 @@ class Create extends Component
             }
         });
 
-        \App\Support\Audit::log('Creó el crédito #'.$this->codpre_);
+        Audit::log('Creó el crédito #'.$this->codpre_);
 
         session()->flash('credit_success', 'Crédito #'.$this->codpre_.' creado.');
 

@@ -8,6 +8,22 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Credit extends Model
 {
+    /** Tasa de mora fija por cuota: 5% de la cuota, ÷7 semanal / ÷30 mensual */
+    public const TASA_MORA_PCT = 5;
+
+    /**
+     * Mora diaria según la regla del 5% por cuota (aplica a créditos vigentes
+     * y nuevos). Los diarios (tipo 4) mantienen su mora1 histórico.
+     */
+    public function moraDiaria(float $cuota): float
+    {
+        return match ((int) $this->tipo_planilla) {
+            1 => round($cuota * self::TASA_MORA_PCT / 100 / 7, 2),
+            3 => round($cuota * self::TASA_MORA_PCT / 100 / 30, 2),
+            default => (float) $this->mora1,
+        };
+    }
+
     protected $fillable = [
         'client_id', 'fecha_prestamo', 'fecha_actualizacion', 'importe', 'cuotas',
         'tipo_planilla', 'interes', 'interes_total', 'mora', 'mora1', 'mora2',
@@ -17,15 +33,15 @@ class Credit extends Model
     ];
 
     protected $casts = [
-        'fecha_prestamo'      => 'date',
+        'fecha_prestamo' => 'date',
         'fecha_actualizacion' => 'date',
-        'fecha_vencimiento'   => 'date',
-        'fecha_cancelacion'   => 'date',
-        'importe'           => 'decimal:2',
-        'interes'           => 'decimal:4',
-        'interes_total'     => 'decimal:2',
-        'mora'              => 'decimal:2',
-        'refinanciado'      => 'boolean',
+        'fecha_vencimiento' => 'date',
+        'fecha_cancelacion' => 'date',
+        'importe' => 'decimal:2',
+        'interes' => 'decimal:4',
+        'interes_total' => 'decimal:2',
+        'mora' => 'decimal:2',
+        'refinanciado' => 'boolean',
     ];
 
     public function client(): BelongsTo

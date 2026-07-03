@@ -105,8 +105,8 @@ class Schedule extends Component
             }
         }
 
-        // Tarifa diaria de mora (mora2 para semanales, mora1 para el resto)
-        $moraRate = (float) ($tipoPlanilla === 1 ? $this->credit->mora2 : $this->credit->mora1);
+        // Mora diaria: 5% de la cuota ÷7 semanal / ÷30 mensual (diarios: mora1
+        // histórico) — regla centralizada en Credit::moraDiaria().
 
         // ─── Filas del cronograma ────────────────────────────────────────
         $rows = [];
@@ -147,6 +147,7 @@ class Schedule extends Component
             // sí se cobró en la cuota. Informativa: no afecta los totales.
             $moraExon = 0.0;
             $moraExonDias = 0;
+            $moraRate = $this->credit->moraDiaria((float) $ins->importe_cuota + (float) $ins->importe_interes);
             if ($fechaPago !== '' && $ins->fecha_vencimiento && $moraRate > 0) {
                 $vencC = Carbon::parse($ins->fecha_vencimiento);
                 $diff = (int) floor($vencC->diffInDays(Carbon::parse($fechaPago), false));

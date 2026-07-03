@@ -229,18 +229,20 @@ class Create extends Component
     }
 
     /**
-     * Mora calculada a una fecha dada, con las mismas reglas del legacy:
-     * días desde el vencimiento impago más antiguo hasta $al (mensual: días
-     * calendario; semanal/diario: excluye sábados y domingos), menos
-     * "Descontar Días" (diasf), × tasa de mora del crédito (mora2 semanal /
-     * mora1 resto). dias_atraso puede ser negativo si aún no vence (solo
-     * display; la mora queda en 0 por el max).
+     * Mora calculada a una fecha dada: días desde el vencimiento impago más
+     * antiguo hasta $al (mensual: días calendario; semanal/diario: excluye
+     * sábados y domingos), menos "Descontar Días" (diasf), × mora diaria.
+     * Mora diaria = 5% de la cuota vencida ÷7 (semanal) / ÷30 (mensual);
+     * los diarios mantienen su mora1 histórico. dias_atraso puede ser
+     * negativo si aún no vence (solo display; la mora queda en 0 por el max).
      */
     private function moraCalcAt(Carbon $al): array
     {
-        $minFecha = DB::table('credit_installments')->where('credit_id', $this->credit->id)
-            ->where('pagado', 0)->where('importe_cuota', '>', 0)->min('fecha_vencimiento');
-        $minFechaStr = $minFecha ? Carbon::parse($minFecha)->format('Y-m-d') : null;
+        $minIns = DB::table('credit_installments')->where('credit_id', $this->credit->id)
+            ->where('pagado', 0)->where('importe_cuota', '>', 0)
+            ->orderBy('fecha_vencimiento')
+            ->first(['fecha_vencimiento', 'importe_cuota', 'importe_interes']);
+        $minFechaStr = $minIns?->fecha_vencimiento ? Carbon::parse($minIns->fecha_vencimiento)->format('Y-m-d') : null;
 
         $diasddd = 0;
         if ($minFechaStr) {
@@ -263,7 +265,8 @@ class Create extends Component
         }
         $diasFinal = max(0, (int) $diasddd - (int) $this->diasf);
 
-        $moraRate = (float) (((int) $this->credit->tipo_planilla === 1) ? $this->credit->mora2 : $this->credit->mora1);
+        $cuotaVencida = $minIns ? (float) $minIns->importe_cuota + (float) $minIns->importe_interes : 0.0;
+        $moraRate = $this->credit->moraDiaria($cuotaVencida);
 
         return [
             'fecha_venc' => $minFechaStr,

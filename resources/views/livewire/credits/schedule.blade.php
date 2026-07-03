@@ -47,8 +47,14 @@
                 <tr>
                     <td style="background-color:#f0f0f0;">DNI</td>
                     <td>{{ $credit->client?->documento }}</td>
-                    <td style="background-color:#f0f0f0;">Tasa %</td>
+                    <td style="background-color:#f0f0f0;">Tasa I. %</td>
                     <td>{{ round($credit->interes, 2) }}</td>
+                </tr>
+                <tr>
+                    <td style="background-color:#f0f0f0;">Tasa M. %</td>
+                    <td>{{ \App\Models\Credit::TASA_MORA_PCT }}% por cuota</td>
+                    <td style="background-color:#f0f0f0;"></td>
+                    <td></td>
                 </tr>
                 <tr>
                     <td style="background-color:#f0f0f0;">N° Expediente</td>
