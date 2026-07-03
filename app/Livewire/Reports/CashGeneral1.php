@@ -5,20 +5,28 @@ namespace App\Livewire\Reports;
 use App\Models\Credit;
 use App\Services\CajaDailyService;
 use Carbon\Carbon;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class CashGeneral1 extends Component
 {
+    #[Url(as: 'mes')]
     public $selemes;
 
+    #[Url(as: 'anio')]
     public $selecano;
 
+    #[Url(as: 'tipo', except: '0000')]
     public $seletipl = '0000';
 
     public function mount()
     {
-        $this->selemes = date('m');
-        $this->selecano = date('Y');
+        if (! request()->has('mes')) {
+            $this->selemes = date('m');
+        }
+        if (! request()->has('anio')) {
+            $this->selecano = date('Y');
+        }
     }
 
     public function search() {}

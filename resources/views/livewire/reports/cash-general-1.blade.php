@@ -135,7 +135,7 @@
                                                 {{-- INGRESOS --}}
                                                 @if($ing)
                                                     <td class="text-center">
-                                                        <a href="{{ route('cash.incomes', ['compra' => $ing['credit_id'], 'tipo' => 2, 'fei' => $day['date'], 'fef' => $day['date']]) }}" target="_blank">{{ $ing['credit_id'] }}</a>
+                                                        <a href="{{ route('cash.incomes', ['buscar' => $ing['credit_id'], 'tipo' => 2, 'desde' => $day['date'], 'hasta' => $day['date']]) }}" target="_blank">{{ $ing['credit_id'] }}</a>
                                                     </td>
                                                     <td class="col-cliente" title="{{ $ing['cliente'] }}"><span class="ellip">{{ $ing['cliente'] }}</span></td>
                                                     <td>{{ $ing['detalle'] }}</td>

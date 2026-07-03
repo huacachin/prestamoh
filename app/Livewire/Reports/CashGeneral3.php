@@ -6,30 +6,38 @@ use App\Models\Expense;
 use App\Models\Income;
 use App\Models\Payment;
 use Carbon\Carbon;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class CashGeneral3 extends Component
 {
+    #[Url(as: 'mes')]
     public $month;
+
+    #[Url(as: 'anio')]
     public $year;
 
     public function mount()
     {
-        $this->month = (int) date('m');
-        $this->year  = (int) date('Y');
+        if (! request()->has('mes')) {
+            $this->month = (int) date('m');
+        }
+        if (! request()->has('anio')) {
+            $this->year = (int) date('Y');
+        }
     }
 
     public function search() {}
 
     public function render()
     {
-        $year  = (int) $this->year;
+        $year = (int) $this->year;
         $month = (int) $this->month;
 
         $startMonth = Carbon::create($year, $month, 1)->format('Y-m-d');
-        $endMonth   = Carbon::create($year, $month)->endOfMonth()->format('Y-m-d');
-        $today      = Carbon::today()->format('Y-m-d');
-        $endLimit   = min($endMonth, $today);
+        $endMonth = Carbon::create($year, $month)->endOfMonth()->format('Y-m-d');
+        $today = Carbon::today()->format('Y-m-d');
+        $endLimit = min($endMonth, $today);
 
         // ─── PRECARGAS (1 query c/u) ───────────────────────────────────
         // INTERES y MORA por día (legacy: huaca_totcaj3.interes y .mora)
@@ -37,7 +45,7 @@ class CashGeneral3 extends Component
             ->where('fecha', '>=', $startMonth)
             ->where('fecha', '<=', $endLimit)
             ->whereIn('tipo', ['INTERES', 'MORA'])
-            ->selectRaw("DATE(fecha) as f, tipo, SUM(monto) as total")
+            ->selectRaw('DATE(fecha) as f, tipo, SUM(monto) as total')
             ->groupBy('f', 'tipo')
             ->get()
             ->groupBy('f');
@@ -64,23 +72,25 @@ class CashGeneral3 extends Component
         $rows = [];
         $balanceAcumulado = 0; // legacy: $totalImporte0
         $sumIngresoTotal = 0;
-        $sumEgresoTotal  = 0;
+        $sumEgresoTotal = 0;
         $daysInMonth = Carbon::create($year, $month)->daysInMonth;
 
         for ($d = 1; $d <= $daysInMonth; $d++) {
             $date = Carbon::create($year, $month, $d)->format('Y-m-d');
-            if ($date > $today) break;
+            if ($date > $today) {
+                break;
+            }
 
             $items = [];
             $cont = 0;
             $cuacaj22 = 0;
             $sumIngresoDay = 0;
-            $sumEgresoDay  = 0;
+            $sumEgresoDay = 0;
 
             // 1. INTERES y MORA del día (legacy: huaca_totcaj3)
             $payTotals = $payTotalsByDate->get($date, collect());
             $interes = (float) ($payTotals->where('tipo', 'INTERES')->first()->total ?? 0);
-            $mora    = (float) ($payTotals->where('tipo', 'MORA')->first()->total ?? 0);
+            $mora = (float) ($payTotals->where('tipo', 'MORA')->first()->total ?? 0);
 
             if ($interes > 0 || $mora > 0) {
                 $cont++;
@@ -122,7 +132,7 @@ class CashGeneral3 extends Component
                 $cont++;
                 $items[] = [
                     'n' => $cont, 'fecha' => $date,
-                    'cliente' => trim(($inc->reason ?? '') . ' ' . ($inc->asesor ?? '')),
+                    'cliente' => trim(($inc->reason ?? '').' '.($inc->asesor ?? '')),
                     'detalle' => $inc->detail ?? '',
                     'ingreso' => (float) $inc->total, 'egreso' => 0,
                 ];
@@ -131,20 +141,22 @@ class CashGeneral3 extends Component
                 $balanceAcumulado += (float) $inc->total;
             }
 
-            if ($cuacaj22 == 0) continue;
+            if ($cuacaj22 == 0) {
+                continue;
+            }
 
             $saldoDia = $balanceAcumulado - $sumEgresoDay;
             $balanceAcumulado = $saldoDia;
             $sumIngresoTotal += $sumIngresoDay;
-            $sumEgresoTotal  += $sumEgresoDay;
+            $sumEgresoTotal += $sumEgresoDay;
 
             $rows[] = [
-                'date'           => $date,
-                'date_label'     => Carbon::parse($date)->translatedFormat('l d \\d\\e F Y'),
-                'items'          => $items,
-                'total_ingreso'  => $sumIngresoDay,
-                'total_egreso'   => $sumEgresoDay,
-                'saldo'          => $saldoDia,
+                'date' => $date,
+                'date_label' => Carbon::parse($date)->translatedFormat('l d \\d\\e F Y'),
+                'items' => $items,
+                'total_ingreso' => $sumIngresoDay,
+                'total_egreso' => $sumEgresoDay,
+                'saldo' => $saldoDia,
             ];
         }
 
@@ -173,15 +185,15 @@ class CashGeneral3 extends Component
 
         return view('livewire.reports.cash-general-3', [
             'report' => [
-                'days'            => $rows,
-                'total_ingresos'  => $sumIngresoTotal,
-                'total_egresos'   => $sumEgresoTotal,
+                'days' => $rows,
+                'total_ingresos' => $sumIngresoTotal,
+                'total_egresos' => $sumEgresoTotal,
                 'balance_general' => $balanceAcumulado,
-                'total_interes'   => $totalInteresMes,
-                'total_mora'      => $totalMoraMes,
-                'by_advisor'      => $byAdvisorRaw,
-                'total_advisor'   => $totGm,
-                'total_resumen'   => $newMonto,
+                'total_interes' => $totalInteresMes,
+                'total_mora' => $totalMoraMes,
+                'by_advisor' => $byAdvisorRaw,
+                'total_advisor' => $totGm,
+                'total_resumen' => $newMonto,
             ],
         ]);
     }

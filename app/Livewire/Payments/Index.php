@@ -3,12 +3,18 @@
 namespace App\Livewire\Payments;
 
 use App\Models\Credit;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class Index extends Component
 {
-    public string $nombre  = ''; // DNI
+    #[Url(as: 'dni', except: '')]
+    public string $nombre = ''; // DNI
+
+    #[Url(as: 'nombre', except: '')]
     public string $nombre1 = ''; // Nombre
+
+    #[Url(as: 'codigo', except: '')]
     public string $codigo1 = ''; // Código
 
     public function render()
@@ -34,14 +40,14 @@ class Index extends Component
             $term = trim($this->nombre1);
             $query->whereHas('client', function ($c) use ($term) {
                 $c->where('nombre', 'like', "%{$term}%")
-                  ->orWhere('apellido_pat', 'like', "%{$term}%")
-                  ->orWhere('apellido_mat', 'like', "%{$term}%");
+                    ->orWhere('apellido_pat', 'like', "%{$term}%")
+                    ->orWhere('apellido_mat', 'like', "%{$term}%");
             });
         }
 
         // Filtro Código
         if (trim($this->codigo1) !== '') {
-            $query->where('id', 'like', '%' . trim($this->codigo1) . '%');
+            $query->where('id', 'like', '%'.trim($this->codigo1).'%');
         }
 
         $credits = $query->orderBy('id', 'asc')->get();

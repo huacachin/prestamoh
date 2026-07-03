@@ -4,32 +4,46 @@ namespace App\Livewire\Reports;
 
 use App\Models\Credit;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class Cancelled extends Component
 {
+    #[Url(as: 'mes')]
     public $selemes;
 
+    #[Url(as: 'anio')]
     public $selecano;
 
+    #[Url(as: 'tipo', except: '')]
     public $seletipl = '';
 
+    #[Url(as: 'interes', except: '')]
     public $intereses = '';
 
+    #[Url(as: 'expediente', except: '')]
     public $exp = '';
 
+    #[Url(as: 'codigo', except: '')]
     public $codigo = '';
 
+    #[Url(as: 'dni', except: '')]
     public $cdni = '';
 
+    #[Url(as: 'nombre', except: '')]
     public $cnombre = '';
 
+    #[Url(as: 'asesor', except: '')]
     public $casesor = '';
 
     public function mount()
     {
-        $this->selemes = date('m');
-        $this->selecano = date('Y');
+        if (! request()->has('mes')) {
+            $this->selemes = date('m');
+        }
+        if (! request()->has('anio')) {
+            $this->selecano = date('Y');
+        }
     }
 
     public function search() {}

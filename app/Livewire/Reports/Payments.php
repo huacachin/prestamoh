@@ -4,20 +4,31 @@ namespace App\Livewire\Reports;
 
 use App\Models\Payment;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class Payments extends Component
 {
+    #[Url(as: 'tipo', except: '1')]
     public $tipo = '1';   // 1=A (cliente), 2=Motivo, 3=Asesor, 4=Usuario
+
+    #[Url(as: 'buscar', except: '')]
     public $compra = '';
+
+    #[Url(as: 'desde')]
     public $fei;
+
+    #[Url(as: 'hasta')]
     public $fef;
 
     public function mount()
     {
-        $this->fei = Carbon::today()->format('Y-m-d');
-        $this->fef = Carbon::today()->format('Y-m-d');
+        if (! request()->has('desde')) {
+            $this->fei = Carbon::today()->format('Y-m-d');
+        }
+        if (! request()->has('hasta')) {
+            $this->fef = Carbon::today()->format('Y-m-d');
+        }
     }
 
     public function search() {}
@@ -29,8 +40,12 @@ class Payments extends Component
             ->with(['credit:id,client_id', 'credit.client:id,nombre,apellido_pat,apellido_mat'])
             ->where('modo', 'CREDITO');
 
-        if ($this->fei) $base->where('fecha', '>=', $this->fei);
-        if ($this->fef) $base->where('fecha', '<=', $this->fef);
+        if ($this->fei) {
+            $base->where('fecha', '>=', $this->fei);
+        }
+        if ($this->fef) {
+            $base->where('fecha', '<=', $this->fef);
+        }
 
         if ($this->compra !== '') {
             $term = $this->compra;
@@ -38,8 +53,8 @@ class Payments extends Component
                 case '1':
                     $base->whereHas('credit.client', function ($q) use ($term) {
                         $q->where('nombre', 'like', "%{$term}%")
-                          ->orWhere('apellido_pat', 'like', "%{$term}%")
-                          ->orWhere('apellido_mat', 'like', "%{$term}%");
+                            ->orWhere('apellido_pat', 'like', "%{$term}%")
+                            ->orWhere('apellido_mat', 'like', "%{$term}%");
                     });
                     break;
                 case '2':
@@ -64,22 +79,22 @@ class Payments extends Component
         // Agrupacion por (credit_id + fecha) para mostrar fila por agrupacion
         $rows = [];
         $contador = 0;
-        foreach ($payments->groupBy(fn ($p) => $p->credit_id . '|' . $p->fecha->format('Y-m-d')) as $group) {
+        foreach ($payments->groupBy(fn ($p) => $p->credit_id.'|'.$p->fecha->format('Y-m-d')) as $group) {
             $first = $group->first();
             $contador++;
             $rows[] = [
-                'n'        => $contador,
-                'fecha'    => $first->fecha->format('Y-m-d'),
-                'hora'     => $first->hora,
-                'usuario'  => $first->usuario,
-                'asesor'   => $first->asesor,
-                'cliente'  => $first->credit?->client
-                    ? trim(($first->credit->client->apellido_pat ?? '') . ' ' . ($first->credit->client->apellido_mat ?? '') . ' ' . ($first->credit->client->nombre ?? ''))
+                'n' => $contador,
+                'fecha' => $first->fecha->format('Y-m-d'),
+                'hora' => $first->hora,
+                'usuario' => $first->usuario,
+                'asesor' => $first->asesor,
+                'cliente' => $first->credit?->client
+                    ? trim(($first->credit->client->apellido_pat ?? '').' '.($first->credit->client->apellido_mat ?? '').' '.($first->credit->client->nombre ?? ''))
                     : '',
-                'detalle'  => $first->detalle,
-                'monto'    => $group->sum('monto'),
-                'moneda'   => $first->moneda,
-                'latitud'  => $first->latitud,
+                'detalle' => $first->detalle,
+                'monto' => $group->sum('monto'),
+                'moneda' => $first->moneda,
+                'latitud' => $first->latitud,
                 'longitud' => $first->longitud,
             ];
         }
@@ -95,19 +110,19 @@ class Payments extends Component
             ->first();
 
         $totals = [
-            'total'   => (float) ($totalsAgg->total ?? 0),
+            'total' => (float) ($totalsAgg->total ?? 0),
             'capital' => (float) ($totalsAgg->capital ?? 0),
             'interes' => (float) ($totalsAgg->interes ?? 0),
-            'mora'    => (float) ($totalsAgg->mora ?? 0),
-            'fijos'   => 0, // legacy: modo='Fijos' (no aplica en payments / CREDITO)
-            'otros'   => 0, // legacy: modo='Otros' (no aplica en payments / CREDITO)
+            'mora' => (float) ($totalsAgg->mora ?? 0),
+            'fijos' => 0, // legacy: modo='Fijos' (no aplica en payments / CREDITO)
+            'otros' => 0, // legacy: modo='Otros' (no aplica en payments / CREDITO)
         ];
 
         $isAdmin = auth()->user()?->can('transacciones.autorizar') ?? false;
 
         return view('livewire.reports.payments', [
-            'rows'    => $rows,
-            'totals'  => $totals,
+            'rows' => $rows,
+            'totals' => $totals,
             'isAdmin' => $isAdmin,
         ]);
     }

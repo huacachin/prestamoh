@@ -4,37 +4,32 @@ namespace App\Livewire\Cash;
 
 use App\Models\Income;
 use App\Models\Payment;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class Incomes extends Component
 {
+    #[Url(as: 'tipo', except: '1')]
     public string $tipo = '1';   // 1=A, 2=Motivo, 3=Asesor, 4=Usuario
 
+    #[Url(as: 'buscar', except: '')]
     public string $compra = '';
 
+    #[Url(as: 'desde')]
     public string $fei = '';
 
+    #[Url(as: 'hasta')]
     public string $fef = '';
 
     public function mount(): void
     {
-        $this->fei = now()->format('Y-m-d');
-        $this->fef = now()->format('Y-m-d');
-
-        // Permite enlazar desde el Reporte Caja 1 (CDG de INGRESOS), igual que el
-        // legacy: ingresos.php?compra={credito}&tipo=2&fei={fecha}&fef={fecha}
-        $q = request()->query();
-        if (isset($q['compra'])) {
-            $this->compra = (string) $q['compra'];
+        // Default hoy salvo que la URL traiga la fecha (persistencia al refrescar
+        // + deep-link desde el Reporte Caja 1: ?buscar={credito}&tipo=2&desde=&hasta=).
+        if (! request()->has('desde')) {
+            $this->fei = now()->format('Y-m-d');
         }
-        if (isset($q['tipo']) && $q['tipo'] !== '') {
-            $this->tipo = (string) $q['tipo'];
-        }
-        if (isset($q['fei']) && $q['fei'] !== '') {
-            $this->fei = (string) $q['fei'];
-        }
-        if (isset($q['fef']) && $q['fef'] !== '') {
-            $this->fef = (string) $q['fef'];
+        if (! request()->has('hasta')) {
+            $this->fef = now()->format('Y-m-d');
         }
     }
 

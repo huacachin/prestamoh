@@ -3,22 +3,33 @@
 namespace App\Livewire\Clients;
 
 use App\Models\Client;
+use App\Models\Credit;
 use App\Models\User;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class Ceased extends Component
 {
+    #[Url(as: 'expediente', except: '')]
     public $nexpediente = '';
+
+    #[Url(as: 'documento', except: '')]
     public $documento = '';
+
+    #[Url(as: 'nombre', except: '')]
     public $nombre = '';
+
+    #[Url(as: 'ruta', except: '')]
     public $ruta = '';
+
+    #[Url(as: 'asesor', except: '')]
     public $ejecutivo = '';
 
     #[On('register_destroy')]
     public function reactivate(int $id): void
     {
-        if (!auth()->user()?->can('clientes.eliminar')) {
+        if (! auth()->user()?->can('clientes.eliminar')) {
             abort(403);
         }
         Client::findOrFail($id)->update(['status' => 'active']);
@@ -46,8 +57,8 @@ class Ceased extends Component
             $term = trim($this->nombre);
             $query->where(function ($q) use ($term) {
                 $q->where('nombre', 'like', "%{$term}%")
-                  ->orWhere('apellido_pat', 'like', "%{$term}%")
-                  ->orWhere('apellido_mat', 'like', "%{$term}%");
+                    ->orWhere('apellido_pat', 'like', "%{$term}%")
+                    ->orWhere('apellido_mat', 'like', "%{$term}%");
             });
         }
         if (trim($this->nexpediente) !== '') {
@@ -61,7 +72,7 @@ class Ceased extends Component
             }
         }
         if (trim($this->ruta) !== '') {
-            $query->where('zona', 'like', '%' . trim($this->ruta) . '%');
+            $query->where('zona', 'like', '%'.trim($this->ruta).'%');
         }
 
         $clients = $query->orderByRaw('CAST(expediente AS UNSIGNED) ASC')->get();
@@ -74,8 +85,8 @@ class Ceased extends Component
         // IDs de clientes con crédito vigente (para colorear)
         $clientIds = $clients->pluck('id')->toArray();
         $clientsWithCredit = [];
-        if (!empty($clientIds)) {
-            $clientsWithCredit = \App\Models\Credit::whereIn('client_id', $clientIds)
+        if (! empty($clientIds)) {
+            $clientsWithCredit = Credit::whereIn('client_id', $clientIds)
                 ->where('situacion', 'Activo')
                 ->distinct()
                 ->pluck('client_id')

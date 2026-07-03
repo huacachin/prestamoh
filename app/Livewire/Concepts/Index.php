@@ -3,12 +3,18 @@
 namespace App\Livewire\Concepts;
 
 use App\Models\Concept;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class Index extends Component
 {
+    #[Url(as: 'tipo', except: '2')]
     public $tipo = '2'; // 1=Codigo, 2=Nombre
+
+    #[Url(as: 'buscar', except: '')]
     public $compra = '';
+
+    #[Url(as: 'estado', except: 'Activo')]
     public $estados = 'Activo';
 
     public function render()

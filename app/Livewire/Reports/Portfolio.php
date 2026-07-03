@@ -5,28 +5,39 @@ namespace App\Livewire\Reports;
 use App\Models\Credit;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class Portfolio extends Component
 {
+    #[Url(as: 'mes', except: '')]
     public $selemes0 = '';
 
+    #[Url(as: 'anio', except: '')]
     public $selecano0 = '';
 
+    #[Url(as: 'tipo', except: '')]
     public $seletipl0 = '';
 
+    #[Url(as: 'expediente', except: '')]
     public $exp = '';
 
+    #[Url(as: 'codigo', except: '')]
     public $codigo = '';
 
+    #[Url(as: 'dni', except: '')]
     public $cdni = '';
 
+    #[Url(as: 'nombre', except: '')]
     public $cnombre = '';
 
+    #[Url(as: 'asesor', except: '')]
     public $casesor = '';
 
+    #[Url(as: 'desde', except: '')]
     public $fechai = '';
 
+    #[Url(as: 'hasta', except: '')]
     public $fechaf = '';
 
     public function search() {}

@@ -2,20 +2,28 @@
 
 namespace App\Livewire\Reports;
 
-use App\Models\Income;
 use App\Models\Expense;
+use App\Models\Income;
 use Carbon\Carbon;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class Cash extends Component
 {
+    #[Url(as: 'desde')]
     public $fecha_desde;
+
+    #[Url(as: 'hasta')]
     public $fecha_hasta;
 
     public function mount()
     {
-        $this->fecha_desde = Carbon::today()->startOfMonth()->format('Y-m-d');
-        $this->fecha_hasta = Carbon::today()->format('Y-m-d');
+        if (! request()->has('desde')) {
+            $this->fecha_desde = Carbon::today()->startOfMonth()->format('Y-m-d');
+        }
+        if (! request()->has('hasta')) {
+            $this->fecha_hasta = Carbon::today()->format('Y-m-d');
+        }
     }
 
     public function search()
@@ -45,8 +53,8 @@ class Cash extends Component
 
             $summary = (object) [
                 'total_ingresos' => $totalIngresos,
-                'total_egresos'  => $totalEgresos,
-                'balance'        => $totalIngresos - $totalEgresos,
+                'total_egresos' => $totalEgresos,
+                'balance' => $totalIngresos - $totalEgresos,
             ];
         }
 

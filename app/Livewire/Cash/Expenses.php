@@ -3,22 +3,31 @@
 namespace App\Livewire\Cash;
 
 use App\Models\Expense;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class Expenses extends Component
 {
+    #[Url(as: 'tipo', except: '1')]
     public string $tipo = '1';   // 1=A, 2=Motivo, 3=Usuario, 4=Respons.
 
+    #[Url(as: 'buscar', except: '')]
     public string $compra = '';
 
+    #[Url(as: 'desde')]
     public string $fei = '';
 
+    #[Url(as: 'hasta')]
     public string $fef = '';
 
     public function mount(): void
     {
-        $this->fei = now()->format('Y-m-d');
-        $this->fef = now()->format('Y-m-d');
+        if (! request()->has('desde')) {
+            $this->fei = now()->format('Y-m-d');
+        }
+        if (! request()->has('hasta')) {
+            $this->fef = now()->format('Y-m-d');
+        }
     }
 
     public function render()

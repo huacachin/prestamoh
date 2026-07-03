@@ -3,19 +3,23 @@
 namespace App\Livewire\Users;
 
 use App\Models\User;
+use App\Support\Audit;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class Index extends Component
 {
+    #[Url(as: 'buscar', except: '')]
     public $search = '';
 
+    #[Url(as: 'estado', except: 'active')]
     public $estado = 'active'; // active | inactive | all
 
     #[On('register_destroy')]
     public function destroy(int $id): void
     {
-        if (!auth()->user()?->can('configuracion.usuarios')) {
+        if (! auth()->user()?->can('configuracion.usuarios')) {
             abort(403);
         }
 
@@ -26,19 +30,19 @@ class Index extends Component
         }
 
         $user->update(['status' => 'inactive']);
-        \App\Support\Audit::log("Desactivó el usuario {$user->username} ({$user->name})", $user);
+        Audit::log("Desactivó el usuario {$user->username} ({$user->name})", $user);
         $this->dispatch('successAlert', ['message' => 'Usuario desactivado correctamente']);
     }
 
     public function reactivate(int $id): void
     {
-        if (!auth()->user()?->can('configuracion.usuarios')) {
+        if (! auth()->user()?->can('configuracion.usuarios')) {
             abort(403);
         }
 
         $user = User::findOrFail($id);
         $user->update(['status' => 'active']);
-        \App\Support\Audit::log("Reactivó el usuario {$user->username} ({$user->name})", $user);
+        Audit::log("Reactivó el usuario {$user->username} ({$user->name})", $user);
         $this->dispatch('successAlert', ['message' => 'Usuario reactivado correctamente']);
     }
 
@@ -53,12 +57,10 @@ class Index extends Component
 
         $users = User::query()
             ->when($this->estado !== 'all', fn ($q) => $q->where('status', $this->estado))
-            ->when($term !== '', fn ($q) =>
-                $q->where(fn ($w) =>
-                    $w->where('username', 'like', "%{$term}%")
-                      ->orWhere('name', 'like', "%{$term}%")
-                      ->orWhere('email', 'like', "%{$term}%")
-                )
+            ->when($term !== '', fn ($q) => $q->where(fn ($w) => $w->where('username', 'like', "%{$term}%")
+                ->orWhere('name', 'like', "%{$term}%")
+                ->orWhere('email', 'like', "%{$term}%")
+            )
             )
             ->with(['headquarter', 'roles', 'permissions'])
             ->orderBy('name')

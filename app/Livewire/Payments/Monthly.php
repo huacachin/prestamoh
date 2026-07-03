@@ -6,14 +6,18 @@ use App\Models\Credit;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class Monthly extends Component
 {
+    #[Url(as: 'asesor', except: 'Todos')]
     public $ejecutivo = 'Todos';
 
+    #[Url(as: 'estado', except: 'Vigente')]
     public $eestado = 'Vigente'; // Vigente | Cancelado | Vencida
 
+    #[Url(as: 'codigo', except: '')]
     public $codio1 = '';
 
     public function search() {}

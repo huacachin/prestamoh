@@ -5,24 +5,33 @@ namespace App\Livewire\Reports;
 use App\Services\CajaDailyService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class CreditStatistics extends Component
 {
+    #[Url(as: 'mes')]
     public $selemes;
 
+    #[Url(as: 'anio')]
     public $selecano;
 
+    #[Url(as: 'tipo', except: '')]
     public $seletipl = '';
 
+    #[Url(as: 'asesor', except: 'Todos')]
     public $nomasesores = 'Todos';
 
     public array $rates = [0.01, 3, 4, 5, 5.2, 6, 6.5, 7, 8, 10, 12, 15, 16, 20, 24, 36];
 
     public function mount()
     {
-        $this->selemes = date('m');
-        $this->selecano = date('Y');
+        if (! request()->has('mes')) {
+            $this->selemes = date('m');
+        }
+        if (! request()->has('anio')) {
+            $this->selecano = date('Y');
+        }
     }
 
     public function search() {}

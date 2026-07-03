@@ -9,30 +9,38 @@ use App\Models\Income;
 use App\Models\Payment;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class CashGeneral2 extends Component
 {
+    #[Url(as: 'mes')]
     public $month;
+
+    #[Url(as: 'anio')]
     public $year;
 
     public function mount()
     {
-        $this->month = (int) date('m');
-        $this->year  = (int) date('Y');
+        if (! request()->has('mes')) {
+            $this->month = (int) date('m');
+        }
+        if (! request()->has('anio')) {
+            $this->year = (int) date('Y');
+        }
     }
 
     public function search() {}
 
     public function render()
     {
-        $year  = (int) $this->year;
+        $year = (int) $this->year;
         $month = (int) $this->month;
 
         $startMonth = Carbon::create($year, $month, 1)->format('Y-m-d');
-        $endMonth   = Carbon::create($year, $month)->endOfMonth()->format('Y-m-d');
-        $today      = Carbon::today()->format('Y-m-d');
-        $endLimit   = min($endMonth, $today);
+        $endMonth = Carbon::create($year, $month)->endOfMonth()->format('Y-m-d');
+        $today = Carbon::today()->format('Y-m-d');
+        $endLimit = min($endMonth, $today);
 
         // ─── PRECARGAS DEL MES (1 query c/u) ───────────────────────────
         $allPayments = Payment::query()
@@ -93,9 +101,9 @@ class CashGeneral2 extends Component
 
         // Agrupar por fecha
         $paymentsByDate = $allPayments->groupBy(fn ($p) => $p->fecha->format('Y-m-d'));
-        $creditsByDate  = $allCredits->groupBy(fn ($c) => $c->fecha_actualizacion->format('Y-m-d'));
+        $creditsByDate = $allCredits->groupBy(fn ($c) => $c->fecha_actualizacion->format('Y-m-d'));
         $openingsByDate = $allOpenings->groupBy(fn ($o) => $o->fecha->format('Y-m-d'));
-        $incomesByDate  = $allIncomes->groupBy(fn ($i) => $i->date->format('Y-m-d'));
+        $incomesByDate = $allIncomes->groupBy(fn ($i) => $i->date->format('Y-m-d'));
         $expensesByDate = $allExpenses->groupBy(fn ($e) => $e->date->format('Y-m-d'));
 
         // ─── PROCESAR DÍA POR DÍA ──────────────────────────────────────
@@ -105,12 +113,14 @@ class CashGeneral2 extends Component
 
         for ($d = 1; $d <= $daysInMonth; $d++) {
             $date = Carbon::create($year, $month, $d)->format('Y-m-d');
-            if ($date > $today) break;
+            if ($date > $today) {
+                break;
+            }
 
             $items = [];
             $cont = 0;
             $sumIngresoDay = 0;
-            $sumEgresoDay  = 0;
+            $sumEgresoDay = 0;
 
             // 1. APERTURA DE MES (caja)
             foreach ($openingsByDate->get($date, collect()) as $op) {
@@ -181,25 +191,27 @@ class CashGeneral2 extends Component
                 $sumEgresoDay += (float) $exp->total;
             }
 
-            if (count($items) === 0) continue;
+            if (count($items) === 0) {
+                continue;
+            }
 
             // Saldo acumulado del día (legacy: $tottoto2 = $totalImporte0 - egresos)
             $saldoDia = $balanceAcumulado - $sumEgresoDay;
             $balanceAcumulado = $saldoDia; // reasignar como legacy
 
             $rows[] = [
-                'date'           => $date,
-                'date_label'     => Carbon::parse($date)->translatedFormat('l d \\d\\e F Y'),
-                'items'          => $items,
-                'total_ingreso'  => $sumIngresoDay,
-                'total_egreso'   => $sumEgresoDay,
-                'saldo'          => $saldoDia,
+                'date' => $date,
+                'date_label' => Carbon::parse($date)->translatedFormat('l d \\d\\e F Y'),
+                'items' => $items,
+                'total_ingreso' => $sumIngresoDay,
+                'total_egreso' => $sumEgresoDay,
+                'saldo' => $saldoDia,
             ];
         }
 
         return view('livewire.reports.cash-general-2', [
             'report' => [
-                'days'            => $rows,
+                'days' => $rows,
                 'balance_general' => $balanceAcumulado, // legacy: $totalImporte0 final
             ],
         ]);
@@ -216,7 +228,9 @@ class CashGeneral2 extends Component
 
         foreach ($byCredit as $cid => $pays) {
             $credit = $pays->first()->credit;
-            if (!$credit) continue;
+            if (! $credit) {
+                continue;
+            }
 
             $tipoplani = (int) $credit->tipo_planilla;
             $isRefi = (bool) $credit->refinanciado;

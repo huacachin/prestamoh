@@ -8,18 +8,25 @@ use App\Models\Payment;
 use App\Services\CajaDailyService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class CashStatistics extends Component
 {
+    #[Url(as: 'mes')]
     public $month;
 
+    #[Url(as: 'anio')]
     public $year;
 
     public function mount(): void
     {
-        $this->month = (int) now()->month;
-        $this->year = (int) now()->year;
+        if (! request()->has('mes')) {
+            $this->month = (int) now()->month;
+        }
+        if (! request()->has('anio')) {
+            $this->year = (int) now()->year;
+        }
     }
 
     public function search(): void {}

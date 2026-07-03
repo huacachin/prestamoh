@@ -3,29 +3,46 @@
 namespace App\Livewire\Clients;
 
 use App\Models\Client;
+use App\Models\Credit;
 use App\Models\User;
+use App\Support\Audit;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class Index extends Component
 {
+    #[Url(as: 'expediente', except: '')]
     public $nexpediente = '';
+
+    #[Url(as: 'documento', except: '')]
     public $documento = '';
+
+    #[Url(as: 'nombre', except: '')]
     public $nombre = '';
+
+    #[Url(as: 'ruta', except: '')]
     public $ruta = '';
+
+    #[Url(as: 'giro', except: '')]
     public $giro = '';
+
+    #[Url(as: 'asesor', except: '')]
     public $ejecutivo = '';
 
     // Modal de coordenadas (Casa / Negocio)
     public ?int $coordClientId = null;
+
     public string $coordTipo = '';        // 'casa' | 'negocio'
+
     public ?string $coordClientName = null;
+
     public string $coordPaste = '';
 
     #[On('register_destroy')]
     public function destroy(int $id): void
     {
-        if (!auth()->user()?->can('clientes.eliminar')) {
+        if (! auth()->user()?->can('clientes.eliminar')) {
             abort(403);
         }
         Client::findOrFail($id)->update(['status' => 'inactive']);
@@ -35,25 +52,26 @@ class Index extends Component
     /** Mismo gate que el botón Guardar de /clients/edit. */
     private function puedeGuardarCoords(): bool
     {
-        return !(auth()->user()?->can('clientes.scope-propio') ?? false);
+        return ! (auth()->user()?->can('clientes.scope-propio') ?? false);
     }
 
     public function openCoord(int $id, string $tipo): void
     {
-        if (!$this->puedeGuardarCoords()) {
+        if (! $this->puedeGuardarCoords()) {
             $this->dispatch('errorAlert', ['message' => 'No tienes permiso para registrar coordenadas.']);
+
             return;
         }
-        if (!in_array($tipo, ['casa', 'negocio'], true)) {
+        if (! in_array($tipo, ['casa', 'negocio'], true)) {
             return;
         }
 
         $client = Client::select('id', 'apellido_pat', 'apellido_mat', 'nombre')->findOrFail($id);
 
-        $this->coordClientId   = $client->id;
-        $this->coordTipo       = $tipo;
+        $this->coordClientId = $client->id;
+        $this->coordTipo = $tipo;
         $this->coordClientName = trim("{$client->apellido_pat} {$client->apellido_mat} {$client->nombre}");
-        $this->coordPaste      = '';
+        $this->coordPaste = '';
         $this->resetErrorBag();
 
         $this->dispatch('coord-open');
@@ -61,17 +79,19 @@ class Index extends Component
 
     public function saveCoord(): void
     {
-        if (!$this->puedeGuardarCoords()) {
+        if (! $this->puedeGuardarCoords()) {
             $this->dispatch('errorAlert', ['message' => 'No tienes permiso para registrar coordenadas.']);
+
             return;
         }
-        if (!$this->coordClientId || !in_array($this->coordTipo, ['casa', 'negocio'], true)) {
+        if (! $this->coordClientId || ! in_array($this->coordTipo, ['casa', 'negocio'], true)) {
             return;
         }
 
         $coords = $this->parseCoords($this->coordPaste);
-        if (!$coords) {
+        if (! $coords) {
             $this->dispatch('errorAlert', ['message' => 'Formato inválido. Pega las coordenadas como: -12.014431, -76.824936']);
+
             return;
         }
         [$lat, $lng] = $coords;
@@ -85,7 +105,7 @@ class Index extends Component
             $etiqueta = 'Negocio';
         }
 
-        \App\Support\Audit::log("Registró coordenadas ({$etiqueta}) del cliente ".$client->fullName(), $client);
+        Audit::log("Registró coordenadas ({$etiqueta}) del cliente ".$client->fullName(), $client);
 
         $this->dispatch('coord-close');
         $this->reset(['coordClientId', 'coordTipo', 'coordClientName', 'coordPaste']);
@@ -143,8 +163,8 @@ class Index extends Component
                 }
                 $query->where(function ($q) use ($word) {
                     $q->where('nombre', 'like', "%{$word}%")
-                      ->orWhere('apellido_pat', 'like', "%{$word}%")
-                      ->orWhere('apellido_mat', 'like', "%{$word}%");
+                        ->orWhere('apellido_pat', 'like', "%{$word}%")
+                        ->orWhere('apellido_mat', 'like', "%{$word}%");
                 });
             }
         }
@@ -159,10 +179,10 @@ class Index extends Component
             }
         }
         if (trim($this->ruta) !== '') {
-            $query->where('zona', 'like', '%' . trim($this->ruta) . '%');
+            $query->where('zona', 'like', '%'.trim($this->ruta).'%');
         }
         if (trim($this->giro) !== '') {
-            $query->where('giro', 'like', '%' . trim($this->giro) . '%');
+            $query->where('giro', 'like', '%'.trim($this->giro).'%');
         }
 
         $clients = $query->orderByRaw('CAST(expediente AS UNSIGNED) ASC')->get();
@@ -176,8 +196,8 @@ class Index extends Component
         // IDs de clientes con crédito vigente (para colorear)
         $clientIds = $clients->pluck('id')->toArray();
         $clientsWithCredit = [];
-        if (!empty($clientIds)) {
-            $clientsWithCredit = \App\Models\Credit::whereIn('client_id', $clientIds)
+        if (! empty($clientIds)) {
+            $clientsWithCredit = Credit::whereIn('client_id', $clientIds)
                 ->where('situacion', 'Activo')
                 ->distinct()
                 ->pluck('client_id')

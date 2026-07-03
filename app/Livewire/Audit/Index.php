@@ -4,6 +4,7 @@ namespace App\Livewire\Audit;
 
 use App\Models\User;
 use App\Support\Audit;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Spatie\Activitylog\Models\Activity;
@@ -18,12 +19,16 @@ class Index extends Component
 
     protected $paginationTheme = 'bootstrap';
 
+    #[Url(as: 'desde', except: '')]
     public string $desde = '';
 
+    #[Url(as: 'hasta', except: '')]
     public string $hasta = '';
 
+    #[Url(as: 'usuario', except: '')]
     public $causer = '';
 
+    #[Url(as: 'buscar', except: '')]
     public string $buscar = '';
 
     public function updated(): void
@@ -55,7 +60,7 @@ class Index extends Component
                 ->where('causer_type', User::class);
         }
         if (trim($this->buscar) !== '') {
-            $query->where('description', 'like', '%' . trim($this->buscar) . '%');
+            $query->where('description', 'like', '%'.trim($this->buscar).'%');
         }
 
         $logs = $query->paginate(30);
