@@ -165,6 +165,7 @@
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">Capital</label>
                         <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                               style="background-color:#fff9db;"
                                wire:model.live="capital" name="capital" autocomplete="off" placeholder="0.00">
                     </div>
                     <div class="col-md-3">
