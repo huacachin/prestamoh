@@ -611,7 +611,8 @@ class Create extends Component
                 'cap_hoy' => 0.0, 'int_hoy' => 0.0, 'cap_prox' => 0.0, 'int_prox' => 0.0,
                 'mora' => 0.0, 'mora_dias' => 0, 'mora_rate' => 0.0,
                 'total_hoy' => 0.0, 'total_prox' => 0.0,
-                'cap_pendiente_total' => 0.0, 'saldo_credito' => 0.0, 'total_cancelar' => 0.0];
+                'cap_pendiente_total' => 0.0, 'saldo_credito' => 0.0,
+                'cancelar_cap_int' => 0.0, 'total_cancelar' => 0.0];
         }
 
         $al = $al ?? now();
@@ -702,7 +703,10 @@ class Create extends Component
             'total_prox' => round($capProx + $intProx + $mora, 2),
             'cap_pendiente_total' => $capPendTotal,
             'saldo_credito' => $saldoCredito,
-            'total_cancelar' => round($saldoCredito + $mora, 2),
+            // Cancelar crédito: todo el capital pendiente + interés corrido A LA
+            // FECHA (no el interés futuro del cronograma). La mora va aparte.
+            'cancelar_cap_int' => round($capPendTotal + $intHoy, 2),
+            'total_cancelar' => round($capPendTotal + $intHoy + $mora, 2),
         ];
     }
 

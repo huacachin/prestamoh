@@ -363,16 +363,17 @@
                     <div class="col-md-4">
                         <div class="border rounded p-2 h-100 d-flex flex-column">
                             <div class="fw-bold small text-uppercase mb-1">Cancelar crédito</div>
-                            <div class="d-flex justify-content-between small"><span>Capital + Interés</span><span>{{ number_format($sim['saldo_credito'], 2) }}</span></div>
+                            <div class="d-flex justify-content-between small"><span>Capital pendiente</span><span>{{ number_format($sim['cap_pendiente_total'], 2) }}</span></div>
+                            <div class="d-flex justify-content-between small"><span>Interés a la fecha</span><span>{{ number_format($sim['int_hoy'], 2) }}</span></div>
                             <div class="d-flex justify-content-between small"><span>Mora</span><span style="color:red;">{{ number_format($sim['mora'], 2) }}</span></div>
                             <div class="d-flex justify-content-between fw-bold border-top mt-1 pt-1"><span>Total</span><span>{{ number_format($sim['total_cancelar'], 2) }}</span></div>
                             <div class="small text-muted mt-1">
-                                Todo el capital e interés pendiente del cronograma
+                                Todo el capital pendiente + interés corrido a la fecha
                             </div>
                             @if($simEsHoy)
                                 <button type="button" class="btn btn-sm btn-dark mt-auto"
-                                        wire:click="usarMonto({{ $sim['saldo_credito'] }})">
-                                    Usar {{ number_format($sim['saldo_credito'], 2) }} en Monto a Pagar
+                                        wire:click="usarMonto({{ $sim['cancelar_cap_int'] }})">
+                                    Usar {{ number_format($sim['cancelar_cap_int'], 2) }} en Monto a Pagar
                                 </button>
                             @endif
                         </div>
