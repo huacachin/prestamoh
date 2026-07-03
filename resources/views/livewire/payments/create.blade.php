@@ -70,6 +70,10 @@
                     color: #fff !important;
                 }
                 .pago-form .input-rojo::placeholder { color: #ffd6d6; }
+                /* Readonly informativos: plomo más oscuro que el bg-light del tema */
+                .pago-form .form-control.bg-light {
+                    background-color: #93a1b1 !important;
+                }
             </style>
             <div class="card shadow-sm">
                 <div class="card-body">
