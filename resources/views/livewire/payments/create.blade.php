@@ -318,17 +318,19 @@
                             <div class="fw-bold small text-uppercase mb-1">Ponerse al día</div>
                             <div class="d-flex justify-content-between small"><span>Capital</span><span>{{ number_format($sim['cap_hoy'], 2) }}</span></div>
                             <div class="d-flex justify-content-between small"><span>Interés</span><span>{{ number_format($sim['int_hoy'], 2) }}</span></div>
-                            <div class="d-flex justify-content-between small"><span>Mora</span><span style="color:red;">{{ number_format($sim['mora'], 2) }}</span></div>
+                            <div class="d-flex justify-content-between small">
+                                <span>Mora @if($sim['mora_dias'] > 0)({{ $sim['mora_dias'] }} {{ $sim['mora_dias'] === 1 ? 'día' : 'días' }} × {{ number_format($sim['mora_rate'], 2) }})@endif</span>
+                                <span style="color:red;">{{ number_format($sim['mora'], 2) }}</span>
+                            </div>
                             <div class="d-flex justify-content-between fw-bold border-top mt-1 pt-1"><span>Total</span><span>{{ number_format($sim['total_hoy'], 2) }}</span></div>
-                            <div class="small text-muted mt-1">
+
+                            <div class="rounded p-2 mt-2 mb-2 small text-muted" style="background:#f2f4f7;">
                                 {{ $sim['cuotas_vencidas'] }} cuota(s) vencida(s)
                                 @if($sim['dias_adic'] > 0)
                                     + {{ $sim['dias_adic'] }} día(s) del período en curso ({{ number_format($sim['cap_dia'] + $sim['int_dia'], 2) }}/día)
                                 @endif
-                                @if($sim['mora_dias'] > 0)
-                                    · Mora: {{ $sim['mora_dias'] }} día(s) × {{ number_format($sim['mora_rate'], 2) }}
-                                @endif
                             </div>
+
                             @if($simEsHoy)
                                 <button type="button" class="btn btn-sm btn-dark mt-auto"
                                         wire:click="usarMonto({{ $sim['cap_hoy'] + $sim['int_hoy'] }})">
@@ -343,14 +345,19 @@
                             <div class="fw-bold small text-uppercase mb-1">Hasta la próx. cuota</div>
                             <div class="d-flex justify-content-between small"><span>Capital</span><span>{{ number_format($sim['cap_prox'], 2) }}</span></div>
                             <div class="d-flex justify-content-between small"><span>Interés</span><span>{{ number_format($sim['int_prox'], 2) }}</span></div>
-                            <div class="d-flex justify-content-between small"><span>Mora</span><span style="color:red;">{{ number_format($sim['mora'], 2) }}</span></div>
+                            <div class="d-flex justify-content-between small">
+                                <span>Mora @if($sim['mora_dias'] > 0)({{ $sim['mora_dias'] }} {{ $sim['mora_dias'] === 1 ? 'día' : 'días' }} × {{ number_format($sim['mora_rate'], 2) }})@endif</span>
+                                <span style="color:red;">{{ number_format($sim['mora'], 2) }}</span>
+                            </div>
                             <div class="d-flex justify-content-between fw-bold border-top mt-1 pt-1"><span>Total</span><span>{{ number_format($sim['total_prox'], 2) }}</span></div>
-                            <div class="small text-muted mt-1">
+
+                            <div class="rounded p-2 mt-2 mb-2 small text-muted" style="background:#f2f4f7;">
                                 {{ $sim['cuotas_vencidas'] }} cuota(s) vencida(s)
                                 @if($sim['periodos'] > 0)
                                     + {{ $sim['periodos'] }} cuota(s) completa(s) del período en curso
                                 @endif
                             </div>
+
                             @if($simEsHoy)
                                 <button type="button" class="btn btn-sm btn-dark mt-auto"
                                         wire:click="usarMonto({{ $sim['cap_prox'] + $sim['int_prox'] }})">
@@ -379,9 +386,28 @@
                                 <span>{{ $cancelUltimaCuota ? 'Interés hasta la última cuota' : 'Interés a la fecha' }}</span>
                                 <span>{{ number_format($intCancelar, 2) }}</span>
                             </div>
-                            <div class="d-flex justify-content-between small"><span>Mora</span><span style="{{ $cancelSinMora ? $tachado : 'color:red;' }}">{{ number_format($sim['mora'], 2) }}</span></div>
-                            <div class="d-flex justify-content-between small"><span>Mora acumulada</span><span style="{{ $cancelSinMora ? $tachado : 'color:#b8860b;' }}">{{ number_format($moraAcumTotal, 2) }}</span></div>
+                            <div class="d-flex justify-content-between small">
+                                <span>Mora @if($sim['mora_dias'] > 0)({{ $sim['mora_dias'] }} {{ $sim['mora_dias'] === 1 ? 'día' : 'días' }} × {{ number_format($sim['mora_rate'], 2) }})@endif</span>
+                                <span style="{{ $cancelSinMora ? $tachado : 'color:red;' }}">{{ number_format($sim['mora'], 2) }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between small">
+                                <span>Mora acumulada @if($moraAcumDias > 0)({{ $moraAcumDias }} {{ $moraAcumDias === 1 ? 'día' : 'días' }})@endif</span>
+                                <span style="{{ $cancelSinMora ? $tachado : 'color:#b8860b;' }}">{{ number_format($moraAcumTotal, 2) }}</span>
+                            </div>
                             <div class="d-flex justify-content-between fw-bold border-top mt-1 pt-1"><span>Total</span><span>{{ number_format($totalCancelarCard, 2) }}</span></div>
+
+                            {{-- Disclaimer: adelanto vs la última cuota y descuento de interés --}}
+                            @php
+                                $descuentoInt = round(($sim['saldo_credito'] - $sim['cap_pendiente_total']) - $sim['int_hoy'], 2);
+                            @endphp
+                            @if(!$cancelUltimaCuota && $sim['dias_adelanto'] > 0 && $descuentoInt > 0)
+                                <div class="rounded p-2 mt-2 small" style="background:#e7f4ea; color:#1e7b34;">
+                                    <i class="ti ti-discount-2 f-s-12"></i>
+                                    Te adelantas <b>{{ $sim['dias_adelanto'] }} {{ $sim['dias_adelanto'] === 1 ? 'día' : 'días' }}</b>
+                                    a la última cuota ({{ \Carbon\Carbon::parse($sim['ultima_venc'])->format('d/m/Y') }}):
+                                    descuento de interés <b>{{ number_format($descuentoInt, 2) }}</b>
+                                </div>
+                            @endif
 
                             {{-- Opciones de la cotización --}}
                             <div class="rounded p-2 mt-2 mb-2" style="background:#f2f4f7;">

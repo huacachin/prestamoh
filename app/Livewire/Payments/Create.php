@@ -600,7 +600,8 @@ class Create extends Component
                 'mora' => 0.0, 'mora_dias' => 0, 'mora_rate' => 0.0,
                 'total_hoy' => 0.0, 'total_prox' => 0.0,
                 'cap_pendiente_total' => 0.0, 'saldo_credito' => 0.0,
-                'cancelar_cap_int' => 0.0, 'total_cancelar' => 0.0];
+                'cancelar_cap_int' => 0.0, 'total_cancelar' => 0.0,
+                'ultima_venc' => null, 'dias_adelanto' => 0];
         }
 
         $al = $al ?? now();
@@ -666,6 +667,9 @@ class Create extends Component
             - $installments->sum('importe_aplicado') - $installments->sum('interes_aplicado'), 2
         );
 
+        $ultimaVenc = $installments->max('fecha_vencimiento');
+        $ultimaVenc = $ultimaVenc ? Carbon::parse($ultimaVenc) : null;
+
         // El capital adeudado nunca excede el capital pendiente del cronograma
         $capHoy = min($capHoy, $capPendTotal);
         $capProx = min($capProx, $capPendTotal);
@@ -695,6 +699,10 @@ class Create extends Component
             // FECHA (no el interés futuro del cronograma). La mora va aparte.
             'cancelar_cap_int' => round($capPendTotal + $intHoy, 2),
             'total_cancelar' => round($capPendTotal + $intHoy + $mora, 2),
+            // Adelanto vs la última cuota del cronograma (para el disclaimer
+            // del descuento de interés al cancelar antes de tiempo)
+            'ultima_venc' => $ultimaVenc?->format('Y-m-d'),
+            'dias_adelanto' => $ultimaVenc ? max(0, (int) floor($al->diffInDays($ultimaVenc, false))) : 0,
         ];
     }
 
