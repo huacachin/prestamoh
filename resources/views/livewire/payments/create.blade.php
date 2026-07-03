@@ -331,6 +331,15 @@
                                 @endif
                             </div>
 
+                            @if($sim['primera_vencida_fecha'])
+                                <div class="rounded p-2 mb-2 small" style="background:#e7f0fa; color:#1d5b96;">
+                                    <i class="ti ti-calendar f-s-12"></i>
+                                    Pagas el periodo de la cuota <b>{{ $sim['primera_vencida_num'] }}</b>
+                                    ({{ \Carbon\Carbon::parse($sim['primera_vencida_fecha'])->format('d/m/Y') }})
+                                    al <b>{{ \Carbon\Carbon::parse($sim['fecha'])->format('d/m/Y') }}</b>
+                                </div>
+                            @endif
+
                             @if($simEsHoy)
                                 <button type="button" class="btn btn-sm btn-dark mt-auto"
                                         wire:click="usarMonto({{ $sim['cap_hoy'] + $sim['int_hoy'] }})">
@@ -357,6 +366,14 @@
                                     + {{ $sim['periodos'] }} cuota(s) completa(s) del período en curso
                                 @endif
                             </div>
+
+                            @if($sim['proxima_fecha'])
+                                <div class="rounded p-2 mb-2 small" style="background:#e7f0fa; color:#1d5b96;">
+                                    <i class="ti ti-calendar f-s-12"></i>
+                                    Pagas hasta la cuota <b>{{ $sim['proxima_num'] }}</b>
+                                    ({{ \Carbon\Carbon::parse($sim['proxima_fecha'])->format('d/m/Y') }})
+                                </div>
+                            @endif
 
                             @if($simEsHoy)
                                 <button type="button" class="btn btn-sm btn-dark mt-auto"

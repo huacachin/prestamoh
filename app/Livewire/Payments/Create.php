@@ -601,7 +601,9 @@ class Create extends Component
                 'total_hoy' => 0.0, 'total_prox' => 0.0,
                 'cap_pendiente_total' => 0.0, 'saldo_credito' => 0.0,
                 'cancelar_cap_int' => 0.0, 'total_cancelar' => 0.0,
-                'ultima_venc' => null, 'dias_adelanto' => 0];
+                'ultima_venc' => null, 'dias_adelanto' => 0,
+                'primera_vencida_num' => null, 'primera_vencida_fecha' => null,
+                'proxima_num' => null, 'proxima_fecha' => null];
         }
 
         $al = $al ?? now();
@@ -670,6 +672,10 @@ class Create extends Component
         $ultimaVenc = $installments->max('fecha_vencimiento');
         $ultimaVenc = $ultimaVenc ? Carbon::parse($ultimaVenc) : null;
 
+        // Referencias para los disclaimers de las tarjetas
+        $primeraVencida = $vencidas->first(fn ($i) => ! $i->pagado);
+        $proximaCuota = $installments->first(fn ($i) => $i->fecha_vencimiento && $i->fecha_vencimiento->gt($al));
+
         // El capital adeudado nunca excede el capital pendiente del cronograma
         $capHoy = min($capHoy, $capPendTotal);
         $capProx = min($capProx, $capPendTotal);
@@ -703,6 +709,11 @@ class Create extends Component
             // del descuento de interés al cancelar antes de tiempo)
             'ultima_venc' => $ultimaVenc?->format('Y-m-d'),
             'dias_adelanto' => $ultimaVenc ? max(0, (int) floor($al->diffInDays($ultimaVenc, false))) : 0,
+            // Referencias de periodo/cuota para los disclaimers
+            'primera_vencida_num' => $primeraVencida?->num_cuota,
+            'primera_vencida_fecha' => $primeraVencida?->fecha_vencimiento?->format('Y-m-d'),
+            'proxima_num' => $proximaCuota?->num_cuota,
+            'proxima_fecha' => $proximaCuota?->fecha_vencimiento?->format('Y-m-d'),
         ];
     }
 
