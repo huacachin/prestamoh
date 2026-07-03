@@ -182,6 +182,14 @@
                                 </td>
                                 <td></td>
                             </tr>
+                            {{-- Capital pendiente total (misma fórmula que /payments/create) --}}
+                            <tr style="background-color:#f0f0f0; font-weight:500;">
+                                <td colspan="5" class="text-center" style="color:red;"><b>Capital pendiente total</b></td>
+                                <td colspan="3" class="text-center" style="color:red;">
+                                    <b>{{ number_format($capPendienteTotal, 2) }}</b>
+                                </td>
+                                <td></td>
+                            </tr>
                         @endif
                     </tbody>
                 </table>

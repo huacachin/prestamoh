@@ -243,6 +243,10 @@ class Schedule extends Component
         $saldo = $totals['capital'] + $totals['interes'] - $totals['pagado'] - $sumOtros;
         $totalGeneral = $totals['pagado'] + $sumOtros + $totals['mora'] + $sumOtrosMora;
 
+        // Capital pendiente total: misma fórmula que /payments/create
+        // (SUM importe_cuota − SUM importe_aplicado)
+        $capPendienteTotal = round($installments->sum('importe_cuota') - $installments->sum('importe_aplicado'), 2);
+
         return view('livewire.credits.schedule', [
             'rows' => $rows,
             'otrosRows' => $otrosRows,
@@ -253,6 +257,7 @@ class Schedule extends Component
             'sumOtrosExonDias' => $sumOtrosExonDias,
             'saldo' => $saldo,
             'totalGeneral' => $totalGeneral,
+            'capPendienteTotal' => $capPendienteTotal,
         ]);
     }
 }
