@@ -134,12 +134,19 @@ class Index extends Component
             $query->where('documento', trim($this->documento));
         }
         if (trim($this->nombre) !== '') {
-            $term = trim($this->nombre);
-            $query->where(function ($q) use ($term) {
-                $q->where('nombre', 'like', "%{$term}%")
-                  ->orWhere('apellido_pat', 'like', "%{$term}%")
-                  ->orWhere('apellido_mat', 'like', "%{$term}%");
-            });
+            // Cada palabra debe aparecer en algún campo de nombre. Así "Obregon
+            // Lopez Fernando" (nombre completo, repartido en 3 columnas) calza,
+            // en cualquier orden, en vez de exigir la frase entera en una columna.
+            foreach (preg_split('/\s+/', trim($this->nombre)) as $word) {
+                if ($word === '') {
+                    continue;
+                }
+                $query->where(function ($q) use ($word) {
+                    $q->where('nombre', 'like', "%{$word}%")
+                      ->orWhere('apellido_pat', 'like', "%{$word}%")
+                      ->orWhere('apellido_mat', 'like', "%{$word}%");
+                });
+            }
         }
         if (trim($this->nexpediente) !== '') {
             $query->where('expediente', trim($this->nexpediente));
