@@ -27,6 +27,9 @@ class PermissionCatalogSeeder extends Seeder
             ['name' => 'caja.egresos',  'label' => 'Egresos',   'module' => 'caja', 'module_label' => 'Caja', 'description' => 'Acceso a Egresos'],
 
             // ─── Reportes ───
+            ['name' => 'reportes.credito-diario',      'label' => 'Reporte Credito D.',     'module' => 'reportes', 'module_label' => 'Reportes', 'description' => 'Reporte de créditos diarios'],
+            ['name' => 'reportes.credito-mensual',     'label' => 'Reporte Credito M.',     'module' => 'reportes', 'module_label' => 'Reportes', 'description' => 'Reporte de créditos mensuales'],
+            ['name' => 'reportes.credito-semanal',     'label' => 'Reporte Credito S.',     'module' => 'reportes', 'module_label' => 'Reportes', 'description' => 'Reporte de créditos semanales'],
             ['name' => 'reportes.cartera',             'label' => 'Cartera Activa',         'module' => 'reportes', 'module_label' => 'Reportes', 'description' => 'Acceso a Reporte Cartera'],
             ['name' => 'reportes.pagos',               'label' => 'Pagos',                  'module' => 'reportes', 'module_label' => 'Reportes', 'description' => 'Acceso a Reporte Pagos'],
             ['name' => 'reportes.morosidad',           'label' => 'Morosidad',              'module' => 'reportes', 'module_label' => 'Reportes', 'description' => 'Acceso a Reporte Morosidad'],

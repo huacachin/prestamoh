@@ -99,8 +99,9 @@ class Perms extends Component
                 'key'   => 'reportes',
                 'title' => 'Reportes',
                 'permissions' => [
-                    // Reportes de pagos diario/mensual/semanal usan el permiso "pagos" del menú Registro,
-                    // por eso no aparecen aquí como permisos propios.
+                    ['perm' => 'reportes.credito-diario',      'label' => 'Reporte Credito D.'],
+                    ['perm' => 'reportes.credito-mensual',     'label' => 'Reporte Credito M.'],
+                    ['perm' => 'reportes.credito-semanal',     'label' => 'Reporte Credito S.'],
                     ['perm' => 'reportes.asesor',              'label' => 'Reporte de Asesor'],
                     ['perm' => 'reportes.pagos',               'label' => 'Reporte de Pago'],
                     ['perm' => 'reportes.caja-estadistica',    'label' => 'Rep. Estad. Caja M.A.'],

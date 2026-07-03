@@ -60,11 +60,13 @@ Route::middleware('auth')->group(function () {
     Route::middleware('permission:pagos')->group(function () {
         Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');
         Route::get('payments/create/{creditId?}', [PaymentController::class, 'create'])->name('payments.create');
-        Route::get('payments/daily', [PaymentController::class, 'daily'])->name('payments.daily');
-        Route::get('payments/monthly', [PaymentController::class, 'monthly'])->name('payments.monthly');
-        Route::get('payments/weekly', [PaymentController::class, 'weekly'])->name('payments.weekly');
         Route::get('payments/refinance/{creditId}', [PaymentController::class, 'refinance'])->name('payments.refinance');
     });
+
+    // Reportes de crédito diario/mensual/semanal (permiso propio; antes usaban "pagos")
+    Route::get('payments/daily', [PaymentController::class, 'daily'])->name('payments.daily')->middleware('permission:reportes.credito-diario');
+    Route::get('payments/monthly', [PaymentController::class, 'monthly'])->name('payments.monthly')->middleware('permission:reportes.credito-mensual');
+    Route::get('payments/weekly', [PaymentController::class, 'weekly'])->name('payments.weekly')->middleware('permission:reportes.credito-semanal');
 
     // Caja
     Route::get('cash/opening', [CashController::class, 'opening'])->name('cash.opening')->middleware('permission:caja.apertura');
