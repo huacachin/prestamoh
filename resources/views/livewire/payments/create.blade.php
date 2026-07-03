@@ -322,28 +322,6 @@
                             $tPagCap = $credit->installments->sum('importe_aplicado');
                             $tPagInt = $credit->installments->sum('interes_aplicado');
                             $tSaldo  = $credit->installments->sum(fn ($i) => $i->saldoPendiente());
-                            // Interés no pagado hasta la fecha: cuotas ya vencidas (a hoy)
-                            // cuyo interés aún no se cubrió.
-                            $intNoPagadoHoy = $credit->installments
-                                ->filter(fn ($i) => $i->fecha_vencimiento && $i->fecha_vencimiento->lte(now()))
-                                ->sum(fn ($i) => max(0, (float) $i->importe_interes - (float) $i->interes_aplicado));
-
-                            // + interés por los días adicionales desde la última fecha vencida
-                            // hasta hoy: interés por día = interés de la cuota del período en
-                            // curso ÷ días del período (semanal 7 / mensual 30 / diario 1).
-                            $periodoDias = match ((int) $credit->tipo_planilla) { 1 => 7, 4 => 1, default => 30 };
-                            $ultimaVencida = $credit->installments
-                                ->filter(fn ($i) => $i->fecha_vencimiento && $i->fecha_vencimiento->lte(now()))
-                                ->max('fecha_vencimiento');
-                            if ($ultimaVencida) {
-                                $diasAdic = (int) floor($ultimaVencida->copy()->startOfDay()->diffInDays(now()->startOfDay(), false));
-                                if ($diasAdic > 0) {
-                                    $cuotaPeriodo = $credit->installments->first(fn ($i) => $i->fecha_vencimiento && $i->fecha_vencimiento->gt(now()))
-                                        ?? $credit->installments->last();
-                                    $interesDia = $periodoDias > 0 ? (float) ($cuotaPeriodo->importe_interes ?? 0) / $periodoDias : 0;
-                                    $intNoPagadoHoy += round($diasAdic * $interesDia, 2);
-                                }
-                            }
                         @endphp
                         <tfoot>
                             <tr class="fw-bold" style="background:#f0f0f0;">
@@ -358,13 +336,29 @@
                                 <td></td>
                             </tr>
                             <tr class="fw-bold" style="background:#e9ecef;">
-                                <td colspan="2" class="text-end">No pagado a la fecha (Cap. / Int. / Mora)</td>
-                                <td class="text-end" style="color:red;">{{ number_format($tCap - $tPagCap, 2) }}</td>
+                                <td colspan="2" class="text-end">No pagado a la fecha (Cap. / Int. / Mora / Total)</td>
+                                <td class="text-end" style="color:red;">{{ number_format($deuda['cap_hoy'], 2) }}</td>
                                 <td></td>
                                 <td></td>
-                                <td class="text-end" style="color:red;">{{ number_format($intNoPagadoHoy, 2) }}</td>
+                                <td class="text-end" style="color:red;">{{ number_format($deuda['int_hoy'], 2) }}</td>
                                 <td class="text-end" style="color:red;">{{ number_format($c['total_mora'], 2) }}</td>
-                                <td colspan="3"></td>
+                                <td class="text-end" style="color:red;">{{ number_format($deuda['cap_hoy'] + $deuda['int_hoy'] + $c['total_mora'], 2) }}</td>
+                                <td colspan="2"></td>
+                            </tr>
+                            <tr class="fw-bold" style="background:#e9ecef;">
+                                <td colspan="2" class="text-end">No pagado a la próx. cuota (Cap. / Int. / Mora / Total)</td>
+                                <td class="text-end" style="color:red;">{{ number_format($deuda['cap_prox'], 2) }}</td>
+                                <td></td>
+                                <td></td>
+                                <td class="text-end" style="color:red;">{{ number_format($deuda['int_prox'], 2) }}</td>
+                                <td class="text-end" style="color:red;">{{ number_format($c['total_mora'], 2) }}</td>
+                                <td class="text-end" style="color:red;">{{ number_format($deuda['cap_prox'] + $deuda['int_prox'] + $c['total_mora'], 2) }}</td>
+                                <td colspan="2"></td>
+                            </tr>
+                            <tr class="fw-bold" style="background:#e9ecef;">
+                                <td colspan="2" class="text-end">Capital pendiente total</td>
+                                <td class="text-end" style="color:red;">{{ number_format($deuda['cap_pendiente_total'], 2) }}</td>
+                                <td colspan="7"></td>
                             </tr>
                         </tfoot>
                     </table>

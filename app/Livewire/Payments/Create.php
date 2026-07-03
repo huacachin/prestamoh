@@ -5,6 +5,7 @@ namespace App\Livewire\Payments;
 use App\Models\Credit;
 use App\Models\CreditInstallment;
 use App\Models\Payment;
+use App\Support\Audit;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
@@ -506,8 +507,8 @@ class Create extends Component
             }
         });
 
-        \App\Support\Audit::log(
-            "Registró pago de {$this->monto} en el crédito #{$this->credit->id}" . ($this->cancel ? ' (canceló el crédito)' : ''),
+        Audit::log(
+            "Registró pago de {$this->monto} en el crédito #{$this->credit->id}".($this->cancel ? ' (canceló el crédito)' : ''),
             $this->credit,
             ['monto' => $this->monto, 'fecha' => $this->fecpag]
         );
@@ -565,10 +566,68 @@ class Create extends Component
         ]);
     }
 
+    /**
+     * Deuda del cronograma "a la fecha": capital e interés pendientes de las
+     * cuotas ya vencidas más el prorrateo por los días corridos del período
+     * en curso (cuota del período ÷ días del período: semanal 7 / mensual 30 /
+     * diario 1). También la misma deuda "redondeada" a la próxima cuota: en
+     * lugar del prorrateo, se completan los períodos en curso enteros.
+     */
+    private function deudaCalcs(): array
+    {
+        if (! $this->credit) {
+            return ['cap_hoy' => 0.0, 'int_hoy' => 0.0, 'cap_prox' => 0.0,
+                'int_prox' => 0.0, 'cap_pendiente_total' => 0.0];
+        }
+
+        $installments = $this->credit->installments;
+        $vencidas = $installments->filter(fn ($i) => $i->fecha_vencimiento && $i->fecha_vencimiento->lte(now()));
+
+        // Pendiente de cuotas ya vencidas
+        $capHoy = $vencidas->sum(fn ($i) => max(0, (float) $i->importe_cuota - (float) $i->importe_aplicado));
+        $intHoy = $vencidas->sum(fn ($i) => max(0, (float) $i->importe_interes - (float) $i->interes_aplicado));
+
+        $capProx = $capHoy;
+        $intProx = $intHoy;
+
+        $periodoDias = match ((int) $this->credit->tipo_planilla) {
+            1 => 7, 4 => 1, default => 30
+        };
+        $ultimaVencida = $vencidas->max('fecha_vencimiento');
+        if ($ultimaVencida && $periodoDias > 0) {
+            $diasAdic = (int) floor($ultimaVencida->copy()->startOfDay()->diffInDays(now()->startOfDay(), false));
+            if ($diasAdic > 0) {
+                $cuotaPeriodo = $installments->first(fn ($i) => $i->fecha_vencimiento && $i->fecha_vencimiento->gt(now()))
+                    ?? $installments->last();
+                $capDia = (float) ($cuotaPeriodo->importe_cuota ?? 0) / $periodoDias;
+                $intDia = (float) ($cuotaPeriodo->importe_interes ?? 0) / $periodoDias;
+
+                $capHoy += round($diasAdic * $capDia, 2);
+                $intHoy += round($diasAdic * $intDia, 2);
+
+                // Redondeo a la próxima fecha de pago: períodos en curso completos
+                $periodos = (int) ceil($diasAdic / $periodoDias);
+                $capProx += $periodos * (float) ($cuotaPeriodo->importe_cuota ?? 0);
+                $intProx += $periodos * (float) ($cuotaPeriodo->importe_interes ?? 0);
+            }
+        }
+
+        return [
+            'cap_hoy' => round($capHoy, 2),
+            'int_hoy' => round($intHoy, 2),
+            'cap_prox' => round($capProx, 2),
+            'int_prox' => round($intProx, 2),
+            'cap_pendiente_total' => round(
+                $installments->sum('importe_cuota') - $installments->sum('importe_aplicado'), 2
+            ),
+        ];
+    }
+
     public function render()
     {
         return view('livewire.payments.create', [
             'calcs' => $this->buildCalcs(),
+            'deuda' => $this->deudaCalcs(),
         ]);
     }
 }
