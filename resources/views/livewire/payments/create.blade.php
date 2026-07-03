@@ -150,23 +150,12 @@
                     {{-- ── Atraso ── --}}
                     <h6 class="mb-1 mt-3" style="color:red;">Atraso</h6>
                     <div class="row g-2">
-                        <div class="col-md-2">
+                        <div class="col-md-3">
                             <label class="form-label mb-0 small fw-semibold">Días Transcurridos</label>
                             <input type="text" class="form-control form-control-sm input-rojo"
                                    value="{{ $c['dias_atraso'] }}" readonly>
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label mb-0 small fw-semibold">Descontar Días</label>
-                            <input type="number" name="diasf" autocomplete="off" class="form-control form-control-sm"
-                                   wire:model.live.debounce.400ms="diasf"
-                                   min="0" style="background:#fff9c4;">
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label mb-0 small fw-semibold">Días Final</label>
-                            <input type="text" class="form-control form-control-sm input-rojo"
-                                   value="{{ $c['dias_final'] }}" readonly>
-                        </div>
-                        <div class="col-md-3">
+                        <div class="col-md-6">
                             <label class="form-label mb-0 small fw-semibold">Tiempo Transcurrido</label>
                             <input type="text" class="form-control form-control-sm input-rojo"
                                    value="{{ $validosdoc($c['dias_atraso']) }}" readonly>

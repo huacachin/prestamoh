@@ -19,8 +19,6 @@ class Create extends Component
 
     public $monto = null;         // editable, sin tipo estricto (admite "")
 
-    public $diasf = null;         // editable, sin tipo estricto
-
     public bool $ckmora = false;
 
     public bool $cancel = false;
@@ -157,22 +155,6 @@ class Create extends Component
         }
     }
 
-    /**
-     * Homologado al legacy diasatraso(): al cambiar "Descontar Días" la mora se
-     * recalcula (días final × tasa) y reescribe el Total Mora, para que Total
-     * Mora y Saldo P.+Mora reflejen el nuevo cálculo en vivo. Sin esto, el
-     * override auto-precargado en updatedMonto() congelaba la mora y los totales
-     * dejaban de recalcular para los roles con permiso 'pagos.mora-manual'.
-     */
-    public function updatedDiasf(): void
-    {
-        if ($this->canEditMora() && (float) $this->monto > 0) {
-            $this->moraManual = $this->buildCalcs()['total_mora_calc'];
-        } else {
-            $this->moraManual = null;
-        }
-    }
-
     private function buildCalcs(): array
     {
         if (! $this->credit) {
@@ -231,10 +213,11 @@ class Create extends Component
     /**
      * Mora calculada a una fecha dada: días desde el vencimiento impago más
      * antiguo hasta $al (mensual: días calendario; semanal/diario: excluye
-     * sábados y domingos), menos "Descontar Días" (diasf), × mora diaria.
-     * Mora diaria = 5% de la cuota vencida ÷7 (semanal) / ÷30 (mensual);
-     * los diarios mantienen su mora1 histórico. dias_atraso puede ser
-     * negativo si aún no vence (solo display; la mora queda en 0 por el max).
+     * sábados y domingos) × mora diaria. Mora diaria = 5% de la cuota vencida
+     * ÷7 (semanal) / ÷30 (mensual); los diarios mantienen su mora1 histórico.
+     * dias_atraso puede ser negativo si aún no vence (solo display; la mora
+     * queda en 0 por el max). El descuento de días se eliminó (2026-07-03);
+     * la única rebaja posible es el override gerencial de Total Mora.
      */
     private function moraCalcAt(Carbon $al): array
     {
@@ -263,7 +246,7 @@ class Create extends Component
                 $diasddd = $diff;
             }
         }
-        $diasFinal = max(0, (int) $diasddd - (int) $this->diasf);
+        $diasFinal = max(0, (int) $diasddd);
 
         $cuotaVencida = $minIns ? (float) $minIns->importe_cuota + (float) $minIns->importe_interes : 0.0;
         $moraRate = $this->credit->moraDiaria($cuotaVencida);
@@ -337,7 +320,7 @@ class Create extends Component
             // ─── 1) DIAS MORA si hay descuento ─────────────────────────────
             if ($diasA > 0) {
                 DB::table('dias_mora')->insert([
-                    'credit_id' => $this->credit->id, 'dias' => $diasA, 'dias_descontados' => (int) $this->diasf,
+                    'credit_id' => $this->credit->id, 'dias' => $diasA, 'dias_descontados' => 0,
                     'created_at' => now(), 'updated_at' => now(),
                 ]);
             }
