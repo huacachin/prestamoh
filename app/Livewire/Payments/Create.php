@@ -707,10 +707,25 @@ class Create extends Component
 
     public function render()
     {
+        // Límite inferior del simulador: la fecha del último pago registrado.
+        // Desde ahí los aplicados de las cuotas no han cambiado, así que el
+        // cálculo hacia atrás es exacto; antes de esa fecha mezclaría el
+        // estado actual con una fecha en la que la deuda era otra.
+        $fecsimMin = null;
+        if ($this->credit) {
+            $fecsimMin = Payment::where('credit_id', $this->credit->id)->max('fecha')
+                ?: $this->credit->fecha_prestamo;
+        }
+        $fecsimMin = $fecsimMin ? Carbon::parse($fecsimMin)->format('Y-m-d') : now()->format('Y-m-d');
+
         $alSim = null;
         if ($this->fecsim) {
             try {
                 $alSim = Carbon::parse($this->fecsim);
+                // Clamp servidor: el atributo min del input es solo front
+                if ($alSim->lt(Carbon::parse($fecsimMin))) {
+                    $alSim = Carbon::parse($fecsimMin);
+                }
             } catch (\Exception) {
                 $alSim = null;
             }
@@ -720,6 +735,7 @@ class Create extends Component
             'calcs' => $this->buildCalcs(),
             'deuda' => $this->deudaCalcs(),        // a hoy: filas del tfoot
             'sim' => $this->deudaCalcs($alSim),    // a la fecha simulada: tarjetas
+            'fecsimMin' => $fecsimMin,
         ]);
     }
 }
