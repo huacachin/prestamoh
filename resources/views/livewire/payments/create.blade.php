@@ -61,6 +61,15 @@
             <style>
                 /* Inputs sin negrita en el value (sin tamaño custom; usa el del tema). */
                 .pago-form .form-control { font-weight: 400 !important; }
+                /* Campos de alerta: rojo puro y texto SIEMPRE blanco (readonly,
+                   disabled o editable por igual). */
+                .pago-form .input-rojo,
+                .pago-form .input-rojo:disabled,
+                .pago-form .input-rojo[readonly] {
+                    background: #ff0000 !important;
+                    color: #fff !important;
+                }
+                .pago-form .input-rojo::placeholder { color: #ffd6d6; }
             </style>
             <div class="card shadow-sm">
                 <div class="card-body">
@@ -137,7 +146,7 @@
                     <div class="row g-2">
                         <div class="col-md-2">
                             <label class="form-label mb-0 small fw-semibold">Días Transcurridos</label>
-                            <input type="text" class="form-control form-control-sm bg-danger text-white"
+                            <input type="text" class="form-control form-control-sm input-rojo"
                                    value="{{ $c['dias_atraso'] }}" readonly>
                         </div>
                         <div class="col-md-2">
@@ -148,12 +157,12 @@
                         </div>
                         <div class="col-md-2">
                             <label class="form-label mb-0 small fw-semibold">Días Final</label>
-                            <input type="text" class="form-control form-control-sm bg-danger text-white"
+                            <input type="text" class="form-control form-control-sm input-rojo"
                                    value="{{ $c['dias_final'] }}" readonly>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label mb-0 small fw-semibold">Tiempo Transcurrido</label>
-                            <input type="text" class="form-control form-control-sm bg-danger text-white"
+                            <input type="text" class="form-control form-control-sm input-rojo"
                                    value="{{ $validosdoc($c['dias_atraso']) }}" readonly>
                         </div>
                         <div class="col-md-3">
@@ -167,13 +176,13 @@
                             </label>
                             @if($puedeMora)
                                 <input type="number" name="moraManual" autocomplete="off" step="0.01" min="0"
-                                       class="form-control form-control-sm bg-danger text-white"
+                                       class="form-control form-control-sm input-rojo"
                                        wire:model.live.debounce.400ms="moraManual"
                                        placeholder="{{ number_format($c['total_mora_calc'], 2) }}"
                                        @disabled(((float)$monto) <= 0)
                                        title="{{ ((float)$monto) > 0 ? 'Total Mora editable (reemplaza la calculada)' : 'Escribe primero el Monto a Pagar' }}">
                             @else
-                                <input type="text" class="form-control form-control-sm bg-danger text-white"
+                                <input type="text" class="form-control form-control-sm input-rojo"
                                        value="{{ number_format($c['total_mora'], 2) }}" readonly>
                             @endif
                         </div>
