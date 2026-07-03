@@ -278,8 +278,9 @@
                     </h6>
                     <div class="d-flex align-items-center gap-2">
                         <label class="form-label mb-0 small fw-semibold">Calcular al:</label>
-                        <input type="date" class="form-control form-control-sm" style="width:auto;"
-                               wire:model.live="fecsim" min="{{ $fecsimMin }}"
+                        <input type="text" autocomplete="off" readonly
+                               class="form-control form-control-sm bg-light dates-dyn" style="width:110px;"
+                               wire:model.live="fecsim" data-mindate="{{ $fecsimMin }}"
                                title="Se puede retroceder hasta el último pago registrado ({{ \Carbon\Carbon::parse($fecsimMin)->format('d/m/Y') }})">
                     </div>
                 </div>

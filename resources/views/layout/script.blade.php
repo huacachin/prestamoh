@@ -168,6 +168,16 @@ document.addEventListener('click', function (e) {
             changeMonth: true, changeYear: true, dateFormat: 'yy-mm-dd', minDate: -2,
             onSelect: function () { syncLivewire(this); }
         });
+        // .dates-dyn → límites dinámicos vía data-mindate / data-maxdate (formato yy-mm-dd)
+        jQuery('.dates-dyn:not(.hasDatepicker)').each(function () {
+            var $el = jQuery(this);
+            $el.datepicker({
+                changeMonth: true, changeYear: true, dateFormat: 'yy-mm-dd',
+                minDate: $el.data('mindate') || null,
+                maxDate: $el.data('maxdate') || null,
+                onSelect: function () { syncLivewire(this); }
+            });
+        });
     }
 
     document.addEventListener('DOMContentLoaded', initDatepickers);
