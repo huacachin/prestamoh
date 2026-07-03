@@ -53,6 +53,8 @@
                     color: #fff !important;
                 }
                 .pago-form .input-rojo::placeholder { color: #ffd6d6; }
+                /* Valores en negrita (gana al font-weight 400 de arriba) */
+                .pago-form .input-bold { font-weight: 700 !important; }
                 /* Readonly informativos: plomo más oscuro que el bg-light del tema
                    (incluye el "Calcular al" de las tarjetas, fuera del form) */
                 .pago-form .form-control.bg-light,
@@ -142,13 +144,13 @@
                         @endphp
                         <div class="col-md-3">
                             <label class="form-label mb-0 small fw-semibold">Días Mora Acumulada</label>
-                            <input type="text" class="form-control form-control-sm"
+                            <input type="text" class="form-control form-control-sm input-bold"
                                    style="background-color:#fac10f; color:#000;"
                                    value="{{ $moraAcumDias }}" readonly>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label mb-0 small fw-semibold">Total Mora Acumulada</label>
-                            <input type="text" class="form-control form-control-sm"
+                            <input type="text" class="form-control form-control-sm input-bold"
                                    style="background-color:#fac10f; color:#000;"
                                    value="{{ number_format($moraAcumTotal, 2) }}" readonly>
                         </div>
@@ -199,13 +201,13 @@
                     <div class="row g-2">
                         <div class="col-md-2">
                             <label class="form-label mb-0 small fw-semibold">Saldo Pendiente</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
+                            <input type="text" class="form-control form-control-sm bg-light input-bold"
                                    style="color:red;"
                                    value="{{ number_format($c['saldo_restante'], 2) }}" readonly>
                         </div>
                         <div class="col-md-2">
                             <label class="form-label mb-0 small fw-semibold">Saldo P. + Mora</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
+                            <input type="text" class="form-control form-control-sm bg-light input-bold"
                                    style="color:red;"
                                    value="{{ number_format($c['saldo_mora_restante'], 2) }}" readonly>
                         </div>
