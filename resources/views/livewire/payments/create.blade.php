@@ -26,23 +26,6 @@
         @php $c = $calcs; @endphp
 
         @php
-            // Helper validosdoc() del legacy: formatea días como "N días" / "N meses M días" / etc.
-            $validosdoc = function ($d) {
-                $d = (int) $d;
-                if ($d <= 0) return '';
-                if ($d < 30) return $d . ' día' . ($d === 1 ? '' : 's');
-                $meses = intdiv($d, 30); $resto = $d % 30;
-                if ($d < 365) {
-                    return $meses . ' mes' . ($meses === 1 ? '' : 'es')
-                        . ($resto > 0 ? ' ' . $resto . ' día' . ($resto === 1 ? '' : 's') : '');
-                }
-                $anos = intdiv($d, 365); $restoA = $d % 365;
-                $mesesA = intdiv($restoA, 30); $diasA = $restoA % 30;
-                $out = $anos . ' año' . ($anos === 1 ? '' : 's');
-                if ($mesesA > 0) $out .= ' ' . $mesesA . ' mes' . ($mesesA === 1 ? '' : 'es');
-                if ($diasA > 0)  $out .= ' ' . $diasA . ' día' . ($diasA === 1 ? '' : 's');
-                return $out;
-            };
             // Para cancelar el crédito hay que cubrir el saldo. Si "Reserva Mora"
             // está marcada, alcanza con capital+interés (la mora se perdona al
             // cancelar). Sin reserva, hay que cubrir también la mora — pero esa
@@ -150,15 +133,41 @@
                     {{-- ── Atraso ── --}}
                     <h6 class="mb-1 mt-3" style="color:red;">Atraso</h6>
                     <div class="row g-2">
+                        {{-- Mora acumulada (exonerada) histórica: informativa, igual al
+                             total de la columna Mora Exon. del cronograma. NO entra en
+                             la operación de pago. --}}
+                        @php
+                            $moraAcumDias = collect($moraExon)->sum('dias');
+                            $moraAcumTotal = collect($moraExon)->sum('monto');
+                        @endphp
+                        <div class="col-md-3">
+                            <label class="form-label mb-0 small fw-semibold">Días Mora Acumulada</label>
+                            <input type="text" class="form-control form-control-sm"
+                                   style="background-color:#fac10f; color:#000;"
+                                   value="{{ $moraAcumDias }}" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label mb-0 small fw-semibold">Total Mora Acumulada</label>
+                            <input type="text" class="form-control form-control-sm"
+                                   style="background-color:#fac10f; color:#000;"
+                                   value="{{ number_format($moraAcumTotal, 2) }}" readonly>
+                        </div>
                         <div class="col-md-3">
                             <label class="form-label mb-0 small fw-semibold">Días Transcurridos</label>
-                            <input type="text" class="form-control form-control-sm input-rojo"
-                                   value="{{ $c['dias_atraso'] }}" readonly>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label mb-0 small fw-semibold">Tiempo Transcurrido</label>
-                            <input type="text" class="form-control form-control-sm input-rojo"
-                                   value="{{ $validosdoc($c['dias_atraso']) }}" readonly>
+                            @php $diasAtr = (int) $c['dias_atraso']; @endphp
+                            @if(!$c['fecha_venc'])
+                                <input type="text" class="form-control form-control-sm bg-light"
+                                       value="Sin cuotas pendientes" readonly>
+                            @elseif($diasAtr > 0)
+                                <input type="text" class="form-control form-control-sm input-rojo"
+                                       value="{{ $diasAtr }} {{ $diasAtr === 1 ? 'día' : 'días' }} de atraso" readonly>
+                            @elseif($diasAtr === 0)
+                                <input type="text" class="form-control form-control-sm bg-success text-white"
+                                       value="Vence hoy" readonly>
+                            @else
+                                <input type="text" class="form-control form-control-sm bg-success text-white"
+                                       value="Al día · vence en {{ abs($diasAtr) }} {{ abs($diasAtr) === 1 ? 'día' : 'días' }}" readonly>
+                            @endif
                         </div>
                         <div class="col-md-3">
                             @php $puedeMora = auth()->user()->can('pagos.mora-manual'); @endphp
