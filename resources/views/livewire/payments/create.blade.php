@@ -65,9 +65,14 @@
             <div class="card shadow-sm">
                 <div class="card-body">
 
-                    {{-- Fila 1: Cliente / DNI / Moneda / Capital(4) / Pago x día / Ejecutivo --}}
+                    {{-- Fila 1: Expediente / Cliente / DNI / Moneda / Capital(4) / Pago x día --}}
                     <div class="row g-2">
-                        <div class="col-md-3">
+                        <div class="col-md-2">
+                            <label class="form-label mb-0 small fw-semibold">Expediente</label>
+                            <input type="text" class="form-control form-control-sm bg-light"
+                                   value="{{ $credit->client?->expediente }}" readonly>
+                        </div>
+                        <div class="col-md-2">
                             <label class="form-label mb-0 small fw-semibold">Cliente</label>
                             <input type="text" class="form-control form-control-sm bg-light"
                                    value="{{ $credit->id }}-{{ $credit->client?->fullName() }}" readonly>
@@ -77,7 +82,7 @@
                             <input type="text" class="form-control form-control-sm bg-light"
                                    value="{{ $credit->client?->documento }}" maxlength="8" readonly>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-1">
                             <label class="form-label mb-0 small fw-semibold">Moneda</label>
                             <input type="text" class="form-control form-control-sm bg-light"
                                    value="{{ $credit->moneda ?: 'Soles' }}" readonly>
