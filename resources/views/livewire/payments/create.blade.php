@@ -265,6 +265,100 @@
         </script>
         @endscript
 
+        {{-- Tarjetas de escenario: ¿cuánto paga el cliente? --}}
+        @php $simEsHoy = $sim['fecha'] === now()->format('Y-m-d'); @endphp
+        <div class="card shadow-sm mt-2">
+            <div class="card-body pb-2">
+                <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                    <h6 class="mb-0">
+                        ¿CUÁNTO PAGA EL CLIENTE?
+                        @unless($simEsHoy)
+                            <span class="badge bg-info ms-1">Simulado al {{ \Carbon\Carbon::parse($sim['fecha'])->format('d/m/Y') }}</span>
+                        @endunless
+                    </h6>
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="form-label mb-0 small fw-semibold">Calcular al:</label>
+                        <input type="date" class="form-control form-control-sm" style="width:auto;"
+                               wire:model.live="fecsim" min="{{ now()->format('Y-m-d') }}">
+                    </div>
+                </div>
+                <div class="row g-2">
+                    {{-- Escenario 1: ponerse al día --}}
+                    <div class="col-md-4">
+                        <div class="border rounded p-2 h-100 d-flex flex-column">
+                            <div class="fw-bold small text-uppercase mb-1">Ponerse al día</div>
+                            <div class="d-flex justify-content-between small"><span>Capital</span><span>{{ number_format($sim['cap_hoy'], 2) }}</span></div>
+                            <div class="d-flex justify-content-between small"><span>Interés</span><span>{{ number_format($sim['int_hoy'], 2) }}</span></div>
+                            <div class="d-flex justify-content-between small"><span>Mora</span><span style="color:red;">{{ number_format($sim['mora'], 2) }}</span></div>
+                            <div class="d-flex justify-content-between fw-bold border-top mt-1 pt-1"><span>Total</span><span>{{ number_format($sim['total_hoy'], 2) }}</span></div>
+                            <div class="small text-muted mt-1">
+                                {{ $sim['cuotas_vencidas'] }} cuota(s) vencida(s)
+                                @if($sim['dias_adic'] > 0)
+                                    + {{ $sim['dias_adic'] }} día(s) del período en curso ({{ number_format($sim['cap_dia'] + $sim['int_dia'], 2) }}/día)
+                                @endif
+                                @if($sim['mora_dias'] > 0)
+                                    · Mora: {{ $sim['mora_dias'] }} día(s) × {{ number_format($sim['mora_rate'], 2) }}
+                                @endif
+                            </div>
+                            @if($simEsHoy)
+                                <button type="button" class="btn btn-sm btn-dark mt-auto"
+                                        wire:click="usarMonto({{ $sim['cap_hoy'] + $sim['int_hoy'] }})">
+                                    Usar {{ number_format($sim['cap_hoy'] + $sim['int_hoy'], 2) }} en Monto a Pagar
+                                </button>
+                            @endif
+                        </div>
+                    </div>
+                    {{-- Escenario 2: hasta la próxima cuota --}}
+                    <div class="col-md-4">
+                        <div class="border rounded p-2 h-100 d-flex flex-column">
+                            <div class="fw-bold small text-uppercase mb-1">Hasta la próx. cuota</div>
+                            <div class="d-flex justify-content-between small"><span>Capital</span><span>{{ number_format($sim['cap_prox'], 2) }}</span></div>
+                            <div class="d-flex justify-content-between small"><span>Interés</span><span>{{ number_format($sim['int_prox'], 2) }}</span></div>
+                            <div class="d-flex justify-content-between small"><span>Mora</span><span style="color:red;">{{ number_format($sim['mora'], 2) }}</span></div>
+                            <div class="d-flex justify-content-between fw-bold border-top mt-1 pt-1"><span>Total</span><span>{{ number_format($sim['total_prox'], 2) }}</span></div>
+                            <div class="small text-muted mt-1">
+                                {{ $sim['cuotas_vencidas'] }} cuota(s) vencida(s)
+                                @if($sim['periodos'] > 0)
+                                    + {{ $sim['periodos'] }} cuota(s) completa(s) del período en curso
+                                @endif
+                            </div>
+                            @if($simEsHoy)
+                                <button type="button" class="btn btn-sm btn-dark mt-auto"
+                                        wire:click="usarMonto({{ $sim['cap_prox'] + $sim['int_prox'] }})">
+                                    Usar {{ number_format($sim['cap_prox'] + $sim['int_prox'], 2) }} en Monto a Pagar
+                                </button>
+                            @endif
+                        </div>
+                    </div>
+                    {{-- Escenario 3: cancelar el crédito --}}
+                    <div class="col-md-4">
+                        <div class="border rounded p-2 h-100 d-flex flex-column">
+                            <div class="fw-bold small text-uppercase mb-1">Cancelar crédito</div>
+                            <div class="d-flex justify-content-between small"><span>Capital + Interés</span><span>{{ number_format($sim['saldo_credito'], 2) }}</span></div>
+                            <div class="d-flex justify-content-between small"><span>Mora</span><span style="color:red;">{{ number_format($sim['mora'], 2) }}</span></div>
+                            <div class="d-flex justify-content-between fw-bold border-top mt-1 pt-1"><span>Total</span><span>{{ number_format($sim['total_cancelar'], 2) }}</span></div>
+                            <div class="small text-muted mt-1">
+                                Todo el capital e interés pendiente del cronograma
+                            </div>
+                            @if($simEsHoy)
+                                <button type="button" class="btn btn-sm btn-dark mt-auto"
+                                        wire:click="usarMonto({{ $sim['saldo_credito'] }})">
+                                    Usar {{ number_format($sim['saldo_credito'], 2) }} en Monto a Pagar
+                                </button>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                <div class="small text-muted mt-2">
+                    El botón llena "Monto a Pagar" con capital + interés; la mora se cobra aparte
+                    (según el switch "Reserva Mora").
+                    @unless($simEsHoy)
+                        <span class="fw-semibold">Cotización simulada: para registrar el pago, vuelve la fecha a hoy.</span>
+                    @endunless
+                </div>
+            </div>
+        </div>
+
         {{-- Cronograma de cuotas (homologado con /credits/{id}) --}}
         <div class="card shadow-sm mt-2">
             <div class="card-body pb-2">
