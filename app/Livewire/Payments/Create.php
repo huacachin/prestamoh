@@ -637,9 +637,12 @@ class Create extends Component
         if ($ultimaVencida && $periodoDias > 0) {
             $diasAdic = (int) floor($ultimaVencida->copy()->startOfDay()->diffInDays($al->copy()->startOfDay(), false));
             if ($diasAdic > 0) {
-                $cuotaPeriodo = $installments->first(fn ($i) => $i->fecha_vencimiento && $i->fecha_vencimiento->gt($al))
-                    ?? $installments->last();
-                $capDia = (float) ($cuotaPeriodo->importe_cuota ?? 0) / $periodoDias;
+                // Con próxima cuota en el cronograma corren capital e interés;
+                // con el cronograma agotado (típico mensual 1 cuota atrasado)
+                // solo sigue corriendo el interés — el capital no crece.
+                $proxima = $installments->first(fn ($i) => $i->fecha_vencimiento && $i->fecha_vencimiento->gt($al));
+                $cuotaPeriodo = $proxima ?? $installments->last();
+                $capDia = $proxima ? (float) ($cuotaPeriodo->importe_cuota ?? 0) / $periodoDias : 0.0;
                 $intDia = (float) ($cuotaPeriodo->importe_interes ?? 0) / $periodoDias;
 
                 $capHoy += round($diasAdic * $capDia, 2);
@@ -647,7 +650,9 @@ class Create extends Component
 
                 // Redondeo a la próxima fecha de pago: períodos en curso completos
                 $periodos = (int) ceil($diasAdic / $periodoDias);
-                $capProx += $periodos * (float) ($cuotaPeriodo->importe_cuota ?? 0);
+                if ($proxima) {
+                    $capProx += $periodos * (float) ($cuotaPeriodo->importe_cuota ?? 0);
+                }
                 $intProx += $periodos * (float) ($cuotaPeriodo->importe_interes ?? 0);
             } else {
                 $diasAdic = 0;
@@ -667,6 +672,10 @@ class Create extends Component
             $installments->sum('importe_cuota') + $installments->sum('importe_interes')
             - $installments->sum('importe_aplicado') - $installments->sum('interes_aplicado'), 2
         );
+
+        // El capital adeudado nunca excede el capital pendiente del cronograma
+        $capHoy = min($capHoy, $capPendTotal);
+        $capProx = min($capProx, $capPendTotal);
 
         return [
             'fecha' => $al->format('Y-m-d'),
