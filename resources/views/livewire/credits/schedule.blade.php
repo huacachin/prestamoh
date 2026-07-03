@@ -47,14 +47,8 @@
                 <tr>
                     <td style="background-color:#f0f0f0;">DNI</td>
                     <td>{{ $credit->client?->documento }}</td>
-                    <td style="background-color:#f0f0f0;">Tasa I. %</td>
+                    <td style="background-color:#f0f0f0;">INT. %</td>
                     <td>{{ round($credit->interes, 2) }}</td>
-                </tr>
-                <tr>
-                    <td style="background-color:#f0f0f0;">Tasa M. %</td>
-                    <td>{{ \App\Models\Credit::TASA_MORA_PCT }}% por cuota</td>
-                    <td style="background-color:#f0f0f0;"></td>
-                    <td></td>
                 </tr>
                 <tr>
                     <td style="background-color:#f0f0f0;">N° Expediente</td>
@@ -63,16 +57,16 @@
                             {{ $credit->client?->expediente }}
                         </a>
                     </td>
-                    <td style="background-color:#f0f0f0;">Capital</td>
-                    <td>{{ number_format($credit->importe, 2) }}</td>
+                    <td style="background-color:#f0f0f0;">MOR. %</td>
+                    <td>{{ \App\Models\Credit::TASA_MORA_PCT }}% por cuota</td>
                 </tr>
                 <tr>
                     <td style="background-color:#f0f0f0;">N° Cred.</td>
                     <td>
                         <strong>{{ $credit->id }}</strong> - <b>{{ $credit->fecha_prestamo?->format('d/m/Y') }}</b>
                     </td>
-                    <td style="background-color:#f0f0f0;">Moneda</td>
-                    <td>{{ $credit->moneda === 'USD' ? 'Dólares' : 'Soles' }}</td>
+                    <td style="background-color:#f0f0f0;">Capital</td>
+                    <td>{{ number_format($credit->importe, 2) }}</td>
                 </tr>
             </table>
         </div>
