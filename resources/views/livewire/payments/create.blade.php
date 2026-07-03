@@ -70,8 +70,10 @@
                     color: #fff !important;
                 }
                 .pago-form .input-rojo::placeholder { color: #ffd6d6; }
-                /* Readonly informativos: plomo más oscuro que el bg-light del tema */
-                .pago-form .form-control.bg-light {
+                /* Readonly informativos: plomo más oscuro que el bg-light del tema
+                   (incluye el "Calcular al" de las tarjetas, fuera del form) */
+                .pago-form .form-control.bg-light,
+                .form-control.bg-light.dates-dyn {
                     background-color: #93a1b1 !important;
                 }
             </style>
