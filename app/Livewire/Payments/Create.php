@@ -5,6 +5,7 @@ namespace App\Livewire\Payments;
 use App\Models\Credit;
 use App\Models\CreditInstallment;
 use App\Models\Payment;
+use App\Support\Audit;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
@@ -40,9 +41,13 @@ class Create extends Component
     // null = usar la mora auto-calculada; valor numérico = reemplaza la mora a cobrar.
     public $moraManual = null;
 
+    // Fecha "Calcular al" de las tarjetas de escenario (simulador de cotización).
+    public string $fecsim = '';
+
     public function mount(?int $creditId = null)
     {
         $this->fecpag = now()->format('Y-m-d');
+        $this->fecsim = now()->format('Y-m-d');
 
         if ($creditId) {
             $this->credit = Credit::with(['client.asesor:id,name', 'installments' => fn ($q) => $q->orderBy('num_cuota')])
@@ -185,37 +190,12 @@ class Create extends Component
         $saldoPendiente = (float) $totals->cuota + (float) $totals->interes
             - (float) $totals->apli - (float) $totals->iapli;
 
-        $minFecha = DB::table('credit_installments')->where('credit_id', $this->credit->id)
-            ->where('pagado', 0)->where('importe_cuota', '>', 0)->min('fecha_vencimiento');
-        $minFechaStr = $minFecha ? Carbon::parse($minFecha)->format('Y-m-d') : null;
-
-        $diasddd = 0;
-        if ($minFechaStr) {
-            $diff = (int) floor(Carbon::parse($minFechaStr)->diffInDays(now(), false));
-            if ($diff > 0) {
-                if ((int) $this->credit->tipo_planilla === 3) {
-                    $diasddd = $diff;
-                } else {
-                    $cur = Carbon::parse($minFechaStr);
-                    for ($i = 1; $i <= $diff; $i++) {
-                        $cur->addDay();
-                        if (! in_array($cur->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])) {
-                            $diasddd++;
-                        }
-                    }
-                }
-            } elseif ($diff < 0) {
-                // Aún no vence: mostrar los días que faltan en negativo (como el
-                // legacy restaFechas = hoy - vencimiento). Sin ajuste de fin de
-                // semana y sin generar mora (diasFinal queda en 0 por el max).
-                $diasddd = $diff;
-            }
-        }
-        $diasFinal = max(0, (int) $diasddd - (int) $this->diasf);
-
-        $tipoPlani = (int) $this->credit->tipo_planilla;
-        $moraRate = (float) (($tipoPlani === 1) ? $this->credit->mora2 : $this->credit->mora1);
-        $totMoraCalc = round($diasFinal * $moraRate, 2);
+        $moraInfo = $this->moraCalcAt(now());
+        $minFechaStr = $moraInfo['fecha_venc'];
+        $diasddd = $moraInfo['dias_atraso'];
+        $diasFinal = $moraInfo['dias_final'];
+        $moraRate = $moraInfo['mora_rate'];
+        $totMoraCalc = $moraInfo['mora_calc'];
 
         // Override de Total Mora: solo si el usuario tiene permiso y escribió un
         // valor numérico válido. El gate de permiso vive aquí (servidor), así que
@@ -244,6 +224,52 @@ class Create extends Component
             'saldo_mora' => round($saldoPendiente + $totMora, 2),
             'saldo_mora_restante' => round($saldoRestante + $totMora, 2),
             'asesor_nombre' => $this->credit->client?->asesor?->name,
+        ];
+    }
+
+    /**
+     * Mora calculada a una fecha dada, con las mismas reglas del legacy:
+     * días desde el vencimiento impago más antiguo hasta $al (mensual: días
+     * calendario; semanal/diario: excluye sábados y domingos), menos
+     * "Descontar Días" (diasf), × tasa de mora del crédito (mora2 semanal /
+     * mora1 resto). dias_atraso puede ser negativo si aún no vence (solo
+     * display; la mora queda en 0 por el max).
+     */
+    private function moraCalcAt(Carbon $al): array
+    {
+        $minFecha = DB::table('credit_installments')->where('credit_id', $this->credit->id)
+            ->where('pagado', 0)->where('importe_cuota', '>', 0)->min('fecha_vencimiento');
+        $minFechaStr = $minFecha ? Carbon::parse($minFecha)->format('Y-m-d') : null;
+
+        $diasddd = 0;
+        if ($minFechaStr) {
+            $diff = (int) floor(Carbon::parse($minFechaStr)->diffInDays($al, false));
+            if ($diff > 0) {
+                if ((int) $this->credit->tipo_planilla === 3) {
+                    $diasddd = $diff;
+                } else {
+                    $cur = Carbon::parse($minFechaStr);
+                    for ($i = 1; $i <= $diff; $i++) {
+                        $cur->addDay();
+                        if (! in_array($cur->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])) {
+                            $diasddd++;
+                        }
+                    }
+                }
+            } elseif ($diff < 0) {
+                $diasddd = $diff;
+            }
+        }
+        $diasFinal = max(0, (int) $diasddd - (int) $this->diasf);
+
+        $moraRate = (float) (((int) $this->credit->tipo_planilla === 1) ? $this->credit->mora2 : $this->credit->mora1);
+
+        return [
+            'fecha_venc' => $minFechaStr,
+            'dias_atraso' => $diasddd,
+            'dias_final' => $diasFinal,
+            'mora_rate' => $moraRate,
+            'mora_calc' => round($diasFinal * $moraRate, 2),
         ];
     }
 
@@ -506,8 +532,8 @@ class Create extends Component
             }
         });
 
-        \App\Support\Audit::log(
-            "Registró pago de {$this->monto} en el crédito #{$this->credit->id}" . ($this->cancel ? ' (canceló el crédito)' : ''),
+        Audit::log(
+            "Registró pago de {$this->monto} en el crédito #{$this->credit->id}".($this->cancel ? ' (canceló el crédito)' : ''),
             $this->credit,
             ['monto' => $this->monto, 'fecha' => $this->fecpag]
         );
@@ -565,10 +591,160 @@ class Create extends Component
         ]);
     }
 
+    /**
+     * Deuda del cronograma a una fecha dada ($al, por defecto hoy): capital e
+     * interés pendientes de las cuotas ya vencidas más el prorrateo por los
+     * días corridos del período en curso (cuota del período ÷ días del
+     * período: semanal 7 / mensual 30 / diario 1). También la misma deuda
+     * "redondeada" a la próxima cuota (períodos en curso completos en lugar
+     * del prorrateo), la mora a esa fecha y el desglose para las tarjetas.
+     */
+    private function deudaCalcs(?Carbon $al = null): array
+    {
+        if (! $this->credit) {
+            return ['fecha' => null, 'cuotas_vencidas' => 0, 'cap_vencidas' => 0.0, 'int_vencidas' => 0.0,
+                'dias_adic' => 0, 'periodos' => 0, 'cap_dia' => 0.0, 'int_dia' => 0.0, 'periodo_dias' => 0,
+                'cap_hoy' => 0.0, 'int_hoy' => 0.0, 'cap_prox' => 0.0, 'int_prox' => 0.0,
+                'mora' => 0.0, 'mora_dias' => 0, 'mora_rate' => 0.0,
+                'total_hoy' => 0.0, 'total_prox' => 0.0,
+                'cap_pendiente_total' => 0.0, 'saldo_credito' => 0.0, 'total_cancelar' => 0.0];
+        }
+
+        $al = $al ?? now();
+
+        $installments = $this->credit->installments;
+        $vencidas = $installments->filter(fn ($i) => $i->fecha_vencimiento && $i->fecha_vencimiento->lte($al));
+
+        // Pendiente de cuotas ya vencidas
+        $capVenc = $vencidas->sum(fn ($i) => max(0, (float) $i->importe_cuota - (float) $i->importe_aplicado));
+        $intVenc = $vencidas->sum(fn ($i) => max(0, (float) $i->importe_interes - (float) $i->interes_aplicado));
+        $nVencidas = $vencidas->filter(fn ($i) => ! $i->pagado)->count();
+
+        $capHoy = $capVenc;
+        $intHoy = $intVenc;
+        $capProx = $capVenc;
+        $intProx = $intVenc;
+
+        $diasAdic = 0;
+        $periodos = 0;
+        $capDia = 0.0;
+        $intDia = 0.0;
+
+        $periodoDias = match ((int) $this->credit->tipo_planilla) {
+            1 => 7, 4 => 1, default => 30
+        };
+        $ultimaVencida = $vencidas->max('fecha_vencimiento');
+        if ($ultimaVencida && $periodoDias > 0) {
+            $diasAdic = (int) floor($ultimaVencida->copy()->startOfDay()->diffInDays($al->copy()->startOfDay(), false));
+            if ($diasAdic > 0) {
+                // Con próxima cuota en el cronograma corren capital e interés;
+                // con el cronograma agotado (típico mensual 1 cuota atrasado)
+                // solo sigue corriendo el interés — el capital no crece.
+                $proxima = $installments->first(fn ($i) => $i->fecha_vencimiento && $i->fecha_vencimiento->gt($al));
+                $cuotaPeriodo = $proxima ?? $installments->last();
+                $capDia = $proxima ? (float) ($cuotaPeriodo->importe_cuota ?? 0) / $periodoDias : 0.0;
+                $intDia = (float) ($cuotaPeriodo->importe_interes ?? 0) / $periodoDias;
+
+                $capHoy += round($diasAdic * $capDia, 2);
+                $intHoy += round($diasAdic * $intDia, 2);
+
+                // Redondeo a la próxima fecha de pago: períodos en curso completos
+                $periodos = (int) ceil($diasAdic / $periodoDias);
+                if ($proxima) {
+                    $capProx += $periodos * (float) ($cuotaPeriodo->importe_cuota ?? 0);
+                }
+                $intProx += $periodos * (float) ($cuotaPeriodo->importe_interes ?? 0);
+            } else {
+                $diasAdic = 0;
+            }
+        }
+
+        // Mora a la fecha simulada. Si es hoy, respeta el override manual
+        // (mismo gate de permiso que buildCalcs).
+        $moraInfo = $this->moraCalcAt($al);
+        $usaManual = $al->isSameDay(now()) && $this->canEditMora()
+            && $this->moraManual !== null && $this->moraManual !== ''
+            && is_numeric($this->moraManual);
+        $mora = $usaManual ? round((float) $this->moraManual, 2) : $moraInfo['mora_calc'];
+
+        $capPendTotal = round($installments->sum('importe_cuota') - $installments->sum('importe_aplicado'), 2);
+        $saldoCredito = round(
+            $installments->sum('importe_cuota') + $installments->sum('importe_interes')
+            - $installments->sum('importe_aplicado') - $installments->sum('interes_aplicado'), 2
+        );
+
+        // El capital adeudado nunca excede el capital pendiente del cronograma
+        $capHoy = min($capHoy, $capPendTotal);
+        $capProx = min($capProx, $capPendTotal);
+
+        return [
+            'fecha' => $al->format('Y-m-d'),
+            'cuotas_vencidas' => $nVencidas,
+            'cap_vencidas' => round($capVenc, 2),
+            'int_vencidas' => round($intVenc, 2),
+            'dias_adic' => $diasAdic,
+            'periodos' => $periodos,
+            'cap_dia' => round($capDia, 2),
+            'int_dia' => round($intDia, 2),
+            'periodo_dias' => $periodoDias,
+            'cap_hoy' => round($capHoy, 2),
+            'int_hoy' => round($intHoy, 2),
+            'cap_prox' => round($capProx, 2),
+            'int_prox' => round($intProx, 2),
+            'mora' => $mora,
+            'mora_dias' => $moraInfo['dias_final'],
+            'mora_rate' => $moraInfo['mora_rate'],
+            'total_hoy' => round($capHoy + $intHoy + $mora, 2),
+            'total_prox' => round($capProx + $intProx + $mora, 2),
+            'cap_pendiente_total' => $capPendTotal,
+            'saldo_credito' => $saldoCredito,
+            'total_cancelar' => round($saldoCredito + $mora, 2),
+        ];
+    }
+
+    /**
+     * Botón "Usar monto" de las tarjetas de escenario: llena el Monto a Pagar
+     * (solo capital + interés; la mora se cobra aparte, como siempre) y
+     * dispara el mismo hook que al tipearlo (precarga de mora editable).
+     */
+    public function usarMonto(float $monto): void
+    {
+        $saldo = (float) $this->buildCalcs()['saldo_pendiente'];
+        $this->monto = number_format(min(round($monto, 2), $saldo), 2, '.', '');
+        $this->updatedMonto();
+    }
+
     public function render()
     {
+        // Límite inferior del simulador: la fecha del último pago registrado.
+        // Desde ahí los aplicados de las cuotas no han cambiado, así que el
+        // cálculo hacia atrás es exacto; antes de esa fecha mezclaría el
+        // estado actual con una fecha en la que la deuda era otra.
+        $fecsimMin = null;
+        if ($this->credit) {
+            $fecsimMin = Payment::where('credit_id', $this->credit->id)->max('fecha')
+                ?: $this->credit->fecha_prestamo;
+        }
+        $fecsimMin = $fecsimMin ? Carbon::parse($fecsimMin)->format('Y-m-d') : now()->format('Y-m-d');
+
+        $alSim = null;
+        if ($this->fecsim) {
+            try {
+                $alSim = Carbon::parse($this->fecsim);
+                // Clamp servidor: el atributo min del input es solo front
+                if ($alSim->lt(Carbon::parse($fecsimMin))) {
+                    $alSim = Carbon::parse($fecsimMin);
+                }
+            } catch (\Exception) {
+                $alSim = null;
+            }
+        }
+
         return view('livewire.payments.create', [
             'calcs' => $this->buildCalcs(),
+            'deuda' => $this->deudaCalcs(),        // a hoy: filas del tfoot
+            'sim' => $this->deudaCalcs($alSim),    // a la fecha simulada: tarjetas
+            'fecsimMin' => $fecsimMin,
         ]);
     }
 }
