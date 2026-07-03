@@ -389,10 +389,9 @@
                                 $morasCancelar = $cancelSinMora ? 0.0 : round($sim['mora'] + $moraAcumTotal, 2);
                                 $capIntCancelar = round($sim['cap_pendiente_total'] + $intCancelar, 2);
                                 $totalCancelarCard = round($capIntCancelar + $morasCancelar, 2);
-                                // El botón llena el Total del card MENOS la mora vigente
-                                // (esa el motor la cobra aparte vía Total Mora): al pagar,
-                                // caja recibe exactamente el Total mostrado.
-                                $montoBtnCancelar = round($capIntCancelar + ($cancelSinMora ? 0.0 : $moraAcumTotal), 2);
+                                // El botón llena solo capital + interés: la mora vigente y la
+                                // mora acumulada se cobran automáticamente como pagos MORA al
+                                // cancelar (salvo "quitar moras"), así caja recibe el Total.
                                 $tachado = 'color:red; text-decoration:line-through; opacity:.6;';
                             @endphp
                             <div class="fw-bold small text-uppercase mb-1">Cancelar crédito</div>
@@ -444,8 +443,8 @@
 
                             @if($simEsHoy)
                                 <button type="button" class="btn btn-sm btn-dark mt-auto"
-                                        wire:click="usarMonto({{ $montoBtnCancelar }})">
-                                    Usar {{ number_format($montoBtnCancelar, 2) }} en Monto a Pagar
+                                        wire:click="usarMonto({{ $capIntCancelar }})">
+                                    Usar {{ number_format($capIntCancelar, 2) }} en Monto a Pagar
                                 </button>
                             @endif
                         </div>

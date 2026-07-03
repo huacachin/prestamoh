@@ -333,6 +333,15 @@ class Create extends Component
             $totMora = (float) $calcs['total_mora'];
             $diasA = (int) $calcs['dias_atraso'];
 
+            // Moras al cancelar: "Quitar mora y mora acumulada" perdona ambas.
+            // Si no se quitan, la mora acumulada (Mora Exon. de cuotas pagadas
+            // tarde) se cobra como pago MORA propio para que caja y reportes
+            // la perciban como mora. Se calcula ANTES de distribuir el pago.
+            $quitarMoras = $this->cancel && $this->cancelSinMora;
+            $moraAcumACobrar = ($this->cancel && ! $quitarMoras)
+                ? round(collect(MoraExonerada::porCuota($this->credit))->sum('monto'), 2)
+                : 0.0;
+
             // ─── 1) DIAS MORA si hay descuento ─────────────────────────────
             if ($diasA > 0) {
                 DB::table('dias_mora')->insert([
@@ -345,10 +354,11 @@ class Create extends Component
             // amount = SOLO lo realmente cobrado al cliente.
             // Si Reserva Mora está marcada, $totMora se acumula pero NO se cobra → no suma.
             // Las moras manuales (impointe2/impomora) sí se cobran siempre.
-            $moraQueSeCobra = $this->ckmora ? 0 : $totMora;
+            $moraQueSeCobra = ($this->ckmora || $quitarMoras) ? 0 : $totMora;
             $totalGeneral = round(
                 $this->monto
                 + $moraQueSeCobra
+                + $moraAcumACobrar
                 + (float) $this->impointe2
                 + (float) $this->impomora,
                 2
@@ -482,7 +492,7 @@ class Create extends Component
             // ─── 5) MORA AUTO-CALCULADA (totmoraapa) ───────────────────────
             // Se asocia a la PRIMERA cuota tocada hoy (origen del atraso) o, si no hay
             // ninguna, a la primera cuota vencida pendiente. Más intuitivo que el legacy.
-            if ($totMora > 0.001 && ! $this->ckmora) {
+            if ($totMora > 0.001 && ! $this->ckmora && ! $quitarMoras) {
                 $insTarget = $this->primeraCuotaParaMora($touchedThisPayment);
 
                 $moraDetalle = ($calcs['mora_manual'] ?? false) ? 'Mora manual' : "Mora Acumulada Dias : {$diasA}";
@@ -505,6 +515,19 @@ class Create extends Component
                     DB::table('credit_installments')->where('id', $this->idpre)
                         ->increment('importe_mora', $this->impomora);
                 }
+            }
+
+            // ─── 7b) MORA ACUMULADA cobrada al cancelar (pago MORA propio) ─
+            // Documento 'MORA ACUM.' → entra a los reportes de caja como mora
+            // (tipo=MORA / LIKE 'MORA%') y queda distinguible de la vigente.
+            if ($moraAcumACobrar > 0.001) {
+                $this->createMoraPayment('MORA ACUM.', $moraAcumACobrar, 'Mora Acumulada Cancelacion', $hora, $usuario, $userId, $hqId, $semodn);
+            }
+
+            // Al cancelar, la mora reservada del crédito muere con él
+            // (se cobró como MORA ACUM. o se perdonó con "quitar moras").
+            if ($this->cancel) {
+                DB::table('mora_acumulada')->where('credit_id', $this->credit->id)->delete();
             }
 
             // ─── 8) RESERVA MORA (ckmora) UPSERT ───────────────────────────
