@@ -163,6 +163,17 @@
                     </div>
 
                     <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">Capital</label>
+                        <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                               wire:model.live="capital" name="capital" autocomplete="off" placeholder="0.00">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">Crédito ({{ \App\Models\Client::LINEA_CREDITO_PCT }}% del capital)</label>
+                        <input type="text" class="form-control form-control-sm bg-light" readonly tabindex="-1"
+                               value="{{ is_numeric($capital) ? number_format((float) $capital * (\App\Models\Client::LINEA_CREDITO_PCT / 100), 2) : '' }}">
+                    </div>
+
+                    <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">Celular / Whatsapp</label>
                         <input type="text" class="form-control form-control-sm"
                                wire:model.defer="celular1" name="celular1" autocomplete="tel" placeholder="999-999-999">

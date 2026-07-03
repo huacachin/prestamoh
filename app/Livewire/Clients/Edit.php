@@ -27,6 +27,7 @@ class Edit extends Component
     public ?string $direccion = null;
     public ?string $referencia = null;
     public ?string $giro = null;            // Legacy: telefono1 → giro
+    public $capital = null;                 // Capital declarado (línea de crédito = 25%)
     public ?string $telefono_secundario = null; // Legacy: telefono2
     public ?string $celular1 = null;
     public ?string $celular2 = null;
@@ -60,6 +61,7 @@ class Edit extends Component
             'direccion'           => 'nullable|string|max:255',
             'referencia'          => 'nullable|string|max:255',
             'giro'                => 'nullable|string|max:100',
+            'capital'             => 'nullable|numeric|min:0',
             'telefono_secundario' => 'nullable|string|max:20',
             'celular1'            => 'nullable|string|max:20',
             'celular2'            => 'nullable|string|max:20',
@@ -99,6 +101,7 @@ class Edit extends Component
         $this->direccion           = $c->direccion;
         $this->referencia          = $c->referencia;
         $this->giro                = $c->giro;
+        $this->capital             = $c->capital;
         // Legacy ntelefono2 → en nuestro modelo no había exacto; usamos telefono_contacto como almacén
         $this->telefono_secundario = $c->telefono_contacto;
         $this->celular1            = $c->celular1;
@@ -131,6 +134,7 @@ class Edit extends Component
             'direccion'          => $this->direccion,
             'referencia'         => $this->referencia,
             'giro'               => $this->giro,
+            'capital'            => $this->capital !== null && $this->capital !== '' ? $this->capital : null,
             'telefono_contacto'  => $this->telefono_secundario,
             'celular1'           => $this->celular1,
             'celular2'           => $this->celular2,

@@ -27,6 +27,7 @@ class Create extends Component
     public ?int $expediente = null;
     public ?string $direccion = null;
     public ?string $giro = null;     // Legacy: input "Giro"
+    public $capital = null;          // Capital declarado (línea de crédito = 25%)
     public ?string $zona = null;     // Legacy: input "T. Credito"
     public ?string $celular1 = null; // Legacy: "Celular / Whatsapp"
     public ?string $celular2 = null;
@@ -202,6 +203,7 @@ class Create extends Component
             'expediente'       => 'required|integer|min:1',
             'direccion'        => 'nullable|string|max:255',
             'giro'             => 'nullable|string|max:100',
+            'capital'          => 'nullable|numeric|min:0',
             'zona'             => 'nullable|string|max:100',
             'celular1'         => 'nullable|string|max:20',
             'celular2'         => 'nullable|string|max:20',
@@ -234,6 +236,7 @@ class Create extends Component
                 'email'            => 'g@huacachin.com',
                 'direccion'        => $this->direccion,
                 'giro'             => $this->giro,
+                'capital'          => $this->capital !== null && $this->capital !== '' ? $this->capital : null,
                 'zona'             => $this->zona,
                 'celular1'         => $this->celular1,
                 'celular2'         => $this->celular2,

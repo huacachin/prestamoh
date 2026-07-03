@@ -8,10 +8,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Client extends Model
 {
+    /** % del capital declarado que se puede prestar (línea de crédito informativa) */
+    public const LINEA_CREDITO_PCT = 25;
+
     protected $fillable = [
         'expediente', 'nombre', 'apellido_pat', 'apellido_mat',
         'tipo_documento', 'documento', 'fecha_registro', 'usuario', 'fecha_nacimiento', 'sexo',
-        'email', 'giro', 'celular1', 'celular2',
+        'email', 'giro', 'capital', 'celular1', 'celular2',
         'direccion', 'referencia', 'distrito', 'provincia', 'departamento',
         'zona', 'contacto_emergencia', 'telefono_contacto',
         'banco_haberes', 'cuenta_haberes', 'banco_cts', 'cuenta_cts',
@@ -27,6 +30,14 @@ class Client extends Model
     public function fullName(): string
     {
         return trim("{$this->apellido_pat} {$this->apellido_mat} {$this->nombre}");
+    }
+
+    /** Línea de crédito = 25% del capital declarado (null si no tiene capital) */
+    public function getCreditoAttribute(): ?float
+    {
+        return $this->capital !== null
+            ? round((float) $this->capital * (self::LINEA_CREDITO_PCT / 100), 2)
+            : null;
     }
 
     public function asesor(): BelongsTo

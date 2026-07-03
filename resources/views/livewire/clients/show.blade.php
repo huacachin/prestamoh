@@ -83,6 +83,12 @@
                     </td>
                 </tr>
                 <tr>
+                    <td style="background-color:#f0f0f0;">Capital</td>
+                    <td>{{ $client->capital !== null ? number_format($client->capital, 2) : '—' }}</td>
+                    <td style="background-color:#f0f0f0;">Crédito ({{ \App\Models\Client::LINEA_CREDITO_PCT }}%)</td>
+                    <td>{{ $lineaCredito !== null ? number_format($lineaCredito, 2) : '—' }}</td>
+                </tr>
+                <tr>
                     <td colspan="4" style="background-color:#e9ecef; font-weight:500; padding:6px 12px;">Historial de Pagos</td>
                 </tr>
             </table>
@@ -199,6 +205,28 @@
                                 <td class="text-end">{{ number_format($totals['saldo_capital'], 2) }}</td>
                                 <td class="text-end">{{ number_format($totals['mora_x_dia'], 2) }}</td>
                                 <td colspan="6"></td>
+                            </tr>
+                            {{-- Línea de crédito (informativa): 25% del capital declarado.
+                                 Usado = capital de créditos Activos. Rojo si ya excedió. --}}
+                            <tr style="background-color:#f0f0f0; font-weight:500;">
+                                @if($lineaCredito !== null)
+                                    <td colspan="25" class="text-end" style="padding-right:12px;">
+                                        Crédito ({{ \App\Models\Client::LINEA_CREDITO_PCT }}% del capital):
+                                        <b>{{ number_format($lineaCredito, 2) }}</b>
+                                        &nbsp;|&nbsp; Usado (créditos Activos): <b>{{ number_format($usadoCredito, 2) }}</b>
+                                        &nbsp;|&nbsp; Disponible:
+                                        <b style="{{ $disponibleCredito < 0 ? 'color:red;' : 'color:green;' }}">
+                                            {{ number_format($disponibleCredito, 2) }}
+                                        </b>
+                                        @if($disponibleCredito < 0)
+                                            <span style="color:red;"><b>(EXCEDIDO)</b></span>
+                                        @endif
+                                    </td>
+                                @else
+                                    <td colspan="25" class="text-end text-muted" style="padding-right:12px;">
+                                        Sin capital registrado — edita el cliente para asignar su capital y línea de crédito ({{ \App\Models\Client::LINEA_CREDITO_PCT }}%).
+                                    </td>
+                                @endif
                             </tr>
                         @endif
                     </tbody>

@@ -172,9 +172,18 @@ class Show extends Component
             $totals['mora_x_dia']    += $mxd;
         }
 
+        // ─── Línea de crédito (informativa): 25% del capital declarado ────
+        // Usado = suma del capital (importe) de los créditos con situación Activo.
+        $lineaCredito = $this->client->credito; // null si no tiene capital registrado
+        $usadoCredito = $credits->where('situacion', 'Activo')->sum(fn ($c) => (float) $c->importe);
+        $disponibleCredito = $lineaCredito !== null ? round($lineaCredito - $usadoCredito, 2) : null;
+
         return view('livewire.clients.show', [
-            'rows'   => $rows,
+            'rows' => $rows,
             'totals' => $totals,
+            'lineaCredito' => $lineaCredito,
+            'usadoCredito' => $usadoCredito,
+            'disponibleCredito' => $disponibleCredito,
         ]);
     }
 }
