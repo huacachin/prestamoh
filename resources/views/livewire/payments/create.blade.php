@@ -88,20 +88,37 @@
                                    value="{{ $credit->moneda ?: 'Soles' }}" readonly>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label mb-0 small fw-semibold">Capital / % / Interés / Total</label>
+                            {{-- Cada valor con su label encima para que queden alineados --}}
                             <div class="d-flex gap-1">
-                                <input type="text" class="form-control form-control-sm bg-light" style="width:80px;"
-                                       value="{{ number_format($c['importe'], 2) }}" readonly>
-                                <input type="text" class="form-control form-control-sm bg-light" style="width:50px;"
-                                       value="{{ number_format($c['interes_pct'], 0) }}" readonly>
-                                <input type="text" class="form-control form-control-sm bg-light" style="width:80px;"
-                                       value="{{ number_format($c['interes_total'], 2) }}" readonly>
-                                <input type="text" class="form-control form-control-sm bg-light" style="width:90px;"
-                                       value="{{ number_format($c['total_credito'], 2) }}" readonly>
+                                <div style="flex:1 1 80px;">
+                                    <label class="form-label mb-0 small fw-semibold">Capital</label>
+                                    <input type="text" class="form-control form-control-sm bg-light"
+                                           value="{{ number_format($c['importe'], 2) }}" readonly>
+                                </div>
+                                <div style="flex:0 0 50px;">
+                                    <label class="form-label mb-0 small fw-semibold">%</label>
+                                    <input type="text" class="form-control form-control-sm bg-light"
+                                           value="{{ number_format($c['interes_pct'], 0) }}" readonly>
+                                </div>
+                                <div style="flex:1 1 80px;">
+                                    <label class="form-label mb-0 small fw-semibold">Interés</label>
+                                    <input type="text" class="form-control form-control-sm bg-light"
+                                           value="{{ number_format($c['interes_total'], 2) }}" readonly>
+                                </div>
+                                <div style="flex:1 1 90px;">
+                                    <label class="form-label mb-0 small fw-semibold">Total</label>
+                                    <input type="text" class="form-control form-control-sm bg-light"
+                                           value="{{ number_format($c['total_credito'], 2) }}" readonly>
+                                </div>
                             </div>
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label mb-0 small fw-semibold">Pago x día atrasado</label>
+                        <div class="col-md-1">
+                            <label class="form-label mb-0 small fw-semibold">MOR. %</label>
+                            <input type="text" class="form-control form-control-sm bg-light"
+                                   value="{{ \App\Models\Credit::TASA_MORA_PCT }}%" readonly>
+                        </div>
+                        <div class="col-md-1">
+                            <label class="form-label mb-0 small fw-semibold">Pago x día</label>
                             <input type="text" class="form-control form-control-sm bg-light"
                                    style="color:red;"
                                    value="{{ number_format($c['mora_rate'], 2) }}" readonly>

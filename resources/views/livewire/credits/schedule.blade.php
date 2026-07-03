@@ -58,7 +58,19 @@
                         </a>
                     </td>
                     <td style="background-color:#f0f0f0;">MOR. %</td>
-                    <td>{{ \App\Models\Credit::TASA_MORA_PCT }}% por cuota</td>
+                    <td>
+                        @php
+                            $cuotaRef = count($rows) ? $rows[0]['total'] : 0.0;
+                            $tp = (int) $credit->tipo_planilla;
+                            $divisorMora = $tp === 1 ? 7 : ($tp === 3 ? 30 : null);
+                        @endphp
+                        @if($divisorMora && $cuotaRef > 0)
+                            {{ \App\Models\Credit::TASA_MORA_PCT }}% × {{ number_format($cuotaRef, 2) }} ÷ {{ $divisorMora }} =
+                            <b>{{ number_format($credit->moraDiaria($cuotaRef), 2) }}</b> x día
+                        @else
+                            {{ number_format($credit->moraDiaria($cuotaRef), 2) }} x día (histórico)
+                        @endif
+                    </td>
                 </tr>
                 <tr>
                     <td style="background-color:#f0f0f0;">N° Cred.</td>
