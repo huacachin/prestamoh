@@ -2,17 +2,29 @@
 
 namespace App\Console\Commands;
 
+use App\Models\CashOpening;
+use App\Models\Client;
+use App\Models\Concept;
+use App\Models\Credit;
+use App\Models\CreditInstallment;
+use App\Models\ExchangeRate;
+use App\Models\Expense;
+use App\Models\Headquarter;
+use App\Models\Income;
+use App\Models\MassDeletion;
+use App\Models\Payment;
+use App\Models\Permission;
+use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
-use App\Models\{User, Client, Credit, CreditInstallment, Payment, Income, Expense, CashOpening, Concept, ExchangeRate, MassDeletion, Headquarter};
 use Spatie\Permission\Models\Role;
 
 class MigrateLegacyData extends Command
 {
     protected $signature = 'legacy:migrate
-                            {--step= : Run a specific step (headquarters,users,clients,credits,installments,payments,incomes,incomes3,expenses,expenses3,cash,concepts,exchange,mass)}
+                            {--step= : Run a specific step (headquarters,users,clients,credits,installments,payments,incomes,incomes3,expenses,expenses3,cash,concepts,exchange,mass,capineto,cache,mora,resumen,attachments)}
                             {--fresh : Truncate target tables before importing}';
 
     protected $description = 'Migrate data from legacy huacachi_prestamo database to the new Laravel schema';
@@ -24,8 +36,8 @@ class MigrateLegacyData extends Command
         $step = $this->option('step');
         $fresh = $this->option('fresh');
 
-        if ($fresh && !$step) {
-            if (!$this->confirm('This will DELETE all existing data. Continue?')) {
+        if ($fresh && ! $step) {
+            if (! $this->confirm('This will DELETE all existing data. Continue?')) {
                 return 1;
             }
         }
@@ -35,34 +47,37 @@ class MigrateLegacyData extends Command
             DB::connection('legacy')->getPdo();
             $this->info('Legacy database connection OK.');
         } catch (\Exception $e) {
-            $this->error('Cannot connect to legacy database: ' . $e->getMessage());
+            $this->error('Cannot connect to legacy database: '.$e->getMessage());
+
             return 1;
         }
 
         $steps = [
             'headquarters' => 'migrateHeadquarters',
-            'users'        => 'migrateUsers',
-            'clients'      => 'migrateClients',
-            'credits'      => 'migrateCredits',
+            'users' => 'migrateUsers',
+            'clients' => 'migrateClients',
+            'credits' => 'migrateCredits',
             'installments' => 'migrateInstallments',
-            'payments'     => 'migratePayments',
-            'incomes'      => 'migrateIncomes',
-            'incomes3'     => 'migrateIncomes3',
-            'expenses'     => 'migrateExpenses',
-            'expenses3'    => 'migrateExpenses3',
-            'cash'         => 'migrateCashOpenings',
-            'concepts'     => 'migrateConcepts',
-            'exchange'     => 'migrateExchangeRates',
-            'mass'         => 'migrateMassDeletions',
-            'capineto'     => 'migrateCapitalNeto',
-            'cache'        => 'migrateCacheTables',
-            'mora'         => 'migrateMoraTables',
-            'resumen'      => 'migrateResumenMensual',
+            'payments' => 'migratePayments',
+            'incomes' => 'migrateIncomes',
+            'incomes3' => 'migrateIncomes3',
+            'expenses' => 'migrateExpenses',
+            'expenses3' => 'migrateExpenses3',
+            'cash' => 'migrateCashOpenings',
+            'concepts' => 'migrateConcepts',
+            'exchange' => 'migrateExchangeRates',
+            'mass' => 'migrateMassDeletions',
+            'capineto' => 'migrateCapitalNeto',
+            'cache' => 'migrateCacheTables',
+            'mora' => 'migrateMoraTables',
+            'resumen' => 'migrateResumenMensual',
+            'attachments' => 'migrateAttachments',
         ];
 
         if ($step) {
-            if (!isset($steps[$step])) {
-                $this->error("Unknown step: {$step}. Valid: " . implode(', ', array_keys($steps)));
+            if (! isset($steps[$step])) {
+                $this->error("Unknown step: {$step}. Valid: ".implode(', ', array_keys($steps)));
+
                 return 1;
             }
             $this->{$steps[$step]}($fresh);
@@ -74,6 +89,7 @@ class MigrateLegacyData extends Command
 
         $this->newLine();
         $this->info('Migration completed!');
+
         return 0;
     }
 
@@ -93,9 +109,9 @@ class MigrateLegacyData extends Command
         $hq = Headquarter::firstOrCreate(
             ['id' => 1],
             [
-                'name'       => 'Huacachin - Principal',
-                'empresa'    => 'Huacachin',
-                'status'     => 'active',
+                'name' => 'Huacachin - Principal',
+                'empresa' => 'Huacachin',
+                'status' => 'active',
                 'sort_order' => 1,
             ]
         );
@@ -118,12 +134,12 @@ class MigrateLegacyData extends Command
 
         // Ensure roles exist
         $roleMap = [
-            'SuperUsuario'  => 'superusuario',
+            'SuperUsuario' => 'superusuario',
             'Administrador' => 'administrador',
-            'Director'      => 'director',
-            'Asesor'        => 'asesor',
-            'Cobranza'      => 'cobranza',
-            'Web'           => 'web',
+            'Director' => 'director',
+            'Asesor' => 'asesor',
+            'Cobranza' => 'cobranza',
+            'Web' => 'web',
         ];
 
         foreach ($roleMap as $legacy => $new) {
@@ -139,7 +155,9 @@ class MigrateLegacyData extends Command
         $count = 0;
         foreach ($legacyUsers as $lu) {
             $username = trim($lu->user);
-            if (empty($username)) continue;
+            if (empty($username)) {
+                continue;
+            }
 
             $roleName = $roleMap[$lu->nivel] ?? 'web';
 
@@ -149,15 +167,15 @@ class MigrateLegacyData extends Command
             $user = User::updateOrCreate(
                 ['username' => strtolower($username)],
                 [
-                    'name'            => $lu->nombre ?? $username,
-                    'email'           => $lu->email ?: strtolower($username) . '@prestamos.local',
-                    'password'        => Hash::make($plainPassword),
-                    'document_type'   => $lu->tdoc ?: 'DNI',
+                    'name' => $lu->nombre ?? $username,
+                    'email' => $lu->email ?: strtolower($username).'@prestamos.local',
+                    'password' => Hash::make($plainPassword),
+                    'document_type' => $lu->tdoc ?: 'DNI',
                     'document_number' => $lu->ruc ?: null,
-                    'phone'           => $lu->movistar ?: $lu->claro ?: $lu->fijo ?: null,
-                    'nivel'           => $lu->nivel,
-                    'headquarter_id'  => 1,
-                    'status'          => ($lu->estado === 'Cesado') ? 'inactive' : 'active',
+                    'phone' => $lu->movistar ?: $lu->claro ?: $lu->fijo ?: null,
+                    'nivel' => $lu->nivel,
+                    'headquarter_id' => 1,
+                    'status' => ($lu->estado === 'Cesado') ? 'inactive' : 'active',
                 ]
             );
 
@@ -165,7 +183,7 @@ class MigrateLegacyData extends Command
 
             // Assign all permissions to superusuario
             if ($roleName === 'superusuario') {
-                $allPerms = \App\Models\Permission::pluck('name')->toArray();
+                $allPerms = Permission::pluck('name')->toArray();
                 $user->syncPermissions($allPerms);
             }
 
@@ -210,43 +228,43 @@ class MigrateLegacyData extends Command
             DB::table('clients')->updateOrInsert(
                 ['id' => $lc->id],
                 [
-                    'id'                  => $lc->id,
-                    'expediente'          => $lc->ccodpersona ?: null,
-                    'nombre'              => $lc->nombre ?: $lc->cnompersona,
-                    'apellido_pat'        => $lc->apellidopat ?: null,
-                    'apellido_mat'        => $lc->apellidomat ?: null,
-                    'tipo_documento'      => 'DNI',
-                    'documento'           => $lc->cdnipersona ?: null,
-                    'fecha_registro'      => ($lc->dfecpersona && $lc->dfecpersona !== '0000-00-00') ? $lc->dfecpersona : null,
-                    'usuario'             => $lc->cnikpersona ?: null,
-                    'fecha_nacimiento'    => ($lc->dnacpersona && $lc->dnacpersona !== '0000-00-00') ? $lc->dnacpersona : null,
-                    'sexo'                => ($lc->csexpersona === 'M' || $lc->csexpersona === 'F') ? $lc->csexpersona : null,
-                    'email'               => $lc->cemapersona ?: null,
-                    'giro'                => $lc->ntelefono ?: null,
-                    'celular1'            => $lc->nmovil ?: null,
-                    'celular2'            => $lc->nmovil2 ?: null,
-                    'direccion'           => $lc->cdireccion ?: null,
-                    'referencia'          => $lc->creferencia ?: null,
-                    'zona'                => $lc->cnomzona ?: null,
-                    'banco_haberes'       => $lc->bancohaberes ?: null,
-                    'cuenta_haberes'      => $lc->cuentabanhabe ?: null,
-                    'banco_cts'           => $lc->bancocts ?: null,
-                    'cuenta_cts'          => $lc->cuentacts ?: null,
-                    'afp'                 => $lc->codigoafp ?: null,
-                    'cussp'               => $lc->cussp ?: null,
-                    'latitud'             => is_numeric($lc->latitud) ? $lc->latitud : null,
-                    'longitud'            => is_numeric($lc->longitud) ? $lc->longitud : null,
-                    'latitud2'            => is_numeric($lc->latitud2 ?? null) ? $lc->latitud2 : null,
-                    'longitud2'           => is_numeric($lc->longitud2 ?? null) ? $lc->longitud2 : null,
-                    'asesor_id'           => $asesorId,
-                    'headquarter_id'      => 1,
-                    'status'              => match ((string) $lc->cestpersona) {
-                        '1'     => 'active',
-                        '0'     => 'inactive',
+                    'id' => $lc->id,
+                    'expediente' => $lc->ccodpersona ?: null,
+                    'nombre' => $lc->nombre ?: $lc->cnompersona,
+                    'apellido_pat' => $lc->apellidopat ?: null,
+                    'apellido_mat' => $lc->apellidomat ?: null,
+                    'tipo_documento' => 'DNI',
+                    'documento' => $lc->cdnipersona ?: null,
+                    'fecha_registro' => ($lc->dfecpersona && $lc->dfecpersona !== '0000-00-00') ? $lc->dfecpersona : null,
+                    'usuario' => $lc->cnikpersona ?: null,
+                    'fecha_nacimiento' => ($lc->dnacpersona && $lc->dnacpersona !== '0000-00-00') ? $lc->dnacpersona : null,
+                    'sexo' => ($lc->csexpersona === 'M' || $lc->csexpersona === 'F') ? $lc->csexpersona : null,
+                    'email' => $lc->cemapersona ?: null,
+                    'giro' => $lc->ntelefono ?: null,
+                    'celular1' => $lc->nmovil ?: null,
+                    'celular2' => $lc->nmovil2 ?: null,
+                    'direccion' => $lc->cdireccion ?: null,
+                    'referencia' => $lc->creferencia ?: null,
+                    'zona' => $lc->cnomzona ?: null,
+                    'banco_haberes' => $lc->bancohaberes ?: null,
+                    'cuenta_haberes' => $lc->cuentabanhabe ?: null,
+                    'banco_cts' => $lc->bancocts ?: null,
+                    'cuenta_cts' => $lc->cuentacts ?: null,
+                    'afp' => $lc->codigoafp ?: null,
+                    'cussp' => $lc->cussp ?: null,
+                    'latitud' => is_numeric($lc->latitud) ? $lc->latitud : null,
+                    'longitud' => is_numeric($lc->longitud) ? $lc->longitud : null,
+                    'latitud2' => is_numeric($lc->latitud2 ?? null) ? $lc->latitud2 : null,
+                    'longitud2' => is_numeric($lc->longitud2 ?? null) ? $lc->longitud2 : null,
+                    'asesor_id' => $asesorId,
+                    'headquarter_id' => 1,
+                    'status' => match ((string) $lc->cestpersona) {
+                        '1' => 'active',
+                        '0' => 'inactive',
                         default => 'deleted',
                     },
-                    'created_at'          => $now,
-                    'updated_at'          => $now,
+                    'created_at' => $now,
+                    'updated_at' => $now,
                 ]
             );
 
@@ -288,60 +306,61 @@ class MigrateLegacyData extends Command
             // Map situacion
             $situacion = $lc->situacion ?: 'Activo';
             $situacionMap = [
-                'Vigente'     => 'Activo',
-                'Cancelado'   => 'Cancelado',
+                'Vigente' => 'Activo',
+                'Cancelado' => 'Cancelado',
                 'Refinanciado' => 'Refinanciado',
-                'R. Capital'  => 'Cancelado',
+                'R. Capital' => 'Cancelado',
                 'R.C.P. Int. Cong' => 'Cancelado',
                 'Judicializado' => 'Activo',
-                'Condonado'   => 'Cancelado',
+                'Condonado' => 'Cancelado',
             ];
             $newSituacion = $situacionMap[$situacion] ?? $situacion;
 
             // Find client ID in new DB
-            if (!isset($validClientIds[$lc->ccodpersona])) {
+            if (! isset($validClientIds[$lc->ccodpersona])) {
                 $bar->advance();
+
                 continue;
             }
 
             $asesorId = $userMap[$lc->nomasesor ?? ''] ?? null;
             // Try user field
-            if (!$asesorId && $lc->user) {
+            if (! $asesorId && $lc->user) {
                 $asesorId = User::where('username', strtolower($lc->user))->value('id');
             }
 
             DB::table('credits')->updateOrInsert(
                 ['id' => $lc->id],
                 [
-                    'id'                 => $lc->id,
-                    'client_id'          => $lc->ccodpersona,
-                    'fecha_prestamo'     => ($lc->fechaprestamo && $lc->fechaprestamo !== '0000-00-00') ? $lc->fechaprestamo : now()->format('Y-m-d'),
+                    'id' => $lc->id,
+                    'client_id' => $lc->ccodpersona,
+                    'fecha_prestamo' => ($lc->fechaprestamo && $lc->fechaprestamo !== '0000-00-00') ? $lc->fechaprestamo : now()->format('Y-m-d'),
                     'fecha_actualizacion' => ($lc->fechaactua && $lc->fechaactua !== '0000-00-00') ? $lc->fechaactua : null,
-                    'importe'            => $lc->importe ?? 0,
-                    'cuotas'             => $lc->cuotas ?? 1,
-                    'tipo_planilla'      => $lc->tipoplani ?? 3,
-                    'interes'            => $lc->interes ?? 0,
-                    'interes_total'      => $lc->interestot ?? 0,
-                    'mora'               => $lc->mora ?? 0,
-                    'mora1'              => $lc->mora1 ?? 0,
-                    'mora2'              => $lc->mora2 ?? 0,
-                    'moneda'             => 'Soles',
-                    'documento'          => $lc->documento ?: null,
-                    'glosa'              => $lc->glosa ?: null,
-                    'situacion'          => $newSituacion,
-                    'estado'             => $lc->estado ?? 1,
-                    'refinanciado'       => ($lc->refi == 1 || $lc->cod_rem === 'REF') ? 1 : 0,
-                    'cod_rem'            => $lc->cod_rem ?: null,
-                    'gat'                => $lc->gat ?? 0,
-                    'idcan'              => $lc->idcan ?: null,
-                    'fecha_vencimiento'  => ($lc->fechafin && $lc->fechafin !== '0000-00-00') ? $lc->fechafin : null,
-                    'fecha_cancelacion'  => ($lc->fechacan && $lc->fechacan !== '0000-00-00') ? $lc->fechacan : null,
-                    'asesor'             => $lc->nomasesor ?: null,
-                    'user_id'            => $asesorId,
-                    'usuario'            => $lc->user ?: null,
-                    'headquarter_id'     => 1,
-                    'created_at'         => $now,
-                    'updated_at'         => $now,
+                    'importe' => $lc->importe ?? 0,
+                    'cuotas' => $lc->cuotas ?? 1,
+                    'tipo_planilla' => $lc->tipoplani ?? 3,
+                    'interes' => $lc->interes ?? 0,
+                    'interes_total' => $lc->interestot ?? 0,
+                    'mora' => $lc->mora ?? 0,
+                    'mora1' => $lc->mora1 ?? 0,
+                    'mora2' => $lc->mora2 ?? 0,
+                    'moneda' => 'Soles',
+                    'documento' => $lc->documento ?: null,
+                    'glosa' => $lc->glosa ?: null,
+                    'situacion' => $newSituacion,
+                    'estado' => $lc->estado ?? 1,
+                    'refinanciado' => ($lc->refi == 1 || $lc->cod_rem === 'REF') ? 1 : 0,
+                    'cod_rem' => $lc->cod_rem ?: null,
+                    'gat' => $lc->gat ?? 0,
+                    'idcan' => $lc->idcan ?: null,
+                    'fecha_vencimiento' => ($lc->fechafin && $lc->fechafin !== '0000-00-00') ? $lc->fechafin : null,
+                    'fecha_cancelacion' => ($lc->fechacan && $lc->fechacan !== '0000-00-00') ? $lc->fechacan : null,
+                    'asesor' => $lc->nomasesor ?: null,
+                    'user_id' => $asesorId,
+                    'usuario' => $lc->user ?: null,
+                    'headquarter_id' => 1,
+                    'created_at' => $now,
+                    'updated_at' => $now,
                 ]
             );
 
@@ -381,7 +400,7 @@ class MigrateLegacyData extends Command
                 foreach ($chunk as $li) {
                     $bar->advance();
 
-                    if (!isset($validCredits[$li->idcab])) {
+                    if (! isset($validCredits[$li->idcab])) {
                         continue;
                     }
 
@@ -398,27 +417,27 @@ class MigrateLegacyData extends Command
                     $fechaPago = ($li->flpago == 1 && $fechaVenc) ? $fechaVenc : null;
 
                     $batch[] = [
-                        'id'                => $li->id,
-                        'credit_id'         => $li->idcab,
-                        'num_cuota'         => $li->num_cuot ?? 0,
+                        'id' => $li->id,
+                        'credit_id' => $li->idcab,
+                        'num_cuota' => $li->num_cuot ?? 0,
                         'fecha_vencimiento' => $fechaVenc ?? now()->format('Y-m-d'),
-                        'importe_cuota'     => $li->importecuota ?? 0,
-                        'importe_interes'   => $li->importeinteres ?? 0,
-                        'importe_aplicado'  => $li->importeapli ?? 0,
-                        'interes_aplicado'  => $li->aplicado ?? 0,
-                        'importe_mora'      => ($li->impomora ?? 0) + ($li->impomorai ?? 0),
-                        'pagado'            => ($li->flpago == 1),
-                        'fecha_pago'        => $fechaPago,
-                        'observacion'       => $li->observacion ?: null,
-                        'usuario'           => $li->usuario ?: null,
-                        'created_at'        => now(),
-                        'updated_at'        => now(),
+                        'importe_cuota' => $li->importecuota ?? 0,
+                        'importe_interes' => $li->importeinteres ?? 0,
+                        'importe_aplicado' => $li->importeapli ?? 0,
+                        'interes_aplicado' => $li->aplicado ?? 0,
+                        'importe_mora' => ($li->impomora ?? 0) + ($li->impomorai ?? 0),
+                        'pagado' => ($li->flpago == 1),
+                        'fecha_pago' => $fechaPago,
+                        'observacion' => $li->observacion ?: null,
+                        'usuario' => $li->usuario ?: null,
+                        'created_at' => now(),
+                        'updated_at' => now(),
                     ];
 
                     $count++;
                 }
 
-                if (!empty($batch)) {
+                if (! empty($batch)) {
                     CreditInstallment::upsert($batch, ['id'], array_keys($batch[0]));
                 }
             });
@@ -456,7 +475,7 @@ class MigrateLegacyData extends Command
                     $bar->advance();
 
                     $creditId = $lp->nroentrada;
-                    if (!is_numeric($creditId) || !isset($validCredits[(int)$creditId])) {
+                    if (! is_numeric($creditId) || ! isset($validCredits[(int) $creditId])) {
                         continue;
                     }
 
@@ -476,32 +495,32 @@ class MigrateLegacyData extends Command
                         : null;
 
                     $batch[] = [
-                        'credit_id'      => (int)$creditId,
+                        'credit_id' => (int) $creditId,
                         'installment_id' => null,
-                        'modo'           => $lp->modo ?: 'CREDITO',
-                        'tipo'           => $tipo,
-                        'documento'      => $lp->documento ?: null,
-                        'nro_recibo'     => $lp->coditem ?: null,
-                        'fecha'          => $fechaPago,
-                        'hora'           => $lp->tipo ?: null,
-                        'monto'          => $lp->totalgeneral ?? 0,
-                        'moneda'         => 'Soles',
-                        'tipo_cambio'    => ($lp->cambio && $lp->cambio > 0) ? $lp->cambio : null,
-                        'detalle'        => $lp->detalle ?: null,
-                        'asesor'         => $lp->asesor ?: null,
-                        'user_id'        => null,
-                        'usuario'        => $lp->usuario ?: null,
+                        'modo' => $lp->modo ?: 'CREDITO',
+                        'tipo' => $tipo,
+                        'documento' => $lp->documento ?: null,
+                        'nro_recibo' => $lp->coditem ?: null,
+                        'fecha' => $fechaPago,
+                        'hora' => $lp->tipo ?: null,
+                        'monto' => $lp->totalgeneral ?? 0,
+                        'moneda' => 'Soles',
+                        'tipo_cambio' => ($lp->cambio && $lp->cambio > 0) ? $lp->cambio : null,
+                        'detalle' => $lp->detalle ?: null,
+                        'asesor' => $lp->asesor ?: null,
+                        'user_id' => null,
+                        'usuario' => $lp->usuario ?: null,
                         'headquarter_id' => 1,
-                        'latitud'        => is_numeric($lp->latitud ?? null) ? $lp->latitud : null,
-                        'longitud'       => is_numeric($lp->longitud ?? null) ? $lp->longitud : null,
-                        'created_at'     => now(),
-                        'updated_at'     => now(),
+                        'latitud' => is_numeric($lp->latitud ?? null) ? $lp->latitud : null,
+                        'longitud' => is_numeric($lp->longitud ?? null) ? $lp->longitud : null,
+                        'created_at' => now(),
+                        'updated_at' => now(),
                     ];
 
                     $count++;
                 }
 
-                if (!empty($batch)) {
+                if (! empty($batch)) {
                     Payment::insert($batch);
                 }
             });
@@ -524,7 +543,7 @@ class MigrateLegacyData extends Command
 
         // Build user mapping
         $userMap = [];
-        foreach (\App\Models\User::pluck('id', 'username') as $username => $id) {
+        foreach (User::pluck('id', 'username') as $username => $id) {
             $userMap[strtolower($username)] = $id;
         }
 
@@ -544,22 +563,22 @@ class MigrateLegacyData extends Command
                     $userId = $userMap[strtolower(trim($li->usuario ?? ''))] ?? null;
 
                     $batch[] = [
-                        'date'           => ($li->fechaentrada && $li->fechaentrada !== '0000-00-00') ? $li->fechaentrada : null,
-                        'reason'         => $li->aa ?: ($li->modo ?: 'Otros'),
-                        'modo'           => $li->modo ?: null,
-                        'documento'      => $li->documento ?: null,
-                        'asesor'         => $li->asesor ?: null,
-                        'detail'         => mb_substr($li->detalle ?: '', 0, 255),
-                        'total'          => $li->totalgeneral ?? 0,
-                        'user_id'        => $userId,
+                        'date' => ($li->fechaentrada && $li->fechaentrada !== '0000-00-00') ? $li->fechaentrada : null,
+                        'reason' => $li->aa ?: ($li->modo ?: 'Otros'),
+                        'modo' => $li->modo ?: null,
+                        'documento' => $li->documento ?: null,
+                        'asesor' => $li->asesor ?: null,
+                        'detail' => mb_substr($li->detalle ?: '', 0, 255),
+                        'total' => $li->totalgeneral ?? 0,
+                        'user_id' => $userId,
                         'headquarter_id' => 1,
-                        'caja'           => 1,
-                        'created_at'     => now(),
-                        'updated_at'     => now(),
+                        'caja' => 1,
+                        'created_at' => now(),
+                        'updated_at' => now(),
                     ];
                     $count++;
                 }
-                if (!empty($batch)) {
+                if (! empty($batch)) {
                     Income::insert($batch);
                 }
             });
@@ -581,7 +600,7 @@ class MigrateLegacyData extends Command
         }
 
         $userMap = [];
-        foreach (\App\Models\User::pluck('id', 'username') as $username => $id) {
+        foreach (User::pluck('id', 'username') as $username => $id) {
             $userMap[strtolower($username)] = $id;
         }
 
@@ -600,22 +619,22 @@ class MigrateLegacyData extends Command
                     $userId = $userMap[strtolower(trim($li->usuario ?? ''))] ?? null;
 
                     $batch[] = [
-                        'date'           => ($li->fechaentrada && $li->fechaentrada !== '0000-00-00') ? $li->fechaentrada : null,
-                        'reason'         => $li->aa ?: ($li->modo ?: 'Otros'),
-                        'modo'           => $li->modo ?: null,
-                        'documento'      => $li->documento ?: null,
-                        'asesor'         => $li->asesores ?: null,
-                        'detail'         => mb_substr($li->detalle ?: '', 0, 255),
-                        'total'          => $li->totalgeneral ?? 0,
-                        'user_id'        => $userId,
+                        'date' => ($li->fechaentrada && $li->fechaentrada !== '0000-00-00') ? $li->fechaentrada : null,
+                        'reason' => $li->aa ?: ($li->modo ?: 'Otros'),
+                        'modo' => $li->modo ?: null,
+                        'documento' => $li->documento ?: null,
+                        'asesor' => $li->asesores ?: null,
+                        'detail' => mb_substr($li->detalle ?: '', 0, 255),
+                        'total' => $li->totalgeneral ?? 0,
+                        'user_id' => $userId,
                         'headquarter_id' => 1,
-                        'caja'           => 3,
-                        'created_at'     => now(),
-                        'updated_at'     => now(),
+                        'caja' => 3,
+                        'created_at' => now(),
+                        'updated_at' => now(),
                     ];
                     $count++;
                 }
-                if (!empty($batch)) {
+                if (! empty($batch)) {
                     Income::insert($batch);
                 }
             });
@@ -638,7 +657,7 @@ class MigrateLegacyData extends Command
 
         // Build user mapping
         $userMap = [];
-        foreach (\App\Models\User::pluck('id', 'username') as $username => $id) {
+        foreach (User::pluck('id', 'username') as $username => $id) {
             $userMap[strtolower($username)] = $id;
         }
 
@@ -657,22 +676,22 @@ class MigrateLegacyData extends Command
                     $userId = $userMap[strtolower(trim($le->usuario ?? ''))] ?? null;
 
                     $batch[] = [
-                        'date'           => ($le->fechaentrada && $le->fechaentrada !== '0000-00-00') ? $le->fechaentrada : null,
-                        'reason'         => $le->aa ?: ($le->modo ?: 'Otros'),
-                        'modo'           => $le->modo ?: null,
-                        'detail'         => mb_substr($le->detalle ?: '', 0, 255),
-                        'total'          => $le->totalgeneral ?? 0,
-                        'document_type'  => $le->tipcom ?: null,
-                        'in_charge'      => $le->respons ?: null,
-                        'user_id'        => $userId,
+                        'date' => ($le->fechaentrada && $le->fechaentrada !== '0000-00-00') ? $le->fechaentrada : null,
+                        'reason' => $le->aa ?: ($le->modo ?: 'Otros'),
+                        'modo' => $le->modo ?: null,
+                        'detail' => mb_substr($le->detalle ?: '', 0, 255),
+                        'total' => $le->totalgeneral ?? 0,
+                        'document_type' => $le->tipcom ?: null,
+                        'in_charge' => $le->respons ?: null,
+                        'user_id' => $userId,
                         'headquarter_id' => 1,
-                        'caja'           => 1,
-                        'created_at'     => now(),
-                        'updated_at'     => now(),
+                        'caja' => 1,
+                        'created_at' => now(),
+                        'updated_at' => now(),
                     ];
                     $count++;
                 }
-                if (!empty($batch)) {
+                if (! empty($batch)) {
                     Expense::insert($batch);
                 }
             });
@@ -694,7 +713,7 @@ class MigrateLegacyData extends Command
         }
 
         $userMap = [];
-        foreach (\App\Models\User::pluck('id', 'username') as $username => $id) {
+        foreach (User::pluck('id', 'username') as $username => $id) {
             $userMap[strtolower($username)] = $id;
         }
 
@@ -713,22 +732,22 @@ class MigrateLegacyData extends Command
                     $userId = $userMap[strtolower(trim($le->usuario ?? ''))] ?? null;
 
                     $batch[] = [
-                        'date'           => ($le->fechaentrada && $le->fechaentrada !== '0000-00-00') ? $le->fechaentrada : null,
-                        'reason'         => $le->aa ?: ($le->modo ?: 'Otros'),
-                        'modo'           => $le->modo ?: null,
-                        'detail'         => mb_substr($le->detalle ?: '', 0, 255),
-                        'total'          => $le->totalgeneral ?? 0,
-                        'document_type'  => null,
-                        'in_charge'      => null,
-                        'user_id'        => $userId,
+                        'date' => ($le->fechaentrada && $le->fechaentrada !== '0000-00-00') ? $le->fechaentrada : null,
+                        'reason' => $le->aa ?: ($le->modo ?: 'Otros'),
+                        'modo' => $le->modo ?: null,
+                        'detail' => mb_substr($le->detalle ?: '', 0, 255),
+                        'total' => $le->totalgeneral ?? 0,
+                        'document_type' => null,
+                        'in_charge' => null,
+                        'user_id' => $userId,
                         'headquarter_id' => 1,
-                        'caja'           => 3,
-                        'created_at'     => now(),
-                        'updated_at'     => now(),
+                        'caja' => 3,
+                        'created_at' => now(),
+                        'updated_at' => now(),
                     ];
                     $count++;
                 }
-                if (!empty($batch)) {
+                if (! empty($batch)) {
                     Expense::insert($batch);
                 }
             });
@@ -755,7 +774,7 @@ class MigrateLegacyData extends Command
 
         // Build user mapping: legacy clientes.user/usuario → new users.id
         $userMap = [];
-        foreach (\App\Models\User::pluck('id', 'username') as $username => $id) {
+        foreach (User::pluck('id', 'username') as $username => $id) {
             $userMap[strtolower($username)] = $id;
         }
 
@@ -764,16 +783,16 @@ class MigrateLegacyData extends Command
             $userId = $userMap[strtolower(trim($lc->usuario ?? ''))] ?? null;
 
             CashOpening::create([
-                'fecha'          => ($lc->fecha && $lc->fecha !== '0000-00-00') ? $lc->fecha : now()->format('Y-m-d'),
-                'hora'           => $lc->hora ?: null,
-                'saldo_inicial'  => $lc->importe ?? 0,
-                'saldo_final'    => 0,
-                'estado'         => match (strtolower($lc->estado ?? '')) {
+                'fecha' => ($lc->fecha && $lc->fecha !== '0000-00-00') ? $lc->fecha : now()->format('Y-m-d'),
+                'hora' => $lc->hora ?: null,
+                'saldo_inicial' => $lc->importe ?? 0,
+                'saldo_final' => 0,
+                'estado' => match (strtolower($lc->estado ?? '')) {
                     'activo', 'abierto' => 'abierto',
-                    default              => 'cerrado',
+                    default => 'cerrado',
                 },
-                'moneda'         => $lc->moneda ?: 'Soles',
-                'user_id'        => $userId,
+                'moneda' => $lc->moneda ?: 'Soles',
+                'user_id' => $userId,
                 'headquarter_id' => 1,
             ]);
             $count++;
@@ -801,11 +820,11 @@ class MigrateLegacyData extends Command
             Concept::updateOrCreate(
                 ['code' => $lc->cvalparametro],
                 [
-                    'name'           => $lc->cnombrees ?: 'Sin nombre',
-                    'type'           => ($lc->ctipocon == '1') ? 'Ingreso' : 'Egreso',
+                    'name' => $lc->cnombrees ?: 'Sin nombre',
+                    'type' => ($lc->ctipocon == '1') ? 'Ingreso' : 'Egreso',
                     'factor_ingreso' => $lc->facpago ?? 0,
-                    'factor_egreso'  => $lc->facdivi ?? 0,
-                    'status'         => ($lc->cestparametro == 1) ? 'active' : 'inactive',
+                    'factor_egreso' => $lc->facdivi ?? 0,
+                    'status' => ($lc->cestparametro == 1) ? 'active' : 'inactive',
                 ]
             );
             $count++;
@@ -835,7 +854,7 @@ class MigrateLegacyData extends Command
                 ['fecha' => $fecha],
                 [
                     'compra' => $lr->compra ?? 0,
-                    'venta'  => $lr->cambio ?? 0,
+                    'venta' => $lr->cambio ?? 0,
                 ]
             );
             $count++;
@@ -868,16 +887,16 @@ class MigrateLegacyData extends Command
             DB::table('mass_deletions')->updateOrInsert(
                 ['id' => $lm->id],
                 [
-                    'id'           => $lm->id,
-                    'credit_id'    => isset($validCredits[$lm->codpres]) ? $lm->codpres : null,
-                    'amount'       => $lm->monto ?? 0,
-                    'date'         => ($lm->fecha && $lm->fecha !== '0000-00-00') ? $lm->fecha : now()->format('Y-m-d'),
-                    'time'         => $lm->hora ?: '00:00:00',
-                    'user'         => null,
-                    'advisor'      => $lm->asesor ?: null,
+                    'id' => $lm->id,
+                    'credit_id' => isset($validCredits[$lm->codpres]) ? $lm->codpres : null,
+                    'amount' => $lm->monto ?? 0,
+                    'date' => ($lm->fecha && $lm->fecha !== '0000-00-00') ? $lm->fecha : now()->format('Y-m-d'),
+                    'time' => $lm->hora ?: '00:00:00',
+                    'user' => null,
+                    'advisor' => $lm->asesor ?: null,
                     'performed_by' => $lm->usuario2 ?: null,
-                    'created_at'   => $now,
-                    'updated_at'   => $now,
+                    'created_at' => $now,
+                    'updated_at' => $now,
                 ]
             );
             $count++;
@@ -897,23 +916,23 @@ class MigrateLegacyData extends Command
             $batch = [];
             foreach ($chunk as $dm) {
                 $bar->advance();
-                if (!isset($validMass[$dm->idcab])) {
+                if (! isset($validMass[$dm->idcab])) {
                     continue;
                 }
                 $batch[] = [
-                    'id'                => $dm->id,
-                    'mass_deletion_id'  => $dm->idcab,
-                    'installment_id'    => $dm->codigocuota ?: null,
-                    'payment_id'        => $dm->codigoing ?: null,
-                    'amount'            => $dm->montocuota ?? 0,
-                    'fecha'             => ($dm->fecha && $dm->fecha !== '0000-00-00 00:00:00') ? $dm->fecha : null,
-                    'tipo'              => $dm->tipo ?: null,
-                    'created_at'        => $now,
-                    'updated_at'        => $now,
+                    'id' => $dm->id,
+                    'mass_deletion_id' => $dm->idcab,
+                    'installment_id' => $dm->codigocuota ?: null,
+                    'payment_id' => $dm->codigoing ?: null,
+                    'amount' => $dm->montocuota ?? 0,
+                    'fecha' => ($dm->fecha && $dm->fecha !== '0000-00-00 00:00:00') ? $dm->fecha : null,
+                    'tipo' => $dm->tipo ?: null,
+                    'created_at' => $now,
+                    'updated_at' => $now,
                 ];
                 $countDet++;
             }
-            if (!empty($batch)) {
+            if (! empty($batch)) {
                 DB::table('mass_deletion_details')->insert($batch);
             }
         });
@@ -941,16 +960,18 @@ class MigrateLegacyData extends Command
             ->chunk(1000, function ($chunk) use (&$count, $now) {
                 $batch = [];
                 foreach ($chunk as $r) {
-                    if (!$r->fecha || $r->fecha === '0000-00-00') continue;
+                    if (! $r->fecha || $r->fecha === '0000-00-00') {
+                        continue;
+                    }
                     $batch[] = [
-                        'fecha'      => $r->fecha,
-                        'importe'    => $r->importe ?? 0,
+                        'fecha' => $r->fecha,
+                        'importe' => $r->importe ?? 0,
                         'created_at' => $now,
                         'updated_at' => $now,
                     ];
                     $count++;
                 }
-                if (!empty($batch)) {
+                if (! empty($batch)) {
                     DB::table('capital_neto')->upsert($batch, ['fecha'], ['importe', 'updated_at']);
                 }
             });
@@ -974,40 +995,40 @@ class MigrateLegacyData extends Command
                 $batch = [];
                 foreach ($chunk as $r) {
                     $batch[] = [
-                        'idmes'     => $r->idmes,
-                        'idano'     => $r->idano,
-                        'capital'   => $r->capital ?? 0,
-                        'recucapi'  => $r->recucapi ?? 0,
-                        'n1'        => $r->n1 ?? 0,
-                        'mensual'   => $r->mensual ?? 0,
-                        'n2'        => $r->n2 ?? 0,
-                        'semanal'   => $r->semanal ?? 0,
-                        'n3'        => $r->n3 ?? 0,
-                        'diario'    => $r->diario ?? 0,
-                        'mora'      => $r->mora ?? 0,
-                        'total'     => $r->total ?? 0,
-                        'otros'     => $r->otros ?? 0,
-                        'egreso'    => $r->egreso ?? 0,
-                        'utilidad'  => $r->utilidad ?? 0,
-                        'otros2'    => $r->otros2 ?? 0,
-                        'egresov'   => $r->egresov ?? 0,
+                        'idmes' => $r->idmes,
+                        'idano' => $r->idano,
+                        'capital' => $r->capital ?? 0,
+                        'recucapi' => $r->recucapi ?? 0,
+                        'n1' => $r->n1 ?? 0,
+                        'mensual' => $r->mensual ?? 0,
+                        'n2' => $r->n2 ?? 0,
+                        'semanal' => $r->semanal ?? 0,
+                        'n3' => $r->n3 ?? 0,
+                        'diario' => $r->diario ?? 0,
+                        'mora' => $r->mora ?? 0,
+                        'total' => $r->total ?? 0,
+                        'otros' => $r->otros ?? 0,
+                        'egreso' => $r->egreso ?? 0,
+                        'utilidad' => $r->utilidad ?? 0,
+                        'otros2' => $r->otros2 ?? 0,
+                        'egresov' => $r->egresov ?? 0,
                         'utilidad2' => $r->utilidad2 ?? 0,
-                        'fijoi'     => $r->fijoi ?? 0,
-                        'otrosi'    => $r->otrosi ?? 0,
-                        'fijoe'     => $r->fijoe ?? 0,
-                        'otrose'    => $r->otrose ?? 0,
-                        'mora1'     => $r->mora1 ?? 0,
-                        'mora3'     => $r->mora3 ?? 0,
-                        'mora4'     => $r->mora4 ?? 0,
+                        'fijoi' => $r->fijoi ?? 0,
+                        'otrosi' => $r->otrosi ?? 0,
+                        'fijoe' => $r->fijoe ?? 0,
+                        'otrose' => $r->otrose ?? 0,
+                        'mora1' => $r->mora1 ?? 0,
+                        'mora3' => $r->mora3 ?? 0,
+                        'mora4' => $r->mora4 ?? 0,
                         'created_at' => $now,
                         'updated_at' => $now,
                     ];
                     $count++;
                 }
-                if (!empty($batch)) {
+                if (! empty($batch)) {
                     DB::table('cache_resumen_mensual')->upsert(
                         $batch, ['idmes', 'idano'],
-                        ['capital','recucapi','n1','mensual','n2','semanal','n3','diario','mora','total','otros','egreso','utilidad','otros2','egresov','utilidad2','fijoi','otrosi','fijoe','otrose','mora1','mora3','mora4','updated_at']
+                        ['capital', 'recucapi', 'n1', 'mensual', 'n2', 'semanal', 'n3', 'diario', 'mora', 'total', 'otros', 'egreso', 'utilidad', 'otros2', 'egresov', 'utilidad2', 'fijoi', 'otrosi', 'fijoe', 'otrose', 'mora1', 'mora3', 'mora4', 'updated_at']
                     );
                 }
             });
@@ -1034,15 +1055,17 @@ class MigrateLegacyData extends Command
                 $batch = [];
                 foreach ($chunk as $r) {
                     $batch[] = [
-                        'credit_id'         => (int) $r->idprestamos,
-                        'dias'              => (int) ($r->diascan ?? 0),
-                        'dias_descontados'  => (int) ($r->diascondenado ?? 0),
-                        'created_at'        => $now,
-                        'updated_at'        => $now,
+                        'credit_id' => (int) $r->idprestamos,
+                        'dias' => (int) ($r->diascan ?? 0),
+                        'dias_descontados' => (int) ($r->diascondenado ?? 0),
+                        'created_at' => $now,
+                        'updated_at' => $now,
                     ];
                     $count1++;
                 }
-                if (!empty($batch)) DB::table('dias_mora')->insert($batch);
+                if (! empty($batch)) {
+                    DB::table('dias_mora')->insert($batch);
+                }
             });
         $this->info("  dias_mora migrated: {$count1}");
 
@@ -1053,15 +1076,17 @@ class MigrateLegacyData extends Command
                 $batch = [];
                 foreach ($chunk as $r) {
                     $batch[] = [
-                        'credit_id'  => (int) $r->idcab,
-                        'importe'    => $r->importe ?? 0,
-                        'dias'       => (int) ($r->dias ?? 0),
+                        'credit_id' => (int) $r->idcab,
+                        'importe' => $r->importe ?? 0,
+                        'dias' => (int) ($r->dias ?? 0),
                         'created_at' => $now,
                         'updated_at' => $now,
                     ];
                     $count2++;
                 }
-                if (!empty($batch)) DB::table('mora_acumulada')->insert($batch);
+                if (! empty($batch)) {
+                    DB::table('mora_acumulada')->insert($batch);
+                }
             });
         $this->info("  mora_acumulada migrated: {$count2}");
     }
@@ -1085,27 +1110,27 @@ class MigrateLegacyData extends Command
                 $batch = [];
                 foreach ($chunk as $r) {
                     $batch[] = [
-                        'mes'       => $r->mes ?: '',
-                        'xcn'       => $r->xcn ?? 0,
-                        'xrc'       => $r->xrc ?? 0,
-                        'canc'      => $r->canc ?? 0,
-                        'total'     => $r->total ?? 0,
-                        'capital'   => $r->capital ?? 0,
+                        'mes' => $r->mes ?: '',
+                        'xcn' => $r->xcn ?? 0,
+                        'xrc' => $r->xrc ?? 0,
+                        'canc' => $r->canc ?? 0,
+                        'total' => $r->total ?? 0,
+                        'capital' => $r->capital ?? 0,
                         'impacobra' => $r->impacobra ?? 0,
-                        'cobcnt'    => $r->cobcnt ?? 0,
-                        'cobimp'    => $r->cobimp ?? 0,
-                        'nocobcnt'  => $r->nocobcnt ?? 0,
-                        'nocobimp'  => $r->nocobimp ?? 0,
-                        'ano'       => $r->ano,
-                        'mesmes'    => str_pad($r->mesmes, 2, '0', STR_PAD_LEFT),
+                        'cobcnt' => $r->cobcnt ?? 0,
+                        'cobimp' => $r->cobimp ?? 0,
+                        'nocobcnt' => $r->nocobcnt ?? 0,
+                        'nocobimp' => $r->nocobimp ?? 0,
+                        'ano' => $r->ano,
+                        'mesmes' => str_pad($r->mesmes, 2, '0', STR_PAD_LEFT),
                         'created_at' => now(),
                         'updated_at' => now(),
                     ];
                     $countAdv++;
                 }
-                if (!empty($batch)) {
+                if (! empty($batch)) {
                     DB::table('cache_advisor_monthly')->upsert($batch, ['ano', 'mesmes'],
-                        ['mes','xcn','xrc','canc','total','capital','impacobra','cobcnt','cobimp','nocobcnt','nocobimp','updated_at']);
+                        ['mes', 'xcn', 'xrc', 'canc', 'total', 'capital', 'impacobra', 'cobcnt', 'cobimp', 'nocobcnt', 'nocobimp', 'updated_at']);
                 }
             });
         $this->info("  cache_advisor_monthly migrated: {$countAdv}");
@@ -1118,7 +1143,9 @@ class MigrateLegacyData extends Command
             ->chunk(1000, function ($chunk) use (&$countMor, $now) {
                 $batch = [];
                 foreach ($chunk as $r) {
-                    if (!$r->fecha || $r->fecha === '0000-00-00') continue;
+                    if (! $r->fecha || $r->fecha === '0000-00-00') {
+                        continue;
+                    }
                     $batch[] = [
                         'fecha' => $r->fecha,
                         'importe' => $r->importe ?? 0,
@@ -1127,7 +1154,7 @@ class MigrateLegacyData extends Command
                     ];
                     $countMor++;
                 }
-                if (!empty($batch)) {
+                if (! empty($batch)) {
                     DB::table('cache_ingreso_diario')->upsert($batch, ['fecha'], ['importe', 'updated_at']);
                 }
             });
@@ -1139,7 +1166,9 @@ class MigrateLegacyData extends Command
             ->chunk(1000, function ($chunk) use (&$count1, $now) {
                 $batch = [];
                 foreach ($chunk as $r) {
-                    if (!$r->fecha || $r->fecha === '0000-00-00') continue;
+                    if (! $r->fecha || $r->fecha === '0000-00-00') {
+                        continue;
+                    }
                     $batch[] = [
                         'fecha' => $r->fecha,
                         'importe' => $r->importe ?? 0,
@@ -1148,7 +1177,7 @@ class MigrateLegacyData extends Command
                     ];
                     $count1++;
                 }
-                if (!empty($batch)) {
+                if (! empty($batch)) {
                     DB::table('cache_capital_cobrado')->upsert($batch, ['fecha'], ['importe', 'updated_at']);
                 }
             });
@@ -1160,23 +1189,25 @@ class MigrateLegacyData extends Command
             ->chunk(1000, function ($chunk) use (&$count3, $now) {
                 $batch = [];
                 foreach ($chunk as $r) {
-                    if (!$r->fecha || $r->fecha === '0000-00-00') continue;
+                    if (! $r->fecha || $r->fecha === '0000-00-00') {
+                        continue;
+                    }
                     $batch[] = [
-                        'fecha'     => $r->fecha,
-                        'interes'   => $r->interes ?? 0,
-                        'mora'      => $r->mora ?? 0,
+                        'fecha' => $r->fecha,
+                        'interes' => $r->interes ?? 0,
+                        'mora' => $r->mora ?? 0,
                         'n_mensual' => $r->n1 ?? 0,
-                        'mensual'   => $r->mensual ?? 0,
+                        'mensual' => $r->mensual ?? 0,
                         'n_semanal' => $r->n2 ?? 0,
-                        'semanal'   => $r->semanal ?? 0,
-                        'n_diario'  => $r->n3 ?? 0,
-                        'diario'    => $r->diario ?? 0,
+                        'semanal' => $r->semanal ?? 0,
+                        'n_diario' => $r->n3 ?? 0,
+                        'diario' => $r->diario ?? 0,
                         'created_at' => $now,
                         'updated_at' => $now,
                     ];
                     $count3++;
                 }
-                if (!empty($batch)) {
+                if (! empty($batch)) {
                     DB::table('cache_credit_totals')->upsert($batch, ['fecha'], ['interes', 'mora', 'n_mensual', 'mensual', 'n_semanal', 'semanal', 'n_diario', 'diario', 'updated_at']);
                 }
             });
@@ -1206,5 +1237,114 @@ class MigrateLegacyData extends Command
         }
 
         return $map;
+    }
+
+    // ─── ADJUNTOS (imágenes de clientes / ingresos / egresos) ────────
+    /**
+     * huaca_cliente_ima → client_attachments (client_id = caja directo: los
+     * clientes conservan el id legacy).
+     * huaca_62a_ima3 → income_attachments y huaca_62a_ima2 → expense_attachments:
+     * incomes/expenses se re-numeran al migrar, así que el id nuevo se deriva
+     * POSICIONALMENTE (el migrador inserta en ORDER BY identrada tras truncate,
+     * por lo que la fila N legacy = id N nuevo dentro de su bloque caja=1).
+     * Los archivos físicos van aparte: legacy cliente_captura/ → clients/{id}/,
+     * 62a3/ → incomes/{id}/, 62a/ → expenses/{id}/ (con thumbs/ si existen).
+     */
+    private function migrateAttachments(bool $fresh): void
+    {
+        $this->info('─── Migrating Attachments ───');
+
+        if ($fresh) {
+            DB::table('client_attachments')->truncate();
+            DB::table('income_attachments')->truncate();
+            DB::table('expense_attachments')->truncate();
+        }
+
+        $now = now();
+        $mimeMap = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png',
+            'gif' => 'image/gif', 'webp' => 'image/webp', 'pdf' => 'application/pdf'];
+        $mimeDe = function (string $name) use ($mimeMap): string {
+            $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+
+            return $mimeMap[$ext] ?? 'application/octet-stream';
+        };
+
+        // ── 1) Clientes: mapeo directo por id ──
+        $clientIds = DB::table('clients')->pluck('id')->flip();
+        $rows = [];
+        $huerfanos = 0;
+        foreach (DB::connection('legacy')->table('cliente_ima')->orderBy('idd')->get() as $r) {
+            $ima = trim($r->ima ?? '');
+            if ($ima === '' || ! isset($clientIds[(int) $r->caja])) {
+                $huerfanos++;
+
+                continue;
+            }
+            $cid = (int) $r->caja;
+            $rows[] = [
+                'client_id' => $cid, 'filename' => $ima, 'original_name' => $ima,
+                'path' => "clients/{$cid}/{$ima}", 'thumb_path' => "clients/{$cid}/thumbs/{$ima}",
+                'mime' => $mimeDe($ima), 'size' => 0, 'uploaded_by' => null,
+                'created_at' => $now, 'updated_at' => $now,
+            ];
+        }
+        foreach (array_chunk($rows, 1000) as $chunk) {
+            DB::table('client_attachments')->insert($chunk);
+        }
+        $this->info('  client_attachments: '.count($rows).' migrados'.($huerfanos ? " ({$huerfanos} huérfanos omitidos)" : ''));
+
+        // ── 2) Ingresos y egresos: mapeo posicional identrada → id nuevo ──
+        $this->migrarImaPosicional(
+            legacyTabla: 'ingreso', legacyFiltro: fn ($q) => $q->where('modo', '<>', 'CREDITO'),
+            imaTabla: '62a_ima3', destinoTabla: 'income_attachments', fk: 'income_id',
+            carpeta: 'incomes', modeloTabla: 'incomes', mimeDe: $mimeDe, now: $now
+        );
+        $this->migrarImaPosicional(
+            legacyTabla: 'entrada', legacyFiltro: null,
+            imaTabla: '62a_ima2', destinoTabla: 'expense_attachments', fk: 'expense_id',
+            carpeta: 'expenses', modeloTabla: 'expenses', mimeDe: $mimeDe, now: $now
+        );
+    }
+
+    private function migrarImaPosicional(
+        string $legacyTabla, ?\Closure $legacyFiltro, string $imaTabla, string $destinoTabla,
+        string $fk, string $carpeta, string $modeloTabla, \Closure $mimeDe, $now
+    ): void {
+        // Orden idéntico al del migrador de datos
+        $q = DB::connection('legacy')->table($legacyTabla);
+        if ($legacyFiltro) {
+            $q = $legacyFiltro($q);
+        }
+        $legacyIds = $q->orderBy('identrada')->pluck('identrada')->all();
+        $nuevosIds = DB::table($modeloTabla)->where('caja', 1)->orderBy('id')->pluck('id')->all();
+
+        if (count($legacyIds) !== count($nuevosIds)) {
+            $this->error("  {$destinoTabla}: conteo legacy (".count($legacyIds).') ≠ nuevo ('.count($nuevosIds).') — corre primero el paso de datos. Omitido.');
+
+            return;
+        }
+        $map = array_combine($legacyIds, $nuevosIds);
+
+        $rows = [];
+        $huerfanos = 0;
+        foreach (DB::connection('legacy')->table($imaTabla)->orderBy('idd')->get() as $r) {
+            $ima = trim($r->ima ?? '');
+            $nuevoId = $map[(int) $r->caja] ?? null;
+            if ($ima === '' || $nuevoId === null) {
+                $huerfanos++;
+
+                continue;
+            }
+            $rows[] = [
+                $fk => $nuevoId, 'filename' => $ima, 'original_name' => $ima,
+                'path' => "{$carpeta}/{$nuevoId}/{$ima}", 'thumb_path' => "{$carpeta}/{$nuevoId}/thumbs/{$ima}",
+                'mime' => $mimeDe($ima), 'size' => 0, 'uploaded_by' => null,
+                'created_at' => $now, 'updated_at' => $now,
+            ];
+        }
+        foreach (array_chunk($rows, 1000) as $chunk) {
+            DB::table($destinoTabla)->insert($chunk);
+        }
+        $this->info("  {$destinoTabla}: ".count($rows).' migrados'.($huerfanos ? " ({$huerfanos} huérfanos omitidos)" : ''));
     }
 }

@@ -90,7 +90,7 @@ Ejecutar **tu script de importación** (externo) que mapee:
 |---|---|
 | `huaca_persona` | `clients` |
 | `huaca_clienteaval` | `client_avales` |
-| `huaca_cliente_ima` | `client_attachments` (+ copia archivos físicos a `storage/app/public/clients/{id}/`) |
+| `huaca_cliente_ima` | `client_attachments` (+ copia archivos físicos a `storage/app/public/clients/{id}/`) — `legacy:migrate --step=attachments`; ingresos/egresos mapean POSICIONALMENTE (identrada→id nuevo) |
 | `huaca_cab_cuentacorriente` | `credits` |
 | `huaca_det_cuentacorriente` | `credit_installments` |
 | `huaca_ingreso` | `payments` (cuando `modo=CREDITO`) + `incomes` (cuando `modo=Fijos/Otros`) |
@@ -354,6 +354,7 @@ zcat legacy_*.sql.gz | mysql -u root huacachi_prestamo
 php artisan migrate                          # schema al día
 php artisan legacy:migrate --fresh           # confirma "yes" — varios minutos
 php artisan installation:run-all             # saneamiento completo
+php artisan legacy:migrate --step=attachments --fresh   # adjuntos (cliente_ima / 62a_ima2 / 62a_ima3)
 php artisan installation:check               # debe dar "✓ Sistema OK"
 ```
 
