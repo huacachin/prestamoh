@@ -40,12 +40,15 @@ class CashGeneral3 extends Component
         $endLimit = min($endMonth, $today);
 
         // ─── PRECARGAS (1 query c/u) ───────────────────────────────────
-        // INTERES y MORA por día (legacy: huaca_totcaj3.interes y .mora)
+        // INTERES y MORA por día (legacy: huaca_totcaj3.interes y .mora).
+        // La mora acumulada (documento 'MORA ACUM.', cobrada al cancelar) se
+        // desglosa de la vigente.
         $payTotalsByDate = Payment::query()
             ->where('fecha', '>=', $startMonth)
             ->where('fecha', '<=', $endLimit)
             ->whereIn('tipo', ['INTERES', 'MORA'])
-            ->selectRaw('DATE(fecha) as f, tipo, SUM(monto) as total')
+            ->selectRaw("DATE(fecha) as f, tipo, SUM(monto) as total,
+                         SUM(CASE WHEN documento = 'MORA ACUM.' THEN monto ELSE 0 END) as acum")
             ->groupBy('f', 'tipo')
             ->get()
             ->groupBy('f');
@@ -87,12 +90,15 @@ class CashGeneral3 extends Component
             $sumIngresoDay = 0;
             $sumEgresoDay = 0;
 
-            // 1. INTERES y MORA del día (legacy: huaca_totcaj3)
+            // 1. INTERES y MORA del día (legacy: huaca_totcaj3), con la mora
+            // acumulada desglosada en fila propia
             $payTotals = $payTotalsByDate->get($date, collect());
             $interes = (float) ($payTotals->where('tipo', 'INTERES')->first()->total ?? 0);
-            $mora = (float) ($payTotals->where('tipo', 'MORA')->first()->total ?? 0);
+            $moraFila = $payTotals->where('tipo', 'MORA')->first();
+            $moraAcum = (float) ($moraFila->acum ?? 0);
+            $mora = (float) ($moraFila->total ?? 0) - $moraAcum; // vigente
 
-            if ($interes > 0 || $mora > 0) {
+            if ($interes > 0 || $mora > 0 || $moraAcum > 0) {
                 $cont++;
                 $items[] = [
                     'n' => $cont, 'fecha' => $date,
@@ -112,6 +118,18 @@ class CashGeneral3 extends Component
                 $sumIngresoDay += $mora;
                 $cuacaj22 += $mora;
                 $balanceAcumulado += $mora;
+
+                if ($moraAcum > 0) {
+                    $cont++;
+                    $items[] = [
+                        'n' => $cont, 'fecha' => $date,
+                        'cliente' => 'CLIENTE', 'detalle' => 'MORA ACUMULADA',
+                        'ingreso' => $moraAcum, 'egreso' => 0,
+                    ];
+                    $sumIngresoDay += $moraAcum;
+                    $cuacaj22 += $moraAcum;
+                    $balanceAcumulado += $moraAcum;
+                }
             }
 
             // 2. EGRESOS Caja 3 (huaca_entrada3)
@@ -165,9 +183,13 @@ class CashGeneral3 extends Component
             ->where('fecha', '<=', $endLimit)
             ->where('tipo', 'INTERES')->sum('monto');
 
+        $totalMoraAcumMes = (float) Payment::where('fecha', '>=', $startMonth)
+            ->where('fecha', '<=', $endLimit)
+            ->where('tipo', 'MORA')->where('documento', 'MORA ACUM.')->sum('monto');
+
         $totalMoraMes = (float) Payment::where('fecha', '>=', $startMonth)
             ->where('fecha', '<=', $endLimit)
-            ->where('tipo', 'MORA')->sum('monto');
+            ->where('tipo', 'MORA')->sum('monto') - $totalMoraAcumMes; // vigente
 
         // Por asesor: agrupar incomes Caja 3 por (reason, asesor)
         $byAdvisorRaw = Income::query()
@@ -181,7 +203,7 @@ class CashGeneral3 extends Component
 
         // Sumar totalGm para totalGeneral del resumen
         $totGm = (float) $byAdvisorRaw->sum('gm');
-        $newMonto = $totalInteresMes + $totalMoraMes + $totGm;
+        $newMonto = $totalInteresMes + $totalMoraMes + $totalMoraAcumMes + $totGm;
 
         return view('livewire.reports.cash-general-3', [
             'report' => [
@@ -191,6 +213,7 @@ class CashGeneral3 extends Component
                 'balance_general' => $balanceAcumulado,
                 'total_interes' => $totalInteresMes,
                 'total_mora' => $totalMoraMes,
+                'total_mora_acum' => $totalMoraAcumMes,
                 'by_advisor' => $byAdvisorRaw,
                 'total_advisor' => $totGm,
                 'total_resumen' => $newMonto,

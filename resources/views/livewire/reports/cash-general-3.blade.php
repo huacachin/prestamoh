@@ -165,17 +165,25 @@
                                                     <td><strong>INTERES</strong></td>
                                                     <td class="text-end" style="color:#0d6efd;">0.00</td>
                                                     <td class="text-end" style="color:#0d6efd;">{{ number_format($report['total_interes'], 2) }}</td>
-                                                    <td class="text-end align-middle" rowspan="2">
-                                                        {{ number_format($report['total_interes'] + $report['total_mora'], 2) }}
+                                                    <td class="text-end align-middle" rowspan="3">
+                                                        {{ number_format($report['total_interes'] + $report['total_mora'] + $report['total_mora_acum'], 2) }}
                                                     </td>
                                                 </tr>
-                                                {{-- Mora --}}
+                                                {{-- Mora (vigente) --}}
                                                 @php $sCount++; @endphp
                                                 <tr>
                                                     <td><strong>{{ $sCount }}</strong></td>
                                                     <td><strong>MORA</strong></td>
                                                     <td class="text-end" style="color:#0d6efd;">0.00</td>
                                                     <td class="text-end" style="color:#0d6efd;">{{ number_format($report['total_mora'], 2) }}</td>
+                                                </tr>
+                                                {{-- Mora acumulada (cobrada al cancelar) --}}
+                                                @php $sCount++; @endphp
+                                                <tr>
+                                                    <td><strong>{{ $sCount }}</strong></td>
+                                                    <td><strong>MORA ACUMULADA</strong></td>
+                                                    <td class="text-end" style="color:#b8860b;">0.00</td>
+                                                    <td class="text-end" style="color:#b8860b;">{{ number_format($report['total_mora_acum'], 2) }}</td>
                                                 </tr>
                                                 {{-- Por asesor (huaca_ingreso3) --}}
                                                 @php

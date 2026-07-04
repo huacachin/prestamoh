@@ -77,6 +77,9 @@ class CajaDailyService
                 $sumInteresPagado = (float) $pays->where('tipo', 'INTERES')->sum('monto');
                 $sumCapitalPagado = (float) $pays->where('tipo', 'CAPITAL')->sum('monto');
                 $mora = (float) $pays->where('tipo', 'MORA')->sum('monto');
+                // Mora acumulada cobrada al cancelar (documento 'MORA ACUM.'):
+                // desglose para Caja 1. 'mora' sigue siendo el TOTAL (vigente + acum).
+                $moraAcum = (float) $pays->where('tipo', 'MORA')->where('documento', 'MORA ACUM.')->sum('monto');
 
                 if ($isRefi && $fechaCan === $date) {
                     $interesTotal = in_array($tipoplani, [1, 4])
@@ -122,6 +125,7 @@ class CajaDailyService
                     'capital' => $capital,
                     'interes' => $interes,
                     'mora' => $mora,
+                    'mora_acum' => $moraAcum,
                     'asesor' => $asesor,
                     'tipo_planilla' => $tipoplani,
                 ];
