@@ -14,6 +14,14 @@ class InstallationFixAutoincrement extends Command
     {
         $dryRun = (bool) $this->option('dry-run');
 
+        // MySQL 8 cachea SHOW TABLE STATUS hasta 24h: sin esto el "AI actual"
+        // se lee viejo aunque un ALTER previo ya lo haya corregido.
+        try {
+            DB::statement('SET SESSION information_schema_stats_expiry = 0');
+        } catch (\Throwable $e) {
+            // MariaDB / versiones sin la variable
+        }
+
         $tables = [
             'clients', 'credits', 'credit_installments', 'payments',
             'incomes', 'expenses', 'mass_deletions', 'mass_deletion_details',

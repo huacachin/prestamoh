@@ -205,6 +205,14 @@ class InstallationCheck extends Command
     private function checkAutoIncrement(): void
     {
         $this->info('AUTO_INCREMENT vs MAX(id):');
+        // MySQL 8 cachea las estadísticas de information_schema/SHOW TABLE STATUS
+        // hasta 24h (information_schema_stats_expiry): sin esto se reportan
+        // valores viejos aunque el ALTER ya se aplicó.
+        try {
+            DB::statement('SET SESSION information_schema_stats_expiry = 0');
+        } catch (\Throwable $e) {
+            // MariaDB / versiones sin la variable: seguir normal
+        }
         $tables = ['clients', 'credits', 'credit_installments', 'payments',
                    'incomes', 'expenses', 'mass_deletions', 'mass_deletion_details'];
         $bad = 0;
