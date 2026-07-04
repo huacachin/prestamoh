@@ -14,6 +14,7 @@ Documento de referencia para **instalar desde cero** y **re-importar datos legac
 - [5. Estructura de tablas críticas](#5-estructura-de-tablas-críticas)
 - [6. Notas para el script de importación](#6-notas-para-el-script-de-importación)
 - [7. Troubleshooting](#7-troubleshooting)
+- [8. Refresh de producción (runbook droplet)](#8-refresh-de-producción-runbook-droplet--probado-2026-07-04)
 
 ---
 
@@ -319,10 +320,89 @@ php artisan installation:check
 
 ---
 
+## 8. Refresh de producción (runbook droplet — probado 2026-07-04)
+
+Ciclo completo para actualizar `laravel_prestamo` con datos frescos del legacy
+vivo. El legacy sigue registrando operación, así que este ciclo se repite en
+cada corte.
+
+### 8.1 Backup del legacy en el droplet (sin tumbar el servidor)
+
+```bash
+# En el droplet (2 vCPU / 4 GB): snapshot consistente SIN bloquear tablas,
+# streaming (no acumula RAM), comprimido y con prioridad mínima.
+mkdir -p /root/backups
+nohup nice -n 19 ionice -c3 mysqldump \
+  --single-transaction --quick --routines --triggers --events \
+  -u USUARIO -p'CLAVE' huacachi_prestamo \
+  | gzip > /root/backups/legacy_$(date +%F).sql.gz &
+
+# Verificar al terminar (2-5 min):
+gzip -t /root/backups/legacy_*.sql.gz && zcat /root/backups/legacy_*.sql.gz | tail -1
+# → debe decir "-- Dump completed on ..."
+```
+
+Descargar por SFTP (Termius) o `scp root@IP:/root/backups/legacy_*.sql.gz ~/Downloads/`.
+
+### 8.2 Migración en local
+
+```bash
+# 1. Importar el dump legacy en la BD local huacachi_prestamo
+zcat legacy_*.sql.gz | mysql -u root huacachi_prestamo
+
+# 2. Regenerar laravel_prestamo local
+php artisan migrate                          # schema al día
+php artisan legacy:migrate --fresh           # confirma "yes" — varios minutos
+php artisan installation:run-all             # saneamiento completo
+php artisan installation:check               # debe dar "✓ Sistema OK"
+```
+
+### 8.3 Subir el resultado a producción
+
+```bash
+# Local: dump de laravel_prestamo ya migrada y saneada
+mysqldump --single-transaction --quick --routines --triggers \
+  -u root laravel_prestamo > laravel_prestamo.sql
+# Subir por SFTP a /root/backups/ del droplet
+
+# En el droplet:
+cd /var/www/prestamoh
+php artisan down                             # mantenimiento
+mysql -u USUARIO -p'CLAVE' -e "DROP DATABASE laravel_prestamo; CREATE DATABASE laravel_prestamo;"
+nohup nice -n 19 sh -c "mysql -u USUARIO -p'CLAVE' laravel_prestamo < /root/backups/laravel_prestamo.sql" > /root/backups/import.log 2>&1 &
+# vigilar: cat /root/backups/import.log (vacío = OK); tarda 5-15 min
+
+# Post-importación:
+git pull
+php artisan migrate --force                  # "Nothing to migrate" esperado
+php artisan permission:cache-reset
+php artisan optimize:clear
+php artisan installation:check               # "✓ Sistema OK"
+php artisan up
+```
+
+### 8.4 Validación y avisos
+
+- **Conteos cruzados** local vs producción (deben ser idénticos):
+  ```sql
+  SELECT (SELECT COUNT(*) FROM credits) creditos, (SELECT COUNT(*) FROM payments) pagos,
+         (SELECT COUNT(*) FROM credit_installments) cuotas, (SELECT COUNT(*) FROM clients) clientes;
+  ```
+- **Contraseñas**: `legacy:migrate` recrea los usuarios con la clave del legacy
+  (`obs3`) o `password123` — avisar al equipo.
+- **Sesiones**: se invalidan; todos deben volver a loguearse.
+- **WebSystem** (username `admin`, cuenta web legacy): queda sin rol tras
+  `installation:migrate-roles`; desactivarla (`status = 'inactive'`).
+- **Datos locales manuales se pierden** con el `--fresh` (capital de clientes,
+  pagos de prueba): son reemplazados por la data real del legacy.
+
+---
+
 ## Resumen express
 
 **Instalación nueva**: 8 pasos en sección 2.
 **Re-importación**: limpiar (3.1) → importar (3.2) → `php artisan installation:run-all` → health check (3.4).
+**Refresh de producción**: backup legacy (8.1) → migrar local (8.2) → subir e importar en droplet (8.3) → validar (8.4).
 
 **Comando único después de cualquier importación masiva**:
 
