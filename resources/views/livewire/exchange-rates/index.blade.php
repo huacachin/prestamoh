@@ -18,7 +18,7 @@
         </div>
     </div>
 
-    {{-- ─── CARD 1: Actualizar TC ──────────────────────────────────── --}}
+    {{-- ─── CARD 1: TC vigente + Actualizar ─────────────────────────── --}}
     <div class="row">
         <div class="col-xl-12">
             <div class="card shadow-sm">
@@ -38,40 +38,82 @@
                         </div>
                     @endif
 
-                    <form wire:submit.prevent="save">
-                        <div class="row g-2 align-items-end mb-3">
-                            <div class="col-md-3">
-                                <label class="form-label mb-0 small"><b>Fecha</b></label>
-                                <input type="text" name="fecha" autocomplete="off" class="form-control form-control-sm dates" wire:model="fecha">
+                    <div class="row g-4 align-items-center">
+                        {{-- TC vigente en grande --}}
+                        <div class="col-lg-5">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <h5 class="mb-0 fw-bold" style="color:#2874A6;">
+                                    <i class="ti ti-currency-dollar"></i> Tipo de cambio vigente
+                                </h5>
+                                <span class="badge bg-light text-dark border">
+                                    <i class="ti ti-calendar f-s-12"></i>
+                                    {{ $fecha ? \Carbon\Carbon::parse($fecha)->format('d/m/Y') : '—' }}
+                                </span>
                             </div>
-                            <div class="col-md-2">
-                                <label class="form-label mb-0 small"><b>Venta</b></label>
-                                <input type="number" step="0.0001" min="0" name="venta" autocomplete="off" class="form-control form-control-sm"
-                                       placeholder="0.0000" wire:model="venta">
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label mb-0 small"><b>Compra</b></label>
-                                <input type="number" step="0.0001" min="0" name="compra" autocomplete="off" class="form-control form-control-sm"
-                                       placeholder="0.0000" wire:model="compra">
-                            </div>
-                            <div class="col-md-auto d-flex gap-2">
-                                <button type="button" class="btn btn-sm btn-warning"
-                                        wire:click="cargarDeSunat" wire:loading.attr="disabled" wire:target="cargarDeSunat">
-                                    <i class="ti ti-cloud-download f-s-12"></i>
-                                    <span wire:loading.remove wire:target="cargarDeSunat">Traer de SUNAT</span>
-                                    <span wire:loading wire:target="cargarDeSunat">Consultando…</span>
-                                </button>
-                                <button type="submit" class="btn btn-sm btn-primary">
-                                    <i class="ti ti-device-floppy f-s-12"></i> Actualizar
-                                </button>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <div class="rounded text-center py-3" style="background:#e7f4ea;">
+                                        <div class="small fw-semibold" style="color:#1e7b34;">COMPRA</div>
+                                        <div class="fw-bold" style="font-size:2rem; line-height:1.1; color:#1e7b34;">
+                                            {{ is_numeric($compra) ? number_format((float) $compra, 4) : '—' }}
+                                        </div>
+                                        <div class="small text-muted">te compran US$</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="rounded text-center py-3" style="background:#fdecea;">
+                                        <div class="small fw-semibold" style="color:#c0392b;">VENTA</div>
+                                        <div class="fw-bold" style="font-size:2rem; line-height:1.1; color:#c0392b;">
+                                            {{ is_numeric($venta) ? number_format((float) $venta, 4) : '—' }}
+                                        </div>
+                                        <div class="small text-muted">te venden US$</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </form>
 
-                    <p class="small text-muted mb-0">
-                        <i class="ti ti-info-circle"></i>
-                        <b>Traer de SUNAT</b> consulta la API oficial (vía migo.pe) y llena los campos automáticamente para que revises y luego pulses <b>Actualizar</b>.
-                    </p>
+                        {{-- Formulario de actualización --}}
+                        <div class="col-lg-7">
+                            <div class="rounded p-3" style="background:#f2f4f7;">
+                                <h6 class="fw-bold mb-2" style="color:#2874A6;">
+                                    <i class="ti ti-pencil"></i> Actualizar tipo de cambio
+                                </h6>
+                                <form wire:submit.prevent="save">
+                                    <div class="row g-2 align-items-end">
+                                        <div class="col-md-4">
+                                            <label class="form-label mb-0 small fw-semibold">Fecha</label>
+                                            <input type="text" name="fecha" autocomplete="off" class="form-control form-control-sm dates" wire:model="fecha">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label mb-0 small fw-semibold">Venta</label>
+                                            <input type="number" step="0.0001" min="0" name="venta" autocomplete="off" class="form-control form-control-sm"
+                                                   placeholder="0.0000" wire:model="venta">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label mb-0 small fw-semibold">Compra</label>
+                                            <input type="number" step="0.0001" min="0" name="compra" autocomplete="off" class="form-control form-control-sm"
+                                                   placeholder="0.0000" wire:model="compra">
+                                        </div>
+                                        <div class="col-12 d-flex gap-2 mt-2">
+                                            <button type="button" class="btn btn-sm btn-warning"
+                                                    wire:click="cargarDeSunat" wire:loading.attr="disabled" wire:target="cargarDeSunat">
+                                                <i class="ti ti-cloud-download f-s-12"></i>
+                                                <span wire:loading.remove wire:target="cargarDeSunat">Traer de SUNAT</span>
+                                                <span wire:loading wire:target="cargarDeSunat">Consultando…</span>
+                                            </button>
+                                            <button type="submit" class="btn btn-sm btn-primary">
+                                                <i class="ti ti-device-floppy f-s-12"></i> Actualizar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+                                <p class="small text-muted mb-0 mt-2">
+                                    <i class="ti ti-info-circle"></i>
+                                    <b>Traer de SUNAT</b> consulta la API oficial y llena los campos para que revises y pulses <b>Actualizar</b>.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -91,43 +133,48 @@
                     <div class="btn-group btn-group-sm mb-3 w-100" role="group">
                         <input type="radio" class="btn-check" id="dir-pen-usd" value="pen_usd" x-model="direction">
                         <label class="btn btn-outline-primary" for="dir-pen-usd">
-                            <i class="ti ti-arrow-right f-s-12"></i> Soles → Dólares
+                            S/ Soles <i class="ti ti-arrow-right f-s-12"></i> US$ Dólares
                         </label>
                         <input type="radio" class="btn-check" id="dir-usd-pen" value="usd_pen" x-model="direction">
                         <label class="btn btn-outline-primary" for="dir-usd-pen">
-                            <i class="ti ti-arrow-right f-s-12"></i> Dólares → Soles
+                            US$ Dólares <i class="ti ti-arrow-right f-s-12"></i> S/ Soles
                         </label>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label mb-1 small fw-semibold">
-                            Monto en <span x-text="direction === 'pen_usd' ? 'Soles (S/)' : 'Dólares (US$)'"></span>
+                            Monto en <span x-text="direction === 'pen_usd' ? 'Soles' : 'Dólares'"></span>
                         </label>
-                        <input type="number" step="0.01" min="0"
-                               class="form-control form-control-lg text-end fw-bold"
-                               style="font-size: 1.4rem;"
-                               x-model.number="amount"
-                               placeholder="0.00">
-                    </div>
-
-                    <div class="d-flex justify-content-between small text-muted mb-2">
-                        <span>Compra: <b x-text="compra.toFixed(4)" class="text-success"></b></span>
-                        <span>Venta: <b x-text="venta.toFixed(4)" class="text-danger"></b></span>
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text fw-bold" style="min-width:64px; justify-content:center;"
+                                  x-text="direction === 'pen_usd' ? 'S/' : 'US$'"></span>
+                            <input type="number" step="0.01" min="0"
+                                   class="form-control text-end fw-bold"
+                                   style="font-size: 1.6rem; background:#fffbe6;"
+                                   x-model.number="amount"
+                                   placeholder="0.00">
+                            <button type="button" class="btn btn-outline-primary" title="Invertir dirección"
+                                    @click="direction = direction === 'pen_usd' ? 'usd_pen' : 'pen_usd'">
+                                <i class="ti ti-switch-horizontal"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="row g-2">
                         <div class="col-6">
-                            <div class="border rounded p-2 text-center bg-light">
-                                <div class="small text-muted">Al tipo <b>Compra</b></div>
-                                <div class="fw-bold text-success" style="font-size: 1.4rem;"
+                            <div class="rounded p-3 text-center h-100" style="background:#e7f4ea;">
+                                <div class="small fw-semibold" style="color:#1e7b34;">AL TIPO COMPRA</div>
+                                <div class="fw-bold" style="font-size: 1.6rem; color:#1e7b34;"
                                      x-text="result(compra)"></div>
+                                <div class="small text-muted">1 US$ = <span x-text="compra.toFixed(4)"></span></div>
                             </div>
                         </div>
                         <div class="col-6">
-                            <div class="border rounded p-2 text-center bg-light">
-                                <div class="small text-muted">Al tipo <b>Venta</b></div>
-                                <div class="fw-bold text-danger" style="font-size: 1.4rem;"
+                            <div class="rounded p-3 text-center h-100" style="background:#fdecea;">
+                                <div class="small fw-semibold" style="color:#c0392b;">AL TIPO VENTA</div>
+                                <div class="fw-bold" style="font-size: 1.6rem; color:#c0392b;"
                                      x-text="result(venta)"></div>
+                                <div class="small text-muted">1 US$ = <span x-text="venta.toFixed(4)"></span></div>
                             </div>
                         </div>
                     </div>
@@ -136,10 +183,6 @@
                         <button type="button" class="btn btn-sm btn-outline-secondary flex-fill"
                                 @click="amount = 0">
                             <i class="ti ti-eraser f-s-12"></i> Limpiar
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-primary flex-fill"
-                                @click="direction = direction === 'pen_usd' ? 'usd_pen' : 'pen_usd'">
-                            <i class="ti ti-switch-horizontal f-s-12"></i> Invertir
                         </button>
                     </div>
                 </div>
