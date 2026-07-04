@@ -27,6 +27,17 @@ class Show extends Component
 
         $creditIds = $credits->pluck('id')->all();
 
+        // Saldo real del cronograma por crédito. La fórmula legacy de la fila
+        // (importe + interés teórico − pagado) asume interés completo; en una
+        // cancelación anticipada el interés no devengado se CONDONA en el
+        // cronograma, así que quedaría un falso pendiente rojo. Si el
+        // cronograma está saldado, no hay deuda real.
+        $saldoCronByCredit = empty($creditIds) ? collect() : DB::table('credit_installments')
+            ->whereIn('credit_id', $creditIds)
+            ->selectRaw('credit_id, SUM(importe_cuota + importe_interes - importe_aplicado - interes_aplicado) s')
+            ->groupBy('credit_id')
+            ->pluck('s', 'credit_id');
+
         // Pre-cargar pagos relevantes (no-Gat) por crédito
         $sumNoMoraByCredit = []; // ap = sum(totalgeneral) WHERE NOT MORA y NOT Gat
         $sumInteresByCredit = []; // interés realmente pagado (pagos documento=INTERES)
@@ -34,7 +45,7 @@ class Show extends Component
         $maxFechaByCredit = [];  // max fecha de pago (no Gat)
         $idcanRefSet = [];       // ids que han sido referenciados como idcan (para "verSt")
 
-        if (!empty($creditIds)) {
+        if (! empty($creditIds)) {
             $allPays = DB::table('payments')
                 ->whereIn('credit_id', $creditIds)
                 ->whereRaw("(detalle IS NULL OR RIGHT(detalle, 3) <> 'Gat')")
@@ -69,15 +80,15 @@ class Show extends Component
         // Procesar cada crédito
         $rows = [];
         $totals = [
-            'capital'       => 0,    // sum importe
-            'interes_t'     => 0,    // sum interes_total (legacy 'interestot')
-            'total_a_pag'   => 0,    // sum (importe + interes)
-            'capital_r'     => 0,    // sum rftq
-            'interes_g'     => 0,    // sum iminte
-            'mora'          => 0,    // sum resulMor
-            'total_pag'     => 0,    // sum (rftq + iminte + mora)
+            'capital' => 0,    // sum importe
+            'interes_t' => 0,    // sum interes_total (legacy 'interestot')
+            'total_a_pag' => 0,    // sum (importe + interes)
+            'capital_r' => 0,    // sum rftq
+            'interes_g' => 0,    // sum iminte
+            'mora' => 0,    // sum resulMor
+            'total_pag' => 0,    // sum (rftq + iminte + mora)
             'saldo_capital' => 0,    // sum saldo2
-            'mora_x_dia'    => 0,    // sum mora x dia
+            'mora_x_dia' => 0,    // sum mora x dia
         ];
         $count = 0;
 
@@ -89,7 +100,7 @@ class Show extends Component
             $moraSum = (float) ($sumMoraByCredit[$cr->id] ?? 0);
 
             $totinteres = round($importe * ($interesPct / 100), 2);
-            $tintere    = $totinteres;
+            $tintere = $totinteres;
 
             // Interés G. (ganado) = interés REALMENTE pagado (suma de pagos INTERES),
             // no un solo período. Corrige el bug legacy que solo mostraba importe×%
@@ -97,9 +108,15 @@ class Show extends Component
             // pagado no-mora. Como rftq + iminte siguen sumando apSum, el Total
             // Pagado y el Saldo no cambian respecto al legacy.
             $iminte = min((float) ($sumInteresByCredit[$cr->id] ?? 0), $apSum);
-            $rftq   = $apSum - $iminte;
+            $rftq = $apSum - $iminte;
 
             $saldo2 = $importe + $tintere - $rftq - $iminte;
+
+            // Cancelación anticipada: interés no devengado condonado en el
+            // cronograma → si el cronograma está saldado, la deuda real es 0.
+            if ($saldo2 > 0 && isset($saldoCronByCredit[$cr->id]) && (float) $saldoCronByCredit[$cr->id] <= 0.01) {
+                $saldo2 = 0.0;
+            }
 
             // Background colors
             $bg = '';
@@ -123,7 +140,9 @@ class Show extends Component
                 $newdias = Carbon::parse($cr->fecha_vencimiento)->diffInDays(
                     Carbon::parse($cr->fecha_cancelacion), false
                 );
-                if ($newdias < 0) $newdias = 0;
+                if ($newdias < 0) {
+                    $newdias = 0;
+                }
             }
             $newInterez = round($importe * ($interesPct / 100), 2);
             $intediasdias = round($newInterez / 30, 2);
@@ -133,43 +152,43 @@ class Show extends Component
             $estadoActivado = (int) $cr->estado === 0;
 
             $rows[] = [
-                'n'                => $count,
-                'usuario'          => $cr->usuario ?? '',  // legacy 'user' field (cajero/usuario que registró)
-                'codigo'           => $cr->id,
-                'estado_activado'  => $estadoActivado,
-                'cod_ant'          => $cr->idcan,
-                'f_credito'        => $cr->fecha_prestamo ? Carbon::parse($cr->fecha_prestamo)->format('Y-m-d') : '',
-                'f_vcto'           => $cr->fecha_vencimiento ? Carbon::parse($cr->fecha_vencimiento)->format('Y-m-d') : '',
-                'f_pago'           => $maxFechaByCredit[$cr->id] ?? '',
-                'f_cancelado'      => $cr->fecha_cancelacion ? Carbon::parse($cr->fecha_cancelacion)->format('Y-m-d') : '',
-                'capital'          => $importe,
-                'interes_pct'      => round($interesPct, 2),
-                'interes'          => $newInterez,
-                'cuotas'           => $cr->cuotas,
-                'total'            => $importe + $newInterez,
-                'capital_r'        => $rftq,
-                'interes_g'        => $iminte,
-                'mora'             => $moraSum,
-                'total_pag'        => $rftq + $iminte + $moraSum,
-                'saldo_capital'    => $saldo2,
-                'mora_s'           => $mxd,                                    // S/ = newdias × intediasdias
-                'mxd'              => $newdias > 0 ? $intediasdias : 0,        // MxD = intediasdias
-                'dias'             => $newdias,
-                'gat'              => (float) $cr->gat,
-                'asesor'           => $cr->asesor ?? '',
-                'bg'               => $bg,
-                'color'            => $color,
+                'n' => $count,
+                'usuario' => $cr->usuario ?? '',  // legacy 'user' field (cajero/usuario que registró)
+                'codigo' => $cr->id,
+                'estado_activado' => $estadoActivado,
+                'cod_ant' => $cr->idcan,
+                'f_credito' => $cr->fecha_prestamo ? Carbon::parse($cr->fecha_prestamo)->format('Y-m-d') : '',
+                'f_vcto' => $cr->fecha_vencimiento ? Carbon::parse($cr->fecha_vencimiento)->format('Y-m-d') : '',
+                'f_pago' => $maxFechaByCredit[$cr->id] ?? '',
+                'f_cancelado' => $cr->fecha_cancelacion ? Carbon::parse($cr->fecha_cancelacion)->format('Y-m-d') : '',
+                'capital' => $importe,
+                'interes_pct' => round($interesPct, 2),
+                'interes' => $newInterez,
+                'cuotas' => $cr->cuotas,
+                'total' => $importe + $newInterez,
+                'capital_r' => $rftq,
+                'interes_g' => $iminte,
+                'mora' => $moraSum,
+                'total_pag' => $rftq + $iminte + $moraSum,
+                'saldo_capital' => $saldo2,
+                'mora_s' => $mxd,                                    // S/ = newdias × intediasdias
+                'mxd' => $newdias > 0 ? $intediasdias : 0,        // MxD = intediasdias
+                'dias' => $newdias,
+                'gat' => (float) $cr->gat,
+                'asesor' => $cr->asesor ?? '',
+                'bg' => $bg,
+                'color' => $color,
             ];
 
-            $totals['capital']       += $importe;
-            $totals['interes_t']     += (float) ($cr->interes_total ?? 0);
-            $totals['total_a_pag']   += round($importe + $newInterez, 2);
-            $totals['capital_r']     += $rftq;
-            $totals['interes_g']     += $iminte;
-            $totals['mora']          += $moraSum;
-            $totals['total_pag']     += $rftq + $iminte + $moraSum;
+            $totals['capital'] += $importe;
+            $totals['interes_t'] += (float) ($cr->interes_total ?? 0);
+            $totals['total_a_pag'] += round($importe + $newInterez, 2);
+            $totals['capital_r'] += $rftq;
+            $totals['interes_g'] += $iminte;
+            $totals['mora'] += $moraSum;
+            $totals['total_pag'] += $rftq + $iminte + $moraSum;
             $totals['saldo_capital'] += $saldo2;
-            $totals['mora_x_dia']    += $mxd;
+            $totals['mora_x_dia'] += $mxd;
         }
 
         // ─── Línea de crédito (informativa): 25% del capital declarado ────
