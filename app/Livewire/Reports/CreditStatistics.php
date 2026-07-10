@@ -22,8 +22,6 @@ class CreditStatistics extends Component
     #[Url(as: 'asesor', except: 'Todos')]
     public $nomasesores = 'Todos';
 
-    public array $rates = [0.01, 3, 4, 5, 5.2, 6, 6.5, 7, 8, 10, 12, 15, 16, 20, 24, 36];
-
     public function mount()
     {
         if (! request()->has('mes')) {
@@ -77,17 +75,10 @@ class CreditStatistics extends Component
         $this->rebuildIngresoDiario($year, $month, min($endMonth, $today));
 
         // ─── DAILY TABLE (selected month) ──────────────────────────────
-        [$dailyRows, $dailyTotals] = $this->buildDaily();
+        [$dailyRows, $dailyTotals, $dailyRates] = $this->buildDaily();
 
         // ─── MONTHLY TABLE (selected year) ─────────────────────────────
-        [$monthlyRows, $monthlyTotals] = $this->buildMonthly();
-
-        // Ocultar tasas sin movimiento en el periodo (int se deriva del cap,
-        // así que basta mirar el capital acumulado por tasa).
-        $dailyRates = array_values(array_filter($this->rates,
-            fn ($r) => $dailyTotals['rates_cap'][(string) $r] != 0));
-        $monthlyRates = array_values(array_filter($this->rates,
-            fn ($r) => $monthlyTotals['rates_cap'][(string) $r] != 0));
+        [$monthlyRows, $monthlyTotals, $monthlyRates] = $this->buildMonthly();
 
         $months = [
             '01' => 'Enero', '02' => 'Febrero', '03' => 'Marzo', '04' => 'Abril',
@@ -109,25 +100,34 @@ class CreditStatistics extends Component
         ]);
     }
 
+    /**
+     * Filtros comunes (tipo de planilla + asesor) sobre la tabla credits;
+     * $prefix permite aplicarlos cuando credits entra con alias en un join.
+     */
+    private function applyFilters($query, string $prefix = '')
+    {
+        if ($this->seletipl !== '' && $this->seletipl !== '0000') {
+            $query->where($prefix.'tipo_planilla', $this->seletipl);
+        }
+        if ($this->nomasesores !== 'Todos' && $this->nomasesores !== '') {
+            $query->where($prefix.'asesor', $this->nomasesores);
+        }
+
+        return $query;
+    }
+
     private function buildDaily(): array
     {
         $year = (int) $this->selecano;
         $month = (int) $this->selemes;
         $daysInMonth = Carbon::createFromDate($year, $month, 1)->daysInMonth;
 
-        // Pre-cargar agrupacion de credits por fecha + interes
-        $query = DB::table('credits')
-            ->whereYear('fecha_actualizacion', $year)
-            ->whereMonth('fecha_actualizacion', $month);
-
-        if ($this->seletipl !== '' && $this->seletipl !== '0000') {
-            $query->where('tipo_planilla', $this->seletipl);
-        }
-        if ($this->nomasesores !== 'Todos' && $this->nomasesores !== '') {
-            $query->where('asesor', $this->nomasesores);
-        }
-
-        $agg = $query
+        // Capital colocado: credits por fecha de desembolso + interes
+        $agg = $this->applyFilters(
+            DB::table('credits')
+                ->whereYear('fecha_actualizacion', $year)
+                ->whereMonth('fecha_actualizacion', $month)
+        )
             ->selectRaw('fecha_actualizacion as fecha, interes, SUM(importe) as total_importe')
             ->groupBy('fecha_actualizacion', 'interes')
             ->get();
@@ -138,17 +138,39 @@ class CreditStatistics extends Component
             $byDate[$row->fecha][(string) (float) $row->interes] = (float) $row->total_importe;
         }
 
+        // Interés según cronograma: cuotas que VENCEN en el mes, agrupadas por
+        // fecha de vencimiento + tasa del crédito. (Antes era capital × tasa
+        // atribuido al día del desembolso, lo que inflaba el interés del mes:
+        // en semanal/diario `interes` es el % total del crédito.)
+        $aggInt = $this->applyFilters(
+            DB::table('credit_installments as ci')
+                ->join('credits as c', 'c.id', '=', 'ci.credit_id')
+                ->whereYear('ci.fecha_vencimiento', $year)
+                ->whereMonth('ci.fecha_vencimiento', $month),
+            'c.'
+        )
+            ->selectRaw('ci.fecha_vencimiento as fecha, c.interes, SUM(ci.importe_interes) as total_interes')
+            ->groupBy('ci.fecha_vencimiento', 'c.interes')
+            ->get();
+
+        $byDateInt = [];
+        foreach ($aggInt as $row) {
+            $byDateInt[$row->fecha][(string) (float) $row->interes] = (float) $row->total_interes;
+        }
+
+        // Tasas dinámicas: las presentes en capital o interés del mes
+        $rates = $agg->pluck('interes')
+            ->merge($aggInt->pluck('interes'))
+            ->map(fn ($v) => (float) $v)
+            ->unique()->sort()->values()->all();
+
         // Total importe por fecha (independiente del rate, para "Egresos Capital")
-        $egrQuery = DB::table('credits')
-            ->whereYear('fecha_actualizacion', $year)
-            ->whereMonth('fecha_actualizacion', $month);
-        if ($this->seletipl !== '' && $this->seletipl !== '0000') {
-            $egrQuery->where('tipo_planilla', $this->seletipl);
-        }
-        if ($this->nomasesores !== 'Todos' && $this->nomasesores !== '') {
-            $egrQuery->where('asesor', $this->nomasesores);
-        }
-        $egresos = $egrQuery->selectRaw('fecha_actualizacion as fecha, SUM(importe) as total')
+        $egresos = $this->applyFilters(
+            DB::table('credits')
+                ->whereYear('fecha_actualizacion', $year)
+                ->whereMonth('fecha_actualizacion', $month)
+        )
+            ->selectRaw('fecha_actualizacion as fecha, SUM(importe) as total')
             ->groupBy('fecha_actualizacion')
             ->pluck('total', 'fecha')
             ->toArray();
@@ -164,8 +186,8 @@ class CreditStatistics extends Component
         $totals = [
             'ingresos' => 0,
             'egresos' => 0,
-            'rates_cap' => array_fill_keys(array_map(fn ($r) => (string) $r, $this->rates), 0),
-            'rates_int' => array_fill_keys(array_map(fn ($r) => (string) $r, $this->rates), 0),
+            'rates_cap' => array_fill_keys(array_map(fn ($r) => (string) $r, $rates), 0),
+            'rates_int' => array_fill_keys(array_map(fn ($r) => (string) $r, $rates), 0),
             'total_inter' => 0,
         ];
 
@@ -183,9 +205,9 @@ class CreditStatistics extends Component
             ];
 
             $intetotalX = 0;
-            foreach ($this->rates as $rate) {
-                $im = (float) ($byDate[$fecha][(string) (float) $rate] ?? 0);
-                $efind = round(($im * $rate) / 100, 2);
+            foreach ($rates as $rate) {
+                $im = (float) ($byDate[$fecha][(string) $rate] ?? 0);
+                $efind = (float) ($byDateInt[$fecha][(string) $rate] ?? 0);
                 $row['rates'][(string) $rate] = ['cap' => $im, 'int' => $efind];
 
                 $totals['rates_cap'][(string) $rate] += $im;
@@ -201,24 +223,17 @@ class CreditStatistics extends Component
             $rows[] = $row;
         }
 
-        return [$rows, $totals];
+        return [$rows, $totals, $rates];
     }
 
     private function buildMonthly(): array
     {
         $year = (int) $this->selecano;
 
-        // Aggregate credits by month + interes (for the year)
-        $query = DB::table('credits')
-            ->whereYear('fecha_actualizacion', $year);
-        if ($this->seletipl !== '' && $this->seletipl !== '0000') {
-            $query->where('tipo_planilla', $this->seletipl);
-        }
-        if ($this->nomasesores !== 'Todos' && $this->nomasesores !== '') {
-            $query->where('asesor', $this->nomasesores);
-        }
-
-        $agg = $query
+        // Capital colocado: credits por mes de desembolso + interes
+        $agg = $this->applyFilters(
+            DB::table('credits')->whereYear('fecha_actualizacion', $year)
+        )
             ->selectRaw('MONTH(fecha_actualizacion) as mes, interes, SUM(importe) as total_importe')
             ->groupByRaw('MONTH(fecha_actualizacion), interes')
             ->get();
@@ -228,15 +243,33 @@ class CreditStatistics extends Component
             $byMonth[(int) $row->mes][(string) (float) $row->interes] = (float) $row->total_importe;
         }
 
+        // Interés según cronograma: cuotas que vencen en cada mes del año
+        $aggInt = $this->applyFilters(
+            DB::table('credit_installments as ci')
+                ->join('credits as c', 'c.id', '=', 'ci.credit_id')
+                ->whereYear('ci.fecha_vencimiento', $year),
+            'c.'
+        )
+            ->selectRaw('MONTH(ci.fecha_vencimiento) as mes, c.interes, SUM(ci.importe_interes) as total_interes')
+            ->groupByRaw('MONTH(ci.fecha_vencimiento), c.interes')
+            ->get();
+
+        $byMonthInt = [];
+        foreach ($aggInt as $row) {
+            $byMonthInt[(int) $row->mes][(string) (float) $row->interes] = (float) $row->total_interes;
+        }
+
+        // Tasas dinámicas: las presentes en capital o interés del año
+        $rates = $agg->pluck('interes')
+            ->merge($aggInt->pluck('interes'))
+            ->map(fn ($v) => (float) $v)
+            ->unique()->sort()->values()->all();
+
         // Egresos capital por mes
-        $egrQuery = DB::table('credits')->whereYear('fecha_actualizacion', $year);
-        if ($this->seletipl !== '' && $this->seletipl !== '0000') {
-            $egrQuery->where('tipo_planilla', $this->seletipl);
-        }
-        if ($this->nomasesores !== 'Todos' && $this->nomasesores !== '') {
-            $egrQuery->where('asesor', $this->nomasesores);
-        }
-        $egresos = $egrQuery->selectRaw('MONTH(fecha_actualizacion) as mes, SUM(importe) as total')
+        $egresos = $this->applyFilters(
+            DB::table('credits')->whereYear('fecha_actualizacion', $year)
+        )
+            ->selectRaw('MONTH(fecha_actualizacion) as mes, SUM(importe) as total')
             ->groupByRaw('MONTH(fecha_actualizacion)')
             ->pluck('total', 'mes')
             ->toArray();
@@ -255,8 +288,8 @@ class CreditStatistics extends Component
         $totals = [
             'ingresos' => 0,
             'egresos' => 0,
-            'rates_cap' => array_fill_keys(array_map(fn ($r) => (string) $r, $this->rates), 0),
-            'rates_int' => array_fill_keys(array_map(fn ($r) => (string) $r, $this->rates), 0),
+            'rates_cap' => array_fill_keys(array_map(fn ($r) => (string) $r, $rates), 0),
+            'rates_int' => array_fill_keys(array_map(fn ($r) => (string) $r, $rates), 0),
             'total_inter' => 0,
         ];
 
@@ -270,10 +303,9 @@ class CreditStatistics extends Component
             ];
 
             $intetotalX = 0;
-            foreach ($this->rates as $rate) {
-                $im = (float) ($byMonth[$m][(string) (float) $rate] ?? 0);
-                // Legacy mensual usa SIN round (a diferencia del diario que sí redondea)
-                $efind = ($im * $rate) / 100;
+            foreach ($rates as $rate) {
+                $im = (float) ($byMonth[$m][(string) $rate] ?? 0);
+                $efind = (float) ($byMonthInt[$m][(string) $rate] ?? 0);
                 $row['rates'][(string) $rate] = ['cap' => $im, 'int' => $efind];
 
                 $totals['rates_cap'][(string) $rate] += $im;
@@ -289,6 +321,6 @@ class CreditStatistics extends Component
             $rows[] = $row;
         }
 
-        return [$rows, $totals];
+        return [$rows, $totals, $rates];
     }
 }
