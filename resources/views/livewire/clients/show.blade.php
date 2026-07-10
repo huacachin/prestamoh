@@ -167,7 +167,7 @@
                                 </td>
                                 <td style="{{ $tdStyle }}" class="text-end">{{ $row['mora_s'] > 0 ? $row['mora_s'] : '' }}</td>
                                 <td style="{{ $tdStyle }}" class="text-end">{{ $row['mxd'] > 0 ? $row['mxd'] : '' }}</td>
-                                <td style="{{ $tdStyle }}" class="text-center">{{ $row['dias'] > 0 ? $row['dias'] : '' }}</td>
+                                <td style="{{ $tdStyle }}" class="text-center">{{ $row['dias'] != 0 ? $row['dias'] : '' }}</td>
                                 <td style="{{ $tdStyle }}" class="text-end">{{ $row['gat'] > 0 ? number_format($row['gat'], 2) : '' }}</td>
                                 <td style="{{ $tdStyle }}">{{ $row['asesor'] }}</td>
                                 <td style="{{ $tdStyle }}" class="text-center">

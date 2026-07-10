@@ -134,15 +134,16 @@ class Show extends Component
                 $color = 'red';
             }
 
-            // Días mora
+            // Días: fechacan − fechafin (con signo). Positivo = días de mora
+            // (canceló después de vencer); negativo = días de adelanto (canceló
+            // antes de vencer, pago adelantado). Se muestra crudo, igual que el
+            // reporte de cancelados. La mora (mora_s/mxd) sigue guardada solo
+            // cuando días > 0, así que un adelanto no genera mora.
             $newdias = 0;
             if ($cr->fecha_cancelacion && $cr->fecha_vencimiento) {
-                $newdias = Carbon::parse($cr->fecha_vencimiento)->diffInDays(
+                $newdias = (int) Carbon::parse($cr->fecha_vencimiento)->diffInDays(
                     Carbon::parse($cr->fecha_cancelacion), false
                 );
-                if ($newdias < 0) {
-                    $newdias = 0;
-                }
             }
             $newInterez = round($importe * ($interesPct / 100), 2);
             $intediasdias = round($newInterez / 30, 2);
