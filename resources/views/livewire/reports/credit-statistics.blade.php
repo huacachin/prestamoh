@@ -86,13 +86,13 @@
                                     <th rowspan="2" class="text-center align-middle">Fecha</th>
                                     <th rowspan="2" class="text-center align-middle">Ingresos Creditos</th>
                                     <th rowspan="2" class="text-center align-middle">Egresos Capital</th>
-                                    @foreach($rates as $rate)
+                                    @foreach($dailyRates as $rate)
                                         <th colspan="2" class="text-center">{{ $rate }}%</th>
                                     @endforeach
                                     <th rowspan="2" class="text-center align-middle">TOTAL</th>
                                 </tr>
                                 <tr>
-                                    @foreach($rates as $rate)
+                                    @foreach($dailyRates as $rate)
                                         <th class="text-center">Cap.</th>
                                         <th class="text-center">Int.</th>
                                     @endforeach
@@ -106,7 +106,7 @@
                                         </td>
                                         <td class="text-end">{{ $row['ingresos'] != 0 ? rtrim(rtrim(number_format($row['ingresos'], 2, '.', ''), '0'), '.') : '' }}</td>
                                         <td class="text-end">{{ $row['egresos'] != 0 ? rtrim(rtrim(number_format($row['egresos'], 2, '.', ''), '0'), '.') : '' }}</td>
-                                        @foreach($rates as $rate)
+                                        @foreach($dailyRates as $rate)
                                             @php
                                                 $cell = $row['rates'][(string) $rate];
                                             @endphp
@@ -125,7 +125,7 @@
                                     <td>Total</td>
                                     <td class="text-end">{{ number_format($dailyTotals['ingresos'], 2) }}</td>
                                     <td class="text-end">{{ number_format($dailyTotals['egresos'], 2) }}</td>
-                                    @foreach($rates as $rate)
+                                    @foreach($dailyRates as $rate)
                                         <td class="text-end">{{ number_format($dailyTotals['rates_cap'][(string) $rate], 2) }}</td>
                                         <td class="text-end" style="color:red; font-weight:bold;">{{ number_format($dailyTotals['rates_int'][(string) $rate], 2) }}</td>
                                     @endforeach
@@ -145,13 +145,13 @@
                                     <th rowspan="2" class="text-center align-middle">Fecha</th>
                                     <th rowspan="2" class="text-center align-middle">Ingresos Creditos</th>
                                     <th rowspan="2" class="text-center align-middle">Egresos Capital</th>
-                                    @foreach($rates as $rate)
+                                    @foreach($monthlyRates as $rate)
                                         <th colspan="2" class="text-center">{{ $rate }}%</th>
                                     @endforeach
                                     <th rowspan="2" class="text-center align-middle">TOTAL</th>
                                 </tr>
                                 <tr>
-                                    @foreach($rates as $rate)
+                                    @foreach($monthlyRates as $rate)
                                         <th class="text-center">Cap.</th>
                                         <th class="text-center">Int.</th>
                                     @endforeach
@@ -163,7 +163,7 @@
                                         <td>{{ $row['mes_label'] }}</td>
                                         <td class="text-end">{{ $row['ingresos'] != 0 ? rtrim(rtrim(number_format($row['ingresos'], 2, '.', ''), '0'), '.') : '' }}</td>
                                         <td class="text-end">{{ $row['egresos'] != 0 ? rtrim(rtrim(number_format($row['egresos'], 2, '.', ''), '0'), '.') : '' }}</td>
-                                        @foreach($rates as $rate)
+                                        @foreach($monthlyRates as $rate)
                                             @php
                                                 $cell = $row['rates'][(string) $rate];
                                             @endphp
@@ -181,7 +181,7 @@
                                     <td>Total</td>
                                     <td class="text-end">{{ number_format($monthlyTotals['ingresos'], 2) }}</td>
                                     <td class="text-end">{{ number_format($monthlyTotals['egresos'], 2) }}</td>
-                                    @foreach($rates as $rate)
+                                    @foreach($monthlyRates as $rate)
                                         <td class="text-end">{{ number_format($monthlyTotals['rates_cap'][(string) $rate], 2) }}</td>
                                         <td class="text-end" style="color:red; font-weight:bold;">{{ number_format($monthlyTotals['rates_int'][(string) $rate], 2) }}</td>
                                     @endforeach

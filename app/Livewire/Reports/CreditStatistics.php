@@ -82,6 +82,13 @@ class CreditStatistics extends Component
         // ─── MONTHLY TABLE (selected year) ─────────────────────────────
         [$monthlyRows, $monthlyTotals] = $this->buildMonthly();
 
+        // Ocultar tasas sin movimiento en el periodo (int se deriva del cap,
+        // así que basta mirar el capital acumulado por tasa).
+        $dailyRates = array_values(array_filter($this->rates,
+            fn ($r) => $dailyTotals['rates_cap'][(string) $r] != 0));
+        $monthlyRates = array_values(array_filter($this->rates,
+            fn ($r) => $monthlyTotals['rates_cap'][(string) $r] != 0));
+
         $months = [
             '01' => 'Enero', '02' => 'Febrero', '03' => 'Marzo', '04' => 'Abril',
             '05' => 'Mayo', '06' => 'Junio', '07' => 'Julio', '08' => 'Agosto',
@@ -95,7 +102,8 @@ class CreditStatistics extends Component
             'dailyTotals' => $dailyTotals,
             'monthlyRows' => $monthlyRows,
             'monthlyTotals' => $monthlyTotals,
-            'rates' => $this->rates,
+            'dailyRates' => $dailyRates,
+            'monthlyRates' => $monthlyRates,
             'months' => $months,
             'asesores' => $asesores,
         ]);
