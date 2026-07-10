@@ -196,13 +196,13 @@
                         <div class="col-md-2">
                             <label class="form-label mb-0 small fw-semibold">Saldo Pendiente</label>
                             <input type="text" class="form-control form-control-sm bg-light input-bold"
-                                   style="color:red;"
+                                   style="color:white;"
                                    value="{{ number_format($c['saldo_restante'], 2) }}" readonly>
                         </div>
                         <div class="col-md-2">
                             <label class="form-label mb-0 small fw-semibold">Saldo P. + Mora</label>
                             <input type="text" class="form-control form-control-sm bg-light input-bold"
-                                   style="color:red;"
+                                   style="color:white;"
                                    value="{{ number_format($c['saldo_mora_restante'], 2) }}" readonly>
                         </div>
                         <div class="col-md-4">
@@ -255,9 +255,16 @@
                             <span wire:loading wire:target="pagar">Procesando…</span>
                         </button>
                         @if($credit->situacion !== 'Cancelado')
-                            <a href="{{ route('payments.refinance', $credit->id) }}" class="btn btn-sm btn-warning">
-                                <i class="ti ti-refresh"></i> Refinanciar
-                            </a>
+                            @if((int) $credit->cuotas === 1)
+                                <a href="{{ route('payments.refinance', $credit->id) }}" class="btn btn-sm btn-warning">
+                                    <i class="ti ti-refresh"></i> Refinanciar
+                                </a>
+                            @else
+                                <a href="#" class="btn btn-sm btn-warning disabled"
+                                   title="Solo se puede refinanciar un préstamo de una cuota">
+                                    <i class="ti ti-refresh"></i> Refinanciar
+                                </a>
+                            @endif
                         @endif
                         <a href="#" class="btn btn-sm btn-success disabled" title="Próximamente">
                             <i class="ti ti-file-spreadsheet"></i> Excel
