@@ -9,10 +9,10 @@ class PaymentsRenameMoraDetalle extends Command
 {
     protected $signature = 'payments:rename-mora-detalle
         {--scan : Solo lectura: busca dónde vive el término (columna + valor exacto + conteo)}
-        {--from= : Valor exacto a reemplazar (default: "Mora manual")}
-        {--dry-run : Muestra cuántas filas se cambiarían, sin escribir}';
+        {--from= : Subcadena a reemplazar (default: "Mora manual")}
+        {--dry-run : Muestra cuántas filas se cambiarían y ejemplos, sin escribir}';
 
-    protected $description = 'Renombra el detalle de pagos "Mora manual" a "Mora de cuota" (homologación de terminología).';
+    protected $description = 'Reemplaza en el detalle de pagos la subcadena "Mora manual" por "Mora de cuota".';
 
     private const FROM = 'Mora manual';
 
@@ -24,25 +24,34 @@ class PaymentsRenameMoraDetalle extends Command
             return $this->scan();
         }
 
+        // Subcadena, no valor exacto: el detalle real es "Pago : {id} Mora manual".
         $from = (string) ($this->option('from') ?: self::FROM);
         $dryRun = (bool) $this->option('dry-run');
 
-        $count = DB::table('payments')->where('detalle', $from)->count();
+        $matches = DB::table('payments')->where('detalle', 'like', '%'.$from.'%');
+        $count = (clone $matches)->count();
 
         if ($count === 0) {
-            $this->warn('No hay pagos con detalle "'.$from.'". Probá primero: php artisan payments:rename-mora-detalle --scan');
+            $this->warn('No hay pagos cuyo detalle contenga "'.$from.'". Probá: php artisan payments:rename-mora-detalle --scan');
 
             return self::SUCCESS;
         }
 
         if ($dryRun) {
-            $this->warn("[dry-run] Se cambiarían {$count} pago(s): \"{$from}\" → \"".self::TO.'".');
+            $this->warn("[dry-run] Se cambiarían {$count} pago(s). Ejemplos:");
+            foreach ((clone $matches)->limit(3)->pluck('detalle') as $d) {
+                $this->line('  ['.$d.']  →  ['.str_replace($from, self::TO, $d).']');
+            }
 
             return self::SUCCESS;
         }
 
-        $updated = DB::table('payments')->where('detalle', $from)->update(['detalle' => self::TO]);
-        $this->info("Actualizados {$updated} pago(s): \"{$from}\" → \"".self::TO.'".');
+        $pdo = DB::getPdo();
+        $updated = (clone $matches)->update([
+            'detalle' => DB::raw('REPLACE(detalle, '.$pdo->quote($from).', '.$pdo->quote(self::TO).')'),
+        ]);
+
+        $this->info("Actualizados {$updated} pago(s): \"{$from}\" → \"".self::TO.'" (subcadena).');
 
         return self::SUCCESS;
     }
@@ -79,7 +88,7 @@ class PaymentsRenameMoraDetalle extends Command
         }
 
         if (! $found) {
-            $this->warn('No se encontró ningún valor con "manual" en payments/incomes. Quizás el término se muestra con otra palabra; pasame una captura del texto exacto.');
+            $this->warn('No se encontró ningún valor con "manual" en payments/incomes. Pasame una captura del texto exacto.');
         }
 
         return self::SUCCESS;
