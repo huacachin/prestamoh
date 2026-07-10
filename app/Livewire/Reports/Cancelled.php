@@ -102,6 +102,21 @@ class Cancelled extends Component
             }
         }
 
+        // Interés real devengado según el cronograma. En una cancelación
+        // anticipada el cronograma condona el interés no devengado, así que este
+        // valor (< interés pactado) refleja lo realmente cobrado.
+        $interesCronMap = [];
+        if (! empty($creditIds)) {
+            $cronRows = DB::table('credit_installments')
+                ->whereIn('credit_id', $creditIds)
+                ->selectRaw('credit_id, SUM(importe_interes) as int_cron')
+                ->groupBy('credit_id')
+                ->get();
+            foreach ($cronRows as $r) {
+                $interesCronMap[$r->credit_id] = (float) $r->int_cron;
+            }
+        }
+
         // Detectar créditos referenciados como idcan (refinanciados)
         $refIds = DB::table('credits')->whereIn('idcan', $creditIds)->pluck('idcan')->unique()->toArray();
         $refSet = array_flip($refIds);
@@ -142,8 +157,15 @@ class Cancelled extends Component
             }
             $tot2++;
 
-            // Lógica legacy
-            $interTotal = round(($importe * $interesPct) / 100, 2);
+            // Lógica legacy. El interés se toma del cronograma (devengado real:
+            // al pagar antes se paga menos interés); fallback al pactado si el
+            // crédito no tiene cronograma. Alimentar el algoritmo con el interés
+            // real corrige además el falso saldo/rojo en cancelaciones anticipadas
+            // y sincera la mora.
+            $interezPactado = round(($importe * $interesPct) / 100, 2);
+            $interTotal = isset($interesCronMap[$c->id])
+                ? round($interesCronMap[$c->id], 2)
+                : $interezPactado;
             $difeInteres = $sumIngreso - $interTotal;
 
             $newInterez = $interTotal;
@@ -168,7 +190,9 @@ class Cancelled extends Component
             if ($c->fecha_cancelacion && $c->fecha_vencimiento) {
                 $newdias = (int) $c->fecha_vencimiento->diffInDays($c->fecha_cancelacion, false);
             }
-            $intediasdias = round($newInterez / 30, 2);
+            // Mora por día sobre el interés PACTADO (comportamiento legacy),
+            // independiente de la condonación por pago adelantado.
+            $intediasdias = round($interezPactado / 30, 2);
             $mxd = $newdias > 0 ? round($newdias * $intediasdias, 2) : 0;
 
             // Background color

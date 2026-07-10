@@ -141,7 +141,8 @@
       "Artifact",
       "Bash('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --headless --disable-gpu --no-pdf-header-footer --print-to-pdf=/Users/antony/Downloads/Reporte-Actividades-Huacachin-2026-07-04.pdf file:///private/tmp/claude-501/-Users-antony-projects-prestamoh/25ddcc27-b802-4f77-b8fa-2e975709b491/scratchpad/reporte-semanal-print.html)",
       "Bash(mdls -name kMDItemNumberOfPages /Users/antony/Downloads/Reporte-Actividades-Huacachin-2026-07-04.pdf)",
-      "Bash(./vendor/bin/pint app/Livewire/Clients/Show.php -q)"
+      "Bash(./vendor/bin/pint app/Livewire/Clients/Show.php -q)",
+      "Bash(./vendor/bin/pint app/Livewire/Reports/Cancelled.php -q)"
     ]
   }
 }
