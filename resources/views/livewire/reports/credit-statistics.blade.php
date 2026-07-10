@@ -70,6 +70,15 @@
                                 <button class="btn btn-sm btn-dark flex-shrink-0" wire:click="search">
                                     <i class="ti ti-search f-s-12"></i> Consultar
                                 </button>
+                                {{-- Toggle columnas por tasa --}}
+                                <div class="btn-group btn-group-sm flex-shrink-0" role="group" aria-label="Columnas por tasa">
+                                    <input type="radio" class="btn-check" id="vm-ambos" value="ambos" wire:model.live="viewMode">
+                                    <label class="btn btn-outline-dark" for="vm-ambos">Cap. + Int.</label>
+                                    <input type="radio" class="btn-check" id="vm-cap" value="cap" wire:model.live="viewMode">
+                                    <label class="btn btn-outline-dark" for="vm-cap">Solo Cap.</label>
+                                    <input type="radio" class="btn-check" id="vm-int" value="int" wire:model.live="viewMode">
+                                    <label class="btn btn-outline-dark" for="vm-int">Solo Int.</label>
+                                </div>
                                 <button type="button" class="btn btn-sm btn-secondary flex-shrink-0" onclick="window.print()">
                                     <i class="ti ti-printer f-s-12"></i>
                                 </button>
@@ -78,23 +87,56 @@
                         </div>
                     </div>
 
+                    {{-- KPIs del mes seleccionado --}}
+                    @php $mesLabel = $months[$selemes] ?? ''; @endphp
+                    <div class="row g-2 mb-2">
+                        <div class="col-6 col-md-3">
+                            <div class="border rounded p-2 h-100 bg-light">
+                                <div class="small text-muted text-uppercase">Capital Colocado <span class="text-lowercase">({{ $mesLabel }})</span></div>
+                                <div class="f-s-18 fw-bold">S/ {{ number_format($dailyTotals['egresos'], 2) }}</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="border rounded p-2 h-100 bg-light">
+                                <div class="small text-muted text-uppercase">Interés del Mes <span class="text-lowercase">(cronograma)</span></div>
+                                <div class="f-s-18 fw-bold" style="color:red;">S/ {{ number_format($dailyTotals['total_inter'], 2) }}</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="border rounded p-2 h-100 bg-light">
+                                <div class="small text-muted text-uppercase">Ingresos Créditos <span class="text-lowercase">({{ $mesLabel }})</span></div>
+                                <div class="f-s-18 fw-bold">S/ {{ number_format($dailyTotals['ingresos'], 2) }}</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="border rounded p-2 h-100 bg-light">
+                                <div class="small text-muted text-uppercase">Créditos Otorgados</div>
+                                <div class="f-s-18 fw-bold">{{ number_format($dailyTotals['creditos']) }}</div>
+                            </div>
+                        </div>
+                    </div>
+
                     {{-- TABLA DIARIA del mes seleccionado --}}
                     <div id="tabla-cred-1" class="table-responsive" style="max-height: 650px; overflow:auto;">
-                        <table class="table table-bordered table-striped table-hover table-nowrap">
+                        <table class="table table-bordered table-striped table-hover table-nowrap table-sticky-first">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
                                     <th rowspan="2" class="text-center align-middle">Fecha</th>
                                     <th rowspan="2" class="text-center align-middle">Ingresos Creditos</th>
                                     <th rowspan="2" class="text-center align-middle">Egresos Capital</th>
                                     @foreach($dailyRates as $rate)
-                                        <th colspan="2" class="text-center">{{ $rate }}%</th>
+                                        <th colspan="{{ $viewMode === 'ambos' ? 2 : 1 }}" class="text-center">{{ $rate }}%</th>
                                     @endforeach
                                     <th rowspan="2" class="text-center align-middle">TOTAL</th>
                                 </tr>
                                 <tr>
                                     @foreach($dailyRates as $rate)
-                                        <th class="text-center">Cap.</th>
-                                        <th class="text-center">Int.</th>
+                                        @if($viewMode !== 'int')
+                                            <th class="text-center">Cap.</th>
+                                        @endif
+                                        @if($viewMode !== 'cap')
+                                            <th class="text-center">Int.</th>
+                                        @endif
                                     @endforeach
                                 </tr>
                             </thead>
@@ -110,10 +152,14 @@
                                             @php
                                                 $cell = $row['rates'][(string) $rate];
                                             @endphp
-                                            <td class="text-end">{{ $cell['cap'] != 0 ? rtrim(rtrim(number_format($cell['cap'], 2, '.', ''), '0'), '.') : '' }}</td>
-                                            <td class="text-end" style="color:red; font-weight:bold;">
-                                                {{ $cell['int'] != 0 ? number_format($cell['int'], 2) : '' }}
-                                            </td>
+                                            @if($viewMode !== 'int')
+                                                <td class="text-end">{{ $cell['cap'] != 0 ? rtrim(rtrim(number_format($cell['cap'], 2, '.', ''), '0'), '.') : '' }}</td>
+                                            @endif
+                                            @if($viewMode !== 'cap')
+                                                <td class="text-end" style="color:red; font-weight:bold;">
+                                                    {{ $cell['int'] != 0 ? number_format($cell['int'], 2) : '' }}
+                                                </td>
+                                            @endif
                                         @endforeach
                                         <td class="text-end" style="color:red; font-weight:bold;">
                                             {{ number_format($row['total_int'], 2) }}
@@ -121,13 +167,17 @@
                                     </tr>
                                 @endforeach
                                 {{-- Totales --}}
-                                <tr style="background-color:#f0f0f0; font-weight:500;">
+                                <tr class="row-total" style="font-weight:500;">
                                     <td>Total</td>
                                     <td class="text-end">{{ number_format($dailyTotals['ingresos'], 2) }}</td>
                                     <td class="text-end">{{ number_format($dailyTotals['egresos'], 2) }}</td>
                                     @foreach($dailyRates as $rate)
-                                        <td class="text-end">{{ number_format($dailyTotals['rates_cap'][(string) $rate], 2) }}</td>
-                                        <td class="text-end" style="color:red; font-weight:bold;">{{ number_format($dailyTotals['rates_int'][(string) $rate], 2) }}</td>
+                                        @if($viewMode !== 'int')
+                                            <td class="text-end">{{ number_format($dailyTotals['rates_cap'][(string) $rate], 2) }}</td>
+                                        @endif
+                                        @if($viewMode !== 'cap')
+                                            <td class="text-end" style="color:red; font-weight:bold;">{{ number_format($dailyTotals['rates_int'][(string) $rate], 2) }}</td>
+                                        @endif
                                     @endforeach
                                     <td class="text-end" style="color:red; font-weight:bold;">{{ number_format($dailyTotals['total_inter'], 2) }}</td>
                                 </tr>
@@ -139,21 +189,25 @@
 
                     {{-- TABLA MENSUAL del año --}}
                     <div class="table-responsive" style="max-height: 650px; overflow:auto;">
-                        <table class="table table-bordered table-striped table-hover table-nowrap">
+                        <table class="table table-bordered table-striped table-hover table-nowrap table-sticky-first">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
                                     <th rowspan="2" class="text-center align-middle">Fecha</th>
                                     <th rowspan="2" class="text-center align-middle">Ingresos Creditos</th>
                                     <th rowspan="2" class="text-center align-middle">Egresos Capital</th>
                                     @foreach($monthlyRates as $rate)
-                                        <th colspan="2" class="text-center">{{ $rate }}%</th>
+                                        <th colspan="{{ $viewMode === 'ambos' ? 2 : 1 }}" class="text-center">{{ $rate }}%</th>
                                     @endforeach
                                     <th rowspan="2" class="text-center align-middle">TOTAL</th>
                                 </tr>
                                 <tr>
                                     @foreach($monthlyRates as $rate)
-                                        <th class="text-center">Cap.</th>
-                                        <th class="text-center">Int.</th>
+                                        @if($viewMode !== 'int')
+                                            <th class="text-center">Cap.</th>
+                                        @endif
+                                        @if($viewMode !== 'cap')
+                                            <th class="text-center">Int.</th>
+                                        @endif
                                     @endforeach
                                 </tr>
                             </thead>
@@ -167,23 +221,31 @@
                                             @php
                                                 $cell = $row['rates'][(string) $rate];
                                             @endphp
-                                            <td class="text-end">{{ $cell['cap'] != 0 ? rtrim(rtrim(number_format($cell['cap'], 2, '.', ''), '0'), '.') : '' }}</td>
-                                            <td class="text-end" style="color:red; font-weight:bold;">
-                                                {{ $cell['int'] != 0 ? number_format($cell['int'], 2) : '' }}
-                                            </td>
+                                            @if($viewMode !== 'int')
+                                                <td class="text-end">{{ $cell['cap'] != 0 ? rtrim(rtrim(number_format($cell['cap'], 2, '.', ''), '0'), '.') : '' }}</td>
+                                            @endif
+                                            @if($viewMode !== 'cap')
+                                                <td class="text-end" style="color:red; font-weight:bold;">
+                                                    {{ $cell['int'] != 0 ? number_format($cell['int'], 2) : '' }}
+                                                </td>
+                                            @endif
                                         @endforeach
                                         <td class="text-end" style="color:red; font-weight:bold;">
                                             {{ number_format($row['total_int'], 2) }}
                                         </td>
                                     </tr>
                                 @endforeach
-                                <tr style="background-color:#f0f0f0; font-weight:500;">
+                                <tr class="row-total" style="font-weight:500;">
                                     <td>Total</td>
                                     <td class="text-end">{{ number_format($monthlyTotals['ingresos'], 2) }}</td>
                                     <td class="text-end">{{ number_format($monthlyTotals['egresos'], 2) }}</td>
                                     @foreach($monthlyRates as $rate)
-                                        <td class="text-end">{{ number_format($monthlyTotals['rates_cap'][(string) $rate], 2) }}</td>
-                                        <td class="text-end" style="color:red; font-weight:bold;">{{ number_format($monthlyTotals['rates_int'][(string) $rate], 2) }}</td>
+                                        @if($viewMode !== 'int')
+                                            <td class="text-end">{{ number_format($monthlyTotals['rates_cap'][(string) $rate], 2) }}</td>
+                                        @endif
+                                        @if($viewMode !== 'cap')
+                                            <td class="text-end" style="color:red; font-weight:bold;">{{ number_format($monthlyTotals['rates_int'][(string) $rate], 2) }}</td>
+                                        @endif
                                     @endforeach
                                     <td class="text-end" style="color:red; font-weight:bold;">{{ number_format($monthlyTotals['total_inter'], 2) }}</td>
                                 </tr>
@@ -194,4 +256,35 @@
             </div>
         </div>
     </div>
+
+    <style>
+        /* Columna "Fecha" fija al hacer scroll horizontal */
+        .table-sticky-first th:first-child,
+        .table-sticky-first td:first-child {
+            position: sticky;
+            left: 0;
+            z-index: 1;
+            background-color: var(--bs-body-bg, #fff);
+        }
+
+        /* Esquina superior izquierda: fija arriba y a la izquierda */
+        .table-sticky-first thead th:first-child {
+            z-index: 3;
+            background-color: rgb(var(--bs-primary-rgb, 13, 110, 253));
+        }
+
+        /* Fila de totales fija al hacer scroll vertical */
+        .table-sticky-first .row-total td {
+            position: sticky;
+            bottom: 0;
+            z-index: 2;
+            background-color: #f0f0f0;
+        }
+
+        /* Esquina inferior izquierda: fija abajo y a la izquierda */
+        .table-sticky-first .row-total td:first-child {
+            left: 0;
+            z-index: 3;
+        }
+    </style>
 </div>

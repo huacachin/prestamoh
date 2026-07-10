@@ -22,6 +22,10 @@ class CreditStatistics extends Component
     #[Url(as: 'asesor', except: 'Todos')]
     public $nomasesores = 'Todos';
 
+    /** Qué columnas mostrar por tasa: ambos | cap | int */
+    #[Url(as: 'ver', except: 'ambos')]
+    public string $viewMode = 'ambos';
+
     public function mount()
     {
         if (! request()->has('mes')) {
@@ -182,10 +186,18 @@ class CreditStatistics extends Component
             ->pluck('importe', 'fecha')
             ->toArray();
 
+        // Nº de créditos otorgados en el mes (para las cards KPI)
+        $numCreditos = $this->applyFilters(
+            DB::table('credits')
+                ->whereYear('fecha_actualizacion', $year)
+                ->whereMonth('fecha_actualizacion', $month)
+        )->count();
+
         $rows = [];
         $totals = [
             'ingresos' => 0,
             'egresos' => 0,
+            'creditos' => $numCreditos,
             'rates_cap' => array_fill_keys(array_map(fn ($r) => (string) $r, $rates), 0),
             'rates_int' => array_fill_keys(array_map(fn ($r) => (string) $r, $rates), 0),
             'total_inter' => 0,
