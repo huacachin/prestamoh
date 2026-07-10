@@ -64,15 +64,15 @@
                     <div id="printme">
                         {{-- Daily detail table --}}
                         <div id="tabla-caja-3" class="table-responsive" style="max-height: 650px; overflow: auto;">
-                            <table class="table table-bordered table-striped table-hover table-sm">
+                            <table class="table table-bordered table-striped table-hover table-sm" style="min-width: 900px;">
                                 <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                     <tr>
-                                        <th class="text-center">N&deg;</th>
-                                        <th class="text-center">FECHA</th>
-                                        <th class="text-center">DATOS DEL CLIENTE</th>
-                                        <th class="text-center">DETALLES</th>
-                                        <th class="text-center">INGRESO</th>
-                                        <th class="text-center">EGRESO</th>
+                                        <th class="text-center text-nowrap">N&deg;</th>
+                                        <th class="text-center text-nowrap">FECHA</th>
+                                        <th class="text-center text-nowrap">DATOS DEL CLIENTE</th>
+                                        <th class="text-center text-nowrap">DETALLES</th>
+                                        <th class="text-center text-nowrap">INGRESO</th>
+                                        <th class="text-center text-nowrap">EGRESO</th>
                                     </tr>
                                 </thead>
                                 <tbody>
