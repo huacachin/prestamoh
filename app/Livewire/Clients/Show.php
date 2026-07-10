@@ -32,11 +32,17 @@ class Show extends Component
         // cancelación anticipada el interés no devengado se CONDONA en el
         // cronograma, así que quedaría un falso pendiente rojo. Si el
         // cronograma está saldado, no hay deuda real.
-        $saldoCronByCredit = empty($creditIds) ? collect() : DB::table('credit_installments')
+        $cronAgg = empty($creditIds) ? collect() : DB::table('credit_installments')
             ->whereIn('credit_id', $creditIds)
-            ->selectRaw('credit_id, SUM(importe_cuota + importe_interes - importe_aplicado - interes_aplicado) s')
+            ->selectRaw('credit_id, SUM(importe_cuota + importe_interes - importe_aplicado - interes_aplicado) s, SUM(importe_interes) int_cron')
             ->groupBy('credit_id')
-            ->pluck('s', 'credit_id');
+            ->get()
+            ->keyBy('credit_id');
+        $saldoCronByCredit = $cronAgg->map(fn ($r) => (float) $r->s);
+        // Interés realmente devengado según el cronograma. En una cancelación
+        // anticipada el cronograma condona el interés no devengado, así que este
+        // valor (< interés pactado) es el interés real cobrado.
+        $interesCronByCredit = $cronAgg->map(fn ($r) => (float) $r->int_cron);
 
         // Pre-cargar pagos relevantes (no-Gat) por crédito
         $sumNoMoraByCredit = []; // ap = sum(totalgeneral) WHERE NOT MORA y NOT Gat
@@ -99,7 +105,13 @@ class Show extends Component
             $apSum = (float) ($sumNoMoraByCredit[$cr->id] ?? 0); // suma pagos no-MORA
             $moraSum = (float) ($sumMoraByCredit[$cr->id] ?? 0);
 
-            $totinteres = round($importe * ($interesPct / 100), 2);
+            // Interés a mostrar/usar en el saldo: el devengado real del
+            // cronograma (condona lo no devengado en cancelaciones anticipadas,
+            // así paga menos interés). Fallback al pactado si no hay cronograma.
+            $interezPactado = round($importe * ($interesPct / 100), 2);
+            $totinteres = isset($interesCronByCredit[$cr->id])
+                ? round((float) $interesCronByCredit[$cr->id], 2)
+                : $interezPactado;
             $tintere = $totinteres;
 
             // Interés G. (ganado) = interés REALMENTE pagado (suma de pagos INTERES),
@@ -145,8 +157,9 @@ class Show extends Component
                     Carbon::parse($cr->fecha_cancelacion), false
                 );
             }
-            $newInterez = round($importe * ($interesPct / 100), 2);
-            $intediasdias = round($newInterez / 30, 2);
+            // Mora por día sobre el interés PACTADO (comportamiento legacy),
+            // independiente de la condonación por pago adelantado.
+            $intediasdias = round($interezPactado / 30, 2);
             $mxd = $newdias > 0 ? round($newdias * $intediasdias, 2) : 0;
 
             // Estado label/imagen (legacy: estado=0 → Activado, estado=1 → Desactivado)
@@ -164,9 +177,9 @@ class Show extends Component
                 'f_cancelado' => $cr->fecha_cancelacion ? Carbon::parse($cr->fecha_cancelacion)->format('Y-m-d') : '',
                 'capital' => $importe,
                 'interes_pct' => round($interesPct, 2),
-                'interes' => $newInterez,
+                'interes' => $totinteres,
                 'cuotas' => $cr->cuotas,
-                'total' => $importe + $newInterez,
+                'total' => $importe + $totinteres,
                 'capital_r' => $rftq,
                 'interes_g' => $iminte,
                 'mora' => $moraSum,
@@ -182,8 +195,8 @@ class Show extends Component
             ];
 
             $totals['capital'] += $importe;
-            $totals['interes_t'] += (float) ($cr->interes_total ?? 0);
-            $totals['total_a_pag'] += round($importe + $newInterez, 2);
+            $totals['interes_t'] += $totinteres;
+            $totals['total_a_pag'] += round($importe + $totinteres, 2);
             $totals['capital_r'] += $rftq;
             $totals['interes_g'] += $iminte;
             $totals['mora'] += $moraSum;
