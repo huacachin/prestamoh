@@ -495,7 +495,7 @@ class Create extends Component
             if ($totMora > 0.001 && ! $this->ckmora && ! $quitarMoras) {
                 $insTarget = $this->primeraCuotaParaMora($touchedThisPayment);
 
-                $moraDetalle = ($calcs['mora_manual'] ?? false) ? 'Mora manual' : "Mora Acumulada Dias : {$diasA}";
+                $moraDetalle = ($calcs['mora_manual'] ?? false) ? 'Mora de cuota' : "Mora Acumulada Dias : {$diasA}";
                 $p = $this->createMoraPayment('MORA', $totMora, $moraDetalle, $hora, $usuario, $userId, $hqId, $semodn);
                 if ($insTarget) {
                     DB::table('credit_installments')->where('id', $insTarget->id)
