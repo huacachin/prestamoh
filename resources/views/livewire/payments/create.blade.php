@@ -196,13 +196,13 @@
                         <div class="col-md-2">
                             <label class="form-label mb-0 small fw-semibold">Saldo Pendiente</label>
                             <input type="text" class="form-control form-control-sm bg-light"
-                                   style="color:white;"
+                                   style="color:white; font-size:15px;"
                                    value="{{ number_format($c['saldo_restante'], 2) }}" readonly>
                         </div>
                         <div class="col-md-2">
                             <label class="form-label mb-0 small fw-semibold">Saldo P. + Mora</label>
                             <input type="text" class="form-control form-control-sm bg-light"
-                                   style="color:white;"
+                                   style="color:white; font-size:15px;"
                                    value="{{ number_format($c['saldo_mora_restante'], 2) }}" readonly>
                         </div>
                         <div class="col-md-4">
