@@ -107,6 +107,7 @@
     <div class="card shadow-sm mt-3">
         <div class="card-body pb-2">
             <h6>CRONOGRAMA DE CUOTAS</h6>
+            @php $tieneExc = $credit->installments->sum('importe_excedente') > 0; @endphp
             <div class="table-responsive tableFixHead">
                 <table class="table table-bordered table-striped table-hover">
                     <thead class="bg-primary">
@@ -115,6 +116,9 @@
                         <th>Fecha Venc.</th>
                         <th>Capital</th>
                         <th>Interés</th>
+                        @if($tieneExc)
+                            <th>Excedente</th>
+                        @endif
                         <th>Pagado Cap.</th>
                         <th>Pagado Int.</th>
                         <th>Saldo</th>
@@ -132,6 +136,9 @@
                             <td>{{ $inst->fecha_vencimiento?->format('d/m/Y') }}</td>
                             <td class="text-end">{{ number_format($inst->importe_cuota, 2) }}</td>
                             <td class="text-end">{{ number_format($inst->importe_interes, 2) }}</td>
+                            @if($tieneExc)
+                                <td class="text-end">{{ number_format($inst->importe_excedente, 2) }}</td>
+                            @endif
                             <td class="text-end">{{ number_format($inst->importe_aplicado, 2) }}</td>
                             <td class="text-end">{{ number_format($inst->interes_aplicado, 2) }}</td>
                             <td class="text-end">{{ number_format($saldo, 2) }}</td>
@@ -150,6 +157,7 @@
                     @php
                         $tCap    = $credit->installments->sum('importe_cuota');
                         $tInt    = $credit->installments->sum('importe_interes');
+                        $tExc    = $credit->installments->sum('importe_excedente');
                         $tPagCap = $credit->installments->sum('importe_aplicado');
                         $tPagInt = $credit->installments->sum('interes_aplicado');
                         $tSaldo  = $credit->installments->sum(fn ($i) => $i->saldoPendiente());
@@ -159,6 +167,9 @@
                             <td colspan="2" class="text-end">Totales</td>
                             <td class="text-end">{{ number_format($tCap, 2) }}</td>
                             <td class="text-end">{{ number_format($tInt, 2) }}</td>
+                            @if($tieneExc)
+                                <td class="text-end">{{ number_format($tExc, 2) }}</td>
+                            @endif
                             <td class="text-end">{{ number_format($tPagCap, 2) }}</td>
                             <td class="text-end">{{ number_format($tPagInt, 2) }}</td>
                             <td class="text-end">{{ number_format($tSaldo, 2) }}</td>
@@ -183,6 +194,9 @@
                         <th>Cuotas</th>
                         <th class="text-end">Capital</th>
                         <th class="text-end">Interés</th>
+                        @if($tieneExc)
+                            <th class="text-end">Excedente</th>
+                        @endif
                         <th class="text-end">Mora</th>
                         <th class="text-end">Total</th>
                         <th>Cobrador</th>
@@ -192,7 +206,7 @@
                     <tbody>
                     @forelse($credit->massDeletions as $masivo)
                         @php
-                            $totales = ['C' => 0, 'I' => 0, 'M' => 0];
+                            $totales = ['C' => 0, 'I' => 0, 'E' => 0, 'M' => 0];
                             $cuotas = [];
                             foreach ($masivo->details as $d) {
                                 if (isset($totales[$d->tipo])) $totales[$d->tipo] += (float) $d->amount;
@@ -212,6 +226,9 @@
                             <td>{{ $cuotas ? implode(',', $cuotas) : '—' }}</td>
                             <td class="text-end">{{ number_format($totales['C'], 2) }}</td>
                             <td class="text-end">{{ number_format($totales['I'], 2) }}</td>
+                            @if($tieneExc)
+                                <td class="text-end">{{ number_format($totales['E'], 2) }}</td>
+                            @endif
                             <td class="text-end">{{ number_format($totales['M'], 2) }}</td>
                             <td class="text-end fw-bold">{{ number_format($masivo->amount, 2) }}</td>
                             <td>{{ $masivo->user ?: '—' }}</td>
@@ -226,17 +243,18 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="py-4 text-muted text-center">Sin pagos registrados</td>
+                            <td colspan="{{ $tieneExc ? 10 : 9 }}" class="py-4 text-muted text-center">Sin pagos registrados</td>
                         </tr>
                     @endforelse
                     </tbody>
                     @if($credit->massDeletions->count())
                         @php
-                            $pC = $pI = $pM = $pTot = 0;
+                            $pC = $pI = $pE = $pM = $pTot = 0;
                             foreach ($credit->massDeletions as $m) {
                                 foreach ($m->details as $d) {
                                     if ($d->tipo === 'C') $pC += (float) $d->amount;
                                     elseif ($d->tipo === 'I') $pI += (float) $d->amount;
+                                    elseif ($d->tipo === 'E') $pE += (float) $d->amount;
                                     elseif ($d->tipo === 'M') $pM += (float) $d->amount;
                                 }
                                 $pTot += (float) $m->amount;
@@ -247,6 +265,9 @@
                                 <td colspan="3" class="text-end">Totales</td>
                                 <td class="text-end">{{ number_format($pC, 2) }}</td>
                                 <td class="text-end">{{ number_format($pI, 2) }}</td>
+                                @if($tieneExc)
+                                    <td class="text-end">{{ number_format($pE, 2) }}</td>
+                                @endif
                                 <td class="text-end">{{ number_format($pM, 2) }}</td>
                                 <td class="text-end">{{ number_format($pTot, 2) }}</td>
                                 <td colspan="2"></td>

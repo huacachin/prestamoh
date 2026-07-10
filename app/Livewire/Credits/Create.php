@@ -6,6 +6,7 @@ use App\Models\Client;
 use App\Models\Credit;
 use App\Models\User;
 use App\Support\Audit;
+use App\Support\CuotaUniforme;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -442,6 +443,15 @@ class Create extends Component
                         ->update(['importe_interes' => $impInteresUC]);
                 }
             }
+
+            // ─── 5) Cuota uniforme redondeada a 0.10 + excedente ──────────
+            // Redistribuye capital/interés al céntimo y deja TODAS las cuotas
+            // iguales; el delta de redondeo queda como importe_excedente.
+            $interesTotalExacto = round($impopres * $inte / 100, 2);
+            if ($tipo === 3) {
+                $interesTotalExacto = round($interesTotalExacto * $tocuota, 2);
+            }
+            CuotaUniforme::aplicar($pid, $impopres, $interesTotalExacto);
         });
 
         Audit::log('Creó el crédito #'.$this->codpre_);

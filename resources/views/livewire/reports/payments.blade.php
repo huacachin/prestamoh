@@ -130,7 +130,7 @@
 
                                 {{-- Totales --}}
                                 <tr style="background-color:#f0f0f0; font-weight:500;">
-                                    <td colspan="5" rowspan="6" class="text-center">Total</td>
+                                    <td colspan="5" rowspan="{{ $totals['excedente'] > 0 ? 7 : 6 }}" class="text-center">Total</td>
                                     <td></td>
                                     <td></td>
                                     <td class="text-end">{{ number_format($totals['total'], 2) }}</td>
@@ -160,6 +160,14 @@
                                     <td></td>
                                     @if($isAdmin)<td></td>@endif
                                 </tr>
+                                @if($totals['excedente'] > 0)
+                                    <tr style="background-color:#f0f0f0; font-weight:500;">
+                                        <td class="text-center">Excedente</td>
+                                        <td class="text-end">{{ number_format($totals['excedente'], 2) }}</td>
+                                        <td></td>
+                                        @if($isAdmin)<td></td>@endif
+                                    </tr>
+                                @endif
                                 <tr style="background-color:#f0f0f0; font-weight:500;">
                                     <td class="text-center">Mora</td>
                                     <td class="text-end">{{ number_format($totals['mora'], 2) }}</td>

@@ -77,6 +77,9 @@ class CajaDailyService
                 $sumInteresPagado = (float) $pays->where('tipo', 'INTERES')->sum('monto');
                 $sumCapitalPagado = (float) $pays->where('tipo', 'CAPITAL')->sum('monto');
                 $mora = (float) $pays->where('tipo', 'MORA')->sum('monto');
+                // Excedente de redondeo (cuota uniforme): efectivo que entra a
+                // caja aparte de capital/interés/mora.
+                $excedente = (float) $pays->where('tipo', 'EXCEDENTE')->sum('monto');
                 // Mora acumulada cobrada al cancelar (documento 'MORA ACUM.'):
                 // desglose para Caja 1. 'mora' sigue siendo el TOTAL (vigente + acum).
                 $moraAcum = (float) $pays->where('tipo', 'MORA')->where('documento', 'MORA ACUM.')->sum('monto');
@@ -124,6 +127,7 @@ class CajaDailyService
                     'total' => $total,
                     'capital' => $capital,
                     'interes' => $interes,
+                    'excedente' => $excedente,
                     'mora' => $mora,
                     'mora_acum' => $moraAcum,
                     'asesor' => $asesor,

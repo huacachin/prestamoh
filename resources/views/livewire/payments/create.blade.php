@@ -319,6 +319,9 @@
                             <div class="fw-bold small text-uppercase mb-1">Ponerse al día</div>
                             <div class="d-flex justify-content-between small"><span>Capital</span><span>{{ number_format($sim['cap_hoy'], 2) }}</span></div>
                             <div class="d-flex justify-content-between small"><span>Interés</span><span>{{ number_format($sim['int_hoy'], 2) }}</span></div>
+                            @if($sim['exc_hoy'] > 0)
+                                <div class="d-flex justify-content-between small"><span>Excedente</span><span>{{ number_format($sim['exc_hoy'], 2) }}</span></div>
+                            @endif
                             <div class="d-flex justify-content-between small">
                                 <span>Mora @if($sim['mora_dias'] > 0)({{ $sim['mora_dias'] }} {{ $sim['mora_dias'] === 1 ? 'día' : 'días' }} × {{ number_format($sim['mora_rate'], 2) }})@endif</span>
                                 <span style="color:red;">{{ number_format($sim['mora'], 2) }}</span>
@@ -343,8 +346,8 @@
 
                             @if($simEsHoy)
                                 <button type="button" class="btn btn-sm btn-dark mt-auto"
-                                        wire:click="usarMonto({{ $sim['cap_hoy'] + $sim['int_hoy'] }})">
-                                    Usar {{ number_format($sim['cap_hoy'] + $sim['int_hoy'], 2) }} en Monto a Pagar
+                                        wire:click="usarMonto({{ $sim['cap_hoy'] + $sim['int_hoy'] + $sim['exc_hoy'] }})">
+                                    Usar {{ number_format($sim['cap_hoy'] + $sim['int_hoy'] + $sim['exc_hoy'], 2) }} en Monto a Pagar
                                 </button>
                             @endif
                         </div>
@@ -355,6 +358,9 @@
                             <div class="fw-bold small text-uppercase mb-1">Hasta la próx. cuota</div>
                             <div class="d-flex justify-content-between small"><span>Capital</span><span>{{ number_format($sim['cap_prox'], 2) }}</span></div>
                             <div class="d-flex justify-content-between small"><span>Interés</span><span>{{ number_format($sim['int_prox'], 2) }}</span></div>
+                            @if($sim['exc_prox'] > 0)
+                                <div class="d-flex justify-content-between small"><span>Excedente</span><span>{{ number_format($sim['exc_prox'], 2) }}</span></div>
+                            @endif
                             <div class="d-flex justify-content-between small">
                                 <span>Mora @if($sim['mora_dias'] > 0)({{ $sim['mora_dias'] }} {{ $sim['mora_dias'] === 1 ? 'día' : 'días' }} × {{ number_format($sim['mora_rate'], 2) }})@endif</span>
                                 <span style="color:red;">{{ number_format($sim['mora'], 2) }}</span>
@@ -378,8 +384,8 @@
 
                             @if($simEsHoy)
                                 <button type="button" class="btn btn-sm btn-dark mt-auto"
-                                        wire:click="usarMonto({{ $sim['cap_prox'] + $sim['int_prox'] }})">
-                                    Usar {{ number_format($sim['cap_prox'] + $sim['int_prox'], 2) }} en Monto a Pagar
+                                        wire:click="usarMonto({{ $sim['cap_prox'] + $sim['int_prox'] + $sim['exc_prox'] }})">
+                                    Usar {{ number_format($sim['cap_prox'] + $sim['int_prox'] + $sim['exc_prox'], 2) }} en Monto a Pagar
                                 </button>
                             @endif
                         </div>
@@ -394,7 +400,9 @@
                                     ? round($sim['saldo_credito'] - $sim['cap_pendiente_total'], 2)
                                     : $sim['int_hoy'];
                                 $morasCancelar = $cancelSinMora ? 0.0 : round($sim['mora'] + $moraAcumTotal, 2);
-                                $capIntCancelar = round($sim['cap_pendiente_total'] + $intCancelar, 2);
+                                // Excedente (cuota uniforme): solo el de cuotas vencidas;
+                                // el de cuotas futuras se condona al cancelar.
+                                $capIntCancelar = round($sim['cap_pendiente_total'] + $intCancelar + $sim['exc_hoy'], 2);
                                 $totalCancelarCard = round($capIntCancelar + $morasCancelar, 2);
                                 // El botón llena solo capital + interés: la mora vigente y la
                                 // mora acumulada se cobran automáticamente como pagos MORA al
@@ -407,6 +415,9 @@
                                 <span>{{ $cancelUltimaCuota ? 'Interés hasta la última cuota' : 'Interés a la fecha' }}</span>
                                 <span>{{ number_format($intCancelar, 2) }}</span>
                             </div>
+                            @if($sim['exc_hoy'] > 0)
+                                <div class="d-flex justify-content-between small"><span>Excedente vencido</span><span>{{ number_format($sim['exc_hoy'], 2) }}</span></div>
+                            @endif
                             <div class="d-flex justify-content-between small">
                                 <span>Mora @if($sim['mora_dias'] > 0)({{ $sim['mora_dias'] }} {{ $sim['mora_dias'] === 1 ? 'día' : 'días' }} × {{ number_format($sim['mora_rate'], 2) }})@endif</span>
                                 <span style="{{ $cancelSinMora ? $tachado : 'color:red;' }}">{{ number_format($sim['mora'], 2) }}</span>
@@ -474,6 +485,7 @@
                     <h6 class="mb-0">CRONOGRAMA DE CUOTAS</h6>
                     <x-scroll-bottom-btn scrollable="#tabla-cronograma" />
                 </div>
+                @php $tieneExc = $credit->installments->sum('importe_excedente') > 0; @endphp
                 <div id="tabla-cronograma" class="table-responsive tableFixHead" style="max-height: 500px; overflow:auto;">
                     <table class="table table-bordered table-striped table-hover">
                         <thead class="bg-primary">
@@ -482,6 +494,9 @@
                             <th>Fecha Venc.</th>
                             <th>Capital</th>
                             <th>Interés</th>
+                            @if($tieneExc)
+                                <th>Excedente</th>
+                            @endif
                             <th>Pagado Cap.</th>
                             <th>Pagado Int.</th>
                             <th>Pagado</th>
@@ -502,9 +517,12 @@
                                 <td>{{ $inst->fecha_vencimiento?->format('d/m/Y') }}</td>
                                 <td class="text-end">{{ number_format($inst->importe_cuota, 2) }}</td>
                                 <td class="text-end">{{ number_format($inst->importe_interes, 2) }}</td>
+                                @if($tieneExc)
+                                    <td class="text-end">{{ number_format($inst->importe_excedente, 2) }}</td>
+                                @endif
                                 <td class="text-end">{{ number_format($inst->importe_aplicado, 2) }}</td>
                                 <td class="text-end">{{ number_format($inst->interes_aplicado, 2) }}</td>
-                                <td class="text-end">{{ number_format($inst->importe_aplicado + $inst->interes_aplicado, 2) }}</td>
+                                <td class="text-end">{{ number_format($inst->importe_aplicado + $inst->interes_aplicado + $inst->excedente_aplicado, 2) }}</td>
                                 <td class="text-end">{{ number_format($saldo, 2) }}</td>
                                 @php $me = $moraExon[$inst->num_cuota] ?? null; @endphp
                                 <td class="text-end" style="color:red; white-space:nowrap;">{{ number_format($me['monto'] ?? 0, 2) }}@if($me) - D. {{ $me['dias'] }}@endif</td>
@@ -524,8 +542,10 @@
                         @php
                             $tCap    = $credit->installments->sum('importe_cuota');
                             $tInt    = $credit->installments->sum('importe_interes');
+                            $tExc    = $credit->installments->sum('importe_excedente');
                             $tPagCap = $credit->installments->sum('importe_aplicado');
                             $tPagInt = $credit->installments->sum('interes_aplicado');
+                            $tPagExc = $credit->installments->sum('excedente_aplicado');
                             $tSaldo  = $credit->installments->sum(fn ($i) => $i->saldoPendiente());
                         @endphp
                         <tfoot>
@@ -533,9 +553,12 @@
                                 <td colspan="2" class="text-end">Totales</td>
                                 <td class="text-end">{{ number_format($tCap, 2) }}</td>
                                 <td class="text-end">{{ number_format($tInt, 2) }}</td>
+                                @if($tieneExc)
+                                    <td class="text-end">{{ number_format($tExc, 2) }}</td>
+                                @endif
                                 <td class="text-end">{{ number_format($tPagCap, 2) }}</td>
                                 <td class="text-end">{{ number_format($tPagInt, 2) }}</td>
-                                <td class="text-end">{{ number_format($tPagCap + $tPagInt, 2) }}</td>
+                                <td class="text-end">{{ number_format($tPagCap + $tPagInt + $tPagExc, 2) }}</td>
                                 <td class="text-end">{{ number_format($tSaldo, 2) }}</td>
                                 @php
                                     $tExon = collect($moraExon)->sum('monto');

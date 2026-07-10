@@ -65,6 +65,7 @@ class CashGeneral1 extends Component
         $Tcpi = 0;
         $Tcpi2 = 0;
         $Tint = 0;
+        $Texc = 0;
         $Tmor4 = 0;
         $TmorAcum = 0;
         $toff = 0;
@@ -113,6 +114,7 @@ class CashGeneral1 extends Component
             $subIng = collect($ingresos)->sum('total');
             $subCap = collect($ingresos)->sum('capital');
             $subInt = collect($ingresos)->sum('interes');
+            $subExc = collect($ingresos)->sum('excedente');
             // Mora desglosada: vigente vs acumulada (documento 'MORA ACUM.')
             $subMoraAcum = collect($ingresos)->sum('mora_acum');
             $subMora = collect($ingresos)->sum('mora') - $subMoraAcum;
@@ -127,6 +129,7 @@ class CashGeneral1 extends Component
                 'sub_ingresos' => $subIng,
                 'sub_capital' => $subCap,
                 'sub_interes' => $subInt,
+                'sub_excedente' => $subExc,
                 'sub_mora' => $subMora,
                 'sub_mora_acum' => $subMoraAcum,
                 'sub_egresos' => $subEgr,
@@ -136,6 +139,7 @@ class CashGeneral1 extends Component
             $Tcpi += $subIng;
             $Tcpi2 += $subCap;
             $Tint += $subInt;
+            $Texc += $subExc;
             $Tmor4 += $subMora;
             $TmorAcum += $subMoraAcum;
             $toff += $subEgr;
@@ -147,11 +151,12 @@ class CashGeneral1 extends Component
             'Tcpi' => $Tcpi,
             'Tcpi2' => $Tcpi2,
             'Tint' => $Tint,
+            'Texc' => $Texc,
             'Tmor4' => $Tmor4,
             'TmorAcum' => $TmorAcum,
             'toff' => $toff,
             'toff2' => $toff2,
-            'toff1' => $Tcpi + $Tmor4 + $TmorAcum,
+            'toff1' => $Tcpi + $Texc + $Tmor4 + $TmorAcum,
         ]);
     }
 }

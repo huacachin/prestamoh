@@ -178,6 +178,7 @@ class Incomes extends Component
         $totros = 0;
         $tocapi = 0;
         $totinte = 0;
+        $toexce = 0;
         $totmora = 0;
         $totalGeneral = 0;
 
@@ -196,6 +197,8 @@ class Incomes extends Component
                     $tocapi += $r['total'];
                 } elseif ($doc === 'INTERES') {
                     $totinte += $r['total'];
+                } elseif ($doc === 'EXCEDENTE') {
+                    $toexce += $r['total'];
                 } elseif (str_contains($doc, 'MORA')) {
                     $totmora += $r['total'];
                 }
@@ -210,6 +213,7 @@ class Incomes extends Component
             'totros' => $totros,
             'tocapi' => $tocapi,
             'totinte' => $totinte,
+            'toexce' => $toexce,
             'totmora' => $totmora,
         ]);
     }

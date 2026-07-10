@@ -20,8 +20,9 @@ class MassDeleteEdit extends Component
 
     public function reverse(): void
     {
-        if (!auth()->user()?->can('registro.eliminar-masivo.revertir')) {
+        if (! auth()->user()?->can('registro.eliminar-masivo.revertir')) {
             $this->dispatch('errorAlert', ['message' => 'No tienes permisos para revertir esta operación.']);
+
             return;
         }
 
@@ -37,9 +38,10 @@ class MassDeleteEdit extends Component
                         $monto = (float) $det->amount;
                         match ($det->tipo) {
                             'C', 'C1', 'C3' => $inst->importe_aplicado = max(0, (float) $inst->importe_aplicado - $monto),
-                            'I', 'I1'       => $inst->interes_aplicado = max(0, (float) $inst->interes_aplicado - $monto),
-                            'M'             => $inst->importe_mora = 0,
-                            default         => null,
+                            'I', 'I1' => $inst->interes_aplicado = max(0, (float) $inst->interes_aplicado - $monto),
+                            'E' => $inst->excedente_aplicado = max(0, (float) $inst->excedente_aplicado - $monto),
+                            'M' => $inst->importe_mora = 0,
+                            default => null,
                         };
                         $inst->pagado = false;
                         $inst->fecha_pago = null;
@@ -54,7 +56,7 @@ class MassDeleteEdit extends Component
             // matcheaba y el crédito quedaba "Cancelado". Aquí restauramos correctamente.
             if ($this->record->credit_id) {
                 Credit::where('id', $this->record->credit_id)->update([
-                    'estado'    => 1,
+                    'estado' => 1,
                     'situacion' => 'Activo',
                 ]);
             }

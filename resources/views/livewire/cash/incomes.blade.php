@@ -214,6 +214,14 @@
                                     <td></td>
                                     <td></td>
                                 </tr>
+                                @if($toexce > 0)
+                                    <tr>
+                                        <td class="text-center"><b>Excedente</b></td>
+                                        <td class="text-end fw-bold">{{ number_format($toexce, 2) }}</td>
+                                        <td></td>
+                                        <td></td>
+                                    </tr>
+                                @endif
                                 <tr>
                                     <td class="text-center"><b>Mora</b></td>
                                     <td class="text-end fw-bold">{{ number_format($totmora, 2) }}</td>
@@ -338,6 +346,9 @@
                                 <div style="color: red;"><b>Otros:</b> S/ {{ number_format($totros, 2) }}</div>
                                 <div><b>Capital:</b> S/ {{ number_format($tocapi, 2) }}</div>
                                 <div><b>Interés:</b> S/ {{ number_format($totinte, 2) }}</div>
+                                @if($toexce > 0)
+                                    <div><b>Excedente:</b> S/ {{ number_format($toexce, 2) }}</div>
+                                @endif
                                 <div><b>Mora:</b> S/ {{ number_format($totmora, 2) }}</div>
                             </div>
                         </div>

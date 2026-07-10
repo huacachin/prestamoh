@@ -88,6 +88,7 @@
     <div class="card shadow-sm mt-2">
         <div class="card-body pb-2">
             <div class="table-responsive" style="max-height: 650px; overflow:auto;">
+                @php $tieneExc = ($totals['excedente'] ?? 0) > 0; @endphp
                 <table class="table table-bordered table-hover" style="font-size: 11px;">
                     <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                         <tr>
@@ -95,6 +96,9 @@
                             <th class="text-center">Periodo</th>
                             <th class="text-center">Capital</th>
                             <th class="text-center">Interés</th>
+                            @if($tieneExc)
+                                <th class="text-center">Excedente</th>
+                            @endif
                             <th class="text-center">Total</th>
                             <th class="text-center">Mora</th>
                             <th class="text-center" style="color:#ffd6d6;">Mora Exon.</th>
@@ -112,6 +116,9 @@
                                 <td style="{{ $st }}" class="text-center">{{ $row['periodo'] }}</td>
                                 <td style="{{ $st }}" class="text-end">{{ number_format($row['capital'], 2) }}</td>
                                 <td style="{{ $st }}" class="text-end">{{ number_format($row['interes'], 2) }}</td>
+                                @if($tieneExc)
+                                    <td style="{{ $st }}" class="text-end">{{ number_format($row['excedente'], 2) }}</td>
+                                @endif
                                 <td style="{{ $st }}" class="text-end">{{ number_format($row['total'], 2) }}</td>
                                 <td style="{{ $st }}" class="text-end">{{ number_format($row['mora'], 2) }}</td>
                                 <td class="text-end" style="color:red; white-space:nowrap;">{{ number_format($row['mora_exon'], 2) }}@if($row['mora_exon_dias'] > 0) - D. {{ $row['mora_exon_dias'] }}@endif</td>
@@ -132,6 +139,9 @@
                                 <td></td>
                                 <td class="text-center"><b>0.00</b></td>
                                 <td class="text-center"><b>0.00</b></td>
+                                @if($tieneExc)
+                                    <td class="text-center"><b>0.00</b></td>
+                                @endif
                                 <td class="text-center"><b>0.00</b></td>
                                 <td class="text-end"><b>{{ number_format($row['mora'], 2) }}</b></td>
                                 <td class="text-end" style="color:red; white-space:nowrap;"><b>{{ number_format($row['mora_exon'], 2) }}@if($row['mora_exon_dias'] > 0) - D. {{ $row['mora_exon_dias'] }}@endif</b></td>
@@ -157,7 +167,10 @@
                                 <td colspan="2" class="text-center"><b>Totales</b></td>
                                 <td class="text-end"><b>{{ number_format($totals['capital'], 2) }}</b></td>
                                 <td class="text-end"><b>{{ number_format($totals['interes'], 2) }}</b></td>
-                                <td class="text-end"><b>{{ number_format($totals['capital'] + $totals['interes'], 2) }}</b></td>
+                                @if($tieneExc)
+                                    <td class="text-end"><b>{{ number_format($totals['excedente'], 2) }}</b></td>
+                                @endif
+                                <td class="text-end"><b>{{ number_format($totals['capital'] + $totals['interes'] + $totals['excedente'], 2) }}</b></td>
                                 <td class="text-end"><b>{{ number_format($moraGlobal, 2) }}</b></td>
                                 {{-- Mora exonerada: informativa, NO suma a los demás totales --}}
                                 <td class="text-end" style="color:red; white-space:nowrap;"><b>{{ number_format($exonGlobal, 2) }}@if($exonDiasGlobal > 0) - D. {{ $exonDiasGlobal }}@endif</b></td>
@@ -167,7 +180,7 @@
                             {{-- Total recibido: solo aporta cuando hay mora (pagos + mora) --}}
                             @if($moraGlobal > 0)
                                 <tr style="background-color:#f0f0f0; font-weight:500;">
-                                    <td colspan="5" class="text-center"><b>Total pagado + mora</b></td>
+                                    <td colspan="{{ $tieneExc ? 6 : 5 }}" class="text-center"><b>Total pagado + mora</b></td>
                                     <td colspan="3" class="text-center">
                                         <b>{{ number_format($totalGeneral, 2) }}</b>
                                     </td>
@@ -176,7 +189,7 @@
                             @endif
                             {{-- Saldo = capital + interés − pagado (la mora se cobra aparte) --}}
                             <tr style="background-color:#f0f0f0; font-weight:500;">
-                                <td colspan="5" class="text-center" style="color:red;"><b>Saldo</b></td>
+                                <td colspan="{{ $tieneExc ? 6 : 5 }}" class="text-center" style="color:red;"><b>Saldo</b></td>
                                 <td colspan="3" class="text-center" style="color:red;">
                                     <b>{{ number_format(abs($saldo), 2) }}</b>
                                 </td>
@@ -184,7 +197,7 @@
                             </tr>
                             {{-- Capital pendiente total (misma fórmula que /payments/create) --}}
                             <tr style="background-color:#f0f0f0; font-weight:500;">
-                                <td colspan="5" class="text-center" style="color:red;"><b>Capital pendiente total</b></td>
+                                <td colspan="{{ $tieneExc ? 6 : 5 }}" class="text-center" style="color:red;"><b>Capital pendiente total</b></td>
                                 <td colspan="3" class="text-center" style="color:red;">
                                     <b>{{ number_format($capPendienteTotal, 2) }}</b>
                                 </td>

@@ -4,8 +4,11 @@ namespace App\Livewire\Payments;
 
 use App\Models\Credit;
 use App\Models\User;
+use App\Support\Audit;
+use App\Support\CuotaUniforme;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Livewire\Component;
 
 class Refinance extends Component
@@ -161,9 +164,9 @@ class Refinance extends Component
                 'cod_rem' => 'REF',
                 'gat' => 0,
                 'idcan' => $codigopre,
-                'asesor' => \Illuminate\Support\Str::ucfirst($this->nomasesores),
+                'asesor' => Str::ucfirst($this->nomasesores),
                 'user_id' => auth()->id(),
-                'usuario' => \Illuminate\Support\Str::ucfirst(auth()->user()->username),
+                'usuario' => Str::ucfirst(auth()->user()->username),
                 'headquarter_id' => $hqId, // G2
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -237,6 +240,10 @@ class Refinance extends Component
                 'updated_at' => now(),
             ]);
 
+            // Cuota uniforme redondeada a 0.10 + excedente (refi = mensual)
+            $interesTotalExacto = round(round($impopres * $inte / 100, 2) * $tocuota, 2);
+            CuotaUniforme::aplicar($pid, $impopres, $interesTotalExacto);
+
             // Marcar el ORIGINAL como Cancelado + REF
             DB::table('credits')->where('id', $codigopre)->update([
                 'situacion' => 'Cancelado',
@@ -248,7 +255,7 @@ class Refinance extends Component
             ]);
         });
 
-        \App\Support\Audit::log("Refinanció el crédito #{$this->credit->id}", $this->credit);
+        Audit::log("Refinanció el crédito #{$this->credit->id}", $this->credit);
 
         session()->flash('credit_success', "Refinanciamiento creado: nuevo crédito #{$this->codpre_}, original #{$this->credit->id} cancelado.");
 

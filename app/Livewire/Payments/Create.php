@@ -71,9 +71,25 @@ class Create extends Component
      * Tipo Diario (4) con fecha_prestamo > 2021-10-06: la última cuota recibe el
      * residual del interés total dividido entre 22 cuotas-base × 1.
      */
+    /**
+     * Crédito de cuota uniforme (nuevo esquema): capital/interés repartidos al
+     * céntimo y redondeo a 0.10 guardado en importe_excedente. Los correctores
+     * legacy de centavos NO deben tocar estos cronogramas.
+     */
+    private function esCuotaUniforme(): bool
+    {
+        return DB::table('credit_installments')
+            ->where('credit_id', $this->credit->id)
+            ->where('importe_excedente', '>', 0)
+            ->exists();
+    }
+
     private function ajusteInteresUltimaCuotaDiario(): void
     {
         if ((int) $this->credit->tipo_planilla !== 4) {
+            return;
+        }
+        if ($this->esCuotaUniforme()) {
             return;
         }
         if (! $this->credit->fecha_prestamo) {
@@ -104,6 +120,10 @@ class Create extends Component
 
     private function autoCorrectCentavos(): void
     {
+        if ($this->esCuotaUniforme()) {
+            return; // el cronograma uniforme ya cuadra al céntimo
+        }
+
         $importeTotal = (float) $this->credit->importe;
         $interesTotal = round($importeTotal * (float) $this->credit->interes / 100, 2);
 
@@ -172,11 +192,12 @@ class Create extends Component
         $totalCredito = $importe + $interes;
 
         $totals = DB::table('credit_installments')->where('credit_id', $this->credit->id)
-            ->selectRaw('SUM(importe_cuota) as cuota, SUM(importe_interes) as interes,
-                         SUM(importe_aplicado) as apli, SUM(interes_aplicado) as iapli, SUM(importe_mora) as mora')->first();
+            ->selectRaw('SUM(importe_cuota) as cuota, SUM(importe_interes) as interes, SUM(importe_excedente) as exc,
+                         SUM(importe_aplicado) as apli, SUM(interes_aplicado) as iapli, SUM(excedente_aplicado) as eapli,
+                         SUM(importe_mora) as mora')->first();
 
-        $saldoPendiente = (float) $totals->cuota + (float) $totals->interes
-            - (float) $totals->apli - (float) $totals->iapli;
+        $saldoPendiente = (float) $totals->cuota + (float) $totals->interes + (float) $totals->exc
+            - (float) $totals->apli - (float) $totals->iapli - (float) $totals->eapli;
 
         $moraInfo = $this->moraCalcAt(now());
         $minFechaStr = $moraInfo['fecha_venc'];
@@ -229,7 +250,7 @@ class Create extends Component
         $minIns = DB::table('credit_installments')->where('credit_id', $this->credit->id)
             ->where('pagado', 0)->where('importe_cuota', '>', 0)
             ->orderBy('fecha_vencimiento')
-            ->first(['fecha_vencimiento', 'importe_cuota', 'importe_interes']);
+            ->first(['fecha_vencimiento', 'importe_cuota', 'importe_interes', 'importe_excedente']);
         $minFechaStr = $minIns?->fecha_vencimiento ? Carbon::parse($minIns->fecha_vencimiento)->format('Y-m-d') : null;
 
         $diasddd = 0;
@@ -253,7 +274,10 @@ class Create extends Component
         }
         $diasFinal = max(0, (int) $diasddd);
 
-        $cuotaVencida = $minIns ? (float) $minIns->importe_cuota + (float) $minIns->importe_interes : 0.0;
+        // La cuota real del cliente incluye el excedente de redondeo (cuota uniforme)
+        $cuotaVencida = $minIns
+            ? (float) $minIns->importe_cuota + (float) $minIns->importe_interes + (float) $minIns->importe_excedente
+            : 0.0;
         $moraRate = $this->credit->moraDiaria($cuotaVencida);
 
         return [
@@ -377,6 +401,10 @@ class Create extends Component
             // de las últimas cuotas impagas para que el pago cierre el crédito
             // con saldo 0.
             if ($this->cancel) {
+                // El excedente es redondeo de comodidad de cobro, no deuda:
+                // al cancelar solo se cobra el de cuotas ya vencidas; el de
+                // cuotas futuras se condona ANTES de calcular el descuento.
+                $this->condonarExcedenteFuturo();
                 $this->condonarInteresFuturo();
             }
 
@@ -413,6 +441,11 @@ class Create extends Component
                         $payInt = round(min($remaining, max(0, $apagarInt)), 2);
                         $remaining -= $payInt;
                     }
+
+                    // Excedente de redondeo (cuota uniforme): siempre al final
+                    $apagarExc = (float) $ins->importe_excedente - (float) $ins->excedente_aplicado;
+                    $payExc = round(min($remaining, max(0, $apagarExc)), 2);
+                    $remaining -= $payExc;
 
                     if ($payCap > 0.001) {
                         $p = Payment::create([
@@ -451,12 +484,29 @@ class Create extends Component
                         $ins->interes_aplicado = (float) $ins->interes_aplicado + $payInt;
                     }
 
-                    if ($payCap > 0.001 || $payInt > 0.001) {
+                    if ($payExc > 0.001) {
+                        $p = Payment::create([
+                            'credit_id' => $this->credit->id, 'installment_id' => $ins->id,
+                            'modo' => 'CREDITO', 'tipo' => 'EXCEDENTE', 'documento' => 'EXCEDENTE',
+                            'fecha' => $this->fecpag, 'hora' => $hora, 'monto' => $payExc, 'moneda' => $semodn,
+                            'detalle' => "Pago : {$this->credit->id} Excedente:  {$ins->num_cuota}/{$totCuotas}",
+                            'asesor' => $this->credit->asesor, 'usuario' => $usuario, 'user_id' => $userId,
+                            'headquarter_id' => $hqId, 'latitud' => $this->latitud, 'longitud' => $this->longitud,
+                        ]);
+                        DB::table('mass_deletion_details')->insert([
+                            'mass_deletion_id' => $massHeaderId, 'installment_id' => $ins->id, 'payment_id' => $p->id,
+                            'amount' => $payExc, 'fecha' => now(), 'tipo' => 'E',
+                            'created_at' => now(), 'updated_at' => now(),
+                        ]);
+                        $ins->excedente_aplicado = (float) $ins->excedente_aplicado + $payExc;
+                    }
+
+                    if ($payCap > 0.001 || $payInt > 0.001 || $payExc > 0.001) {
                         $touchedThisPayment[] = $ins->id;
                     }
 
-                    $totApli = (float) $ins->importe_aplicado + (float) $ins->interes_aplicado;
-                    $totEsperado = (float) $ins->importe_cuota + (float) $ins->importe_interes;
+                    $totApli = (float) $ins->importe_aplicado + (float) $ins->interes_aplicado + (float) $ins->excedente_aplicado;
+                    $totEsperado = (float) $ins->importe_cuota + (float) $ins->importe_interes + (float) $ins->importe_excedente;
                     if ($totApli >= $totEsperado - 0.001) {
                         $ins->pagado = 1;
                         $ins->fecha_pago = $this->fecpag;
@@ -584,11 +634,26 @@ class Create extends Component
      * del interés de las cuotas impagas empezando por la ÚLTIMA (el interés
      * más lejano es el menos devengado), y queda auditado.
      */
+    /**
+     * Cancelación: condona el excedente de redondeo (cuota uniforme) de las
+     * cuotas que aún no vencen a la fecha de pago. El de cuotas ya vencidas
+     * se mantiene (se cobra como parte de la deuda al día).
+     */
+    private function condonarExcedenteFuturo(): void
+    {
+        DB::table('credit_installments')
+            ->where('credit_id', $this->credit->id)
+            ->where('pagado', 0)
+            ->whereDate('fecha_vencimiento', '>', $this->fecpag)
+            ->whereColumn('importe_excedente', '>', 'excedente_aplicado')
+            ->update(['importe_excedente' => DB::raw('excedente_aplicado')]);
+    }
+
     private function condonarInteresFuturo(): void
     {
         $saldoPend = (float) DB::table('credit_installments')
             ->where('credit_id', $this->credit->id)
-            ->selectRaw('SUM(importe_cuota + importe_interes - importe_aplicado - interes_aplicado) s')
+            ->selectRaw('SUM(importe_cuota + importe_interes + importe_excedente - importe_aplicado - interes_aplicado - excedente_aplicado) s')
             ->value('s');
         $descuento = round($saldoPend - (float) $this->monto, 2);
         if ($descuento <= 0.01) {
@@ -684,6 +749,7 @@ class Create extends Component
         if (! $this->credit) {
             return ['fecha' => null, 'cuotas_vencidas' => 0, 'cap_vencidas' => 0.0, 'int_vencidas' => 0.0,
                 'dias_adic' => 0, 'periodos' => 0, 'cap_dia' => 0.0, 'int_dia' => 0.0, 'periodo_dias' => 0,
+                'exc_hoy' => 0.0, 'exc_prox' => 0.0,
                 'cap_hoy' => 0.0, 'int_hoy' => 0.0, 'cap_prox' => 0.0, 'int_prox' => 0.0,
                 'mora' => 0.0, 'mora_dias' => 0, 'mora_rate' => 0.0,
                 'total_hoy' => 0.0, 'total_prox' => 0.0,
@@ -702,12 +768,15 @@ class Create extends Component
         // Pendiente de cuotas ya vencidas
         $capVenc = $vencidas->sum(fn ($i) => max(0, (float) $i->importe_cuota - (float) $i->importe_aplicado));
         $intVenc = $vencidas->sum(fn ($i) => max(0, (float) $i->importe_interes - (float) $i->interes_aplicado));
+        // Excedente de redondeo (cuota uniforme) pendiente de cuotas vencidas
+        $excVenc = $vencidas->sum(fn ($i) => max(0, (float) $i->importe_excedente - (float) $i->excedente_aplicado));
         $nVencidas = $vencidas->filter(fn ($i) => ! $i->pagado)->count();
 
         $capHoy = $capVenc;
         $intHoy = $intVenc;
         $capProx = $capVenc;
         $intProx = $intVenc;
+        $excProx = $excVenc;
 
         $diasAdic = 0;
         $periodos = 0;
@@ -736,6 +805,8 @@ class Create extends Component
                 $periodos = (int) ceil($diasAdic / $periodoDias);
                 if ($proxima) {
                     $capProx += $periodos * (float) ($cuotaPeriodo->importe_cuota ?? 0);
+                    // Cuotas completas adelantadas: incluyen su excedente
+                    $excProx += $periodos * (float) ($cuotaPeriodo->importe_excedente ?? 0);
                 }
                 $intProx += $periodos * (float) ($cuotaPeriodo->importe_interes ?? 0);
             } else {
@@ -782,17 +853,20 @@ class Create extends Component
             'int_hoy' => round($intHoy, 2),
             'cap_prox' => round($capProx, 2),
             'int_prox' => round($intProx, 2),
+            'exc_hoy' => round($excVenc, 2),
+            'exc_prox' => round($excProx, 2),
             'mora' => $mora,
             'mora_dias' => $moraInfo['dias_final'],
             'mora_rate' => $moraInfo['mora_rate'],
-            'total_hoy' => round($capHoy + $intHoy + $mora, 2),
-            'total_prox' => round($capProx + $intProx + $mora, 2),
+            'total_hoy' => round($capHoy + $intHoy + $excVenc + $mora, 2),
+            'total_prox' => round($capProx + $intProx + $excProx + $mora, 2),
             'cap_pendiente_total' => $capPendTotal,
             'saldo_credito' => $saldoCredito,
             // Cancelar crédito: todo el capital pendiente + interés corrido A LA
-            // FECHA (no el interés futuro del cronograma). La mora va aparte.
-            'cancelar_cap_int' => round($capPendTotal + $intHoy, 2),
-            'total_cancelar' => round($capPendTotal + $intHoy + $mora, 2),
+            // FECHA (no el interés futuro del cronograma) + excedente de cuotas
+            // ya vencidas (el de futuras se condona al cancelar). Mora aparte.
+            'cancelar_cap_int' => round($capPendTotal + $intHoy + $excVenc, 2),
+            'total_cancelar' => round($capPendTotal + $intHoy + $excVenc + $mora, 2),
             // Adelanto vs la última cuota del cronograma (para el disclaimer
             // del descuento de interés al cancelar antes de tiempo)
             'ultima_venc' => $ultimaVenc?->format('Y-m-d'),

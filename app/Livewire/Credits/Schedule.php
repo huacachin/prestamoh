@@ -68,7 +68,7 @@ class Schedule extends Component
         $n = $installments->count();
         $idx = 0;
         $capacidad = $n > 0
-            ? (float) $installments[0]->importe_cuota + (float) $installments[0]->importe_interes
+            ? (float) $installments[0]->importe_cuota + (float) $installments[0]->importe_interes + (float) $installments[0]->importe_excedente
             : 0.0;
 
         foreach ($eventos as $p) {
@@ -91,7 +91,7 @@ class Schedule extends Component
                 if ($capacidad <= 0.005) {
                     $idx++;
                     $capacidad = $idx < $n
-                        ? (float) $installments[$idx]->importe_cuota + (float) $installments[$idx]->importe_interes
+                        ? (float) $installments[$idx]->importe_cuota + (float) $installments[$idx]->importe_interes + (float) $installments[$idx]->importe_excedente
                         : 0.0;
                 }
             }
@@ -110,7 +110,7 @@ class Schedule extends Component
 
         // ─── Filas del cronograma ────────────────────────────────────────
         $rows = [];
-        $totals = ['capital' => 0, 'interes' => 0, 'total' => 0, 'mora' => 0, 'pagado' => 0, 'mora_exon' => 0, 'mora_exon_dias' => 0];
+        $totals = ['capital' => 0, 'interes' => 0, 'excedente' => 0, 'total' => 0, 'mora' => 0, 'pagado' => 0, 'mora_exon' => 0, 'mora_exon_dias' => 0];
         $moraUsada = []; // fechas de mora ya colgadas a una cuota
         $tt = 0;
 
@@ -140,6 +140,7 @@ class Schedule extends Component
 
             $cap = (float) $ins->importe_cuota;
             $int = (float) $ins->importe_interes;
+            $exc = (float) $ins->importe_excedente;
 
             // Mora exonerada teórica POR CUOTA: días de atraso entre su
             // vencimiento y su fecha de pago real (calendario para mensual,
@@ -147,7 +148,7 @@ class Schedule extends Component
             // sí se cobró en la cuota. Informativa: no afecta los totales.
             $moraExon = 0.0;
             $moraExonDias = 0;
-            $moraRate = $this->credit->moraDiaria((float) $ins->importe_cuota + (float) $ins->importe_interes);
+            $moraRate = $this->credit->moraDiaria((float) $ins->importe_cuota + (float) $ins->importe_interes + (float) $ins->importe_excedente);
             if ($fechaPago !== '' && $ins->fecha_vencimiento && $moraRate > 0) {
                 $vencC = Carbon::parse($ins->fecha_vencimiento);
                 $diff = (int) floor($vencC->diffInDays(Carbon::parse($fechaPago), false));
@@ -172,7 +173,8 @@ class Schedule extends Component
 
             $totals['capital'] += $cap;
             $totals['interes'] += $int;
-            $totals['total'] += $cap + $int;
+            $totals['excedente'] += $exc;
+            $totals['total'] += $cap + $int + $exc;
             $totals['mora'] += $mora;
             $totals['pagado'] += $pagado;
             $totals['mora_exon'] += $moraExon;
@@ -186,7 +188,8 @@ class Schedule extends Component
                 'periodo' => $venc,
                 'capital' => $cap,
                 'interes' => $int,
-                'total' => $cap + $int,
+                'excedente' => $exc,
+                'total' => $cap + $int + $exc,
                 'mora' => $mora,
                 'mora_exon' => $moraExon,
                 'mora_exon_dias' => $moraExonDias,
@@ -228,6 +231,7 @@ class Schedule extends Component
                 'periodo' => '',
                 'capital' => 0,
                 'interes' => 0,
+                'excedente' => 0,
                 'total' => 0,
                 'mora' => $mora,
                 'mora_exon' => $moraExon,
@@ -240,7 +244,7 @@ class Schedule extends Component
         }
 
         // Saldo final
-        $saldo = $totals['capital'] + $totals['interes'] - $totals['pagado'] - $sumOtros;
+        $saldo = $totals['capital'] + $totals['interes'] + $totals['excedente'] - $totals['pagado'] - $sumOtros;
         $totalGeneral = $totals['pagado'] + $sumOtros + $totals['mora'] + $sumOtrosMora;
 
         // Capital pendiente total: misma fórmula que /payments/create

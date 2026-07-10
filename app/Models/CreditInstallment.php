@@ -9,21 +9,23 @@ class CreditInstallment extends Model
 {
     protected $fillable = [
         'credit_id', 'num_cuota', 'fecha_vencimiento',
-        'importe_cuota', 'importe_interes', 'importe_aplicado',
-        'interes_aplicado', 'importe_mora', 'mora_interes', 'pagado',
+        'importe_cuota', 'importe_interes', 'importe_excedente', 'importe_aplicado',
+        'interes_aplicado', 'excedente_aplicado', 'importe_mora', 'mora_interes', 'pagado',
         'fecha_pago', 'observacion', 'usuario',
     ];
 
     protected $casts = [
         'fecha_vencimiento' => 'date',
-        'fecha_pago'        => 'date',
-        'importe_cuota'     => 'decimal:2',
-        'importe_interes'   => 'decimal:2',
-        'importe_aplicado'  => 'decimal:2',
-        'interes_aplicado'  => 'decimal:2',
-        'importe_mora'      => 'decimal:2',
-        'mora_interes'      => 'decimal:2',
-        'pagado'            => 'boolean',
+        'fecha_pago' => 'date',
+        'importe_cuota' => 'decimal:2',
+        'importe_interes' => 'decimal:2',
+        'importe_excedente' => 'decimal:2',
+        'importe_aplicado' => 'decimal:2',
+        'interes_aplicado' => 'decimal:2',
+        'excedente_aplicado' => 'decimal:2',
+        'importe_mora' => 'decimal:2',
+        'mora_interes' => 'decimal:2',
+        'pagado' => 'boolean',
     ];
 
     public function credit(): BelongsTo
@@ -33,8 +35,8 @@ class CreditInstallment extends Model
 
     public function saldoPendiente(): float
     {
-        return ($this->importe_cuota + $this->importe_interes)
-             - ($this->importe_aplicado + $this->interes_aplicado);
+        return ($this->importe_cuota + $this->importe_interes + $this->importe_excedente)
+             - ($this->importe_aplicado + $this->interes_aplicado + $this->excedente_aplicado);
     }
 
     public function scopePendientes($q)

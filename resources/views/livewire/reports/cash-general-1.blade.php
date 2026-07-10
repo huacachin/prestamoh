@@ -77,7 +77,7 @@
                                 <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                     <tr>
                                         <th rowspan="3" class="align-middle text-center">N°</th>
-                                        <th colspan="9" class="text-center">INGRESOS</th>
+                                        <th colspan="10" class="text-center">INGRESOS</th>
                                         <th rowspan="3" class="align-middle text-center">ASES.</th>
                                         <th rowspan="3" class="align-middle text-center">T.C.</th>
                                         <th colspan="5" class="text-center">EGRESOS</th>
@@ -90,7 +90,7 @@
                                         <th rowspan="2" class="align-middle text-center col-cliente">CLIENTE</th>
                                         <th rowspan="2" class="align-middle text-center">DETALLE</th>
                                         <th rowspan="2" class="align-middle text-center">N° CUOTAS</th>
-                                        <th colspan="5" class="text-center">CUOTAS</th>
+                                        <th colspan="6" class="text-center">CUOTAS</th>
                                         <th rowspan="2" class="align-middle text-center">CDG</th>
                                         <th rowspan="2" class="align-middle text-center col-cliente">CLIENTE</th>
                                         <th rowspan="2" class="align-middle text-center">MONTO</th>
@@ -101,6 +101,7 @@
                                         <th class="text-center">TOTAL</th>
                                         <th class="text-center">CAPITAL</th>
                                         <th class="text-center">INTERES</th>
+                                        <th class="text-center">EXCEDENTE</th>
                                         <th class="text-center">MORA</th>
                                         <th class="text-center">MORA ACUM.</th>
                                     </tr>
@@ -109,7 +110,7 @@
                                 @forelse($days as $day)
                                     {{-- Encabezado del día --}}
                                     <tr style="background-color: #B0B0B0;">
-                                        <td colspan="20"><strong>{{ $day['date_label'] }}</strong></td>
+                                        <td colspan="21"><strong>{{ $day['date_label'] }}</strong></td>
                                     </tr>
 
                                     @php
@@ -118,7 +119,7 @@
 
                                     @if($maxRows === 0)
                                         <tr>
-                                            <td colspan="20"><span style="color:red;">SIN MOVIMIENTOS</span></td>
+                                            <td colspan="21"><span style="color:red;">SIN MOVIMIENTOS</span></td>
                                         </tr>
                                     @else
                                         @for($i = 0; $i < $maxRows; $i++)
@@ -144,12 +145,13 @@
                                                     <td class="text-end"><span class="text-primary">{{ number_format($ing['total'], 2) }}</span></td>
                                                     <td class="text-end"><span class="text-primary">{{ number_format($ing['capital'], 2) }}</span></td>
                                                     <td class="text-end"><span class="text-primary">{{ number_format($ing['interes'], 2) }}</span></td>
+                                                    <td class="text-end"><span class="text-primary">{{ number_format($ing['excedente'] ?? 0, 2) }}</span></td>
                                                     <td class="text-end"><span class="text-primary">{{ number_format($ing['mora'] - $ing['mora_acum'], 2) }}</span></td>
                                                     <td class="text-end"><span style="color:#b8860b;">{{ number_format($ing['mora_acum'], 2) }}</span></td>
                                                     <td>{{ $ing['asesor'] }}</td>
                                                     <td class="text-center fw-bold">{{ $tcLabels[$ing['tipo_planilla']] ?? '?' }}</td>
                                                 @else
-                                                    <td colspan="11"></td>
+                                                    <td colspan="12"></td>
                                                 @endif
 
                                                 {{-- EGRESOS --}}
@@ -174,7 +176,7 @@
                                                     <td style="{{ $egrRowStyle }}">{{ $egr['asesor'] }}</td>
                                                     <td class="text-center fw-bold" style="{{ $egrRowStyle }}">{{ $tcLabels[$egr['tipo_planilla']] ?? '?' }}</td>
                                                 @else
-                                                    <td colspan="8"></td>
+                                                    <td colspan="9"></td>
                                                 @endif
                                             </tr>
                                         @endfor
@@ -187,6 +189,7 @@
                                         <td class="text-end"><strong>{{ number_format($day['sub_ingresos'], 2) }}</strong></td>
                                         <td class="text-end"><strong>{{ number_format($day['sub_capital'], 2) }}</strong></td>
                                         <td class="text-end"><strong>{{ number_format($day['sub_interes'], 2) }}</strong></td>
+                                        <td class="text-end"><strong>{{ number_format($day['sub_excedente'], 2) }}</strong></td>
                                         <td class="text-end"><strong>{{ number_format($day['sub_mora'], 2) }}</strong></td>
                                         <td class="text-end" style="color:#b8860b;"><strong>{{ number_format($day['sub_mora_acum'], 2) }}</strong></td>
                                         <td colspan="4"></td>
@@ -201,12 +204,12 @@
                                         <td></td>
                                         <td colspan="5"><strong>TOTAL</strong></td>
                                         <td></td>
-                                        <td class="text-center"><strong>{{ number_format($day['sub_ingresos'] + $day['sub_mora'] + $day['sub_mora_acum'], 2) }}</strong></td>
-                                        <td colspan="12"></td>
+                                        <td class="text-center"><strong>{{ number_format($day['sub_ingresos'] + $day['sub_excedente'] + $day['sub_mora'] + $day['sub_mora_acum'], 2) }}</strong></td>
+                                        <td colspan="13"></td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="20" class="py-3 text-muted text-center">Sin movimientos para el periodo seleccionado</td>
+                                        <td colspan="21" class="py-3 text-muted text-center">Sin movimientos para el periodo seleccionado</td>
                                     </tr>
                                 @endforelse
                                 </tbody>
@@ -219,6 +222,7 @@
                                             <td class="text-end" style="color:#0d6efd;"><strong>{{ number_format($Tcpi, 2) }}</strong></td>
                                             <td class="text-end" style="color:#0d6efd;"><strong>{{ number_format($Tcpi2, 2) }}</strong></td>
                                             <td class="text-end" style="color:#0d6efd;"><strong>{{ number_format($Tint, 2) }}</strong></td>
+                                            <td class="text-end" style="color:#0d6efd;"><strong>{{ number_format($Texc, 2) }}</strong></td>
                                             <td class="text-end" style="color:#0d6efd;"><strong>{{ number_format($Tmor4, 2) }}</strong></td>
                                             <td class="text-end" style="color:#b8860b;"><strong>{{ number_format($TmorAcum, 2) }}</strong></td>
                                             <td colspan="4"></td>
@@ -233,7 +237,7 @@
                                                 <strong>REPORTE GENERAL <span style="color:#dc3545;">CAJA 1 -</span> TOTAL <span style="color:#dc3545;">GENERAL</span></strong>
                                             </td>
                                             <td class="text-end" style="color:#dc3545;"><strong>{{ number_format($toff1, 2) }}</strong></td>
-                                            <td colspan="8"></td>
+                                            <td colspan="9"></td>
                                             <td class="text-end" style="color:#dc3545;"><strong>{{ number_format($toff, 2) }}</strong></td>
                                             <td></td>
                                             <td class="text-end" style="color:#dc3545;"><strong>{{ number_format($toff2, 2) }}</strong></td>

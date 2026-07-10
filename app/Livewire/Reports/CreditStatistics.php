@@ -52,7 +52,7 @@ class CreditStatistics extends Component
 
             $importe = 0.0;
             foreach ($ingresosPorDia[$date] ?? [] as $i) {
-                $importe += $i['total'] + $i['mora'];
+                $importe += $i['total'] + $i['mora'] + ($i['excedente'] ?? 0);
             }
 
             DB::table('cache_ingreso_diario')->updateOrInsert(

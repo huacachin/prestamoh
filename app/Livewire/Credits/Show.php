@@ -35,14 +35,14 @@ class Show extends Component
             $printer->printPayment($masivo);
             $this->dispatch('successAlert', ['message' => 'Ticket enviado a la impresora.']);
         } catch (\Throwable $e) {
-            $this->dispatch('errorAlert', ['message' => 'Error al imprimir: ' . $e->getMessage()]);
+            $this->dispatch('errorAlert', ['message' => 'Error al imprimir: '.$e->getMessage()]);
         }
     }
 
     public function render()
     {
         $totalPagado = $this->credit->payments->sum('monto');
-        $totalDeuda = $this->credit->installments->sum(fn ($i) => $i->importe_cuota + $i->importe_interes);
+        $totalDeuda = $this->credit->installments->sum(fn ($i) => $i->importe_cuota + $i->importe_interes + $i->importe_excedente);
         $saldoPendiente = $totalDeuda - $totalPagado;
 
         return view('livewire.credits.show', compact('totalPagado', 'totalDeuda', 'saldoPendiente'));

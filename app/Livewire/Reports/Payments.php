@@ -105,6 +105,7 @@ class Payments extends Component
                 SUM(monto) as total,
                 SUM(CASE WHEN tipo='CAPITAL' THEN monto ELSE 0 END) as capital,
                 SUM(CASE WHEN tipo='INTERES' THEN monto ELSE 0 END) as interes,
+                SUM(CASE WHEN tipo='EXCEDENTE' THEN monto ELSE 0 END) as excedente,
                 SUM(CASE WHEN tipo='MORA' THEN monto ELSE 0 END) as mora
             ")
             ->first();
@@ -113,6 +114,7 @@ class Payments extends Component
             'total' => (float) ($totalsAgg->total ?? 0),
             'capital' => (float) ($totalsAgg->capital ?? 0),
             'interes' => (float) ($totalsAgg->interes ?? 0),
+            'excedente' => (float) ($totalsAgg->excedente ?? 0),
             'mora' => (float) ($totalsAgg->mora ?? 0),
             'fijos' => 0, // legacy: modo='Fijos' (no aplica en payments / CREDITO)
             'otros' => 0, // legacy: modo='Otros' (no aplica en payments / CREDITO)
