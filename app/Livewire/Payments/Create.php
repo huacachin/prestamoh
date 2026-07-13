@@ -754,7 +754,7 @@ class Create extends Component
                 'mora' => 0.0, 'mora_dias' => 0, 'mora_rate' => 0.0,
                 'total_hoy' => 0.0, 'total_prox' => 0.0,
                 'cap_pendiente_total' => 0.0, 'saldo_credito' => 0.0,
-                'cancelar_cap_int' => 0.0, 'total_cancelar' => 0.0,
+                'int_cancelar' => 0.0, 'cancelar_cap_int' => 0.0, 'total_cancelar' => 0.0,
                 'ultima_venc' => null, 'dias_adelanto' => 0,
                 'primera_vencida_num' => null, 'primera_vencida_fecha' => null,
                 'proxima_num' => null, 'proxima_fecha' => null];
@@ -839,6 +839,13 @@ class Create extends Component
         $capHoy = min($capHoy, $capPendTotal);
         $capProx = min($capProx, $capPendTotal);
 
+        // Interés para cancelar: topado al interés pendiente del cronograma.
+        // Pasada la última cuota el interés corrido (int_hoy) sigue creciendo
+        // por día, pero esa demora se cobra vía mora; sin el tope, el gate del
+        // switch Cancelado exigiría más que el saldo pagable y sería imposible
+        // de habilitar.
+        $intCancelar = min($intHoy, max(0, $saldoCredito - $capPendTotal));
+
         return [
             'fecha' => $al->format('Y-m-d'),
             'cuotas_vencidas' => $nVencidas,
@@ -863,10 +870,12 @@ class Create extends Component
             'cap_pendiente_total' => $capPendTotal,
             'saldo_credito' => $saldoCredito,
             // Cancelar crédito: todo el capital pendiente + interés corrido A LA
-            // FECHA (no el interés futuro del cronograma) + excedente de cuotas
-            // ya vencidas (el de futuras se condona al cancelar). Mora aparte.
-            'cancelar_cap_int' => round($capPendTotal + $intHoy + $excVenc, 2),
-            'total_cancelar' => round($capPendTotal + $intHoy + $excVenc + $mora, 2),
+            // FECHA (no el interés futuro del cronograma, y topado al pendiente
+            // del cronograma) + excedente de cuotas ya vencidas (el de futuras
+            // se condona al cancelar). Mora aparte.
+            'int_cancelar' => round($intCancelar, 2),
+            'cancelar_cap_int' => round($capPendTotal + $intCancelar + $excVenc, 2),
+            'total_cancelar' => round($capPendTotal + $intCancelar + $excVenc + $mora, 2),
             // Adelanto vs la última cuota del cronograma (para el disclaimer
             // del descuento de interés al cancelar antes de tiempo)
             'ultima_venc' => $ultimaVenc?->format('Y-m-d'),

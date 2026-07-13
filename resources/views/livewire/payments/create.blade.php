@@ -394,11 +394,11 @@
                     <div class="col-md-4">
                         <div class="border rounded p-2 h-100 d-flex flex-column">
                             @php
-                                // Interés: a la fecha, o todo el pendiente del cronograma
-                                // (saldo_credito = cap + int pendientes) si se marca el check.
+                                // Interés: a la fecha (topado al pendiente del cronograma), o
+                                // todo el pendiente (saldo_credito = cap + int) si se marca el check.
                                 $intCancelar = $cancelUltimaCuota
                                     ? round($sim['saldo_credito'] - $sim['cap_pendiente_total'], 2)
-                                    : $sim['int_hoy'];
+                                    : $sim['int_cancelar'];
                                 $morasCancelar = $cancelSinMora ? 0.0 : round($sim['mora'] + $moraAcumTotal, 2);
                                 // Excedente (cuota uniforme): solo el de cuotas vencidas;
                                 // el de cuotas futuras se condona al cancelar.
@@ -430,7 +430,7 @@
 
                             {{-- Disclaimer: adelanto vs la última cuota y descuento de interés --}}
                             @php
-                                $descuentoInt = round(($sim['saldo_credito'] - $sim['cap_pendiente_total']) - $sim['int_hoy'], 2);
+                                $descuentoInt = round(($sim['saldo_credito'] - $sim['cap_pendiente_total']) - $sim['int_cancelar'], 2);
                             @endphp
                             @if(!$cancelUltimaCuota && $sim['dias_adelanto'] > 0 && $descuentoInt > 0)
                                 <div class="rounded p-2 mt-2 small" style="background:#e7f4ea; color:#1e7b34;">
