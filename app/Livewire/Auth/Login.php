@@ -47,8 +47,9 @@ class Login extends Component
             ]);
         }
 
+        // Solo usuarios activos pueden iniciar sesión (los cesados quedan bloqueados)
         if (! Auth::attempt(
-            ['username' => $this->username, 'password' => $this->password],
+            ['username' => $this->username, 'password' => $this->password, 'status' => 'active'],
             $this->remember
         )) {
             RateLimiter::hit($this->throttleKey(), 60); // 60s por intento fallido
