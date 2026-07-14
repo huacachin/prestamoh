@@ -108,11 +108,11 @@
 
                     {{-- Tabla principal --}}
                     <div id="tabla-cancelados" class="table-responsive" style="max-height: 650px; overflow:auto;">
-                        {{-- Zebra (table-striped) para legibilidad, PERO las filas con color
-                             semántico (verde refinanciado / amarillo pendiente / rojo capital
-                             pendiente) deben conservar su color: el CSS de más abajo hace que esas
-                             filas (las únicas con background-color inline) ignoren el rayado. --}}
-                        <table class="table table-bordered table-striped table-hover table-nowrap">
+                        {{-- Sin zebra (homologa legacy): un crédito cancelado limpio va con
+                             fondo BLANCO; solo colorean las filas con estado (verde refinanciado /
+                             amarillo pendiente / rojo capital pendiente), cuyo background-color
+                             inline gana gracias al CSS de más abajo. --}}
+                        <table class="table table-bordered table-hover table-nowrap">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
                                     <th rowspan="2" colspan="2" class="text-center">N°</th>
@@ -249,8 +249,8 @@
 <span id="final"></span>
 
 {{-- Las filas con color de estado (las únicas que llevan background-color inline)
-     anulan el zebra de Bootstrap, que de otro modo las pintaría de gris en las filas
-     impares. Las filas sin color mantienen el rayado normal. --}}
+     imponen su color sobre el fondo por-celda de Bootstrap (var(--bs-table-bg)),
+     que de otro modo lo taparía. Las filas sin color quedan blancas. --}}
 <style>
     #tabla-cancelados tbody tr[style*="background-color"] > * {
         background-color: inherit !important;
