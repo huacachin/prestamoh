@@ -141,7 +141,10 @@ function alertError() {
     });
 }
 
-function questionDelete(id, role, name) {
+// `event` (opcional) permite un canal propio de confirmación (p. ej.
+// 'attachment_destroy' en galerías anidadas), para que el register_destroy
+// global no llegue a otros componentes de la misma pantalla que también lo escuchan.
+function questionDelete(id, role, name, event) {
     var msg = (role && name)
         ? '¿Está seguro de eliminar al ' + role + ' <span style="color:red;font-weight:bold">' + name + '</span>?'
         : "¿Está seguro que desea eliminar el registro?";
@@ -155,7 +158,7 @@ function questionDelete(id, role, name) {
         confirmButtonText: "Eliminar"
     }).then(function (result) {
         if (result.isConfirmed) {
-            Livewire.dispatch('register_destroy', [id]);
+            Livewire.dispatch(event || 'register_destroy', [id]);
             Swal.fire({
                 title: "Eliminado!",
                 text: "El registro se eliminado correctamente.",
@@ -219,7 +222,7 @@ window.addEventListener('successAlert', function (event) {
 
 window.addEventListener('questionDelete', function (event) {
     var data = event.detail[0];
-    questionDelete(data['id'], data['role'] || '', data['name'] || '');
+    questionDelete(data['id'], data['role'] || '', data['name'] || '', data['event'] || '');
 });
 
 window.addEventListener('questionGenerate', function (event) {

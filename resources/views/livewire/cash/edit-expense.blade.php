@@ -114,9 +114,6 @@
                         <button type="button" class="btn btn-sm btn-primary" wire:click="update">
                             <i class="ti ti-device-floppy f-s-12"></i> Guardar cambios
                         </button>
-                        <a href="{{ route('cash.expenses.gallery', $expenseId) }}" class="btn btn-sm btn-info">
-                            <i class="ti ti-photo f-s-12"></i> Ver / subir adjuntos
-                        </a>
                         @can('caja.eliminar')
                         <button type="button" class="btn btn-sm btn-danger" wire:click="questionDelete({{ $expenseId }})">
                             <i class="ti ti-trash f-s-12"></i> Eliminar
@@ -127,6 +124,9 @@
 
                 </div>
             </div>
+
+            {{-- Galería de adjuntos en la misma pantalla (ver, subir y eliminar) --}}
+            <livewire:cash.expense-gallery :id="$expenseId" :embedded="true" />
         </div>
     </div>
 

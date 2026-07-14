@@ -1,4 +1,5 @@
-<div class="container-fluid">
+<div class="{{ $embedded ? '' : 'container-fluid' }}">
+    @unless($embedded)
     <div class="row">
         <div class="col-sm-6">
             <h4 class="main-title title-modules">ADJUNTOS DEL INGRESO</h4>
@@ -17,10 +18,14 @@
             </ul>
         </div>
     </div>
+    @endunless
 
     <div class="card shadow-sm">
         <div class="card-body">
 
+            @if($embedded)
+                <h6 class="mb-3"><i class="ti ti-photo"></i> Adjuntos</h6>
+            @else
             {{-- Header con datos del ingreso --}}
             <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                 <div>
@@ -38,6 +43,7 @@
                     </a>
                 </div>
             </div>
+            @endif
 
             @unless($puedeEditar)
                 <div class="alert alert-info py-1 px-2 mb-2" style="font-size:11px;">

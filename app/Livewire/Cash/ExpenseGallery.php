@@ -25,6 +25,9 @@ class ExpenseGallery extends Component
 
     public bool $puedeEliminar = true;
 
+    /** true cuando se anida en otra pantalla (p. ej. editar egreso): sin chrome de página ni redirect. */
+    public bool $embedded = false;
+
     protected function rules(): array
     {
         return [
@@ -43,10 +46,11 @@ class ExpenseGallery extends Component
         ];
     }
 
-    public function mount(int $id): void
+    public function mount(int $id, bool $embedded = false): void
     {
         $this->expense = Expense::findOrFail($id);
         $this->expenseId = $id;
+        $this->embedded = $embedded;
 
         $user = auth()->user();
 
@@ -75,6 +79,13 @@ class ExpenseGallery extends Component
 
         $this->files = [];
         $msg = $count === 1 ? 'Imagen subida.' : "$count imágenes subidas.";
+
+        if ($this->embedded) {
+            $this->dispatch('successAlert', ['message' => $msg]);
+
+            return;
+        }
+
         session()->flash('cash_success', $msg);
 
         return $this->redirectRoute('cash.expenses');
@@ -93,10 +104,12 @@ class ExpenseGallery extends Component
         if (! $this->puedeEliminar) {
             return;
         }
-        $this->dispatch('questionDelete', ['id' => $id]);
+        // Canal propio: al anidarse en editar egreso, el register_destroy global
+        // también lo escucha EditExpense (borraría un EGRESO con el id del adjunto).
+        $this->dispatch('questionDelete', ['id' => $id, 'event' => 'attachment_destroy']);
     }
 
-    #[On('register_destroy')]
+    #[On('attachment_destroy')]
     public function deleteAttachment(int $id): void
     {
         if (! $this->puedeEliminar) {

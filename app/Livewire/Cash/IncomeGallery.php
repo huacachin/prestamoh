@@ -25,6 +25,9 @@ class IncomeGallery extends Component
 
     public bool $puedeEliminar = true; // borrar existentes
 
+    /** true cuando se anida en otra pantalla (p. ej. editar ingreso): sin chrome de página ni redirect. */
+    public bool $embedded = false;
+
     protected function rules(): array
     {
         return [
@@ -43,10 +46,11 @@ class IncomeGallery extends Component
         ];
     }
 
-    public function mount(int $id): void
+    public function mount(int $id, bool $embedded = false): void
     {
         $this->income = Income::findOrFail($id);
         $this->incomeId = $id;
+        $this->embedded = $embedded;
 
         $user = auth()->user();
 
@@ -73,6 +77,13 @@ class IncomeGallery extends Component
 
         $this->files = [];
         $msg = $count === 1 ? 'Imagen subida.' : "$count imágenes subidas.";
+
+        if ($this->embedded) {
+            $this->dispatch('successAlert', ['message' => $msg]);
+
+            return;
+        }
+
         session()->flash('cash_success', $msg);
 
         return $this->redirectRoute('cash.incomes');
@@ -91,10 +102,12 @@ class IncomeGallery extends Component
         if (! $this->puedeEliminar) {
             return;
         }
-        $this->dispatch('questionDelete', ['id' => $id]);
+        // Canal propio: al anidarse en editar ingreso, el register_destroy global
+        // también lo escucha EditIncome (borraría un INGRESO con el id del adjunto).
+        $this->dispatch('questionDelete', ['id' => $id, 'event' => 'attachment_destroy']);
     }
 
-    #[On('register_destroy')]
+    #[On('attachment_destroy')]
     public function deleteAttachment(int $id): void
     {
         if (! $this->puedeEliminar) {

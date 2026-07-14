@@ -4,6 +4,7 @@ namespace App\Livewire\Cash;
 
 use App\Models\Concept;
 use App\Models\Expense;
+use App\Support\Audit;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -89,7 +90,7 @@ class EditExpense extends Component
                     ]);
             }
 
-            \App\Support\Audit::log("Editó el egreso #{$this->expense->id} (monto {$this->total})", $this->expense);
+            Audit::log("Editó el egreso #{$this->expense->id} (monto {$this->total})", $this->expense);
 
             session()->flash('cash_success', 'Egreso actualizado correctamente.');
             $this->redirectRoute('cash.expenses');
@@ -108,6 +109,13 @@ class EditExpense extends Component
     #[On('register_destroy')]
     public function destroy(int $id): void
     {
+        // register_destroy es global: con la galería de adjuntos anidada en esta
+        // pantalla, solo aceptamos el id del propio egreso (el botón Eliminar
+        // siempre manda $expenseId; cualquier otro id no es para este componente).
+        if ($id !== $this->expenseId) {
+            return;
+        }
+
         if (! auth()->user()?->can('caja.eliminar')) {
             abort(403);
         }
@@ -115,7 +123,7 @@ class EditExpense extends Component
         // Espejo caja 3 (legacy gastos-modificar22.php): el borrado elimina entrada Y entrada3.
         Expense::where('caja', 3)->where('parent_id', $id)->delete();
         Expense::findOrFail($id)->delete();
-        \App\Support\Audit::log("Eliminó el egreso #{$id}");
+        Audit::log("Eliminó el egreso #{$id}");
         session()->flash('cash_success', 'Egreso eliminado correctamente.');
         $this->redirectRoute('cash.expenses');
     }

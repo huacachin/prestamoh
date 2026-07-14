@@ -4,6 +4,7 @@ namespace App\Livewire\Cash;
 
 use App\Models\Concept;
 use App\Models\Income;
+use App\Support\Audit;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -67,7 +68,7 @@ class EditIncome extends Component
 
             $this->income->update($data);
 
-            \App\Support\Audit::log("Editó el ingreso #{$this->income->id} (monto {$this->total})", $this->income);
+            Audit::log("Editó el ingreso #{$this->income->id} (monto {$this->total})", $this->income);
 
             session()->flash('cash_success', 'Ingreso actualizado correctamente.');
             $this->redirectRoute('cash.incomes');
@@ -86,6 +87,13 @@ class EditIncome extends Component
     #[On('register_destroy')]
     public function destroy(int $id): void
     {
+        // register_destroy es global: con la galería de adjuntos anidada en esta
+        // pantalla, solo aceptamos el id del propio ingreso (el botón Eliminar
+        // siempre manda $incomeId; cualquier otro id no es para este componente).
+        if ($id !== $this->incomeId) {
+            return;
+        }
+
         if (! auth()->user()?->can('caja.eliminar')) {
             abort(403);
         }
@@ -94,7 +102,7 @@ class EditIncome extends Component
         // (Nota: el legacy NO sincroniza caja3 al EDITAR un ingreso, por eso update() no la toca.)
         Income::where('caja', 3)->where('parent_id', $id)->delete();
         Income::findOrFail($id)->delete();
-        \App\Support\Audit::log("Eliminó el ingreso #{$id}");
+        Audit::log("Eliminó el ingreso #{$id}");
         session()->flash('cash_success', 'Ingreso eliminado correctamente.');
         $this->redirectRoute('cash.incomes');
     }
