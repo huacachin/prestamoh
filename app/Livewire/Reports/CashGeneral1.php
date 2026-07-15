@@ -19,9 +19,9 @@ class CashGeneral1 extends Component
     #[Url(as: 'tipo', except: '0000')]
     public $seletipl = '0000';
 
-    /** 'resumen' = una fila por día con totales; 'detalle' = tabla completa homóloga al legacy. */
-    #[Url(as: 'vista', except: 'resumen')]
-    public $vista = 'resumen';
+    /** 'detalle' = tabla completa homóloga al legacy (default); 'resumen' = una fila por día con totales. */
+    #[Url(as: 'vista', except: 'detalle')]
+    public $vista = 'detalle';
 
     public function mount()
     {
