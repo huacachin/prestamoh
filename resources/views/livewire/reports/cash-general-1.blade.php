@@ -127,12 +127,12 @@
                             @endforeach
                         </div>
 
-                        {{-- Gráfico de barras por día: ingresos (azul) vs egresos (naranja) --}}
+                        {{-- Gráfico por día (ApexCharts): columnas ingresos/egresos + línea de interés --}}
                         @if(count($days) > 0)
                         <div class="border rounded p-2 mb-2" style="background:#fff;">
-                            <div class="d-flex justify-content-between align-items-center mb-1 flex-wrap">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap">
                                 <span class="text-muted" style="font-size:10px; letter-spacing:.5px;">
-                                    INGRESOS <span style="color:#0d6efd;">■</span> vs EGRESOS <span style="color:#fd7e14;">■</span> POR DÍA — click en una barra para ver su detalle
+                                    MOVIMIENTO DIARIO — click en una columna para ver el detalle del día
                                 </span>
                                 @if($mejorDia)
                                     <span style="font-size:10px;" class="text-muted">
@@ -142,27 +142,16 @@
                                     </span>
                                 @endif
                             </div>
-                            <div class="d-flex align-items-end gap-1" style="height:110px; overflow-x:auto;">
-                                @foreach($days as $day)
-                                    @php
-                                        $tot = $totalDia($day);
-                                        $hIng = max(2, round($tot / $maxBarra * 92));
-                                        $hEgr = $day['sub_egresos'] > 0 ? max(2, round($day['sub_egresos'] / $maxBarra * 92)) : 0;
-                                        $esMejor = $mejorDia && $day['date'] === $mejorDia['date'];
-                                    @endphp
-                                    <div class="d-flex flex-column align-items-center" style="min-width:26px; flex:1 1 0; cursor:pointer;"
-                                         wire:click="verDia('{{ $day['date'] }}')"
-                                         title="{{ ucfirst(\Carbon\Carbon::parse($day['date'])->translatedFormat('D d/m')) }} — Ingresos: S/ {{ number_format($tot, 2) }} · Egresos: S/ {{ number_format($day['sub_egresos'], 2) }}">
-                                        <div class="d-flex align-items-end gap-1" style="height:92px;">
-                                            <div style="width:9px; height:{{ $hIng }}px; background:{{ $esMejor ? '#0a58ca' : '#7cb9f5' }}; border-radius:2px 2px 0 0;"></div>
-                                            @if($hEgr > 0)
-                                                <div style="width:9px; height:{{ $hEgr }}px; background:#fdba74; border-radius:2px 2px 0 0;"></div>
-                                            @endif
-                                        </div>
-                                        <span style="font-size:9px;" class="text-muted {{ $esMejor ? 'fw-bold' : '' }}">{{ (int) substr($day['date'], 8, 2) }}</span>
-                                    </div>
-                                @endforeach
-                            </div>
+                            @php
+                                $chartData = [
+                                    'dates' => collect($days)->pluck('date')->values(),
+                                    'labels' => collect($days)->map(fn ($d) => ucfirst(\Carbon\Carbon::parse($d['date'])->translatedFormat('D d')))->values(),
+                                    'ingresos' => collect($days)->map(fn ($d) => round($totalDia($d), 2))->values(),
+                                    'egresos' => collect($days)->map(fn ($d) => round($d['sub_egresos'], 2))->values(),
+                                    'interes' => collect($days)->map(fn ($d) => round($d['sub_interes'], 2))->values(),
+                                ];
+                            @endphp
+                            <div id="caja1Chart" data-chart="{{ json_encode($chartData) }}"></div>
                         </div>
                         @endif
 
@@ -475,15 +464,92 @@
 <span id="final"></span>
 </style>
 
+<script src="{{ asset('assets/vendor/apexcharts/apexcharts.min.js') }}"></script>
 <script>
-    document.addEventListener('livewire:init', () => {
-        // Al hacer click en un día del resumen: la vista cambia a detalle y
-        // desplazamos hasta el encabezado de ese día una vez re-renderizado.
-        Livewire.on('scroll-to-day', ({ date }) => {
-            setTimeout(() => {
-                document.getElementById('dia-' + date)
-                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 250);
+    (function () {
+        let caja1Chart = null;
+
+        // Construye (o reconstruye) el gráfico leyendo los datos del data-attribute:
+        // así siempre refleja el mes/tipo filtrado tras cada re-render de Livewire.
+        function buildCaja1Chart() {
+            const el = document.getElementById('caja1Chart');
+            if (!el || typeof ApexCharts === 'undefined') return;
+
+            const data = JSON.parse(el.dataset.chart || '{}');
+            if (!data.dates || !data.dates.length) return;
+            // Evitar rebuild si ya está pintado con los mismos datos
+            const firma = JSON.stringify(data.dates) + data.ingresos.join(',');
+            if (el.dataset.firma === firma && el.querySelector('.apexcharts-canvas')) return;
+            el.dataset.firma = firma;
+
+            if (caja1Chart) { caja1Chart.destroy(); caja1Chart = null; }
+
+            const fmtSoles = v => 'S/ ' + Number(v ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 });
+
+            caja1Chart = new ApexCharts(el, {
+                chart: {
+                    height: 250,
+                    fontFamily: 'Poppins, sans-serif',
+                    toolbar: { show: false },
+                    zoom: { enabled: false },
+                    animations: { speed: 500 },
+                    events: {
+                        // Click en una columna → detalle de ese día
+                        dataPointSelection: (e, ctx, cfg) => {
+                            const date = data.dates[cfg.dataPointIndex];
+                            if (date) Livewire.dispatch('caja1-ver-dia', { date });
+                        },
+                    },
+                },
+                series: [
+                    { name: 'Ingresos', type: 'column', data: data.ingresos },
+                    { name: 'Egresos (créditos)', type: 'column', data: data.egresos },
+                    { name: 'Interés', type: 'line', data: data.interes },
+                ],
+                colors: ['#009BDC', '#F59E0B', '#198754'],
+                plotOptions: { bar: { columnWidth: '55%', borderRadius: 3 } },
+                stroke: { width: [0, 0, 2.5], curve: 'smooth' },
+                dataLabels: { enabled: false },
+                grid: { borderColor: '#ECECF0', strokeDashArray: 3 },
+                legend: { position: 'top', horizontalAlign: 'right', fontSize: '11px', markers: { radius: 3 } },
+                xaxis: {
+                    categories: data.labels,
+                    labels: { style: { colors: '#6B6F7A', fontSize: '10px' }, rotate: -35, rotateAlways: data.labels.length > 15 },
+                    axisBorder: { show: false }, axisTicks: { show: false },
+                },
+                yaxis: {
+                    labels: {
+                        style: { colors: '#9AA0AA', fontSize: '10px' },
+                        formatter: v => v >= 1000 ? 'S/ ' + (v / 1000).toFixed(0) + 'k' : 'S/ ' + v.toFixed(0),
+                    },
+                },
+                tooltip: {
+                    shared: true, intersect: false,
+                    y: { formatter: fmtSoles },
+                },
+                states: { active: { filter: { type: 'darken', value: 0.85 } } },
+            });
+            caja1Chart.render();
+        }
+
+        document.addEventListener('livewire:init', () => {
+            // Al hacer click en un día (tarjeta o columna): la vista cambia a
+            // detalle y desplazamos hasta el encabezado de ese día.
+            Livewire.on('scroll-to-day', ({ date }) => {
+                setTimeout(() => {
+                    document.getElementById('dia-' + date)
+                        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 250);
+            });
+
+            // Re-pintar el gráfico después de cada actualización de Livewire
+            // (cambio de mes/tipo o toggle resumen/detalle).
+            Livewire.hook('commit', ({ succeed }) => {
+                succeed(() => setTimeout(buildCaja1Chart, 60));
+            });
         });
-    });
+
+        if (document.readyState !== 'loading') setTimeout(buildCaja1Chart, 60);
+        else document.addEventListener('DOMContentLoaded', () => setTimeout(buildCaja1Chart, 60));
+    })();
 </script>

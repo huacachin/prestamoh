@@ -5,6 +5,7 @@ namespace App\Livewire\Reports;
 use App\Models\Credit;
 use App\Services\CajaDailyService;
 use Carbon\Carbon;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
@@ -35,7 +36,8 @@ class CashGeneral1 extends Component
 
     public function search() {}
 
-    /** Desde la vista resumen: cambia a detalle y desplaza hasta el día elegido. */
+    /** Desde la vista resumen (tarjeta o columna del gráfico): cambia a detalle y desplaza hasta el día elegido. */
+    #[On('caja1-ver-dia')]
     public function verDia(string $date): void
     {
         $this->vista = 'detalle';
