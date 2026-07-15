@@ -166,92 +166,86 @@
                         </div>
                         @endif
 
-                        <div class="table-responsive" style="max-height: 70vh; overflow: auto;">
-                            <table class="table table-bordered table-hover align-middle" id="tabla-resumen-caja-1" style="min-width: 900px;">
-                                <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
-                                    <tr>
-                                        <th rowspan="2" class="align-middle text-center">DÍA</th>
-                                        <th colspan="8" class="text-center">INGRESOS (pagos)</th>
-                                        <th colspan="2" class="text-center">EGRESOS (créditos)</th>
-                                        <th rowspan="2" class="align-middle text-center" title="Ingresos del día menos créditos otorgados">NETO DÍA</th>
-                                    </tr>
-                                    <tr>
-                                        <th class="text-center" title="Cantidad de pagos">N°</th>
-                                        <th class="text-center">CAPITAL</th>
-                                        <th class="text-center">INTERÉS</th>
-                                        <th class="text-center">EXCED.</th>
-                                        <th class="text-center">MORA</th>
-                                        <th class="text-center">M. ACUM.</th>
-                                        <th class="text-center">TOTAL</th>
-                                        <th class="text-center" title="Ingresos acumulados del mes hasta este día">ACUM. MES</th>
-                                        <th class="text-center" title="Cantidad de créditos otorgados">N°</th>
-                                        <th class="text-center">MONTO</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                @forelse($days as $day)
-                                    @php
-                                        $tot = $totalDia($day);
-                                        $neto = $tot - $day['sub_egresos'];
-                                        $totNeto += $neto;
-                                        $acum += $tot;
-                                        $pct = round($tot / $maxDia * 100);
-                                        $carbonDia = \Carbon\Carbon::parse($day['date']);
-                                        $finde = $carbonDia->isWeekend();
-                                        $esMejor = $mejorDia && $day['date'] === $mejorDia['date'];
-                                    @endphp
-                                    <tr @if($finde) style="background-color:#fdf6ec;" @endif>
-                                        <td class="text-nowrap">
-                                            <a href="#" wire:click.prevent="verDia('{{ $day['date'] }}')"
-                                               title="Ver el detalle de este día" class="fw-bold text-decoration-none">
-                                                {{ ucfirst($carbonDia->translatedFormat('D d/m')) }}
-                                            </a>
-                                            @if($esMejor)<i class="ti ti-trophy" style="color:#b8860b;" title="Mejor día del mes"></i>@endif
-                                        </td>
-                                        <td class="text-center text-muted">{{ count($day['ingresos']) }}</td>
-                                        <td class="text-end">{{ number_format($day['sub_capital'], 2) }}</td>
-                                        <td class="text-end">{{ number_format($day['sub_interes'], 2) }}</td>
-                                        <td class="text-end">{{ $day['sub_excedente'] != 0 ? number_format($day['sub_excedente'], 2) : '—' }}</td>
-                                        <td class="text-end">{{ $day['sub_mora'] != 0 ? number_format($day['sub_mora'], 2) : '—' }}</td>
-                                        <td class="text-end" style="color:#b8860b;">{{ $day['sub_mora_acum'] != 0 ? number_format($day['sub_mora_acum'], 2) : '—' }}</td>
-                                        {{-- Barra proporcional al mejor día del mes: compara días de un vistazo --}}
-                                        <td class="text-end fw-bold text-primary"
-                                            style="background: linear-gradient(90deg, #dceefb {{ $pct }}%, transparent {{ $pct }}%);">
-                                            {{ number_format($tot, 2) }}
-                                        </td>
-                                        <td class="text-end text-muted">{{ number_format($acum, 2) }}</td>
-                                        <td class="text-center text-muted">{{ count($day['egresos']) }}</td>
-                                        <td class="text-end">{{ $day['sub_egresos'] != 0 ? number_format($day['sub_egresos'], 2) : '—' }}</td>
-                                        <td class="text-end fw-bold {{ $neto >= 0 ? 'text-success' : 'text-danger' }}">
-                                            {{ number_format($neto, 2) }}
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="12" class="py-3 text-muted text-center">Sin movimientos para el periodo seleccionado</td>
-                                    </tr>
-                                @endforelse
-                                </tbody>
-                                @if(count($days) > 0)
-                                    <tfoot>
-                                        <tr style="background-color:#f0f0f0;">
-                                            <td class="fw-bold">TOTAL MES</td>
-                                            <td class="text-center text-muted">{{ collect($days)->sum(fn ($d) => count($d['ingresos'])) }}</td>
-                                            <td class="text-end fw-bold">{{ number_format($Tcpi2, 2) }}</td>
-                                            <td class="text-end fw-bold">{{ number_format($Tint, 2) }}</td>
-                                            <td class="text-end fw-bold">{{ number_format($Texc, 2) }}</td>
-                                            <td class="text-end fw-bold">{{ number_format($Tmor4, 2) }}</td>
-                                            <td class="text-end fw-bold" style="color:#b8860b;">{{ number_format($TmorAcum, 2) }}</td>
-                                            <td class="text-end fw-bold text-primary">{{ number_format($toff1, 2) }}</td>
-                                            <td class="text-end text-muted fw-bold">{{ number_format($toff1, 2) }}</td>
-                                            <td class="text-center text-muted">{{ collect($days)->sum(fn ($d) => count($d['egresos'])) }}</td>
-                                            <td class="text-end fw-bold">{{ number_format($toff, 2) }}</td>
-                                            <td class="text-end fw-bold {{ $totNeto >= 0 ? 'text-success' : 'text-danger' }}">{{ number_format($totNeto, 2) }}</td>
-                                        </tr>
-                                    </tfoot>
-                                @endif
-                            </table>
+                        {{-- Tarjetas por día --}}
+                        <div class="row g-2">
+                            @forelse($days as $day)
+                                @php
+                                    $tot = $totalDia($day);
+                                    $neto = $tot - $day['sub_egresos'];
+                                    $totNeto += $neto;
+                                    $acum += $tot;
+                                    $pct = max(2, round($tot / $maxDia * 100));
+                                    $carbonDia = \Carbon\Carbon::parse($day['date']);
+                                    $finde = $carbonDia->isWeekend();
+                                    $esMejor = $mejorDia && $day['date'] === $mejorDia['date'];
+                                @endphp
+                                <div class="col-12 col-sm-6 col-lg-4 col-xxl-3">
+                                    <div class="caja1-card h-100 p-2 {{ $esMejor ? 'caja1-card--mejor' : '' }} {{ $finde ? 'caja1-card--finde' : '' }}"
+                                         wire:click="verDia('{{ $day['date'] }}')"
+                                         title="Click para ver el detalle de este día">
+
+                                        {{-- Cabecera: día + badges --}}
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="fw-bold" style="font-size:13px;">
+                                                {{ ucfirst($carbonDia->translatedFormat('l d')) }}
+                                                @if($esMejor)<i class="ti ti-trophy" style="color:#b8860b;" title="Mejor día del mes"></i>@endif
+                                            </span>
+                                            <span class="badge bg-light text-muted border" style="font-size:9px;">
+                                                {{ count($day['ingresos']) }} {{ count($day['ingresos']) === 1 ? 'pago' : 'pagos' }}
+                                            </span>
+                                        </div>
+
+                                        {{-- Total del día + barra vs mejor día --}}
+                                        <div class="fw-bold text-primary" style="font-size:19px;">S/ {{ number_format($tot, 2) }}</div>
+                                        <div class="caja1-barra mb-2"><div style="width:{{ $pct }}%;"></div></div>
+
+                                        {{-- Desglose --}}
+                                        <div class="row g-1 caja1-stats">
+                                            <div class="col-4"><small>CAPITAL</small><span>{{ number_format($day['sub_capital'], 2) }}</span></div>
+                                            <div class="col-4"><small>INTERÉS</small><span>{{ number_format($day['sub_interes'], 2) }}</span></div>
+                                            <div class="col-4"><small>EXCED.</small><span>{{ $day['sub_excedente'] != 0 ? number_format($day['sub_excedente'], 2) : '—' }}</span></div>
+                                            <div class="col-4"><small>MORA</small><span>{{ $day['sub_mora'] != 0 ? number_format($day['sub_mora'], 2) : '—' }}</span></div>
+                                            <div class="col-4"><small>M. ACUM.</small><span style="color:#b8860b;">{{ $day['sub_mora_acum'] != 0 ? number_format($day['sub_mora_acum'], 2) : '—' }}</span></div>
+                                            <div class="col-4"><small>ACUM. MES</small><span class="text-muted">{{ number_format($acum, 2) }}</span></div>
+                                        </div>
+
+                                        {{-- Egresos + neto --}}
+                                        <div class="d-flex justify-content-between align-items-center border-top mt-2 pt-1">
+                                            <span style="font-size:10px; color:#fd7e14;">
+                                                <i class="ti ti-arrow-up-right"></i>
+                                                @if(count($day['egresos']) > 0)
+                                                    {{ count($day['egresos']) }} créd. · S/ {{ number_format($day['sub_egresos'], 2) }}
+                                                @else
+                                                    Sin egresos
+                                                @endif
+                                            </span>
+                                            <span class="badge {{ $neto >= 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger' }}" style="font-size:10px;">
+                                                Neto {{ $neto >= 0 ? '+' : '' }}{{ number_format($neto, 2) }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="col-12 py-3 text-muted text-center">Sin movimientos para el periodo seleccionado</div>
+                            @endforelse
                         </div>
+
+                        {{-- Franja TOTAL MES --}}
+                        @if(count($days) > 0)
+                            <div class="caja1-totalmes mt-2 p-2 rounded d-flex flex-wrap align-items-center gap-3">
+                                <span class="fw-bold" style="font-size:12px;">TOTAL MES</span>
+                                <span><small>CAPITAL</small> {{ number_format($Tcpi2, 2) }}</span>
+                                <span><small>INTERÉS</small> {{ number_format($Tint, 2) }}</span>
+                                <span><small>EXCED.</small> {{ number_format($Texc, 2) }}</span>
+                                <span><small>MORA</small> {{ number_format($Tmor4, 2) }}</span>
+                                <span><small>M. ACUM.</small> <span style="color:#ffd27a;">{{ number_format($TmorAcum, 2) }}</span></span>
+                                <span class="fw-bold"><small>INGRESOS</small> {{ number_format($toff1, 2) }}</span>
+                                <span><small>EGRESOS</small> {{ number_format($toff, 2) }}</span>
+                                <span class="fw-bold {{ $totNeto >= 0 ? 'text-success' : 'text-danger' }}" style="filter: brightness(1.6);">
+                                    <small>NETO</small> {{ $totNeto >= 0 ? '+' : '' }}{{ number_format($totNeto, 2) }}
+                                </span>
+                            </div>
+                        @endif
                     </div>
                     @else
                     {{-- ═══ VISTA DETALLE: tabla completa homóloga al legacy ═══ --}}
@@ -444,6 +438,40 @@
         .breadcrumb, .btn, form { display: none !important; }
         #printme { width: 100%; }
     }
+
+    /* ── Tarjetas de la vista resumen ── */
+    .caja1-card {
+        background: #fff;
+        border: 1px solid #e4e8ee;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: box-shadow .15s ease, transform .15s ease, border-color .15s ease;
+    }
+    .caja1-card:hover {
+        box-shadow: 0 6px 16px rgba(13, 110, 253, .14);
+        transform: translateY(-2px);
+        border-color: #9ec5fe;
+    }
+    .caja1-card--mejor { border-color: #d4af37; background: #fffdf4; }
+    .caja1-card--finde { background: #fdf9f0; }
+    .caja1-card--mejor.caja1-card--finde { background: #fffdf4; }
+
+    .caja1-barra {
+        height: 4px; border-radius: 2px; background: #eef2f7; overflow: hidden;
+    }
+    .caja1-barra > div { height: 100%; border-radius: 2px; background: #7cb9f5; }
+    .caja1-card--mejor .caja1-barra > div { background: #d4af37; }
+
+    .caja1-stats small {
+        display: block; font-size: 8.5px; letter-spacing: .4px; color: #98a2b3;
+    }
+    .caja1-stats span { font-size: 11.5px; font-weight: 600; color: #344054; }
+
+    .caja1-totalmes { background: #232a35; color: #fff; }
+    .caja1-totalmes small {
+        display: block; font-size: 8.5px; letter-spacing: .4px; color: #9aa4b2;
+    }
+    .caja1-totalmes > span { font-size: 12px; }
 <span id="final"></span>
 </style>
 
