@@ -90,14 +90,88 @@
                             // Total de caja del día (mismo cálculo que la fila TOTAL del detalle)
                             $totalDia = fn ($d) => $d['sub_ingresos'] + $d['sub_excedente'] + $d['sub_mora'] + $d['sub_mora_acum'];
                             $maxDia = collect($days)->map($totalDia)->max() ?: 1;
+                            $maxEgr = collect($days)->max('sub_egresos') ?: 0;
+                            $maxBarra = max($maxDia, $maxEgr) ?: 1;
+                            $mejorDia = collect($days)->sortByDesc($totalDia)->first();
+                            $netoMes = $toff1 - $toff;
                             $totNeto = 0;
+                            $acum = 0;
+                            // Delta % contra el mes anterior (null si no hay base de comparación)
+                            $delta = fn ($curr, $prevVal) => ($prevVal ?? 0) != 0 ? round(($curr - $prevVal) / abs($prevVal) * 100, 1) : null;
+                            $kpis = [
+                                ['titulo' => 'INGRESOS DEL MES', 'valor' => $toff1, 'delta' => $delta($toff1, $prevStats['total'] ?? null), 'color' => '#0d6efd'],
+                                ['titulo' => 'INTERÉS', 'valor' => $Tint, 'delta' => $delta($Tint, $prevStats['interes'] ?? null), 'color' => '#198754'],
+                                ['titulo' => 'EGRESOS (CRÉDITOS)', 'valor' => $toff, 'delta' => $delta($toff, $prevStats['egresos'] ?? null), 'color' => '#fd7e14'],
+                                ['titulo' => 'NETO DEL MES', 'valor' => $netoMes, 'delta' => $delta($netoMes, $prevStats['neto'] ?? null), 'color' => $netoMes >= 0 ? '#198754' : '#dc3545'],
+                            ];
                         @endphp
+
+                        {{-- KPIs del mes con comparativa vs mes anterior --}}
+                        <div class="row g-2 mb-2">
+                            @foreach($kpis as $kpi)
+                                <div class="col-6 col-lg-3">
+                                    <div class="border rounded p-2 h-100" style="background:#fafbfc;">
+                                        <div class="text-muted" style="font-size:10px; letter-spacing:.5px;">{{ $kpi['titulo'] }}</div>
+                                        <div class="fw-bold" style="font-size:17px; color:{{ $kpi['color'] }};">S/ {{ number_format($kpi['valor'], 2) }}</div>
+                                        @if($kpi['delta'] !== null)
+                                            <div style="font-size:10px;" class="{{ $kpi['delta'] >= 0 ? 'text-success' : 'text-danger' }}">
+                                                <i class="ti ti-trending-{{ $kpi['delta'] >= 0 ? 'up' : 'down' }}"></i>
+                                                {{ $kpi['delta'] >= 0 ? '+' : '' }}{{ number_format($kpi['delta'], 1) }}%
+                                                <span class="text-muted">vs {{ $prevStats['label'] }}</span>
+                                            </div>
+                                        @else
+                                            <div class="text-muted" style="font-size:10px;">sin datos de {{ $prevStats['label'] ?? 'mes anterior' }}</div>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+
+                        {{-- Gráfico de barras por día: ingresos (azul) vs egresos (naranja) --}}
+                        @if(count($days) > 0)
+                        <div class="border rounded p-2 mb-2" style="background:#fff;">
+                            <div class="d-flex justify-content-between align-items-center mb-1 flex-wrap">
+                                <span class="text-muted" style="font-size:10px; letter-spacing:.5px;">
+                                    INGRESOS <span style="color:#0d6efd;">■</span> vs EGRESOS <span style="color:#fd7e14;">■</span> POR DÍA — click en una barra para ver su detalle
+                                </span>
+                                @if($mejorDia)
+                                    <span style="font-size:10px;" class="text-muted">
+                                        Mejor día: <b>{{ ucfirst(\Carbon\Carbon::parse($mejorDia['date'])->translatedFormat('D d/m')) }}</b>
+                                        · S/ {{ number_format($totalDia($mejorDia), 2) }}
+                                        &nbsp;|&nbsp; Promedio: S/ {{ number_format($toff1 / max(count($days), 1), 2) }}/día
+                                    </span>
+                                @endif
+                            </div>
+                            <div class="d-flex align-items-end gap-1" style="height:110px; overflow-x:auto;">
+                                @foreach($days as $day)
+                                    @php
+                                        $tot = $totalDia($day);
+                                        $hIng = max(2, round($tot / $maxBarra * 92));
+                                        $hEgr = $day['sub_egresos'] > 0 ? max(2, round($day['sub_egresos'] / $maxBarra * 92)) : 0;
+                                        $esMejor = $mejorDia && $day['date'] === $mejorDia['date'];
+                                    @endphp
+                                    <div class="d-flex flex-column align-items-center" style="min-width:26px; flex:1 1 0; cursor:pointer;"
+                                         wire:click="verDia('{{ $day['date'] }}')"
+                                         title="{{ ucfirst(\Carbon\Carbon::parse($day['date'])->translatedFormat('D d/m')) }} — Ingresos: S/ {{ number_format($tot, 2) }} · Egresos: S/ {{ number_format($day['sub_egresos'], 2) }}">
+                                        <div class="d-flex align-items-end gap-1" style="height:92px;">
+                                            <div style="width:9px; height:{{ $hIng }}px; background:{{ $esMejor ? '#0a58ca' : '#7cb9f5' }}; border-radius:2px 2px 0 0;"></div>
+                                            @if($hEgr > 0)
+                                                <div style="width:9px; height:{{ $hEgr }}px; background:#fdba74; border-radius:2px 2px 0 0;"></div>
+                                            @endif
+                                        </div>
+                                        <span style="font-size:9px;" class="text-muted {{ $esMejor ? 'fw-bold' : '' }}">{{ (int) substr($day['date'], 8, 2) }}</span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                        @endif
+
                         <div class="table-responsive" style="max-height: 70vh; overflow: auto;">
                             <table class="table table-bordered table-hover align-middle" id="tabla-resumen-caja-1" style="min-width: 900px;">
                                 <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                     <tr>
                                         <th rowspan="2" class="align-middle text-center">DÍA</th>
-                                        <th colspan="7" class="text-center">INGRESOS (pagos)</th>
+                                        <th colspan="8" class="text-center">INGRESOS (pagos)</th>
                                         <th colspan="2" class="text-center">EGRESOS (créditos)</th>
                                         <th rowspan="2" class="align-middle text-center" title="Ingresos del día menos créditos otorgados">NETO DÍA</th>
                                     </tr>
@@ -109,6 +183,7 @@
                                         <th class="text-center">MORA</th>
                                         <th class="text-center">M. ACUM.</th>
                                         <th class="text-center">TOTAL</th>
+                                        <th class="text-center" title="Ingresos acumulados del mes hasta este día">ACUM. MES</th>
                                         <th class="text-center" title="Cantidad de créditos otorgados">N°</th>
                                         <th class="text-center">MONTO</th>
                                     </tr>
@@ -119,9 +194,11 @@
                                         $tot = $totalDia($day);
                                         $neto = $tot - $day['sub_egresos'];
                                         $totNeto += $neto;
+                                        $acum += $tot;
                                         $pct = round($tot / $maxDia * 100);
                                         $carbonDia = \Carbon\Carbon::parse($day['date']);
                                         $finde = $carbonDia->isWeekend();
+                                        $esMejor = $mejorDia && $day['date'] === $mejorDia['date'];
                                     @endphp
                                     <tr @if($finde) style="background-color:#fdf6ec;" @endif>
                                         <td class="text-nowrap">
@@ -129,6 +206,7 @@
                                                title="Ver el detalle de este día" class="fw-bold text-decoration-none">
                                                 {{ ucfirst($carbonDia->translatedFormat('D d/m')) }}
                                             </a>
+                                            @if($esMejor)<i class="ti ti-trophy" style="color:#b8860b;" title="Mejor día del mes"></i>@endif
                                         </td>
                                         <td class="text-center text-muted">{{ count($day['ingresos']) }}</td>
                                         <td class="text-end">{{ number_format($day['sub_capital'], 2) }}</td>
@@ -141,6 +219,7 @@
                                             style="background: linear-gradient(90deg, #dceefb {{ $pct }}%, transparent {{ $pct }}%);">
                                             {{ number_format($tot, 2) }}
                                         </td>
+                                        <td class="text-end text-muted">{{ number_format($acum, 2) }}</td>
                                         <td class="text-center text-muted">{{ count($day['egresos']) }}</td>
                                         <td class="text-end">{{ $day['sub_egresos'] != 0 ? number_format($day['sub_egresos'], 2) : '—' }}</td>
                                         <td class="text-end fw-bold {{ $neto >= 0 ? 'text-success' : 'text-danger' }}">
@@ -149,7 +228,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="11" class="py-3 text-muted text-center">Sin movimientos para el periodo seleccionado</td>
+                                        <td colspan="12" class="py-3 text-muted text-center">Sin movimientos para el periodo seleccionado</td>
                                     </tr>
                                 @endforelse
                                 </tbody>
@@ -164,6 +243,7 @@
                                             <td class="text-end fw-bold">{{ number_format($Tmor4, 2) }}</td>
                                             <td class="text-end fw-bold" style="color:#b8860b;">{{ number_format($TmorAcum, 2) }}</td>
                                             <td class="text-end fw-bold text-primary">{{ number_format($toff1, 2) }}</td>
+                                            <td class="text-end text-muted fw-bold">{{ number_format($toff1, 2) }}</td>
                                             <td class="text-center text-muted">{{ collect($days)->sum(fn ($d) => count($d['egresos'])) }}</td>
                                             <td class="text-end fw-bold">{{ number_format($toff, 2) }}</td>
                                             <td class="text-end fw-bold {{ $totNeto >= 0 ? 'text-success' : 'text-danger' }}">{{ number_format($totNeto, 2) }}</td>
