@@ -19,6 +19,10 @@ class CashGeneral1 extends Component
     #[Url(as: 'tipo', except: '0000')]
     public $seletipl = '0000';
 
+    /** 'resumen' = una fila por día con totales; 'detalle' = tabla completa homóloga al legacy. */
+    #[Url(as: 'vista', except: 'resumen')]
+    public $vista = 'resumen';
+
     public function mount()
     {
         if (! request()->has('mes')) {
@@ -30,6 +34,13 @@ class CashGeneral1 extends Component
     }
 
     public function search() {}
+
+    /** Desde la vista resumen: cambia a detalle y desplaza hasta el día elegido. */
+    public function verDia(string $date): void
+    {
+        $this->vista = 'detalle';
+        $this->dispatch('scroll-to-day', date: $date);
+    }
 
     public function render()
     {

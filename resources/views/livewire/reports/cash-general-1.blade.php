@@ -55,11 +55,23 @@
                                     <option value="3">Mensual</option>
                                 </select>
                             </div>
-                            <div class="col-md-6 d-flex gap-2">
+                            <div class="col-md-6 d-flex gap-2 flex-wrap">
                                 <button type="submit" class="btn btn-sm btn-primary">
                                     <i class="ti ti-search f-s-12"></i> Consultar
                                 </button>
+                                <div class="btn-group" role="group" aria-label="Vista">
+                                    <button type="button" wire:click="$set('vista', 'resumen')"
+                                            class="btn btn-sm {{ $vista === 'resumen' ? 'btn-dark' : 'btn-outline-dark' }}">
+                                        <i class="ti ti-layout-list f-s-12"></i> Resumen
+                                    </button>
+                                    <button type="button" wire:click="$set('vista', 'detalle')"
+                                            class="btn btn-sm {{ $vista === 'detalle' ? 'btn-dark' : 'btn-outline-dark' }}">
+                                        <i class="ti ti-table f-s-12"></i> Detalle
+                                    </button>
+                                </div>
+                                @if($vista === 'detalle')
                                 <x-scroll-bottom-btn scrollable="#tabla-caja-1" />
+                                @endif
                                 <a href="{{ route('exports.reports.cash-general-1', ['selemes' => $selemes, 'selecano' => $selecano, 'seletipl' => $seletipl]) }}"
                                    class="btn btn-sm btn-success" target="_blank">
                                     <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
@@ -71,6 +83,98 @@
                         </div>
                     </form>
 
+                    {{-- ═══ VISTA RESUMEN: una fila por día, para comparar días de un vistazo ═══ --}}
+                    @if($vista === 'resumen')
+                    <div id="printme">
+                        @php
+                            // Total de caja del día (mismo cálculo que la fila TOTAL del detalle)
+                            $totalDia = fn ($d) => $d['sub_ingresos'] + $d['sub_excedente'] + $d['sub_mora'] + $d['sub_mora_acum'];
+                            $maxDia = collect($days)->map($totalDia)->max() ?: 1;
+                            $totNeto = 0;
+                        @endphp
+                        <div class="table-responsive" style="max-height: 70vh; overflow: auto;">
+                            <table class="table table-bordered table-hover align-middle" id="tabla-resumen-caja-1" style="min-width: 900px;">
+                                <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
+                                    <tr>
+                                        <th rowspan="2" class="align-middle text-center">DÍA</th>
+                                        <th colspan="7" class="text-center">INGRESOS (pagos)</th>
+                                        <th colspan="2" class="text-center">EGRESOS (créditos)</th>
+                                        <th rowspan="2" class="align-middle text-center" title="Ingresos del día menos créditos otorgados">NETO DÍA</th>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-center" title="Cantidad de pagos">N°</th>
+                                        <th class="text-center">CAPITAL</th>
+                                        <th class="text-center">INTERÉS</th>
+                                        <th class="text-center">EXCED.</th>
+                                        <th class="text-center">MORA</th>
+                                        <th class="text-center">M. ACUM.</th>
+                                        <th class="text-center">TOTAL</th>
+                                        <th class="text-center" title="Cantidad de créditos otorgados">N°</th>
+                                        <th class="text-center">MONTO</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                @forelse($days as $day)
+                                    @php
+                                        $tot = $totalDia($day);
+                                        $neto = $tot - $day['sub_egresos'];
+                                        $totNeto += $neto;
+                                        $pct = round($tot / $maxDia * 100);
+                                        $carbonDia = \Carbon\Carbon::parse($day['date']);
+                                        $finde = $carbonDia->isWeekend();
+                                    @endphp
+                                    <tr @if($finde) style="background-color:#fdf6ec;" @endif>
+                                        <td class="text-nowrap">
+                                            <a href="#" wire:click.prevent="verDia('{{ $day['date'] }}')"
+                                               title="Ver el detalle de este día" class="fw-bold text-decoration-none">
+                                                {{ ucfirst($carbonDia->translatedFormat('D d/m')) }}
+                                            </a>
+                                        </td>
+                                        <td class="text-center text-muted">{{ count($day['ingresos']) }}</td>
+                                        <td class="text-end">{{ number_format($day['sub_capital'], 2) }}</td>
+                                        <td class="text-end">{{ number_format($day['sub_interes'], 2) }}</td>
+                                        <td class="text-end">{{ $day['sub_excedente'] != 0 ? number_format($day['sub_excedente'], 2) : '—' }}</td>
+                                        <td class="text-end">{{ $day['sub_mora'] != 0 ? number_format($day['sub_mora'], 2) : '—' }}</td>
+                                        <td class="text-end" style="color:#b8860b;">{{ $day['sub_mora_acum'] != 0 ? number_format($day['sub_mora_acum'], 2) : '—' }}</td>
+                                        {{-- Barra proporcional al mejor día del mes: compara días de un vistazo --}}
+                                        <td class="text-end fw-bold text-primary"
+                                            style="background: linear-gradient(90deg, #dceefb {{ $pct }}%, transparent {{ $pct }}%);">
+                                            {{ number_format($tot, 2) }}
+                                        </td>
+                                        <td class="text-center text-muted">{{ count($day['egresos']) }}</td>
+                                        <td class="text-end">{{ $day['sub_egresos'] != 0 ? number_format($day['sub_egresos'], 2) : '—' }}</td>
+                                        <td class="text-end fw-bold {{ $neto >= 0 ? 'text-success' : 'text-danger' }}">
+                                            {{ number_format($neto, 2) }}
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="11" class="py-3 text-muted text-center">Sin movimientos para el periodo seleccionado</td>
+                                    </tr>
+                                @endforelse
+                                </tbody>
+                                @if(count($days) > 0)
+                                    <tfoot>
+                                        <tr style="background-color:#f0f0f0;">
+                                            <td class="fw-bold">TOTAL MES</td>
+                                            <td class="text-center text-muted">{{ collect($days)->sum(fn ($d) => count($d['ingresos'])) }}</td>
+                                            <td class="text-end fw-bold">{{ number_format($Tcpi2, 2) }}</td>
+                                            <td class="text-end fw-bold">{{ number_format($Tint, 2) }}</td>
+                                            <td class="text-end fw-bold">{{ number_format($Texc, 2) }}</td>
+                                            <td class="text-end fw-bold">{{ number_format($Tmor4, 2) }}</td>
+                                            <td class="text-end fw-bold" style="color:#b8860b;">{{ number_format($TmorAcum, 2) }}</td>
+                                            <td class="text-end fw-bold text-primary">{{ number_format($toff1, 2) }}</td>
+                                            <td class="text-center text-muted">{{ collect($days)->sum(fn ($d) => count($d['egresos'])) }}</td>
+                                            <td class="text-end fw-bold">{{ number_format($toff, 2) }}</td>
+                                            <td class="text-end fw-bold {{ $totNeto >= 0 ? 'text-success' : 'text-danger' }}">{{ number_format($totNeto, 2) }}</td>
+                                        </tr>
+                                    </tfoot>
+                                @endif
+                            </table>
+                        </div>
+                    </div>
+                    @else
+                    {{-- ═══ VISTA DETALLE: tabla completa homóloga al legacy ═══ --}}
                     <div id="printme">
                         <div id="tabla-caja-1" class="table-responsive" style="max-height: 70vh; overflow: auto;">
                             <table class="table table-bordered table-striped table-hover table-nowrap">
@@ -109,7 +213,7 @@
                                 <tbody>
                                 @forelse($days as $day)
                                     {{-- Encabezado del día --}}
-                                    <tr style="background-color: #B0B0B0;">
+                                    <tr style="background-color: #B0B0B0;" id="dia-{{ $day['date'] }}">
                                         <td colspan="21"><strong>{{ $day['date_label'] }}</strong></td>
                                     </tr>
 
@@ -248,6 +352,7 @@
                             </table>
                         </div>
                     </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -261,3 +366,16 @@
     }
 <span id="final"></span>
 </style>
+
+<script>
+    document.addEventListener('livewire:init', () => {
+        // Al hacer click en un día del resumen: la vista cambia a detalle y
+        // desplazamos hasta el encabezado de ese día una vez re-renderizado.
+        Livewire.on('scroll-to-day', ({ date }) => {
+            setTimeout(() => {
+                document.getElementById('dia-' + date)
+                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 250);
+        });
+    });
+</script>
