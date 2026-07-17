@@ -147,9 +147,11 @@
                                                     <td class="text-end">
                                                         <span class="text-primary">{{ number_format($ing['interes'], 2) }}</span>
                                                         @if(!empty($ing['obs_interes']))
-                                                            <i class="ti ti-info-circle" style="color:#b8860b; cursor:help;"
-                                                               data-bs-toggle="tooltip" data-bs-placement="top"
-                                                               data-bs-title="{{ $ing['obs_interes'] }}"></i>
+                                                            <span class="caja1-obs-int"
+                                                                  data-bs-toggle="tooltip" data-bs-placement="top"
+                                                                  data-bs-title="{{ $ing['obs_interes'] }}">
+                                                                <i class="ti ti-info-circle-filled"></i>
+                                                            </span>
                                                         @endif
                                                     </td>
                                                     <td class="text-end"><span class="text-primary">{{ number_format($ing['excedente'] ?? 0, 2) }}</span></td>
@@ -266,6 +268,17 @@
         .breadcrumb, .btn, form { display: none !important; }
         #printme { width: 100%; }
     }
+
+    /* Ícono ⓘ del desglose de interés por cuota: pastilla amarilla warning */
+    .caja1-obs-int {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 16px; height: 16px; margin-left: 2px;
+        border-radius: 50%; cursor: help;
+        color: #ffc107; background: rgba(255, 193, 7, .15);
+        vertical-align: text-bottom; transition: transform .1s ease, background .1s ease;
+    }
+    .caja1-obs-int:hover { background: rgba(255, 193, 7, .3); transform: scale(1.15); }
+    .caja1-obs-int .ti { font-size: 13px; line-height: 1; }
 <span id="final"></span>
 </style>
 
