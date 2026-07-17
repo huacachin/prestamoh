@@ -60,36 +60,8 @@
                                         </div>
                                     </li>
 
-                                    <li class="header-notification">
-                                        <div class="flex-shrink-0 app-dropdown">
-                                            <a href="#" class="d-block head-icon position-relative"
-                                               data-bs-toggle="dropdown"
-                                               data-bs-auto-close="outside" aria-expanded="false">
-                                                <i class="ti ti-bell"></i>
-                                            </a>
-
-                                            <div class="dropdown-menu dropdown-menu-end bg-transparent border-0">
-                                                <div class="card">
-                                                    <div class="card-header bg-primary">
-                                                        <h5 class="text-white">
-                                                            Notificaciones
-                                                            <span class="float-end">
-                                                                <i class="ti ti-bell text-white"></i>
-                                                            </span>
-                                                        </h5>
-                                                    </div>
-                                                    <div class="card-body p-0">
-                                                        <div class="hidden-massage py-4 px-3 text-center">
-                                                            <div>
-                                                                <h6 class="mb-0">Sin notificaciones</h6>
-                                                                <p class="text-secondary">No hay alertas pendientes.</p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </li>
+                                    {{-- Campana de compromisos de pago (cobranza) --}}
+                                    <livewire:layout.compromisos-bell />
 
                                     <li class="header-profile">
                                         <div class="flex-shrink-0 dropdown">

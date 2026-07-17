@@ -41,16 +41,137 @@ class Index extends Component
         $this->morosidadFiltro = $this->morosidadFiltro === $estado ? '' : $estado;
     }
 
-    /** Marca que hoy se le envió recordatorio de WhatsApp al cliente (check compartido). */
-    public function marcarWhatsapp(int $clientId): void
+    // ─── Modal de notificaciones WhatsApp (cobranza) ───────────────────
+
+    public ?int $notifClientId = null;
+
+    public string $notifClientName = '';
+
+    public string $notifTelefono = '';
+
+    public int $notifVencidas = 0;
+
+    /** Editor de "nueva notificación" visible dentro del modal. */
+    public bool $notifEditor = false;
+
+    public string $notifTexto = '';
+
+    // Compromiso de pago (edición inline por notificación)
+    public ?int $compNotifId = null;
+
+    public string $compFecha = '';
+
+    public string $compDetalle = '';
+
+    /** Abre el modal de notificaciones del cliente (botón WhatsApp de la fila). */
+    public function abrirNotifs(int $clientId): void
     {
-        DB::table('whatsapp_reminders')->insertOrIgnore([
-            'client_id' => $clientId,
-            'user_id' => auth()->id(),
-            'sent_on' => now()->format('Y-m-d'),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        $client = Client::findOrFail($clientId);
+
+        $this->notifClientId = $clientId;
+        $this->notifClientName = trim("{$client->apellido_pat} {$client->apellido_mat} {$client->nombre}");
+        $this->notifTelefono = preg_replace('/\D/', '', (string) $client->celular1);
+        $this->notifVencidas = (int) (DB::table('credits as c')
+            ->join('credit_installments as i', 'i.credit_id', '=', 'c.id')
+            ->where('c.client_id', $clientId)
+            ->where('c.situacion', 'Activo')
+            ->where('i.pagado', 0)
+            ->whereNotNull('i.fecha_vencimiento')
+            ->where('i.fecha_vencimiento', '<', now()->format('Y-m-d'))
+            ->groupBy('c.id')
+            ->selectRaw('COUNT(*) v')
+            ->orderByDesc('v')
+            ->value('v') ?? 0);
+        $this->notifEditor = false;
+        $this->notifTexto = '';
+        $this->compNotifId = null;
+        $this->resetErrorBag();
+
+        $this->dispatch('notif-open');
+    }
+
+    /** Abre el editor precargado: último texto enviado, o la plantilla base. */
+    public function nuevaNotif(): void
+    {
+        $ultima = DB::table('client_notifications')
+            ->where('client_id', $this->notifClientId)
+            ->orderByDesc('numero')
+            ->value('mensaje');
+
+        $this->notifTexto = $ultima
+            ?? "Sr.(a) *{$this->notifClientName}*,\n*Huacachin* le recuerda que su préstamo registra *{$this->notifVencidas} cuotas vencidas*. Por favor acérquese a regularizar sus pagos.";
+        $this->notifEditor = true;
+    }
+
+    /** Guarda la notificación (correlativo por cliente) y abre WhatsApp con el texto. */
+    public function enviarNotif(): void
+    {
+        $this->validate(
+            ['notifTexto' => 'required|string|max:2000'],
+            ['notifTexto.required' => 'Escribe el mensaje a enviar.']
+        );
+        if (! $this->notifClientId || $this->notifTelefono === '') {
+            $this->dispatch('errorAlert', ['message' => 'El cliente no tiene número de celular.']);
+
+            return;
+        }
+
+        DB::transaction(function () {
+            $numero = (int) DB::table('client_notifications')
+                ->where('client_id', $this->notifClientId)
+                ->lockForUpdate()
+                ->max('numero') + 1;
+
+            DB::table('client_notifications')->insert([
+                'client_id' => $this->notifClientId,
+                'user_id' => auth()->id(),
+                'numero' => $numero,
+                'mensaje' => $this->notifTexto,
+                'telefono' => $this->notifTelefono,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        });
+
+        $this->notifEditor = false;
+        $url = 'https://api.whatsapp.com/send?phone=51'.$this->notifTelefono.'&text='.rawurlencode($this->notifTexto);
+        $this->dispatch('notif-wa', url: $url);
+    }
+
+    /** Abre el mini-form de compromiso de una notificación (precarga si ya tiene). */
+    public function abrirCompromiso(int $notifId): void
+    {
+        $n = DB::table('client_notifications')
+            ->where('id', $notifId)->where('client_id', $this->notifClientId)->first();
+        if (! $n) {
+            return;
+        }
+
+        $this->compNotifId = $notifId;
+        $this->compFecha = $n->compromiso_fecha ?? '';
+        $this->compDetalle = (string) ($n->compromiso_detalle ?? '');
+        $this->resetErrorBag();
+    }
+
+    public function guardarCompromiso(): void
+    {
+        $this->validate(
+            ['compFecha' => 'required|date', 'compDetalle' => 'nullable|string|max:500'],
+            ['compFecha.required' => 'Indica la fecha en que se compromete a pagar.']
+        );
+
+        DB::table('client_notifications')
+            ->where('id', $this->compNotifId)->where('client_id', $this->notifClientId)
+            ->update([
+                'compromiso_fecha' => $this->compFecha,
+                'compromiso_detalle' => $this->compDetalle !== '' ? $this->compDetalle : null,
+                'compromiso_user_id' => auth()->id(),
+                'compromiso_cumplido_at' => null,
+                'updated_at' => now(),
+            ]);
+
+        $this->compNotifId = null;
+        $this->dispatch('successAlert', ['message' => 'Compromiso de pago guardado.']);
     }
 
     // Modal de coordenadas (Casa / Negocio)
@@ -259,19 +380,29 @@ class Index extends Component
             default => $clients,
         };
 
-        // Clientes con recordatorio WhatsApp ya enviado HOY (check compartido)
+        // Clientes con notificación WhatsApp enviada HOY (check compartido)
         $waEnviadosHoy = [];
         if ($clients->isNotEmpty()) {
-            $waEnviadosHoy = DB::table('whatsapp_reminders')
-                ->where('sent_on', now()->format('Y-m-d'))
+            $waEnviadosHoy = DB::table('client_notifications')
+                ->whereDate('created_at', now()->format('Y-m-d'))
                 ->whereIn('client_id', $clients->pluck('id'))
+                ->distinct()
                 ->pluck('client_id')
                 ->flip()
                 ->toArray();
         }
 
+        // Historial del modal de notificaciones (solo si está abierto)
+        $notifs = $this->notifClientId
+            ? DB::table('client_notifications as n')
+                ->leftJoin('users as u', 'u.id', '=', 'n.user_id')
+                ->where('n.client_id', $this->notifClientId)
+                ->orderByDesc('n.numero')
+                ->get(['n.*', 'u.username as usuario', 'u.name as usuario_name'])
+            : collect();
+
         $puedeCoords = $this->puedeGuardarCoords();
 
-        return view('livewire.clients.index', compact('clients', 'asesores', 'clientsWithCredit', 'morosidad', 'puedeCoords', 'countAldia', 'countNaranja', 'countRojo', 'waEnviadosHoy'));
+        return view('livewire.clients.index', compact('clients', 'asesores', 'clientsWithCredit', 'morosidad', 'puedeCoords', 'countAldia', 'countNaranja', 'countRojo', 'waEnviadosHoy', 'notifs'));
     }
 }

@@ -193,21 +193,16 @@
                                     <td class="text-center">
                                         @php $waTel = preg_replace('/\D/', '', (string) $client->celular1); @endphp
                                         @if($venc >= 2 && $waTel !== '')
-                                            @php
-                                                $cliFull = trim("{$client->apellido_pat} {$client->apellido_mat} {$client->nombre}");
-                                                $waMsg = rawurlencode("Sr.(a) *{$cliFull}*,\n*Huacachin* le recuerda que su préstamo registra *{$venc} cuotas vencidas*. Por favor acérquese a regularizar sus pagos.");
-                                            @endphp
-                                            <a href="https://api.whatsapp.com/send?phone=51{{ $waTel }}&text={{ $waMsg }}" target="_blank"
-                                               wire:click="marcarWhatsapp({{ $client->id }})"
-                                               title="Enviar recordatorio por WhatsApp ({{ $venc }} cuotas vencidas)">
+                                            <a href="#" wire:click.prevent="abrirNotifs({{ $client->id }})"
+                                               title="Notificaciones WhatsApp ({{ $venc }} cuotas vencidas)">
                                                 <i class="ti ti-brand-whatsapp f-s-16 text-success"></i>
                                             </a>
                                             @if(isset($waEnviadosHoy[$client->id]))
-                                                <i class="ti ti-checks f-s-14" style="color:#2eb85c;" title="Recordatorio ya enviado hoy"></i>
+                                                <i class="ti ti-checks f-s-14" style="color:#2eb85c;" title="Notificación ya enviada hoy"></i>
                                             @endif
                                         @else
                                             <i class="ti ti-brand-whatsapp f-s-16" style="color:#c9ced6;"
-                                               title="{{ $venc < 2 ? 'Cliente al día — recordatorio deshabilitado' : 'Sin número de celular' }}"></i>
+                                               title="{{ $venc < 2 ? 'Cliente al día — notificaciones deshabilitadas' : 'Sin número de celular' }}"></i>
                                         @endif
                                     </td>
                                 </tr>
@@ -291,16 +286,11 @@
                                             $waTelM = preg_replace('/\D/', '', (string) $client->celular1);
                                         @endphp
                                         @if($vencM >= 2 && $waTelM !== '')
-                                            @php
-                                                $cliFullM = trim("{$client->apellido_pat} {$client->apellido_mat} {$client->nombre}");
-                                                $waMsgM = rawurlencode("Sr.(a) *{$cliFullM}*,\n*Huacachin* le recuerda que su préstamo registra *{$vencM} cuotas vencidas*. Por favor acérquese a regularizar sus pagos.");
-                                            @endphp
-                                            <a href="https://api.whatsapp.com/send?phone=51{{ $waTelM }}&text={{ $waMsgM }}" target="_blank"
-                                               wire:click="marcarWhatsapp({{ $client->id }})"
-                                               class="btn btn-xs btn-success" style="padding: 2px 8px; font-size: 10px;">
+                                            <button type="button" wire:click="abrirNotifs({{ $client->id }})"
+                                                    class="btn btn-xs btn-success" style="padding: 2px 8px; font-size: 10px;">
                                                 <i class="ti ti-brand-whatsapp"></i> WA
                                                 @if(isset($waEnviadosHoy[$client->id]))<i class="ti ti-checks"></i>@endif
-                                            </a>
+                                            </button>
                                         @endif
                                     </div>
                                 </div>
@@ -355,7 +345,135 @@
         </div>
     </div>
 
+    {{-- ═══ Modal de notificaciones WhatsApp (cobranza) ═══ --}}
+    <div class="modal fade" id="notifModal" tabindex="-1" aria-hidden="true" wire:ignore.self
+         x-data="{ modal: null }"
+         x-init="modal = bootstrap.Modal.getOrCreateInstance($el);"
+         x-on:notif-open.window="modal.show()"
+         x-on:notif-close.window="modal.hide()">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title mb-0">
+                        <i class="ti ti-brand-whatsapp text-success"></i>
+                        Notificaciones — {{ $notifClientName }}
+                        @if($notifVencidas > 0)
+                            <span class="badge {{ $notifVencidas >= 3 ? 'bg-danger' : 'bg-warning text-dark' }}" style="font-size:10px;">
+                                {{ $notifVencidas }} cuotas vencidas
+                            </span>
+                        @endif
+                    </h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+
+                    {{-- Editor de nueva notificación --}}
+                    @if($notifEditor)
+                        <div class="border rounded p-2 mb-3" style="background:#f6fbf7;">
+                            <label class="form-label small fw-semibold mb-1">Mensaje a enviar por WhatsApp</label>
+                            <textarea class="form-control form-control-sm @error('notifTexto') is-invalid @enderror"
+                                      rows="4" wire:model="notifTexto"></textarea>
+                            @error('notifTexto') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            <div class="d-flex gap-2 mt-2">
+                                <button type="button" class="btn btn-sm btn-success"
+                                        wire:click="enviarNotif" wire:loading.attr="disabled" wire:target="enviarNotif">
+                                    <i class="ti ti-brand-whatsapp"></i>
+                                    <span wire:loading.remove wire:target="enviarNotif">Enviar por WhatsApp</span>
+                                    <span wire:loading wire:target="enviarNotif">Guardando…</span>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-secondary" wire:click="$set('notifEditor', false)">Cancelar</button>
+                            </div>
+                            <div class="form-text">Al enviar se guarda en el historial y se abre WhatsApp con el texto listo.</div>
+                        </div>
+                    @else
+                        <button type="button" class="btn btn-sm btn-success mb-3" wire:click="nuevaNotif">
+                            <i class="ti ti-plus"></i> Nueva notificación
+                        </button>
+                    @endif
+
+                    {{-- Historial --}}
+                    @if($notifs->isEmpty())
+                        <p class="text-muted small mb-0">Aún no se han enviado notificaciones a este cliente.</p>
+                    @else
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered align-middle" style="font-size:12px;">
+                                <thead class="bg-primary">
+                                    <tr>
+                                        <th class="text-center" style="width:34px;">#</th>
+                                        <th class="text-center" style="width:110px;">Enviada</th>
+                                        <th>Mensaje</th>
+                                        <th class="text-center" style="width:90px;">Usuario</th>
+                                        <th style="width:220px;">Compromiso de pago</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                @foreach($notifs as $n)
+                                    <tr>
+                                        <td class="text-center fw-bold">{{ $n->numero }}</td>
+                                        <td class="text-center">{{ \Carbon\Carbon::parse($n->created_at)->format('d/m/Y H:i') }}</td>
+                                        <td style="white-space: pre-line; max-width: 320px;">{{ $n->mensaje }}</td>
+                                        <td class="text-center">{{ $n->usuario ?? $n->usuario_name ?? '—' }}</td>
+                                        <td>
+                                            @if($compNotifId === $n->id)
+                                                {{-- Mini-form de compromiso --}}
+                                                <div class="d-flex flex-column gap-1">
+                                                    <input type="date" class="form-control form-control-sm @error('compFecha') is-invalid @enderror"
+                                                           wire:model="compFecha">
+                                                    @error('compFecha') <div class="text-danger" style="font-size:10px;">{{ $message }}</div> @enderror
+                                                    <input type="text" class="form-control form-control-sm" placeholder="Detalle (opcional)"
+                                                           wire:model="compDetalle" maxlength="500">
+                                                    <div class="d-flex gap-1">
+                                                        <button type="button" class="btn btn-xs btn-dark" style="padding:2px 8px; font-size:10px;"
+                                                                wire:click="guardarCompromiso">Guardar</button>
+                                                        <button type="button" class="btn btn-xs btn-secondary" style="padding:2px 8px; font-size:10px;"
+                                                                wire:click="$set('compNotifId', null)">Cancelar</button>
+                                                    </div>
+                                                </div>
+                                            @elseif($n->compromiso_fecha)
+                                                @php
+                                                    $cf = \Carbon\Carbon::parse($n->compromiso_fecha);
+                                                    $dias = now()->startOfDay()->diffInDays($cf->copy()->startOfDay(), false);
+                                                    $cfColor = $dias <= 0 ? '#dc3545' : ($dias <= 2 ? '#fd7e14' : '#198754');
+                                                @endphp
+                                                <div>
+                                                    <b style="color: {{ $cfColor }};"><i class="ti ti-calendar-event"></i> {{ $cf->format('d/m/Y') }}</b>
+                                                    @if($n->compromiso_cumplido_at)
+                                                        <span class="badge bg-success" style="font-size:9px;">cumplido</span>
+                                                    @endif
+                                                    @if($n->compromiso_detalle)
+                                                        <div class="text-muted" style="font-size:11px;">{{ $n->compromiso_detalle }}</div>
+                                                    @endif
+                                                    <a href="#" wire:click.prevent="abrirCompromiso({{ $n->id }})" style="font-size:10px;">editar</a>
+                                                </div>
+                                            @else
+                                                <button type="button" class="btn btn-xs btn-outline-dark" style="padding:2px 8px; font-size:10px;"
+                                                        wire:click="abrirCompromiso({{ $n->id }})">
+                                                    <i class="ti ti-calendar-plus"></i> Compromiso
+                                                </button>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+
 <span id="final"></span>
+
+<script>
+    // Al guardar la notificación, el componente pide abrir WhatsApp con el texto.
+    document.addEventListener('livewire:init', () => {
+        Livewire.on('notif-wa', (e) => {
+            const url = e?.url ?? e?.[0]?.url;
+            if (url) window.open(url, '_blank');
+        });
+    });
+</script>
 
 <style>
     /* Homologado al legacy (cliente.php + ideasweb.css .tableM): fuente Tahoma
