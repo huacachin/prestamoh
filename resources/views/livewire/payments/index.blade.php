@@ -107,16 +107,6 @@
                                 </tr>
                             @endforelse
                             </tbody>
-                            @if($totalFiltrados > $credits->count())
-                                <tbody>
-                                    <tr>
-                                        <td colspan="9" class="text-center py-2" style="background:#fff8e6; font-size:12px;">
-                                            <i class="ti ti-filter"></i>
-                                            Mostrando {{ $credits->count() }} de <b>{{ $totalFiltrados }}</b> créditos — usa los filtros para afinar la búsqueda.
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            @endif
                             <tfoot class="bg-primary">
                                 <tr>
                                     <td colspan="5" class="text-end fw-bold">Totales:</td>
@@ -164,8 +154,13 @@
                             <div class="text-center text-muted py-4">No se encontraron resultados</div>
                         @endforelse
                         <div class="text-center mt-2">
-                            <span class="badge bg-primary">Total Capital: S/ {{ number_format($totalCapital, 2) }} | {{ $credits->count() }} créditos</span>
+                            <span class="badge bg-primary">Total Capital: S/ {{ number_format($totalCapital, 2) }} | {{ $totalFiltrados }} créditos</span>
                         </div>
+                    </div>
+
+                    {{-- Paginación (LIMIT en SQL: solo viaja la página visible) --}}
+                    <div class="mt-2 d-flex justify-content-center">
+                        {{ $credits->links() }}
                     </div>
                 </div>
             </div>

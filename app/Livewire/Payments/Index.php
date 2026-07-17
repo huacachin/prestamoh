@@ -5,9 +5,14 @@ namespace App\Livewire\Payments;
 use App\Models\Credit;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 class Index extends Component
 {
+    use WithPagination;
+
+    protected $paginationTheme = 'bootstrap';
+
     #[Url(as: 'dni', except: '')]
     public string $nombre = ''; // DNI
 
@@ -16,6 +21,14 @@ class Index extends Component
 
     #[Url(as: 'codigo', except: '')]
     public string $codigo1 = ''; // Código
+
+    /** Al cambiar cualquier filtro se vuelve a la página 1. */
+    public function updating($name, $value): void
+    {
+        if (in_array($name, ['nombre', 'nombre1', 'codigo1'], true)) {
+            $this->resetPage();
+        }
+    }
 
     public function render()
     {
@@ -50,15 +63,14 @@ class Index extends Component
             $query->where('id', 'like', '%'.trim($this->codigo1).'%');
         }
 
-        $credits = $query->orderBy('id', 'asc')->get();
+        // Totales sobre el conjunto filtrado completo (agregado en SQL),
+        // independientes de la página visible.
+        $totales = (clone $query)->selectRaw('COUNT(*) as n, COALESCE(SUM(importe), 0) as cap')->first();
+        $totalFiltrados = (int) $totales->n;
+        $totalCapital = (float) $totales->cap;
 
-        $totalCapital = $credits->sum('importe');
-
-        // El HTML de esta pantalla pesa ~4 KB por fila (tabla + card móvil):
-        // se muestran hasta 100 y se avisa el resto — es una pantalla de
-        // búsqueda, los filtros afinan. El total capital sí es del conjunto.
-        $totalFiltrados = $credits->count();
-        $credits = $credits->take(100);
+        // Paginación real: LIMIT en SQL, el HTML solo lleva la página visible.
+        $credits = $query->orderBy('id', 'asc')->paginate(100);
 
         return view('livewire.payments.index', compact('credits', 'totalCapital', 'totalFiltrados'));
     }
