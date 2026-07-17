@@ -99,7 +99,7 @@ class Index extends Component
             ->value('mensaje');
 
         $this->notifTexto = $ultima
-            ?? "⚠️ AVISO PREVENTIVO DE INCUMPLIMIENTO CONTRACTUAL\nEstimado(a) Sr.(a) {$this->notifClientName}:\n";
+            ?? "⚠️ *AVISO PREVENTIVO DE INCUMPLIMIENTO CONTRACTUAL*\nEstimado(a) Sr.(a) {$this->notifClientName}:\n";
         $this->notifEditor = true;
     }
 
