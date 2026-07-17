@@ -81,8 +81,11 @@
            contenido se pierde — se fuerza contraste blanco (solo esta campana). */
         .header-notification .app-dropdown .card,
         .header-notification .app-dropdown .card .card-body { background: #fff !important; }
-        /* Recorta el header/footer al radio del card: sin esquinas blancas arriba */
+        /* El card del header es cuadrado (radius 0 en el tema) pero el
+           card-header conserva el radio interno de Bootstrap: sus esquinas
+           redondeadas dejaban ver el blanco del card. Se iguala a cuadrado. */
         .header-notification .app-dropdown .card { overflow: hidden; }
+        .header-notification .app-dropdown .card .card-header { border-radius: 0 !important; }
         .header-notification .app-dropdown .card .card-footer { background: #f7f8fa !important; }
         .header-notification .app-dropdown .card .card-footer a { color: #445; }
         .header-notification .app-dropdown .card .card-footer a:hover { color: #0d6efd; }
