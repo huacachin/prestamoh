@@ -410,7 +410,16 @@
                                 @foreach($notifs as $n)
                                     <tr>
                                         <td class="text-center fw-bold">{{ $n->numero }}</td>
-                                        <td class="text-center">{{ \Carbon\Carbon::parse($n->created_at)->format('d/m/Y H:i') }}</td>
+                                        <td class="text-center">
+                                            {{ \Carbon\Carbon::parse($n->created_at)->format('d/m/Y H:i') }}
+                                            @if($n->cuotas_vencidas !== null)
+                                                <span class="badge {{ $n->cuotas_vencidas >= 3 ? 'bg-danger' : 'bg-warning text-dark' }} d-block mx-auto mt-1"
+                                                      style="font-size: 9px; width: fit-content;"
+                                                      title="Cuotas vencidas al momento del envío">
+                                                    {{ $n->cuotas_vencidas }} venc.
+                                                </span>
+                                            @endif
+                                        </td>
                                         <td style="max-width: 320px;">
                                             @if(mb_strlen($n->mensaje) > 50)
                                                 <span data-bs-toggle="tooltip" data-bs-placement="top"

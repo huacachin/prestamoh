@@ -63,15 +63,14 @@ class Index extends Component
 
     public string $compDetalle = '';
 
-    /** Abre el modal de notificaciones del cliente (botón WhatsApp de la fila). */
-    public function abrirNotifs(int $clientId): void
+    /** Cuotas vencidas impagas del PEOR crédito activo del cliente, a hoy. */
+    private function cuotasVencidasDe(?int $clientId): int
     {
-        $client = Client::findOrFail($clientId);
+        if (! $clientId) {
+            return 0;
+        }
 
-        $this->notifClientId = $clientId;
-        $this->notifClientName = trim("{$client->apellido_pat} {$client->apellido_mat} {$client->nombre}");
-        $this->notifTelefono = preg_replace('/\D/', '', (string) $client->celular1);
-        $this->notifVencidas = (int) (DB::table('credits as c')
+        return (int) (DB::table('credits as c')
             ->join('credit_installments as i', 'i.credit_id', '=', 'c.id')
             ->where('c.client_id', $clientId)
             ->where('c.situacion', 'Activo')
@@ -82,6 +81,17 @@ class Index extends Component
             ->selectRaw('COUNT(*) v')
             ->orderByDesc('v')
             ->value('v') ?? 0);
+    }
+
+    /** Abre el modal de notificaciones del cliente (botón WhatsApp de la fila). */
+    public function abrirNotifs(int $clientId): void
+    {
+        $client = Client::findOrFail($clientId);
+
+        $this->notifClientId = $clientId;
+        $this->notifClientName = trim("{$client->apellido_pat} {$client->apellido_mat} {$client->nombre}");
+        $this->notifTelefono = preg_replace('/\D/', '', (string) $client->celular1);
+        $this->notifVencidas = $this->cuotasVencidasDe($clientId);
         $this->notifEditor = false;
         $this->notifTexto = '';
         $this->compNotifId = null;
@@ -90,16 +100,27 @@ class Index extends Component
         $this->dispatch('notif-open');
     }
 
-    /** Abre el editor precargado: último texto enviado, o la plantilla base. */
+    /**
+     * Abre el editor precargado según el NIVEL de morosidad actual:
+     * el último mensaje enviado del mismo nivel (2 vencidas vs 3+), o la
+     * plantilla base de ese nivel si nunca se envió una. Así, si el cliente
+     * se puso al día y recae, vuelve a salir el mensaje del nivel que toca.
+     */
     public function nuevaNotif(): void
     {
-        $ultima = DB::table('client_notifications')
-            ->where('client_id', $this->notifClientId)
-            ->orderByDesc('numero')
-            ->value('mensaje');
+        // Recalcula AL MOMENTO del click (pudo cambiar desde que se abrió el modal)
+        $this->notifVencidas = $this->cuotasVencidasDe($this->notifClientId);
+        $nivel3 = $this->notifVencidas >= 3;
 
-        $this->notifTexto = $ultima
-            ?? "⚠️ *AVISO PREVENTIVO DE INCUMPLIMIENTO CONTRACTUAL*\nEstimado(a) Sr.(a) {$this->notifClientName}:\n";
+        $q = DB::table('client_notifications')->where('client_id', $this->notifClientId);
+        $nivel3
+            ? $q->where('cuotas_vencidas', '>=', 3)
+            : $q->where('cuotas_vencidas', 2);
+        $ultima = $q->orderByDesc('numero')->value('mensaje');
+
+        $this->notifTexto = $ultima ?? ($nivel3
+            ? "⚖️ *COMUNICADO DE REGULARIZACIÓN DE PAGO*\nEstimado(a) Sr.(a) {$this->notifClientName}:\n"
+            : "⚠️ *AVISO PREVENTIVO DE INCUMPLIMIENTO CONTRACTUAL*\nEstimado(a) Sr.(a) {$this->notifClientName}:\n");
         $this->notifEditor = true;
     }
 
@@ -128,6 +149,7 @@ class Index extends Component
                 'numero' => $numero,
                 'mensaje' => $this->notifTexto,
                 'telefono' => $this->notifTelefono,
+                'cuotas_vencidas' => $this->notifVencidas,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
