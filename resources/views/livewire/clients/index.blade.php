@@ -411,7 +411,17 @@
                                     <tr>
                                         <td class="text-center fw-bold">{{ $n->numero }}</td>
                                         <td class="text-center">{{ \Carbon\Carbon::parse($n->created_at)->format('d/m/Y H:i') }}</td>
-                                        <td style="white-space: pre-line; max-width: 320px;">{{ $n->mensaje }}</td>
+                                        <td style="max-width: 320px;">
+                                            @if(mb_strlen($n->mensaje) > 50)
+                                                <span data-bs-toggle="tooltip" data-bs-placement="top"
+                                                      data-bs-custom-class="notif-tooltip"
+                                                      data-bs-title="{{ $n->mensaje }}" style="cursor: help;">
+                                                    {{ mb_substr($n->mensaje, 0, 50) }}…
+                                                </span>
+                                            @else
+                                                {{ $n->mensaje }}
+                                            @endif
+                                        </td>
                                         <td class="text-center">{{ $n->usuario ?? $n->usuario_name ?? '—' }}</td>
                                         <td>
                                             @if($compNotifId === $n->id)
@@ -471,11 +481,21 @@
 <span id="final"></span>
 
 <script>
-    // Al guardar la notificación, el componente pide abrir WhatsApp con el texto.
     document.addEventListener('livewire:init', () => {
+        // Al guardar la notificación, el componente pide abrir WhatsApp con el texto.
         Livewire.on('notif-wa', (e) => {
             const url = e?.url ?? e?.[0]?.url;
             if (url) window.open(url, '_blank');
+        });
+
+        // Tooltips Bootstrap del modal (mensaje truncado a 50 chars):
+        // se re-inicializan tras cada update de Livewire (el morph crea nodos nuevos).
+        Livewire.hook('commit', ({ succeed }) => {
+            succeed(() => setTimeout(() => {
+                if (typeof bootstrap === 'undefined') return;
+                document.querySelectorAll('#notifModal [data-bs-toggle="tooltip"]')
+                    .forEach(el => bootstrap.Tooltip.getOrCreateInstance(el));
+            }, 60));
         });
     });
 </script>
@@ -499,6 +519,13 @@
     .clients-legacy tbody tr[style*="background-color"] > * {
         box-shadow: none !important;
         background-color: inherit !important;
+    }
+
+    /* Tooltip del mensaje de notificación: conserva saltos de línea */
+    .notif-tooltip .tooltip-inner {
+        white-space: pre-line;
+        text-align: left;
+        max-width: 340px;
     }
 
     /* ── Chips del filtro de morosidad ── */
