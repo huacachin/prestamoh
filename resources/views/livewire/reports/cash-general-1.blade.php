@@ -190,7 +190,7 @@
                                             @if(($day['sub_egresos_ref'] ?? 0) > 0)
                                                 <span class="caja1-obs-int"
                                                       data-bs-toggle="tooltip" data-bs-placement="top"
-                                                      data-bs-title="Incluye {{ $day['sub_egresos_ref_n'] }} refinanciado{{ $day['sub_egresos_ref_n'] === 1 ? '' : 's' }} (REF) = {{ number_format($day['sub_egresos_ref'], 2) }} · Total sin REF: {{ number_format($tot - $day['sub_egresos_ref'], 2) }}">
+                                                      data-bs-title="Incluye {{ $day['sub_egresos_ref_n'] }} refinanciado{{ $day['sub_egresos_ref_n'] === 1 ? '' : 's' }} (REF) = {{ number_format($day['sub_egresos_ref'], 2) }} · Total Caja: {{ number_format($tot - $day['sub_egresos_ref'], 2) }}">
                                                     <i class="ti ti-exclamation-mark"></i>
                                                 </span>
                                             @endif
@@ -242,7 +242,7 @@
                                     @if($toffRef > 0)
                                         <span class="caja1-obs-int"
                                               data-bs-toggle="tooltip" data-bs-placement="top"
-                                              data-bs-title="Incluye {{ $toffRefN }} refinanciado{{ $toffRefN === 1 ? '' : 's' }} (REF) = {{ number_format($toffRef, 2) }} · Total sin REF: {{ number_format($toff1 - $toffRef, 2) }}">
+                                              data-bs-title="Incluye {{ $toffRefN }} refinanciado{{ $toffRefN === 1 ? '' : 's' }} (REF) = {{ number_format($toffRef, 2) }} · Total Caja: {{ number_format($toff1 - $toffRef, 2) }}">
                                             <i class="ti ti-exclamation-mark"></i>
                                         </span>
                                     @endif
@@ -404,7 +404,7 @@
                                             @if(($day['sub_egresos_ref'] ?? 0) > 0)
                                                 <span class="caja1-obs-int"
                                                       data-bs-toggle="tooltip" data-bs-placement="top"
-                                                      data-bs-title="Incluye {{ $day['sub_egresos_ref_n'] }} refinanciado{{ $day['sub_egresos_ref_n'] === 1 ? '' : 's' }} (REF) = {{ number_format($day['sub_egresos_ref'], 2) }} · Total sin REF: {{ number_format($totalDiaCaja - $day['sub_egresos_ref'], 2) }}">
+                                                      data-bs-title="Incluye {{ $day['sub_egresos_ref_n'] }} refinanciado{{ $day['sub_egresos_ref_n'] === 1 ? '' : 's' }} (REF) = {{ number_format($day['sub_egresos_ref'], 2) }} · Total Caja: {{ number_format($totalDiaCaja - $day['sub_egresos_ref'], 2) }}">
                                                     <i class="ti ti-exclamation-mark"></i>
                                                 </span>
                                             @endif
@@ -445,7 +445,7 @@
                                                 @if($toffRef > 0)
                                                     <span class="caja1-obs-int"
                                                           data-bs-toggle="tooltip" data-bs-placement="top"
-                                                          data-bs-title="Incluye {{ $toffRefN }} refinanciado{{ $toffRefN === 1 ? '' : 's' }} (REF) = {{ number_format($toffRef, 2) }} · Total sin REF: {{ number_format($toff1 - $toffRef, 2) }}">
+                                                          data-bs-title="Incluye {{ $toffRefN }} refinanciado{{ $toffRefN === 1 ? '' : 's' }} (REF) = {{ number_format($toffRef, 2) }} · Total Caja: {{ number_format($toff1 - $toffRef, 2) }}">
                                                         <i class="ti ti-exclamation-mark"></i>
                                                     </span>
                                                 @endif
