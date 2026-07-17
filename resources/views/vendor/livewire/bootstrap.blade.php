@@ -14,7 +14,7 @@ $scrollIntoViewJsSnippet = ($scrollTo !== false)
     @if ($paginator->hasPages())
         <div class="d-flex justify-items-center justify-content-between">
             <div class="d-flex justify-content-between flex-fill d-sm-none">
-                <ul class="pagination">
+                <ul class="pagination app-pagination">
                     {{-- Previous Page Link --}}
                     @if ($paginator->onFirstPage())
                         <li class="page-item disabled" aria-disabled="true">
@@ -53,7 +53,7 @@ $scrollIntoViewJsSnippet = ($scrollTo !== false)
                 </div>
 
                 <div>
-                    <ul class="pagination">
+                    <ul class="pagination app-pagination">
                         {{-- Previous Page Link --}}
                         @if ($paginator->onFirstPage())
                             <li class="page-item disabled" aria-disabled="true" aria-label="@lang('pagination.previous')">
