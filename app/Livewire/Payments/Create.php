@@ -416,14 +416,26 @@ class Create extends Component
                 $unpaid = CreditInstallment::where('credit_id', $this->credit->id)
                     ->where('pagado', 0)->orderBy('num_cuota')->get();
                 $remaining = (float) $this->monto;
+                // Capital pagado en cuotas anteriores de ESTE pago (decide el
+                // destino del sobrante que desborda a la cuota siguiente).
+                $opPagoCapital = false;
 
                 foreach ($unpaid as $ins) {
                     if ($remaining < 0.01) {
                         break;
                     }
 
-                    if ($isMensualUnaCuota) {
-                        // BRANCH ESPECIAL: tipoplani=3 + cuotas=1 → INTERES PRIMERO
+                    // Flujo de negocio: si el pago entró en fase de interés (el
+                    // capital de la cuota en curso ya estaba cubierto y este
+                    // pago no puso capital), el sobrante que desborda a la
+                    // cuota siguiente se aplica a su INTERÉS, no a su capital.
+                    // Así el desglose de Caja 1 cuadra con el legacy (p. ej.
+                    // pago 180 con interés restante 94.73: 94.73 INT cuota N +
+                    // 85.27 INT cuota N+1, antes iba a capital de N+1).
+                    $sobranteAInteres = count($touchedThisPayment) > 0 && ! $opPagoCapital;
+
+                    if ($isMensualUnaCuota || $sobranteAInteres) {
+                        // INTERES PRIMERO (tipoplani=3 + cuotas=1, o sobrante de fase interés)
                         $apagarInt = (float) $ins->importe_interes - (float) $ins->interes_aplicado;
                         $apagarCap = (float) $ins->importe_cuota - (float) $ins->importe_aplicado;
 
@@ -440,6 +452,10 @@ class Create extends Component
                         $remaining -= $payCap;
                         $payInt = round(min($remaining, max(0, $apagarInt)), 2);
                         $remaining -= $payInt;
+                    }
+
+                    if ($payCap > 0.001) {
+                        $opPagoCapital = true;
                     }
 
                     // Excedente de redondeo (cuota uniforme): siempre al final
