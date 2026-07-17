@@ -106,7 +106,7 @@ class Index extends Component
     public function enviarNotif(): void
     {
         $this->validate(
-            ['notifTexto' => 'required|string|max:2000'],
+            ['notifTexto' => 'required|string|max:20000'],
             ['notifTexto.required' => 'Escribe el mensaje a enviar.']
         );
         if (! $this->notifClientId || $this->notifTelefono === '') {
@@ -155,7 +155,7 @@ class Index extends Component
     public function guardarCompromiso(): void
     {
         $this->validate(
-            ['compFecha' => 'required|date', 'compDetalle' => 'nullable|string|max:500'],
+            ['compFecha' => 'required|date', 'compDetalle' => 'nullable|string|max:5000'],
             ['compFecha.required' => 'Indica la fecha en que se compromete a pagar.']
         );
 

@@ -421,7 +421,7 @@
                                                            wire:model="compFecha">
                                                     @error('compFecha') <div class="text-danger" style="font-size:10px;">{{ $message }}</div> @enderror
                                                     <input type="text" class="form-control form-control-sm" placeholder="Detalle (opcional)"
-                                                           wire:model="compDetalle" maxlength="500">
+                                                           wire:model="compDetalle" maxlength="5000">
                                                     <div class="d-flex gap-1">
                                                         <button type="button" class="btn btn-xs btn-dark" style="padding:2px 8px; font-size:10px;"
                                                                 wire:click="guardarCompromiso">Guardar</button>
