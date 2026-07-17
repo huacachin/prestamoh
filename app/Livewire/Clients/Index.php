@@ -10,9 +10,26 @@ use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 class Index extends Component
 {
+    use WithPagination;
+
+    protected $paginationTheme = 'bootstrap';
+
+    /** Al cambiar cualquier filtro se vuelve a la página 1. */
+    public function updating($name, $value): void
+    {
+        if (in_array($name, ['nexpediente', 'documento', 'nombre', 'ruta', 'giro', 'ejecutivo'], true)) {
+            $this->resetPage();
+        }
+    }
+
+    /** El modal hijo avisa que envió una notificación: re-render para refrescar el check ✓. */
+    #[On('notif-enviada')]
+    public function refrescarChecks(): void {}
+
     #[Url(as: 'expediente', except: '')]
     public $nexpediente = '';
 
@@ -39,162 +56,7 @@ class Index extends Component
     public function filtrarMorosidad(string $estado): void
     {
         $this->morosidadFiltro = $this->morosidadFiltro === $estado ? '' : $estado;
-    }
-
-    // ─── Modal de notificaciones WhatsApp (cobranza) ───────────────────
-
-    public ?int $notifClientId = null;
-
-    public string $notifClientName = '';
-
-    public string $notifTelefono = '';
-
-    public int $notifVencidas = 0;
-
-    /** Editor de "nueva notificación" visible dentro del modal. */
-    public bool $notifEditor = false;
-
-    public string $notifTexto = '';
-
-    // Compromiso de pago (edición inline por notificación)
-    public ?int $compNotifId = null;
-
-    public string $compFecha = '';
-
-    public string $compDetalle = '';
-
-    /** Cuotas vencidas impagas del PEOR crédito activo del cliente, a hoy. */
-    private function cuotasVencidasDe(?int $clientId): int
-    {
-        if (! $clientId) {
-            return 0;
-        }
-
-        return (int) (DB::table('credits as c')
-            ->join('credit_installments as i', 'i.credit_id', '=', 'c.id')
-            ->where('c.client_id', $clientId)
-            ->where('c.situacion', 'Activo')
-            ->where('i.pagado', 0)
-            ->whereNotNull('i.fecha_vencimiento')
-            ->where('i.fecha_vencimiento', '<', now()->format('Y-m-d'))
-            ->groupBy('c.id')
-            ->selectRaw('COUNT(*) v')
-            ->orderByDesc('v')
-            ->value('v') ?? 0);
-    }
-
-    /** Abre el modal de notificaciones del cliente (botón WhatsApp de la fila). */
-    public function abrirNotifs(int $clientId): void
-    {
-        $client = Client::findOrFail($clientId);
-
-        $this->notifClientId = $clientId;
-        $this->notifClientName = trim("{$client->apellido_pat} {$client->apellido_mat} {$client->nombre}");
-        $this->notifTelefono = preg_replace('/\D/', '', (string) $client->celular1);
-        $this->notifVencidas = $this->cuotasVencidasDe($clientId);
-        $this->notifEditor = false;
-        $this->notifTexto = '';
-        $this->compNotifId = null;
-        $this->resetErrorBag();
-
-        $this->dispatch('notif-open');
-    }
-
-    /**
-     * Abre el editor precargado según el NIVEL de morosidad actual:
-     * el último mensaje enviado del mismo nivel (2 vencidas vs 3+), o la
-     * plantilla base de ese nivel si nunca se envió una. Así, si el cliente
-     * se puso al día y recae, vuelve a salir el mensaje del nivel que toca.
-     */
-    public function nuevaNotif(): void
-    {
-        // Recalcula AL MOMENTO del click (pudo cambiar desde que se abrió el modal)
-        $this->notifVencidas = $this->cuotasVencidasDe($this->notifClientId);
-        $nivel3 = $this->notifVencidas >= 3;
-
-        $q = DB::table('client_notifications')->where('client_id', $this->notifClientId);
-        $nivel3
-            ? $q->where('cuotas_vencidas', '>=', 3)
-            : $q->where('cuotas_vencidas', 2);
-        $ultima = $q->orderByDesc('numero')->value('mensaje');
-
-        $this->notifTexto = $ultima ?? ($nivel3
-            ? "⚖️ *COMUNICADO DE REGULARIZACIÓN DE PAGO*\nEstimado(a) Sr.(a) {$this->notifClientName}:\n"
-            : "⚠️ *AVISO PREVENTIVO DE INCUMPLIMIENTO CONTRACTUAL*\nEstimado(a) Sr.(a) {$this->notifClientName}:\n");
-        $this->notifEditor = true;
-    }
-
-    /** Guarda la notificación (correlativo por cliente) y abre WhatsApp con el texto. */
-    public function enviarNotif(): void
-    {
-        $this->validate(
-            ['notifTexto' => 'required|string|max:20000'],
-            ['notifTexto.required' => 'Escribe el mensaje a enviar.']
-        );
-        if (! $this->notifClientId || $this->notifTelefono === '') {
-            $this->dispatch('errorAlert', ['message' => 'El cliente no tiene número de celular.']);
-
-            return;
-        }
-
-        DB::transaction(function () {
-            $numero = (int) DB::table('client_notifications')
-                ->where('client_id', $this->notifClientId)
-                ->lockForUpdate()
-                ->max('numero') + 1;
-
-            DB::table('client_notifications')->insert([
-                'client_id' => $this->notifClientId,
-                'user_id' => auth()->id(),
-                'numero' => $numero,
-                'mensaje' => $this->notifTexto,
-                'telefono' => $this->notifTelefono,
-                'cuotas_vencidas' => $this->notifVencidas,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        });
-
-        $this->notifEditor = false;
-        $url = 'https://api.whatsapp.com/send?phone=51'.$this->notifTelefono.'&text='.rawurlencode($this->notifTexto);
-        $this->dispatch('notif-wa', url: $url);
-    }
-
-    /** Abre el mini-form de compromiso de una notificación (precarga si ya tiene). */
-    public function abrirCompromiso(int $notifId): void
-    {
-        $n = DB::table('client_notifications')
-            ->where('id', $notifId)->where('client_id', $this->notifClientId)->first();
-        if (! $n) {
-            return;
-        }
-
-        $this->compNotifId = $notifId;
-        $this->compFecha = $n->compromiso_fecha ?? '';
-        $this->compDetalle = (string) ($n->compromiso_detalle ?? '');
-        $this->resetErrorBag();
-    }
-
-    public function guardarCompromiso(): void
-    {
-        $this->validate(
-            ['compFecha' => 'required|date', 'compDetalle' => 'nullable|string|max:5000'],
-            ['compFecha.required' => 'Indica la fecha en que se compromete a pagar.']
-        );
-
-        DB::table('client_notifications')
-            ->where('id', $this->compNotifId)->where('client_id', $this->notifClientId)
-            ->update([
-                'compromiso_fecha' => $this->compFecha,
-                'compromiso_detalle' => $this->compDetalle !== '' ? $this->compDetalle : null,
-                'compromiso_user_id' => auth()->id(),
-                'compromiso_registrado_at' => now(),
-                'compromiso_cumplido_at' => null,
-                'updated_at' => now(),
-            ]);
-
-        $this->compNotifId = null;
-        $this->dispatch('successAlert', ['message' => 'Compromiso de pago guardado.']);
+        $this->resetPage();
     }
 
     // Modal de coordenadas (Casa / Negocio)
@@ -352,28 +214,19 @@ class Index extends Component
             $query->where('giro', 'like', '%'.trim($this->giro).'%');
         }
 
-        $clients = $query->orderByRaw('CAST(expediente AS UNSIGNED) ASC')->get();
-
         // Asesores para dropdown: cualquier usuario que pueda ser "asesor responsable" o tenga acceso amplio.
         $asesores = User::permission('creditos.ser-asesor-responsable')
             ->where('status', 'active')
             ->orderBy('name')
             ->get(['id', 'name', 'username']);
 
-        // IDs de clientes con crédito vigente (para colorear)
-        $clientIds = $clients->pluck('id')->toArray();
-        $clientsWithCredit = [];
+        // Solo IDs del conjunto filtrado (liviano): base para morosidad y chips.
+        $clientIds = (clone $query)->pluck('clients.id')->toArray();
+
+        // Morosidad: cuotas vencidas impagas por crédito activo; por cliente
+        // se toma el PEOR de sus créditos (2 → fila naranja, 3+ → fila roja).
         $morosidad = [];
         if (! empty($clientIds)) {
-            $clientsWithCredit = Credit::whereIn('client_id', $clientIds)
-                ->where('situacion', 'Activo')
-                ->distinct()
-                ->pluck('client_id')
-                ->flip()
-                ->toArray();
-
-            // Morosidad: cuotas vencidas impagas por crédito activo; por cliente
-            // se toma el PEOR de sus créditos (2 → fila naranja, 3+ → fila roja).
             $rows = DB::table('credits as c')
                 ->join('credit_installments as i', 'i.credit_id', '=', 'c.id')
                 ->whereIn('c.client_id', $clientIds)
@@ -389,43 +242,55 @@ class Index extends Component
             }
         }
 
-        // Conteos para los chips (sobre la lista ya filtrada por los demás criterios)
-        $vencDe = fn ($c) => $morosidad[$c->id] ?? 0;
-        $countRojo = $clients->filter(fn ($c) => $vencDe($c) >= 3)->count();
-        $countNaranja = $clients->filter(fn ($c) => $vencDe($c) === 2)->count();
-        $countAldia = $clients->count() - $countRojo - $countNaranja;
+        // Conteos para los chips (sobre TODO el conjunto filtrado, no la página)
+        $countRojo = count(array_filter($morosidad, fn ($v) => $v >= 3));
+        $countNaranja = count(array_filter($morosidad, fn ($v) => $v === 2));
+        $countAldia = count($clientIds) - $countRojo - $countNaranja;
 
-        // Aplicar el chip seleccionado
-        $clients = match ($this->morosidadFiltro) {
-            'rojo' => $clients->filter(fn ($c) => $vencDe($c) >= 3)->values(),
-            'naranja' => $clients->filter(fn ($c) => $vencDe($c) === 2)->values(),
-            'aldia' => $clients->filter(fn ($c) => $vencDe($c) < 2)->values(),
-            default => $clients,
-        };
+        // Chip seleccionado → se restringe la query por IDs del nivel
+        if ($this->morosidadFiltro !== '') {
+            $idsNivel = array_values(array_filter($clientIds, function ($id) use ($morosidad) {
+                $v = $morosidad[$id] ?? 0;
 
-        // Clientes con notificación WhatsApp enviada HOY (check compartido)
-        $waEnviadosHoy = [];
-        if ($clients->isNotEmpty()) {
-            $waEnviadosHoy = DB::table('client_notifications')
-                ->whereDate('created_at', now()->format('Y-m-d'))
-                ->whereIn('client_id', $clients->pluck('id'))
-                ->distinct()
-                ->pluck('client_id')
-                ->flip()
-                ->toArray();
+                return match ($this->morosidadFiltro) {
+                    'rojo' => $v >= 3,
+                    'naranja' => $v === 2,
+                    default => $v < 2, // aldia
+                };
+            }));
+            $query->whereIn('clients.id', $idsNivel);
         }
 
-        // Historial del modal de notificaciones (solo si está abierto)
-        $notifs = $this->notifClientId
-            ? DB::table('client_notifications as n')
-                ->leftJoin('users as u', 'u.id', '=', 'n.user_id')
-                ->where('n.client_id', $this->notifClientId)
-                ->orderByDesc('n.numero')
-                ->get(['n.*', 'u.username as usuario', 'u.name as usuario_name'])
-            : collect();
+        $totalFiltrados = match ($this->morosidadFiltro) {
+            'rojo' => $countRojo,
+            'naranja' => $countNaranja,
+            'aldia' => $countAldia,
+            default => count($clientIds),
+        };
+
+        // Paginación real: solo se hidratan y renderizan los 100 de la página.
+        $clients = $query->orderByRaw('CAST(expediente AS UNSIGNED) ASC')->paginate(100);
+        $pageIds = $clients->pluck('id');
+
+        // Con crédito vigente (color de texto) y WhatsApp enviado hoy (check):
+        // solo para los visibles de la página.
+        $clientsWithCredit = Credit::whereIn('client_id', $pageIds)
+            ->where('situacion', 'Activo')
+            ->distinct()
+            ->pluck('client_id')
+            ->flip()
+            ->toArray();
+
+        $waEnviadosHoy = DB::table('client_notifications')
+            ->whereDate('created_at', now()->format('Y-m-d'))
+            ->whereIn('client_id', $pageIds)
+            ->distinct()
+            ->pluck('client_id')
+            ->flip()
+            ->toArray();
 
         $puedeCoords = $this->puedeGuardarCoords();
 
-        return view('livewire.clients.index', compact('clients', 'asesores', 'clientsWithCredit', 'morosidad', 'puedeCoords', 'countAldia', 'countNaranja', 'countRojo', 'waEnviadosHoy', 'notifs'));
+        return view('livewire.clients.index', compact('clients', 'asesores', 'clientsWithCredit', 'morosidad', 'puedeCoords', 'countAldia', 'countNaranja', 'countRojo', 'waEnviadosHoy', 'totalFiltrados'));
     }
 }

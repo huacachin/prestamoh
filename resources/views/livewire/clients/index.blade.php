@@ -128,24 +128,24 @@
                                     data-bg="{{ $rowBg }}"
                                     onmouseover="this.style.backgroundColor='#CCFF66'"
                                     onmouseout="this.style.backgroundColor=this.getAttribute('data-bg')">
-                                    <td class="text-center" style="color: inherit;">{{ $loop->iteration }}</td>
-                                    <td class="text-center" style="color: inherit;">{{ $client->fecha_registro?->format('Y-m-d') }}</td>
-                                    <td class="text-center" style="color: inherit;">{{ $client->usuario }}</td>
-                                    <td class="text-center" style="color: inherit;">{{ $client->expediente }}</td>
-                                    <td class="col-wrap" style="color: inherit;">
+                                    <td class="text-center">{{ $clients->firstItem() + $loop->index }}</td>
+                                    <td class="text-center">{{ $client->fecha_registro?->format('Y-m-d') }}</td>
+                                    <td class="text-center">{{ $client->usuario }}</td>
+                                    <td class="text-center">{{ $client->expediente }}</td>
+                                    <td class="col-wrap">
                                         <a href="{{ route('clients.edit', $client->id) }}" style="color: black; text-decoration: none;">
                                             {{ $client->apellido_pat }} {{ $client->apellido_mat }} {{ $client->nombre }}
                                         </a>
                                     </td>
-                                    <td style="color: inherit;">
+                                    <td>
                                         <a href="{{ route('credits.create', $client->id) }}" style="color: inherit; text-decoration: none;">
                                             {{ $client->documento }}
                                         </a>
                                     </td>
-                                    <td style="color: inherit;">{{ $client->celular1 }}</td>
-                                    <td class="text-center" style="color: inherit;">{{ $client->zona }}</td>
-                                    <td class="text-center" style="color: inherit;">{{ $client->giro }}</td>
-                                    <td class="text-center" style="color: inherit;">{{ $client->asesor?->username ?? $client->asesor?->name }}</td>
+                                    <td>{{ $client->celular1 }}</td>
+                                    <td class="text-center">{{ $client->zona }}</td>
+                                    <td class="text-center">{{ $client->giro }}</td>
+                                    <td class="text-center">{{ $client->asesor?->username ?? $client->asesor?->name }}</td>
                                     <td class="text-center text-nowrap">
                                         <a href="{{ route('clients.show', $client->id) }}"
                                            class="btn btn-xs btn-primary" style="padding: 2px 8px; font-size: 10px;">
@@ -193,7 +193,7 @@
                                     <td class="text-center">
                                         @php $waTel = preg_replace('/\D/', '', (string) $client->celular1); @endphp
                                         @if($venc >= 2 && $waTel !== '')
-                                            <a href="#" wire:click.prevent="abrirNotifs({{ $client->id }})"
+                                            <a href="#" wire:click.prevent="$dispatch('abrir-notifs', { clientId: {{ $client->id }} })"
                                                title="Notificaciones WhatsApp ({{ $venc }} cuotas vencidas)">
                                                 <i class="ti ti-brand-whatsapp f-s-16 text-success"></i>
                                             </a>
@@ -216,7 +216,7 @@
                                 <tr>
                                     <td colspan="2">TOTAL</td>
                                     <td colspan="12"></td>
-                                    <td class="text-center fw-bold">{{ $clients->count() }}</td>
+                                    <td class="text-center fw-bold">{{ $totalFiltrados }}</td>
                                     <td></td>
                                 </tr>
                             </tfoot>
@@ -286,7 +286,7 @@
                                             $waTelM = preg_replace('/\D/', '', (string) $client->celular1);
                                         @endphp
                                         @if($vencM >= 2 && $waTelM !== '')
-                                            <button type="button" wire:click="abrirNotifs({{ $client->id }})"
+                                            <button type="button" wire:click="$dispatch('abrir-notifs', { clientId: {{ $client->id }} })"
                                                     class="btn btn-xs btn-success" style="padding: 2px 8px; font-size: 10px;">
                                                 <i class="ti ti-brand-whatsapp"></i> WA
                                                 @if(isset($waEnviadosHoy[$client->id]))<i class="ti ti-checks"></i>@endif
@@ -299,8 +299,13 @@
                             <div class="text-center text-muted py-4">No se encontraron resultados</div>
                         @endforelse
                         <div class="text-center mt-2">
-                            <span class="badge bg-primary">Total: {{ $clients->count() }}</span>
+                            <span class="badge bg-primary">Total: {{ $totalFiltrados }}</span>
                         </div>
+                    </div>
+
+                    {{-- Paginación (LIMIT en SQL: solo viaja la página visible) --}}
+                    <div class="mt-3">
+                        {{ $clients->links() }}
                     </div>
                 </div>
             </div>
@@ -345,169 +350,12 @@
         </div>
     </div>
 
-    {{-- ═══ Modal de notificaciones WhatsApp (cobranza) ═══ --}}
-    <div class="modal fade" id="notifModal" tabindex="-1" aria-hidden="true" wire:ignore.self
-         x-data="{ modal: null }"
-         x-init="modal = bootstrap.Modal.getOrCreateInstance($el);"
-         x-on:notif-open.window="modal.show()"
-         x-on:notif-close.window="modal.hide()">
-        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header py-2">
-                    <h6 class="modal-title mb-0">
-                        <i class="ti ti-brand-whatsapp text-success"></i>
-                        Notificaciones — {{ $notifClientName }}
-                        @if($notifVencidas > 0)
-                            <span class="badge {{ $notifVencidas >= 3 ? 'bg-danger' : 'bg-warning text-dark' }}" style="font-size:10px;">
-                                {{ $notifVencidas }} cuotas vencidas
-                            </span>
-                        @endif
-                    </h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                </div>
-                <div class="modal-body">
-
-                    {{-- Editor de nueva notificación --}}
-                    @if($notifEditor)
-                        <div class="border rounded p-2 mb-3" style="background:#f6fbf7;">
-                            <label class="form-label small fw-semibold mb-1">Mensaje a enviar por WhatsApp</label>
-                            <textarea class="form-control form-control-sm @error('notifTexto') is-invalid @enderror"
-                                      rows="4" wire:model="notifTexto"></textarea>
-                            @error('notifTexto') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                            <div class="d-flex gap-2 mt-2">
-                                <button type="button" class="btn btn-sm btn-success"
-                                        wire:click="enviarNotif" wire:loading.attr="disabled" wire:target="enviarNotif">
-                                    <i class="ti ti-brand-whatsapp"></i>
-                                    <span wire:loading.remove wire:target="enviarNotif">Enviar por WhatsApp</span>
-                                    <span wire:loading wire:target="enviarNotif">Guardando…</span>
-                                </button>
-                                <button type="button" class="btn btn-sm btn-secondary" wire:click="$set('notifEditor', false)">Cancelar</button>
-                            </div>
-                            <div class="form-text">Al enviar se guarda en el historial y se abre WhatsApp con el texto listo.</div>
-                        </div>
-                    @else
-                        <button type="button" class="btn btn-sm btn-success mb-3" wire:click="nuevaNotif">
-                            <i class="ti ti-plus"></i> Nueva notificación
-                        </button>
-                    @endif
-
-                    {{-- Historial --}}
-                    @if($notifs->isEmpty())
-                        <p class="text-muted small mb-0">Aún no se han enviado notificaciones a este cliente.</p>
-                    @else
-                        <div class="table-responsive">
-                            <table class="table table-sm table-bordered align-middle" style="font-size:12px;">
-                                <thead class="bg-primary">
-                                    <tr>
-                                        <th class="text-center" style="width:34px;">#</th>
-                                        <th class="text-center" style="width:110px;">Enviada</th>
-                                        <th>Mensaje</th>
-                                        <th class="text-center" style="width:90px;">Usuario</th>
-                                        <th style="width:220px;">Compromiso de pago</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                @foreach($notifs as $n)
-                                    <tr>
-                                        <td class="text-center fw-bold">{{ $n->numero }}</td>
-                                        <td class="text-center">
-                                            {{ \Carbon\Carbon::parse($n->created_at)->format('d/m/Y H:i') }}
-                                            @if($n->cuotas_vencidas !== null)
-                                                <span class="badge {{ $n->cuotas_vencidas >= 3 ? 'bg-danger' : 'bg-warning text-dark' }} d-block mx-auto mt-1"
-                                                      style="font-size: 9px; width: fit-content;"
-                                                      title="Cuotas vencidas al momento del envío">
-                                                    {{ $n->cuotas_vencidas }} venc.
-                                                </span>
-                                            @endif
-                                        </td>
-                                        <td style="max-width: 320px;">
-                                            @if(mb_strlen($n->mensaje) > 50)
-                                                <span data-bs-toggle="tooltip" data-bs-placement="top"
-                                                      data-bs-custom-class="notif-tooltip"
-                                                      data-bs-title="{{ $n->mensaje }}" style="cursor: help;">
-                                                    {{ mb_substr($n->mensaje, 0, 50) }}…
-                                                </span>
-                                            @else
-                                                {{ $n->mensaje }}
-                                            @endif
-                                        </td>
-                                        <td class="text-center">{{ $n->usuario ?? $n->usuario_name ?? '—' }}</td>
-                                        <td>
-                                            @if($compNotifId === $n->id)
-                                                {{-- Mini-form de compromiso --}}
-                                                <div class="d-flex flex-column gap-1">
-                                                    <input type="date" class="form-control form-control-sm @error('compFecha') is-invalid @enderror"
-                                                           wire:model="compFecha">
-                                                    @error('compFecha') <div class="text-danger" style="font-size:10px;">{{ $message }}</div> @enderror
-                                                    <input type="text" class="form-control form-control-sm" placeholder="Detalle (opcional)"
-                                                           wire:model="compDetalle" maxlength="5000">
-                                                    <div class="d-flex gap-1">
-                                                        <button type="button" class="btn btn-xs btn-dark" style="padding:2px 8px; font-size:10px;"
-                                                                wire:click="guardarCompromiso">Guardar</button>
-                                                        <button type="button" class="btn btn-xs btn-secondary" style="padding:2px 8px; font-size:10px;"
-                                                                wire:click="$set('compNotifId', null)">Cancelar</button>
-                                                    </div>
-                                                </div>
-                                            @elseif($n->compromiso_fecha)
-                                                @php
-                                                    $cf = \Carbon\Carbon::parse($n->compromiso_fecha);
-                                                    $dias = now()->startOfDay()->diffInDays($cf->copy()->startOfDay(), false);
-                                                    $cfColor = $dias <= 0 ? '#dc3545' : ($dias <= 2 ? '#fd7e14' : '#198754');
-                                                @endphp
-                                                <div>
-                                                    @if($n->compromiso_registrado_at)
-                                                        <div class="text-muted" style="font-size:10px;">
-                                                            <i class="ti ti-pencil"></i> Registrado el {{ \Carbon\Carbon::parse($n->compromiso_registrado_at)->format('d/m/Y H:i') }}
-                                                        </div>
-                                                    @endif
-                                                    <b style="color: {{ $cfColor }};"><i class="ti ti-calendar-event"></i> {{ $cf->format('d/m/Y') }}</b>
-                                                    @if($n->compromiso_cumplido_at)
-                                                        <span class="badge bg-success" style="font-size:9px;">cumplido</span>
-                                                    @endif
-                                                    @if($n->compromiso_detalle)
-                                                        <div class="text-muted" style="font-size:11px;">{{ $n->compromiso_detalle }}</div>
-                                                    @endif
-                                                    <a href="#" wire:click.prevent="abrirCompromiso({{ $n->id }})" style="font-size:10px;">editar</a>
-                                                </div>
-                                            @else
-                                                <button type="button" class="btn btn-xs btn-outline-dark" style="padding:2px 8px; font-size:10px;"
-                                                        wire:click="abrirCompromiso({{ $n->id }})">
-                                                    <i class="ti ti-calendar-plus"></i> Compromiso
-                                                </button>
-                                            @endif
-                                        </td>
-                                    </tr>
-                                @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    @endif
-                </div>
-            </div>
-        </div>
-    </div>
+    {{-- Modal de notificaciones (componente hijo: sus clicks no re-renderizan la lista) --}}
+    <livewire:clients.notifications-modal />
 
 <span id="final"></span>
 
-<script>
-    document.addEventListener('livewire:init', () => {
-        // Al guardar la notificación, el componente pide abrir WhatsApp con el texto.
-        Livewire.on('notif-wa', (e) => {
-            const url = e?.url ?? e?.[0]?.url;
-            if (url) window.open(url, '_blank');
-        });
 
-        // Tooltips Bootstrap del modal (mensaje truncado a 50 chars):
-        // se re-inicializan tras cada update de Livewire (el morph crea nodos nuevos).
-        Livewire.hook('commit', ({ succeed }) => {
-            succeed(() => setTimeout(() => {
-                if (typeof bootstrap === 'undefined') return;
-                document.querySelectorAll('#notifModal [data-bs-toggle="tooltip"]')
-                    .forEach(el => bootstrap.Tooltip.getOrCreateInstance(el));
-            }, 60));
-        });
-    });
-</script>
 
 <style>
     /* Homologado al legacy (cliente.php + ideasweb.css .tableM): fuente Tahoma
@@ -518,6 +366,9 @@
     .clients-legacy th, .clients-legacy td {
         padding: 3px 6px; vertical-align: middle; white-space: nowrap;
     }
+    /* El color de fila (morosidad/sin credito) se hereda en todas las celdas
+       sin repetir style=color:inherit en cada td (aligera ~40KB por pagina). */
+    .clients-legacy tbody td { color: inherit; }
     /* Apellidos y Nombres: puede ser largo → envuelve con tope, como el legacy. */
     .clients-legacy th.col-wrap, .clients-legacy td.col-wrap {
         white-space: normal; min-width: 180px; max-width: 300px;
@@ -528,13 +379,6 @@
     .clients-legacy tbody tr[style*="background-color"] > * {
         box-shadow: none !important;
         background-color: inherit !important;
-    }
-
-    /* Tooltip del mensaje de notificación: conserva saltos de línea */
-    .notif-tooltip .tooltip-inner {
-        white-space: pre-line;
-        text-align: left;
-        max-width: 340px;
     }
 
     /* ── Chips del filtro de morosidad ── */
