@@ -98,7 +98,8 @@ class Index extends Component
             ->orderByDesc('numero')
             ->value('mensaje');
 
-        $this->notifTexto = $ultima ?? "Sr.(a) *{$this->notifClientName}*,\n";
+        $this->notifTexto = $ultima
+            ?? "⚠️ AVISO PREVENTIVO DE INCUMPLIMIENTO CONTRACTUAL\nEstimado(a) Sr.(a) {$this->notifClientName}:\n";
         $this->notifEditor = true;
     }
 
