@@ -81,6 +81,8 @@
            contenido se pierde — se fuerza contraste blanco (solo esta campana). */
         .header-notification .app-dropdown .card,
         .header-notification .app-dropdown .card .card-body { background: #fff !important; }
+        /* Recorta el header/footer al radio del card: sin esquinas blancas arriba */
+        .header-notification .app-dropdown .card { overflow: hidden; }
         .header-notification .app-dropdown .card .card-footer { background: #f7f8fa !important; }
         .header-notification .app-dropdown .card .card-footer a { color: #445; }
         .header-notification .app-dropdown .card .card-footer a:hover { color: #0d6efd; }
