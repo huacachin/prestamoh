@@ -369,7 +369,16 @@
                                         <td class="text-end"><strong>{{ number_format($day['sub_mora'], 2) }}</strong></td>
                                         <td class="text-end" style="color:#b8860b;"><strong>{{ number_format($day['sub_mora_acum'], 2) }}</strong></td>
                                         <td colspan="4"></td>
-                                        <td class="text-end"><strong>{{ number_format($day['sub_egresos'], 2) }}</strong></td>
+                                        <td class="text-end">
+                                            <strong>{{ number_format($day['sub_egresos'], 2) }}</strong>
+                                            @if(($day['sub_egresos_ref'] ?? 0) > 0)
+                                                <span class="caja1-obs-int"
+                                                      data-bs-toggle="tooltip" data-bs-placement="top"
+                                                      data-bs-title="Incluye {{ $day['sub_egresos_ref_n'] }} refinanciado{{ $day['sub_egresos_ref_n'] === 1 ? '' : 's' }} (REF) = {{ number_format($day['sub_egresos_ref'], 2) }} · Egresos sin REF: {{ number_format($day['sub_egresos'] - $day['sub_egresos_ref'], 2) }}">
+                                                    <i class="ti ti-exclamation-mark"></i>
+                                                </span>
+                                            @endif
+                                        </td>
                                         <td></td>
                                         <td class="text-end"><strong>{{ number_format($day['sub_egresos_interes'], 2) }}</strong></td>
                                         <td colspan="3"></td>
@@ -402,7 +411,16 @@
                                             <td class="text-end" style="color:#0d6efd;"><strong>{{ number_format($Tmor4, 2) }}</strong></td>
                                             <td class="text-end" style="color:#b8860b;"><strong>{{ number_format($TmorAcum, 2) }}</strong></td>
                                             <td colspan="4"></td>
-                                            <td class="text-end" style="color:#000;"><strong>{{ number_format($toff, 2) }}</strong></td>
+                                            <td class="text-end" style="color:#000;">
+                                                <strong>{{ number_format($toff, 2) }}</strong>
+                                                @if($toffRef > 0)
+                                                    <span class="caja1-obs-int"
+                                                          data-bs-toggle="tooltip" data-bs-placement="top"
+                                                          data-bs-title="Incluye {{ $toffRefN }} refinanciado{{ $toffRefN === 1 ? '' : 's' }} (REF) = {{ number_format($toffRef, 2) }} · Egresos sin REF: {{ number_format($toff - $toffRef, 2) }}">
+                                                        <i class="ti ti-exclamation-mark"></i>
+                                                    </span>
+                                                @endif
+                                            </td>
                                             <td></td>
                                             <td class="text-end" style="color:#000;"><strong>{{ number_format($toff2, 2) }}</strong></td>
                                             <td colspan="3"></td>
