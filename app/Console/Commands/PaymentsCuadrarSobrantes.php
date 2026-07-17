@@ -104,14 +104,6 @@ class PaymentsCuadrarSobrantes extends Command
                 $headerImpreso = true;
             }
 
-            // El interés de la cuota destino debe absorber el monto completo;
-            // si no alcanza (caso raro de cascada), se revisa a mano.
-            if ((float) $r->monto > $intRestante + 0.001) {
-                $this->warn("  OMITIDO {$etiqueta}: interés restante de la cuota ({$intRestante}) no alcanza.");
-                $omitidos++;
-
-                continue;
-            }
             if ((float) $r->monto > (float) $r->importe_aplicado + 0.001) {
                 $this->warn("  OMITIDO {$etiqueta}: capital aplicado ({$r->importe_aplicado}) menor al monto, revisar a mano.");
                 $omitidos++;
@@ -119,27 +111,64 @@ class PaymentsCuadrarSobrantes extends Command
                 continue;
             }
 
+            // Si el monto excede el interés restante de la cuota, se PARTE:
+            // el interés restante pasa a fila INTERES y el resto queda como
+            // CAPITAL legítimo (misma operación).
+            $aInteres = round(min((float) $r->monto, $intRestante), 2);
+            $quedaCapital = round((float) $r->monto - $aInteres, 2);
+
             $dias = $r->fecha_vencimiento
                 ? abs((int) Carbon::parse($r->fecha_vencimiento)->diffInDays(Carbon::parse($r->fecha), false))
                 : 0;
             $detalle = "Pago : {$r->credit_id} Interes:  {$r->num_cuota}/{$r->tot_cuotas} Dias : {$dias}";
 
-            $this->line("  {$etiqueta} (Dias {$dias})");
+            $this->line("  {$etiqueta}".($quedaCapital > 0 ? " [SPLIT: {$aInteres} int + {$quedaCapital} cap]" : '')." (Dias {$dias})");
             $convertidos++;
 
             if ($dry) {
                 continue;
             }
 
-            DB::transaction(function () use ($r, $detalle) {
-                DB::table('payments')->where('id', $r->id)->where('tipo', 'CAPITAL')->update([
-                    'tipo' => 'INTERES', 'documento' => 'INTERES', 'detalle' => $detalle,
-                ]);
+            DB::transaction(function () use ($r, $detalle, $aInteres, $quedaCapital) {
+                if ($quedaCapital > 0) {
+                    // SPLIT: la fila CAPITAL conserva el resto y se crea una
+                    // fila INTERES nueva por el interés restante de la cuota.
+                    DB::table('payments')->where('id', $r->id)->where('tipo', 'CAPITAL')
+                        ->update(['monto' => $quedaCapital]);
+                    $orig = DB::table('payments')->where('id', $r->id)->first();
+                    $newId = DB::table('payments')->insertGetId([
+                        'credit_id' => $orig->credit_id, 'installment_id' => $orig->installment_id,
+                        'modo' => $orig->modo, 'tipo' => 'INTERES', 'documento' => 'INTERES',
+                        'fecha' => $orig->fecha, 'hora' => $orig->hora, 'monto' => $aInteres,
+                        'moneda' => $orig->moneda, 'detalle' => $detalle, 'asesor' => $orig->asesor,
+                        'usuario' => $orig->usuario, 'user_id' => $orig->user_id,
+                        'headquarter_id' => $orig->headquarter_id,
+                        'latitud' => $orig->latitud, 'longitud' => $orig->longitud,
+                        'created_at' => $orig->created_at, 'updated_at' => now(),
+                    ]);
+                    // Rastro de eliminar masivo: la fila C baja al resto y se
+                    // agrega una fila I por el interés, en la misma cabecera.
+                    $det = DB::table('mass_deletion_details')->where('payment_id', $r->id)->first();
+                    if ($det) {
+                        DB::table('mass_deletion_details')->where('id', $det->id)->update(['amount' => $quedaCapital]);
+                        DB::table('mass_deletion_details')->insert([
+                            'mass_deletion_id' => $det->mass_deletion_id, 'installment_id' => $det->installment_id,
+                            'payment_id' => $newId, 'amount' => $aInteres, 'fecha' => $det->fecha,
+                            'tipo' => 'I', 'created_at' => now(), 'updated_at' => now(),
+                        ]);
+                    }
+                } else {
+                    // Conversión completa de la fila
+                    DB::table('payments')->where('id', $r->id)->where('tipo', 'CAPITAL')->update([
+                        'tipo' => 'INTERES', 'documento' => 'INTERES', 'detalle' => $detalle,
+                    ]);
+                    DB::table('mass_deletion_details')->where('payment_id', $r->id)->update(['tipo' => 'I']);
+                }
+
                 DB::table('credit_installments')->where('id', $r->inst_id)->update([
-                    'importe_aplicado' => DB::raw('importe_aplicado - '.(float) $r->monto),
-                    'interes_aplicado' => DB::raw('interes_aplicado + '.(float) $r->monto),
+                    'importe_aplicado' => DB::raw('importe_aplicado - '.$aInteres),
+                    'interes_aplicado' => DB::raw('interes_aplicado + '.$aInteres),
                 ]);
-                DB::table('mass_deletion_details')->where('payment_id', $r->id)->update(['tipo' => 'I']);
             });
         }
 
