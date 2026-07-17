@@ -5,6 +5,7 @@ namespace App\Livewire\Reports;
 use App\Models\Credit;
 use App\Services\CajaDailyService;
 use Carbon\Carbon;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
@@ -19,6 +20,10 @@ class CashGeneral1 extends Component
     #[Url(as: 'tipo', except: '0000')]
     public $seletipl = '0000';
 
+    /** 'detalle' = tabla completa homóloga al legacy (default); 'resumen' = una fila por día con totales. */
+    #[Url(as: 'vista', except: 'detalle')]
+    public $vista = 'detalle';
+
     public function mount()
     {
         if (! request()->has('mes')) {
@@ -30,6 +35,14 @@ class CashGeneral1 extends Component
     }
 
     public function search() {}
+
+    /** Desde la vista resumen (tarjeta o columna del gráfico): cambia a detalle y desplaza hasta el día elegido. */
+    #[On('caja1-ver-dia')]
+    public function verDia(string $date): void
+    {
+        $this->vista = 'detalle';
+        $this->dispatch('scroll-to-day', date: $date);
+    }
 
     public function render()
     {
@@ -146,6 +159,11 @@ class CashGeneral1 extends Component
             $toff2 += $subEgrInt;
         }
 
+        // Comparativa contra el mes anterior (solo la usa la vista resumen)
+        $prevStats = $this->vista === 'resumen'
+            ? $this->statsMesAnterior($year, $month, $tipoFilter, $today)
+            : null;
+
         return view('livewire.reports.cash-general-1', [
             'days' => $days,
             'Tcpi' => $Tcpi,
@@ -157,6 +175,43 @@ class CashGeneral1 extends Component
             'toff' => $toff,
             'toff2' => $toff2,
             'toff1' => $Tcpi + $Texc + $Tmor4 + $TmorAcum,
+            'prevStats' => $prevStats,
         ]);
+    }
+
+    /**
+     * Totales del mes anterior para los KPI del resumen: total caja,
+     * interés, egresos y neto. Null-safe si el mes no tiene datos.
+     *
+     * @return array{total: float, interes: float, egresos: float, neto: float, label: string}
+     */
+    private function statsMesAnterior(int $year, int $month, ?int $tipoFilter, string $today): array
+    {
+        $prev = Carbon::create($year, $month, 1)->subMonth();
+        $prevStart = $prev->format('Y-m-d');
+        $prevEnd = min($prev->copy()->endOfMonth()->format('Y-m-d'), $today);
+
+        $ingresos = collect(app(CajaDailyService::class)->ingresosPorDia($prev->year, $prev->month, $tipoFilter, $prevEnd))
+            ->flatten(1);
+
+        // Total de caja del día = total (cap+int) + excedente + mora (incluye acum.)
+        $total = (float) $ingresos->sum(fn ($i) => $i['total'] + $i['excedente'] + $i['mora']);
+        $interes = (float) $ingresos->sum('interes');
+
+        $egrQuery = Credit::query()
+            ->where('fecha_actualizacion', '>=', $prevStart)
+            ->where('fecha_actualizacion', '<=', $prevEnd);
+        if ($tipoFilter !== null) {
+            $egrQuery->where('tipo_planilla', $tipoFilter);
+        }
+        $egresos = (float) $egrQuery->sum('importe');
+
+        return [
+            'total' => $total,
+            'interes' => $interes,
+            'egresos' => $egresos,
+            'neto' => $total - $egresos,
+            'label' => ucfirst($prev->translatedFormat('F Y')),
+        ];
     }
 }
