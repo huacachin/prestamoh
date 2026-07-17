@@ -24,17 +24,17 @@
                             <div class="col-md-3">
                                 <label class="form-label mb-0 small"><b>DNI</b></label>
                                 <input type="text" name="nombre" autocomplete="off" class="form-control form-control-sm"
-                                       wire:model.live.debounce.300ms="nombre" placeholder="DNI">
+                                       wire:model.live.debounce.500ms="nombre" placeholder="DNI">
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label mb-0 small"><b>Nombre</b></label>
                                 <input type="text" name="nombre1" autocomplete="off" class="form-control form-control-sm"
-                                       wire:model.live.debounce.300ms="nombre1" placeholder="Nombre">
+                                       wire:model.live.debounce.500ms="nombre1" placeholder="Nombre">
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label mb-0 small"><b>Código</b></label>
                                 <input type="text" name="codigo1" autocomplete="off" class="form-control form-control-sm"
-                                       wire:model.live.debounce.300ms="codigo1" placeholder="Código">
+                                       wire:model.live.debounce.500ms="codigo1" placeholder="Código">
                             </div>
                         </div>
                         <div class="d-flex gap-2 mb-2">
@@ -107,11 +107,21 @@
                                 </tr>
                             @endforelse
                             </tbody>
+                            @if($totalFiltrados > $credits->count())
+                                <tbody>
+                                    <tr>
+                                        <td colspan="9" class="text-center py-2" style="background:#fff8e6; font-size:12px;">
+                                            <i class="ti ti-filter"></i>
+                                            Mostrando {{ $credits->count() }} de <b>{{ $totalFiltrados }}</b> créditos — usa los filtros para afinar la búsqueda.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            @endif
                             <tfoot class="bg-primary">
                                 <tr>
                                     <td colspan="5" class="text-end fw-bold">Totales:</td>
                                     <td class="text-end fw-bold">{{ number_format($totalCapital, 2) }}</td>
-                                    <td colspan="3" class="text-end">{{ $credits->count() }} créditos</td>
+                                    <td colspan="3" class="text-end">{{ $totalFiltrados }} créditos</td>
                                 </tr>
                             </tfoot>
                         </table>

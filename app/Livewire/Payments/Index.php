@@ -54,6 +54,12 @@ class Index extends Component
 
         $totalCapital = $credits->sum('importe');
 
-        return view('livewire.payments.index', compact('credits', 'totalCapital'));
+        // El HTML de esta pantalla pesa ~4 KB por fila (tabla + card móvil):
+        // se muestran hasta 100 y se avisa el resto — es una pantalla de
+        // búsqueda, los filtros afinan. El total capital sí es del conjunto.
+        $totalFiltrados = $credits->count();
+        $credits = $credits->take(100);
+
+        return view('livewire.payments.index', compact('credits', 'totalCapital', 'totalFiltrados'));
     }
 }
