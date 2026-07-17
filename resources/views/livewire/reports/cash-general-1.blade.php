@@ -317,7 +317,7 @@
                                                             <span class="caja1-obs-int"
                                                                   data-bs-toggle="tooltip" data-bs-placement="top"
                                                                   data-bs-title="{{ $ing['obs_interes'] }}">
-                                                                <i class="ti ti-info-circle-filled"></i>
+                                                                <i class="ti ti-exclamation-mark"></i>
                                                             </span>
                                                         @endif
                                                     </td>
@@ -438,16 +438,17 @@
     }
 
 
-    /* Ícono ⓘ del desglose de interés por cuota: pastilla amarilla warning */
+    /* Badge de observación del desglose de interés por cuota: warning negro sobre amarillo */
     .caja1-obs-int {
         display: inline-flex; align-items: center; justify-content: center;
-        width: 16px; height: 16px; margin-left: 2px;
+        width: 15px; height: 15px; margin-left: 2px;
         border-radius: 50%; cursor: help;
-        color: #ffc107; background: rgba(255, 193, 7, .15);
+        color: #212529; background: #ffc107;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, .2);
         vertical-align: text-bottom; transition: transform .1s ease, background .1s ease;
     }
-    .caja1-obs-int:hover { background: rgba(255, 193, 7, .3); transform: scale(1.15); }
-    .caja1-obs-int .ti { font-size: 13px; line-height: 1; }
+    .caja1-obs-int:hover { background: #ffca2c; transform: scale(1.2); }
+    .caja1-obs-int .ti { font-size: 12px; line-height: 1; font-weight: 700; }
 
     /* ── Tarjetas de la vista resumen ── */
     .caja1-card {
