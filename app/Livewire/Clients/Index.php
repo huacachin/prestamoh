@@ -98,8 +98,7 @@ class Index extends Component
             ->orderByDesc('numero')
             ->value('mensaje');
 
-        $this->notifTexto = $ultima
-            ?? "Sr.(a) *{$this->notifClientName}*,\n*Huacachin* le recuerda que su préstamo registra *{$this->notifVencidas} cuotas vencidas*. Por favor acérquese a regularizar sus pagos.";
+        $this->notifTexto = $ultima ?? "Sr.(a) *{$this->notifClientName}*,\n";
         $this->notifEditor = true;
     }
 
