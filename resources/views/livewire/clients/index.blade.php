@@ -443,6 +443,11 @@
                                                     @if($n->compromiso_detalle)
                                                         <div class="text-muted" style="font-size:11px;">{{ $n->compromiso_detalle }}</div>
                                                     @endif
+                                                    @if($n->compromiso_registrado_at)
+                                                        <div class="text-muted" style="font-size:10px;">
+                                                            <i class="ti ti-pencil"></i> Registrado el {{ \Carbon\Carbon::parse($n->compromiso_registrado_at)->format('d/m/Y H:i') }}
+                                                        </div>
+                                                    @endif
                                                     <a href="#" wire:click.prevent="abrirCompromiso({{ $n->id }})" style="font-size:10px;">editar</a>
                                                 </div>
                                             @else

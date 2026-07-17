@@ -165,6 +165,7 @@ class Index extends Component
                 'compromiso_fecha' => $this->compFecha,
                 'compromiso_detalle' => $this->compDetalle !== '' ? $this->compDetalle : null,
                 'compromiso_user_id' => auth()->id(),
+                'compromiso_registrado_at' => now(),
                 'compromiso_cumplido_at' => null,
                 'updated_at' => now(),
             ]);
