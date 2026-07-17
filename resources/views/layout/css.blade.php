@@ -107,6 +107,28 @@
         color: #fff !important;
     }
 
+    /* ── Paginación homologada (vista livewire publicada + .app-pagination del tema) ── */
+    .app-pagination { gap: 8px; }
+    .app-pagination .page-item .page-link {
+        margin-left: 0 !important;              /* anula el -1px de bootstrap que pega los botones */
+        min-width: 36px; height: 36px; padding: 0 10px;
+        display: flex; align-items: center; justify-content: center;
+        border: 1px solid #e2e6eb;
+        font-weight: 600; font-size: 13px;
+        transition: all .12s ease;
+    }
+    .app-pagination .page-item:not(.active):not(.disabled) .page-link:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, .14);
+    }
+    .app-pagination .page-item.active .page-link {
+        box-shadow: 0 3px 8px rgba(var(--primary), .4);
+    }
+    .app-pagination .page-item.disabled .page-link {
+        background: #f4f6f8;
+        border-color: #edf0f3;
+    }
+
 </style>
 @vite(['public/assets/scss/style.scss'])
 @livewireStyles
