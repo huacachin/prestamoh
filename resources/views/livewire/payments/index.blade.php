@@ -70,7 +70,8 @@
                             @forelse($credits as $credit)
                                 <tr onmouseover="this.style.backgroundColor='#CCFF66'"
                                     onmouseout="this.style.backgroundColor=''">
-                                    <td class="text-center">{{ $loop->iteration }}</td>
+                                    {{-- Correlativo continuo entre páginas (pág. 2 arranca en 101) --}}
+                                    <td class="text-center">{{ $credits->firstItem() + $loop->index }}</td>
                                     <td class="text-center">
                                         @if($credit->client?->id)
                                             <a href="{{ route('clients.show', $credit->client->id) }}" target="_blank" style="color:inherit; text-decoration:underline;">{{ $credit->client?->expediente }}</a>
