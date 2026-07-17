@@ -248,7 +248,7 @@
                            tabla excede el ancho, el contenedor .table-responsive da scroll horizontal
                            (igual que el .table-scroll del legacy). Sin anchos en % que aprieten. */
                         .expenses-legacy th, .expenses-legacy td {
-                            padding: 3px 6px; vertical-align: top; white-space: nowrap;
+                            padding: 3px 6px; vertical-align: middle; white-space: nowrap;
                         }
                         /* Motivo/Detalle: ancho FIJO — el texto largo envuelve hacia abajo
                            en vez de ensanchar la tabla (width+min+max iguales para que el
