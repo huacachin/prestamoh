@@ -185,7 +185,16 @@
                                         </div>
 
                                         {{-- Total del día + barra vs mejor día --}}
-                                        <div class="fw-bold text-primary" style="font-size:19px;">S/ {{ number_format($tot, 2) }}</div>
+                                        <div class="fw-bold text-primary" style="font-size:19px;">
+                                            S/ {{ number_format($tot, 2) }}
+                                            @if(($day['sub_egresos_ref'] ?? 0) > 0)
+                                                <span class="caja1-obs-int"
+                                                      data-bs-toggle="tooltip" data-bs-placement="top"
+                                                      data-bs-title="Incluye {{ $day['sub_egresos_ref_n'] }} refinanciado{{ $day['sub_egresos_ref_n'] === 1 ? '' : 's' }} (REF) = {{ number_format($day['sub_egresos_ref'], 2) }} · Total sin REF: {{ number_format($tot - $day['sub_egresos_ref'], 2) }}">
+                                                    <i class="ti ti-exclamation-mark"></i>
+                                                </span>
+                                            @endif
+                                        </div>
                                         <div class="caja1-barra mb-2"><div style="width:{{ $pct }}%;"></div></div>
 
                                         {{-- Desglose --}}
@@ -228,7 +237,16 @@
                                 <span><small>EXCED.</small> {{ number_format($Texc, 2) }}</span>
                                 <span><small>MORA</small> {{ number_format($Tmor4, 2) }}</span>
                                 <span><small>M. ACUM.</small> <span style="color:#ffd27a;">{{ number_format($TmorAcum, 2) }}</span></span>
-                                <span class="fw-bold"><small>INGRESOS</small> {{ number_format($toff1, 2) }}</span>
+                                <span class="fw-bold"><small>INGRESOS</small>
+                                    {{ number_format($toff1, 2) }}
+                                    @if($toffRef > 0)
+                                        <span class="caja1-obs-int"
+                                              data-bs-toggle="tooltip" data-bs-placement="top"
+                                              data-bs-title="Incluye {{ $toffRefN }} refinanciado{{ $toffRefN === 1 ? '' : 's' }} (REF) = {{ number_format($toffRef, 2) }} · Total sin REF: {{ number_format($toff1 - $toffRef, 2) }}">
+                                            <i class="ti ti-exclamation-mark"></i>
+                                        </span>
+                                    @endif
+                                </span>
                                 <span><small>EGRESOS</small> {{ number_format($toff, 2) }}</span>
                                 <span class="fw-bold {{ $totNeto >= 0 ? 'text-success' : 'text-danger' }}" style="filter: brightness(1.6);">
                                     <small>NETO</small> {{ $totNeto >= 0 ? '+' : '' }}{{ number_format($totNeto, 2) }}
