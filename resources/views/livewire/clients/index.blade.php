@@ -436,17 +436,17 @@
                                                     $cfColor = $dias <= 0 ? '#dc3545' : ($dias <= 2 ? '#fd7e14' : '#198754');
                                                 @endphp
                                                 <div>
+                                                    @if($n->compromiso_registrado_at)
+                                                        <div class="text-muted" style="font-size:10px;">
+                                                            <i class="ti ti-pencil"></i> Registrado el {{ \Carbon\Carbon::parse($n->compromiso_registrado_at)->format('d/m/Y H:i') }}
+                                                        </div>
+                                                    @endif
                                                     <b style="color: {{ $cfColor }};"><i class="ti ti-calendar-event"></i> {{ $cf->format('d/m/Y') }}</b>
                                                     @if($n->compromiso_cumplido_at)
                                                         <span class="badge bg-success" style="font-size:9px;">cumplido</span>
                                                     @endif
                                                     @if($n->compromiso_detalle)
                                                         <div class="text-muted" style="font-size:11px;">{{ $n->compromiso_detalle }}</div>
-                                                    @endif
-                                                    @if($n->compromiso_registrado_at)
-                                                        <div class="text-muted" style="font-size:10px;">
-                                                            <i class="ti ti-pencil"></i> Registrado el {{ \Carbon\Carbon::parse($n->compromiso_registrado_at)->format('d/m/Y H:i') }}
-                                                        </div>
                                                     @endif
                                                     <a href="#" wire:click.prevent="abrirCompromiso({{ $n->id }})" style="font-size:10px;">editar</a>
                                                 </div>
