@@ -72,6 +72,16 @@ class PaymentsCuadrarSobrantes extends Command
                     ->where('y.tipo', 'CAPITAL')
                     ->whereColumn('yi.num_cuota', '<', 'i.num_cuota');
             })
+            // …y tampoco registró ya INTERES en esa misma cuota (si lo hizo,
+            // el capital ahí fue deliberado — p. ej. ajustes de conciliación).
+            ->whereNotExists(function ($s) {
+                $s->from('payments as z')
+                    ->whereColumn('z.credit_id', 'p.credit_id')
+                    ->whereColumn('z.fecha', 'p.fecha')
+                    ->whereColumn('z.hora', 'p.hora')
+                    ->whereColumn('z.installment_id', 'p.installment_id')
+                    ->where('z.tipo', 'INTERES');
+            })
             ->orderBy('p.id');
 
         if ($hasta) {
