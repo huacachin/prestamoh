@@ -112,6 +112,7 @@
                                     <th class="text-center" colspan="3">Opciones</th>
                                     <th class="text-center">C.</th>
                                     <th class="text-center">N.</th>
+                                    <th class="text-center" title="Recordatorio WhatsApp (morosos)"><i class="ti ti-brand-whatsapp"></i></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -189,10 +190,30 @@
                                             <i class="ti ti-map-pin-off f-s-18 text-danger"></i>
                                         @endif
                                     </td>
+                                    <td class="text-center">
+                                        @php $waTel = preg_replace('/\D/', '', (string) $client->celular1); @endphp
+                                        @if($venc >= 2 && $waTel !== '')
+                                            @php
+                                                $cliFull = trim("{$client->apellido_pat} {$client->apellido_mat} {$client->nombre}");
+                                                $waMsg = rawurlencode("Sr.(a) *{$cliFull}*,\n*Huacachin* le recuerda que su préstamo registra *{$venc} cuotas vencidas*. Por favor acérquese a regularizar sus pagos.");
+                                            @endphp
+                                            <a href="https://api.whatsapp.com/send?phone=51{{ $waTel }}&text={{ $waMsg }}" target="_blank"
+                                               wire:click="marcarWhatsapp({{ $client->id }})"
+                                               title="Enviar recordatorio por WhatsApp ({{ $venc }} cuotas vencidas)">
+                                                <i class="ti ti-brand-whatsapp f-s-16 text-success"></i>
+                                            </a>
+                                            @if(isset($waEnviadosHoy[$client->id]))
+                                                <i class="ti ti-checks f-s-14" style="color:#2eb85c;" title="Recordatorio ya enviado hoy"></i>
+                                            @endif
+                                        @else
+                                            <i class="ti ti-brand-whatsapp f-s-16" style="color:#c9ced6;"
+                                               title="{{ $venc < 2 ? 'Cliente al día — recordatorio deshabilitado' : 'Sin número de celular' }}"></i>
+                                        @endif
+                                    </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="15" class="py-4 text-muted text-center">No se encontraron resultados</td>
+                                    <td colspan="16" class="py-4 text-muted text-center">No se encontraron resultados</td>
                                 </tr>
                             @endforelse
                             </tbody>
@@ -201,6 +222,7 @@
                                     <td colspan="2">TOTAL</td>
                                     <td colspan="12"></td>
                                     <td class="text-center fw-bold">{{ $clients->count() }}</td>
+                                    <td></td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -264,6 +286,22 @@
                                         <a href="{{ route('clients.show', $client->id) }}" class="btn btn-xs btn-primary" style="padding: 2px 8px; font-size: 10px;">Prestamo</a>
                                         <a href="{{ route('clients.aval', $client->id) }}" class="btn btn-xs {{ ($client->avales_count ?? 0) > 0 ? 'btn-primary' : 'btn-danger' }}" style="padding: 2px 8px; font-size: 10px;">Aval</a>
                                         <a href="{{ route('clients.gallery', $client->id) }}" class="btn btn-xs {{ ($client->attachments_count ?? 0) > 0 ? 'btn-info' : 'btn-danger' }}" style="padding: 2px 8px; font-size: 10px;">Adjuntos</a>
+                                        @php
+                                            $vencM = $morosidad[$client->id] ?? 0;
+                                            $waTelM = preg_replace('/\D/', '', (string) $client->celular1);
+                                        @endphp
+                                        @if($vencM >= 2 && $waTelM !== '')
+                                            @php
+                                                $cliFullM = trim("{$client->apellido_pat} {$client->apellido_mat} {$client->nombre}");
+                                                $waMsgM = rawurlencode("Sr.(a) *{$cliFullM}*,\n*Huacachin* le recuerda que su préstamo registra *{$vencM} cuotas vencidas*. Por favor acérquese a regularizar sus pagos.");
+                                            @endphp
+                                            <a href="https://api.whatsapp.com/send?phone=51{{ $waTelM }}&text={{ $waMsgM }}" target="_blank"
+                                               wire:click="marcarWhatsapp({{ $client->id }})"
+                                               class="btn btn-xs btn-success" style="padding: 2px 8px; font-size: 10px;">
+                                                <i class="ti ti-brand-whatsapp"></i> WA
+                                                @if(isset($waEnviadosHoy[$client->id]))<i class="ti ti-checks"></i>@endif
+                                            </a>
+                                        @endif
                                     </div>
                                 </div>
                             </div>

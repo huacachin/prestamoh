@@ -41,6 +41,18 @@ class Index extends Component
         $this->morosidadFiltro = $this->morosidadFiltro === $estado ? '' : $estado;
     }
 
+    /** Marca que hoy se le envió recordatorio de WhatsApp al cliente (check compartido). */
+    public function marcarWhatsapp(int $clientId): void
+    {
+        DB::table('whatsapp_reminders')->insertOrIgnore([
+            'client_id' => $clientId,
+            'user_id' => auth()->id(),
+            'sent_on' => now()->format('Y-m-d'),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
     // Modal de coordenadas (Casa / Negocio)
     public ?int $coordClientId = null;
 
@@ -247,8 +259,19 @@ class Index extends Component
             default => $clients,
         };
 
+        // Clientes con recordatorio WhatsApp ya enviado HOY (check compartido)
+        $waEnviadosHoy = [];
+        if ($clients->isNotEmpty()) {
+            $waEnviadosHoy = DB::table('whatsapp_reminders')
+                ->where('sent_on', now()->format('Y-m-d'))
+                ->whereIn('client_id', $clients->pluck('id'))
+                ->pluck('client_id')
+                ->flip()
+                ->toArray();
+        }
+
         $puedeCoords = $this->puedeGuardarCoords();
 
-        return view('livewire.clients.index', compact('clients', 'asesores', 'clientsWithCredit', 'morosidad', 'puedeCoords', 'countAldia', 'countNaranja', 'countRojo'));
+        return view('livewire.clients.index', compact('clients', 'asesores', 'clientsWithCredit', 'morosidad', 'puedeCoords', 'countAldia', 'countNaranja', 'countRojo', 'waEnviadosHoy'));
     }
 }
