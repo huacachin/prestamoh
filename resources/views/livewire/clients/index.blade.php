@@ -97,10 +97,14 @@
                                 @php
                                     $hasCredit = isset($clientsWithCredit[$client->id]);
                                     $textColor = $hasCredit ? 'inherit' : '#dc3545';
+                                    // Morosidad del peor crédito activo: 2 cuotas vencidas → naranja, 3+ → rojo
+                                    $venc = $morosidad[$client->id] ?? 0;
+                                    $rowBg = $venc >= 3 ? '#ff6b6b' : ($venc === 2 ? '#ffc078' : '');
                                 @endphp
-                                <tr style="color: {{ $textColor }};"
+                                <tr style="color: {{ $textColor }};{{ $rowBg !== '' ? " background-color: {$rowBg};" : '' }}"
+                                    data-bg="{{ $rowBg }}"
                                     onmouseover="this.style.backgroundColor='#CCFF66'"
-                                    onmouseout="this.style.backgroundColor=''">
+                                    onmouseout="this.style.backgroundColor=this.getAttribute('data-bg')">
                                     <td class="text-center" style="color: inherit;">{{ $loop->iteration }}</td>
                                     <td class="text-center" style="color: inherit;">{{ $client->fecha_registro?->format('Y-m-d') }}</td>
                                     <td class="text-center" style="color: inherit;">{{ $client->usuario }}</td>
@@ -305,6 +309,13 @@
     /* Apellidos y Nombres: puede ser largo → envuelve con tope, como el legacy. */
     .clients-legacy th.col-wrap, .clients-legacy td.col-wrap {
         white-space: normal; min-width: 180px; max-width: 300px;
+    }
+    /* Filas de morosidad (2 cuotas vencidas → naranja, 3+ → rojo) y hover:
+       el fondo inline del <tr> debe ganarle al zebra, que Bootstrap pinta con
+       box-shadow inset EN CADA CELDA (se superpondría al color de la fila). */
+    .clients-legacy tbody tr[style*="background-color"] > * {
+        box-shadow: none !important;
+        background-color: inherit !important;
     }
 </style>
 </div>

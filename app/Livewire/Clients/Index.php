@@ -6,6 +6,7 @@ use App\Models\Client;
 use App\Models\Credit;
 use App\Models\User;
 use App\Support\Audit;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -196,6 +197,7 @@ class Index extends Component
         // IDs de clientes con crédito vigente (para colorear)
         $clientIds = $clients->pluck('id')->toArray();
         $clientsWithCredit = [];
+        $morosidad = [];
         if (! empty($clientIds)) {
             $clientsWithCredit = Credit::whereIn('client_id', $clientIds)
                 ->where('situacion', 'Activo')
@@ -203,10 +205,26 @@ class Index extends Component
                 ->pluck('client_id')
                 ->flip()
                 ->toArray();
+
+            // Morosidad: cuotas vencidas impagas por crédito activo; por cliente
+            // se toma el PEOR de sus créditos (2 → fila naranja, 3+ → fila roja).
+            $rows = DB::table('credits as c')
+                ->join('credit_installments as i', 'i.credit_id', '=', 'c.id')
+                ->whereIn('c.client_id', $clientIds)
+                ->where('c.situacion', 'Activo')
+                ->where('i.pagado', 0)
+                ->whereNotNull('i.fecha_vencimiento')
+                ->where('i.fecha_vencimiento', '<', now()->format('Y-m-d'))
+                ->groupBy('c.id', 'c.client_id')
+                ->selectRaw('c.client_id, COUNT(*) as vencidas')
+                ->get();
+            foreach ($rows as $r) {
+                $morosidad[$r->client_id] = max($morosidad[$r->client_id] ?? 0, (int) $r->vencidas);
+            }
         }
 
         $puedeCoords = $this->puedeGuardarCoords();
 
-        return view('livewire.clients.index', compact('clients', 'asesores', 'clientsWithCredit', 'puedeCoords'));
+        return view('livewire.clients.index', compact('clients', 'asesores', 'clientsWithCredit', 'morosidad', 'puedeCoords'));
     }
 }
