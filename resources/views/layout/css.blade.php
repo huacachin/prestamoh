@@ -107,26 +107,36 @@
         color: #fff !important;
     }
 
-    /* ── Paginación homologada (vista livewire publicada + .app-pagination del tema) ── */
-    .app-pagination { gap: 8px; }
-    .app-pagination .page-item .page-link {
-        margin-left: 0 !important;              /* anula el -1px de bootstrap que pega los botones */
-        min-width: 36px; height: 36px; padding: 0 10px;
-        display: flex; align-items: center; justify-content: center;
-        border: 1px solid #e2e6eb;
-        font-weight: 600; font-size: 13px;
-        transition: all .12s ease;
+    /* ── Paginación Livewire homologada (estilo light-pagination del tema) ── */
+    .lw-pager {
+        display: flex; flex-wrap: wrap; align-items: center;
+        justify-content: space-between; gap: 10px;
+        width: 100%; padding: 2px 0;
     }
-    .app-pagination .page-item:not(.active):not(.disabled) .page-link:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, .14);
+    .lw-pager-info { font-size: 12px; color: #8a93a2; }
+    .lw-pager-info b { color: #46505e; font-weight: 600; }
+    .lw-pager-list {
+        display: flex; align-items: center; gap: 6px;
+        list-style: none; margin: 0; padding: 0;
     }
-    .app-pagination .page-item.active .page-link {
-        box-shadow: 0 3px 8px rgba(var(--primary), .4);
+    .lw-page {
+        min-width: 34px; height: 34px; padding: 0 10px;
+        display: inline-flex; align-items: center; justify-content: center;
+        border: 0; border-radius: 8px;
+        background: rgba(var(--secondary), 0.08);
+        color: #46505e; font-size: 13px; font-weight: 600;
+        cursor: pointer; transition: background .12s ease, color .12s ease;
     }
-    .app-pagination .page-item.disabled .page-link {
-        background: #f4f6f8;
-        border-color: #edf0f3;
+    .lw-page .ti { font-size: 15px; }
+    button.lw-page:hover { background: rgba(var(--primary), 0.12); color: rgba(var(--primary), 1); }
+    .lw-page.is-active {
+        background: rgba(var(--primary), 1); color: #fff;
+        box-shadow: 0 4px 10px rgba(var(--primary), 0.35);
+    }
+    .lw-page.is-dots, .lw-page.is-disabled { background: transparent; color: #bcc3cd; }
+    @media (max-width: 575px) {
+        .lw-pager { justify-content: center; }
+        .lw-pager-info { width: 100%; text-align: center; }
     }
 
 </style>

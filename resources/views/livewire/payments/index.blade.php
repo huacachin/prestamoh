@@ -159,7 +159,7 @@
                     </div>
 
                     {{-- Paginación (LIMIT en SQL: solo viaja la página visible) --}}
-                    <div class="mt-2 d-flex justify-content-center">
+                    <div class="mt-3">
                         {{ $credits->links() }}
                     </div>
                 </div>
