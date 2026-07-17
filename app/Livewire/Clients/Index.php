@@ -31,6 +31,16 @@ class Index extends Component
     #[Url(as: 'asesor', except: '')]
     public $ejecutivo = '';
 
+    /** Filtro de morosidad: '' (todos) | 'aldia' | 'naranja' (2 venc.) | 'rojo' (3+). */
+    #[Url(as: 'estado', except: '')]
+    public $morosidadFiltro = '';
+
+    /** Toggle del chip: click en el activo lo desactiva. */
+    public function filtrarMorosidad(string $estado): void
+    {
+        $this->morosidadFiltro = $this->morosidadFiltro === $estado ? '' : $estado;
+    }
+
     // Modal de coordenadas (Casa / Negocio)
     public ?int $coordClientId = null;
 
@@ -223,8 +233,22 @@ class Index extends Component
             }
         }
 
+        // Conteos para los chips (sobre la lista ya filtrada por los demás criterios)
+        $vencDe = fn ($c) => $morosidad[$c->id] ?? 0;
+        $countRojo = $clients->filter(fn ($c) => $vencDe($c) >= 3)->count();
+        $countNaranja = $clients->filter(fn ($c) => $vencDe($c) === 2)->count();
+        $countAldia = $clients->count() - $countRojo - $countNaranja;
+
+        // Aplicar el chip seleccionado
+        $clients = match ($this->morosidadFiltro) {
+            'rojo' => $clients->filter(fn ($c) => $vencDe($c) >= 3)->values(),
+            'naranja' => $clients->filter(fn ($c) => $vencDe($c) === 2)->values(),
+            'aldia' => $clients->filter(fn ($c) => $vencDe($c) < 2)->values(),
+            default => $clients,
+        };
+
         $puedeCoords = $this->puedeGuardarCoords();
 
-        return view('livewire.clients.index', compact('clients', 'asesores', 'clientsWithCredit', 'morosidad', 'puedeCoords'));
+        return view('livewire.clients.index', compact('clients', 'asesores', 'clientsWithCredit', 'morosidad', 'puedeCoords', 'countAldia', 'countNaranja', 'countRojo'));
     }
 }

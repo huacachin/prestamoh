@@ -57,7 +57,7 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="d-flex gap-2 mb-2">
+                        <div class="d-flex gap-2 mb-2 align-items-center flex-wrap">
                             <button type="submit" class="btn btn-sm btn-primary">
                                 <i class="ti ti-search f-s-12"></i> Buscar
                             </button>
@@ -69,6 +69,28 @@
                             <a href="{{ route('clients.create') }}" class="btn btn-sm btn-danger">
                                 <i class="ti ti-user-plus f-s-12"></i> Nuevo Cliente
                             </a>
+
+                            {{-- Chips de morosidad: click filtra, click de nuevo lo quita --}}
+                            <div class="moros-chips ms-md-2" role="group" aria-label="Filtro de morosidad">
+                                <button type="button"
+                                        class="moros-chip moros-chip--verde {{ $morosidadFiltro === 'aldia' ? 'is-active' : '' }}"
+                                        wire:click="filtrarMorosidad('aldia')"
+                                        title="Clientes sin morosidad relevante">
+                                    <span class="dot"></span> Al día <span class="n">{{ $countAldia }}</span>
+                                </button>
+                                <button type="button"
+                                        class="moros-chip moros-chip--naranja {{ $morosidadFiltro === 'naranja' ? 'is-active' : '' }}"
+                                        wire:click="filtrarMorosidad('naranja')"
+                                        title="Algún crédito activo con 2 cuotas vencidas">
+                                    <span class="dot"></span> 2 vencidas <span class="n">{{ $countNaranja }}</span>
+                                </button>
+                                <button type="button"
+                                        class="moros-chip moros-chip--rojo {{ $morosidadFiltro === 'rojo' ? 'is-active' : '' }}"
+                                        wire:click="filtrarMorosidad('rojo')"
+                                        title="Algún crédito activo con 3 o más cuotas vencidas">
+                                    <span class="dot"></span> 3+ vencidas <span class="n">{{ $countRojo }}</span>
+                                </button>
+                            </div>
                         </div>
                     </form>
 
@@ -317,5 +339,29 @@
         box-shadow: none !important;
         background-color: inherit !important;
     }
+
+    /* ── Chips del filtro de morosidad ── */
+    .moros-chips { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .moros-chip {
+        display: inline-flex; align-items: center; gap: 6px;
+        border: 1px solid #dee2e6; background: #fff; color: #495057;
+        border-radius: 20px; padding: 3px 12px;
+        font-size: 12px; font-weight: 600; line-height: 1.4;
+        cursor: pointer; transition: all .15s ease;
+    }
+    .moros-chip:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0, 0, 0, .14); }
+    .moros-chip .dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+    .moros-chip .n {
+        background: rgba(0, 0, 0, .08); border-radius: 10px;
+        padding: 0 7px; font-size: 11px; font-weight: 700;
+    }
+    .moros-chip--verde .dot { background: #2eb85c; }
+    .moros-chip--naranja .dot { background: #fd7e14; }
+    .moros-chip--rojo .dot { background: #dc3545; }
+    .moros-chip--verde.is-active { background: #2eb85c; border-color: #2eb85c; color: #fff; }
+    .moros-chip--naranja.is-active { background: #fd7e14; border-color: #fd7e14; color: #fff; }
+    .moros-chip--rojo.is-active { background: #dc3545; border-color: #dc3545; color: #fff; }
+    .moros-chip.is-active .dot { background: #fff; }
+    .moros-chip.is-active .n { background: rgba(255, 255, 255, .25); }
 </style>
 </div>
