@@ -57,13 +57,6 @@ class CajaDailyService
             }
         }
 
-        // num_cuota de cada installment tocado (los pagos migrados del legacy
-        // no tienen installment_id y quedan agrupados en un solo renglón).
-        $instIds = $allPayments->pluck('installment_id')->filter()->unique()->values();
-        $numCuotaPorInst = $instIds->isEmpty()
-            ? []
-            : DB::table('credit_installments')->whereIn('id', $instIds)->pluck('num_cuota', 'id')->all();
-
         $tcMarks = [1 => 'S.', 3 => 'M.', 4 => 'D.'];
         $result = [];
 
@@ -79,32 +72,19 @@ class CajaDailyService
                 $isRefi = (bool) $credit->refinanciado;
                 $fechaCan = $credit->fecha_cancelacion?->format('Y-m-d');
 
+                $totalSinMora = (float) $pays->whereIn('tipo', ['CAPITAL', 'INTERES'])->sum('monto');
                 $totalConMora = (float) $pays->sum('monto');
+                $sumInteresPagado = (float) $pays->where('tipo', 'INTERES')->sum('monto');
+                $sumCapitalPagado = (float) $pays->where('tipo', 'CAPITAL')->sum('monto');
                 $mora = (float) $pays->where('tipo', 'MORA')->sum('monto');
+                // Excedente de redondeo (cuota uniforme): efectivo que entra a
+                // caja aparte de capital/interés/mora.
+                $excedente = (float) $pays->where('tipo', 'EXCEDENTE')->sum('monto');
                 // Mora acumulada cobrada al cancelar (documento 'MORA ACUM.'):
                 // desglose para Caja 1. 'mora' sigue siendo el TOTAL (vigente + acum).
                 $moraAcum = (float) $pays->where('tipo', 'MORA')->where('documento', 'MORA ACUM.')->sum('monto');
 
-                $cli = $credit->client;
-                $cliName = $cli ? trim($cli->apellido_pat.' '.$cli->apellido_mat.' '.$cli->nombre) : 'N/A';
-                $asesor = $cli?->asesor?->username ?? $cli?->asesor?->name ?? '';
-
-                $marcador = $tcMarks[$tipoplani] ?? '';
-                if ($fechaCan === $date) {
-                    $marcador .= ($credit->cod_rem ?? '').'.CANCEL';
-                }
-
-                $rowBase = [
-                    'credit_id' => $cid,
-                    'cliente' => $cliName,
-                    'detalle' => $marcador,
-                    'asesor' => $asesor,
-                    'tipo_planilla' => $tipoplani,
-                ];
-
                 if ($isRefi && $fechaCan === $date) {
-                    // Rama refinanciamiento cancelado el mismo día: fila única
-                    // con la fórmula del legacy (no se desglosa por cuota).
                     $interesTotal = in_array($tipoplani, [1, 4])
                         ? round(($credit->importe * $credit->interes) / 100, 2)
                         : round(($credit->importe * $credit->interes) / 100, 2) * $credit->cuotas;
@@ -120,57 +100,39 @@ class CajaDailyService
                         $interes = $interesTotal;
                         $capital = (float) $credit->importe;
                     }
-
-                    $ingresos[] = $rowBase + [
-                        'nro_cuotas' => $pays->sortBy('id')->first()?->detalle ?? '',
-                        'total' => $total,
-                        'capital' => $capital,
-                        'interes' => $interes,
-                        'excedente' => (float) $pays->where('tipo', 'EXCEDENTE')->sum('monto'),
-                        'mora' => $mora,
-                        'mora_acum' => $moraAcum,
-                    ];
-
-                    continue;
+                } elseif ($tipoplani === 4) {
+                    $total = $totalSinMora;
+                    $interes = $sumInteresPagado;
+                    $capital = $totalSinMora - $sumInteresPagado;
+                } else {
+                    $total = $totalSinMora;
+                    $interes = $sumInteresPagado;
+                    $capital = $sumCapitalPagado;
                 }
 
-                // ─── Desglose por cuota ────────────────────────────────────
-                // Una fila por cuota tocada en el día (p. ej. pago que cierra
-                // el interés de la cuota 9 y deja saldo como interés de la 10:
-                // 'Interes: 9/48' 94.73 + 'Interes: 10/48' 85.27). La mora del
-                // crédito se muestra en la primera fila.
-                $porCuota = $pays->whereIn('tipo', ['CAPITAL', 'INTERES', 'EXCEDENTE'])
-                    ->groupBy(fn ($p) => $p->installment_id ?? 0)
-                    ->sortBy(fn ($grp, $instId) => $instId === 0 ? -1 : ($numCuotaPorInst[$instId] ?? PHP_INT_MAX));
+                $cli = $credit->client;
+                $cliName = $cli ? trim($cli->apellido_pat.' '.$cli->apellido_mat.' '.$cli->nombre) : 'N/A';
+                $asesor = $cli?->asesor?->username ?? $cli?->asesor?->name ?? '';
 
-                if ($porCuota->isEmpty()) {
-                    // Día solo con mora (sin capital/interés): fila única.
-                    $ingresos[] = $rowBase + [
-                        'nro_cuotas' => $pays->sortBy('id')->first()?->detalle ?? '',
-                        'total' => 0.0, 'capital' => 0.0, 'interes' => 0.0, 'excedente' => 0.0,
-                        'mora' => $mora, 'mora_acum' => $moraAcum,
-                    ];
-
-                    continue;
+                $marcador = $tcMarks[$tipoplani] ?? '';
+                if ($fechaCan === $date) {
+                    $marcador .= ($credit->cod_rem ?? '').'.CANCEL';
                 }
 
-                $esPrimera = true;
-                foreach ($porCuota as $grp) {
-                    $subInt = (float) $grp->where('tipo', 'INTERES')->sum('monto');
-                    $subCap = (float) $grp->where('tipo', 'CAPITAL')->sum('monto');
-                    $subTotal = $subCap + $subInt;
-
-                    $ingresos[] = $rowBase + [
-                        'nro_cuotas' => $grp->sortBy('id')->first()?->detalle ?? '',
-                        'total' => $subTotal,
-                        'capital' => $tipoplani === 4 ? $subTotal - $subInt : $subCap,
-                        'interes' => $subInt,
-                        'excedente' => (float) $grp->where('tipo', 'EXCEDENTE')->sum('monto'),
-                        'mora' => $esPrimera ? $mora : 0.0,
-                        'mora_acum' => $esPrimera ? $moraAcum : 0.0,
-                    ];
-                    $esPrimera = false;
-                }
+                $ingresos[] = [
+                    'credit_id' => $cid,
+                    'cliente' => $cliName,
+                    'detalle' => $marcador,
+                    'nro_cuotas' => $pays->sortBy('id')->first()?->detalle ?? '',
+                    'total' => $total,
+                    'capital' => $capital,
+                    'interes' => $interes,
+                    'excedente' => $excedente,
+                    'mora' => $mora,
+                    'mora_acum' => $moraAcum,
+                    'asesor' => $asesor,
+                    'tipo_planilla' => $tipoplani,
+                ];
             }
             $result[$date] = $ingresos;
         }
