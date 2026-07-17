@@ -565,7 +565,7 @@
                     { name: 'Egresos (créditos)', type: 'column', data: data.egresos },
                     { name: 'Interés', type: 'line', data: data.interes },
                 ],
-                colors: ['#009BDC', '#F59E0B', '#198754'],
+                colors: ['#0000FF', '#F59E0B', '#198754'],
                 plotOptions: { bar: { columnWidth: '55%', borderRadius: 3 } },
                 stroke: { width: [0, 0, 2.5], curve: 'smooth' },
                 dataLabels: { enabled: false },
