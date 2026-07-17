@@ -148,7 +148,8 @@
                                                         <span class="text-primary">{{ number_format($ing['interes'], 2) }}</span>
                                                         @if(!empty($ing['obs_interes']))
                                                             <i class="ti ti-info-circle" style="color:#b8860b; cursor:help;"
-                                                               title="{{ $ing['obs_interes'] }}"></i>
+                                                               data-bs-toggle="tooltip" data-bs-placement="top"
+                                                               data-bs-title="{{ $ing['obs_interes'] }}"></i>
                                                         @endif
                                                     </td>
                                                     <td class="text-end"><span class="text-primary">{{ number_format($ing['excedente'] ?? 0, 2) }}</span></td>
@@ -267,3 +268,24 @@
     }
 <span id="final"></span>
 </style>
+
+<script>
+    (function () {
+        // Tooltips Bootstrap del reporte (ícono ⓘ de interés por cuota).
+        // Se re-inicializan tras cada update de Livewire (el morph crea nodos nuevos).
+        function initCaja1Tooltips() {
+            if (typeof bootstrap === 'undefined') return;
+            document.querySelectorAll('#printme [data-bs-toggle="tooltip"]')
+                .forEach(el => bootstrap.Tooltip.getOrCreateInstance(el));
+        }
+
+        document.addEventListener('livewire:init', () => {
+            Livewire.hook('commit', ({ succeed }) => {
+                succeed(() => setTimeout(initCaja1Tooltips, 50));
+            });
+        });
+
+        if (document.readyState !== 'loading') initCaja1Tooltips();
+        else document.addEventListener('DOMContentLoaded', initCaja1Tooltips);
+    })();
+</script>
