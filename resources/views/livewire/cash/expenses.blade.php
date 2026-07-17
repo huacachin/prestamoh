@@ -250,9 +250,13 @@
                         .expenses-legacy th, .expenses-legacy td {
                             padding: 3px 6px; vertical-align: top; white-space: nowrap;
                         }
-                        /* Motivo/Detalle: texto largo → envuelve (como el legacy), con tope de ancho. */
+                        /* Motivo/Detalle: ancho FIJO — el texto largo envuelve hacia abajo
+                           en vez de ensanchar la tabla (width+min+max iguales para que el
+                           layout auto no lo estire; break-word por si hay tokens largos). */
                         .expenses-legacy th.col-wrap, .expenses-legacy td.col-wrap {
-                            white-space: normal; min-width: 180px; max-width: 320px;
+                            white-space: normal;
+                            width: 260px; min-width: 260px; max-width: 260px;
+                            overflow-wrap: break-word;
                         }
                         /* Fecha: un poco más de aire. */
                         .expenses-legacy th.col-fecha, .expenses-legacy td.col-fecha { min-width: 92px; }
