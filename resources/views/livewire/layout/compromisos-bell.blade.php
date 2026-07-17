@@ -77,9 +77,17 @@
     </div>
 
     <style>
+        /* Fondo blanco: el tema tiñe el card del dropdown con su celeste y el
+           contenido se pierde — se fuerza contraste blanco (solo esta campana). */
+        .header-notification .app-dropdown .card,
+        .header-notification .app-dropdown .card .card-body { background: #fff !important; }
+        .header-notification .app-dropdown .card .card-footer { background: #f7f8fa !important; }
+        .header-notification .app-dropdown .card .card-footer a { color: #445; }
+        .header-notification .app-dropdown .card .card-footer a:hover { color: #0d6efd; }
+
         /* Borde lateral de urgencia, alineado al look del sistema */
         .comp-row { border-left: 3px solid transparent; transition: background .12s ease; }
-        .comp-row:hover { background: rgba(var(--primary), .06); }
+        .comp-row:hover { background: #f5f7fa; }
         .comp-row--rojo { border-left-color: #dc3545; }
         .comp-row--naranja { border-left-color: #fd7e14; }
     </style>
