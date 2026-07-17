@@ -119,6 +119,19 @@ class CajaDailyService
                     $marcador .= ($credit->cod_rem ?? '').'.CANCEL';
                 }
 
+                // Observación para el tooltip de Caja 1: si el interés del día
+                // abarca más de una cuota (p. ej. sobrante en fase interés que
+                // pasó a la cuota siguiente), se desglosa cuánto fue a cada una.
+                $obsInteres = null;
+                $intPorCuota = $pays->where('tipo', 'INTERES')
+                    ->groupBy(fn ($p) => preg_match('/Interes:\s*(\d+)\/(\d+)/', (string) $p->detalle, $m) ? ((int) $m[1]).'/'.$m[2] : '?')
+                    ->map(fn ($g) => (float) $g->sum('monto'))
+                    ->sortKeysUsing(fn ($a, $b) => (int) $a <=> (int) $b);
+                if ($intPorCuota->count() > 1) {
+                    $obsInteres = 'Interés por cuota: '.$intPorCuota
+                        ->map(fn ($v, $k) => "cuota {$k} = ".number_format($v, 2))->implode(' · ');
+                }
+
                 $ingresos[] = [
                     'credit_id' => $cid,
                     'cliente' => $cliName,
@@ -130,6 +143,7 @@ class CajaDailyService
                     'excedente' => $excedente,
                     'mora' => $mora,
                     'mora_acum' => $moraAcum,
+                    'obs_interes' => $obsInteres,
                     'asesor' => $asesor,
                     'tipo_planilla' => $tipoplani,
                 ];

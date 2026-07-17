@@ -144,7 +144,13 @@
                                                     <td class="text-center">{{ $ing['nro_cuotas'] }}</td>
                                                     <td class="text-end"><span class="text-primary">{{ number_format($ing['total'], 2) }}</span></td>
                                                     <td class="text-end"><span class="text-primary">{{ number_format($ing['capital'], 2) }}</span></td>
-                                                    <td class="text-end"><span class="text-primary">{{ number_format($ing['interes'], 2) }}</span></td>
+                                                    <td class="text-end">
+                                                        <span class="text-primary">{{ number_format($ing['interes'], 2) }}</span>
+                                                        @if(!empty($ing['obs_interes']))
+                                                            <i class="ti ti-info-circle" style="color:#b8860b; cursor:help;"
+                                                               title="{{ $ing['obs_interes'] }}"></i>
+                                                        @endif
+                                                    </td>
                                                     <td class="text-end"><span class="text-primary">{{ number_format($ing['excedente'] ?? 0, 2) }}</span></td>
                                                     <td class="text-end"><span class="text-primary">{{ number_format($ing['mora'] - $ing['mora_acum'], 2) }}</span></td>
                                                     <td class="text-end"><span style="color:#b8860b;">{{ number_format($ing['mora_acum'], 2) }}</span></td>
