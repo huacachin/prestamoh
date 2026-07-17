@@ -474,6 +474,10 @@
         #printme { width: 100%; }
     }
 
+    /* Montos en azul puro como el legacy (font color=blue), en vez del
+       celeste del tema (rgb 0,155,220). Solo dentro de este reporte. */
+    #printme .text-primary { color: #0000FF !important; }
+
 
     /* Badge de observación del desglose de interés por cuota: warning negro sobre amarillo */
     .caja1-obs-int {
