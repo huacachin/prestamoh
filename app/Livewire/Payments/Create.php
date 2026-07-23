@@ -4,10 +4,13 @@ namespace App\Livewire\Payments;
 
 use App\Models\Credit;
 use App\Models\CreditInstallment;
+use App\Models\MassDeletion;
 use App\Models\Payment;
+use App\Services\Printing\TicketPrinter;
 use App\Support\Audit;
 use App\Support\MoraExonerada;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 
@@ -47,6 +50,16 @@ class Create extends Component
     public bool $cancelSinMora = false;     // quitar mora y mora acumulada del total
 
     public bool $cancelUltimaCuota = false; // interés de todo el cronograma, no solo a la fecha
+
+    // Vista previa del recibo que se muestra en el modal de confirmación
+    // ANTES de registrar el cobro. Vacío = no hay nada que confirmar.
+    public array $preview = [];
+
+    // Último cobro registrado (mass_deletions.id), para reimprimir su ticket.
+    public ?int $lastTicketId = null;
+
+    // Aviso discreto post-cobro: ['numero' => '119695', 'total' => 283.40].
+    public array $ultimoCobro = [];
 
     public function mount(?int $creditId = null)
     {
@@ -297,12 +310,15 @@ class Create extends Component
             'mora_acumulada' => 0, 'saldo_mora' => 0, 'saldo_mora_restante' => 0, 'asesor_nombre' => null];
     }
 
-    public function pagar()
+    /**
+     * Reglas de negocio del cobro. Devuelve el mensaje de error o null si el
+     * pago puede registrarse. Se corre dos veces: al pedir la vista previa y
+     * otra vez al confirmar, para que el modal no sea la única defensa.
+     */
+    private function validarCobro(): ?string
     {
         if (! $this->credit) {
-            $this->dispatch('errorAlert', ['message' => 'No hay crédito seleccionado.']);
-
-            return;
+            return 'No hay crédito seleccionado.';
         }
 
         $this->validate([
@@ -311,21 +327,14 @@ class Create extends Component
             'moraManual' => 'nullable|numeric|min:0',
         ]);
 
-        $user = auth()->user();
-        if (! $user->can('caja.bypass-fecha-anterior')) {
-            $fechaSel = Carbon::parse($this->fecpag);
-            if ($fechaSel->format('Ym') < now()->format('Ym')) {
-                $this->dispatch('errorAlert', ['message' => 'No es posible registrar pago en mes anterior.']);
-
-                return;
+        if (! auth()->user()->can('caja.bypass-fecha-anterior')) {
+            if (Carbon::parse($this->fecpag)->format('Ym') < now()->format('Ym')) {
+                return 'No es posible registrar pago en mes anterior.';
             }
         }
 
-        $calcs = $this->buildCalcs();
-        if ($this->monto > $calcs['saldo_pendiente'] + 0.01) {
-            $this->dispatch('errorAlert', ['message' => 'El monto excede el saldo pendiente.']);
-
-            return;
+        if ($this->monto > $this->buildCalcs()['saldo_pendiente'] + 0.01) {
+            return 'El monto excede el saldo pendiente.';
         }
 
         // Gate servidor del switch Cancelado (espejo del disabled del front):
@@ -333,13 +342,44 @@ class Create extends Component
         if ($this->cancel) {
             $cancelarHoy = $this->deudaCalcs()['cancelar_cap_int'];
             if ($cancelarHoy - (float) $this->monto > 0.01) {
-                $this->dispatch('errorAlert', ['message' => 'Para cancelar debes cubrir capital pendiente + interés a la fecha ('.number_format($cancelarHoy, 2).').']);
-
-                return;
+                return 'Para cancelar debes cubrir capital pendiente + interés a la fecha ('.number_format($cancelarHoy, 2).').';
             }
         }
 
-        DB::transaction(function () use ($calcs) {
+        return null;
+    }
+
+    /**
+     * Botón "Pagar": no cobra todavía. Valida, arma la vista previa del
+     * recibo y abre el modal donde el cajero confirma con "Cobrar" o
+     * "Cobrar e imprimir".
+     */
+    public function confirmarPago(): void
+    {
+        if ($error = $this->validarCobro()) {
+            $this->dispatch('errorAlert', ['message' => $error]);
+
+            return;
+        }
+
+        $this->preview = $this->construirPreview();
+        $this->dispatch('ticket-confirm');
+    }
+
+    public function pagar(bool $imprimir = false)
+    {
+        if ($error = $this->validarCobro()) {
+            $this->dispatch('errorAlert', ['message' => $error]);
+
+            return;
+        }
+
+        $calcs = $this->buildCalcs();
+
+        $massHeaderId = null;
+        $totalCobrado = 0.0;
+
+        DB::transaction(function () use ($calcs, &$massHeaderId, &$totalCobrado) {
             $tipoPlani = (int) $this->credit->tipo_planilla;
             $obstipo = match ($tipoPlani) {
                 1 => 'S.', 3 => 'M.', 4 => 'D.', default => ''
@@ -387,6 +427,7 @@ class Create extends Component
                 + (float) $this->impomora,
                 2
             );
+            $totalCobrado = $totalGeneral;
             $massHeaderId = DB::table('mass_deletions')->insertGetId([
                 'credit_id' => $this->credit->id, 'amount' => $totalGeneral, 'date' => $this->fecpag,
                 'time' => $hora, 'user' => $usuario, 'advisor' => $this->credit->client?->asesor?->name,
@@ -416,9 +457,9 @@ class Create extends Component
                 $unpaid = CreditInstallment::where('credit_id', $this->credit->id)
                     ->where('pagado', 0)->orderBy('num_cuota')->get();
 
-                // El reparto lo decide simularDistribucion() (función pura, sin
-                // efectos): separa el cálculo de la persistencia y aplica la
-                // regla de negocio del sobrante.
+                // El reparto lo decide simularDistribucion(): la misma función
+                // que alimenta la vista previa del ticket, así el recibo que ve
+                // el cliente antes de confirmar no puede diferir del cobro real.
                 $dist = $this->simularDistribucion((float) $this->monto, $unpaid, $isMensualUnaCuota);
 
                 foreach ($dist['rows'] as $row) {
@@ -614,21 +655,196 @@ class Create extends Component
             ['monto' => $this->monto, 'fecha' => $this->fecpag]
         );
 
-        session()->flash('payment_success', 'Pago registrado correctamente.');
+        // Se queda en la pantalla de pagos (cobranza en serie): cierra el
+        // modal, limpia el formulario y recarga el crédito con el cronograma
+        // ya actualizado. La confirmación queda en el aviso discreto de
+        // "último cobro", sin alerta que tape la pantalla.
+        $this->lastTicketId = $massHeaderId;
+        $this->ultimoCobro = [
+            'numero' => str_pad((string) $massHeaderId, 6, '0', STR_PAD_LEFT),
+            'total' => round($totalCobrado, 2),
+        ];
 
-        return redirect()->route('credits.show', $this->credit->id);
+        $this->reset([
+            'monto', 'obs', 'ckmora', 'cancel', 'impointe2', 'impomora',
+            'idpre', 'moraManual', 'cancelSinMora', 'cancelUltimaCuota',
+        ]);
+        $this->preview = [];
+        $this->resetValidation();
+
+        $this->credit = Credit::with([
+            'client.asesor:id,name',
+            'installments' => fn ($q) => $q->orderBy('num_cuota'),
+        ])->find($this->credit->id);
+
+        $this->dispatch('ticket-close');
+
+        if ($imprimir) {
+            $this->imprimirTicket(app(TicketPrinter::class));
+        }
+    }
+
+    /**
+     * Imprime el recibo del último cobro en la ticketera (ESC/POS), igual que
+     * el botón de la ficha del crédito. NO se imprime desde el navegador: la
+     * ticketera está instalada con driver PostScript y ese camino le manda la
+     * página renderizada, que ella escupe como texto basura.
+     */
+    public function imprimirTicket(TicketPrinter $printer): void
+    {
+        if (! $this->lastTicketId) {
+            return;
+        }
+
+        $masivo = MassDeletion::with([
+            'credit.client',
+            'credit.headquarter:id,name',
+            'details.installment:id,num_cuota',
+        ])->find($this->lastTicketId);
+
+        if (! $masivo) {
+            $this->dispatch('errorAlert', ['message' => 'No se encontró el cobro a imprimir.']);
+
+            return;
+        }
+
+        try {
+            $printer->printPayment($masivo);
+            // Éxito: se refleja en el aviso discreto, sin alerta encima.
+            $this->ultimoCobro['impreso'] = true;
+        } catch (\Throwable $e) {
+            // El fallo sí interrumpe: el cajero necesita saber que no salió.
+            $this->dispatch('errorAlert', ['message' => 'Error al imprimir: '.$e->getMessage()]);
+        }
+    }
+
+    /**
+     * Cronograma tal como quedará justo antes de repartir el monto: si el
+     * cobro cancela el crédito, aplica EN MEMORIA las mismas condonaciones
+     * que hace pagar() en la BD (excedente e interés futuros no devengados).
+     * Nada de esto se guarda; es solo para simular el reparto.
+     */
+    private function cronogramaSimulado(): Collection
+    {
+        $all = CreditInstallment::where('credit_id', $this->credit->id)
+            ->orderBy('num_cuota')->get();
+
+        if (! $this->cancel) {
+            return $all;
+        }
+
+        // Espejo de condonarExcedenteFuturo()
+        foreach ($all as $ins) {
+            if ((int) $ins->pagado === 0
+                && $ins->fecha_vencimiento
+                && Carbon::parse($ins->fecha_vencimiento)->gt(Carbon::parse($this->fecpag))
+                && (float) $ins->importe_excedente > (float) $ins->excedente_aplicado) {
+                $ins->importe_excedente = (float) $ins->excedente_aplicado;
+            }
+        }
+
+        // Espejo de condonarInteresFuturo()
+        $saldoPend = $this->saldoDe($all);
+        $porCondonar = round($saldoPend - (float) $this->monto, 2);
+
+        if ($porCondonar > 0.01) {
+            foreach ($all->where('pagado', 0)->sortByDesc('num_cuota') as $ins) {
+                if ($porCondonar <= 0.005) {
+                    break;
+                }
+                $intPend = max(0, (float) $ins->importe_interes - (float) $ins->interes_aplicado);
+                if ($intPend <= 0) {
+                    continue;
+                }
+                $rebaja = min($intPend, $porCondonar);
+                $ins->importe_interes = round((float) $ins->importe_interes - $rebaja, 2);
+                $porCondonar = round($porCondonar - $rebaja, 2);
+            }
+        }
+
+        return $all;
+    }
+
+    /** Saldo pendiente de un cronograma en memoria (capital + interés + excedente). */
+    private function saldoDe(Collection $cuotas): float
+    {
+        return round($cuotas->sum(fn ($i) => (float) $i->importe_cuota + (float) $i->importe_interes + (float) $i->importe_excedente
+            - (float) $i->importe_aplicado - (float) $i->interes_aplicado - (float) $i->excedente_aplicado), 2);
+    }
+
+    /**
+     * Recibo que se va a emitir, calculado sin escribir nada. Mismos números
+     * y mismos criterios que TicketPrinter: "Cuotas" son las que reciben
+     * capital y "Mora" es solo la que queda asociada a una cuota, aunque el
+     * TOTAL sí incluye toda la mora cobrada.
+     */
+    private function construirPreview(): array
+    {
+        $calcs = $this->buildCalcs();
+        $cronograma = $this->cronogramaSimulado();
+        $unpaid = $cronograma->where('pagado', 0)->sortBy('num_cuota')->values();
+
+        $isMensualUnaCuota = ((int) $this->credit->tipo_planilla === 3 && (int) $this->credit->cuotas === 1);
+        $dist = $this->simularDistribucion((float) $this->monto, $unpaid, $isMensualUnaCuota);
+
+        $totMora = (float) $calcs['total_mora'];
+        $quitarMoras = $this->cancel && $this->cancelSinMora;
+        $moraAcum = ($this->cancel && ! $quitarMoras)
+            ? round(collect(MoraExonerada::porCuota($this->credit))->sum('monto'), 2)
+            : 0.0;
+        $moraQueSeCobra = ($this->ckmora || $quitarMoras) ? 0.0 : $totMora;
+
+        $moraTicket = $moraQueSeCobra;
+        if ((float) $this->impointe2 > 0.001 && $this->idpre) {
+            $moraTicket += (float) $this->impointe2;
+        }
+
+        $total = round(
+            (float) $this->monto + $moraQueSeCobra + $moraAcum
+            + (float) $this->impointe2 + (float) $this->impomora,
+            2
+        );
+
+        $aplicado = $dist['capital'] + $dist['interes'] + $dist['excedente'];
+        $saldo = $this->cancel ? 0.0 : round($this->saldoDe($cronograma) - $aplicado, 2);
+
+        $client = $this->credit->client;
+        $nombre = $client
+            ? trim(($client->apellido_pat ?? '').' '.($client->apellido_mat ?? '').' '.($client->nombre ?? ''))
+            : null;
+
+        return [
+            'sede' => $this->credit->headquarter?->name,
+            'cliente' => $nombre ?: null,
+            'documento' => ($client && $client->documento)
+                ? trim(($client->tipo_documento ?? 'DNI').' '.$client->documento)
+                : null,
+            'credit_id' => (int) $this->credit->id,
+            'fecha' => Carbon::parse($this->fecpag)->format('d/m/Y'),
+            'cuotas' => $dist['cuotas'],
+            'capital' => $dist['capital'],
+            'interes' => $dist['interes'],
+            'excedente' => $dist['excedente'],
+            'mora' => round($moraTicket, 2),
+            'total' => $total,
+            'saldo' => max(0.0, $saldo),
+            'cancela' => $this->cancel,
+            'reserva_mora' => $this->ckmora && ! $this->cancel && $totMora > 0.001,
+        ];
     }
 
     /**
      * Reparte un monto sobre las cuotas impagas SIN tocar nada: devuelve
-     * cuánto va a capital, interés y excedente de cada cuota.
+     * cuánto va a capital, interés y excedente de cada cuota. La usan tanto
+     * pagar() (para persistir) como la vista previa del ticket, de modo que
+     * lo que el cajero confirma en pantalla es exactamente lo que se cobra.
      *
      * Las cuotas se recorren en orden y se devuelven TODAS las visitadas,
      * incluidas las que reciben 0 (pagar() igual las marca/actualiza).
      *
      * @param  iterable  $unpaid  cuotas impagas ordenadas por num_cuota
      * @return array{
-     *   rows: array<int, array{ins: mixed, cap: float, int: float, exc: float, cap_parcial: bool, interes_en_caja: bool}>,
+     *   rows: array<int, array{ins: mixed, cap: float, int: float, exc: float}>,
      *   capital: float, interes: float, excedente: float, cuotas: array<int, int>
      * }
      */
@@ -698,6 +914,7 @@ class Create extends Component
                 $tocadas++;
             }
             if ($payCap > 0.001) {
+                // Igual que el ticket: "Cuotas" lista las que recibieron capital.
                 $cuotas[] = (int) $ins->num_cuota;
                 $capital += $payCap;
             }

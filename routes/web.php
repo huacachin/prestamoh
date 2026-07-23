@@ -61,6 +61,7 @@ Route::middleware('auth')->group(function () {
         Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');
         Route::get('payments/create/{creditId?}', [PaymentController::class, 'create'])->name('payments.create');
         Route::get('payments/refinance/{creditId}', [PaymentController::class, 'refinance'])->name('payments.refinance');
+        Route::get('payments/ticket/{massDeletionId}', [PaymentController::class, 'ticket'])->name('payments.ticket');
     });
 
     // Reportes de crédito diario/mensual/semanal (permiso propio; antes usaban "pagos")

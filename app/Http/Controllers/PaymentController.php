@@ -6,6 +6,8 @@ use App\Livewire\Payments\Daily;
 use App\Livewire\Payments\Monthly;
 use App\Livewire\Payments\Weekly;
 use App\Models\Credit;
+use App\Models\MassDeletion;
+use App\Services\Printing\TicketPrinter;
 use App\Support\XlsResponse;
 use Illuminate\Http\Request;
 
@@ -39,6 +41,33 @@ class PaymentController extends Controller
     public function refinance(int $creditId)
     {
         return view('payments.refinance', compact('creditId'));
+    }
+
+    /**
+     * Vista imprimible del recibo de UN cobro (mass_deletion), maquetada a
+     * 80mm para ticketera. Se imprime con el diálogo del navegador, así que
+     * no necesita la ticketera conectada al servidor.
+     */
+    public function ticket(int $massDeletionId, TicketPrinter $printer)
+    {
+        $masivo = MassDeletion::with([
+            'credit.client',
+            'credit.headquarter:id,name',
+            'details.installment:id,num_cuota',
+        ])->findOrFail($massDeletionId);
+
+        // Mismo logo que el ticket ESC/POS; si no está subido, no se muestra.
+        $logo = null;
+        if (config('printer.print_logo') && ($rel = (string) config('printer.logo_path', ''))) {
+            if (file_exists(storage_path('app/public/'.ltrim($rel, '/')))) {
+                $logo = asset('storage/'.ltrim($rel, '/'));
+            }
+        }
+
+        return view('payments.ticket', [
+            't' => $printer->paymentTicketData($masivo),
+            'logo' => $logo,
+        ]);
     }
 
     public function export(Request $request)

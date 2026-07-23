@@ -34,7 +34,7 @@
         @endphp
 
         {{-- Formulario --}}
-        <form wire:submit.prevent="pagar" class="pago-form">
+        <form wire:submit.prevent="confirmarPago" class="pago-form">
             <style>
                 /* Inputs sin negrita en el value (sin tamaño custom; usa el del tema). */
                 .pago-form .form-control { font-weight: 400 !important; }
@@ -249,10 +249,10 @@
                     {{-- Botones --}}
                     <div class="d-flex gap-2 mt-3 flex-wrap">
                         <button type="submit" class="btn btn-sm btn-dark"
-                                wire:loading.attr="disabled" wire:target="pagar">
+                                wire:loading.attr="disabled" wire:target="confirmarPago">
                             <i class="ti ti-thumb-up"></i>
-                            <span wire:loading.remove wire:target="pagar">Pagar</span>
-                            <span wire:loading wire:target="pagar">Procesando…</span>
+                            <span wire:loading.remove wire:target="confirmarPago">Pagar</span>
+                            <span wire:loading wire:target="confirmarPago">Calculando…</span>
                         </button>
                         @if($credit->situacion !== 'Cancelado')
                             @if((int) $credit->cuotas === 1)
@@ -274,9 +274,152 @@
                             <i class="ti ti-arrow-back"></i> Regresar
                         </a>
                     </div>
+
+                    {{-- Aviso discreto del último cobro: reemplaza a la alerta
+                         emergente, que tapaba la pantalla en cobranza en serie. --}}
+                    @if($ultimoCobro)
+                        <div class="d-flex align-items-center gap-2 mt-2 small text-success">
+                            <i class="ti ti-circle-check"></i>
+                            <span>
+                                Último cobro registrado: recibo <strong>#{{ $ultimoCobro['numero'] }}</strong>
+                                por <strong>S/ {{ number_format($ultimoCobro['total'], 2) }}</strong>
+                                @if($ultimoCobro['impreso'] ?? false)
+                                    · ticket impreso
+                                @endif
+                            </span>
+                            @if($lastTicketId)
+                                <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none"
+                                        wire:click="imprimirTicket" wire:loading.attr="disabled" wire:target="imprimirTicket">
+                                    <i class="ti ti-printer"></i>
+                                    <span wire:loading.remove wire:target="imprimirTicket">Reimprimir</span>
+                                    <span wire:loading wire:target="imprimirTicket">Enviando…</span>
+                                </button>
+                                <a href="{{ route('payments.ticket', $lastTicketId) }}" target="_blank"
+                                   class="btn btn-link btn-sm p-0 text-decoration-none">
+                                    <i class="ti ti-eye"></i> Ver recibo
+                                </a>
+                            @endif
+                        </div>
+                    @endif
                 </div>
             </div>
         </form>
+
+        {{-- ═══ Modal de confirmación del cobro ═══ --}}
+        {{-- El botón Pagar NO cobra: abre esto con el recibo ya calculado
+             (confirmarPago). Recién "Cobrar" / "Cobrar e imprimir" escriben.
+             La impresión sale por ESC/POS a la ticketera; NUNCA por el diálogo
+             del navegador, que está instalada con driver PostScript y en ese
+             camino escupe la página renderizada como texto basura. --}}
+        <div class="modal fade" id="ticketModal" tabindex="-1" aria-hidden="true" wire:ignore.self
+             x-data="{ modal: null }"
+             x-init="modal = bootstrap.Modal.getOrCreateInstance($el)"
+             x-on:ticket-confirm.window="modal.show()"
+             x-on:ticket-close.window="modal.hide()">
+            <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
+                <div class="modal-content">
+                    <div class="modal-header py-2">
+                        <h6 class="modal-title mb-0">Confirmar cobro</h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+
+                    <div class="modal-body py-3" style="background:#e9ecef;">
+                        @if($preview)
+                            {{-- Vista previa del ticket, con la misma pinta que sale impreso --}}
+                            <div class="ticket-preview mx-auto bg-white">
+                                <div class="text-center">
+                                    <div class="tp-empresa">{{ config('printer.company_name', 'PRESTAMOS HUACACHIN') }}</div>
+                                    @if($preview['sede'])
+                                        <div>{{ $preview['sede'] }}</div>
+                                    @endif
+                                </div>
+
+                                <div class="tp-sep-dbl"></div>
+                                <div class="text-center fw-bold">RECIBO DE PAGO</div>
+                                <div class="tp-sep"></div>
+
+                                <div class="tp-row"><span>Fecha:</span><span>{{ $preview['fecha'] }}</span></div>
+                                @if($preview['cliente'])
+                                    <div class="tp-row"><span>Cliente:</span><span>{{ $preview['cliente'] }}</span></div>
+                                @endif
+                                @if($preview['documento'])
+                                    <div class="tp-row"><span>Doc:</span><span>{{ $preview['documento'] }}</span></div>
+                                @endif
+                                <div class="tp-row"><span>Credito:</span><span>#{{ $preview['credit_id'] }}</span></div>
+
+                                <div class="tp-sep"></div>
+
+                                @if($preview['cuotas'])
+                                    <div class="tp-row"><span>Cuotas:</span><span>{{ implode(',', $preview['cuotas']) }}</span></div>
+                                @endif
+                                <div class="tp-row"><span>Capital:</span><span>{{ number_format($preview['capital'], 2) }}</span></div>
+                                <div class="tp-row"><span>Interes:</span><span>{{ number_format($preview['interes'], 2) }}</span></div>
+                                @if($preview['excedente'] > 0.001)
+                                    <div class="tp-row"><span>Excedente:</span><span>{{ number_format($preview['excedente'], 2) }}</span></div>
+                                @endif
+                                @if($preview['mora'] > 0.001)
+                                    <div class="tp-row"><span>Mora:</span><span>{{ number_format($preview['mora'], 2) }}</span></div>
+                                @endif
+
+                                <div class="tp-sep"></div>
+                                <div class="tp-row tp-total"><span>TOTAL</span><span>S/ {{ number_format($preview['total'], 2) }}</span></div>
+                                <div class="tp-sep"></div>
+                                <div class="tp-row"><span>Saldo restante:</span><span>S/ {{ number_format($preview['saldo'], 2) }}</span></div>
+                            </div>
+
+                            @if($preview['cancela'])
+                                <div class="alert alert-warning py-1 px-2 mt-2 mb-0 small text-center">
+                                    <i class="ti ti-alert-triangle"></i> Este cobro <strong>cancela</strong> el crédito.
+                                </div>
+                            @endif
+                            @if($preview['reserva_mora'])
+                                <div class="alert alert-info py-1 px-2 mt-2 mb-0 small text-center">
+                                    Mora reservada: no se cobra ahora, queda acumulada.
+                                </div>
+                            @endif
+                        @endif
+                    </div>
+
+                    <div class="modal-footer justify-content-between py-2">
+                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal"
+                                wire:loading.attr="disabled" wire:target="pagar">
+                            Cancelar
+                        </button>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-primary"
+                                    wire:click="pagar(false)"
+                                    wire:loading.attr="disabled" wire:target="pagar">
+                                Cobrar
+                            </button>
+                            <button type="button" class="btn btn-sm btn-primary"
+                                    wire:click="pagar(true)"
+                                    wire:loading.attr="disabled" wire:target="pagar">
+                                <i class="ti ti-printer"></i>
+                                <span wire:loading.remove wire:target="pagar">Cobrar e imprimir</span>
+                                <span wire:loading wire:target="pagar">Procesando…</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <style>
+            .ticket-preview {
+                width: 260px;
+                padding: 10px 12px;
+                font-family: "Courier New", Courier, monospace;
+                font-size: 11px;
+                line-height: 1.35;
+                color: #000;
+            }
+            .ticket-preview .tp-empresa { font-size: 13px; font-weight: bold; }
+            .ticket-preview .tp-row { display: flex; justify-content: space-between; gap: 8px; }
+            .ticket-preview .tp-row > span:last-child { text-align: right; white-space: nowrap; }
+            .ticket-preview .tp-total { font-size: 13px; font-weight: bold; }
+            .ticket-preview .tp-sep { border-top: 1px dashed #000; margin: 4px 0; }
+            .ticket-preview .tp-sep-dbl { border-top: 3px double #000; margin: 4px 0; }
+        </style>
 
         @script
         <script>

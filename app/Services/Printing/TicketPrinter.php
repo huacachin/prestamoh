@@ -68,13 +68,71 @@ final class TicketPrinter
         return $buffer->getBytes();
     }
 
-    public function buildPaymentTicketBytes(MassDeletion $masivo): string
+    /**
+     * Datos del recibo de UN cobro, en la misma forma que los pinta el ticket
+     * ESC/POS. Fuente única para la ticketera y para la vista 80mm del
+     * navegador (resources/views/payments/ticket.blade.php).
+     *
+     * @return array{
+     *   numero:string, fecha_hora:string, sede:?string, cliente:?string,
+     *   documento:?string, credit_id:int, cobrador:?string, asesor:?string,
+     *   cuotas:array<int,int|string>, capital:float, interes:float,
+     *   excedente:float, mora:float, total:float, saldo:float, proxima:?string
+     * }
+     */
+    public function paymentTicketData(MassDeletion $masivo): array
     {
         $masivo->loadMissing([
             'credit.client',
             'credit.headquarter:id,name',
             'details.installment:id,num_cuota',
         ]);
+
+        $totales = ['C' => 0.0, 'I' => 0.0, 'E' => 0.0, 'M' => 0.0];
+        $cuotasTocadas = [];
+        foreach ($masivo->details as $d) {
+            $tipo = (string) ($d->tipo ?? '');
+            if (isset($totales[$tipo])) {
+                $totales[$tipo] += (float) $d->amount;
+            }
+            if ($d->installment?->num_cuota !== null && $tipo === 'C') {
+                $cuotasTocadas[] = $d->installment->num_cuota;
+            }
+        }
+        $cuotasTocadas = array_values(array_unique($cuotasTocadas));
+        sort($cuotasTocadas);
+
+        $client = $masivo->credit?->client;
+        $nombre = $client
+            ? trim(($client->apellido_pat ?? '').' '.($client->apellido_mat ?? '').' '.($client->nombre ?? ''))
+            : null;
+        $documento = ($client && $client->documento)
+            ? trim(($client->tipo_documento ?? 'DNI').' '.$client->documento)
+            : null;
+
+        return [
+            'numero' => str_pad((string) $masivo->id, 6, '0', STR_PAD_LEFT),
+            'fecha_hora' => trim(($masivo->date?->format('d/m/Y') ?? '').' '.($masivo->time ?? '')),
+            'sede' => $masivo->credit?->headquarter?->name,
+            'cliente' => $nombre ?: null,
+            'documento' => $documento,
+            'credit_id' => (int) $masivo->credit_id,
+            'cobrador' => $masivo->user ?: null,
+            'asesor' => $masivo->advisor ?: null,
+            'cuotas' => $cuotasTocadas,
+            'capital' => round($totales['C'], 2),
+            'interes' => round($totales['I'], 2),
+            'excedente' => round($totales['E'], 2),
+            'mora' => round($totales['M'], 2),
+            'total' => round((float) $masivo->amount, 2),
+            'saldo' => $this->saldoPendiente((int) $masivo->credit_id),
+            'proxima' => $this->proximaCuota((int) $masivo->credit_id),
+        ];
+    }
+
+    public function buildPaymentTicketBytes(MassDeletion $masivo): string
+    {
+        $t = $this->paymentTicketData($masivo);
 
         $buffer = new BufferPrintConnector;
         $printer = new Printer($buffer);
@@ -102,8 +160,8 @@ final class TicketPrinter
             if ($addr = (string) config('printer.company_addr', '')) {
                 $this->pt($printer, Str::limit($addr, $columns)."\n");
             }
-            if ($masivo->credit?->headquarter?->name) {
-                $this->pt($printer, $masivo->credit->headquarter->name."\n");
+            if ($t['sede']) {
+                $this->pt($printer, $t['sede']."\n");
             }
 
             $this->pt($printer, $double."\n");
@@ -112,7 +170,7 @@ final class TicketPrinter
             $printer->setEmphasis(true);
             $this->pt($printer, "RECIBO DE PAGO\n");
             $printer->setTextSize(2, 2);
-            $this->pt($printer, '#'.str_pad((string) $masivo->id, 6, '0', STR_PAD_LEFT)."\n");
+            $this->pt($printer, '#'.$t['numero']."\n");
             $printer->setTextSize(1, 1);
             $printer->setEmphasis(false);
 
@@ -120,56 +178,38 @@ final class TicketPrinter
 
             // ── Cliente / fecha ─────────────────────────────────────────
             $printer->setJustification(Printer::JUSTIFY_LEFT);
-            $fechaHora = trim(($masivo->date?->format('d/m/Y') ?? '').' '.($masivo->time ?? ''));
-            $this->pt($printer, $this->row('Fecha:', $fechaHora, $columns));
+            $this->pt($printer, $this->row('Fecha:', $t['fecha_hora'], $columns));
 
-            $client = $masivo->credit?->client;
-            if ($client) {
-                $nombre = trim(($client->apellido_pat ?? '').' '.($client->apellido_mat ?? '').' '.($client->nombre ?? ''));
-                $this->pt($printer, $this->row('Cliente:', Str::limit($nombre, $columns - 10), $columns));
-                if ($doc = $client->documento) {
-                    $tipo = $client->tipo_documento ?? 'DNI';
-                    $this->pt($printer, $this->row('Doc:', "{$tipo} {$doc}", $columns));
-                }
+            if ($t['cliente']) {
+                $this->pt($printer, $this->row('Cliente:', Str::limit($t['cliente'], $columns - 10), $columns));
+            }
+            if ($t['documento']) {
+                $this->pt($printer, $this->row('Doc:', $t['documento'], $columns));
             }
 
-            $this->pt($printer, $this->row('Credito:', '#'.$masivo->credit_id, $columns));
+            $this->pt($printer, $this->row('Credito:', '#'.$t['credit_id'], $columns));
 
-            if ($masivo->user) {
-                $this->pt($printer, $this->row('Cobrador:', Str::limit((string) $masivo->user, $columns - 10), $columns));
+            if ($t['cobrador']) {
+                $this->pt($printer, $this->row('Cobrador:', Str::limit($t['cobrador'], $columns - 10), $columns));
             }
-            if ($masivo->advisor) {
-                $this->pt($printer, $this->row('Asesor:', Str::limit((string) $masivo->advisor, $columns - 10), $columns));
+            if ($t['asesor']) {
+                $this->pt($printer, $this->row('Asesor:', Str::limit($t['asesor'], $columns - 10), $columns));
             }
 
             $this->pt($printer, $sep."\n");
 
             // ── Detalle por tipo (C, I, E, M) ────────────────────────────
-            $totales = ['C' => 0.0, 'I' => 0.0, 'E' => 0.0, 'M' => 0.0];
-            $cuotasTocadas = [];
-            foreach ($masivo->details as $d) {
-                $tipo = (string) ($d->tipo ?? '');
-                if (isset($totales[$tipo])) {
-                    $totales[$tipo] += (float) $d->amount;
-                }
-                if ($d->installment?->num_cuota !== null && $tipo === 'C') {
-                    $cuotasTocadas[] = $d->installment->num_cuota;
-                }
-            }
-            $cuotasTocadas = array_values(array_unique($cuotasTocadas));
-            sort($cuotasTocadas);
-
-            if ($cuotasTocadas) {
-                $this->pt($printer, $this->row('Cuotas:', implode(',', $cuotasTocadas), $columns));
+            if ($t['cuotas']) {
+                $this->pt($printer, $this->row('Cuotas:', implode(',', $t['cuotas']), $columns));
             }
 
-            $this->pt($printer, $this->row('Capital:', number_format($totales['C'], 2), $columns));
-            $this->pt($printer, $this->row('Interes:', number_format($totales['I'], 2), $columns));
-            if ($totales['E'] > 0.001) {
-                $this->pt($printer, $this->row('Excedente:', number_format($totales['E'], 2), $columns));
+            $this->pt($printer, $this->row('Capital:', number_format($t['capital'], 2), $columns));
+            $this->pt($printer, $this->row('Interes:', number_format($t['interes'], 2), $columns));
+            if ($t['excedente'] > 0.001) {
+                $this->pt($printer, $this->row('Excedente:', number_format($t['excedente'], 2), $columns));
             }
-            if ($totales['M'] > 0.001) {
-                $this->pt($printer, $this->row('Mora:', number_format($totales['M'], 2), $columns));
+            if ($t['mora'] > 0.001) {
+                $this->pt($printer, $this->row('Mora:', number_format($t['mora'], 2), $columns));
             }
 
             $this->pt($printer, $sep."\n");
@@ -177,18 +217,16 @@ final class TicketPrinter
             // ── Total cobrado ───────────────────────────────────────────
             $printer->setEmphasis(true);
             $printer->setTextSize(1, 2);
-            $this->pt($printer, $this->row('TOTAL', 'S/ '.number_format((float) $masivo->amount, 2), $columns));
+            $this->pt($printer, $this->row('TOTAL', 'S/ '.number_format($t['total'], 2), $columns));
             $printer->setTextSize(1, 1);
             $printer->setEmphasis(false);
 
             // ── Saldo restante ──────────────────────────────────────────
-            $saldo = $this->saldoPendiente((int) $masivo->credit_id);
             $this->pt($printer, $sep."\n");
-            $this->pt($printer, $this->row('Saldo restante:', 'S/ '.number_format($saldo, 2), $columns));
+            $this->pt($printer, $this->row('Saldo restante:', 'S/ '.number_format($t['saldo'], 2), $columns));
 
-            $proxima = $this->proximaCuota((int) $masivo->credit_id);
-            if ($proxima) {
-                $this->pt($printer, $this->row('Prox. vencimiento:', $proxima, $columns));
+            if ($t['proxima']) {
+                $this->pt($printer, $this->row('Prox. vencimiento:', $t['proxima'], $columns));
             }
 
             $this->pt($printer, $double."\n");
