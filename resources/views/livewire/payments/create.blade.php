@@ -339,8 +339,12 @@
             </div>
         </form>
 
-        @if($esPagable)
         {{-- ═══ Modal de confirmación del cobro ═══ --}}
+        {{-- OJO: SIEMPRE en el DOM, aunque el crédito no sea pagable. Si se
+             envuelve en @if($esPagable), al CANCELAR un crédito desde el
+             propio modal Livewire lo elimina del DOM antes de que Bootstrap
+             lo cierre y el backdrop negro queda huérfano/pegado (bug real
+             del 24/07). El backend ya bloquea pagos en no-activos. --}}
         {{-- El botón Pagar NO cobra: abre esto con el recibo ya calculado
              (confirmarPago). Recién "Cobrar" / "Cobrar e imprimir" escriben.
              La impresión sale por ESC/POS a la ticketera; NUNCA por el diálogo
@@ -456,10 +460,23 @@
             .ticket-preview .tp-sep-dbl { border-top: 3px double #000; margin: 4px 0; }
         </style>
 
-        @endif {{-- $esPagable: modal de confirmación --}}
-
         @script
         <script>
+            // Barrendero de backdrops: si el modal ya no está visible pero
+            // Bootstrap dejó un backdrop huérfano (p. ej. por un morph de
+            // Livewire a mitad del cierre), se limpia. Corre tras cada
+            // ticket-close con un pequeño margen para la animación.
+            window.addEventListener('ticket-close', () => {
+                setTimeout(() => {
+                    if (! document.querySelector('#ticketModal.show')) {
+                        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+                        document.body.classList.remove('modal-open');
+                        document.body.style.removeProperty('overflow');
+                        document.body.style.removeProperty('padding-right');
+                    }
+                }, 350);
+            });
+
             // Capturar GPS si el navegador lo permite
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
