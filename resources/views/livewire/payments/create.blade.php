@@ -278,69 +278,98 @@
 
                     {{-- ── Método de pago ── --}}
                     <h6 class="mb-1 mt-3" style="color:red;">Método de pago</h6>
-                    <div class="row g-2 align-items-end">
-                        <div class="col-6 col-md-2">
-                            <label class="form-label mb-0 small fw-semibold">Método</label>
-                            <select class="form-select form-select-sm" wire:model.live="metodoPago">
-                                <option value="efectivo">Efectivo</option>
-                                <option value="deposito">Depósito</option>
-                            </select>
-                        </div>
-                        @if($metodoPago === 'deposito')
-                            <div class="col-6 col-md-2">
-                                <label class="form-label mb-0 small fw-semibold">Banco</label>
-                                <select class="form-select form-select-sm" wire:model.live="depBanco">
-                                    @foreach(\App\Livewire\Payments\Create::DEP_BANCOS as $b)
-                                        <option value="{{ $b }}">{{ $b }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-6 col-md-2">
-                                <label class="form-label mb-0 small fw-semibold">Cuenta</label>
-                                <select class="form-select form-select-sm" wire:model.live="depCuenta">
-                                    @foreach(\App\Livewire\Payments\Create::DEP_CUENTAS as $cta)
-                                        <option value="{{ $cta }}">{{ $cta }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            @if($depCuenta === 'Otra')
-                                <div class="col-6 col-md-2">
-                                    <label class="form-label mb-0 small fw-semibold">Nombre de la cuenta</label>
-                                    <input type="text" class="form-control form-control-sm" wire:model.live="depCuentaOtra" placeholder="Titular">
-                                </div>
-                            @endif
-                            <div class="col-6 col-md-1">
-                                <label class="form-label mb-0 small fw-semibold">Canal</label>
-                                <select class="form-select form-select-sm" wire:model.live="depCanal">
-                                    @foreach(\App\Livewire\Payments\Create::DEP_CANALES as $ch)
-                                        <option value="{{ $ch }}">{{ $ch }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-6 col-md-2">
-                                <label class="form-label mb-0 small fw-semibold">Fecha del depósito</label>
-                                <input type="date" class="form-control form-control-sm" wire:model.live="depFecha" max="{{ now()->format('Y-m-d') }}">
-                                <div class="form-text mt-0" style="font-size:.7rem;">Vacío = fecha del pago</div>
-                            </div>
-                            <div class="col-12 col-md-3">
-                                <label class="form-label mb-0 small fw-semibold">
-                                    <i class="ti ti-camera"></i> Foto del voucher
-                                </label>
-                                <input type="file" class="form-control form-control-sm @error('voucherFoto') is-invalid @enderror"
-                                       wire:model="voucherFoto" accept="image/*">
-                                @error('voucherFoto') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                                <div wire:loading wire:target="voucherFoto" class="form-text mt-0" style="font-size:.7rem;">Subiendo…</div>
-                            </div>
-                            <div class="col-12">
-                                <small class="text-muted">
-                                    <i class="ti ti-info-circle"></i>
-                                    Al cobrar se registrará automáticamente el egreso de caja:
-                                    <strong>"Dep. {{ $depBanco }} {{ $depCuenta === 'Otra' ? ($depCuentaOtra ?: '…') : $depCuenta }} {{ $credit->client?->fullName() }} ({{ $depCanal }})"</strong>
-                                    por el total cobrado{{ $voucherFoto ? ', con la foto del voucher adjunta' : '' }}.
-                                </small>
-                            </div>
-                        @endif
+                    <div class="btn-group btn-group-sm" role="group" aria-label="Método de pago">
+                        <button type="button" wire:click="$set('metodoPago', 'efectivo')"
+                                class="btn {{ $metodoPago === 'efectivo' ? 'btn-dark' : 'btn-outline-dark' }}">
+                            <i class="ti ti-cash"></i> Efectivo
+                        </button>
+                        <button type="button" wire:click="$set('metodoPago', 'deposito')"
+                                class="btn {{ $metodoPago === 'deposito' ? 'btn-primary' : 'btn-outline-primary' }}">
+                            <i class="ti ti-building-bank"></i> Depósito
+                        </button>
                     </div>
+
+                    @if($metodoPago === 'deposito')
+                        <div class="mt-2 p-3 rounded-3"
+                             style="background:#f4f8ff; border-left:4px solid #2a78d6;">
+                            <div class="row g-3">
+                                <div class="col-6 col-md-3">
+                                    <label class="form-label mb-1 small fw-semibold">Banco</label>
+                                    <select class="form-select form-select-sm" wire:model.live="depBanco">
+                                        @foreach(\App\Livewire\Payments\Create::DEP_BANCOS as $b)
+                                            <option value="{{ $b }}">{{ $b }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <label class="form-label mb-1 small fw-semibold">Cuenta receptora</label>
+                                    <select class="form-select form-select-sm" wire:model.live="depCuenta">
+                                        @foreach(\App\Livewire\Payments\Create::DEP_CUENTAS as $cta)
+                                            <option value="{{ $cta }}">{{ $cta }}</option>
+                                        @endforeach
+                                    </select>
+                                    @if($depCuenta === 'Otra')
+                                        <input type="text" class="form-control form-control-sm mt-1"
+                                               wire:model.live="depCuentaOtra" placeholder="Nombre del titular">
+                                    @endif
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <label class="form-label mb-1 small fw-semibold">Canal</label>
+                                    <select class="form-select form-select-sm" wire:model.live="depCanal">
+                                        @foreach(\App\Livewire\Payments\Create::DEP_CANALES as $ch)
+                                            <option value="{{ $ch }}">{{ $ch }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <label class="form-label mb-1 small fw-semibold">
+                                        Fecha del depósito
+                                        <span class="text-muted fw-normal">(vacío = hoy)</span>
+                                    </label>
+                                    <input type="date" class="form-control form-control-sm"
+                                           wire:model.live="depFecha" max="{{ now()->format('Y-m-d') }}">
+                                </div>
+
+                                <div class="col-12">
+                                    <label class="form-label mb-1 small fw-semibold">
+                                        <i class="ti ti-camera"></i> Foto del voucher
+                                        <span class="text-muted fw-normal">(opcional)</span>
+                                    </label>
+                                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                                        @if($voucherFoto)
+                                            <div class="position-relative">
+                                                <img src="{{ $voucherFoto->temporaryUrl() }}" alt="Voucher"
+                                                     style="height:64px; border-radius:8px; border:1px solid #cfe0f5;">
+                                                <button type="button" wire:click="$set('voucherFoto', null)"
+                                                        class="btn btn-sm btn-danger p-0 position-absolute top-0 start-100 translate-middle rounded-circle"
+                                                        style="width:20px; height:20px; line-height:1;" title="Quitar foto">
+                                                    <i class="ti ti-x" style="font-size:12px;"></i>
+                                                </button>
+                                            </div>
+                                            <span class="small text-success"><i class="ti ti-circle-check"></i> Voucher listo — quedará adjunto al egreso</span>
+                                        @else
+                                            <label class="btn btn-sm btn-outline-primary mb-0">
+                                                <i class="ti ti-upload"></i>
+                                                <span wire:loading.remove wire:target="voucherFoto">Seleccionar imagen</span>
+                                                <span wire:loading wire:target="voucherFoto">Subiendo…</span>
+                                                <input type="file" class="d-none" wire:model="voucherFoto" accept="image/*">
+                                            </label>
+                                        @endif
+                                    </div>
+                                    @error('voucherFoto') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                                </div>
+
+                                <div class="col-12 pt-2" style="border-top:1px dashed #cfe0f5;">
+                                    <span class="small">
+                                        <i class="ti ti-circle-check text-primary"></i>
+                                        Egreso automático al cobrar:
+                                        <code style="background:#fff; padding:2px 8px; border-radius:5px; border:1px solid #cfe0f5; color:#1d4ed8;">Dep. {{ $depBanco }} {{ $depCuenta === 'Otra' ? ($depCuentaOtra ?: '…') : $depCuenta }} {{ $credit->client?->fullName() }} ({{ $depCanal }}){{ $depFecha !== '' && $depFecha !== $fecpag ? ' '.\Carbon\Carbon::parse($depFecha)->format('d/m') : '' }}</code>
+                                        por el total cobrado.
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
 
                     @endif {{-- $esPagable: Atraso + Registrar Pago --}}
 
