@@ -5,6 +5,7 @@ namespace App\Livewire\Dashboard;
 use App\Livewire\Reports\Portfolio;
 use App\Models\Credit;
 use App\Models\Payment;
+use App\Services\DesembolsosService;
 use App\Services\MorosidadService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -66,19 +67,11 @@ class Index extends Component
         }
 
         // ── CAPITAL PRESTADO: créditos activados en el período ─────────
-        // Desglosado en NUEVOS y REFINANCIADOS (cod_rem='REF'); el héroe
-        // muestra el total y los chips el desglose. OJO: el Egreso de Caja
+        // Fuente única compartida con /reports/desembolsos (los chips del
+        // héroe enlazan allá): DesembolsosService. OJO: el Egreso de Caja
         // Estadística equivale solo a los NUEVOS (los refinanciados no
         // mueven caja nueva). [Refinanciados incluidos a pedido, 24/07.]
-        $prestado = Credit::query()
-            ->whereBetween('fecha_actualizacion', [$desde, $hasta])
-            ->selectRaw("
-                COALESCE(SUM(CASE WHEN cod_rem = 'REF' THEN 1 ELSE 0 END), 0) as refi_n,
-                COALESCE(SUM(CASE WHEN cod_rem = 'REF' THEN importe ELSE 0 END), 0) as refi_total,
-                COALESCE(SUM(CASE WHEN cod_rem = 'REF' THEN 0 ELSE 1 END), 0) as nuevo_n,
-                COALESCE(SUM(CASE WHEN cod_rem = 'REF' THEN 0 ELSE importe END), 0) as nuevo_total
-            ")
-            ->first();
+        $prestado = app(DesembolsosService::class)->resumen($desde, $hasta);
 
         // ── INTERÉS y MORA cobrados en el período (verdad de caja) ─────
         $cobrado = Payment::query()
@@ -189,10 +182,10 @@ class Index extends Component
             'esDia' => (bool) $day,
             'diasDelMes' => $diasDelMes,
             'anios' => range((int) now()->year, $primerAnio),
-            'capitalPrestado' => (float) $prestado->nuevo_total + (float) $prestado->refi_total,
-            'nCreditos' => (int) $prestado->nuevo_n + (int) $prestado->refi_n,
-            'nuevos' => ['n' => (int) $prestado->nuevo_n, 'total' => (float) $prestado->nuevo_total],
-            'refis' => ['n' => (int) $prestado->refi_n, 'total' => (float) $prestado->refi_total],
+            'capitalPrestado' => $prestado['nuevos']['total'] + $prestado['refis']['total'],
+            'nCreditos' => $prestado['nuevos']['n'] + $prestado['refis']['n'],
+            'nuevos' => $prestado['nuevos'],
+            'refis' => $prestado['refis'],
             'serie' => $serie,
             'serieMax' => $serieMax,
             'diaFiltrado' => $day,

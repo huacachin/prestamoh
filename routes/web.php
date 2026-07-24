@@ -89,6 +89,8 @@ Route::middleware('auth')->group(function () {
     Route::get('cash/expenses/{id}/gallery', [CashController::class, 'expenseGallery'])->name('cash.expenses.gallery')->middleware('permission:caja.egresos');
 
     // Reportes
+    // Desembolsos: drill-down del dashboard (mismo acceso que el panel, solo auth)
+    Route::get('reports/desembolsos', [ReportController::class, 'desembolsos'])->name('reports.desembolsos');
     Route::get('reports/portfolio', [ReportController::class, 'portfolio'])->name('reports.portfolio')->middleware('permission:reportes.cartera');
     Route::get('reports/payments', [ReportController::class, 'payments'])->name('reports.payments')->middleware('permission:reportes.pagos');
     Route::get('reports/delinquent', [ReportController::class, 'delinquent'])->name('reports.delinquent')->middleware('permission:reportes.morosidad');

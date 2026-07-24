@@ -6,6 +6,7 @@ use App\Livewire\Reports\Advisor;
 use App\Livewire\Reports\Cancelled;
 use App\Livewire\Reports\CashGeneral1;
 use App\Livewire\Reports\CashGeneral2;
+use App\Livewire\Reports\CashGeneral3;
 use App\Livewire\Reports\Delinquent;
 use App\Livewire\Reports\Payments;
 use App\Livewire\Reports\Portfolio;
@@ -14,6 +15,12 @@ use Illuminate\Http\Request;
 
 class ReportController extends Controller
 {
+    /** Drill-down de los chips Nuevos/Refinanciados del dashboard. */
+    public function desembolsos()
+    {
+        return view('reports.desembolsos');
+    }
+
     public function portfolio()
     {
         return view('reports.portfolio');
@@ -201,7 +208,7 @@ class ReportController extends Controller
 
     public function exportCashGeneral3(Request $request)
     {
-        $c = new \App\Livewire\Reports\CashGeneral3;
+        $c = new CashGeneral3;
         $c->month = (int) $request->query('month', now()->month);
         $c->year = (int) $request->query('year', now()->year);
 

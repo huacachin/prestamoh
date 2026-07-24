@@ -55,7 +55,9 @@
             background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.28);
             backdrop-filter: blur(2px); color: #fff;
             border-radius: 999px; padding: 5px 14px; font-size: .85rem;
+            text-decoration: none; transition: background .15s ease;
         }
+        a.dashx-chip:hover { background: rgba(255,255,255,.30); color: #fff; }
         .dashx-chip strong { font-weight: 700; }
 
         .dashx-meter { height: 16px; border-radius: 8px; overflow: hidden; display: flex; background: #eceae6; }
@@ -177,15 +179,22 @@
         <div class="card-body text-center py-4 position-relative">
             <div class="dashx-label">Capital prestado {{ $esDia ? 'en el día' : 'en el mes' }}</div>
             <div class="hero-num my-1">S/ {{ $fmt($capitalPrestado) }}</div>
+            @php
+                $qsPeriodo = 'mes='.$month.'&anio='.$year.($day !== '' && $day !== null ? '&dia='.$day : '');
+            @endphp
             <div class="d-flex justify-content-center gap-2 flex-wrap mt-2">
-                <span class="dashx-chip">
+                <a href="{{ route('reports.desembolsos') }}?{{ $qsPeriodo }}&tipo=nuevos"
+                   class="dashx-chip" title="Ver los créditos nuevos del período">
                     <i class="ti ti-coins"></i>
                     Nuevos: <strong>{{ $fmt0($nuevos['n']) }}</strong> · S/ <strong>{{ $fmt($nuevos['total']) }}</strong>
-                </span>
-                <span class="dashx-chip">
+                    <i class="ti ti-arrow-right" style="opacity:.7;"></i>
+                </a>
+                <a href="{{ route('reports.desembolsos') }}?{{ $qsPeriodo }}&tipo=refinanciados"
+                   class="dashx-chip" title="Ver los refinanciados del período">
                     <i class="ti ti-refresh"></i>
                     Refinanciados: <strong>{{ $fmt0($refis['n']) }}</strong> · S/ <strong>{{ $fmt($refis['total']) }}</strong>
-                </span>
+                    <i class="ti ti-arrow-right" style="opacity:.7;"></i>
+                </a>
             </div>
         </div>
     </div>
