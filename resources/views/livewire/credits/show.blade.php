@@ -259,7 +259,7 @@
                                 <a href="{{ \Illuminate\Support\Facades\URL::signedRoute('recibo.pdf', ['massDeletionId' => $masivo->id]) }}"
                                    class="btn btn-sm btn-secondary"
                                    title="Descargar recibo en PDF">
-                                    <i class="ti ti-file-type-pdf"></i>
+                                    <i class="ti ti-file-download"></i>
                                 </a>
                             </td>
                         </tr>

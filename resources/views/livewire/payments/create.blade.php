@@ -693,7 +693,7 @@
                                         <a href="{{ $rec['pdf'] }}"
                                            class="btn btn-sm btn-secondary py-0 px-1"
                                            title="Descargar recibo en PDF">
-                                            <i class="ti ti-file-type-pdf"></i>
+                                            <i class="ti ti-file-download"></i>
                                         </a>
                                     @endif
                                 </td>
