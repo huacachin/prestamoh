@@ -405,16 +405,22 @@
                     @php
                         $rampa = ['#f5c4c4', '#efa3a3', '#e68181', '#da5f5f', '#c94141', '#a82626'];
                         $agingTope = max(0.01, $agingMax);
+                        $agingTotal = max(0.01, array_sum(array_column($agingBuckets, 'saldo')));
                     @endphp
                     @foreach($agingBuckets as $i => $b)
-                        @php $w = round($b['saldo'] * 100 / $agingTope, 1); @endphp
+                        @php
+                            $w = round($b['saldo'] * 100 / $agingTope, 1);
+                            $pctB = round($b['saldo'] * 100 / $agingTotal, 1);
+                        @endphp
                         <div class="d-flex align-items-center gap-2 mb-2">
                             <span class="dashx-sub text-end" style="width:44px; font-variant-numeric:tabular-nums;">{{ $b['bucket'] }}</span>
                             <div class="flex-grow-1" style="background:#f4f2ef; border-radius:5px; height:22px; overflow:hidden;">
-                                <div style="width:{{ max($w, $b['saldo'] > 0 ? 1.5 : 0) }}%; height:100%; background:{{ $rampa[$i] }}; border-radius:5px 5px 5px 5px;"></div>
+                                <div style="width:{{ max($w, $b['saldo'] > 0 ? 1.5 : 0) }}%; height:100%; background:{{ $rampa[$i] }}; border-radius:5px;"></div>
                             </div>
-                            <span class="dashx-sub text-end" style="width:118px; font-variant-numeric:tabular-nums; white-space:nowrap;">
-                                S/ {{ $fmt($b['saldo']) }} <span style="color:#a8a49c;">({{ $b['n'] }})</span>
+                            <span class="dashx-sub text-end" style="width:158px; font-variant-numeric:tabular-nums; white-space:nowrap;">
+                                S/ {{ $fmt($b['saldo']) }}
+                                <strong style="color:#0b0b0b;">{{ $pctB }}%</strong>
+                                <span style="color:#a8a49c;">({{ $b['n'] }})</span>
                             </span>
                         </div>
                     @endforeach
