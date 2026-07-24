@@ -63,13 +63,19 @@ class Index extends Component
             $etiqueta = ucfirst(Carbon::create($year, $month, 1)->locale('es')->translatedFormat('F Y'));
         }
 
-        // ── CAPITAL PRESTADO: créditos activados, sin refinanciados ────
+        // ── CAPITAL PRESTADO: créditos activados en el período ─────────
+        // Desglosado en NUEVOS y REFINANCIADOS (cod_rem='REF'); el héroe
+        // muestra el total y los chips el desglose. OJO: el Egreso de Caja
+        // Estadística equivale solo a los NUEVOS (los refinanciados no
+        // mueven caja nueva). [Refinanciados incluidos a pedido, 24/07.]
         $prestado = Credit::query()
             ->whereBetween('fecha_actualizacion', [$desde, $hasta])
-            ->where(function ($q) {
-                $q->where('cod_rem', '<>', 'REF')->orWhereNull('cod_rem');
-            })
-            ->selectRaw('COUNT(*) as n, COALESCE(SUM(importe), 0) as total')
+            ->selectRaw("
+                COALESCE(SUM(CASE WHEN cod_rem = 'REF' THEN 1 ELSE 0 END), 0) as refi_n,
+                COALESCE(SUM(CASE WHEN cod_rem = 'REF' THEN importe ELSE 0 END), 0) as refi_total,
+                COALESCE(SUM(CASE WHEN cod_rem = 'REF' THEN 0 ELSE 1 END), 0) as nuevo_n,
+                COALESCE(SUM(CASE WHEN cod_rem = 'REF' THEN 0 ELSE importe END), 0) as nuevo_total
+            ")
             ->first();
 
         // ── INTERÉS y MORA cobrados en el período (verdad de caja) ─────
@@ -99,8 +105,10 @@ class Index extends Component
             'esDia' => (bool) $day,
             'diasDelMes' => $diasDelMes,
             'anios' => range((int) now()->year, $primerAnio),
-            'capitalPrestado' => (float) $prestado->total,
-            'nCreditos' => (int) $prestado->n,
+            'capitalPrestado' => (float) $prestado->nuevo_total + (float) $prestado->refi_total,
+            'nCreditos' => (int) $prestado->nuevo_n + (int) $prestado->refi_n,
+            'nuevos' => ['n' => (int) $prestado->nuevo_n, 'total' => (float) $prestado->nuevo_total],
+            'refis' => ['n' => (int) $prestado->refi_n, 'total' => (float) $prestado->refi_total],
             'interesCobrado' => (float) $cobrado->interes,
             'nInteres' => (int) $cobrado->n_interes,
             'moraCobrada' => (float) $cobrado->mora,
