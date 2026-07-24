@@ -610,25 +610,10 @@ class Create extends Component
     }
 
     /**
-     * Reparte un monto sobre las cuotas impagas SIN tocar nada: devuelve
-     * cuánto va a capital, interés y excedente de cada cuota.
-     *
-     * Las cuotas se recorren en orden y se devuelven TODAS las visitadas,
-     * incluidas las que reciben 0 (pagar() igual las marca/actualiza).
-     *
-     * REGLA DEL SOBRANTE (espejo del legacy pagossmasivo, POR OPERACIÓN):
-     * la etiqueta del residuo que desborda depende del estado de la cuota
-     * donde cae el dinero, no de un criterio fijo:
-     *  - Residuo que desborda a una cuota con capital pendiente → CAPITAL
-     *    de esa cuota (flujo estándar: pago en 1 operación; ej. 28895 el
-     *    23/07: 283.40 = cap 191.54 + int 75.00 + CAP 16.86 en cuota sig.).
-     *  - Operación que cae en cuota con capital ya cubierto ("fase de
-     *    interés") → INTERÉS (flujo en 2 operaciones; ej. 28892 el 20/07:
-     *    op2 de 66.70 quedó entera como INTERES).
-     * Si cobranza digita las MISMAS operaciones en ambos sistemas, la
-     * clasificación coincide al céntimo. NO agregar reglas de reetiquetado
-     * del residuo (se intentó "sobrante→interés" fijo y descuadró los días
-     * digitados en 1 operación).
+     * Reparte un monto sobre las cuotas impagas SIN tocar nada. Delegado en
+     * App\Services\Payments\DistribucionPago (motor espejo del legacy,
+     * validable con `payments:backtest-legacy`); ahí vive la regla del
+     * sobrante por operación y su documentación.
      *
      * @param  iterable  $unpaid  cuotas impagas ordenadas por num_cuota
      * @return array{
@@ -638,79 +623,8 @@ class Create extends Component
      */
     private function simularDistribucion(float $monto, iterable $unpaid, bool $isMensualUnaCuota): array
     {
-        $rows = [];
-        $cuotas = [];
-        $capital = $interes = $excedente = 0.0;
-
-        $remaining = $monto;
-        $tocadas = 0;
-        // Capital pagado en cuotas anteriores de ESTE pago (decide el
-        // destino del sobrante que desborda a la cuota siguiente).
-        $opPagoCapital = false;
-
-        foreach ($unpaid as $ins) {
-            if ($remaining < 0.01) {
-                break;
-            }
-
-            // Flujo de negocio: si el pago entró en fase de interés (el
-            // capital de la cuota en curso ya estaba cubierto y este
-            // pago no puso capital), el sobrante que desborda a la
-            // cuota siguiente se aplica a su INTERÉS, no a su capital.
-            // Así el desglose de Caja 1 cuadra con el legacy (p. ej.
-            // pago 180 con interés restante 94.73: 94.73 INT cuota N +
-            // 85.27 INT cuota N+1, antes iba a capital de N+1).
-            $sobranteAInteres = $tocadas > 0 && ! $opPagoCapital;
-
-            if ($isMensualUnaCuota || $sobranteAInteres) {
-                // INTERES PRIMERO (tipoplani=3 + cuotas=1, o sobrante de fase interés)
-                $apagarInt = (float) $ins->importe_interes - (float) $ins->interes_aplicado;
-                $apagarCap = (float) $ins->importe_cuota - (float) $ins->importe_aplicado;
-
-                $payInt = round(min($remaining, max(0, $apagarInt)), 2);
-                $remaining -= $payInt;
-                $payCap = round(min($remaining, max(0, $apagarCap)), 2);
-                $remaining -= $payCap;
-            } else {
-                // BRANCH NORMAL: capital primero, interés segundo
-                $apagarCap = (float) $ins->importe_cuota - (float) $ins->importe_aplicado;
-                $apagarInt = (float) $ins->importe_interes - (float) $ins->interes_aplicado;
-
-                $payCap = round(min($remaining, max(0, $apagarCap)), 2);
-                $remaining -= $payCap;
-                $payInt = round(min($remaining, max(0, $apagarInt)), 2);
-                $remaining -= $payInt;
-            }
-
-            if ($payCap > 0.001) {
-                $opPagoCapital = true;
-            }
-
-            // Excedente de redondeo (cuota uniforme): siempre al final
-            $apagarExc = (float) $ins->importe_excedente - (float) $ins->excedente_aplicado;
-            $payExc = round(min($remaining, max(0, $apagarExc)), 2);
-            $remaining -= $payExc;
-
-            $rows[] = ['ins' => $ins, 'cap' => $payCap, 'int' => $payInt, 'exc' => $payExc];
-
-            if ($payCap > 0.001 || $payInt > 0.001 || $payExc > 0.001) {
-                $tocadas++;
-            }
-            if ($payCap > 0.001) {
-                $cuotas[] = (int) $ins->num_cuota;
-                $capital += $payCap;
-            }
-            $interes += $payInt;
-            $excedente += $payExc;
-        }
-
-        return [
-            'rows' => $rows,
-            'capital' => round($capital, 2),
-            'interes' => round($interes, 2),
-            'excedente' => round($excedente, 2),
-            'cuotas' => $cuotas,
-        ];
+        return app(\App\Services\Payments\DistribucionPago::class)
+            ->distribuir($monto, $unpaid, $isMensualUnaCuota);
     }
 
     /**
