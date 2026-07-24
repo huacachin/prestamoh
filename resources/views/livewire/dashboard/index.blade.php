@@ -259,8 +259,11 @@
                 <div class="seg-gap"></div>
                 <div class="seg-mora" style="width: {{ $moraPct }}%;"></div>
             </div>
-            <div class="d-flex justify-content-between mt-1 dashx-sub">
+            <div class="d-flex justify-content-between mt-1 dashx-sub flex-wrap">
                 <span><span style="color:#0ca30c;">●</span> Al día S/ {{ $fmt($morosidad['activos_saldo']) }}</span>
+                <span class="fw-semibold" style="color:#0b0b0b;">
+                    Total S/ {{ $fmt($morosidad['total_saldo']) }}
+                </span>
                 <span><span style="color:#d03b3b;">●</span> En mora S/ {{ $fmt($morosidad['mora_saldo']) }}</span>
             </div>
         </div>
