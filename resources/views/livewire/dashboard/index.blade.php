@@ -70,6 +70,54 @@
 
         .dashx-share { height: 6px; border-radius: 3px; background: #eceae6; overflow: hidden; margin-top: 6px; }
         .dashx-share > div { height: 100%; border-radius: 3px; }
+
+        /* ── Curva del mes (barras apiladas nuevos/refi) ── */
+        .chart-swatch {
+            display:inline-block; width:10px; height:10px; border-radius:3px;
+            vertical-align:baseline; margin-right:3px;
+        }
+        .dashx-chart { position: relative; height: 230px; padding-left: 42px; }
+        .dashx-chart .grid-line {
+            position: absolute; left: 42px; right: 0; height: 1px;
+            background: #eceae6; z-index: 0;
+        }
+        .dashx-chart .grid-line span {
+            position: absolute; left: -42px; top: -7px; width: 36px;
+            text-align: right; font-size: .68rem; color: #8b8983;
+            font-variant-numeric: tabular-nums;
+        }
+        .dashx-chart .bars {
+            position: absolute; inset: 0 0 0 42px;
+            display: flex; align-items: flex-end; gap: 3px; z-index: 1;
+        }
+        .day-col {
+            flex: 1 1 0; min-width: 0; height: 100%;
+            display: flex; flex-direction: column; justify-content: flex-end;
+            cursor: default; border-radius: 4px;
+        }
+        .day-col:hover { background: rgba(42,120,214,.06); }
+        .day-col.is-selected { background: rgba(42,120,214,.10); outline: 1px solid #2a78d6; }
+        .day-col.is-dimmed .seg { opacity: .35; }
+        .day-stack {
+            height: calc(100% - 26px);
+            display: flex; flex-direction: column; justify-content: flex-end;
+        }
+        .day-stack .seg { border-radius: 4px 4px 0 0; min-height: 2px; }
+        .day-stack .seg + .seg { border-radius: 0; }
+        .day-stack .seg-space { height: 2px; }
+        .day-label {
+            height: 26px; line-height: 26px; text-align: center;
+            font-size: .66rem; color: #8b8983; font-variant-numeric: tabular-nums;
+            overflow: hidden;
+        }
+        .chart-tip {
+            position: absolute; z-index: 5; pointer-events: none;
+            background: #0b0b0b; color: #fff; border-radius: 8px;
+            padding: 7px 10px; font-size: .76rem; line-height: 1.5;
+            box-shadow: 0 4px 14px rgba(0,0,0,.25); white-space: nowrap;
+        }
+        .chart-tip .tt-title { font-weight: 700; }
+        .chart-tip .tt-dot { display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:4px; }
     </style>
 
     <div class="row">
@@ -139,6 +187,72 @@
                     Refinanciados: <strong>{{ $fmt0($refis['n']) }}</strong> · S/ <strong>{{ $fmt($refis['total']) }}</strong>
                 </span>
             </div>
+        </div>
+    </div>
+
+    {{-- ══ CURVA DEL MES: capital prestado día a día ═════════ --}}
+    <div class="card dashx-tile mt-3" wire:loading.class="opacity-50">
+        <div class="card-body py-3">
+            <div class="d-flex align-items-center flex-wrap gap-3 mb-2">
+                <span class="dashx-label">Día a día — {{ $meses[(int) $month] }} {{ $year }}</span>
+                <div class="d-flex gap-3 ms-auto dashx-sub">
+                    <span><span class="chart-swatch" style="background:#2a78d6;"></span> Nuevos</span>
+                    <span><span class="chart-swatch" style="background:#eb6834;"></span> Refinanciados</span>
+                </div>
+            </div>
+
+            @if($serieMax <= 0)
+                <div class="text-center dashx-sub py-4">Sin desembolsos en {{ $meses[(int) $month] }} {{ $year }}.</div>
+            @else
+                @php
+                    // Escala: tope redondeado hacia arriba a un número "amable"
+                    $mag = pow(10, floor(log10($serieMax)));
+                    $tope = ceil($serieMax / $mag) * $mag;
+                    $fmtC = function ($n) {
+                        if ($n >= 1000000) return number_format($n / 1000000, 1).'M';
+                        if ($n >= 1000) return number_format($n / 1000, 0).'K';
+                        return number_format($n, 0);
+                    };
+                @endphp
+                <div class="dashx-chart" id="curva-mes" data-mes="{{ $meses[(int) $month] }}">
+                    {{-- Gridlines + etiquetas Y (recesivas) --}}
+                    @foreach([1, .5, 0] as $g)
+                        <div class="grid-line" style="bottom: calc({{ $g * 100 }}% * .82 + 26px);">
+                            <span>{{ $fmtC($tope * $g) }}</span>
+                        </div>
+                    @endforeach
+
+                    <div class="bars">
+                        @foreach($serie as $p)
+                            @php
+                                $hN = $tope > 0 ? round($p['nuevo'] * 100 / $tope, 2) : 0;
+                                $hR = $tope > 0 ? round($p['refi'] * 100 / $tope, 2) : 0;
+                                $esFiltrado = $diaFiltrado && (int) $diaFiltrado === $p['d'];
+                            @endphp
+                            <div class="day-col {{ $esFiltrado ? 'is-selected' : '' }} {{ $diaFiltrado && ! $esFiltrado ? 'is-dimmed' : '' }}"
+                                 data-dia="{{ $p['d'] }}"
+                                 data-nuevo="{{ number_format($p['nuevo'], 2) }}"
+                                 data-refi="{{ number_format($p['refi'], 2) }}"
+                                 data-total="{{ number_format($p['total'], 2) }}">
+                                <div class="day-stack">
+                                    @if($hR > 0)
+                                        <div class="seg" style="height: {{ $hR }}%; background:#eb6834;"></div>
+                                    @endif
+                                    @if($hN > 0 && $hR > 0)
+                                        <div class="seg-space"></div>
+                                    @endif
+                                    @if($hN > 0)
+                                        <div class="seg" style="height: {{ $hN }}%; background:#2a78d6;"></div>
+                                    @endif
+                                </div>
+                                <div class="day-label">{{ $p['d'] }}</div>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <div class="chart-tip" id="curva-tip" hidden></div>
+                </div>
+            @endif
         </div>
     </div>
 
@@ -298,5 +412,37 @@
             </div>
         @endforeach
     </div>
+
+    @script
+    <script>
+        // Tooltip de la curva del mes. Delegación en document: sobrevive
+        // los re-renders de Livewire al cambiar los filtros.
+        const moverTip = (e) => {
+            const chart = document.getElementById('curva-mes');
+            const tip = document.getElementById('curva-tip');
+            if (! chart || ! tip) return;
+
+            const col = e.target.closest?.('.day-col');
+            if (! col || ! chart.contains(col)) { tip.hidden = true; return; }
+
+            const mes = chart.dataset.mes || '';
+            tip.innerHTML =
+                `<div class="tt-title">${col.dataset.dia} de ${mes}</div>` +
+                `<div><span class="tt-dot" style="background:#2a78d6"></span>Nuevos: S/ ${col.dataset.nuevo}</div>` +
+                `<div><span class="tt-dot" style="background:#eb6834"></span>Refinanciados: S/ ${col.dataset.refi}</div>` +
+                `<div class="tt-title">Total: S/ ${col.dataset.total}</div>`;
+            tip.hidden = false;
+
+            const r = chart.getBoundingClientRect();
+            const x = Math.min(e.clientX - r.left + 14, r.width - tip.offsetWidth - 4);
+            const y = Math.max(0, e.clientY - r.top - tip.offsetHeight - 10);
+            tip.style.left = x + 'px';
+            tip.style.top = y + 'px';
+        };
+        document.addEventListener('mousemove', moverTip);
+        // Livewire desmonta el componente al navegar: soltar el listener
+        $wire.$hook?.('component.destroy', () => document.removeEventListener('mousemove', moverTip));
+    </script>
+    @endscript
 
 </div>

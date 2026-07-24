@@ -90,6 +90,32 @@ class Index extends Component
             ")
             ->first();
 
+        // ── CURVA DEL MES: capital prestado día a día ──────────────────
+        // Siempre del MES completo (aunque el filtro esté en un día: la
+        // curva da el contexto y el día filtrado se resalta en el chart).
+        $mesIni = Carbon::create($year, $month, 1)->format('Y-m-d');
+        $mesFin = Carbon::create($year, $month)->endOfMonth()->format('Y-m-d');
+        $porDia = Credit::query()
+            ->whereBetween('fecha_actualizacion', [$mesIni, $mesFin])
+            ->selectRaw("
+                DAY(fecha_actualizacion) as d,
+                COALESCE(SUM(CASE WHEN cod_rem = 'REF' THEN 0 ELSE importe END), 0) as nuevo,
+                COALESCE(SUM(CASE WHEN cod_rem = 'REF' THEN importe ELSE 0 END), 0) as refi
+            ")
+            ->groupBy('d')
+            ->get()
+            ->keyBy('d');
+
+        $serie = [];
+        $serieMax = 0.0;
+        for ($d = 1; $d <= $diasDelMes; $d++) {
+            $fila = $porDia->get($d);
+            $nuevo = (float) ($fila->nuevo ?? 0);
+            $refi = (float) ($fila->refi ?? 0);
+            $serie[] = ['d' => $d, 'nuevo' => $nuevo, 'refi' => $refi, 'total' => $nuevo + $refi];
+            $serieMax = max($serieMax, $nuevo + $refi);
+        }
+
         // Años con actividad para el filtro (del primer crédito al actual)
         $minFecha = Credit::min('fecha_prestamo');
         $primerAnio = $minFecha ? (int) Carbon::parse($minFecha)->year : (int) now()->year;
@@ -109,6 +135,9 @@ class Index extends Component
             'nCreditos' => (int) $prestado->nuevo_n + (int) $prestado->refi_n,
             'nuevos' => ['n' => (int) $prestado->nuevo_n, 'total' => (float) $prestado->nuevo_total],
             'refis' => ['n' => (int) $prestado->refi_n, 'total' => (float) $prestado->refi_total],
+            'serie' => $serie,
+            'serieMax' => $serieMax,
+            'diaFiltrado' => $day,
             'interesCobrado' => (float) $cobrado->interes,
             'nInteres' => (int) $cobrado->n_interes,
             'moraCobrada' => (float) $cobrado->mora,
