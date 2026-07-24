@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Dashboard;
 
+use App\Livewire\Reports\Portfolio;
 use App\Models\Credit;
 use App\Models\Payment;
 use Carbon\Carbon;
@@ -87,6 +88,12 @@ class Index extends Component
         $minFecha = Credit::min('fecha_prestamo');
         $primerAnio = $minFecha ? (int) Carbon::parse($minFecha)->year : (int) now()->year;
 
+        // ── CARTERA VIVA (snapshot de HOY, independiente del filtro) ───
+        // Matriz: /reports/portfolio (situacion <> Cancelado). Se reusa el
+        // MISMO componente para que el dashboard cuadre al céntimo con el
+        // reporte de Cartera — una sola fuente de cálculo.
+        $cartera = (new Portfolio)->render()->getData();
+
         return view('livewire.dashboard.index', [
             'etiqueta' => $etiqueta,
             'esDia' => (bool) $day,
@@ -98,6 +105,12 @@ class Index extends Component
             'nInteres' => (int) $cobrado->n_interes,
             'moraCobrada' => (float) $cobrado->mora,
             'nMora' => (int) $cobrado->n_mora,
+            // Cartera (Portfolio)
+            'carteraTotals' => $cartera['totals'],
+            'carteraVigentes' => $cartera['vignt'],
+            'carteraVencidos' => $cartera['venc'],
+            'morosidad' => $cartera['morisidad'],
+            'tipoTotals' => $cartera['tipoTotals'],
         ]);
     }
 }
