@@ -232,13 +232,35 @@
                             <td class="text-end">{{ number_format($totales['M'], 2) }}</td>
                             <td class="text-end fw-bold">{{ number_format($masivo->amount, 2) }}</td>
                             <td>{{ $masivo->user ?: '—' }}</td>
-                            <td class="text-center">
+                            <td class="text-center" style="white-space:nowrap;">
                                 <button type="button"
                                         wire:click="printPayment({{ $masivo->id }})"
                                         class="btn btn-sm btn-primary"
                                         title="Imprimir ticket #{{ $masivo->id }}">
                                     <i class="ti ti-printer"></i>
                                 </button>
+                                @php
+                                    // Links firmados del recibo (público + PDF) — ver PaymentController.
+                                    $verRecibo = \Illuminate\Support\Facades\URL::signedRoute('recibo.publico', ['massDeletionId' => $masivo->id]);
+                                    $telRecibo = preg_replace('/\D/', '', (string) $credit->client?->celular1);
+                                    $msgRecibo = config('printer.company_name', 'PRESTAMOS HUACACHIN')
+                                        .': su recibo de pago #'.str_pad((string) $masivo->id, 6, '0', STR_PAD_LEFT)
+                                        .' del '.($masivo->date?->format('d/m/Y') ?? '')
+                                        .' por S/ '.number_format((float) $masivo->amount, 2)
+                                        .'. Vealo aqui: '.$verRecibo;
+                                @endphp
+                                @if($telRecibo !== '')
+                                    <a href="https://api.whatsapp.com/send?phone=51{{ $telRecibo }}&text={{ rawurlencode($msgRecibo) }}"
+                                       target="_blank" rel="noopener" class="btn btn-sm btn-success"
+                                       title="Enviar recibo por WhatsApp al cliente">
+                                        <i class="ti ti-brand-whatsapp"></i>
+                                    </a>
+                                @endif
+                                <a href="{{ \Illuminate\Support\Facades\URL::signedRoute('recibo.pdf', ['massDeletionId' => $masivo->id]) }}"
+                                   class="btn btn-sm btn-secondary"
+                                   title="Descargar recibo en PDF">
+                                    <i class="ti ti-file-type-pdf"></i>
+                                </a>
                             </td>
                         </tr>
                     @empty

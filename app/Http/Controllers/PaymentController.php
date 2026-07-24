@@ -9,7 +9,9 @@ use App\Models\Credit;
 use App\Models\MassDeletion;
 use App\Services\Printing\TicketPrinter;
 use App\Support\XlsResponse;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\URL;
 
 class PaymentController extends Controller
 {
@@ -50,6 +52,40 @@ class PaymentController extends Controller
      */
     public function ticket(int $massDeletionId, TicketPrinter $printer)
     {
+        return view('payments.ticket', $this->datosRecibo($massDeletionId, $printer) + [
+            'publico' => false,
+        ]);
+    }
+
+    /**
+     * Recibo PÚBLICO: lo abre el cliente desde el link firmado que se le
+     * envía por WhatsApp (ruta con middleware 'signed', sin login).
+     */
+    public function reciboPublico(int $massDeletionId, TicketPrinter $printer)
+    {
+        return view('payments.ticket', $this->datosRecibo($massDeletionId, $printer) + [
+            'publico' => true,
+        ]);
+    }
+
+    /**
+     * Descarga del recibo en PDF (~80mm de ancho, vía dompdf). Misma firma
+     * que el recibo público; sirve tanto al cliente como al operador.
+     */
+    public function reciboPdf(int $massDeletionId, TicketPrinter $printer)
+    {
+        $datos = $this->datosRecibo($massDeletionId, $printer);
+
+        // Papel angosto tipo ticket: 80mm de ancho (226.77pt) × 297mm.
+        $pdf = Pdf::loadView('payments.ticket-pdf', $datos)
+            ->setPaper([0, 0, 226.77, 841.89]);
+
+        return $pdf->download('recibo-'.$datos['t']['numero'].'.pdf');
+    }
+
+    /** Datos comunes de las tres vistas del recibo (HTML interno, público y PDF). */
+    private function datosRecibo(int $massDeletionId, TicketPrinter $printer): array
+    {
         $masivo = MassDeletion::with([
             'credit.client',
             'credit.headquarter:id,name',
@@ -64,10 +100,11 @@ class PaymentController extends Controller
             }
         }
 
-        return view('payments.ticket', [
+        return [
             't' => $printer->paymentTicketData($masivo),
             'logo' => $logo,
-        ]);
+            'pdfUrl' => URL::signedRoute('recibo.pdf', ['massDeletionId' => $massDeletionId]),
+        ];
     }
 
     public function export(Request $request)

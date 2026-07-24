@@ -85,7 +85,12 @@
 
 <div class="toolbar">
     <button type="button" class="primary" onclick="window.print()">Imprimir</button>
-    <button type="button" class="ghost" onclick="window.close()">Cerrar</button>
+    @if(!empty($pdfUrl))
+        <a href="{{ $pdfUrl }}" class="primary" style="background:#198754; text-align:center; text-decoration:none; padding:8px 10px; border-radius:4px; color:#fff; flex:1; font-size:13px;">Descargar PDF</a>
+    @endif
+    @if(empty($publico))
+        <button type="button" class="ghost" onclick="window.close()">Cerrar</button>
+    @endif
 </div>
 
 <div class="ticket">

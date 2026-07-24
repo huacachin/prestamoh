@@ -647,6 +647,7 @@
                             <th style="color:#ffd6d6;">Mora Exon.</th>
                             <th>Estado</th>
                             <th>Fecha Pago</th>
+                            <th class="text-center">Recibo</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -679,6 +680,23 @@
                                     @endif
                                 </td>
                                 <td>{{ $inst->fecha_pago?->format('d/m/Y') }}</td>
+                                <td class="text-center" style="white-space:nowrap;">
+                                    @php $rec = $recibos[$inst->id] ?? null; @endphp
+                                    @if($rec)
+                                        @if($rec['wa'])
+                                            <a href="{{ $rec['wa'] }}" target="_blank" rel="noopener"
+                                               class="btn btn-sm btn-success py-0 px-1"
+                                               title="Enviar recibo por WhatsApp al cliente">
+                                                <i class="ti ti-brand-whatsapp"></i>
+                                            </a>
+                                        @endif
+                                        <a href="{{ $rec['pdf'] }}"
+                                           class="btn btn-sm btn-secondary py-0 px-1"
+                                           title="Descargar recibo en PDF">
+                                            <i class="ti ti-file-type-pdf"></i>
+                                        </a>
+                                    @endif
+                                </td>
                             </tr>
                         @endforeach
                         </tbody>
@@ -709,6 +727,7 @@
                                 @endphp
                                 {{-- Mora exonerada: informativa, no suma a los demás totales --}}
                                 <td class="text-end" style="color:red; white-space:nowrap;">{{ number_format($tExon, 2) }}@if($tExonDias > 0) - D. {{ $tExonDias }}@endif</td>
+                                <td></td>
                                 <td></td>
                                 <td></td>
                             </tr>

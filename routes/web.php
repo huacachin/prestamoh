@@ -15,6 +15,14 @@ Route::middleware('guest')->group(function () {
     Route::get('/', fn () => redirect()->route('login'));
 });
 
+// Recibo público: el cliente lo abre desde el link de WhatsApp, sin login.
+// Protegido por firma criptográfica (URL::signedRoute) — un id alterado o
+// sin firma válida devuelve 403, así nadie puede enumerar recibos ajenos.
+Route::middleware('signed')->group(function () {
+    Route::get('recibo/{massDeletionId}', [PaymentController::class, 'reciboPublico'])->name('recibo.publico');
+    Route::get('recibo/{massDeletionId}/pdf', [PaymentController::class, 'reciboPdf'])->name('recibo.pdf');
+});
+
 // === Logout ===
 Route::post('/logout', function (Request $request) {
     auth()->logout();
