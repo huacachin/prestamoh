@@ -35,6 +35,7 @@ class PaymentsBacktestLegacy extends Command
     protected $signature = 'payments:backtest-legacy
                             {--desde= : Solo evaluar ops con fecha >= (YYYY-MM-DD); el estado igual se reconstruye completo}
                             {--credit= : Solo un crédito (para depurar; imprime cada op)}
+                            {--activos : Solo créditos vigentes (situacion=Vigente en legacy) — los que seguirán recibiendo pagos}
                             {--limit= : Máximo de créditos a procesar}
                             {--muestras=10 : Cuántos mismatches de ejemplo mostrar}';
 
@@ -63,6 +64,10 @@ class PaymentsBacktestLegacy extends Command
         $creditosQ = $leg->table('cab_masivo')->select('codpres')->distinct()->orderBy('codpres');
         if ($soloCredito) {
             $creditosQ->where('codpres', (int) $soloCredito);
+        }
+        if ($this->option('activos')) {
+            $creditosQ->whereIn('codpres', $leg->table('cab_cuentacorriente')
+                ->where('situacion', 'Vigente')->pluck('id'));
         }
         $creditos = $creditosQ->pluck('codpres');
         if ($limit) {
