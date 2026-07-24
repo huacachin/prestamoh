@@ -6,6 +6,7 @@ use App\Models\Credit;
 use App\Models\CreditInstallment;
 use App\Models\MassDeletion;
 use App\Models\Payment;
+use App\Services\Payments\DistribucionPago;
 use App\Services\Printing\TicketPrinter;
 use App\Support\Audit;
 use App\Support\MoraExonerada;
@@ -470,21 +471,11 @@ class Create extends Component
                     $payExc = $row['exc'];
 
                     if ($payCap > 0.001) {
-                        // Regla "sobrante → interés": el residuo de redondeo que
-                        // desborda a esta cuota entra a CAJA como INTERES (así lo
-                        // registra el legacy y así cuadran los reportes), pero en
-                        // el cronograma sigue siendo capital adelantado (detail C
-                        // + importe_aplicado), igual que el det del legacy.
-                        $esSobrante = $row['interes_en_caja'] ?? false;
                         $p = Payment::create([
                             'credit_id' => $this->credit->id, 'installment_id' => $ins->id,
-                            'modo' => 'CREDITO',
-                            'tipo' => $esSobrante ? 'INTERES' : 'CAPITAL',
-                            'documento' => $esSobrante ? 'INTERES' : 'CAPITAL',
+                            'modo' => 'CREDITO', 'tipo' => 'CAPITAL', 'documento' => 'CAPITAL',
                             'fecha' => $this->fecpag, 'hora' => $hora, 'monto' => $payCap, 'moneda' => $semodn,
-                            'detalle' => $esSobrante
-                                ? "Pago : {$this->credit->id} Interes:  {$ins->num_cuota}/{$totCuotas} Sobrante"
-                                : "Pago : {$this->credit->id} Cuota:  {$ins->num_cuota}/{$totCuotas}",
+                            'detalle' => "Pago : {$this->credit->id} Cuota:  {$ins->num_cuota}/{$totCuotas}",
                             'asesor' => $this->credit->asesor, 'usuario' => $usuario, 'user_id' => $userId,
                             'headquarter_id' => $hqId, 'latitud' => $this->latitud, 'longitud' => $this->longitud,
                         ]);
@@ -834,13 +825,12 @@ class Create extends Component
     }
 
     /**
-     * Reparte un monto sobre las cuotas impagas SIN tocar nada: devuelve
-     * cuánto va a capital, interés y excedente de cada cuota. La usan tanto
+     * Reparte un monto sobre las cuotas impagas SIN tocar nada. La usan tanto
      * pagar() (para persistir) como la vista previa del ticket, de modo que
      * lo que el cajero confirma en pantalla es exactamente lo que se cobra.
-     *
-     * Las cuotas se recorren en orden y se devuelven TODAS las visitadas,
-     * incluidas las que reciben 0 (pagar() igual las marca/actualiza).
+     * Delegado en App\Services\Payments\DistribucionPago (motor espejo del
+     * legacy, validable con `payments:backtest-legacy`); ahí vive la regla
+     * del sobrante por operación y su documentación.
      *
      * @param  iterable  $unpaid  cuotas impagas ordenadas por num_cuota
      * @return array{
@@ -850,127 +840,8 @@ class Create extends Component
      */
     private function simularDistribucion(float $monto, iterable $unpaid, bool $isMensualUnaCuota): array
     {
-        $rows = [];
-        $cuotas = [];
-        $capital = $interes = $excedente = 0.0;
-
-        $remaining = $monto;
-        $tocadas = 0;
-        // Capital pagado en cuotas anteriores de ESTE pago (decide el
-        // destino del sobrante que desborda a la cuota siguiente).
-        $opPagoCapital = false;
-
-        foreach ($unpaid as $ins) {
-            if ($remaining < 0.01) {
-                break;
-            }
-
-            // Flujo de negocio: si el pago entró en fase de interés (el
-            // capital de la cuota en curso ya estaba cubierto y este
-            // pago no puso capital), el sobrante que desborda a la
-            // cuota siguiente se aplica a su INTERÉS, no a su capital.
-            // Así el desglose de Caja 1 cuadra con el legacy (p. ej.
-            // pago 180 con interés restante 94.73: 94.73 INT cuota N +
-            // 85.27 INT cuota N+1, antes iba a capital de N+1).
-            $sobranteAInteres = $tocadas > 0 && ! $opPagoCapital;
-
-            if ($isMensualUnaCuota || $sobranteAInteres) {
-                // INTERES PRIMERO (tipoplani=3 + cuotas=1, o sobrante de fase interés)
-                $apagarInt = (float) $ins->importe_interes - (float) $ins->interes_aplicado;
-                $apagarCap = (float) $ins->importe_cuota - (float) $ins->importe_aplicado;
-
-                $payInt = round(min($remaining, max(0, $apagarInt)), 2);
-                $remaining -= $payInt;
-                $payCap = round(min($remaining, max(0, $apagarCap)), 2);
-                $remaining -= $payCap;
-            } else {
-                // BRANCH NORMAL: capital primero, interés segundo
-                $apagarCap = (float) $ins->importe_cuota - (float) $ins->importe_aplicado;
-                $apagarInt = (float) $ins->importe_interes - (float) $ins->interes_aplicado;
-
-                $payCap = round(min($remaining, max(0, $apagarCap)), 2);
-                $remaining -= $payCap;
-                $payInt = round(min($remaining, max(0, $apagarInt)), 2);
-                $remaining -= $payInt;
-            }
-
-            if ($payCap > 0.001) {
-                $opPagoCapital = true;
-            }
-
-            // Excedente de redondeo (cuota uniforme): siempre al final
-            $apagarExc = (float) $ins->importe_excedente - (float) $ins->excedente_aplicado;
-            $payExc = round(min($remaining, max(0, $apagarExc)), 2);
-            $remaining -= $payExc;
-
-            $rows[] = [
-                'ins' => $ins, 'cap' => $payCap, 'int' => $payInt, 'exc' => $payExc,
-                // ¿El capital de esta cuota quedó a medias? (se acabó el dinero)
-                'cap_parcial' => $payCap > 0.001 && $payCap < $apagarCap - 0.001,
-                'interes_en_caja' => false,
-            ];
-
-            if ($payCap > 0.001 || $payInt > 0.001 || $payExc > 0.001) {
-                $tocadas++;
-            }
-            if ($payCap > 0.001) {
-                // Igual que el ticket: "Cuotas" lista las que recibieron capital.
-                $cuotas[] = (int) $ins->num_cuota;
-                $capital += $payCap;
-            }
-            $interes += $payInt;
-            $excedente += $payExc;
-        }
-
-        // ─── REGLA DE NEGOCIO: el sobrante de una cuota va a INTERÉS ───────
-        // Cuando el pago completa su(s) cuota(s) y queda un residuo chico que
-        // desborda a la siguiente (típico redondeo: cliente paga 566.70 por una
-        // cuota de 566.67), ese residuo se REGISTRA EN CAJA como INTERÉS
-        // (ganancia por redondeo) aunque en el CRONOGRAMA siga aplicado como
-        // adelanto de capital de la cuota siguiente. Es exactamente lo que hace
-        // el legacy: pagossmasivo etiqueta el remanente como INTERES en
-        // huaca_ingreso y su normalización de det_cuentacorriente empuja el
-        // exceso a importeapli (capital) de la siguiente cuota. Registrarlo
-        // igual mantiene los reportes de caja cuadrando al céntimo con el
-        // legacy semana a semana (aplicarlo al interés del cronograma haría
-        // divergir el reparto de la semana siguiente).
-        // Límite: solo residuos hasta el interés de la cuota destino; un pago
-        // parcial grande (media cuota) sigue siendo capital, como el legacy
-        // en operación única.
-        $n = count($rows);
-        if ($n > 1) {
-            $last = $rows[$n - 1];
-            $huboCapAntes = false;
-            for ($i = 0; $i < $n - 1; $i++) {
-                if ($rows[$i]['cap'] > 0.001) {
-                    $huboCapAntes = true;
-                    break;
-                }
-            }
-            if (
-                $huboCapAntes
-                && $last['cap'] > 0.001 && $last['cap_parcial']
-                && $last['int'] < 0.001 && $last['exc'] < 0.001
-                && $last['cap'] <= (float) $last['ins']->importe_interes + 0.001
-            ) {
-                $rows[$n - 1]['interes_en_caja'] = true;
-                $capital -= $last['cap'];
-                $interes += $last['cap'];
-                // La cuota destino no recibió capital "real": sale de la lista.
-                $idx = array_search((int) $last['ins']->num_cuota, $cuotas, true);
-                if ($idx !== false) {
-                    array_splice($cuotas, $idx, 1);
-                }
-            }
-        }
-
-        return [
-            'rows' => $rows,
-            'capital' => round($capital, 2),
-            'interes' => round($interes, 2),
-            'excedente' => round($excedente, 2),
-            'cuotas' => $cuotas,
-        ];
+        return app(DistribucionPago::class)
+            ->distribuir($monto, $unpaid, $isMensualUnaCuota);
     }
 
     /**
