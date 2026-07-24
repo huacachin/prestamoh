@@ -258,10 +258,12 @@
                             </label>
                         </div>
                         <div class="form-check form-switch">
+                            {{-- Al MARCAR se intercepta el click y se pide
+                                 confirmación en el modal #cancelarModal
+                                 (ver @script); desmarcar pasa directo. --}}
                             <input class="form-check-input" type="checkbox" role="switch"
                                    wire:model="cancel" id="cancel"
-                                   {{ $cancelDisabled ? 'disabled' : '' }}
-                                   onclick="if(this.checked){if(!confirm('Si marcas Cancelado, este crédito YA NO podrá ser refinanciado. ¿Confirmar?')) this.checked=false;}">
+                                   {{ $cancelDisabled ? 'disabled' : '' }}>
                             <label class="form-check-label fw-semibold ms-1" for="cancel"
                                    style="color:{{ $cancelDisabled ? '#999' : 'red' }};">
                                 Cancelado
@@ -338,6 +340,41 @@
                 </div>
             </div>
         </form>
+
+        {{-- ═══ Modal: confirmar el switch "Cancelado" ═══ --}}
+        {{-- Reemplaza al confirm() nativo del navegador. SIEMPRE en el DOM
+             (misma regla que el modal de cobro: si se condiciona, el
+             backdrop puede quedar huérfano en un morph de Livewire). --}}
+        <div class="modal fade" id="cancelarModal" tabindex="-1" aria-hidden="true" wire:ignore.self>
+            <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
+                <div class="modal-content">
+                    <div class="modal-header py-2">
+                        <h6 class="modal-title mb-0">
+                            <i class="ti ti-alert-triangle text-danger"></i> Cancelar crédito
+                        </h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body py-3">
+                        <p class="mb-2">
+                            Si marcas <strong>Cancelado</strong>, este crédito
+                            <strong class="text-danger">ya no podrá ser refinanciado</strong>.
+                        </p>
+                        <p class="mb-0 small text-muted">
+                            La cancelación se aplica recién al confirmar el cobro: se condona el
+                            interés no devengado y el crédito se cierra con saldo 0.
+                        </p>
+                    </div>
+                    <div class="modal-footer justify-content-between py-2">
+                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">
+                            Volver
+                        </button>
+                        <button type="button" class="btn btn-sm btn-danger" id="btn-confirmar-cancelado">
+                            <i class="ti ti-circle-check"></i> Sí, marcar Cancelado
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         {{-- ═══ Modal de confirmación del cobro ═══ --}}
         {{-- OJO: SIEMPRE en el DOM, aunque el crédito no sea pagable. Si se
@@ -475,6 +512,27 @@
                         document.body.style.removeProperty('padding-right');
                     }
                 }, 350);
+            });
+
+            // Switch "Cancelado": al MARCAR se revierte el click y se pide
+            // confirmación en el modal; el botón del modal aplica el check
+            // y dispara 'change' para que wire:model lo sincronice.
+            // Delegación en document: sobrevive los morphs de Livewire.
+            document.addEventListener('click', (e) => {
+                const chk = e.target.closest?.('#cancel');
+                if (chk && chk.checked) {
+                    e.preventDefault(); // revierte el marcado
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById('cancelarModal')).show();
+                    return;
+                }
+                if (e.target.closest?.('#btn-confirmar-cancelado')) {
+                    const sw = document.getElementById('cancel');
+                    if (sw) {
+                        sw.checked = true;
+                        sw.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                    bootstrap.Modal.getInstance(document.getElementById('cancelarModal'))?.hide();
+                }
             });
 
             // Capturar GPS si el navegador lo permite
