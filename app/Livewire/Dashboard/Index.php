@@ -3,128 +3,101 @@
 namespace App\Livewire\Dashboard;
 
 use App\Models\Credit;
-use App\Models\CreditInstallment;
-use App\Models\Expense;
-use App\Models\Income;
 use App\Models\Payment;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
+/**
+ * Dashboard principal — el "corazón" del sistema.
+ *
+ * Métricas del período filtrado (mes completo o un día puntual):
+ *  - CAPITAL PRESTADO: créditos ACTIVADOS en el período (fecha_actualizacion,
+ *    excluye refinanciados cod_rem='REF') — la plata que realmente salió de
+ *    caja, misma definición que el Egreso de Caja Estadística, así el
+ *    dashboard cuadra con los reportes de caja. [Definición confirmada por
+ *    Antony el 24/07/2026: julio = S/ 367,312.60 en 28 créditos.]
+ *  - INTERÉS COBRADO: payments tipo INTERES del período (verdad de caja).
+ *  - MORA COBRADA: payments tipo MORA (incluye MORA, MORA INTERES, MORA
+ *    CAPITAL y MORA ACUM.).
+ */
 class Index extends Component
 {
+    #[Url(as: 'mes')]
+    public $month;
+
+    #[Url(as: 'anio')]
+    public $year;
+
+    /** '' = todo el mes; '1'..'31' = solo ese día. */
+    #[Url(as: 'dia')]
+    public $day = '';
+
+    public function mount(): void
+    {
+        if (! $this->month) {
+            $this->month = (int) now()->month;
+        }
+        if (! $this->year) {
+            $this->year = (int) now()->year;
+        }
+    }
+
     public function render()
     {
-        $today      = Carbon::today();
-        $yesterday  = $today->copy()->subDay();
-        $monthStart = $today->copy()->startOfMonth();
-        $period30   = $today->copy()->subDays(29);
-        $period7    = $today->copy()->subDays(6);
+        $year = (int) $this->year;
+        $month = (int) $this->month;
+        $diasDelMes = Carbon::create($year, $month)->daysInMonth;
 
-        // ── KPIs principales ──────────────────────────────────────────
-        $creditosActivos = Credit::where('situacion', 'Activo')->count();
-        $totalCartera    = (float) Credit::where('situacion', 'Activo')->sum('importe');
-        $cobranzaHoy     = (float) Payment::where('fecha', $today)->sum('monto');
-        $cobranzaAyer    = (float) Payment::where('fecha', $yesterday)->sum('monto');
-        $cobranzaMes     = (float) Payment::whereBetween('fecha', [$monthStart, $today])->sum('monto');
-        $ingresosHoy     = (float) Income::where('date', $today)->sum('total');
-        $egresosHoy      = (float) Expense::where('date', $today)->sum('total');
-        $saldoCajaHoy    = $ingresosHoy - $egresosHoy;
+        // Clamp del día al cambiar de mes (p. ej. día 31 → febrero)
+        $day = $this->day !== '' ? min((int) $this->day, $diasDelMes) : null;
 
-        // Delta cobranza vs ayer
-        $deltaCobranza = 0.0;
-        if ($cobranzaAyer > 0) {
-            $deltaCobranza = (($cobranzaHoy - $cobranzaAyer) / $cobranzaAyer) * 100;
-        } elseif ($cobranzaHoy > 0) {
-            $deltaCobranza = 100.0;
+        if ($day) {
+            $desde = Carbon::create($year, $month, $day)->format('Y-m-d');
+            $hasta = $desde;
+            $etiqueta = ucfirst(Carbon::create($year, $month, $day)->locale('es')->translatedFormat('l j \d\e F \d\e Y'));
+        } else {
+            $desde = Carbon::create($year, $month, 1)->format('Y-m-d');
+            $hasta = Carbon::create($year, $month)->endOfMonth()->format('Y-m-d');
+            $etiqueta = ucfirst(Carbon::create($year, $month, 1)->locale('es')->translatedFormat('F Y'));
         }
 
-        // ── Mora ──────────────────────────────────────────────────────
-        $cuotasMoraQuery = CreditInstallment::where('pagado', false)
-            ->where('fecha_vencimiento', '<', $today);
+        // ── CAPITAL PRESTADO: créditos activados, sin refinanciados ────
+        $prestado = Credit::query()
+            ->whereBetween('fecha_actualizacion', [$desde, $hasta])
+            ->where(function ($q) {
+                $q->where('cod_rem', '<>', 'REF')->orWhereNull('cod_rem');
+            })
+            ->selectRaw('COUNT(*) as n, COALESCE(SUM(importe), 0) as total')
+            ->first();
 
-        $morosidad   = (clone $cuotasMoraQuery)->distinct('credit_id')->count('credit_id');
-        $montoEnMora = (float) (clone $cuotasMoraQuery)
-            ->selectRaw('COALESCE(SUM((importe_cuota + importe_interes) - (importe_aplicado + interes_aplicado)),0) as t')
-            ->value('t');
+        // ── INTERÉS y MORA cobrados en el período (verdad de caja) ─────
+        $cobrado = Payment::query()
+            ->whereBetween('fecha', [$desde, $hasta])
+            ->whereIn('tipo', ['INTERES', 'MORA'])
+            ->selectRaw("
+                COALESCE(SUM(CASE WHEN tipo = 'INTERES' THEN monto ELSE 0 END), 0) as interes,
+                COALESCE(SUM(CASE WHEN tipo = 'INTERES' THEN 1 ELSE 0 END), 0) as n_interes,
+                COALESCE(SUM(CASE WHEN tipo = 'MORA' THEN monto ELSE 0 END), 0) as mora,
+                COALESCE(SUM(CASE WHEN tipo = 'MORA' THEN 1 ELSE 0 END), 0) as n_mora
+            ")
+            ->first();
 
-        $morosidadPct = $creditosActivos > 0
-            ? round(($morosidad / $creditosActivos) * 100, 1)
-            : 0;
+        // Años con actividad para el filtro (del primer crédito al actual)
+        $minFecha = Credit::min('fecha_prestamo');
+        $primerAnio = $minFecha ? (int) Carbon::parse($minFecha)->year : (int) now()->year;
 
-        // ── Cobranza últimos 30 días (serie para chart) ───────────────
-        $rawSerie = Payment::whereBetween('fecha', [$period30, $today])
-            ->selectRaw('DATE(fecha) as d, SUM(monto) as total')
-            ->groupBy('d')->orderBy('d')->pluck('total', 'd');
-
-        $cobranza30 = [];
-        for ($i = 0; $i < 30; $i++) {
-            $day = $period30->copy()->addDays($i)->format('Y-m-d');
-            $cobranza30[] = [
-                'x' => $day,
-                'y' => round((float) ($rawSerie[$day] ?? 0), 2),
-            ];
-        }
-
-        // Mini sparkline 7 días para hero
-        $spark7 = array_slice($cobranza30, -7);
-        $spark7Vals = array_map(fn ($p) => $p['y'], $spark7);
-
-        // ── Distribución de cartera por situación ─────────────────────
-        $cartera = Credit::selectRaw('situacion, COUNT(*) as n, COALESCE(SUM(importe),0) as monto')
-            ->groupBy('situacion')->get();
-
-        // ── Cuotas vencidas (top alertas) ─────────────────────────────
-        $alertasVencidas = CreditInstallment::with('credit.client')
-            ->where('pagado', false)
-            ->where('fecha_vencimiento', '<', $today)
-            ->orderBy('fecha_vencimiento')
-            ->take(6)
-            ->get()
-            ->map(function ($i) use ($today) {
-                $saldo = ((float) $i->importe_cuota + (float) $i->importe_interes)
-                       - ((float) $i->importe_aplicado + (float) $i->interes_aplicado);
-                $dias = $i->fecha_vencimiento
-                    ? (int) Carbon::parse($i->fecha_vencimiento)->diffInDays($today)
-                    : 0;
-                return (object) [
-                    'cliente'   => $i->credit?->client?->fullName() ?? '—',
-                    'credito'   => $i->credit_id,
-                    'cuota'     => $i->num_cuota,
-                    'fecha'     => $i->fecha_vencimiento,
-                    'dias'      => $dias,
-                    'saldo'     => round($saldo, 2),
-                ];
-            });
-
-        // ── Listas existentes ─────────────────────────────────────────
-        $ultimosPagos = Payment::with('credit.client')
-            ->latest('fecha')->latest('id')
-            ->take(8)->get();
-
-        $creditosRecientes = Credit::with('client')
-            ->latest('fecha_prestamo')->latest('id')
-            ->take(6)->get();
-
-        return view('livewire.dashboard.index', compact(
-            'creditosActivos',
-            'totalCartera',
-            'cobranzaHoy',
-            'cobranzaAyer',
-            'cobranzaMes',
-            'deltaCobranza',
-            'morosidad',
-            'morosidadPct',
-            'montoEnMora',
-            'ingresosHoy',
-            'egresosHoy',
-            'saldoCajaHoy',
-            'cobranza30',
-            'spark7Vals',
-            'cartera',
-            'alertasVencidas',
-            'ultimosPagos',
-            'creditosRecientes',
-        ));
+        return view('livewire.dashboard.index', [
+            'etiqueta' => $etiqueta,
+            'esDia' => (bool) $day,
+            'diasDelMes' => $diasDelMes,
+            'anios' => range((int) now()->year, $primerAnio),
+            'capitalPrestado' => (float) $prestado->total,
+            'nCreditos' => (int) $prestado->n,
+            'interesCobrado' => (float) $cobrado->interes,
+            'nInteres' => (int) $cobrado->n_interes,
+            'moraCobrada' => (float) $cobrado->mora,
+            'nMora' => (int) $cobrado->n_mora,
+        ]);
     }
 }
