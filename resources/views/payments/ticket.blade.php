@@ -121,6 +121,9 @@
     <div class="sep"></div>
 
     <div class="row"><span>Fecha:</span><span>{{ $t['fecha_hora'] }}</span></div>
+    @if(!empty($t['metodo']))
+        <div class="row"><span>Pago:</span><span>{{ $t['metodo'] }}</span></div>
+    @endif
     @if($t['cliente'])
         <div class="row"><span>Cliente:</span><span>{{ $t['cliente'] }}</span></div>
     @endif

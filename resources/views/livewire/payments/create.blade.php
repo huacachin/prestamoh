@@ -276,6 +276,72 @@
                         </div>
                     </div>
 
+                    {{-- ── Método de pago ── --}}
+                    <h6 class="mb-1 mt-3" style="color:red;">Método de pago</h6>
+                    <div class="row g-2 align-items-end">
+                        <div class="col-6 col-md-2">
+                            <label class="form-label mb-0 small fw-semibold">Método</label>
+                            <select class="form-select form-select-sm" wire:model.live="metodoPago">
+                                <option value="efectivo">Efectivo</option>
+                                <option value="deposito">Depósito</option>
+                            </select>
+                        </div>
+                        @if($metodoPago === 'deposito')
+                            <div class="col-6 col-md-2">
+                                <label class="form-label mb-0 small fw-semibold">Banco</label>
+                                <select class="form-select form-select-sm" wire:model.live="depBanco">
+                                    @foreach(\App\Livewire\Payments\Create::DEP_BANCOS as $b)
+                                        <option value="{{ $b }}">{{ $b }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-6 col-md-2">
+                                <label class="form-label mb-0 small fw-semibold">Cuenta</label>
+                                <select class="form-select form-select-sm" wire:model.live="depCuenta">
+                                    @foreach(\App\Livewire\Payments\Create::DEP_CUENTAS as $cta)
+                                        <option value="{{ $cta }}">{{ $cta }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            @if($depCuenta === 'Otra')
+                                <div class="col-6 col-md-2">
+                                    <label class="form-label mb-0 small fw-semibold">Nombre de la cuenta</label>
+                                    <input type="text" class="form-control form-control-sm" wire:model.live="depCuentaOtra" placeholder="Titular">
+                                </div>
+                            @endif
+                            <div class="col-6 col-md-1">
+                                <label class="form-label mb-0 small fw-semibold">Canal</label>
+                                <select class="form-select form-select-sm" wire:model.live="depCanal">
+                                    @foreach(\App\Livewire\Payments\Create::DEP_CANALES as $ch)
+                                        <option value="{{ $ch }}">{{ $ch }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-6 col-md-2">
+                                <label class="form-label mb-0 small fw-semibold">Fecha del depósito</label>
+                                <input type="date" class="form-control form-control-sm" wire:model.live="depFecha" max="{{ now()->format('Y-m-d') }}">
+                                <div class="form-text mt-0" style="font-size:.7rem;">Vacío = fecha del pago</div>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="form-label mb-0 small fw-semibold">
+                                    <i class="ti ti-camera"></i> Foto del voucher
+                                </label>
+                                <input type="file" class="form-control form-control-sm @error('voucherFoto') is-invalid @enderror"
+                                       wire:model="voucherFoto" accept="image/*">
+                                @error('voucherFoto') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                <div wire:loading wire:target="voucherFoto" class="form-text mt-0" style="font-size:.7rem;">Subiendo…</div>
+                            </div>
+                            <div class="col-12">
+                                <small class="text-muted">
+                                    <i class="ti ti-info-circle"></i>
+                                    Al cobrar se registrará automáticamente el egreso de caja:
+                                    <strong>"Dep. {{ $depBanco }} {{ $depCuenta === 'Otra' ? ($depCuentaOtra ?: '…') : $depCuenta }} {{ $credit->client?->fullName() }} ({{ $depCanal }})"</strong>
+                                    por el total cobrado{{ $voucherFoto ? ', con la foto del voucher adjunta' : '' }}.
+                                </small>
+                            </div>
+                        @endif
+                    </div>
+
                     @endif {{-- $esPagable: Atraso + Registrar Pago --}}
 
                     {{-- Botones --}}
@@ -415,6 +481,9 @@
                                 <div class="tp-sep"></div>
 
                                 <div class="tp-row"><span>Fecha:</span><span>{{ $preview['fecha'] }}</span></div>
+                                @if(!empty($preview['metodo']))
+                                    <div class="tp-row"><span>Pago:</span><span>{{ $preview['metodo'] }}</span></div>
+                                @endif
                                 @if($preview['cliente'])
                                     <div class="tp-row"><span>Cliente:</span><span>{{ $preview['cliente'] }}</span></div>
                                 @endif
@@ -451,6 +520,20 @@
                             @if($preview['reserva_mora'])
                                 <div class="alert alert-info py-1 px-2 mt-2 mb-0 small text-center">
                                     Mora reservada: no se cobra ahora, queda acumulada.
+                                </div>
+                            @endif
+                            @if(!empty($preview['egreso']))
+                                <div class="alert alert-primary py-1 px-2 mt-2 mb-0 small">
+                                    <i class="ti ti-cash"></i> Pago vía <strong>{{ $preview['metodo'] }}</strong>.
+                                    Se registrará el egreso:<br>
+                                    <strong>{{ $preview['egreso'] }}</strong> por S/ {{ number_format($preview['total'], 2) }}
+                                    @if($voucherFoto)
+                                        <div class="mt-1 text-center">
+                                            <img src="{{ $voucherFoto->temporaryUrl() }}" alt="Voucher"
+                                                 style="max-height:90px; border-radius:6px; border:1px solid #dee2e6;">
+                                            <div class="text-muted" style="font-size:.7rem;">Voucher adjunto</div>
+                                        </div>
+                                    @endif
                                 </div>
                             @endif
                         @endif

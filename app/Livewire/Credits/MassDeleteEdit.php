@@ -4,9 +4,11 @@ namespace App\Livewire\Credits;
 
 use App\Models\Credit;
 use App\Models\CreditInstallment;
+use App\Models\Expense;
 use App\Models\MassDeletion;
 use App\Models\Payment;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 
 class MassDeleteEdit extends Component
@@ -59,6 +61,25 @@ class MassDeleteEdit extends Component
                     'estado' => 1,
                     'situacion' => 'Activo',
                 ]);
+            }
+
+            // Pago vía DEPÓSITO: el cobro generó un egreso automático
+            // ("Dep. ...", vinculado por mass_deletion_id). Al revertir el
+            // cobro se elimina también, con sus fotos de voucher adjuntas
+            // (decisión de negocio 24/07: reversa completa, sin huérfanos).
+            $egresos = Expense::where('mass_deletion_id', $this->record->id)->get();
+            foreach ($egresos as $egreso) {
+                foreach ($egreso->attachments ?? [] as $att) {
+                    $disk = Storage::disk('public');
+                    if ($att->path && $disk->exists($att->path)) {
+                        $disk->delete($att->path);
+                    }
+                    if ($att->thumb_path && $disk->exists($att->thumb_path)) {
+                        $disk->delete($att->thumb_path);
+                    }
+                    $att->delete();
+                }
+                $egreso->delete();
             }
 
             $this->record->details()->delete();

@@ -56,6 +56,9 @@
 
 <table class="fila">
     <tr><td>Fecha:</td><td class="der">{{ $t['fecha_hora'] }}</td></tr>
+    @if(!empty($t['metodo']))
+        <tr><td>Pago:</td><td class="der">{{ $t['metodo'] }}</td></tr>
+    @endif
     @if($t['cliente'])
         <tr><td>Cliente:</td><td class="der">{{ $t['cliente'] }}</td></tr>
     @endif

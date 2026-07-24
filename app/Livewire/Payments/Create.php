@@ -2,8 +2,10 @@
 
 namespace App\Livewire\Payments;
 
+use App\Livewire\Cash\Concerns\SavesExpenseAttachments;
 use App\Models\Credit;
 use App\Models\CreditInstallment;
+use App\Models\Expense;
 use App\Models\MassDeletion;
 use App\Models\Payment;
 use App\Services\Payments\MotorPagos;
@@ -15,9 +17,13 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 class Create extends Component
 {
+    use SavesExpenseAttachments;
+    use WithFileUploads;
+
     public ?Credit $credit = null;
 
     public string $fecpag = '';
@@ -62,6 +68,69 @@ class Create extends Component
 
     // Aviso discreto post-cobro: ['numero' => '119695', 'total' => 283.40].
     public array $ultimoCobro = [];
+
+    // ── Método de pago (efectivo | deposito) ───────────────────────────
+    // Si es depósito, al cobrar se genera AUTOMÁTICAMENTE el egreso de caja
+    // "Dep. {Banco} {Cuenta} {Cliente} ({Canal})" con los MISMOS campos que
+    // los egresos manuales (caja 1, Otros, reason Banco, GUIA, Voucher) para
+    // que todos los reportes lo levanten sin cambios, vinculado al cobro
+    // via expenses.mass_deletion_id (la reversa lo elimina).
+    public string $metodoPago = 'efectivo';
+
+    public string $depBanco = 'Bcp';
+
+    public string $depCuenta = 'Guilmer';
+
+    public string $depCuentaOtra = '';
+
+    public string $depCanal = 'Yape';
+
+    public string $depFecha = '';
+
+    /** Foto del voucher (opcional); queda adjunta al egreso generado. */
+    public $voucherFoto = null;
+
+    public const DEP_BANCOS = ['Bcp', 'Interbank', 'Bbva', 'Banco de la Nación'];
+
+    public const DEP_CUENTAS = ['Guilmer', 'Corhuac', 'Flores', 'Centeno', 'Rosales', 'Malpartida', 'Ramos', 'Otra'];
+
+    public const DEP_CANALES = ['Yape', 'Trans.', 'Ag.', 'Plin'];
+
+    /** Id del egreso generado en el último cobro (para adjuntar el voucher). */
+    public ?int $egresoCreadoId = null;
+
+    /**
+     * Descripción estandarizada del egreso por depósito — el mismo formato
+     * que el personal digitaba a mano: "Dep. Bcp Guilmer Machaca Cabrera
+     * Helen Janeth (Yape)" (+ dd/mm si el depósito fue otro día).
+     */
+    private function descripcionEgresoDeposito(): string
+    {
+        $cuenta = $this->depCuenta === 'Otra' ? trim($this->depCuentaOtra) : $this->depCuenta;
+        $cli = $this->credit?->client;
+        $nombre = $cli
+            ? trim(($cli->apellido_pat ?? '').' '.($cli->apellido_mat ?? '').' '.($cli->nombre ?? ''))
+            : '';
+
+        $txt = trim("Dep. {$this->depBanco} {$cuenta} {$nombre} ({$this->depCanal})");
+        if ($this->depFecha !== '' && $this->depFecha !== $this->fecpag) {
+            $txt .= ' '.Carbon::parse($this->depFecha)->format('d/m');
+        }
+
+        return $txt;
+    }
+
+    /** "Licet Tafur Collantes" → "Licet T." (formato del campo Respons.). */
+    private function nombreCortoUsuario(): string
+    {
+        $partes = preg_split('/\s+/', trim((string) auth()->user()?->name));
+        $corto = $partes[0] ?? '';
+        if (isset($partes[1]) && $partes[1] !== '') {
+            $corto .= ' '.mb_strtoupper(mb_substr($partes[1], 0, 1)).'.';
+        }
+
+        return $corto;
+    }
 
     public function mount(?int $creditId = null)
     {
@@ -335,6 +404,23 @@ class Create extends Component
             'fecpag' => 'required|date',
             'moraManual' => 'nullable|numeric|min:0',
         ]);
+
+        // Método de pago: si es depósito, valida sus campos y el voucher.
+        if ($this->metodoPago === 'deposito') {
+            $this->validate([
+                'depBanco' => 'required|string|in:'.implode(',', self::DEP_BANCOS),
+                'depCuenta' => 'required|string|in:'.implode(',', self::DEP_CUENTAS),
+                'depCanal' => 'required|string|in:'.implode(',', self::DEP_CANALES),
+                'depFecha' => 'nullable|date',
+                'voucherFoto' => 'nullable|image|max:10240',
+            ], [
+                'voucherFoto.image' => 'El voucher debe ser una imagen.',
+                'voucherFoto.max' => 'La imagen del voucher debe pesar máximo 10 MB.',
+            ]);
+            if ($this->depCuenta === 'Otra' && trim($this->depCuentaOtra) === '') {
+                return 'Indica el nombre de la cuenta receptora del depósito.';
+            }
+        }
 
         if (! auth()->user()->can('caja.bypass-fecha-anterior')) {
             if (Carbon::parse($this->fecpag)->format('Ym') < now()->format('Ym')) {
@@ -664,10 +750,48 @@ class Create extends Component
                 $this->credit->estado = 0;
                 $this->credit->save();
             }
+
+            // ─── 11) PAGO VÍA DEPÓSITO: egreso automático ──────────────────
+            // El dinero entró al banco, no a la caja física: se registra el
+            // egreso "Dep. ..." que el personal digitaba a mano (~20/día),
+            // con los MISMOS campos que los manuales (los reportes lo
+            // levantan sin cambios) y vinculado al cobro para la reversa.
+            if ($this->metodoPago === 'deposito') {
+                $egreso = Expense::create([
+                    'date' => $this->fecpag,
+                    'modo' => 'Otros',
+                    'documento' => 'GUIA',
+                    'caja' => 1,
+                    'reason' => 'Banco',
+                    'detail' => $this->descripcionEgresoDeposito(),
+                    'total' => round($totalCobrado, 2),
+                    'document_type' => 'Voucher',
+                    'in_charge' => $this->nombreCortoUsuario(),
+                    'user_id' => auth()->id(),
+                    'headquarter_id' => auth()->user()?->headquarter_id ?? 1,
+                    'mass_deletion_id' => $massHeaderId,
+                ]);
+                $this->egresoCreadoId = $egreso->id;
+            }
         });
 
+        // Foto del voucher: fuera de la transacción (mover archivos no es
+        // transaccional); si falla, el egreso queda sin foto y se avisa.
+        if ($this->egresoCreadoId && $this->voucherFoto) {
+            try {
+                $egreso = Expense::find($this->egresoCreadoId);
+                if ($egreso) {
+                    $this->storeExpenseAttachments($egreso, [$this->voucherFoto]);
+                }
+            } catch (\Throwable $e) {
+                report($e);
+                $this->dispatch('errorAlert', ['message' => 'El pago se registró, pero la foto del voucher no pudo guardarse: '.$e->getMessage()]);
+            }
+        }
+
         Audit::log(
-            "Registró pago de {$this->monto} en el crédito #{$this->credit->id}".($this->cancel ? ' (canceló el crédito)' : ''),
+            "Registró pago de {$this->monto} en el crédito #{$this->credit->id}".($this->cancel ? ' (canceló el crédito)' : '')
+                .($this->metodoPago === 'deposito' ? ' vía depósito ('.$this->depCanal.')' : ''),
             $this->credit,
             ['monto' => $this->monto, 'fecha' => $this->fecpag]
         );
@@ -685,6 +809,8 @@ class Create extends Component
         $this->reset([
             'monto', 'obs', 'ckmora', 'cancel', 'impointe2', 'impomora',
             'idpre', 'moraManual', 'cancelSinMora', 'cancelUltimaCuota',
+            'metodoPago', 'depBanco', 'depCuenta', 'depCuentaOtra', 'depCanal',
+            'depFecha', 'voucherFoto', 'egresoCreadoId',
         ]);
         $this->preview = [];
         $this->resetValidation();
@@ -847,6 +973,10 @@ class Create extends Component
             'saldo' => max(0.0, $saldo),
             'cancela' => $this->cancel,
             'reserva_mora' => $this->ckmora && ! $this->cancel && $totMora > 0.001,
+            // Pago vía depósito: método para el ticket + egreso que se
+            // generará (transparencia total en el modal de confirmación).
+            'metodo' => $this->metodoPago === 'deposito' ? "{$this->depCanal} - {$this->depBanco}" : null,
+            'egreso' => $this->metodoPago === 'deposito' ? $this->descripcionEgresoDeposito() : null,
         ];
     }
 

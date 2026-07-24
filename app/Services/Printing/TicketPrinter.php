@@ -127,6 +127,7 @@ final class TicketPrinter
             'total' => round((float) $masivo->amount, 2),
             'saldo' => $this->saldoPendiente((int) $masivo->credit_id),
             'proxima' => $this->proximaCuota((int) $masivo->credit_id),
+            'metodo' => $this->metodoPago((int) $masivo->id),
         ];
     }
 
@@ -179,6 +180,9 @@ final class TicketPrinter
             // ── Cliente / fecha ─────────────────────────────────────────
             $printer->setJustification(Printer::JUSTIFY_LEFT);
             $this->pt($printer, $this->row('Fecha:', $t['fecha_hora'], $columns));
+            if (! empty($t['metodo'])) {
+                $this->pt($printer, $this->row('Pago:', $t['metodo'], $columns));
+            }
 
             if ($t['cliente']) {
                 $this->pt($printer, $this->row('Cliente:', Str::limit($t['cliente'], $columns - 10), $columns));
@@ -255,6 +259,32 @@ final class TicketPrinter
             ')->first();
 
         return round((float) ($r->sc ?? 0) + (float) ($r->si ?? 0) + (float) ($r->se ?? 0), 2);
+    }
+
+    /**
+     * Método de pago del cobro: si tiene un egreso "Dep. ..." vinculado
+     * (pago vía depósito), devuelve "Canal - Banco" (p. ej. "Yape - Bcp")
+     * parseando la descripción estandarizada que genera el sistema:
+     * "Dep. {Banco} {Cuenta} {Cliente} ({Canal})[ dd/mm]".
+     */
+    private function metodoPago(int $massDeletionId): ?string
+    {
+        $detail = DB::table('expenses')
+            ->where('mass_deletion_id', $massDeletionId)
+            ->value('detail');
+
+        if (! $detail) {
+            return null;
+        }
+
+        $banco = preg_match('/^Dep\.\s+(\S+)/u', (string) $detail, $m) ? $m[1] : null;
+        $canal = preg_match('/\(([^)]+)\)/u', (string) $detail, $m2) ? $m2[1] : null;
+
+        if (! $banco && ! $canal) {
+            return null;
+        }
+
+        return trim(($canal ?? 'Depósito').($banco ? " - {$banco}" : ''));
     }
 
     private function proximaCuota(int $creditId): ?string
