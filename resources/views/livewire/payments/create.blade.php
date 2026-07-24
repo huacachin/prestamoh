@@ -404,7 +404,7 @@
                             {{-- Vista previa del ticket, con la misma pinta que sale impreso --}}
                             <div class="ticket-preview mx-auto bg-white">
                                 <div class="text-center">
-                                    <div class="tp-empresa">{{ config('printer.company_name', 'PRESTAMOS HUACACHIN') }}</div>
+                                    <div class="tp-empresa">{{ config('printer.company_name', 'HUACACHIN') }}</div>
                                     @if($preview['sede'])
                                         <div>{{ $preview['sede'] }}</div>
                                     @endif

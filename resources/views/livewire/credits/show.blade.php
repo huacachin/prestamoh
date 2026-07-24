@@ -243,7 +243,7 @@
                                     // Links firmados del recibo (público + PDF) — ver PaymentController.
                                     $verRecibo = \Illuminate\Support\Facades\URL::signedRoute('recibo.publico', ['massDeletionId' => $masivo->id]);
                                     $telRecibo = preg_replace('/\D/', '', (string) $credit->client?->celular1);
-                                    $msgRecibo = config('printer.company_name', 'PRESTAMOS HUACACHIN')
+                                    $msgRecibo = config('printer.company_name', 'HUACACHIN')
                                         .': su recibo de pago #'.str_pad((string) $masivo->id, 6, '0', STR_PAD_LEFT)
                                         .' del '.($masivo->date?->format('d/m/Y') ?? '')
                                         .' por S/ '.number_format((float) $masivo->amount, 2)

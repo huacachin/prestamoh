@@ -151,7 +151,7 @@ final class TicketPrinter
             // ── Cabecera empresa ────────────────────────────────────────
             $printer->setEmphasis(true);
             $printer->setTextSize(2, 1);
-            $this->pt($printer, (string) config('printer.company_name', 'PRESTAMOS HUACACHIN')."\n");
+            $this->pt($printer, (string) config('printer.company_name', 'HUACACHIN')."\n");
             $printer->setTextSize(1, 1);
             $printer->setEmphasis(false);
             if ($ruc = (string) config('printer.company_ruc', '')) {

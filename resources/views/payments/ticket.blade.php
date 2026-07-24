@@ -99,7 +99,7 @@
         @if($logo)
             <img src="{{ $logo }}" alt="" class="logo">
         @endif
-        <div class="empresa">{{ config('printer.company_name', 'PRESTAMOS HUACACHIN') }}</div>
+        <div class="empresa">{{ config('printer.company_name', 'HUACACHIN') }}</div>
         @if($ruc = config('printer.company_ruc'))
             <div>RUC {{ $ruc }}</div>
         @endif

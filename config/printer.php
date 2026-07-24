@@ -53,7 +53,7 @@ return [
     | Cabecera del ticket. Si la empresa tiene esto en BD, se puede
     | sobrescribir desde el TicketPrinter.
     */
-    'company_name' => env('PRINTER_COMPANY_NAME', 'PRESTAMOS HUACACHIN'),
+    'company_name' => env('PRINTER_COMPANY_NAME', 'HUACACHIN'),
     'company_ruc'  => env('PRINTER_COMPANY_RUC', ''),
     'company_addr' => env('PRINTER_COMPANY_ADDR', ''),
 

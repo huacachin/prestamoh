@@ -1213,7 +1213,7 @@ class Create extends Component
             ->keyBy('id');
 
         $tel = preg_replace('/\D/', '', (string) $this->credit->client?->celular1);
-        $empresa = (string) config('printer.company_name', 'PRESTAMOS HUACACHIN');
+        $empresa = (string) config('printer.company_name', 'HUACACHIN');
 
         $out = [];
         foreach ($ultimoPorCuota as $insId => $mdId) {
