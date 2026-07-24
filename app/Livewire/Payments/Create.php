@@ -323,6 +323,13 @@ class Create extends Component
             return 'No hay crédito seleccionado.';
         }
 
+        // Solo créditos ACTIVOS admiten pagos (espejo del legacy, que aborta
+        // con estado=0). El front oculta el formulario; esto respalda al UI
+        // ante llamadas Livewire directas o estados desfasados en pantalla.
+        if ($this->credit->situacion !== 'Activo') {
+            return "El crédito está {$this->credit->situacion}: no admite pagos.";
+        }
+
         $this->validate([
             'monto' => 'required|numeric|min:0',
             'fecpag' => 'required|date',

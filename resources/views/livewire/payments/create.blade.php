@@ -31,7 +31,34 @@
             // no devengado se condona al pagar; la mora se cobra o reserva
             // aparte (switch "Reserva Mora").
             $cancelDisabled = ($cancelarHoy - (float) $monto) > 0.01;
+
+            // Solo los créditos ACTIVOS admiten pagos: en cancelados,
+            // refinanciados o eliminados se ocultan el formulario de pago,
+            // las tarjetas de escenario y el botón Pagar (queda la consulta:
+            // datos, cronograma y recibos). Espejo del legacy, que aborta
+            // con estado=0. El backend lo refuerza en validarCobro().
+            $esPagable = $credit->situacion === 'Activo';
         @endphp
+
+        @unless($esPagable)
+            @php
+                $bannerColor = match ($credit->situacion) {
+                    'Cancelado' => 'alert-secondary',
+                    'Refinanciado' => 'alert-warning',
+                    default => 'alert-danger',
+                };
+            @endphp
+            <div class="alert {{ $bannerColor }} d-flex align-items-center gap-2 py-2 mb-2">
+                <i class="ti ti-lock f-s-18"></i>
+                <div>
+                    <strong>Crédito {{ strtoupper($credit->situacion) }}</strong>
+                    @if($credit->situacion === 'Cancelado' && $credit->fecha_cancelacion)
+                        el {{ $credit->fecha_cancelacion->format('d/m/Y') }}
+                    @endif
+                    — no admite pagos. Puedes consultar el cronograma y reenviar o descargar los recibos.
+                </div>
+            </div>
+        @endunless
 
         {{-- Formulario --}}
         <form wire:submit.prevent="confirmarPago" class="pago-form">
@@ -126,6 +153,7 @@
                         </div>
                     </div>
 
+                    @if($esPagable)
                     {{-- ── Atraso ── --}}
                     <h6 class="mb-1 mt-3" style="color:red;">Atraso</h6>
                     <div class="row g-2">
@@ -246,15 +274,17 @@
                         </div>
                     </div>
 
+                    @endif {{-- $esPagable: Atraso + Registrar Pago --}}
+
                     {{-- Botones --}}
                     <div class="d-flex gap-2 mt-3 flex-wrap">
-                        <button type="submit" class="btn btn-sm btn-dark"
-                                wire:loading.attr="disabled" wire:target="confirmarPago">
-                            <i class="ti ti-thumb-up"></i>
-                            <span wire:loading.remove wire:target="confirmarPago">Pagar</span>
-                            <span wire:loading wire:target="confirmarPago">Calculando…</span>
-                        </button>
-                        @if($credit->situacion !== 'Cancelado')
+                        @if($esPagable)
+                            <button type="submit" class="btn btn-sm btn-dark"
+                                    wire:loading.attr="disabled" wire:target="confirmarPago">
+                                <i class="ti ti-thumb-up"></i>
+                                <span wire:loading.remove wire:target="confirmarPago">Pagar</span>
+                                <span wire:loading wire:target="confirmarPago">Calculando…</span>
+                            </button>
                             @if((int) $credit->cuotas === 1)
                                 <a href="{{ route('payments.refinance', $credit->id) }}" class="btn btn-sm btn-warning">
                                     <i class="ti ti-refresh"></i> Refinanciar
@@ -265,10 +295,14 @@
                                     <i class="ti ti-refresh"></i> Refinanciar
                                 </a>
                             @endif
+                            <a href="#" class="btn btn-sm btn-success disabled" title="Próximamente">
+                                <i class="ti ti-file-spreadsheet"></i> Excel
+                            </a>
+                        @else
+                            <a href="{{ route('credits.show', $credit->id) }}" class="btn btn-sm btn-primary">
+                                <i class="ti ti-eye"></i> Ver ficha del crédito
+                            </a>
                         @endif
-                        <a href="#" class="btn btn-sm btn-success disabled" title="Próximamente">
-                            <i class="ti ti-file-spreadsheet"></i> Excel
-                        </a>
                         <a href="{{ route('clients.show', $credit->client_id) }}"
                            class="btn btn-sm btn-danger ms-auto">
                             <i class="ti ti-arrow-back"></i> Regresar
@@ -305,6 +339,7 @@
             </div>
         </form>
 
+        @if($esPagable)
         {{-- ═══ Modal de confirmación del cobro ═══ --}}
         {{-- El botón Pagar NO cobra: abre esto con el recibo ya calculado
              (confirmarPago). Recién "Cobrar" / "Cobrar e imprimir" escriben.
@@ -421,6 +456,8 @@
             .ticket-preview .tp-sep-dbl { border-top: 3px double #000; margin: 4px 0; }
         </style>
 
+        @endif {{-- $esPagable: modal de confirmación --}}
+
         @script
         <script>
             // Capturar GPS si el navegador lo permite
@@ -436,6 +473,7 @@
         </script>
         @endscript
 
+        @if($esPagable)
         {{-- Tarjetas de escenario: ¿cuánto paga el cliente? --}}
         @php $simEsHoy = $sim['fecha'] === now()->format('Y-m-d'); @endphp
         <div class="card shadow-sm mt-2">
@@ -620,6 +658,8 @@
                 </div>
             </div>
         </div>
+
+        @endif {{-- $esPagable: tarjetas de escenario --}}
 
         {{-- Cronograma de cuotas (homologado con /credits/{id}) --}}
         <div class="card shadow-sm mt-2">
