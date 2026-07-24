@@ -5,7 +5,9 @@ namespace App\Livewire\Dashboard;
 use App\Livewire\Reports\Portfolio;
 use App\Models\Credit;
 use App\Models\Payment;
+use App\Services\MorosidadService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
@@ -126,6 +128,62 @@ class Index extends Component
         // reporte de Cartera — una sola fuente de cálculo.
         $cartera = (new Portfolio)->render()->getData();
 
+        // ── MOROSIDAD: aging (hoy) + evolución del mes ─────────────────
+        // Aging: créditos en mora (venc final pasada + saldo>0, fórmula
+        // exacta de Portfolio) clasificados por días desde su vencimiento.
+        $hoy = Carbon::today()->format('Y-m-d');
+        $aging = DB::select("
+            SELECT
+                CASE
+                    WHEN DATEDIFF(?, t.venc) <= 7  THEN '1-7'
+                    WHEN DATEDIFF(?, t.venc) <= 15 THEN '8-15'
+                    WHEN DATEDIFF(?, t.venc) <= 30 THEN '16-30'
+                    WHEN DATEDIFF(?, t.venc) <= 60 THEN '31-60'
+                    WHEN DATEDIFF(?, t.venc) <= 90 THEN '61-90'
+                    ELSE '+90'
+                END AS bucket,
+                COUNT(*) AS n,
+                COALESCE(SUM(t.saldo), 0) AS saldo
+            FROM (
+                SELECT c.fecha_vencimiento AS venc,
+                       (c.importe + c.importe * c.interes / 100)
+                     - (SELECT COALESCE(SUM(ci.importe_aplicado + ci.interes_aplicado), 0)
+                          FROM credit_installments ci WHERE ci.credit_id = c.id) AS saldo
+                FROM credits c
+                WHERE c.situacion NOT IN ('Eliminado', 'Cancelado')
+                  AND c.fecha_vencimiento < ?
+            ) t
+            WHERE t.saldo > 0.005
+            GROUP BY bucket
+        ", [$hoy, $hoy, $hoy, $hoy, $hoy, $hoy]);
+        $agingMap = collect($aging)->keyBy('bucket');
+        $agingBuckets = [];
+        $agingMax = 0.0;
+        foreach (['1-7', '8-15', '16-30', '31-60', '61-90', '+90'] as $b) {
+            $fila = $agingMap->get($b);
+            $agingBuckets[] = [
+                'bucket' => $b,
+                'n' => (int) ($fila->n ?? 0),
+                'saldo' => round((float) ($fila->saldo ?? 0), 2),
+            ];
+            $agingMax = max($agingMax, (float) ($fila->saldo ?? 0));
+        }
+
+        // Evolución: snapshots diarios del mes filtrado (self-healing:
+        // calcula los días que falten; validado contra Portfolio).
+        app(MorosidadService::class)->completarRango($mesIni, $mesFin);
+        $serieMoro = DB::table('cache_morosidad_diaria')
+            ->whereBetween('fecha', [$mesIni, $mesFin])
+            ->orderBy('fecha')
+            ->get(['fecha', 'saldo_mora', 'n_creditos_mora', 'pct'])
+            ->map(fn ($r) => [
+                'd' => (int) Carbon::parse($r->fecha)->day,
+                'pct' => (float) $r->pct,
+                'saldo' => (float) $r->saldo_mora,
+                'n' => (int) $r->n_creditos_mora,
+            ])
+            ->all();
+
         return view('livewire.dashboard.index', [
             'etiqueta' => $etiqueta,
             'esDia' => (bool) $day,
@@ -148,6 +206,9 @@ class Index extends Component
             'carteraVencidos' => $cartera['venc'],
             'morosidad' => $cartera['morisidad'],
             'tipoTotals' => $cartera['tipoTotals'],
+            'agingBuckets' => $agingBuckets,
+            'agingMax' => $agingMax,
+            'serieMoro' => $serieMoro,
         ]);
     }
 }

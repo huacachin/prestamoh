@@ -214,7 +214,7 @@
                         return number_format($n, 0);
                     };
                 @endphp
-                <div class="dashx-chart" id="curva-mes" data-mes="{{ $meses[(int) $month] }}">
+                <div class="dashx-chart" id="curva-mes">
                     {{-- Gridlines + etiquetas Y (recesivas) --}}
                     @foreach([1, .5, 0] as $g)
                         <div class="grid-line" style="bottom: calc({{ $g * 100 }}% * .82 + 26px);">
@@ -229,11 +229,14 @@
                                 $hR = $tope > 0 ? round($p['refi'] * 100 / $tope, 2) : 0;
                                 $esFiltrado = $diaFiltrado && (int) $diaFiltrado === $p['d'];
                             @endphp
-                            <div class="day-col {{ $esFiltrado ? 'is-selected' : '' }} {{ $diaFiltrado && ! $esFiltrado ? 'is-dimmed' : '' }}"
-                                 data-dia="{{ $p['d'] }}"
-                                 data-nuevo="{{ number_format($p['nuevo'], 2) }}"
-                                 data-refi="{{ number_format($p['refi'], 2) }}"
-                                 data-total="{{ number_format($p['total'], 2) }}">
+                            @php
+                                $tt = "<div class='tt-title'>{$p['d']} de {$meses[(int) $month]}</div>"
+                                    ."<div><span class='tt-dot' style='background:#2a78d6'></span>Nuevos: S/ ".number_format($p['nuevo'], 2).'</div>'
+                                    ."<div><span class='tt-dot' style='background:#eb6834'></span>Refinanciados: S/ ".number_format($p['refi'], 2).'</div>'
+                                    ."<div class='tt-title'>Total: S/ ".number_format($p['total'], 2).'</div>';
+                            @endphp
+                            <div class="day-col tt-col {{ $esFiltrado ? 'is-selected' : '' }} {{ $diaFiltrado && ! $esFiltrado ? 'is-dimmed' : '' }}"
+                                 data-tt="{{ $tt }}">
                                 <div class="day-stack">
                                     @if($hR > 0)
                                         <div class="seg" style="height: {{ $hR }}%; background:#eb6834;"></div>
@@ -250,7 +253,7 @@
                         @endforeach
                     </div>
 
-                    <div class="chart-tip" id="curva-tip" hidden></div>
+                    <div class="chart-tip" hidden></div>
                 </div>
             @endif
         </div>
@@ -383,6 +386,106 @@
         </div>
     </div>
 
+    {{-- ══ MOROSIDAD: aging + evolución ══════════════════════ --}}
+    <div class="dashx-head">
+        <h6 class="mb-0 dashx-label" style="font-size:.82rem;">Morosidad</h6>
+        <span class="dashx-sub">antigüedad de hoy · evolución de {{ $meses[(int) $month] }} {{ $year }}</span>
+        <div class="rule"></div>
+        <a href="{{ route('reports.delinquent') }}" class="btn btn-sm btn-outline-primary py-0">
+            Pendientes por cobrar <i class="ti ti-arrow-right"></i>
+        </a>
+    </div>
+
+    <div class="row g-3">
+        {{-- Aging: rampa secuencial de un solo tono (severidad ordenada) --}}
+        <div class="col-12 col-lg-5">
+            <div class="card dashx-tile h-100">
+                <div class="card-body py-3">
+                    <div class="dashx-label mb-2">Antigüedad de la mora <span style="text-transform:none; letter-spacing:0;">(días desde el vencimiento)</span></div>
+                    @php
+                        $rampa = ['#f5c4c4', '#efa3a3', '#e68181', '#da5f5f', '#c94141', '#a82626'];
+                        $agingTope = max(0.01, $agingMax);
+                    @endphp
+                    @foreach($agingBuckets as $i => $b)
+                        @php $w = round($b['saldo'] * 100 / $agingTope, 1); @endphp
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <span class="dashx-sub text-end" style="width:44px; font-variant-numeric:tabular-nums;">{{ $b['bucket'] }}</span>
+                            <div class="flex-grow-1" style="background:#f4f2ef; border-radius:5px; height:22px; overflow:hidden;">
+                                <div style="width:{{ max($w, $b['saldo'] > 0 ? 1.5 : 0) }}%; height:100%; background:{{ $rampa[$i] }}; border-radius:5px 5px 5px 5px;"></div>
+                            </div>
+                            <span class="dashx-sub text-end" style="width:118px; font-variant-numeric:tabular-nums; white-space:nowrap;">
+                                S/ {{ $fmt($b['saldo']) }} <span style="color:#a8a49c;">({{ $b['n'] }})</span>
+                            </span>
+                        </div>
+                    @endforeach
+                    <div class="dashx-sub mt-1">
+                        Total: <strong style="color:#0b0b0b;">S/ {{ $fmt(array_sum(array_column($agingBuckets, 'saldo'))) }}</strong>
+                        en {{ $fmt0(array_sum(array_column($agingBuckets, 'n'))) }} créditos — cuadra con el medidor.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Evolución: % de morosidad día a día del mes filtrado --}}
+        <div class="col-12 col-lg-7">
+            <div class="card dashx-tile h-100" wire:loading.class="opacity-50">
+                <div class="card-body py-3">
+                    <div class="dashx-label mb-2">Evolución del mes <span style="text-transform:none; letter-spacing:0;">(% del saldo por cobrar en mora)</span></div>
+                    @if(count($serieMoro) < 2)
+                        <div class="text-center dashx-sub py-4">Sin datos de morosidad para este mes (el histórico llega hasta 12 meses atrás).</div>
+                    @else
+                        @php
+                            $pcts = array_column($serieMoro, 'pct');
+                            $topPct = max(5, ceil(max($pcts) * 1.15 / 5) * 5);
+                            $nP = count($serieMoro);
+                            $pts = [];      // línea
+                            foreach ($serieMoro as $i => $p) {
+                                $x = round($i * 100 / max(1, $nP - 1), 2);
+                                $y = round(42 - ($p['pct'] * 38 / $topPct) - 2, 2);
+                                $pts[] = $x.','.$y;
+                            }
+                            $linea = implode(' ', $pts);
+                            $area = '0,42 '.$linea.' 100,42';
+                        @endphp
+                        <div class="dashx-chart" style="height:210px;">
+                            @foreach([1, .5, 0] as $g)
+                                <div class="grid-line" style="bottom: calc({{ $g * 100 }}% * .81 + 26px);">
+                                    <span>{{ number_format($topPct * $g, 0) }}%</span>
+                                </div>
+                            @endforeach
+
+                            <svg viewBox="0 0 100 42" preserveAspectRatio="none"
+                                 style="position:absolute; inset:0 0 26px 42px; width:calc(100% - 42px); height:calc(100% - 26px);">
+                                <polygon points="{{ $area }}" fill="rgba(208,59,59,.10)"/>
+                                <polyline points="{{ $linea }}" fill="none" stroke="#d03b3b"
+                                          stroke-width="2" vector-effect="non-scaling-stroke"
+                                          stroke-linejoin="round" stroke-linecap="round"/>
+                            </svg>
+
+                            <div class="bars">
+                                @foreach($serieMoro as $p)
+                                    @php
+                                        $esFiltrado = $diaFiltrado && (int) $diaFiltrado === $p['d'];
+                                        $tt = "<div class='tt-title'>{$p['d']} de {$meses[(int) $month]}</div>"
+                                            ."<div>Morosidad: <strong>".number_format($p['pct'], 2).'%</strong></div>'
+                                            .'<div>En mora: S/ '.number_format($p['saldo'], 2).'</div>'
+                                            .'<div>'.$p['n'].' créditos</div>';
+                                    @endphp
+                                    <div class="day-col tt-col {{ $esFiltrado ? 'is-selected' : '' }}" data-tt="{{ $tt }}">
+                                        <div class="day-stack"></div>
+                                        <div class="day-label">{{ $p['d'] }}</div>
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            <div class="chart-tip" hidden></div>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- Distribución por planilla --}}
     @php
         $capTotalPlan = max(0.01, $tipoTotals['totsem'] + $tipoTotals['totmen'] + $tipoTotals['totdia']);
@@ -415,22 +518,22 @@
 
     @script
     <script>
-        // Tooltip de la curva del mes. Delegación en document: sobrevive
-        // los re-renders de Livewire al cambiar los filtros.
+        // Tooltip genérico de los charts del dashboard: cualquier .tt-col
+        // con data-tt dentro de un .dashx-chart. Delegación en document:
+        // sobrevive los re-renders de Livewire al cambiar los filtros.
         const moverTip = (e) => {
-            const chart = document.getElementById('curva-mes');
-            const tip = document.getElementById('curva-tip');
-            if (! chart || ! tip) return;
+            const col = e.target.closest?.('.tt-col');
+            const chart = col?.closest('.dashx-chart');
 
-            const col = e.target.closest?.('.day-col');
-            if (! col || ! chart.contains(col)) { tip.hidden = true; return; }
+            document.querySelectorAll('.chart-tip').forEach(t => {
+                if (! chart || t.parentElement !== chart) t.hidden = true;
+            });
+            if (! col || ! chart) return;
 
-            const mes = chart.dataset.mes || '';
-            tip.innerHTML =
-                `<div class="tt-title">${col.dataset.dia} de ${mes}</div>` +
-                `<div><span class="tt-dot" style="background:#2a78d6"></span>Nuevos: S/ ${col.dataset.nuevo}</div>` +
-                `<div><span class="tt-dot" style="background:#eb6834"></span>Refinanciados: S/ ${col.dataset.refi}</div>` +
-                `<div class="tt-title">Total: S/ ${col.dataset.total}</div>`;
+            const tip = chart.querySelector('.chart-tip');
+            if (! tip) return;
+
+            tip.innerHTML = col.dataset.tt || '';
             tip.hidden = false;
 
             const r = chart.getBoundingClientRect();
