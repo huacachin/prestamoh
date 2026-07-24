@@ -6,7 +6,7 @@ use App\Models\Credit;
 use App\Models\CreditInstallment;
 use App\Models\MassDeletion;
 use App\Models\Payment;
-use App\Services\Payments\DistribucionPago;
+use App\Services\Payments\MotorPagos;
 use App\Services\Printing\TicketPrinter;
 use App\Support\Audit;
 use App\Support\MoraExonerada;
@@ -458,29 +458,64 @@ class Create extends Component
                 $unpaid = CreditInstallment::where('credit_id', $this->credit->id)
                     ->where('pagado', 0)->orderBy('num_cuota')->get();
 
-                // El reparto lo decide simularDistribucion(): la misma función
-                // que alimenta la vista previa del ticket, así el recibo que ve
-                // el cliente antes de confirmar no puede diferir del cobro real.
+                // El reparto lo decide el MotorPagos (LegacyEngine validado por
+                // backtest para créditos espejo del legacy; DistribucionPago
+                // para cuota uniforme). Devuelve las dos verdades del legacy:
+                //  - 'caja': filas para `payments` (lo que leen los reportes)
+                //  - 'rows': aplicación normalizada al cronograma + details
                 $dist = $this->simularDistribucion((float) $this->monto, $unpaid, $isMensualUnaCuota);
 
+                $porNum = $unpaid->keyBy(fn ($i) => (int) $i->num_cuota);
+
+                // ── 3a) Filas de CAJA (payments) ───────────────────────────
+                $pagoPorClave = [];   // "num|tipo" → payment_id (para enlazar details)
+                $ultimoPagoId = null;
+                foreach ($dist['caja'] as $r) {
+                    $ins = $porNum->get($r['num']);
+                    if (! $ins) {
+                        continue;
+                    }
+                    $tipo = match ($r['tipo']) {
+                        'C' => 'CAPITAL', 'I' => 'INTERES', 'E' => 'EXCEDENTE'
+                    };
+                    $diasInt = $ins->fecha_vencimiento
+                        ? abs((int) Carbon::parse($ins->fecha_vencimiento)->diffInDays(now(), false))
+                        : 0;
+                    $detalle = match ($r['tipo']) {
+                        'C' => "Pago : {$this->credit->id} Cuota:  {$ins->num_cuota}/{$totCuotas}",
+                        'I' => "Pago : {$this->credit->id} Interes:  {$ins->num_cuota}/{$totCuotas} Dias : {$diasInt}",
+                        'E' => "Pago : {$this->credit->id} Excedente:  {$ins->num_cuota}/{$totCuotas}",
+                    };
+                    $p = Payment::create([
+                        'credit_id' => $this->credit->id, 'installment_id' => $ins->id,
+                        'modo' => 'CREDITO', 'tipo' => $tipo, 'documento' => $tipo,
+                        'fecha' => $this->fecpag, 'hora' => $hora, 'monto' => $r['monto'], 'moneda' => $semodn,
+                        'detalle' => $detalle,
+                        'asesor' => $this->credit->asesor, 'usuario' => $usuario, 'user_id' => $userId,
+                        'headquarter_id' => $hqId, 'latitud' => $this->latitud, 'longitud' => $this->longitud,
+                    ]);
+                    $pagoPorClave[$r['num'].'|'.$r['tipo']] = $p->id;
+                    $ultimoPagoId = $p->id;
+                }
+
+                // ── 3b) Aplicación al CRONOGRAMA + details ─────────────────
+                // Los details siguen la aplicación (verdad del cronograma):
+                // la reversa de Eliminar Masivo des-aplica exacto. Cada detail
+                // se enlaza al payment de su cuota/tipo; si la caja lo registró
+                // con otra etiqueta (divergencia legacy), al de la misma cuota
+                // o al último de la operación.
                 foreach ($dist['rows'] as $row) {
                     /** @var CreditInstallment $ins */
                     $ins = $row['ins'];
                     $payCap = $row['cap'];
                     $payInt = $row['int'];
                     $payExc = $row['exc'];
+                    $num = (int) $ins->num_cuota;
 
                     if ($payCap > 0.001) {
-                        $p = Payment::create([
-                            'credit_id' => $this->credit->id, 'installment_id' => $ins->id,
-                            'modo' => 'CREDITO', 'tipo' => 'CAPITAL', 'documento' => 'CAPITAL',
-                            'fecha' => $this->fecpag, 'hora' => $hora, 'monto' => $payCap, 'moneda' => $semodn,
-                            'detalle' => "Pago : {$this->credit->id} Cuota:  {$ins->num_cuota}/{$totCuotas}",
-                            'asesor' => $this->credit->asesor, 'usuario' => $usuario, 'user_id' => $userId,
-                            'headquarter_id' => $hqId, 'latitud' => $this->latitud, 'longitud' => $this->longitud,
-                        ]);
                         DB::table('mass_deletion_details')->insert([
-                            'mass_deletion_id' => $massHeaderId, 'installment_id' => $ins->id, 'payment_id' => $p->id,
+                            'mass_deletion_id' => $massHeaderId, 'installment_id' => $ins->id,
+                            'payment_id' => $pagoPorClave[$num.'|C'] ?? $pagoPorClave[$num.'|I'] ?? $ultimoPagoId,
                             'amount' => $payCap, 'fecha' => now(), 'tipo' => 'C',
                             'created_at' => now(), 'updated_at' => now(),
                         ]);
@@ -488,19 +523,9 @@ class Create extends Component
                     }
 
                     if ($payInt > 0.001) {
-                        $diasInt = $ins->fecha_vencimiento
-                            ? abs((int) Carbon::parse($ins->fecha_vencimiento)->diffInDays(now(), false))
-                            : 0;
-                        $p = Payment::create([
-                            'credit_id' => $this->credit->id, 'installment_id' => $ins->id,
-                            'modo' => 'CREDITO', 'tipo' => 'INTERES', 'documento' => 'INTERES',
-                            'fecha' => $this->fecpag, 'hora' => $hora, 'monto' => $payInt, 'moneda' => $semodn,
-                            'detalle' => "Pago : {$this->credit->id} Interes:  {$ins->num_cuota}/{$totCuotas} Dias : {$diasInt}",
-                            'asesor' => $this->credit->asesor, 'usuario' => $usuario, 'user_id' => $userId,
-                            'headquarter_id' => $hqId, 'latitud' => $this->latitud, 'longitud' => $this->longitud,
-                        ]);
                         DB::table('mass_deletion_details')->insert([
-                            'mass_deletion_id' => $massHeaderId, 'installment_id' => $ins->id, 'payment_id' => $p->id,
+                            'mass_deletion_id' => $massHeaderId, 'installment_id' => $ins->id,
+                            'payment_id' => $pagoPorClave[$num.'|I'] ?? $pagoPorClave[$num.'|C'] ?? $ultimoPagoId,
                             'amount' => $payInt, 'fecha' => now(), 'tipo' => 'I',
                             'created_at' => now(), 'updated_at' => now(),
                         ]);
@@ -508,16 +533,9 @@ class Create extends Component
                     }
 
                     if ($payExc > 0.001) {
-                        $p = Payment::create([
-                            'credit_id' => $this->credit->id, 'installment_id' => $ins->id,
-                            'modo' => 'CREDITO', 'tipo' => 'EXCEDENTE', 'documento' => 'EXCEDENTE',
-                            'fecha' => $this->fecpag, 'hora' => $hora, 'monto' => $payExc, 'moneda' => $semodn,
-                            'detalle' => "Pago : {$this->credit->id} Excedente:  {$ins->num_cuota}/{$totCuotas}",
-                            'asesor' => $this->credit->asesor, 'usuario' => $usuario, 'user_id' => $userId,
-                            'headquarter_id' => $hqId, 'latitud' => $this->latitud, 'longitud' => $this->longitud,
-                        ]);
                         DB::table('mass_deletion_details')->insert([
-                            'mass_deletion_id' => $massHeaderId, 'installment_id' => $ins->id, 'payment_id' => $p->id,
+                            'mass_deletion_id' => $massHeaderId, 'installment_id' => $ins->id,
+                            'payment_id' => $pagoPorClave[$num.'|E'] ?? $ultimoPagoId,
                             'amount' => $payExc, 'fecha' => now(), 'tipo' => 'E',
                             'created_at' => now(), 'updated_at' => now(),
                         ]);
@@ -840,8 +858,8 @@ class Create extends Component
      */
     private function simularDistribucion(float $monto, iterable $unpaid, bool $isMensualUnaCuota): array
     {
-        return app(DistribucionPago::class)
-            ->distribuir($monto, $unpaid, $isMensualUnaCuota);
+        return app(MotorPagos::class)
+            ->distribuir($monto, $unpaid, $isMensualUnaCuota, $this->esCuotaUniforme());
     }
 
     /**
