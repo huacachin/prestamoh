@@ -73,7 +73,7 @@
                                        @unless($canEditDate) readonly @endunless>
                             </div>
 
-                            <div class="col-md-{{ $modo === 'Fijos' ? 3 : 4 }}">
+                            <div class="col-md-4">
                                 <label class="form-label mb-0 small fw-semibold">A (*)</label>
                                 @if($modo === 'Fijos')
                                     <select class="form-select form-select-sm @error('reason') is-invalid @enderror"
@@ -93,23 +93,7 @@
                                 @endif
                             </div>
 
-                            @if($modo === 'Fijos')
-                                <div class="col-md-1">
-                                    <label class="form-label mb-0 small fw-semibold">Cant.</label>
-                                    <input type="number" min="1" step="1" name="cantidad" autocomplete="off"
-                                           class="form-control form-control-sm"
-                                           wire:model.live.debounce.400ms="cantidad">
-                                </div>
-                                <div class="col-md-2">
-                                    <label class="form-label mb-0 small fw-semibold">Precio</label>
-                                    <input type="number" min="0" step="0.01" name="precio_unitario" autocomplete="off"
-                                           class="form-control form-control-sm"
-                                           wire:model.live.debounce.400ms="precio_unitario"
-                                           placeholder="0.00">
-                                </div>
-                            @endif
-
-                            <div class="col-md-{{ $modo === 'Fijos' ? 4 : 6 }}">
+                            <div class="col-md-6">
                                 <label class="form-label mb-0 small fw-semibold">Detalle (*)</label>
                                 <input type="text" name="detail" autocomplete="on"
                                        class="form-control form-control-sm @error('detail') is-invalid @enderror"
@@ -125,11 +109,6 @@
                                        wire:model.defer="total"
                                        placeholder="0.00"
                                        style="background:yellow;">
-                                @if($modo === 'Fijos' && $precio_unitario > 0)
-                                    <small class="text-muted" style="font-size:10px;">
-                                        Auto: {{ $cantidad }} × {{ number_format((float)$precio_unitario, 2) }}. Editable.
-                                    </small>
-                                @endif
                             </div>
 
                             <div class="col-md-1">

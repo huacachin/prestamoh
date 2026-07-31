@@ -30,11 +30,6 @@ class CreateExpense extends Component
     // Adjuntos (imágenes) — se suben en el MISMO paso que el egreso.
     public array $files = [];
 
-    // Precio por concepto (legacy: cargaconcepto.php)
-    public $cantidad = 1;
-
-    public $precio_unitario = null;
-
     // Permisos cacheados
     public bool $canEditDate = false;
 
@@ -58,20 +53,17 @@ class CreateExpense extends Component
     public function updatedModo(): void
     {
         $this->reason = '';
-        $this->cantidad = 1;
-        $this->precio_unitario = null;
         $this->total = '';
         $this->resetErrorBag();
     }
 
     /**
-     * Al cambiar el concepto en modo Fijos, carga factor_egreso (legacy cargaconcepto.php).
+     * Al cambiar el concepto en modo Fijos, propone el monto desde factor_egreso
+     * (legacy cargaconcepto.php). Queda editable: el factor es solo una sugerencia.
      */
     public function updatedReason(): void
     {
         if ($this->modo !== 'Fijos' || $this->reason === '') {
-            $this->precio_unitario = null;
-
             return;
         }
         $concept = Concept::where('type', 'egreso')
@@ -80,33 +72,7 @@ class CreateExpense extends Component
             ->first();
 
         $factor = $concept ? (float) $concept->factor_egreso : 0;
-        $this->cantidad = 1;
-        if ($factor > 0) {
-            $this->precio_unitario = $factor;
-            $this->total = number_format($factor, 2, '.', '');
-        } else {
-            $this->precio_unitario = null;
-            $this->total = '';
-        }
-    }
-
-    public function updatedCantidad(): void
-    {
-        $this->recalcMonto();
-    }
-
-    public function updatedPrecioUnitario(): void
-    {
-        $this->recalcMonto();
-    }
-
-    private function recalcMonto(): void
-    {
-        $cant = (float) $this->cantidad;
-        $precio = (float) $this->precio_unitario;
-        if ($precio > 0 && $cant > 0) {
-            $this->total = number_format($cant * $precio, 2, '.', '');
-        }
+        $this->total = $factor > 0 ? number_format($factor, 2, '.', '') : '';
     }
 
     protected function rules(): array
@@ -166,8 +132,6 @@ class CreateExpense extends Component
         $this->total = '';
         $this->document_type = '';
         $this->in_charge = '';
-        $this->cantidad = 1;
-        $this->precio_unitario = null;
         $this->files = [];
         if ($this->canChooseOtros) {
             $this->modo = '';
