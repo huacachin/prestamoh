@@ -64,13 +64,13 @@
                     <div id="printme">
                         {{-- Daily detail table --}}
                         <div id="tabla-caja-3" class="table-responsive" style="max-height: 650px; overflow: auto;">
-                            <table class="table table-bordered table-striped table-hover table-sm" style="min-width: 900px;">
+                            <table class="table table-bordered table-striped table-hover table-sm caja3-legacy" style="min-width: 900px;">
                                 <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                     <tr>
                                         <th class="text-center text-nowrap">N&deg;</th>
                                         <th class="text-center text-nowrap">FECHA</th>
                                         <th class="text-center text-nowrap">DATOS DEL CLIENTE</th>
-                                        <th class="text-center text-nowrap">DETALLES</th>
+                                        <th class="text-center col-wrap">DETALLES</th>
                                         <th class="text-center text-nowrap">INGRESO</th>
                                         <th class="text-center text-nowrap">EGRESO</th>
                                     </tr>
@@ -82,7 +82,7 @@
                                                 <td><strong>{{ $item['n'] }}</strong></td>
                                                 <td><strong>{{ $item['fecha'] }}</strong></td>
                                                 <td class="text-start">{{ $item['cliente'] }}</td>
-                                                <td class="text-start">{{ $item['detalle'] }}</td>
+                                                <td class="text-start col-wrap">{{ $item['detalle'] }}</td>
                                                 <td class="text-end">
                                                     @if($item['ingreso'] > 0)
                                                         <span class="text-primary">{{ number_format($item['ingreso'], 2) }}</span>
@@ -225,5 +225,28 @@
             </div>
         </div>
     </div>
+<style>
+    /* Mismo criterio que las tablas de caja (ingresos/egresos): cada columna
+       al ancho de su texto, en una sola linea, y DETALLES es la unica que
+       envuelve y la que absorbe todo el espacio sobrante.
+
+       El !important es obligado: _custom.scss define un global
+       `th, td { white-space: normal !important }` que gana a cualquier
+       selector por especifico que sea. */
+    .caja3-legacy th, .caja3-legacy td {
+        white-space: nowrap !important;
+    }
+    /* width:100% sobre una sola columna es el modo de que absorba el sobrante:
+       las demas van en nowrap y no pueden encogerse por debajo de su texto.
+       Sin max-width, para poder crecer; min-width como suelo al estrecharse. */
+    .caja3-legacy th.col-wrap, .caja3-legacy td.col-wrap {
+        white-space: normal !important;
+        width: 100%;
+        min-width: 260px;
+        max-width: none;
+        overflow-wrap: break-word;
+    }
+</style>
+
 <span id="final"></span>
 </div>
