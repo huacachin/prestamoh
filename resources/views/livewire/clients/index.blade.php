@@ -70,26 +70,42 @@
                                 <i class="ti ti-user-plus f-s-12"></i> Nuevo Cliente
                             </a>
 
-                            {{-- Chips de morosidad: click filtra, click de nuevo lo quita --}}
+                            {{-- Chips de morosidad: cada uno abre una ventana nueva ya filtrada,
+                                 conservando los filtros de búsqueda que estén puestos. --}}
+                            @php
+                                $filtrosPuestos = array_filter([
+                                    'expediente' => $nexpediente,
+                                    'documento'  => $documento,
+                                    'nombre'     => $nombre,
+                                    'ruta'       => $ruta,
+                                    'giro'       => $giro,
+                                    'asesor'     => $ejecutivo,
+                                ], fn ($v) => $v !== '' && $v !== null);
+
+                                $chips = [
+                                    ['aldia',   'verde',   'Al día',       $countAldia,   'Sin cuotas vencidas relevantes (0 o 1)'],
+                                    ['naranja', 'naranja', '2 vencidas',   $countNaranja, 'Algún crédito activo con exactamente 2 cuotas vencidas'],
+                                    ['rojo',    'rojo',    '3 vencidas',   $countRojo,    'Algún crédito activo con exactamente 3 cuotas vencidas'],
+                                    ['critico', 'critico', '4+ vencidas',  $countCritico, 'Algún crédito activo con 4 o más cuotas vencidas'],
+                                ];
+                            @endphp
                             <div class="moros-chips ms-md-2" role="group" aria-label="Filtro de morosidad">
-                                <button type="button"
-                                        class="moros-chip moros-chip--verde {{ $morosidadFiltro === 'aldia' ? 'is-active' : '' }}"
-                                        wire:click="filtrarMorosidad('aldia')"
-                                        title="Clientes sin morosidad relevante">
-                                    <span class="dot"></span> Al día <span class="n">{{ $countAldia }}</span>
-                                </button>
-                                <button type="button"
-                                        class="moros-chip moros-chip--naranja {{ $morosidadFiltro === 'naranja' ? 'is-active' : '' }}"
-                                        wire:click="filtrarMorosidad('naranja')"
-                                        title="Algún crédito activo con 2 cuotas vencidas">
-                                    <span class="dot"></span> 2 vencidas <span class="n">{{ $countNaranja }}</span>
-                                </button>
-                                <button type="button"
-                                        class="moros-chip moros-chip--rojo {{ $morosidadFiltro === 'rojo' ? 'is-active' : '' }}"
-                                        wire:click="filtrarMorosidad('rojo')"
-                                        title="Algún crédito activo con 3 o más cuotas vencidas">
-                                    <span class="dot"></span> 3+ vencidas <span class="n">{{ $countRojo }}</span>
-                                </button>
+                                @foreach($chips as [$estado, $color, $etiqueta, $conteo, $ayuda])
+                                    <a href="{{ route('clients.index', $filtrosPuestos + ['estado' => $estado]) }}"
+                                       target="_blank" rel="noopener"
+                                       class="moros-chip moros-chip--{{ $color }} {{ $morosidadFiltro === $estado ? 'is-active' : '' }}"
+                                       title="{{ $ayuda }} — se abre en una ventana nueva">
+                                        <span class="dot"></span> {{ $etiqueta }} <span class="n">{{ $conteo }}</span>
+                                    </a>
+                                @endforeach
+
+                                @if($morosidadFiltro !== '')
+                                    <a href="{{ route('clients.index', $filtrosPuestos) }}"
+                                       class="moros-chip moros-chip--limpiar"
+                                       title="Quitar el filtro de morosidad en esta ventana">
+                                        <i class="ti ti-x f-s-12"></i> Quitar filtro
+                                    </a>
+                                @endif
                             </div>
                         </div>
                     </form>
@@ -396,12 +412,17 @@
         background: rgba(0, 0, 0, .08); border-radius: 10px;
         padding: 0 7px; font-size: 11px; font-weight: 700;
     }
+    /* Son <a>, no <button>: hay que anular el subrayado y heredar el color. */
+    .moros-chip, .moros-chip:hover, .moros-chip:focus { text-decoration: none; }
     .moros-chip--verde .dot { background: #2eb85c; }
     .moros-chip--naranja .dot { background: #fd7e14; }
     .moros-chip--rojo .dot { background: #dc3545; }
+    .moros-chip--critico .dot { background: #7b1e2b; }
     .moros-chip--verde.is-active { background: #2eb85c; border-color: #2eb85c; color: #fff; }
     .moros-chip--naranja.is-active { background: #fd7e14; border-color: #fd7e14; color: #fff; }
     .moros-chip--rojo.is-active { background: #dc3545; border-color: #dc3545; color: #fff; }
+    .moros-chip--critico.is-active { background: #7b1e2b; border-color: #7b1e2b; color: #fff; }
+    .moros-chip--limpiar { color: #6c757d; border-style: dashed; }
     .moros-chip.is-active .dot { background: #fff; }
     .moros-chip.is-active .n { background: rgba(255, 255, 255, .25); }
 </style>

@@ -48,16 +48,15 @@ class Index extends Component
     #[Url(as: 'asesor', except: '')]
     public $ejecutivo = '';
 
-    /** Filtro de morosidad: '' (todos) | 'aldia' | 'naranja' (2 venc.) | 'rojo' (3+). */
+    /**
+     * Filtro de morosidad, por cuotas vencidas del crédito activo con más atraso:
+     * '' (todos) | 'aldia' (0-1) | 'naranja' (2) | 'rojo' (3) | 'critico' (4+).
+     *
+     * Los chips de la vista son enlaces que abren una ventana nueva con este
+     * parámetro en la URL; por eso no hay acción de Livewire que los aplique.
+     */
     #[Url(as: 'estado', except: '')]
     public $morosidadFiltro = '';
-
-    /** Toggle del chip: click en el activo lo desactiva. */
-    public function filtrarMorosidad(string $estado): void
-    {
-        $this->morosidadFiltro = $this->morosidadFiltro === $estado ? '' : $estado;
-        $this->resetPage();
-    }
 
     // Modal de coordenadas (Casa / Negocio)
     public ?int $coordClientId = null;
@@ -243,9 +242,10 @@ class Index extends Component
         }
 
         // Conteos para los chips (sobre TODO el conjunto filtrado, no la página)
-        $countRojo = count(array_filter($morosidad, fn ($v) => $v >= 3));
+        $countCritico = count(array_filter($morosidad, fn ($v) => $v >= 4));
+        $countRojo = count(array_filter($morosidad, fn ($v) => $v === 3));
         $countNaranja = count(array_filter($morosidad, fn ($v) => $v === 2));
-        $countAldia = count($clientIds) - $countRojo - $countNaranja;
+        $countAldia = count($clientIds) - $countCritico - $countRojo - $countNaranja;
 
         // Chip seleccionado → se restringe la query por IDs del nivel
         if ($this->morosidadFiltro !== '') {
@@ -253,7 +253,8 @@ class Index extends Component
                 $v = $morosidad[$id] ?? 0;
 
                 return match ($this->morosidadFiltro) {
-                    'rojo' => $v >= 3,
+                    'critico' => $v >= 4,
+                    'rojo' => $v === 3,
                     'naranja' => $v === 2,
                     default => $v < 2, // aldia
                 };
@@ -262,6 +263,7 @@ class Index extends Component
         }
 
         $totalFiltrados = match ($this->morosidadFiltro) {
+            'critico' => $countCritico,
             'rojo' => $countRojo,
             'naranja' => $countNaranja,
             'aldia' => $countAldia,
@@ -291,6 +293,6 @@ class Index extends Component
 
         $puedeCoords = $this->puedeGuardarCoords();
 
-        return view('livewire.clients.index', compact('clients', 'asesores', 'clientsWithCredit', 'morosidad', 'puedeCoords', 'countAldia', 'countNaranja', 'countRojo', 'waEnviadosHoy', 'totalFiltrados'));
+        return view('livewire.clients.index', compact('clients', 'asesores', 'clientsWithCredit', 'morosidad', 'puedeCoords', 'countAldia', 'countNaranja', 'countRojo', 'countCritico', 'waEnviadosHoy', 'totalFiltrados'));
     }
 }
