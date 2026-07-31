@@ -31,6 +31,13 @@ class CreateIncome extends Component
 
     public $precio_unitario = null;  // null/0 = libre; >0 = del concepto (readonly)
 
+    // Cantidad y Precio solo se muestran en conceptos que tienen precio unitario.
+    // Hoy es unicamente Sunarp (factor_ingreso 15.00); en el resto el monto se
+    // escribe libre y multiplicar no significa nada.
+    // Depende del CONCEPTO, no de $precio_unitario: ese es editable y si el
+    // usuario lo pusiera en 0 los campos desaparecerian mientras escribe.
+    public bool $usaCantidad = false;
+
     // Permisos cacheados
     public bool $canEditDate = false;
 
@@ -56,6 +63,7 @@ class CreateIncome extends Component
         $this->reason = '';
         $this->cantidad = 1;
         $this->precio_unitario = null;
+        $this->usaCantidad = false;
         $this->total = '';
         $this->resetErrorBag();
     }
@@ -68,6 +76,7 @@ class CreateIncome extends Component
     {
         if ($this->modo !== 'Fijos' || $this->reason === '') {
             $this->precio_unitario = null;
+            $this->usaCantidad = false;
 
             return;
         }
@@ -78,6 +87,7 @@ class CreateIncome extends Component
 
         $factor = $concept ? (float) $concept->factor_ingreso : 0;
         $this->cantidad = 1;
+        $this->usaCantidad = $factor > 0;
         if ($factor > 0) {
             $this->precio_unitario = $factor;
             $this->total = number_format($factor, 2, '.', '');
@@ -165,6 +175,7 @@ class CreateIncome extends Component
         $this->total = '';
         $this->cantidad = 1;
         $this->precio_unitario = null;
+        $this->usaCantidad = false;
         $this->files = [];
         if ($this->canChooseOtros) {
             $this->modo = '';

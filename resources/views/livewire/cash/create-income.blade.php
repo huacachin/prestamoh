@@ -93,7 +93,8 @@
                                 @endif
                             </div>
 
-                            @if($modo === 'Fijos')
+                            {{-- Solo para conceptos con precio unitario (hoy: Sunarp) --}}
+                            @if($usaCantidad)
                                 <div class="col-md-1">
                                     <label class="form-label mb-0 small fw-semibold">Cant.</label>
                                     <input type="number" min="1" step="1" name="cantidad" autocomplete="off"
@@ -109,7 +110,7 @@
                                 </div>
                             @endif
 
-                            <div class="col-md-{{ $modo === 'Fijos' ? 6 : 8 }}">
+                            <div class="col-md-{{ $usaCantidad ? 6 : 8 }}">
                                 <label class="form-label mb-0 small fw-semibold">Detalle (*)</label>
                                 <input type="text" name="detail" autocomplete="on"
                                        class="form-control form-control-sm @error('detail') is-invalid @enderror"
@@ -125,7 +126,7 @@
                                        wire:model.defer="total"
                                        placeholder="0.00"
                                        style="background:yellow;">
-                                @if($modo === 'Fijos' && $precio_unitario > 0)
+                                @if($usaCantidad && $precio_unitario > 0)
                                     <small class="text-muted" style="font-size:10px;">
                                         Auto: {{ $cantidad }} × {{ number_format((float)$precio_unitario, 2) }}. Editable.
                                     </small>
