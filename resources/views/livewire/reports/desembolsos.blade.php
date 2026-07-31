@@ -98,6 +98,7 @@
                     <thead class="bg-primary">
                     <tr>
                         <th>#</th>
+                        <th class="text-center">Exp.</th>
                         <th>Código</th>
                         <th>Cliente</th>
                         <th>DNI</th>
@@ -116,6 +117,7 @@
                         @php $esRefi = ($cr->cod_rem ?? '') === 'REF'; @endphp
                         <tr>
                             <td>{{ $loop->iteration }}</td>
+                            <td class="text-center">{{ $cr->client?->expediente ?: '—' }}</td>
                             <td>
                                 <a href="{{ route('credits.show', $cr->id) }}" class="fw-semibold">{{ $cr->id }}</a>
                             </td>
@@ -152,7 +154,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="12" class="py-4 text-muted text-center">
+                            <td colspan="13" class="py-4 text-muted text-center">
                                 Sin desembolsos {{ $tipo !== 'todos' ? "({$tipo})" : '' }} en {{ $etiqueta }}.
                             </td>
                         </tr>
@@ -161,7 +163,7 @@
                     @if($creditos->isNotEmpty())
                         <tfoot>
                             <tr class="fw-bold" style="background:#f0f0f0;">
-                                <td colspan="5" class="text-end">Totales ({{ $creditos->count() }} créditos)</td>
+                                <td colspan="6" class="text-end">Totales ({{ $creditos->count() }} créditos)</td>
                                 <td class="text-end">{{ $fmt($creditos->sum('importe')) }}</td>
                                 <td colspan="6"></td>
                             </tr>
