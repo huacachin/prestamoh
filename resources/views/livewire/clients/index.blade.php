@@ -134,8 +134,10 @@
                             <tbody>
                             @forelse($clients as $client)
                                 @php
-                                    $hasCredit = isset($clientsWithCredit[$client->id]);
-                                    $textColor = $hasCredit ? 'inherit' : '#dc3545';
+                                    // Rojo solo si TUVO créditos y ya no le queda ninguno vigente.
+                                    // Quien nunca tuvo crédito no se marca: es un caso distinto.
+                                    $todoCancelado = ($estadoCreditos[$client->id] ?? 'sin') === 'cancelado';
+                                    $textColor = $todoCancelado ? '#dc3545' : 'inherit';
                                     // Morosidad del peor crédito activo: 2 cuotas vencidas → naranja, 3+ → rojo
                                     $venc = $morosidad[$client->id] ?? 0;
                                     $rowBg = $venc >= 3 ? '#ff6b6b' : ($venc === 2 ? '#ffc078' : '');
@@ -243,13 +245,13 @@
                     <div class="d-md-none">
                         @forelse($clients as $client)
                             @php
-                                $hasCredit = isset($clientsWithCredit[$client->id]);
+                                $todoCancelado = ($estadoCreditos[$client->id] ?? 'sin') === 'cancelado';
                             @endphp
-                            <div class="card mb-2 shadow-sm {{ !$hasCredit ? 'border-danger' : '' }}">
-                                <div class="card-body p-3" style="{{ !$hasCredit ? 'color: red;' : '' }}">
+                            <div class="card mb-2 shadow-sm {{ $todoCancelado ? 'border-danger' : '' }}">
+                                <div class="card-body p-3" style="{{ $todoCancelado ? 'color: red;' : '' }}">
                                     <div class="d-flex justify-content-between align-items-start mb-1">
                                         <h6 class="mb-0">
-                                            <a href="{{ route('clients.edit', $client->id) }}" style="{{ !$hasCredit ? 'color: red;' : 'color: black;' }}">
+                                            <a href="{{ route('clients.edit', $client->id) }}" style="{{ $todoCancelado ? 'color: red;' : 'color: black;' }}">
                                                 {{ $client->apellido_pat }} {{ $client->apellido_mat }} {{ $client->nombre }}
                                             </a>
                                         </h6>

@@ -274,13 +274,15 @@ class Index extends Component
         $clients = $query->orderByRaw('CAST(expediente AS UNSIGNED) ASC')->paginate(100);
         $pageIds = $clients->pluck('id');
 
-        // Con crédito vigente (color de texto) y WhatsApp enviado hoy (check):
-        // solo para los visibles de la página.
-        $clientsWithCredit = Credit::whereIn('client_id', $pageIds)
-            ->where('situacion', 'Activo')
-            ->distinct()
-            ->pluck('client_id')
-            ->flip()
+        // Estado de créditos de los visibles de la página, para el color del texto:
+        //   'activo'    → tiene al menos un crédito vigente
+        //   'cancelado' → tuvo créditos y TODOS están cancelados  → se pinta en rojo
+        //   'sin'       → nunca tuvo un crédito (no es lo mismo, no se pinta)
+        $estadoCreditos = Credit::whereIn('client_id', $pageIds)
+            ->selectRaw("client_id, SUM(situacion = 'Activo') AS activos")
+            ->groupBy('client_id')
+            ->pluck('activos', 'client_id')
+            ->map(fn ($activos) => $activos > 0 ? 'activo' : 'cancelado')
             ->toArray();
 
         $waEnviadosHoy = DB::table('client_notifications')
@@ -293,6 +295,6 @@ class Index extends Component
 
         $puedeCoords = $this->puedeGuardarCoords();
 
-        return view('livewire.clients.index', compact('clients', 'asesores', 'clientsWithCredit', 'morosidad', 'puedeCoords', 'countAldia', 'countNaranja', 'countRojo', 'countCritico', 'waEnviadosHoy', 'totalFiltrados'));
+        return view('livewire.clients.index', compact('clients', 'asesores', 'estadoCreditos', 'morosidad', 'puedeCoords', 'countAldia', 'countNaranja', 'countRojo', 'countCritico', 'waEnviadosHoy', 'totalFiltrados'));
     }
 }
