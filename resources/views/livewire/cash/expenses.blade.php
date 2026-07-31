@@ -247,15 +247,24 @@
                         /* Cada columna se dimensiona a su contenido (tbody) en una sola línea; si la
                            tabla excede el ancho, el contenedor .table-responsive da scroll horizontal
                            (igual que el .table-scroll del legacy). Sin anchos en % que aprieten. */
+                        /* El !important es obligado: _custom.scss define un global
+                           `th, td { white-space: normal !important }` que gana a cualquier
+                           selector por especifico que sea. Sin esto las columnas parten
+                           a dos lineas aunque se les fije nowrap. */
                         .expenses-legacy th, .expenses-legacy td {
-                            padding: 3px 6px; vertical-align: middle; white-space: nowrap;
+                            padding: 3px 6px; vertical-align: middle;
+                            white-space: nowrap !important;
                         }
-                        /* Motivo/Detalle: ancho FIJO — el texto largo envuelve hacia abajo
-                           en vez de ensanchar la tabla (width+min+max iguales para que el
-                           layout auto no lo estire; break-word por si hay tokens largos). */
+                        /* Motivo/Detalle: la unica columna que envuelve, y la que absorbe
+                           todo el ancho sobrante de la tabla. El width:100% sobre una sola
+                           columna es el modo de lograrlo: las demas van en nowrap y no
+                           pueden encogerse por debajo de su texto. El min-width es el suelo
+                           cuando la tabla se estrecha; sin max-width, para poder crecer. */
                         .expenses-legacy th.col-wrap, .expenses-legacy td.col-wrap {
-                            white-space: normal;
-                            width: 260px; min-width: 260px; max-width: 260px;
+                            white-space: normal !important;
+                            width: 100%;
+                            min-width: 260px;
+                            max-width: none;
                             overflow-wrap: break-word;
                         }
                         /* Fecha: un poco más de aire. */
