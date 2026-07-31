@@ -568,6 +568,50 @@
                         @endif
                     </div>
 
+                    {{-- Cobro que liquida el crédito: hay que decidir si se cierra.
+                         Antes se podía cobrar el total con el switch apagado y el
+                         crédito quedaba Vigente sin que nadie avisara. --}}
+                    @if($preview['cubre_total'] ?? false)
+                        <div class="mx-3 mb-2 p-2 rounded" style="background:#fff4e5; border:1px solid #ffb74d;">
+                            <div class="fw-bold mb-1" style="color:#b26a00;">
+                                <i class="ti ti-alert-triangle"></i> Este pago cubre el TOTAL del crédito
+                            </div>
+                            <div class="d-flex gap-3 flex-wrap small mb-2">
+                                <span>Capital + interés: <b>S/ {{ number_format($preview['cancelar_cap_int'], 2) }}</b></span>
+                                @if(($preview['mora_pendiente'] ?? 0) > 0.001)
+                                    <span style="color:#c0392b;">Mora pendiente: <b>S/ {{ number_format($preview['mora_pendiente'], 2) }}</b></span>
+                                @endif
+                            </div>
+                            <div class="fw-semibold small mb-1">¿Cancelar el crédito?</div>
+                            <div class="d-flex gap-3 flex-wrap">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" id="decSi"
+                                           value="si" wire:model.live="decisionTotal">
+                                    <label class="form-check-label small fw-semibold" for="decSi">
+                                        Sí, cancelar el crédito
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" id="decNo"
+                                           value="no" wire:model.live="decisionTotal">
+                                    <label class="form-check-label small fw-semibold" for="decNo">
+                                        No, dejarlo vigente
+                                    </label>
+                                </div>
+                            </div>
+                            @if($decisionTotal === '')
+                                <div class="small text-muted mt-1">
+                                    Elige una opción para poder cobrar.
+                                </div>
+                            @endif
+                        </div>
+                    @endif
+
+                    @php
+                        // Sin respuesta no se puede cobrar: es el punto donde se perdían.
+                        $faltaDecidir = ($preview['cubre_total'] ?? false) && $decisionTotal === '';
+                    @endphp
+
                     <div class="modal-footer justify-content-between py-2">
                         <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal"
                                 wire:loading.attr="disabled" wire:target="pagar">
@@ -576,11 +620,13 @@
                         <div class="d-flex gap-2">
                             <button type="button" class="btn btn-sm btn-outline-primary"
                                     wire:click="pagar(false)"
+                                    @disabled($faltaDecidir)
                                     wire:loading.attr="disabled" wire:target="pagar">
                                 Cobrar
                             </button>
                             <button type="button" class="btn btn-sm btn-primary"
                                     wire:click="pagar(true)"
+                                    @disabled($faltaDecidir)
                                     wire:loading.attr="disabled" wire:target="pagar">
                                 <i class="ti ti-printer"></i>
                                 <span wire:loading.remove wire:target="pagar">Cobrar e imprimir</span>

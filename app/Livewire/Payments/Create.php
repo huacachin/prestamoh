@@ -55,6 +55,16 @@ class Create extends Component
     public string $fecsim = '';
 
     // Opciones de la tarjeta "Cancelar crédito" (solo afectan la cotización)
+    /**
+     * Respuesta del cajero cuando el cobro liquida el crédito: '' | 'si' | 'no'.
+     *
+     * El switch "Cancelado" se marca a mano y nada avisaba si se cobraba la
+     * totalidad con el switch apagado: el crédito quedaba Vigente pese a estar
+     * pagado. Con esto, un cobro que cubre el total no se puede confirmar sin
+     * decidir explícitamente si el crédito se cierra o sigue.
+     */
+    public string $decisionTotal = '';
+
     public bool $cancelSinMora = false;     // quitar mora y mora acumulada del total
 
     public bool $cancelUltimaCuota = false; // interés de todo el cronograma, no solo a la fecha
@@ -457,14 +467,58 @@ class Create extends Component
             return;
         }
 
+        // Si el cajero ya marcó el switch, la decisión está tomada y no se le
+        // vuelve a preguntar; si no, el modal exigirá que responda.
+        $this->decisionTotal = $this->cancel ? 'si' : '';
+
         $this->preview = $this->construirPreview();
         $this->dispatch('ticket-confirm');
+    }
+
+    /**
+     * ¿Este cobro liquida el crédito? Mismo umbral que habilita el switch:
+     * capital pendiente + interés a la fecha (la mora va aparte).
+     *
+     * No depende de $cancel a propósito: la pregunta debe seguir visible en el
+     * modal después de responderla.
+     */
+    public function cubreTotalidad(): bool
+    {
+        if (! $this->credit || ! is_numeric($this->monto)) {
+            return false;
+        }
+
+        $cancelarHoy = $this->deudaCalcs()['cancelar_cap_int'];
+
+        return $cancelarHoy > 0.01 && ((float) $this->monto) - $cancelarHoy >= -0.01;
+    }
+
+    /** Al responder cambia el total (la mora acumulada entra o no), así que se rehace la vista previa. */
+    public function updatedDecisionTotal(): void
+    {
+        if ($this->decisionTotal === 'si') {
+            $this->cancel = true;
+        } elseif ($this->decisionTotal === 'no') {
+            $this->cancel = false;
+        }
+
+        if ($this->preview) {
+            $this->preview = $this->construirPreview();
+        }
     }
 
     public function pagar(bool $imprimir = false)
     {
         if ($error = $this->validarCobro()) {
             $this->dispatch('errorAlert', ['message' => $error]);
+
+            return;
+        }
+
+        // Cobro que liquida el crédito: no se registra sin una decisión expresa.
+        // Es la causa de que quedaran créditos pagados pero Vigentes.
+        if ($this->cubreTotalidad() && $this->decisionTotal === '') {
+            $this->dispatch('errorAlert', ['message' => 'Este pago cubre el total: indica si se cancela el crédito o queda vigente.']);
 
             return;
         }
@@ -808,7 +862,7 @@ class Create extends Component
 
         $this->reset([
             'monto', 'obs', 'ckmora', 'cancel', 'impointe2', 'impomora',
-            'idpre', 'moraManual', 'cancelSinMora', 'cancelUltimaCuota',
+            'idpre', 'moraManual', 'cancelSinMora', 'cancelUltimaCuota', 'decisionTotal',
             'metodoPago', 'depBanco', 'depCuenta', 'depCuentaOtra', 'depCanal',
             'depFecha', 'voucherFoto', 'egresoCreadoId',
         ]);
@@ -972,6 +1026,10 @@ class Create extends Component
             'total' => $total,
             'saldo' => max(0.0, $saldo),
             'cancela' => $this->cancel,
+            // Para la pregunta del modal cuando el cobro liquida el crédito.
+            'cubre_total' => $this->cubreTotalidad(),
+            'cancelar_cap_int' => $this->deudaCalcs()['cancelar_cap_int'],
+            'mora_pendiente' => round($totMora, 2),
             'reserva_mora' => $this->ckmora && ! $this->cancel && $totMora > 0.001,
             // Pago vía depósito: método para el ticket + egreso que se
             // generará (transparencia total en el modal de confirmación).
