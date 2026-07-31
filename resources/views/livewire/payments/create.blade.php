@@ -572,7 +572,7 @@
                          Antes se podía cobrar el total con el switch apagado y el
                          crédito quedaba Vigente sin que nadie avisara. --}}
                     @if($preview['cubre_total'] ?? false)
-                        <div class="mx-3 mb-2 p-2 rounded" style="background:#fff4e5; border:1px solid #ffb74d;">
+                        <div class="mx-3 mt-3 mb-2 p-2 rounded" style="background:#fff4e5; border:1px solid #ffb74d;">
                             <div class="fw-bold mb-1" style="color:#b26a00;">
                                 <i class="ti ti-alert-triangle"></i> Este pago cubre el TOTAL del crédito
                             </div>
