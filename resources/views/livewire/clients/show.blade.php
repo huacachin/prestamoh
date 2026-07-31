@@ -160,10 +160,11 @@
                                 <td style="{{ $tdStyle }}" class="text-end">{{ number_format($row['interes_g'], 2) }}</td>
                                 <td style="{{ $tdStyle }}" class="text-end">{{ number_format($row['mora'], 2) }}</td>
                                 <td style="{{ $tdStyle }}" class="text-end">{{ number_format($row['total_pag'], 2) }}</td>
+                                {{-- Se muestra siempre, tambien cuando es 0: un blanco no
+                                     distingue "sin deuda" de "sin dato". El export a Excel
+                                     ya escribia el 0, asi que ademas quedan consistentes. --}}
                                 <td style="{{ $tdStyle }}" class="text-end">
-                                    @if(round($row['saldo_capital'], 2) != 0)
-                                        {{ number_format($row['saldo_capital'], 2) }}
-                                    @endif
+                                    {{ number_format($row['saldo_capital'], 2) }}
                                 </td>
                                 <td style="{{ $tdStyle }}" class="text-end">{{ $row['mora_s'] > 0 ? $row['mora_s'] : '' }}</td>
                                 <td style="{{ $tdStyle }}" class="text-end">{{ $row['mxd'] > 0 ? $row['mxd'] : '' }}</td>
