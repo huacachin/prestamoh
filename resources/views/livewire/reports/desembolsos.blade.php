@@ -117,7 +117,14 @@
                         @php $esRefi = ($cr->cod_rem ?? '') === 'REF'; @endphp
                         <tr>
                             <td>{{ $loop->iteration }}</td>
-                            <td class="text-center">{{ $cr->client?->expediente ?: '—' }}</td>
+                            <td class="text-center">
+                                @if($cr->client)
+                                    <a href="{{ route('clients.show', $cr->client->id) }}"
+                                       title="Ver cliente y todos sus créditos">{{ $cr->client->expediente ?: '—' }}</a>
+                                @else
+                                    —
+                                @endif
+                            </td>
                             <td>
                                 <a href="{{ route('credits.show', $cr->id) }}" class="fw-semibold">{{ $cr->id }}</a>
                             </td>
