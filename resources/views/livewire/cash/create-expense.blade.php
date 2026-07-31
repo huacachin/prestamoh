@@ -46,7 +46,7 @@
 
                     {{-- Paso 1: selector --}}
                     <div class="row g-2 mb-2 align-items-end">
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label class="form-label mb-0 small fw-semibold">Tipo de Egreso</label>
                             <select class="form-select form-select-sm @error('modo') is-invalid @enderror"
                                     wire:model.live="modo"
@@ -65,7 +65,7 @@
                         <hr class="my-2" style="border-color:#e8e2d5;">
 
                         <div class="row g-2">
-                            <div class="col-md-2">
+                            <div class="col-md-1">
                                 <label class="form-label mb-0 small fw-semibold">Fecha (*)</label>
                                 <input type="text" autocomplete="off"
                                        class="form-control form-control-sm dates @error('date') is-invalid @enderror @unless($canEditDate) bg-light @endunless"
@@ -73,7 +73,7 @@
                                        @unless($canEditDate) readonly @endunless>
                             </div>
 
-                            <div class="col-md-4">
+                            <div class="col-md-2">
                                 <label class="form-label mb-0 small fw-semibold">A (*)</label>
                                 @if($modo === 'Fijos')
                                     <select class="form-select form-select-sm @error('reason') is-invalid @enderror"
@@ -93,7 +93,7 @@
                                 @endif
                             </div>
 
-                            <div class="col-md-6">
+                            <div class="col-md-3">
                                 <label class="form-label mb-0 small fw-semibold">Detalle (*)</label>
                                 <input type="text" name="detail" autocomplete="on"
                                        class="form-control form-control-sm @error('detail') is-invalid @enderror"
@@ -102,7 +102,7 @@
                                        maxlength="500">
                             </div>
 
-                            <div class="col-md-2">
+                            <div class="col-md-1">
                                 <label class="form-label mb-0 small fw-semibold">Monto (*)</label>
                                 <input type="number" step="0.01" min="0.01" name="total" autocomplete="off"
                                        class="form-control form-control-sm @error('total') is-invalid @enderror"
@@ -118,7 +118,7 @@
                             </div>
 
                             {{-- Campos exclusivos del legacy de gastos --}}
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label class="form-label mb-0 small fw-semibold">T.Comp.</label>
                                 <input type="text" name="document_type" autocomplete="on"
                                        class="form-control form-control-sm @error('document_type') is-invalid @enderror"
@@ -127,7 +127,7 @@
                                        maxlength="100">
                             </div>
 
-                            <div class="col-md-4">
+                            <div class="col-md-2">
                                 <label class="form-label mb-0 small fw-semibold">Respons.</label>
                                 <input type="text" name="in_charge" autocomplete="name"
                                        class="form-control form-control-sm @error('in_charge') is-invalid @enderror"
