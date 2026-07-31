@@ -264,9 +264,13 @@
 
                     {{-- TABLAS RESUMEN --}}
                     @if(count($rows) > 0)
-                        <div class="row mt-3 g-2">
+                        {{-- Homologado con el legacy (resumencredito2.php): las tres tablas van
+                             una al lado de otra, cada una del ancho de su contenido, y se
+                             reacomodan solas cuando no caben. Ahi eran float:left; aqui es flex,
+                             que hace lo mismo sin los problemas de limpiar el flotado. --}}
+                        <div class="resumen-tablas mt-3">
                             {{-- Vigentes/Vencidas --}}
-                            <div class="col-md-2">
+                            <div class="resumen-tabla">
                                 <table class="table table-bordered table-sm text-center" style="font-size: 12px;">
                                     <thead class="bg-primary">
                                         <tr><th>Tipo</th><th>Total</th></tr>
@@ -280,7 +284,7 @@
                             </div>
 
                             {{-- Por Tipo Planilla --}}
-                            <div class="col-md-5">
+                            <div class="resumen-tabla">
                                 <table class="table table-bordered table-sm text-center" style="font-size: 12px;">
                                     <thead class="bg-primary">
                                         <tr>
@@ -341,7 +345,7 @@
                             </div>
 
                             {{-- Por % Interés --}}
-                            <div class="col-md-5">
+                            <div class="resumen-tabla">
                                 <table class="table table-bordered table-sm text-center" style="font-size: 12px;">
                                     <thead class="bg-primary">
                                         <tr>
@@ -478,5 +482,38 @@
     }
 </script>
 @endscript
+
+<style>
+    /* ── Tablas resumen, homologadas con el legacy (resumencredito2.php) ──
+       Alli eran tres <table> con float:left y margin-left:10px, cada una del
+       ancho de su contenido. Con flex se logra la misma colocacion y el mismo
+       reacomodo al estrecharse, sin tener que limpiar flotados. */
+    .resumen-tablas {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    .resumen-tabla {
+        flex: 0 1 auto;
+        max-width: 100%;
+        /* Si una tabla no cabe, se desplaza ella sola: nunca la pagina. */
+        overflow-x: auto;
+    }
+    .resumen-tabla > table {
+        width: auto;
+        margin-bottom: 0;
+    }
+
+    /* Movil y tablet: al no caber las tres, cada una pasa a ancho completo.
+       Es el mismo reacomodo que hacia el float:left del legacy, pero alli las
+       tablas quedaban ilegibles porque su CSS esperaba atributos data-label
+       que nunca llegaron a escribirse. Aqui se conserva la cabecera y se
+       permite desplazamiento lateral, para no perder ninguna columna. */
+    @media (max-width: 991.98px) {
+        .resumen-tabla { flex: 1 1 100%; }
+    }
+</style>
+
 <span id="final"></span>
 </div>
