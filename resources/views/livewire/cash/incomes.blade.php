@@ -253,12 +253,10 @@
                            que provoca la fuente (más ancha) del tema. A y Motivo van sin ancho
                            (absorben el sobrante), igual que el legacy. */
                         .incomes-legacy { font-family: Tahoma, Verdana, Geneva, sans-serif; }
-                        /* Cada columna al ancho de su contenido. `table.table-autofit` fija
-                           width:100% y ese sobrante se repartia entre las columnas: "Fecha"
-                           acababa con 209px para mostrar 10 caracteres. Hay que igualar su
-                           especificidad (elemento + 2 clases) para poder ganarle. Si entre
-                           todas superan el contenedor, .table-responsive da scroll lateral. */
-                        table.incomes-legacy.table-autofit { width: auto; }
+                        /* La tabla ocupa el 100% (lo que ya hace table-autofit), pero el
+                           sobrante NO se reparte entre todas: se lo lleva entero Motivo.
+                           Lo consigue el width:100% de .col-wrap mas abajo; el resto de
+                           columnas, al ir en nowrap, se quedan en el ancho de su texto. */
                         /* Cada columna se dimensiona a su contenido (tbody) en una sola línea; si la
                            tabla excede el ancho, el contenedor .table-responsive da scroll horizontal
                            (igual que el .table-scroll del legacy). Sin anchos en % que aprieten. */
@@ -275,7 +273,13 @@
                            layout auto no lo estire; break-word por si hay tokens largos). */
                         .incomes-legacy th.col-wrap, .incomes-legacy td.col-wrap {
                             white-space: normal !important;
-                            width: 260px; min-width: 260px; max-width: 260px;
+                            /* width:100% sobre una sola columna es el modo de que absorba
+                               todo el espacio libre: las demas ya no pueden encogerse mas
+                               porque van en nowrap. El min-width es el suelo cuando la
+                               tabla se estrecha; sin max-width, para poder crecer. */
+                            width: 100%;
+                            min-width: 260px;
+                            max-width: none;
                             overflow-wrap: break-word;
                         }
                         /* Fecha: un poco más de aire. */
