@@ -137,12 +137,15 @@
                                     // Rojo solo si TUVO créditos y ya no le queda ninguno vigente.
                                     // Quien nunca tuvo crédito no se marca: es un caso distinto.
                                     $todoCancelado = ($estadoCreditos[$client->id] ?? 'sin') === 'cancelado';
-                                    $textColor = $todoCancelado ? '#dc3545' : 'inherit';
                                     // Morosidad del peor crédito activo: 2 cuotas vencidas → naranja, 3+ → rojo
                                     $venc = $morosidad[$client->id] ?? 0;
                                     $rowBg = $venc >= 3 ? '#ff6b6b' : ($venc === 2 ? '#ffc078' : '');
                                 @endphp
-                                <tr style="color: {{ $textColor }};{{ $rowBg !== '' ? " background-color: {$rowBg};" : '' }}"
+                                {{-- El color va por clase, no en el style de la fila: Bootstrap 5 pinta
+                                     cada celda con .table > :not(caption) > * > *, y eso tapaba
+                                     cualquier color puesto en el <tr>. --}}
+                                <tr class="{{ $todoCancelado ? 'cliente-cancelado' : '' }}"
+                                    style="{{ $rowBg !== '' ? "background-color: {$rowBg};" : '' }}"
                                     data-bg="{{ $rowBg }}"
                                     onmouseover="this.style.backgroundColor='#CCFF66'"
                                     onmouseout="this.style.backgroundColor=this.getAttribute('data-bg')">
@@ -151,7 +154,9 @@
                                     <td class="text-center">{{ $client->usuario }}</td>
                                     <td class="text-center">{{ $client->expediente }}</td>
                                     <td class="col-wrap">
-                                        <a href="{{ route('clients.edit', $client->id) }}" style="color: black; text-decoration: none;">
+                                        {{-- color: inherit, no black: si no, el nombre se queda negro
+                                             y tapa el rojo de la fila, que es justo donde se mira. --}}
+                                        <a href="{{ route('clients.edit', $client->id) }}" style="color: inherit; text-decoration: none;">
                                             {{ $client->apellido_pat }} {{ $client->apellido_mat }} {{ $client->nombre }}
                                         </a>
                                     </td>
@@ -397,6 +402,15 @@
     .clients-legacy tbody tr[style*="background-color"] > * {
         box-shadow: none !important;
         background-color: inherit !important;
+    }
+
+    /* Cliente que ya cancelo todos sus creditos: el rojo tiene que ir sobre las
+       CELDAS. Bootstrap 5 les asigna color con `.table > :not(caption) > * > *`,
+       asi que un color puesto en el <tr> nunca se ve. Esta regla tiene mas
+       especificidad que la suya, por eso no hace falta !important. */
+    .table > tbody > tr.cliente-cancelado > td,
+    .table > tbody > tr.cliente-cancelado > td a {
+        color: #dc3545;
     }
 
     /* ── Chips del filtro de morosidad ── */
