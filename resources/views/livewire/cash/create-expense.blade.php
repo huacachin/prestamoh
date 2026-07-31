@@ -93,7 +93,7 @@
                                 @endif
                             </div>
 
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <label class="form-label mb-0 small fw-semibold">Detalle (*)</label>
                                 <input type="text" name="detail" autocomplete="on"
                                        class="form-control form-control-sm @error('detail') is-invalid @enderror"
@@ -109,12 +109,6 @@
                                        wire:model.defer="total"
                                        placeholder="0.00"
                                        style="background:yellow;">
-                            </div>
-
-                            <div class="col-md-1">
-                                <label class="form-label mb-0 small fw-semibold">Moneda</label>
-                                <input type="text" class="form-control form-control-sm bg-light"
-                                       value="Soles" readonly>
                             </div>
 
                             {{-- Campos exclusivos del legacy de gastos --}}
