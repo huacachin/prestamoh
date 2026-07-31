@@ -93,8 +93,28 @@ class NotificationsModal extends Component
 
         $this->texto = $ultima ?? ($nivel3
             ? "⚖️ *COMUNICADO DE REGULARIZACIÓN DE PAGO*\nEstimado(a) Sr.(a) {$this->clientName}:\n"
-            : "⚠️ *AVISO PREVENTIVO DE INCUMPLIMIENTO CONTRACTUAL*\nEstimado(a) Sr.(a) {$this->clientName}:\n");
+            : $this->plantillaDosCuotas());
         $this->editor = true;
+    }
+
+    /**
+     * Aviso preventivo para 2 cuotas vencidas. Queda editable antes de enviar:
+     * esto es el punto de partida, no un texto cerrado.
+     *
+     * Los *asteriscos* son la negrita de WhatsApp, no un error de formato.
+     */
+    private function plantillaDosCuotas(): string
+    {
+        return <<<TEXTO
+            ⚠️ *AVISO PREVENTIVO DE INCUMPLIMIENTO CONTRACTUAL*
+            Estimado(a) Sr.(a) {$this->clientName}:
+            Se le comunica que, a la fecha, mantiene *DOS (02) CUOTAS VENCIDAS E IMPAGAS* correspondientes a su crédito con constitución de garantía mobiliaria inscrita en el Sistema Informativo de Garantías Mobiliarias – SIGM.
+            Conforme a lo establecido en su contrato, al incurrir en el incumplimiento de la *TERCERA CUOTA*, sea sucesiva o no, se declarará el vencimiento anticipado de la obligación y se activará el procedimiento de ejecución de la garantía mobiliaria, de conformidad con el Decreto Legislativo N.° 1400.
+            En tal sentido, se le otorga un plazo máximo de *CUARENTA Y OCHO (48) HORAS* para regularizar las cuotas vencidas. De no efectuarse el pago dentro del plazo señalado, su expediente será derivado inmediatamente al Área Legal para iniciar las acciones contractuales y legales correspondientes.
+            📞 Para coordinar la regularización, comuníquese con el Área de Cobranza al 982 333 689.
+            Lic. Licet Tafur Collantes
+            Área de Cobranza
+            TEXTO;
     }
 
     /** Guarda la notificación (correlativo por cliente) y abre WhatsApp con el texto. */
