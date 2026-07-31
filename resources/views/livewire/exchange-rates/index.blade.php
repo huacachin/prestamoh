@@ -41,14 +41,30 @@
                     <div class="row g-4 align-items-center">
                         {{-- TC vigente en grande --}}
                         <div class="col-lg-5">
-                            <div class="d-flex align-items-center gap-2 mb-2">
+                            <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
                                 <h5 class="mb-0 fw-bold" style="color:#2874A6;">
                                     <i class="ti ti-currency-dollar"></i> Tipo de cambio vigente
                                 </h5>
-                                <span class="badge bg-light text-dark border">
+                                <span class="badge {{ $esDeHoy ? 'bg-success' : 'bg-warning text-dark' }}">
                                     <i class="ti ti-calendar f-s-12"></i>
                                     {{ $fecha ? \Carbon\Carbon::parse($fecha)->format('d/m/Y') : '—' }}
+                                    @unless($esDeHoy) · no es de hoy @endunless
                                 </span>
+
+                                @php
+                                    $sello = match($origen) {
+                                        'sunat'       => ['ti-cloud-download', 'Consultado a SUNAT ahora'],
+                                        'cache'       => ['ti-bolt',           'En caché — sin consultar de nuevo hoy'],
+                                        'bd'          => ['ti-database',       'Guardado en la base de datos'],
+                                        'bd-anterior' => ['ti-alert-triangle',  'SUNAT no respondió — último conocido'],
+                                        default       => null,
+                                    };
+                                @endphp
+                                @if($sello)
+                                    <span class="badge bg-light text-muted border" title="{{ $sello[1] }}">
+                                        <i class="ti {{ $sello[0] }} f-s-12"></i> {{ $sello[1] }}
+                                    </span>
+                                @endif
                             </div>
                             <div class="row g-2">
                                 <div class="col-6">
@@ -96,10 +112,10 @@
                                         </div>
                                         <div class="col-12 d-flex gap-2 mt-2">
                                             <button type="button" class="btn btn-sm btn-warning"
-                                                    wire:click="cargarDeSunat" wire:loading.attr="disabled" wire:target="cargarDeSunat">
-                                                <i class="ti ti-cloud-download f-s-12"></i>
-                                                <span wire:loading.remove wire:target="cargarDeSunat">Traer de SUNAT</span>
-                                                <span wire:loading wire:target="cargarDeSunat">Consultando…</span>
+                                                    wire:click="refrescar" wire:loading.attr="disabled" wire:target="refrescar">
+                                                <i class="ti ti-refresh f-s-12"></i>
+                                                <span wire:loading.remove wire:target="refrescar">Volver a consultar</span>
+                                                <span wire:loading wire:target="refrescar">Consultando…</span>
                                             </button>
                                             <button type="submit" class="btn btn-sm btn-primary">
                                                 <i class="ti ti-device-floppy f-s-12"></i> Actualizar
@@ -109,7 +125,9 @@
                                 </form>
                                 <p class="small text-muted mb-0 mt-2">
                                     <i class="ti ti-info-circle"></i>
-                                    <b>Traer de SUNAT</b> consulta la API oficial y llena los campos para que revises y pulses <b>Actualizar</b>.
+                                    El tipo de cambio del día se trae y se guarda solo al abrir esta pantalla; se consulta a SUNAT
+                                    <b>una vez al día</b> y el resto sale de caché. Usa <b>Volver a consultar</b> si SUNAT publicó una
+                                    corrección, o edita los campos y pulsa <b>Actualizar</b> para fijarlo a mano.
                                 </p>
                             </div>
                         </div>

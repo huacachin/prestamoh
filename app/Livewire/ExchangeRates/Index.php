@@ -3,32 +3,60 @@
 namespace App\Livewire\ExchangeRates;
 
 use App\Models\ExchangeRate;
-use Illuminate\Support\Facades\Http;
+use App\Services\ExchangeRateService;
 use Livewire\Component;
 
 class Index extends Component
 {
     public string $fecha = '';
+
     public $compra = '';
+
     public $venta = '';
 
     public bool $saved = false;
 
-    public function mount()
+    /** De dónde salió el valor mostrado: cache | bd | sunat | bd-anterior */
+    public string $origen = '';
+
+    public function mount(ExchangeRateService $tc): void
     {
-        $current = ExchangeRate::orderByDesc('fecha')->first();
-        $this->fecha  = $current?->fecha?->format('Y-m-d') ?? now()->format('Y-m-d');
-        $this->compra = $current?->compra ?? '';
-        $this->venta  = $current?->venta ?? '';
+        // Antes se cargaba el último registro de la base, que podía ser de hace
+        // años, y había que pulsar "Traer de SUNAT" a mano. Ahora se resuelve
+        // solo: caché → base de datos → SUNAT, y se guarda lo que llegue.
+        $this->mostrar($tc->delDia());
     }
 
     protected $rules = [
-        'fecha'  => 'required|date',
+        'fecha' => 'required|date',
         'compra' => 'required|numeric|min:0',
-        'venta'  => 'required|numeric|min:0',
+        'venta' => 'required|numeric|min:0',
     ];
 
-    public function save(): void
+    /** Vuelve a preguntar a SUNAT saltando caché y base de datos. */
+    public function refrescar(ExchangeRateService $tc): void
+    {
+        $datos = $tc->delDia($this->fecha ?: null, forzar: true);
+
+        if ($datos === null) {
+            $this->dispatch('errorAlert', ['message' => 'No se pudo consultar SUNAT. Revisa la conexión o ingresa el valor a mano.']);
+
+            return;
+        }
+
+        $this->mostrar($datos);
+
+        if ($datos['origen'] === ExchangeRateService::DE_BD_ANTERIOR) {
+            $this->dispatch('errorAlert', ['message' => 'SUNAT no respondió. Se muestra el último tipo de cambio conocido ('.$datos['fecha'].').']);
+
+            return;
+        }
+
+        $this->dispatch('successAlert', ['message' => "Tipo de cambio actualizado: compra {$datos['compra']} · venta {$datos['venta']}"]);
+    }
+
+    /** Guardado manual, para corregir a mano lo que haga falta. */
+    public function save(ExchangeRateService $tc): void
     {
         $this->validate();
 
@@ -37,59 +65,38 @@ class Index extends Component
             ['compra' => $this->compra, 'venta' => $this->venta]
         );
 
+        // Sin esto la caché seguiría sirviendo el valor viejo el resto del día.
+        $tc->recordar($this->fecha, [
+            'fecha' => $this->fecha,
+            'compra' => (string) $this->compra,
+            'venta' => (string) $this->venta,
+        ]);
+
         \App\Support\Audit::log("Actualizó el tipo de cambio {$this->fecha} (compra {$this->compra} / venta {$this->venta})", $rate);
 
+        $this->origen = ExchangeRateService::DE_BD;
         $this->saved = true;
         $this->dispatch('successAlert', ['message' => 'Se actualizó el Tipo de Cambio con éxito']);
     }
 
-    /**
-     * Trae el tipo de cambio SUNAT desde la API de migo.pe.
-     * - Si hay fecha seleccionada → POST /exchange/date con esa fecha.
-     * - Sin fecha → POST /exchange/latest (último publicado).
-     * Llena los campos compra/venta para que el usuario revise y guarde.
-     */
-    public function cargarDeSunat(): void
+    private function mostrar(?array $datos): void
     {
-        $token = config('services.migo.token');
-        $base  = rtrim((string) config('services.migo.base'), '/');
+        if ($datos === null) {
+            $this->fecha = now()->format('Y-m-d');
 
-        if (!$token) {
-            $this->dispatch('errorAlert', ['message' => 'Falta MIGO_PE_TOKEN en .env']);
             return;
         }
 
-        try {
-            $endpoint = $this->fecha !== '' ? '/exchange/date' : '/exchange/latest';
-            $payload  = ['token' => $token];
-            if ($this->fecha !== '') $payload['fecha'] = $this->fecha;
-
-            $resp = Http::timeout(8)->acceptJson()->asJson()->post("$base$endpoint", $payload);
-
-            if (!$resp->ok()) {
-                $this->dispatch('errorAlert', ['message' => "SUNAT respondió HTTP {$resp->status()}"]);
-                return;
-            }
-
-            $j = $resp->json();
-            if (empty($j) || (isset($j['success']) && $j['success'] === false)) {
-                $msg = $j['message'] ?? 'No se pudo obtener el tipo de cambio.';
-                $this->dispatch('errorAlert', ['message' => $msg]);
-                return;
-            }
-
-            $this->fecha  = (string) ($j['fecha'] ?? $this->fecha);
-            $this->compra = (string) ($j['precio_compra'] ?? '');
-            $this->venta  = (string) ($j['precio_venta']  ?? '');
-
-            $this->dispatch('successAlert', ['message' => "TC SUNAT {$this->fecha}: compra {$this->compra} · venta {$this->venta}"]);
-        } catch (\Throwable $e) {
-            $this->dispatch('errorAlert', ['message' => 'Error consultando SUNAT: ' . $e->getMessage()]);
-        }
+        $this->fecha = $datos['fecha'];
+        $this->compra = $datos['compra'];
+        $this->venta = $datos['venta'];
+        $this->origen = $datos['origen'];
     }
 
     public function render()
     {
-        return view('livewire.exchange-rates.index');
+        return view('livewire.exchange-rates.index', [
+            'esDeHoy' => $this->fecha === now()->format('Y-m-d'),
+        ]);
     }
 }
