@@ -15,7 +15,7 @@ $(function() {
 
 $(document).on("click",".sidebar-option > li", function () {
   let sidebarClassName = $(this).attr('class');
-  $("nav").removeClass("horizontal-sidebar vertical-sidebar dark-sidebar").addClass(sidebarClassName);
+  $("#sidebar-nav").removeClass("horizontal-sidebar vertical-sidebar dark-sidebar").addClass(sidebarClassName);
   setLocalStorageItem("sidebar-option", sidebarClassName);
   setUpHorizontalHeader();
 });
@@ -88,7 +88,9 @@ function hexToRGB(hex, alpha) {
 function loadConfiguration(){
   $(".offcanvas-body > ul > li").removeClass("selected")
   let selectedSidebarOption = getLocalStorageItem("sidebar-option","dark-sidebar");
-  $("nav").removeClass('dark-sidebar').addClass(selectedSidebarOption);
+  // Solo la barra lateral: Laravel envuelve la paginacion en un <nav> y con
+  // $("nav") tambien se lo aplicaba, dejandola fixed y fuera de pantalla.
+  $("#sidebar-nav").removeClass('dark-sidebar').addClass(selectedSidebarOption);
 
   let textOption = getLocalStorageItem("text-option","small-text");
   $("body").attr("text", textOption);

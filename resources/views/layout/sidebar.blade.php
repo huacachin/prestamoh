@@ -86,7 +86,7 @@
     ];
 @endphp
 
-<nav class="dark-sidebar">
+<nav id="sidebar-nav" class="dark-sidebar">
     <div class="app-logo">
         <a class="logo d-inline-block" href="{{ route('dashboard.index') }}">
             <img width="1000px" src="{{ asset('assets/images/logo/logo1.png') }}" alt="#" class="dark-logo">

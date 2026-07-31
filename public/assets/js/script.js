@@ -38,7 +38,7 @@ function setUpHorizontalHeader() {
   navbarSize = navBar.width();
   containerWidth = ($(".simplebar-content").width())
   maxNavbarLimit = -(navbarSize - containerWidth);
-  if ($("nav").hasClass("horizontal-sidebar")) {
+  if ($("#sidebar-nav").hasClass("horizontal-sidebar")) {
     $(".menu-next").removeClass("d-none");
     $(".menu-previous").removeClass("d-none");
   } else {
@@ -122,10 +122,10 @@ function copyvalue() {
 $(document).on('click', '.header-toggle', function () {
     var $window = $(window);
     if ($window.width() < 1199) {
-        $("nav").toggleClass("semi-nav");
+        $("#sidebar-nav").toggleClass("semi-nav");
 
     } else {
-        $("nav").toggleClass("desktop-nav");
+        $("#sidebar-nav").toggleClass("desktop-nav");
     }
 
 });
