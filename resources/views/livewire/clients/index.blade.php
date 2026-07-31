@@ -407,9 +407,12 @@
     /* Cliente que ya cancelo todos sus creditos: el rojo tiene que ir sobre las
        CELDAS. Bootstrap 5 les asigna color con `.table > :not(caption) > * > *`,
        asi que un color puesto en el <tr> nunca se ve. Esta regla tiene mas
-       especificidad que la suya, por eso no hace falta !important. */
+       especificidad que la suya, por eso no hace falta !important.
+
+       Se excluyen los .btn: llevan color propio sobre fondo de color, y
+       pintarlos de rojo dejaba el boton "Aval" en rojo sobre rojo. */
     .table > tbody > tr.cliente-cancelado > td,
-    .table > tbody > tr.cliente-cancelado > td a {
+    .table > tbody > tr.cliente-cancelado > td a:not(.btn) {
         color: #dc3545;
     }
 
