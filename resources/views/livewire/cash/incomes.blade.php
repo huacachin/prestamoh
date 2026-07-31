@@ -253,17 +253,28 @@
                            que provoca la fuente (más ancha) del tema. A y Motivo van sin ancho
                            (absorben el sobrante), igual que el legacy. */
                         .incomes-legacy { font-family: Tahoma, Verdana, Geneva, sans-serif; }
+                        /* Cada columna al ancho de su contenido. `table.table-autofit` fija
+                           width:100% y ese sobrante se repartia entre las columnas: "Fecha"
+                           acababa con 209px para mostrar 10 caracteres. Hay que igualar su
+                           especificidad (elemento + 2 clases) para poder ganarle. Si entre
+                           todas superan el contenedor, .table-responsive da scroll lateral. */
+                        table.incomes-legacy.table-autofit { width: auto; }
                         /* Cada columna se dimensiona a su contenido (tbody) en una sola línea; si la
                            tabla excede el ancho, el contenedor .table-responsive da scroll horizontal
                            (igual que el .table-scroll del legacy). Sin anchos en % que aprieten. */
+                        /* El !important es obligado: _custom.scss define un global
+                           `th, td { white-space: normal !important }` que gana a cualquier
+                           selector por especifico que sea. Sin esto las columnas parten
+                           a dos lineas aunque se les fije nowrap. */
                         .incomes-legacy th, .incomes-legacy td {
-                            padding: 3px 6px; vertical-align: top; white-space: nowrap;
+                            padding: 3px 6px; vertical-align: top;
+                            white-space: nowrap !important;
                         }
                         /* Motivo/Detalle: ancho FIJO — el texto largo envuelve hacia abajo
                            en vez de ensanchar la tabla (width+min+max iguales para que el
                            layout auto no lo estire; break-word por si hay tokens largos). */
                         .incomes-legacy th.col-wrap, .incomes-legacy td.col-wrap {
-                            white-space: normal;
+                            white-space: normal !important;
                             width: 260px; min-width: 260px; max-width: 260px;
                             overflow-wrap: break-word;
                         }
