@@ -552,12 +552,40 @@
         if (el1) {
             const vig = parseInt(el1.dataset.vig) || 0;
             const ven = parseInt(el1.dataset.ven) || 0;
+            const totalEstado = vig + ven;
             if (window.__portfolioChart1) {
-                window.__portfolioChart1.updateOptions({ series: [vig, ven] }, false, false, false);
+                window.__portfolioChart1.updateOptions({ series: [{ data: [vig, ven] }] }, false, false, false);
             } else {
-                window.__portfolioChart1 = anillo(el1, [vig, ven],
-                    ['Vigente', 'Vencidas'], ['#2eb85c', '#dc3545'],
-                    'Estado de la cartera · por N° de créditos');
+                window.__portfolioChart1 = new ApexCharts(el1, {
+                    chart: { type: 'bar', height: 300, animations: { enabled: false }, toolbar: { show: false } },
+                    title: { text: 'Estado de la cartera · por N° de créditos',
+                             align: 'center', style: { fontSize: '13px', fontWeight: 'bold' } },
+                    // El total va en el subtitulo: es el mismo 234 del anillo de al
+                    // lado, y asi se sigue viendo que ambos parten del mismo conjunto.
+                    subtitle: { text: totalEstado + ' créditos en total', align: 'center',
+                                style: { fontSize: '11px', color: '#6c757d' } },
+                    series: [{ name: 'Créditos', data: [vig, ven] }],
+                    xaxis: { categories: ['Vigente', 'Vencidas'] },
+                    yaxis: { title: { text: 'N° de créditos' }, labels: { formatter: v => Math.round(v) } },
+                    colors: ['#2eb85c', '#dc3545'],
+                    plotOptions: { bar: {
+                        distributed: true, borderRadius: 6, columnWidth: '42%',
+                        // La etiqueta ENCIMA de la barra: dentro se pierde sobre el
+                        // color y obliga a mirar dos veces para leer la cifra.
+                        dataLabels: { position: 'top' },
+                    } },
+                    // La etiqueta lleva el conteo y, entre parentesis, su peso sobre
+                    // el total: el dato y su proporcion sin tener que calcularla.
+                    dataLabels: {
+                        enabled: true,
+                        formatter: v => v + ' (' + (totalEstado ? (v / totalEstado * 100).toFixed(1) : 0) + '%)',
+                        offsetY: -18,
+                        style: { fontSize: '12px', fontWeight: 700, colors: ['#495057'] },
+                    },
+                    legend: { show: false },
+                    tooltip: { y: { formatter: v => v + ' créditos' } },
+                    grid: { borderColor: '#f1f3f5', padding: { top: 12 } },
+                });
                 window.__portfolioChart1.render();
             }
         }
