@@ -174,6 +174,13 @@
                                              wire:ignore
                                              data-vig="{{ $vignt }}"
                                              data-ven="{{ $venc }}"
+                                             {{-- El grafico reparte el SALDO, no el numero de creditos,
+                                                  para que sus porcentajes sean los mismos que muestra el
+                                                  pie del detalle (86.32% / 13.68%). Contando creditos daba
+                                                  76.5% / 23.5%: correcto tambien, pero otra base, y las dos
+                                                  cifras juntas en la misma pantalla se contradecian. --}}
+                                             data-saldo-vig="{{ $morisidad['activos_saldo'] }}"
+                                             data-saldo-ven="{{ $morisidad['mora_saldo'] }}"
                                              style="min-height: 280px;">
                                         </div>
                                     </div>
@@ -541,7 +548,7 @@
                                  formatter: () => total },
                     } } },
                 },
-                tooltip: { y: { formatter: v => v + ' créditos' } },
+                tooltip: { y: { formatter: v => dinero(v) } },
             };
             return new ApexCharts(el, opciones);
         };
@@ -552,21 +559,27 @@
         if (el1) {
             const vig = parseInt(el1.dataset.vig) || 0;
             const ven = parseInt(el1.dataset.ven) || 0;
-            const totalEstado = vig + ven;
+            // Las barras miden SALDO (misma base que el pie del detalle); el
+            // numero de creditos acompaña en la etiqueta del eje.
+            const sVig = parseFloat(el1.dataset.saldoVig) || 0;
+            const sVen = parseFloat(el1.dataset.saldoVen) || 0;
+            const totalSaldo = sVig + sVen;
+            const dinero = v => v.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             if (window.__portfolioChart1) {
-                window.__portfolioChart1.updateOptions({ series: [{ data: [vig, ven] }] }, false, false, false);
+                window.__portfolioChart1.updateOptions({ series: [{ data: [sVig, sVen] }] }, false, false, false);
             } else {
                 window.__portfolioChart1 = new ApexCharts(el1, {
                     chart: { type: 'bar', height: 300, animations: { enabled: false }, toolbar: { show: false } },
-                    title: { text: 'Estado de la cartera · por N° de créditos',
+                    title: { text: 'Estado de la cartera · por saldo pendiente',
                              align: 'center', style: { fontSize: '13px', fontWeight: 'bold' } },
                     // El total va en el subtitulo: es el mismo 234 del anillo de al
                     // lado, y asi se sigue viendo que ambos parten del mismo conjunto.
-                    subtitle: { text: totalEstado + ' créditos en total', align: 'center',
+                    subtitle: { text: 'Saldo total ' + dinero(totalSaldo) + ' · ' + (vig + ven) + ' créditos', align: 'center',
                                 style: { fontSize: '11px', color: '#6c757d' } },
-                    series: [{ name: 'Créditos', data: [vig, ven] }],
-                    xaxis: { categories: ['Vigente', 'Vencidas'] },
-                    yaxis: { title: { text: 'N° de créditos' }, labels: { formatter: v => Math.round(v) } },
+                    series: [{ name: 'Saldo', data: [sVig, sVen] }],
+                    xaxis: { categories: ['Vigente (' + vig + ' créditos)', 'Vencidas (' + ven + ' créditos)'] },
+                    yaxis: { title: { text: 'Saldo pendiente' },
+                             labels: { formatter: v => (v/1000).toFixed(0) + ' k' } },
                     colors: ['#2eb85c', '#dc3545'],
                     plotOptions: { bar: {
                         distributed: true, borderRadius: 6, columnWidth: '42%',
@@ -578,7 +591,8 @@
                     // el total: el dato y su proporcion sin tener que calcularla.
                     dataLabels: {
                         enabled: true,
-                        formatter: v => v + ' (' + (totalEstado ? (v / totalEstado * 100).toFixed(1) : 0) + '%)',
+                        // Mismo porcentaje que el pie del detalle, calculado sobre el saldo.
+                        formatter: v => (totalSaldo ? (v / totalSaldo * 100).toFixed(2) : 0) + '%',
                         offsetY: -18,
                         style: { fontSize: '12px', fontWeight: 700, colors: ['#495057'] },
                     },
