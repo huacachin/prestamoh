@@ -139,7 +139,15 @@
                                     $todoCancelado = ($estadoCreditos[$client->id] ?? 'sin') === 'cancelado';
                                     // Morosidad del peor crédito activo: 2 cuotas vencidas → naranja, 3+ → rojo
                                     $venc = $morosidad[$client->id] ?? 0;
-                                    $rowBg = $venc >= 3 ? '#ff6b6b' : ($venc === 2 ? '#ffc078' : '');
+                                    // Ejecución PREVALECE sobre la morosidad: el expediente ya está en
+                                    // manos legales, así que se distingue en verde por mucha mora que
+                                    // acumule. Se anota a mano en "zona" (ej. "SIGM.S-Ejecucion 08/04"),
+                                    // por eso la búsqueda es laxa: sin distinguir mayúsculas ni tilde.
+                                    // "ejecuc" es prefijo común de Ejecucion y Ejecución, con o sin tilde.
+                                    $enEjecucion = mb_stripos((string) $client->zona, 'ejecuc') !== false;
+                                    $rowBg = $enEjecucion
+                                        ? '#8ce99a'
+                                        : ($venc >= 3 ? '#ff6b6b' : ($venc === 2 ? '#ffc078' : ''));
                                 @endphp
                                 {{-- El color va por clase, no en el style de la fila: Bootstrap 5 pinta
                                      cada celda con .table > :not(caption) > * > *, y eso tapaba
@@ -396,7 +404,7 @@
     .clients-legacy th.col-wrap, .clients-legacy td.col-wrap {
         white-space: normal; min-width: 180px; max-width: 300px;
     }
-    /* Filas de morosidad (2 cuotas vencidas → naranja, 3+ → rojo) y hover:
+    /* Filas por estado (2 vencidas → naranja, 3+ → rojo, Ejecución → verde) y hover:
        el fondo inline del <tr> debe ganarle al zebra, que Bootstrap pinta con
        box-shadow inset EN CADA CELDA (se superpondría al color de la fila). */
     .clients-legacy tbody tr[style*="background-color"] > * {
