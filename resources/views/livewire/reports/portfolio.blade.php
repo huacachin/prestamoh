@@ -288,18 +288,14 @@
                                 <table class="table table-bordered table-sm text-center" style="font-size: 12px;">
                                     <thead class="bg-primary">
                                         <tr>
-                                            <th>Tipo</th><th>Cnt.</th><th colspan="2">Capital</th>
+                                            <th>Tipo</th><th>Cnt.</th><th>Capital</th>
                                             <th>Interés</th><th>50%</th><th>33%</th><th>25%</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @php
-                                            $sm = $tipoTotals['totsem'] + $tipoTotals['totmen'];
-                                        @endphp
                                         <tr>
                                             <td><b style="color:blue;">Semanal</b></td>
                                             <td><b>{{ $tipoTotals['sempo'] }}</b></td>
-                                            <td rowspan="2"><b>{{ number_format($sm, 2) }}</b></td>
                                             <td><b>{{ number_format($tipoTotals['totsem'], 2) }}</b></td>
                                             <td><b>{{ number_format($tipoTotals['totintesem'], 2) }}</b></td>
                                             <td><b>{{ number_format($tipoTotals['totintesem'] / 2, 2) }}</b></td>
@@ -319,7 +315,6 @@
                                             <td><b>Diario</b></td>
                                             <td><b>{{ $tipoTotals['dempo'] }}</b></td>
                                             <td><b>{{ number_format($tipoTotals['totdia'], 2) }}</b></td>
-                                            <td><b>{{ number_format($tipoTotals['totdia'], 2) }}</b></td>
                                             <td><b>{{ number_format($tipoTotals['totintdiario'], 2) }}</b></td>
                                             <td><b>{{ number_format($tipoTotals['totintdiario'] / 2, 2) }}</b></td>
                                             <td><b>{{ number_format($tipoTotals['totintdiario'] / 3, 2) }}</b></td>
@@ -333,7 +328,6 @@
                                         <tr style="background-color:#CEE7FF;">
                                             <td><b>Total</b></td>
                                             <td><b>{{ $totCnt }}</b></td>
-                                            <td><b>{{ number_format($totCap, 2) }}</b></td>
                                             <td><b>{{ number_format($totCap, 2) }}</b></td>
                                             <td><b>{{ number_format($totInt, 2) }}</b></td>
                                             <td><b>{{ number_format($totInt / 2, 2) }}</b></td>
@@ -391,9 +385,8 @@
 
                         {{-- GRÁFICOS --}}
                         @php
-                            $totEstados = max(1, $vignt + $venc);
-                            $vigPct = round(($vignt / $totEstados) * 100, 2);
-                            $vencPct = round(($venc / $totEstados) * 100, 2);
+                            // Los anillos reciben conteos; el porcentaje lo calcula
+                            // el propio grafico, asi no puede desviarse del dato.
                         @endphp
                         <div class="row mt-4 g-3">
                             <div class="col-md-6">
@@ -401,8 +394,8 @@
                                     <div class="card-body p-2">
                                         <div id="chart-vigentes-vencidas"
                                              wire:ignore
-                                             data-vig="{{ $vigPct }}"
-                                             data-ven="{{ $vencPct }}"
+                                             data-vig="{{ $vignt }}"
+                                             data-ven="{{ $venc }}"
                                              style="min-height: 280px;">
                                         </div>
                                     </div>
@@ -431,51 +424,72 @@
 @script
 <script>
     if (typeof ApexCharts !== 'undefined') {
+        // Ambos anillos muestran el MISMO total en el centro (los créditos activos):
+        // así se ve de un vistazo que son dos cortes del mismo universo, y que
+        // cuadran con la tabla. Antes uno mostraba solo porcentajes y el otro
+        // porcentajes con los conteos escondidos en la leyenda.
+        const anillo = (el, series, etiquetas, colores, titulo) => {
+            const total = series.reduce((a, b) => a + b, 0);
+            const opciones = {
+                chart: { type: 'donut', height: 300, animations: { enabled: false } },
+                title: { text: titulo, align: 'center', style: { fontSize: '13px', fontWeight: 'bold' } },
+                series: series,
+                labels: etiquetas,
+                colors: colores,
+                stroke: { width: 2, colors: ['#fff'] },
+                // El dato dentro del anillo es el CONTEO; el porcentaje va en la leyenda.
+                dataLabels: {
+                    enabled: true,
+                    formatter: (_, opts) => opts.w.config.series[opts.seriesIndex] || '',
+                    style: { fontSize: '12px', fontWeight: 600 },
+                },
+                legend: {
+                    position: 'bottom',
+                    formatter: (etiqueta, opts) => {
+                        const v = opts.w.config.series[opts.seriesIndex];
+                        const pct = total ? (v / total * 100).toFixed(1) : '0.0';
+                        return etiqueta + ': ' + v + ' (' + pct + '%)';
+                    },
+                },
+                plotOptions: {
+                    pie: { donut: { size: '64%', labels: {
+                        show: true,
+                        total: { show: true, showAlways: true, label: 'créditos',
+                                 fontSize: '12px', color: '#6c757d',
+                                 formatter: () => total },
+                    } } },
+                },
+                tooltip: { y: { formatter: v => v + ' créditos' } },
+            };
+            return new ApexCharts(el, opciones);
+        };
+
         const el1 = document.querySelector('#chart-vigentes-vencidas');
         const el2 = document.querySelector('#chart-tipo-credito');
 
         if (el1) {
-            const vig = parseFloat(el1.dataset.vig) || 0;
-            const ven = parseFloat(el1.dataset.ven) || 0;
-
+            const vig = parseInt(el1.dataset.vig) || 0;
+            const ven = parseInt(el1.dataset.ven) || 0;
             if (window.__portfolioChart1) {
-                window.__portfolioChart1.updateSeries([{ data: [vig, ven] }], false);
+                window.__portfolioChart1.updateOptions({ series: [vig, ven] }, false, false, false);
             } else {
-                window.__portfolioChart1 = new ApexCharts(el1, {
-                    chart: { type: 'bar', height: 280, animations: { enabled: false }, toolbar: { show: false } },
-                    title: { text: 'Resumen de Crédito', align: 'center', style: { fontSize: '14px', fontWeight: 'bold' } },
-                    subtitle: { text: 'Distribución Vigentes vs Vencidas', align: 'center' },
-                    series: [{ name: 'Porcentaje', data: [vig, ven] }],
-                    xaxis: { categories: ['Vigente', 'Vencidas'] },
-                    yaxis: { title: { text: 'Total Porcentaje %' } },
-                    colors: ['#28a745', '#dc3545'],
-                    plotOptions: { bar: { distributed: true, borderRadius: 6 } },
-                    dataLabels: { enabled: true, formatter: v => v.toFixed(1) + ' %' },
-                    legend: { show: false },
-                });
+                window.__portfolioChart1 = anillo(el1, [vig, ven],
+                    ['Vigente', 'Vencidas'], ['#2eb85c', '#dc3545'],
+                    'Estado de la cartera');
                 window.__portfolioChart1.render();
             }
         }
 
         if (el2) {
-            const sem = parseFloat(el2.dataset.sem) || 0;
-            const men = parseFloat(el2.dataset.men) || 0;
-            const dia = parseFloat(el2.dataset.dia) || 0;
-
+            const sem = parseInt(el2.dataset.sem) || 0;
+            const men = parseInt(el2.dataset.men) || 0;
+            const dia = parseInt(el2.dataset.dia) || 0;
             if (window.__portfolioChart2) {
-                window.__portfolioChart2.updateOptions({
-                    series: [sem, men, dia],
-                    labels: ['Semanal (' + sem + ')', 'Mensual (' + men + ')', 'Diario (' + dia + ')'],
-                }, false, false, false);
+                window.__portfolioChart2.updateOptions({ series: [sem, men, dia] }, false, false, false);
             } else {
-                window.__portfolioChart2 = new ApexCharts(el2, {
-                    chart: { type: 'pie', height: 280, animations: { enabled: false } },
-                    title: { text: 'CRÉDITO MENSUAL, SEMANAL Y DIARIO', align: 'center', style: { fontSize: '14px', fontWeight: 'bold' } },
-                    series: [sem, men, dia],
-                    labels: ['Semanal (' + sem + ')', 'Mensual (' + men + ')', 'Diario (' + dia + ')'],
-                    colors: ['#0d6efd', '#dc3545', '#005F8C'],
-                    legend: { position: 'bottom' },
-                });
+                window.__portfolioChart2 = anillo(el2, [sem, men, dia],
+                    ['Semanal', 'Mensual', 'Diario'], ['#0d6efd', '#fd7e14', '#005F8C'],
+                    'Por tipo de planilla');
                 window.__portfolioChart2.render();
             }
         }
