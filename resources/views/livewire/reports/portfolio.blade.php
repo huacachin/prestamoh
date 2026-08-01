@@ -332,7 +332,7 @@
                     {{-- El detalle va al final: es consulta, no resumen. --}}
                     {{-- TABLA DETALLE --}}
                     <div id="tabla-cartera" class="table-responsive" style="max-height: 70vh; overflow: auto;">
-                        <table class="table table-bordered table-striped table-hover table-nowrap">
+                        <table class="table table-bordered table-striped table-hover table-nowrap cartera-detalle">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
                                     <th rowspan="2" class="text-center align-middle" width="40">N°</th>
@@ -385,7 +385,9 @@
                                         <a href="{{ route('credits.show', $r['codigo']) }}" target="_blank">{{ $r['codigo'] }}</a>
                                     </td>
                                     <td class="text-center">{{ $r['dni'] }}</td>
-                                    <td>{{ $r['cliente'] }}</td>
+                                    {{-- title: el nombre se recorta con puntos suspensivos, asi que
+                                         el completo queda disponible al pasar el cursor. --}}
+                                    <td class="col-cliente" title="{{ $r['cliente'] }}">{{ $r['cliente'] }}</td>
                                     <td><span style="color:red;">{{ $r['cod_rem'] }}</span></td>
                                     <td class="text-end">{{ number_format($r['capital'], 2) }}</td>
                                     <td class="text-center fw-bold" style="{{ $tcStyle }}">{{ $r['tc_label'] }}</td>
@@ -575,6 +577,22 @@
 @endscript
 
 <style>
+    /* ── Tabla de detalle: 21 columnas que no caben en pantalla ──
+       Medido: pedia 1.638px sobre 1.354 disponibles, o sea 284px de corte.
+       Bajando un punto la fuente y acotando el nombre se recuperan 225px y
+       el desplazamiento queda en 59px, casi imperceptible.
+
+       No se acorta mas el nombre a proposito: cabria del todo, pero a costa
+       de truncar la mayoria, y el nombre es justo como se identifica al
+       cliente. Mejor 59px de scroll que nombres cortados. */
+    .cartera-detalle, .cartera-detalle td, .cartera-detalle th { font-size: 11px !important; }
+    .cartera-detalle td.col-cliente,
+    .cartera-detalle th:nth-child(5) {
+        max-width: 220px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
     /* ── Banda de indicadores ── */
     .kpi-band {
         display: grid;
