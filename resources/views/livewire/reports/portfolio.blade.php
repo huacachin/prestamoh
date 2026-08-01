@@ -194,7 +194,7 @@
                              una al lado de otra, cada una del ancho de su contenido, y se
                              reacomodan solas cuando no caben. Ahi eran float:left; aqui es flex,
                              que hace lo mismo sin los problemas de limpiar el flotado. --}}
-                        <div class="resumen-tablas mt-3">
+                        <div class="resumen-tablas">
                             {{-- Las dos tablas cortas se apilan en una columna para que
                                  la de tasas quepa a su lado en vez de quedar debajo con
                                  medio ancho vacio a la derecha. --}}
@@ -625,7 +625,7 @@
     .riesgo-leyenda small { color: #868e96; }
 
     /* Columna con las dos tablas cortas apiladas: asi la de tasas cabe al lado. */
-    .resumen-col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+    .resumen-col { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
     .tabla-tasas { min-width: 0; }
 
     /* Tabla de tasas repartida en dos columnas para no doblar en alto a sus
@@ -637,7 +637,7 @@
         font-size: 11px; font-weight: 700; letter-spacing: .3px;
         padding: 3px 6px; border-radius: 4px 4px 0 0;
     }
-    .tasas-cols { display: flex; gap: 8px; align-items: flex-start; }
+    .tasas-cols { display: flex; gap: 14px; align-items: flex-start; }
     .tasas-cols > table { margin-bottom: 0; width: auto; font-size: 11px; }
     /* Relleno apretado: con 12 columnas (dos mitades de 6) el padding por
        defecto se comia 55px de mas y la columna Total quedaba cortada. */
@@ -652,11 +652,12 @@
        pida su contenido; asi los bordes quedan alineados y no hay islas
        flotando con aire alrededor (que era justo lo que se veia mal). */
     .resumen-tablas {
+        margin: 22px 0 26px;
         display: grid;
         /* La de tasas lleva 12 columnas (dos mitades de 6) y necesita bastante
            mas ancho que la izquierda; con menos, se le cortaba la columna Total. */
         grid-template-columns: minmax(0, 0.68fr) minmax(0, 1fr);
-        gap: 12px;
+        gap: 22px;
         align-items: start;
     }
     @media (max-width: 991.98px) {
