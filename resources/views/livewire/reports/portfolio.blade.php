@@ -307,22 +307,23 @@
                                                         <td>{{ number_format($b['total'], 2) }}</td>
                                                     </tr>
                                                 @endforeach
+                                                {{-- El total va en la SEGUNDA mitad para que caiga bajo
+                                                     sus columnas y quede alineado. Suma TODAS las tasas,
+                                                     no solo las de esta mitad: de ahi el rotulo. --}}
+                                                @if($loop->last)
+                                                    <tr style="background-color:#CEE7FF;">
+                                                        <td><b>TOTAL</b></td>
+                                                        <td><b>{{ $sumCnt }}</b></td>
+                                                        <td><b>{{ number_format($sumCap, 2) }}</b></td>
+                                                        <td><b>{{ number_format($sumInt, 2) }}</b></td>
+                                                        <td><b>{{ number_format($sumPag, 2) }}</b></td>
+                                                        <td><b>{{ number_format($sumTot, 2) }}</b></td>
+                                                    </tr>
+                                                @endif
                                             </tbody>
                                         </table>
                                     @endforeach
                                 </div>
-                                <table class="table table-bordered table-sm text-center mb-0" style="font-size: 12px;">
-                                    <tbody>
-                                        <tr style="background-color:#CEE7FF;">
-                                            <td><b>Total</b></td>
-                                            <td><b>{{ $sumCnt }}</b></td>
-                                            <td><b>{{ number_format($sumCap, 2) }}</b></td>
-                                            <td><b>{{ number_format($sumInt, 2) }}</b></td>
-                                            <td><b>{{ number_format($sumPag, 2) }}</b></td>
-                                            <td><b>{{ number_format($sumTot, 2) }}</b></td>
-                                        </tr>
-                                    </tbody>
-                                </table>
                             </div>
                         </div>
 
@@ -624,7 +625,7 @@
     .riesgo-leyenda small { color: #868e96; }
 
     /* Columna con las dos tablas cortas apiladas: asi la de tasas cabe al lado. */
-    .resumen-col { display: flex; flex-direction: column; gap: 10px; flex: 0 0 auto; }
+    .resumen-col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
     .tabla-tasas { min-width: 0; }
 
     /* Tabla de tasas repartida en dos columnas para no doblar en alto a sus
@@ -637,32 +638,42 @@
         padding: 3px 6px; border-radius: 4px 4px 0 0;
     }
     .tasas-cols { display: flex; gap: 8px; align-items: flex-start; }
-    .tasas-cols > table { margin-bottom: 0; width: auto; }
+    .tasas-cols > table { margin-bottom: 0; width: auto; font-size: 11px; }
+    /* Relleno apretado: con 12 columnas (dos mitades de 6) el padding por
+       defecto se comia 55px de mas y la columna Total quedaba cortada. */
+    .tasas-cols td, .tasas-cols th { padding: 2px 3px !important; }
 
     /* ── Tablas resumen, homologadas con el legacy (resumencredito2.php) ──
        Alli eran tres <table> con float:left y margin-left:10px, cada una del
        ancho de su contenido. Con flex se logra la misma colocacion y el mismo
        reacomodo al estrecharse, sin tener que limpiar flotados. */
+    /* Rejilla de dos columnas: izquierda las dos tablas cortas apiladas,
+       derecha la de tasas. Las tablas LLENAN su celda en vez de medir lo que
+       pida su contenido; asi los bordes quedan alineados y no hay islas
+       flotando con aire alrededor (que era justo lo que se veia mal). */
     .resumen-tablas {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        align-items: flex-start;
-        /* Centrado: los anchos los manda el contenido, asi que rara vez suman
-           justo el del contenedor. Centrando, el sobrante se reparte a ambos
-           lados y se lee como margen, no como un hueco pegado a la derecha. */
-        justify-content: center;
+        display: grid;
+        /* La de tasas lleva 12 columnas (dos mitades de 6) y necesita bastante
+           mas ancho que la izquierda; con menos, se le cortaba la columna Total. */
+        grid-template-columns: minmax(0, 0.68fr) minmax(0, 1fr);
+        gap: 12px;
+        align-items: start;
     }
+    @media (max-width: 991.98px) {
+        .resumen-tablas { grid-template-columns: minmax(0, 1fr); }
+    }
+    .resumen-tabla > table,
+    .tasas-cols > table { width: 100%; }
+    /* Los importes nunca parten de linea: "2,992,866.09" quedaba como
+       "2,992,866." + "09" al estrecharse la celda. Si no cabe, la tabla
+       se desplaza (ya tiene overflow-x). */
+    .resumen-tabla td, .resumen-tabla th { white-space: nowrap !important; }
     .resumen-tabla {
-        flex: 0 1 auto;
-        max-width: 100%;
+        min-width: 0;
         /* Si una tabla no cabe, se desplaza ella sola: nunca la pagina. */
         overflow-x: auto;
     }
-    .resumen-tabla > table {
-        width: auto;
-        margin-bottom: 0;
-    }
+    .resumen-tabla > table { margin-bottom: 0; }
 
     /* Movil y tablet: al no caber las tres, cada una pasa a ancho completo.
        Es el mismo reacomodo que hacia el float:left del legacy, pero alli las
