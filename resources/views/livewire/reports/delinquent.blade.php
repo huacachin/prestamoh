@@ -85,12 +85,13 @@
                                 <label class="form-label mb-0 small">Fecha F</label>
                                 <input type="text" name="fechaf" autocomplete="off" class="form-control form-control-sm dates" wire:model="fechaf">
                             </div>
-                            <div class="col-md-2 d-flex align-items-end gap-2">
-                                <button type="submit" class="btn btn-sm btn-primary">
+                            {{-- col-md-3: con 2 no cabian los tres botones y el ultimo se salia 19px. --}}
+                            <div class="col-md-3 d-flex align-items-end gap-2">
+                                <button type="submit" class="btn btn-sm btn-primary text-nowrap">
                                     <i class="ti ti-search f-s-12"></i> Buscar
                                 </button>
                                 <a href="{{ route('exports.reports.delinquent', ['selemes0' => $selemes0, 'selecano0' => $selecano0, 'seletipl0' => $seletipl0, 'exp' => $exp, 'codigo' => $codigo, 'cdni' => $cdni, 'cnombre' => $cnombre, 'casesor' => $casesor, 'fechai' => $fechai, 'fechaf' => $fechaf]) }}"
-                                   class="btn btn-sm btn-success" target="_blank">
+                                   class="btn btn-sm btn-success text-nowrap" target="_blank">
                                     <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
                                 </a>
                                 <x-scroll-bottom-btn scrollable="#tabla-morosidad" />
