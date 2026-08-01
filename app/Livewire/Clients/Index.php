@@ -50,7 +50,8 @@ class Index extends Component
 
     /**
      * Filtro de morosidad, por cuotas vencidas del crédito activo con más atraso:
-     * '' (todos) | 'aldia' (0-1) | 'naranja' (2) | 'rojo' (3) | 'critico' (4+).
+     * '' (todos) | 'aldia' (0-1) | 'naranja' (2) | 'rojo' (3) | 'critico' (4+)
+     * | 'ejecucion' (en manos legales, fuera del recuento de mora).
      *
      * Los chips de la vista son enlaces que abren una ventana nueva con este
      * parámetro en la URL; por eso no hay acción de Livewire que los aplique.
@@ -241,28 +242,53 @@ class Index extends Component
             }
         }
 
-        // Conteos para los chips (sobre TODO el conjunto filtrado, no la página)
-        $countCritico = count(array_filter($morosidad, fn ($v) => $v >= 4));
-        $countRojo = count(array_filter($morosidad, fn ($v) => $v === 3));
-        $countNaranja = count(array_filter($morosidad, fn ($v) => $v === 2));
-        $countAldia = count($clientIds) - $countCritico - $countRojo - $countNaranja;
+        // Expedientes en ejecución: ya están en manos legales, así que salen del
+        // recuento de morosidad y tienen chip propio. Si no, aparecerían entre
+        // los morosos y falsearían el trabajo pendiente de cobranza.
+        // El estado se anota a mano en "zona" (ej. "SIGM.S-Ejecucion 08/04"), de
+        // ahí la búsqueda por el prefijo común de Ejecucion y Ejecución.
+        $enEjecucion = [];
+        if ($clientIds !== []) {
+            $enEjecucion = array_flip(
+                Client::whereIn('id', $clientIds)
+                    ->where('zona', 'like', '%ejecuc%')
+                    ->pluck('id')
+                    ->all()
+            );
+        }
+        $countEjecucion = count($enEjecucion);
+
+        // Conteos para los chips (sobre TODO el conjunto filtrado, no la página).
+        // Los cuatro niveles de mora excluyen a los que están en ejecución.
+        $mora = fn (callable $cumple) => count(array_filter(
+            $morosidad,
+            fn ($v, $id) => $cumple($v) && ! isset($enEjecucion[$id]),
+            ARRAY_FILTER_USE_BOTH
+        ));
+        $countCritico = $mora(fn ($v) => $v >= 4);
+        $countRojo = $mora(fn ($v) => $v === 3);
+        $countNaranja = $mora(fn ($v) => $v === 2);
+        $countAldia = count($clientIds) - $countCritico - $countRojo - $countNaranja - $countEjecucion;
 
         // Chip seleccionado → se restringe la query por IDs del nivel
         if ($this->morosidadFiltro !== '') {
-            $idsNivel = array_values(array_filter($clientIds, function ($id) use ($morosidad) {
+            $idsNivel = array_values(array_filter($clientIds, function ($id) use ($morosidad, $enEjecucion) {
                 $v = $morosidad[$id] ?? 0;
+                $ejecucion = isset($enEjecucion[$id]);
 
                 return match ($this->morosidadFiltro) {
-                    'critico' => $v >= 4,
-                    'rojo' => $v === 3,
-                    'naranja' => $v === 2,
-                    default => $v < 2, // aldia
+                    'ejecucion' => $ejecucion,
+                    'critico' => $v >= 4 && ! $ejecucion,
+                    'rojo' => $v === 3 && ! $ejecucion,
+                    'naranja' => $v === 2 && ! $ejecucion,
+                    default => $v < 2 && ! $ejecucion, // aldia
                 };
             }));
             $query->whereIn('clients.id', $idsNivel);
         }
 
         $totalFiltrados = match ($this->morosidadFiltro) {
+            'ejecucion' => $countEjecucion,
             'critico' => $countCritico,
             'rojo' => $countRojo,
             'naranja' => $countNaranja,
@@ -295,6 +321,6 @@ class Index extends Component
 
         $puedeCoords = $this->puedeGuardarCoords();
 
-        return view('livewire.clients.index', compact('clients', 'asesores', 'estadoCreditos', 'morosidad', 'puedeCoords', 'countAldia', 'countNaranja', 'countRojo', 'countCritico', 'waEnviadosHoy', 'totalFiltrados'));
+        return view('livewire.clients.index', compact('clients', 'asesores', 'estadoCreditos', 'morosidad', 'puedeCoords', 'countAldia', 'countNaranja', 'countRojo', 'countCritico', 'countEjecucion', 'waEnviadosHoy', 'totalFiltrados'));
     }
 }

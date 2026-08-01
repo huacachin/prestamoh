@@ -82,11 +82,13 @@
                                     'asesor'     => $ejecutivo,
                                 ], fn ($v) => $v !== '' && $v !== null);
 
+                                // Escala de mora: comparten la palabra "vencidas", que se pone una
+                                // sola vez como rótulo del grupo para no repetirla en cada chip.
                                 $chips = [
-                                    ['aldia',   'verde',   'Al día',       $countAldia,   'Sin cuotas vencidas relevantes (0 o 1)'],
-                                    ['naranja', 'naranja', '2 vencidas',   $countNaranja, 'Algún crédito activo con exactamente 2 cuotas vencidas'],
-                                    ['rojo',    'rojo',    '3 vencidas',   $countRojo,    'Algún crédito activo con exactamente 3 cuotas vencidas'],
-                                    ['critico', 'critico', '4+ vencidas',  $countCritico, 'Algún crédito activo con 4 o más cuotas vencidas'],
+                                    ['aldia',   'verde',   'Al día', $countAldia,   'Sin cuotas vencidas relevantes (0 o 1)'],
+                                    ['naranja', 'naranja', '2',      $countNaranja, 'Algún crédito activo con exactamente 2 cuotas vencidas'],
+                                    ['rojo',    'rojo',    '3',      $countRojo,    'Algún crédito activo con exactamente 3 cuotas vencidas'],
+                                    ['critico', 'critico', '4+',     $countCritico, 'Algún crédito activo con 4 o más cuotas vencidas'],
                                 ];
                             @endphp
                             <div class="moros-chips ms-md-2" role="group" aria-label="Filtro de morosidad">
@@ -98,6 +100,18 @@
                                         <span class="dot"></span> {{ $etiqueta }} <span class="n">{{ $conteo }}</span>
                                     </a>
                                 @endforeach
+                                <span class="moros-rotulo">vencidas</span>
+
+                                {{-- Ejecución es otro eje, no un grado más de mora: va tras un
+                                     separador y sin punto de color, para que no se lea como el
+                                     siguiente escalón de la escala. --}}
+                                <span class="moros-sep" aria-hidden="true"></span>
+                                <a href="{{ route('clients.index', $filtrosPuestos + ['estado' => 'ejecucion']) }}"
+                                   target="_blank" rel="noopener"
+                                   class="moros-chip moros-chip--ejecucion {{ $morosidadFiltro === 'ejecucion' ? 'is-active' : '' }}"
+                                   title="Expedientes en ejecución (manos legales). No cuentan en los niveles de mora — se abre en una ventana nueva">
+                                    <i class="ti ti-gavel f-s-12"></i> Ejecución <span class="n">{{ $countEjecucion }}</span>
+                                </a>
 
                                 @if($morosidadFiltro !== '')
                                     <a href="{{ route('clients.index', $filtrosPuestos) }}"
@@ -449,6 +463,19 @@
     .moros-chip--naranja.is-active { background: #fd7e14; border-color: #fd7e14; color: #fff; }
     .moros-chip--rojo.is-active { background: #dc3545; border-color: #dc3545; color: #fff; }
     .moros-chip--critico.is-active { background: #7b1e2b; border-color: #7b1e2b; color: #fff; }
+    /* Ejecucion: gris pizarra, fuera de la escala rojo/naranja/verde a proposito. */
+    .moros-chip--ejecucion { color: #3b4a5a; border-color: #b9c2cc; }
+    .moros-chip--ejecucion.is-active { background: #3b4a5a; border-color: #3b4a5a; color: #fff; }
+    /* Rotulo del grupo: dice "vencidas" una vez en vez de repetirlo en 2, 3 y 4+. */
+    .moros-rotulo {
+        font-size: 11px; font-weight: 600; color: #868e96;
+        margin-left: 1px; letter-spacing: .2px;
+    }
+    /* Separador entre los dos ejes (grado de mora | estado legal). */
+    .moros-sep {
+        width: 1px; height: 18px; background: #dee2e6;
+        margin: 0 4px; display: inline-block;
+    }
     .moros-chip--limpiar { color: #6c757d; border-style: dashed; }
     .moros-chip.is-active .dot { background: #fff; }
     .moros-chip.is-active .n { background: rgba(255, 255, 255, .25); }
