@@ -195,107 +195,124 @@
                              reacomodan solas cuando no caben. Ahi eran float:left; aqui es flex,
                              que hace lo mismo sin los problemas de limpiar el flotado. --}}
                         <div class="resumen-tablas mt-3">
-                            {{-- Vigentes/Vencidas --}}
-                            <div class="resumen-tabla">
-                                <table class="table table-bordered table-sm text-center" style="font-size: 12px;">
-                                    <thead class="bg-primary">
-                                        <tr><th>Tipo</th><th>Total</th></tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr><td style="color:green;"><b>Vigente</b></td><td style="color:green;"><b>{{ $vignt }}</b></td></tr>
-                                        <tr><td style="color:red;"><b>Vencidas</b></td><td style="color:red;"><b>{{ $venc }}</b></td></tr>
-                                        <tr><td><b>Total</b></td><td><b>{{ $vignt + $venc }}</b></td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
+                            {{-- Las dos tablas cortas se apilan en una columna para que
+                                 la de tasas quepa a su lado en vez de quedar debajo con
+                                 medio ancho vacio a la derecha. --}}
+                            <div class="resumen-col">
+                                {{-- Vigentes/Vencidas --}}
+                                <div class="resumen-tabla">
+                                    <table class="table table-bordered table-sm text-center" style="font-size: 12px;">
+                                        <thead class="bg-primary">
+                                            <tr><th>Tipo</th><th>Total</th></tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr><td style="color:green;"><b>Vigente</b></td><td style="color:green;"><b>{{ $vignt }}</b></td></tr>
+                                            <tr><td style="color:red;"><b>Vencidas</b></td><td style="color:red;"><b>{{ $venc }}</b></td></tr>
+                                            <tr><td><b>Total</b></td><td><b>{{ $vignt + $venc }}</b></td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
 
-                            {{-- Por Tipo Planilla --}}
-                            <div class="resumen-tabla">
-                                <table class="table table-bordered table-sm text-center" style="font-size: 12px;">
-                                    <thead class="bg-primary">
-                                        <tr>
-                                            <th>Tipo</th><th>Cnt.</th><th>Capital</th>
-                                            <th>Interés</th><th>50%</th><th>33%</th><th>25%</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td><b style="color:blue;">Semanal</b></td>
-                                            <td><b>{{ $tipoTotals['sempo'] }}</b></td>
-                                            <td><b>{{ number_format($tipoTotals['totsem'], 2) }}</b></td>
-                                            <td><b>{{ number_format($tipoTotals['totintesem'], 2) }}</b></td>
-                                            <td><b>{{ number_format($tipoTotals['totintesem'] / 2, 2) }}</b></td>
-                                            <td><b>{{ number_format($tipoTotals['totintesem'] / 3, 2) }}</b></td>
-                                            <td><b>{{ number_format($tipoTotals['totintesem'] / 4, 2) }}</b></td>
-                                        </tr>
-                                        <tr>
-                                            <td><b style="color:red;">Mensual</b></td>
-                                            <td><b>{{ $tipoTotals['mempo'] }}</b></td>
-                                            <td><b>{{ number_format($tipoTotals['totmen'], 2) }}</b></td>
-                                            <td><b>{{ number_format($tipoTotals['totintemen'], 2) }}</b></td>
-                                            <td><b>{{ number_format($tipoTotals['totintemen'] / 2, 2) }}</b></td>
-                                            <td><b>{{ number_format($tipoTotals['totintemen'] / 3, 2) }}</b></td>
-                                            <td><b>{{ number_format($tipoTotals['totintemen'] / 4, 2) }}</b></td>
-                                        </tr>
-                                        <tr>
-                                            <td><b>Diario</b></td>
-                                            <td><b>{{ $tipoTotals['dempo'] }}</b></td>
-                                            <td><b>{{ number_format($tipoTotals['totdia'], 2) }}</b></td>
-                                            <td><b>{{ number_format($tipoTotals['totintdiario'], 2) }}</b></td>
-                                            <td><b>{{ number_format($tipoTotals['totintdiario'] / 2, 2) }}</b></td>
-                                            <td><b>{{ number_format($tipoTotals['totintdiario'] / 3, 2) }}</b></td>
-                                            <td><b>{{ number_format($tipoTotals['totintdiario'] / 4, 2) }}</b></td>
-                                        </tr>
-                                        @php
-                                            $totCnt = $tipoTotals['sempo'] + $tipoTotals['mempo'] + $tipoTotals['dempo'];
-                                            $totCap = $tipoTotals['totsem'] + $tipoTotals['totmen'] + $tipoTotals['totdia'];
-                                            $totInt = $tipoTotals['totintesem'] + $tipoTotals['totintemen'] + $tipoTotals['totintdiario'];
-                                        @endphp
-                                        <tr style="background-color:#CEE7FF;">
-                                            <td><b>Total</b></td>
-                                            <td><b>{{ $totCnt }}</b></td>
-                                            <td><b>{{ number_format($totCap, 2) }}</b></td>
-                                            <td><b>{{ number_format($totInt, 2) }}</b></td>
-                                            <td><b>{{ number_format($totInt / 2, 2) }}</b></td>
-                                            <td><b>{{ number_format($totInt / 3, 2) }}</b></td>
-                                            <td><b>{{ number_format($totInt / 4, 2) }}</b></td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            {{-- Por % Interés --}}
-                            <div class="resumen-tabla">
-                                <table class="table table-bordered table-sm text-center" style="font-size: 12px;">
-                                    <thead class="bg-primary">
-                                        <tr>
-                                            <th colspan="6">CRÉDITO</th>
-                                        </tr>
-                                        <tr>
-                                            <th>%</th><th>Cnt.</th><th>Capital</th><th>Interés</th><th>Pagado</th><th>Total</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @php
-                                            $sumCnt = 0; $sumCap = 0; $sumInt = 0; $sumPag = 0; $sumTot = 0;
-                                        @endphp
-                                        @foreach($byInteres as $b)
+                                {{-- Por Tipo Planilla --}}
+                                <div class="resumen-tabla">
+                                    <table class="table table-bordered table-sm text-center" style="font-size: 12px;">
+                                        <thead class="bg-primary">
                                             <tr>
-                                                <td>{{ $b['porce'] }}</td>
-                                                <td>{{ $b['ncount'] }}</td>
-                                                <td>{{ number_format($b['capital'], 2) }}</td>
-                                                <td>{{ number_format($b['interes'], 2) }}</td>
-                                                <td>{{ number_format($b['pago'], 2) }}</td>
-                                                <td>{{ number_format($b['total'], 2) }}</td>
+                                                <th>Tipo</th><th>Cnt.</th><th>Capital</th>
+                                                <th>Interés</th><th>50%</th><th>33%</th><th>25%</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><b style="color:blue;">Semanal</b></td>
+                                                <td><b>{{ $tipoTotals['sempo'] }}</b></td>
+                                                <td><b>{{ number_format($tipoTotals['totsem'], 2) }}</b></td>
+                                                <td><b>{{ number_format($tipoTotals['totintesem'], 2) }}</b></td>
+                                                <td><b>{{ number_format($tipoTotals['totintesem'] / 2, 2) }}</b></td>
+                                                <td><b>{{ number_format($tipoTotals['totintesem'] / 3, 2) }}</b></td>
+                                                <td><b>{{ number_format($tipoTotals['totintesem'] / 4, 2) }}</b></td>
+                                            </tr>
+                                            <tr>
+                                                <td><b style="color:red;">Mensual</b></td>
+                                                <td><b>{{ $tipoTotals['mempo'] }}</b></td>
+                                                <td><b>{{ number_format($tipoTotals['totmen'], 2) }}</b></td>
+                                                <td><b>{{ number_format($tipoTotals['totintemen'], 2) }}</b></td>
+                                                <td><b>{{ number_format($tipoTotals['totintemen'] / 2, 2) }}</b></td>
+                                                <td><b>{{ number_format($tipoTotals['totintemen'] / 3, 2) }}</b></td>
+                                                <td><b>{{ number_format($tipoTotals['totintemen'] / 4, 2) }}</b></td>
+                                            </tr>
+                                            <tr>
+                                                <td><b>Diario</b></td>
+                                                <td><b>{{ $tipoTotals['dempo'] }}</b></td>
+                                                <td><b>{{ number_format($tipoTotals['totdia'], 2) }}</b></td>
+                                                <td><b>{{ number_format($tipoTotals['totintdiario'], 2) }}</b></td>
+                                                <td><b>{{ number_format($tipoTotals['totintdiario'] / 2, 2) }}</b></td>
+                                                <td><b>{{ number_format($tipoTotals['totintdiario'] / 3, 2) }}</b></td>
+                                                <td><b>{{ number_format($tipoTotals['totintdiario'] / 4, 2) }}</b></td>
                                             </tr>
                                             @php
-                                                $sumCnt += $b['ncount'];
-                                                $sumCap += $b['capital'];
-                                                $sumInt += $b['interes'];
-                                                $sumPag += $b['pago'];
-                                                $sumTot += $b['total'];
+                                                $totCnt = $tipoTotals['sempo'] + $tipoTotals['mempo'] + $tipoTotals['dempo'];
+                                                $totCap = $tipoTotals['totsem'] + $tipoTotals['totmen'] + $tipoTotals['totdia'];
+                                                $totInt = $tipoTotals['totintesem'] + $tipoTotals['totintemen'] + $tipoTotals['totintdiario'];
                                             @endphp
-                                        @endforeach
+                                            <tr style="background-color:#CEE7FF;">
+                                                <td><b>Total</b></td>
+                                                <td><b>{{ $totCnt }}</b></td>
+                                                <td><b>{{ number_format($totCap, 2) }}</b></td>
+                                                <td><b>{{ number_format($totInt, 2) }}</b></td>
+                                                <td><b>{{ number_format($totInt / 2, 2) }}</b></td>
+                                                <td><b>{{ number_format($totInt / 3, 2) }}</b></td>
+                                                <td><b>{{ number_format($totInt / 4, 2) }}</b></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {{-- Por % Interés — repartida en DOS columnas.
+                                 Con 24 tasas esta tabla medía 828px de alto frente a los
+                                 128 y 160 de sus vecinas, y dejaba ~700px de hueco al lado
+                                 de cada una. Partida por la mitad baja a ~460px y el bloque
+                                 queda parejo. El total se calcula sobre TODAS las filas y se
+                                 muestra una sola vez, debajo. --}}
+                            @php
+                                $sumCnt = 0; $sumCap = 0; $sumInt = 0; $sumPag = 0; $sumTot = 0;
+                                foreach ($byInteres as $b) {
+                                    $sumCnt += $b['ncount']; $sumCap += $b['capital'];
+                                    $sumInt += $b['interes']; $sumPag += $b['pago'];
+                                    $sumTot += $b['total'];
+                                }
+                                $mitad = (int) ceil(count($byInteres) / 2);
+                                $bloques = $mitad > 0 ? array_chunk($byInteres, $mitad) : [];
+                            @endphp
+                            <div class="resumen-tabla tabla-tasas">
+                                <div class="tasas-titulo">CRÉDITO · por % de interés</div>
+                                <div class="tasas-cols">
+                                    @foreach($bloques as $bloque)
+                                        <table class="table table-bordered table-sm text-center" style="font-size: 12px;">
+                                            <thead class="bg-primary">
+                                                <tr>
+                                                    <th>%</th><th>Cnt.</th><th>Capital</th>
+                                                    <th>Interés</th><th>Pagado</th><th>Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach($bloque as $b)
+                                                    <tr>
+                                                        <td>{{ $b['porce'] }}</td>
+                                                        <td>{{ $b['ncount'] }}</td>
+                                                        <td>{{ number_format($b['capital'], 2) }}</td>
+                                                        <td>{{ number_format($b['interes'], 2) }}</td>
+                                                        <td>{{ number_format($b['pago'], 2) }}</td>
+                                                        <td>{{ number_format($b['total'], 2) }}</td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    @endforeach
+                                </div>
+                                <table class="table table-bordered table-sm text-center mb-0" style="font-size: 12px;">
+                                    <tbody>
                                         <tr style="background-color:#CEE7FF;">
                                             <td><b>Total</b></td>
                                             <td><b>{{ $sumCnt }}</b></td>
@@ -606,6 +623,22 @@
     }
     .riesgo-leyenda small { color: #868e96; }
 
+    /* Columna con las dos tablas cortas apiladas: asi la de tasas cabe al lado. */
+    .resumen-col { display: flex; flex-direction: column; gap: 10px; flex: 0 0 auto; }
+    .tabla-tasas { min-width: 0; }
+
+    /* Tabla de tasas repartida en dos columnas para no doblar en alto a sus
+       vecinas. Las dos mitades comparten cabecera y el total va debajo, una
+       sola vez, alineado con ellas. */
+    .tabla-tasas { display: flex; flex-direction: column; }
+    .tasas-titulo {
+        background: #005F8C; color: #fff; text-align: center;
+        font-size: 11px; font-weight: 700; letter-spacing: .3px;
+        padding: 3px 6px; border-radius: 4px 4px 0 0;
+    }
+    .tasas-cols { display: flex; gap: 8px; align-items: flex-start; }
+    .tasas-cols > table { margin-bottom: 0; width: auto; }
+
     /* ── Tablas resumen, homologadas con el legacy (resumencredito2.php) ──
        Alli eran tres <table> con float:left y margin-left:10px, cada una del
        ancho de su contenido. Con flex se logra la misma colocacion y el mismo
@@ -615,6 +648,10 @@
         flex-wrap: wrap;
         gap: 10px;
         align-items: flex-start;
+        /* Centrado: los anchos los manda el contenido, asi que rara vez suman
+           justo el del contenedor. Centrando, el sobrante se reparte a ambos
+           lados y se lee como margen, no como un hueco pegado a la derecha. */
+        justify-content: center;
     }
     .resumen-tabla {
         flex: 0 1 auto;
