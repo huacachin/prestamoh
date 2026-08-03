@@ -53,6 +53,23 @@ class MassDeleteEdit extends Component
                 }
             }
 
+            // Mora de ESTA operación sin detalle propio: createMoraPayment()
+            // registra la mora (MORA ACUM. de cancelación, MORA CAPITAL manual,
+            // o mora sin cuota destino) como payments sueltos —installment_id
+            // NULL, misma fecha+hora que la cabecera— pero NO siempre inserta un
+            // mass_deletion_detail. Al recorrer solo los details, esas moras
+            // quedaban HUÉRFANAS en payments y el /schedule las seguía mostrando
+            // (calcula la mora desde documento LIKE 'MORA%'). Se barren junto con
+            // el resto de la operación para que la reversa sea "como si el pago
+            // nunca hubiera existido". Las que sí tenían detalle ya se borraron
+            // arriba; aquí no reaparecen. Acotado a credit_id+date+time: solo la
+            // mora de esta operación, nunca la de otras fechas/cobros.
+            Payment::where('credit_id', $this->record->credit_id)
+                ->where('fecha', $this->record->getRawOriginal('date'))
+                ->where('hora', $this->record->time)
+                ->where('tipo', 'MORA')
+                ->delete();
+
             // Legacy editmasivo.php usa por error `id` de la última cuota como id del crédito
             // (UPDATE cab_cuentacorriente WHERE id=$codigocuotas), por lo que la query nunca
             // matcheaba y el crédito quedaba "Cancelado". Aquí restauramos correctamente.
