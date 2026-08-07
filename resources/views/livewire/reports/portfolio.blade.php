@@ -18,6 +18,28 @@
         <div class="col-xl-12">
             <div class="card shadow-sm">
                 <div class="card-body pb-2">
+                    {{-- Aviso de drill-down por tasa: se llegó pinchando el Cnt. de
+                         "por % de interés", así que el reporte está acotado a esa tasa. --}}
+                    @if($fInteres !== '')
+                        @php
+                            $filtrosSinTasa = array_filter([
+                                'mes' => $selemes0, 'anio' => $selecano0, 'tipo' => $seletipl0,
+                                'expediente' => $exp, 'codigo' => $codigo, 'dni' => $cdni,
+                                'nombre' => $cnombre, 'asesor' => $casesor,
+                                'desde' => $fechai, 'hasta' => $fechaf,
+                            ], fn ($v) => $v !== '' && $v !== null);
+                        @endphp
+                        <div class="alert alert-info d-flex align-items-center justify-content-between py-1 px-2 mb-2 small">
+                            <span>
+                                <i class="ti ti-filter"></i>
+                                Mostrando solo los créditos al <strong>{{ $fInteres }}%</strong> de interés.
+                            </span>
+                            <a href="{{ route('reports.portfolio', $filtrosSinTasa) }}" class="btn btn-sm btn-outline-secondary py-0">
+                                <i class="ti ti-x"></i> Quitar filtro
+                            </a>
+                        </div>
+                    @endif
+
                     {{-- Filtros --}}
                     <form wire:submit.prevent="search">
                         <div class="row g-2 mb-2">
@@ -92,7 +114,7 @@
                                 <button type="submit" class="btn btn-sm btn-primary text-nowrap">
                                     <i class="ti ti-search f-s-12"></i> Buscar
                                 </button>
-                                <a href="{{ route('exports.reports.portfolio', ['selemes0' => $selemes0, 'selecano0' => $selecano0, 'seletipl0' => $seletipl0, 'exp' => $exp, 'codigo' => $codigo, 'cdni' => $cdni, 'cnombre' => $cnombre, 'casesor' => $casesor, 'fechai' => $fechai, 'fechaf' => $fechaf]) }}"
+                                <a href="{{ route('exports.reports.portfolio', ['selemes0' => $selemes0, 'selecano0' => $selecano0, 'seletipl0' => $seletipl0, 'exp' => $exp, 'codigo' => $codigo, 'cdni' => $cdni, 'cnombre' => $cnombre, 'casesor' => $casesor, 'fechai' => $fechai, 'fechaf' => $fechaf, 'fInteres' => $fInteres]) }}"
                                    class="btn btn-sm btn-success text-nowrap" target="_blank">
                                     <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
                                 </a>
@@ -294,6 +316,22 @@
                                 }
                                 $mitad = (int) ceil(count($byInteres) / 2);
                                 $bloques = $mitad > 0 ? array_chunk($byInteres, $mitad) : [];
+
+                                // Filtros vigentes, para que el drill-down por tasa abra el
+                                // MISMO universo que se está viendo (si no, el conteo de la
+                                // celda no cuadraría con lo que se muestra al entrar).
+                                $filtrosPuestos = array_filter([
+                                    'mes'         => $selemes0,
+                                    'anio'        => $selecano0,
+                                    'tipo'        => $seletipl0,
+                                    'expediente'  => $exp,
+                                    'codigo'      => $codigo,
+                                    'dni'         => $cdni,
+                                    'nombre'      => $cnombre,
+                                    'asesor'      => $casesor,
+                                    'desde'       => $fechai,
+                                    'hasta'       => $fechaf,
+                                ], fn ($v) => $v !== '' && $v !== null);
                             @endphp
                             <div class="resumen-tabla tabla-tasas">
                                 <div class="tasas-titulo">CRÉDITO · por % de interés</div>
@@ -308,9 +346,18 @@
                                             </thead>
                                             <tbody>
                                                 @foreach($bloque as $b)
-                                                    <tr>
+                                                    <tr @class(['tasa-activa' => (string) $fInteres === (string) $b['porce']])>
                                                         <td>{{ $b['porce'] }}</td>
-                                                        <td>{{ $b['ncount'] }}</td>
+                                                        {{-- Cnt. enlaza al detalle de esa tasa, en ventana nueva
+                                                             (mismo patrón que los chips de /clients) y arrastrando
+                                                             los filtros vigentes. --}}
+                                                        <td>
+                                                            <a href="{{ route('reports.portfolio', $filtrosPuestos + ['interes' => $b['porce']]) }}"
+                                                               target="_blank" rel="noopener" class="cnt-link"
+                                                               title="Ver los {{ $b['ncount'] }} créditos al {{ $b['porce'] }}% — se abre en una ventana nueva">
+                                                                {{ $b['ncount'] }}
+                                                            </a>
+                                                        </td>
                                                         <td>{{ number_format($b['capital'], 2) }}</td>
                                                         <td>{{ number_format($b['interes'], 2) }}</td>
                                                         <td>{{ number_format($b['pago'], 2) }}</td>
@@ -705,6 +752,17 @@
     /* Relleno apretado: con 12 columnas (dos mitades de 6) el padding por
        defecto se comia 55px de mas y la columna Total quedaba cortada. */
     .tasas-cols td, .tasas-cols th { padding: 2px 3px !important; }
+
+    /* Cnt. es un enlace al detalle de esa tasa: se marca con subrayado punteado
+       para que se note que es pinchable sin romper la densidad de la tabla. */
+    .cnt-link {
+        color: #005F8C; font-weight: 700; text-decoration: underline dotted;
+        text-underline-offset: 2px;
+    }
+    .cnt-link:hover { color: #003f5e; text-decoration: underline; }
+    /* Fila de la tasa por la que se está filtrando. */
+    .tasas-cols tr.tasa-activa { background-color: #FFF3CD; }
+    .tasas-cols tr.tasa-activa td { font-weight: 700; }
 
     /* ── Tablas resumen, homologadas con el legacy (resumencredito2.php) ──
        Alli eran tres <table> con float:left y margin-left:10px, cada una del

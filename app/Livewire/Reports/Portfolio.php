@@ -40,6 +40,13 @@ class Portfolio extends Component
     #[Url(as: 'hasta', except: '')]
     public $fechaf = '';
 
+    // Drill-down desde la columna Cnt. de "CRÉDITO · por % de interés".
+    // Se filtra el PROPIO reporte (no /credits) porque el resumen y el detalle
+    // salen del mismo recorrido: así el número de la celda y las filas que se
+    // ven al entrar coinciden siempre, con cualquier combinación de filtros.
+    #[Url(as: 'interes', except: '')]
+    public $fInteres = '';
+
     public function search() {}
 
     public function render()
@@ -82,6 +89,20 @@ class Portfolio extends Component
         if ($this->fechai !== '' && $this->fechaf !== '') {
             $query->where('fecha_vencimiento', '>=', $this->fechai)
                 ->where('fecha_vencimiento', '<=', $this->fechaf);
+        }
+
+        // Tipo de planilla (1=Semanal, 3=Mensual, 4=Diario). El select existía en
+        // la pantalla y se pasaba al Excel, pero nunca llegó a aplicarse aquí:
+        // elegirlo no cambiaba nada. '0000' = Todos (igual que /credits).
+        if ($this->seletipl0 !== '' && $this->seletipl0 !== '0000') {
+            $query->where('tipo_planilla', $this->seletipl0);
+        }
+
+        // Drill-down por tasa. Se compara en float: `interes` es decimal(8,4),
+        // así que 5 casa con 5.0000 — la misma equivalencia con la que se agrupa
+        // la tabla resumen ((string)(float) del %).
+        if ($this->fInteres !== '') {
+            $query->where('interes', (float) $this->fInteres);
         }
 
         $credits = $query->orderBy('fecha_vencimiento', 'asc')->get();

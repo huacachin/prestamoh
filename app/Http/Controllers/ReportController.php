@@ -94,6 +94,8 @@ class ReportController extends Controller
         $c->casesor = (string) $request->query('casesor', '');
         $c->fechai = (string) $request->query('fechai', '');
         $c->fechaf = (string) $request->query('fechaf', '');
+        // Drill-down por tasa: el Excel sale acotado igual que la pantalla.
+        $c->fInteres = (string) $request->query('fInteres', '');
 
         $d = $c->render()->getData();
 
