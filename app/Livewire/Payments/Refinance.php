@@ -36,7 +36,7 @@ class Refinance extends Component
 
     public $moraii = 0;             // Auto
 
-    public $intmont = 0;            // Monto interés (cap × tasa / 100)
+    public $intmont = 0;            // Monto interés mostrado = impopres × tasa / 100
 
     public bool $morai = true;
 
@@ -74,12 +74,9 @@ class Refinance extends Component
             $this->fechad = $lastIns->fecha_vencimiento
                 ? Carbon::parse($lastIns->fecha_vencimiento)->format('Y-m-d')
                 : $hoy->format('Y-m-d');
-            // Legacy: $rowinteress = importe_interes de la última cuota (no recalculado)
-            $this->intmont = round((float) $lastIns->importe_interes, 2);
         } else {
             $this->impopres = 0;
             $this->fechad = $hoy->format('Y-m-d');
-            $this->intmont = 0;
         }
 
         // Próximo correlativo
@@ -90,6 +87,15 @@ class Refinance extends Component
         $this->inte = (float) $this->credit->interes;
         $this->cuot = (int) $this->credit->cuotas;
         $this->seletipl = '3'; // Mensual fijo (legacy hardcoded)
+
+        // Interés MOSTRADO = la misma fórmula con la que se graba en refinance()
+        // ($impopres × tasa%). Antes se copiaba tal cual el importe_interes de la
+        // última cuota del crédito viejo —espejo del legacy—, que es la tasa
+        // aplicada al capital ANTERIOR: coincidía solo si no hubo abono a capital.
+        // Si el cliente había amortizado, la pantalla anunciaba un interés (y un
+        // total) mayores que los del crédito que realmente se creaba.
+        // Va después de $inte/$impopres porque depende de ambos.
+        $this->intmont = round($this->impopres * $this->inte / 100, 2);
 
         $this->recalcMora();
     }
@@ -102,7 +108,6 @@ class Refinance extends Component
         $cap = (float) ($this->credit?->importe ?? 0);
         $intePct = (float) $this->inte;
         $interes2 = $cap * $intePct / 100;
-        // Legacy: intmont NO se recalcula (es el importe_interes original de la última cuota)
         // Legacy: mora2 (Mora Interés) = (int² × 2)/100/30, mora1 (Pago x día) = int/30
         $this->moracc = round($interes2 * ($intePct * 2) / 100 / 30, 2);
         $this->moraii = round($interes2 / 30, 2);
