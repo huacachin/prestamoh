@@ -214,6 +214,30 @@
                                        value="{{ number_format($c['total_mora'], 2) }}" readonly>
                             @endif
                         </div>
+
+                        {{-- Motivo del ajuste: aparece solo cuando el override CAMBIÓ el
+                             monto. Sin él el cobro no se confirma — toda rebaja de mora
+                             queda con responsable y explicación en `mora_overrides`. --}}
+                        @if($puedeMora && ($c['mora_ajustada'] ?? false))
+                            @php $diff = $c['mora_ajuste_diff'] ?? 0; @endphp
+                            <div class="col-12">
+                                <label class="form-label mb-0 small fw-semibold text-danger">
+                                    <i class="ti ti-alert-triangle f-s-14"></i>
+                                    Motivo del ajuste de mora
+                                    <span class="fw-normal">
+                                        — calculada <b>{{ number_format($c['total_mora_calc'], 2) }}</b>,
+                                        se cobrará <b>{{ number_format($c['total_mora'], 2) }}</b>
+                                        ({{ $diff < 0 ? 'rebaja' : 'aumento' }} de
+                                        <b>{{ number_format(abs($diff), 2) }}</b>)
+                                    </span>
+                                </label>
+                                <input type="text" name="moraMotivo" autocomplete="off" maxlength="255"
+                                       class="form-control form-control-sm @error('moraMotivo') is-invalid @enderror"
+                                       wire:model.live.debounce.500ms="moraMotivo"
+                                       placeholder="Ej.: acuerdo con el cliente, error de digitación, condonación autorizada por gerencia…">
+                                @error('moraMotivo') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                            </div>
+                        @endif
                     </div>
 
                     {{-- ── Registrar Pago ──
@@ -549,6 +573,17 @@
                             @if($preview['reserva_mora'])
                                 <div class="alert alert-info py-1 px-2 mt-2 mb-0 small text-center">
                                     Mora reservada: no se cobra ahora, queda acumulada.
+                                </div>
+                            @endif
+                            @if($preview['mora_ajustada'] ?? false)
+                                @php $pd = $preview['mora_ajuste_final'] - $preview['mora_calculada']; @endphp
+                                <div class="alert alert-warning py-1 px-2 mt-2 mb-0 small">
+                                    <i class="ti ti-alert-triangle"></i>
+                                    <strong>Mora ajustada a mano.</strong>
+                                    Calculada S/ {{ number_format($preview['mora_calculada'], 2) }} →
+                                    se cobra S/ {{ number_format($preview['mora_ajuste_final'], 2) }}
+                                    ({{ $pd < 0 ? '−' : '+' }}S/ {{ number_format(abs($pd), 2) }}).<br>
+                                    Motivo: <em>{{ $preview['mora_motivo'] }}</em>
                                 </div>
                             @endif
                             @if(!empty($preview['egreso']))

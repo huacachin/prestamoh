@@ -51,6 +51,11 @@ class Create extends Component
     // null = usar la mora auto-calculada; valor numérico = reemplaza la mora a cobrar.
     public $moraManual = null;
 
+    // Motivo del ajuste. Obligatorio cuando el override CAMBIA el monto: sin él
+    // el cobro no se confirma. Queda en `mora_overrides` + auditoría, para que
+    // toda rebaja de mora tenga responsable y explicación.
+    public ?string $moraMotivo = null;
+
     // Fecha "Calcular al" de las tarjetas de escenario (simulador de cotización).
     public string $fecsim = '';
 
@@ -271,6 +276,7 @@ class Create extends Component
             }
         } else {
             $this->moraManual = null;
+            $this->moraMotivo = null;
         }
     }
 
@@ -324,6 +330,11 @@ class Create extends Component
             'dias_atraso' => $diasddd, 'dias_final' => $diasFinal,
             'mora_rate' => $moraRate, 'total_mora' => $totMora, 'total_mora_calc' => $totMoraCalc,
             'mora_manual' => $usaManual, 'mora_acumulada' => $moraAcumulada,
+            // Ajuste REAL: el override cambió el monto. El campo viene precargado
+            // con la mora calculada, así que "manual" sin cambio no es un ajuste
+            // y no exige motivo.
+            'mora_ajustada' => $usaManual && abs($totMora - $totMoraCalc) > 0.005,
+            'mora_ajuste_diff' => round($totMora - $totMoraCalc, 2),
             'saldo_mora' => round($saldoPendiente + $totMora, 2),
             'saldo_mora_restante' => round($saldoRestante + $totMora, 2),
             'asesor_nombre' => $this->credit->client?->asesor?->name,
@@ -413,7 +424,14 @@ class Create extends Component
             'monto' => 'required|numeric|min:0',
             'fecpag' => 'required|date',
             'moraManual' => 'nullable|numeric|min:0',
+            'moraMotivo' => 'nullable|string|max:255',
         ]);
+
+        // Ajustar la mora a mano exige explicar por qué: es dinero que se deja
+        // de cobrar y hasta ahora no quedaba rastro de quién ni por qué.
+        if ($this->buildCalcs()['mora_ajustada'] && mb_strlen(trim((string) $this->moraMotivo)) < 5) {
+            return 'Indica el motivo del ajuste de la mora (mínimo 5 caracteres).';
+        }
 
         // Método de pago: si es depósito, valida sus campos y el voucher.
         if ($this->metodoPago === 'deposito') {
@@ -731,11 +749,13 @@ class Create extends Component
             // ─── 5) MORA AUTO-CALCULADA (totmoraapa) ───────────────────────
             // Se asocia a la PRIMERA cuota tocada hoy (origen del atraso) o, si no hay
             // ninguna, a la primera cuota vencida pendiente. Más intuitivo que el legacy.
+            $moraPaymentId = null;
             if ($totMora > 0.001 && ! $this->ckmora && ! $quitarMoras) {
                 $insTarget = $this->primeraCuotaParaMora($touchedThisPayment);
 
                 $moraDetalle = ($calcs['mora_manual'] ?? false) ? 'Mora de cuota' : "Mora Acumulada Dias : {$diasA}";
                 $p = $this->createMoraPayment('MORA', $totMora, $moraDetalle, $hora, $usuario, $userId, $hqId, $semodn);
+                $moraPaymentId = $p->id;
                 if ($insTarget) {
                     DB::table('credit_installments')->where('id', $insTarget->id)
                         ->increment('importe_mora', $totMora);
@@ -745,6 +765,48 @@ class Create extends Component
                         'created_at' => now(), 'updated_at' => now(),
                     ]);
                 }
+            }
+
+            // ─── 5b) BITÁCORA DEL AJUSTE DE MORA ───────────────────────────
+            // Se registra SIEMPRE que el override cambió el monto, incluso si lo
+            // dejó en 0 (mora perdonada entera): ahí no hay pago MORA que mirar,
+            // y es justo el caso que más importa poder auditar.
+            if ($calcs['mora_ajustada'] ?? false) {
+                $moraCalc = (float) $calcs['total_mora_calc'];
+                $motivo = trim((string) $this->moraMotivo);
+
+                DB::table('mora_overrides')->insert([
+                    'credit_id' => $this->credit->id,
+                    'payment_id' => $moraPaymentId,
+                    'mass_deletion_id' => $massHeaderId,
+                    'mora_calculada' => round($moraCalc, 2),
+                    'mora_cobrada' => round($totMora, 2),
+                    'diferencia' => round($totMora - $moraCalc, 2),
+                    'dias_atraso' => $diasA,
+                    'mora_diaria' => round((float) $calcs['mora_rate'], 2),
+                    'motivo' => $motivo,
+                    'fecha' => $this->fecpag,
+                    'user_id' => $userId,
+                    'usuario' => $usuario,
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+
+                // Dentro de la transacción a propósito: si el cobro se cae, el
+                // rastro del ajuste se cae con él (no queda auditoría fantasma).
+                Audit::log(
+                    'Ajustó la mora del crédito #'.$this->credit->id.': calculada S/ '
+                        .number_format($moraCalc, 2).' → cobrada S/ '.number_format($totMora, 2)
+                        .' ('.$motivo.')',
+                    $this->credit,
+                    [
+                        'mora_calculada' => round($moraCalc, 2),
+                        'mora_cobrada' => round($totMora, 2),
+                        'diferencia' => round($totMora - $moraCalc, 2),
+                        'dias_atraso' => $diasA,
+                        'motivo' => $motivo,
+                        'fecha' => $this->fecpag,
+                    ]
+                );
             }
 
             // ─── 7) MORA CAPITAL manual (impomora) ─────────────────────────
@@ -862,7 +924,7 @@ class Create extends Component
 
         $this->reset([
             'monto', 'obs', 'ckmora', 'cancel', 'impointe2', 'impomora',
-            'idpre', 'moraManual', 'cancelSinMora', 'cancelUltimaCuota', 'decisionTotal',
+            'idpre', 'moraManual', 'moraMotivo', 'cancelSinMora', 'cancelUltimaCuota', 'decisionTotal',
             'metodoPago', 'depBanco', 'depCuenta', 'depCuentaOtra', 'depCanal',
             'depFecha', 'voucherFoto', 'egresoCreadoId',
         ]);
@@ -1031,6 +1093,14 @@ class Create extends Component
             'cancelar_cap_int' => $this->deudaCalcs()['cancelar_cap_int'],
             'mora_pendiente' => round($totMora, 2),
             'reserva_mora' => $this->ckmora && ! $this->cancel && $totMora > 0.001,
+            // Ajuste manual de mora: se muestra en el modal para que quede a la
+            // vista de quien confirma (antes solo se veía el monto final).
+            'mora_ajustada' => $calcs['mora_ajustada'] ?? false,
+            'mora_calculada' => round((float) ($calcs['total_mora_calc'] ?? 0), 2),
+            // El valor ajustado en sí: NO usar 'mora' (esa es la del ticket, que
+            // puede llevar mora interés o quedar en 0 si hay reserva).
+            'mora_ajuste_final' => round($totMora, 2),
+            'mora_motivo' => trim((string) $this->moraMotivo),
             // Pago vía depósito: método para el ticket + egreso que se
             // generará (transparencia total en el modal de confirmación).
             'metodo' => $this->metodoPago === 'deposito' ? "{$this->depCanal} - {$this->depBanco}" : null,
