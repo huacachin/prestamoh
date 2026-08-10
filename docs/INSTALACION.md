@@ -1,7 +1,7 @@
 # Guía de Instalación · Sistema Préstamos Huacachin
 
 Documento de referencia para **instalar desde cero** y **re-importar datos legacy**.
-Última actualización: 2026-05-09.
+Última actualización: 2026-08-09.
 
 ---
 
@@ -14,7 +14,7 @@ Documento de referencia para **instalar desde cero** y **re-importar datos legac
 - [5. Estructura de tablas críticas](#5-estructura-de-tablas-críticas)
 - [6. Notas para el script de importación](#6-notas-para-el-script-de-importación)
 - [7. Troubleshooting](#7-troubleshooting)
-- [8. Refresh de producción (runbook droplet)](#8-refresh-de-producción-runbook-droplet--probado-2026-07-04)
+- [8. Refresh de producción desde el legacy (runbook)](#8-refresh-de-producción-desde-el-legacy-runbook--probado-2026-08-07-y-2026-08-09)
 
 ---
 
@@ -320,82 +320,228 @@ php artisan installation:check
 
 ---
 
-## 8. Refresh de producción (runbook droplet — probado 2026-07-04)
+## 8. Refresh de producción desde el legacy (runbook — probado 2026-08-07 y 2026-08-09)
 
-Ciclo completo para actualizar `laravel_prestamo` con datos frescos del legacy
-vivo. El legacy sigue registrando operación, así que este ciclo se repite en
-cada corte.
+Ciclo completo para regenerar `laravel_prestamo` con datos frescos del legacy y
+subirlo a producción. El legacy (`/var/www/prestamo`) **sigue vivo y el equipo
+registra en ambos sistemas**, así que este ciclo se repite en cada corte.
 
-### 8.1 Backup del legacy en el droplet (sin tumbar el servidor)
+> Todo el trabajo pesado se hace **en local**; producción solo se lee (dump) y
+> al final se reemplaza. Duración típica: 20–30 min.
+
+### Mapa rápido
+
+| Qué | Dónde |
+|---|---|
+| Servidor | `ssh huacachin-nuevo` (root, sudo sin password) |
+| App nueva | `/var/www/prestamoh` · dominio `prestamoh.huacachin.pe` |
+| Legacy (vivo) | `/var/www/prestamo` · imágenes en `sistema/{cliente_captura,62a3,62a}` |
+| BD local nueva | `laravel_prestamo` |
+| BD local legacy | `huacachi_prestamo` ← **con las dos `c`** (hay una `huacahi_prestamo` con typo, vacía y sin uso) |
+| MySQL local | `/Users/Shared/DBngin/mysql/8.0.33/bin`, `root` sin password |
+| Backups del servidor | `/var/backups/mysql` (diario 02:15, retención 30 días) |
+| Auth MySQL en el servidor | por socket como root: **sin contraseña en el comando** |
+
+### 8.1 Dump del legacy en producción y descarga
 
 ```bash
-# En el droplet (2 vCPU / 4 GB): snapshot consistente SIN bloquear tablas,
-# streaming (no acumula RAM), comprimido y con prioridad mínima.
-mkdir -p /root/backups
-nohup nice -n 19 ionice -c3 mysqldump \
-  --single-transaction --quick --routines --triggers --events \
-  -u USUARIO -p'CLAVE' huacachi_prestamo \
-  | gzip > /root/backups/legacy_$(date +%F).sql.gz &
+# En el servidor (~2 min, 442 MB comprimidos)
+ssh huacachin-nuevo 'mysqldump --single-transaction --quick --routines --triggers \
+  huacachi_prestamo 2>/dev/null | gzip -1 > /root/huacachi_prestamo_$(date +%F).sql.gz'
 
-# Verificar al terminar (2-5 min):
-gzip -t /root/backups/legacy_*.sql.gz && zcat /root/backups/legacy_*.sql.gz | tail -1
-# → debe decir "-- Dump completed on ..."
+# Descargar y verificar integridad
+scp huacachin-nuevo:/root/huacachi_prestamo_*.sql.gz ~/Desktop/
+gzip -t ~/Desktop/huacachi_prestamo_*.sql.gz && echo OK
 ```
 
-Descargar por SFTP (Termius) o `scp root@IP:/root/backups/legacy_*.sql.gz ~/Downloads/`.
+### 8.2 Restaurar el legacy en local
 
-### 8.2 Migración en local
+Recrear la base primero: si se importa encima de una existente quedan tablas
+viejas que el dump no toca.
 
 ```bash
-# 1. Importar el dump legacy en la BD local huacachi_prestamo
-zcat legacy_*.sql.gz | mysql -u root huacachi_prestamo
+export PATH="/Users/Shared/DBngin/mysql/8.0.33/bin:$PATH"
+mysql -uroot -h127.0.0.1 -e "DROP DATABASE IF EXISTS huacachi_prestamo;
+  CREATE DATABASE huacachi_prestamo CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+gunzip -c ~/Desktop/huacachi_prestamo_*.sql.gz | mysql -uroot -h127.0.0.1 huacachi_prestamo
 
-# 2. Regenerar laravel_prestamo local
-php artisan migrate                          # schema al día
-php artisan legacy:migrate --fresh           # confirma "yes" — varios minutos
-php artisan installation:run-all             # saneamiento completo
-php artisan legacy:migrate --step=attachments --fresh   # adjuntos (cliente_ima / 62a_ima2 / 62a_ima3)
-php artisan installation:check               # debe dar "✓ Sistema OK"
+# Sanity: ~39 tablas, y la fecha del último pago debe ser de ayer/hoy
+mysql -uroot -h127.0.0.1 huacachi_prestamo -e \
+  "SELECT COUNT(*) tablas FROM information_schema.tables WHERE table_schema='huacachi_prestamo';
+   SELECT COUNT(*) pagos, MAX(fechaentrada) ultimo FROM huaca_ingreso;"
 ```
 
-### 8.3 Subir el resultado a producción
+### 8.3 Reconstruir `laravel_prestamo` en local
+
+**Los cinco pasos son obligatorios y en este orden.** `legacy:migrate` por sí
+solo deja la base a medias.
 
 ```bash
-# Local: dump de laravel_prestamo ya migrada y saneada
-mysqldump --single-transaction --quick --routines --triggers \
-  -u root laravel_prestamo > laravel_prestamo.sql
-# Subir por SFTP a /root/backups/ del droplet
+cd ~/projects/prestamoh
 
-# En el droplet:
+# 1) Esquema + roles/permisos. El --seed NO es opcional: sin él no existen los
+#    roles y `installation:run-all` falla en migrate-roles.
+php artisan migrate:fresh --force --seed
+
+# 2) Datos del legacy (varios minutos, ~500k pagos)
+php artisan legacy:migrate
+
+# 3) SANEAMIENTO — obligatorio. Incluye mass-deletions:fix-amounts (el legacy
+#    guarda amount = cobrado + mora reservada; aquí se recalcula = SUM(details))
+#    y fix-autoincrement (sin él, el primer INSERT nuevo choca por duplicate key).
+php artisan installation:run-all --force
+
+# 4) Registros de adjuntos (los ARCHIVOS van aparte, ver 8.7)
+php artisan legacy:migrate --step=attachments --fresh
+
+# 5) WebSystem queda sin rol tras migrate-roles → desactivar
+mysql -uroot -h127.0.0.1 laravel_prestamo \
+  -e "UPDATE users SET status='inactive' WHERE username='admin' AND name LIKE '%WebSystem%';"
+
+# Verificación final: DEBE decir "✓ Sistema OK — sin problemas detectados."
+php artisan installation:check
+```
+
+### 8.4 Validar antes de subir nada
+
+```bash
+# a) Conciliación día a día contra el legacy (lo más importante)
+php artisan reports:comparar-legacy --desde=2026-08-03 --hasta=2026-08-08
+# → "✓ TODO CUADRA — sin diferencias entre legacy y el sistema nuevo."
+
+# b) Conteos legacy ↔ migrado
+#    huaca_persona→clients, huaca_cab_cuentacorriente→credits,
+#    huaca_cab_masivo→mass_deletions, huaca_diasmora→dias_mora,
+#    huaca_moraacum→mora_acumulada, huaca_caja→cash_openings
+```
+
+**Diferencias normales** (no son error): ~17 filas de ~1.4 M que la migración
+salta a propósito — cuotas y detalles de masivo cuyo padre no existe, y 1
+ingreso inválido. `credit_installments` Δ2 y `mass_deletion_details` Δ15 es lo
+esperado. `huaca_ingreso` se reparte en `payments` (modo=CREDITO) + `incomes`
+(Fijos/Otros); los `caja=3` son espejos, no filas nuevas.
+
+### 8.5 Exportar el resultado
+
+```bash
+mysqldump -uroot -h127.0.0.1 --single-transaction --quick --routines --triggers \
+  laravel_prestamo | gzip -1 > ~/Desktop/laravel_prestamo_$(date +%F).sql.gz
+gzip -t ~/Desktop/laravel_prestamo_*.sql.gz && echo OK
+```
+
+### 8.6 Subir a producción
+
+> ⚠️ **Dos comprobaciones antes de tocar nada.** Reemplazar la BD es
+> destructivo: se pierde todo lo que producción tenga y la copia local no.
+
+**(a) ¿Producción tiene operación posterior al corte del legacy?**
+
+```bash
+ssh huacachin-nuevo 'cd /var/www/prestamoh && php artisan tinker --execute="
+echo DB::table(\"payments\")->count().\" | max fecha: \".DB::table(\"payments\")->max(\"fecha\").PHP_EOL;
+echo \"payments >= HOY: \".DB::table(\"payments\")->where(\"fecha\",\">=\",\"AAAA-MM-DD\")->count().PHP_EOL;"'
+```
+La copia local debe ser **superset** de producción. Si prod tiene pagos que la
+copia no trae, **parar**: habría que reconciliar primero.
+
+**(b) ¿Qué tablas NO vienen del legacy y prod tiene más completas?**
+
+Éstas se pierden si no se preservan. Al 2026-08-09 son:
+
+| Tabla | Preservar | Por qué |
+|---|---|---|
+| `activity_log` | **SÍ** | Auditoría (`Audit::log`) — historia real, no reproducible |
+| `cache_morosidad_diaria` | **SÍ** | Snapshots diarios de morosidad |
+| `mora_overrides` | **SÍ** si tiene filas | Bitácora de ajustes de mora |
+| `sessions`, `cache` | No | Desechables (se vuelven a loguear) |
+
+Detectarlas automáticamente: comparar `COUNT(*)` de cada tabla local vs prod y
+listar aquellas donde prod > local.
+
+```bash
+ssh huacachin-nuevo 'set -e
+# 1) Backup completo
+F=/var/backups/mysql/laravel_prestamo_PRE-REPLACE_$(date +%F_%H%M).sql.gz
+mysqldump --single-transaction --quick --routines --triggers laravel_prestamo | gzip -1 > "$F"
+gzip -t "$F" && ls -lh "$F"
+# 2) Extraer las tablas a preservar
+mysqldump --single-transaction --quick laravel_prestamo \
+  activity_log cache_morosidad_diaria mora_overrides | gzip -1 > /root/preservar_$(date +%F).sql.gz'
+
+# 3) Subir el dump nuevo
+scp ~/Desktop/laravel_prestamo_*.sql.gz huacachin-nuevo:/root/
+
+# 4) Reemplazo
+ssh huacachin-nuevo 'set -e
 cd /var/www/prestamoh
-php artisan down                             # mantenimiento
-mysql -u USUARIO -p'CLAVE' -e "DROP DATABASE laravel_prestamo; CREATE DATABASE laravel_prestamo;"
-nohup nice -n 19 sh -c "mysql -u USUARIO -p'CLAVE' laravel_prestamo < /root/backups/laravel_prestamo.sql" > /root/backups/import.log 2>&1 &
-# vigilar: cat /root/backups/import.log (vacío = OK); tarda 5-15 min
-
-# Post-importación:
-git pull
-php artisan migrate --force                  # "Nothing to migrate" esperado
+php artisan down --render="errors::503"
+mysql -e "DROP DATABASE laravel_prestamo;
+  CREATE DATABASE laravel_prestamo CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+gunzip -c /root/laravel_prestamo_*.sql.gz | mysql laravel_prestamo
+gunzip -c /root/preservar_*.sql.gz   | mysql laravel_prestamo   # restaura auditoría
+php artisan migrate --force            # "Nothing to migrate" esperado
 php artisan permission:cache-reset
-php artisan optimize:clear
-php artisan installation:check               # "✓ Sistema OK"
-php artisan up
+php artisan optimize:clear && php artisan optimize
+php artisan installation:check         # "✓ Sistema OK"
+php artisan up'
+
+# 5) Comprobar que responde
+ssh huacachin-nuevo 'curl -s -o /dev/null -w "%{http_code}\n" \
+  --resolve prestamoh.huacachin.pe:443:127.0.0.1 https://prestamoh.huacachin.pe/login'   # 200
 ```
 
-### 8.4 Validación y avisos
+### 8.7 Migrar las imágenes del legacy
 
-- **Conteos cruzados** local vs producción (deben ser idénticos):
-  ```sql
-  SELECT (SELECT COUNT(*) FROM credits) creditos, (SELECT COUNT(*) FROM payments) pagos,
-         (SELECT COUNT(*) FROM credit_installments) cuotas, (SELECT COUNT(*) FROM clients) clientes;
-  ```
-- **Contraseñas**: `legacy:migrate` recrea los usuarios con la clave del legacy
-  (`obs3`) o `password123` — avisar al equipo.
-- **Sesiones**: se invalidan; todos deben volver a loguearse.
-- **WebSystem** (username `admin`, cuenta web legacy): queda sin rol tras
-  `installation:migrate-roles`; desactivarla (`status = 'inactive'`).
-- **Datos locales manuales se pierden** con el `--fresh` (capital de clientes,
-  pagos de prueba): son reemplazados por la data real del legacy.
+Los pasos anteriores migran los **registros** de adjuntos; los **archivos**
+físicos van aparte. Se hace **directamente en el servidor**, porque el legacy
+vive en la misma máquina. El comando solo copia (nunca borra) y salta lo que ya
+existe, así que es seguro repetirlo.
+
+```bash
+ssh huacachin-nuevo 'cd /var/www/prestamoh
+php artisan legacy:copy-attachment-files \
+  --clients=/var/www/prestamo/sistema/cliente_captura \
+  --incomes=/var/www/prestamo/sistema/62a3 \
+  --expenses=/var/www/prestamo/sistema/62a --dry-run    # revisar primero
+
+php artisan legacy:copy-attachment-files \
+  --clients=/var/www/prestamo/sistema/cliente_captura \
+  --incomes=/var/www/prestamo/sistema/62a3 \
+  --expenses=/var/www/prestamo/sistema/62a
+
+chown -R www-data:www-data storage/app/public'          # el comando corre como root
+```
+
+Los thumbnails salen de la subcarpeta `pe/` de cada origen. Unos ~33 registros
+apuntan a archivos que ya no existen en el legacy (originales perdidos hace
+tiempo): se reportan como "sin archivo en el legacy" y la galería cae elegante.
+Los nombres con espacios (WhatsApp) sirven bien: el navegador los url-encodea.
+
+### 8.8 Limpieza
+
+```bash
+ssh huacachin-nuevo 'rm -f /root/huacachi_prestamo_*.sql.gz /root/laravel_prestamo_*.sql.gz /root/preservar_*.sql.gz'
+```
+Los backups oficiales quedan en `/var/backups/mysql` (incluido el `PRE-REPLACE`,
+que es el rollback directo).
+
+### 8.9 Avisos al equipo tras el refresh
+
+- **Sesiones invalidadas**: todos vuelven a iniciar sesión.
+- **Contraseñas**: quedan las del legacy (columna `obs3`). Si alguien la había
+  cambiado solo en el sistema nuevo, vuelve a la del legacy.
+- **WebSystem** (`admin`) queda desactivado, por diseño.
+
+### 8.10 Errores conocidos (ya pisados)
+
+| Síntoma | Causa | Solución |
+|---|---|---|
+| `installation:run-all` falla en migrate-roles: "Faltan roles destino" | Se corrió `migrate:fresh` **sin** `--seed` | `db:seed --class=PermissionCatalogSeeder\|RoleSetupSeeder\|RolePermissionSeeder --force`. **No** repetir `migrate:fresh` (borraría los datos) |
+| Health check: "1 usuarios activos sin rol" | WebSystem (`admin`) | Desactivarlo (paso 8.3.5) |
+| `legacy:migrate` no encuentra datos | Se importó en `huacahi_prestamo` (typo) en vez de `huacachi_prestamo` | Revisar `DB_LEGACY_DATABASE` del `.env` |
+| Se perdió la auditoría tras subir a prod | No se preservó `activity_log` | Paso 8.6(b) |
+| `cash_openings` no cuadra con `huaca_apertura` | `huaca_apertura` es de km/placa (herencia TaxiVan) | La fuente real es `huaca_caja` |
+| `composer install` falla en el servidor | `composer.lock` resuelve `symfony/console` v8 | PHP debe ser **8.4** |
 
 ---
 
@@ -403,7 +549,7 @@ php artisan up
 
 **Instalación nueva**: 8 pasos en sección 2.
 **Re-importación**: limpiar (3.1) → importar (3.2) → `php artisan installation:run-all` → health check (3.4).
-**Refresh de producción**: backup legacy (8.1) → migrar local (8.2) → subir e importar en droplet (8.3) → validar (8.4).
+**Refresh de producción desde el legacy**: dump legacy (8.1) → restaurar local (8.2) → reconstruir con los 5 pasos (8.3) → validar (8.4) → exportar (8.5) → subir preservando `activity_log` (8.6) → imágenes (8.7) → limpiar (8.8).
 
 **Comando único después de cualquier importación masiva**:
 
