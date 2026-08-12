@@ -171,6 +171,44 @@ class CompararLegacyOperacionesTest extends TestCase
             ->assertExitCode(1);
     }
 
+    public function test_con_interes_primero_el_desglose_es_informativo(): void
+    {
+        // Regla vigente (12/08/2026): el desglose C/I difiere del legacy POR
+        // DISEÑO — se informa sin contar como issue y el comando sale en 0.
+        config(['prestamos.imputacion' => 'interes']);
+
+        $fecha = '2030-01-14';
+        $cid = $this->escenarioNuevo($fecha, cap: 413.34, int: 106.66, ops: [520]);
+        $this->escenarioLegacy($cid, $fecha, cap: 420.00, int: 100.00, ops: [520]);
+
+        $this->artisan('reports:comparar-legacy', ['--fecha' => $fecha])
+            ->expectsOutputToContain('esperado: regla interés-primero activa en el nuevo')
+            ->assertExitCode(0);
+    }
+
+    public function test_con_interes_primero_la_mora_distinta_sigue_siendo_issue(): void
+    {
+        // La mora no depende de la regla de imputación: si difiere, es un
+        // problema real y debe tumbar la conciliación.
+        config(['prestamos.imputacion' => 'interes']);
+
+        $fecha = '2030-01-15';
+        // Mismo total (540) en ambos, pero el legacy trae 40 de mora que el
+        // nuevo no tiene: eso NO es la regla de imputación, es un issue real.
+        $cid = $this->escenarioNuevo($fecha, cap: 440.00, int: 100.00, ops: [540]);
+        // Lado legacy con 20 de MORA (mismo total 540): desglose con mora distinta.
+        $this->escenarioLegacy($cid, $fecha, cap: 400.00, int: 100.00, ops: [540]);
+        DB::connection('legacy')->table('ingreso')->insert([
+            'modo' => 'CREDITO', 'documento' => 'MORA', 'nroentrada' => (string) $cid,
+            'fechaentrada' => $fecha, 'totalgeneral' => 40.00,
+            'detalle' => "Pago : {$cid}",
+        ]);
+
+        $this->artisan('reports:comparar-legacy', ['--fecha' => $fecha])
+            ->expectsOutputToContain('DESGLOSE DISTINTO')
+            ->assertExitCode(1);
+    }
+
     public function test_sin_diferencias_no_anota_nada(): void
     {
         // Digitación idéntica y desglose idéntico → TODO CUADRA, sin anotaciones.
