@@ -153,14 +153,60 @@ class ReportsCompararLegacy extends Command
             if (abs($dTot) > 0.005) {
                 $this->diferencia(sprintf('crédito %d: MONTO DISTINTO — legacy S/ %s vs nuevo S/ %s (diff %s)',
                     $cid, number_format($sumL($l), 2), number_format($sumL($n), 2), number_format($dTot, 2)));
+                $this->explicarOperaciones((int) $cid, $fecha, totalCuadra: false);
             } elseif (abs($dCap) > 0.005 || abs($dInt) > 0.005 || abs($dMora) > 0.005) {
                 $this->diferencia(sprintf('crédito %d: DESGLOSE DISTINTO (total igual S/ %s) — cap L/N %s/%s · int L/N %s/%s · mora L/N %s/%s',
                     $cid, number_format($sumL($l), 2),
                     number_format($l->cap, 2), number_format($n->cap, 2),
                     number_format($l->info, 2), number_format($n->info, 2),
                     number_format($l->mora, 2), number_format($n->mora, 2)));
+                $this->explicarOperaciones((int) $cid, $fecha, totalCuadra: true);
             }
         }
+    }
+
+    /**
+     * Anota la CAUSA probable de la diferencia comparando las OPERACIONES del
+     * día (huaca_cab_masivo vs mass_deletions). La etiqueta capital/interés del
+     * motor depende de cómo se parte y ordena el cobro — regla del sobrante,
+     * documentada el 24/07: 1 op → residuo a CAPITAL de la cuota siguiente;
+     * 2ª op sobre cuota con capital cubierto → todo a INTERÉS. Si las
+     * operaciones difieren entre sistemas, la discrepancia es de DIGITACIÓN,
+     * no del motor (caso 29282/29163 del 10/08). Si son idénticas y aun así
+     * difiere, eso sí apunta al motor. Línea informativa: no suma issues.
+     */
+    private function explicarOperaciones(int $cid, string $fecha, bool $totalCuadra): void
+    {
+        $fmt = fn ($ops) => $ops->isEmpty() ? '—' : $ops->implode(' + ');
+
+        $leg = DB::connection('legacy')->table('cab_masivo')
+            ->where('codpres', $cid)->where('fecha', $fecha)
+            ->orderBy('hora')->pluck('monto')
+            ->map(fn ($v) => number_format((float) $v, 2))->values();
+        $nue = DB::table('mass_deletions')
+            ->where('credit_id', $cid)->where('date', $fecha)
+            ->orderBy('time')->pluck('amount')
+            ->map(fn ($v) => number_format((float) $v, 2))->values();
+
+        if ($leg->all() === $nue->all()) {
+            $this->line(sprintf(
+                '      ↳ operaciones IDÉNTICAS en ambos sistemas (%s) — la causa NO es la digitación: revisar el motor con payments:backtest-legacy --credit=%d',
+                $fmt($leg), $cid));
+
+            return;
+        }
+
+        $mismoOtroOrden = $leg->sort()->values()->all() === $nue->sort()->values()->all();
+
+        $this->line(sprintf(
+            '      ↳ CAUSA: OPERACIONES DISTINTAS — legacy %d op(s): %s · nuevo %d op(s): %s%s',
+            $leg->count(), $fmt($leg), $nue->count(), $fmt($nue),
+            $mismoOtroOrden ? ' (mismos montos, distinto ORDEN)' : ''));
+
+        if ($totalCuadra) {
+            $this->line('        La etiqueta C/I depende de cómo se digita el cobro (regla del sobrante); el total del día y la deuda cuadran.');
+        }
+        $this->line('        Regla operativa: digitar el mismo cobro con las mismas operaciones, montos y orden en ambos sistemas.');
     }
 
     // ─── 2-4) Movimientos de caja (gastos/ingresos) ────────────────────
