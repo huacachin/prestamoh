@@ -76,6 +76,7 @@ class ReportsCompararLegacy extends Command
         $this->line('══════ CONCILIACIÓN '.$fecha.' ══════');
 
         $this->compararPagos($fecha);
+        $this->compararDeuda($fecha);
         $this->compararMovimientos(
             'GASTOS CAJA 1',
             $this->legacyRows('entrada', $fecha, ['Fijos', 'Otros']),
@@ -223,6 +224,73 @@ class ReportsCompararLegacy extends Command
         $this->line('        Regla operativa: digitar el mismo cobro con las mismas operaciones, montos y orden en ambos sistemas.');
     }
 
+    /**
+     * DEUDA de los créditos con movimiento en el día: el invariante que debe
+     * sobrevivir a cualquier regla de imputación. Con interés-primero las
+     * ETIQUETAS C/I divergen del legacy por diseño, pero el saldo pendiente
+     * (capital + interés del cronograma) de cada cliente tiene que ser
+     * IDÉNTICO en ambos sistemas — si difiere, hay un problema real (pago mal
+     * digitado, cronograma distinto, reversa a medias).
+     *
+     * El excedente (cuota uniforme) solo existe en el nuevo: se compara
+     * cap+int sin excedente, y a los créditos uniformes se les tolera el
+     * redondeo del esquema (calibrado sobre la cartera real: diffs ≤ 0.02).
+     */
+    private function compararDeuda(string $fecha): void
+    {
+        $cids = DB::connection('legacy')->table('ingreso')
+            ->where('fechaentrada', $fecha)->where('modo', 'CREDITO')
+            ->distinct()->pluck('nroentrada')
+            ->map(fn ($v) => (int) $v)
+            ->merge(
+                DB::table('payments')->where('fecha', $fecha)->where('modo', 'CREDITO')
+                    ->distinct()->pluck('credit_id')->map(fn ($v) => (int) $v)
+            )
+            ->unique()->sort()->values();
+
+        if ($cids->isEmpty()) {
+            return;
+        }
+
+        $leg = DB::connection('legacy')->table('det_cuentacorriente')
+            ->whereIn('idcab', $cids)->groupBy('idcab')
+            ->selectRaw('idcab, ROUND(SUM(importecuota + importeinteres - importeapli - aplicado), 2) saldo')
+            ->pluck('saldo', 'idcab');
+
+        $nue = DB::table('credit_installments')
+            ->whereIn('credit_id', $cids)->groupBy('credit_id')
+            ->selectRaw('credit_id,
+                ROUND(SUM(importe_cuota + importe_interes - importe_aplicado - interes_aplicado), 2) saldo,
+                ROUND(SUM(importe_excedente), 2) exc')
+            ->get()->keyBy('credit_id');
+
+        $ok = 0;
+        foreach ($cids as $cid) {
+            $saldoL = (float) ($leg[$cid] ?? 0.0);
+            $saldoN = (float) ($nue[$cid]->saldo ?? 0.0);
+            $esUniforme = (float) ($nue[$cid]->exc ?? 0.0) > 0.001;
+            $diff = round($saldoN - $saldoL, 2);
+
+            // Uniformes: el redondeo a 0.10 por cuota deja céntimos legítimos.
+            $tolerancia = $esUniforme ? 1.00 : 0.01;
+
+            if (abs($diff) <= $tolerancia) {
+                $ok++;
+                if ($esUniforme && abs($diff) > 0.005) {
+                    $this->line(sprintf('  · crédito %d: deuda con diferencia de céntimos (L %s / N %s) — redondeo de cuota uniforme, dentro de tolerancia',
+                        $cid, number_format($saldoL, 2), number_format($saldoN, 2)));
+                }
+
+                continue;
+            }
+
+            $this->diferencia(sprintf('crédito %d: DEUDA DISTINTA — saldo legacy S/ %s vs nuevo S/ %s (diff %s). Revisar pagos/cronograma del crédito.',
+                $cid, number_format($saldoL, 2), number_format($saldoN, 2), number_format($diff, 2)));
+        }
+
+        $this->line(sprintf('─ DEUDA (créditos con movimiento): %d/%d con saldo idéntico en ambos sistemas', $ok, $cids->count()));
+    }
+
     // ─── 2-4) Movimientos de caja (gastos/ingresos) ────────────────────
 
     /** @return Collection<int, object{modo:string,total:float,detalle:string}> */
@@ -282,10 +350,13 @@ class ReportsCompararLegacy extends Command
 
     private function compararCreditos(string $fecha): void
     {
+        // No solo el importe: una tasa, plazo o tipo digitado distinto genera
+        // cronogramas divergentes y descuadres eternos que nadie sabría
+        // rastrear. Se comparan las CONDICIONES completas del crédito.
         $leg = DB::connection('legacy')->table('cab_cuentacorriente')
-            ->where('fechaactua', $fecha)->get(['id', 'importe'])->keyBy('id');
+            ->where('fechaactua', $fecha)->get(['id', 'importe', 'interes', 'cuotas', 'tipoplani'])->keyBy('id');
         $nue = DB::table('credits')
-            ->whereDate('fecha_actualizacion', $fecha)->get(['id', 'importe'])->keyBy('id');
+            ->whereDate('fecha_actualizacion', $fecha)->get(['id', 'importe', 'interes', 'cuotas', 'tipo_planilla'])->keyBy('id');
 
         $this->line(sprintf('─ CRÉDITOS OTORGADOS: legacy %d · S/ %s   |   nuevo %d · S/ %s',
             $leg->count(), number_format($leg->sum('importe'), 2),
@@ -296,11 +367,33 @@ class ReportsCompararLegacy extends Command
             $n = $nue->get($id);
             if ($l && ! $n) {
                 $this->diferencia(sprintf('crédito %d: FALTA EN NUEVO — importe S/ %s', $id, number_format($l->importe, 2)));
-            } elseif ($n && ! $l) {
+
+                continue;
+            }
+            if ($n && ! $l) {
                 $this->diferencia(sprintf('crédito %d: FALTA EN LEGACY — importe S/ %s', $id, number_format($n->importe, 2)));
-            } elseif (abs((float) $l->importe - (float) $n->importe) > 0.005) {
+
+                continue;
+            }
+
+            if (abs((float) $l->importe - (float) $n->importe) > 0.005) {
                 $this->diferencia(sprintf('crédito %d: IMPORTE DISTINTO — legacy S/ %s vs nuevo S/ %s',
                     $id, number_format($l->importe, 2), number_format($n->importe, 2)));
+            }
+
+            $malas = [];
+            if (abs((float) $l->interes - (float) $n->interes) > 0.0001) {
+                $malas[] = sprintf('tasa L/N %s%%/%s%%', rtrim(rtrim(number_format((float) $l->interes, 4), '0'), '.'), rtrim(rtrim(number_format((float) $n->interes, 4), '0'), '.'));
+            }
+            if ((int) $l->cuotas !== (int) $n->cuotas) {
+                $malas[] = sprintf('cuotas L/N %d/%d', (int) $l->cuotas, (int) $n->cuotas);
+            }
+            if ((int) $l->tipoplani !== (int) $n->tipo_planilla) {
+                $malas[] = sprintf('tipo L/N %d/%d', (int) $l->tipoplani, (int) $n->tipo_planilla);
+            }
+            if ($malas !== []) {
+                $this->diferencia(sprintf('crédito %d: CONDICIONES DISTINTAS — %s. Corregir ANTES del primer cobro o los cronogramas divergen.',
+                    $id, implode(' · ', $malas)));
             }
         }
     }

@@ -71,7 +71,20 @@ class CompararLegacyOperacionesTest extends TestCase
             $schema->create('cab_cuentacorriente', function ($t) {
                 $t->id();
                 $t->decimal('importe', 12, 2)->default(0);
+                $t->decimal('interes', 8, 2)->default(0);
+                $t->integer('cuotas')->default(1);
+                $t->integer('tipoplani')->default(1);
                 $t->date('fechaactua')->nullable();
+            });
+        }
+        if (! $schema->hasTable('det_cuentacorriente')) {
+            $schema->create('det_cuentacorriente', function ($t) {
+                $t->id();
+                $t->unsignedBigInteger('idcab');
+                $t->decimal('importecuota', 12, 2)->default(0);
+                $t->decimal('importeinteres', 12, 2)->default(0);
+                $t->decimal('importeapli', 12, 2)->default(0);
+                $t->decimal('aplicado', 12, 2)->default(0);
             });
         }
         if (! $schema->hasTable('cab_masivo')) {
@@ -206,6 +219,68 @@ class CompararLegacyOperacionesTest extends TestCase
 
         $this->artisan('reports:comparar-legacy', ['--fecha' => $fecha])
             ->expectsOutputToContain('DESGLOSE DISTINTO')
+            ->assertExitCode(1);
+    }
+
+    /** Cronogramas con el saldo indicado en cada sistema para el crédito dado. */
+    private function conCronogramas(int $creditId, float $saldoNuevo, float $saldoLegacy): void
+    {
+        DB::table('credit_installments')->insert([
+            'credit_id' => $creditId, 'num_cuota' => 1, 'fecha_vencimiento' => '2030-06-01',
+            'importe_cuota' => $saldoNuevo, 'importe_interes' => 0, 'pagado' => 0,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::connection('legacy')->table('det_cuentacorriente')->insert([
+            'idcab' => $creditId, 'importecuota' => $saldoLegacy, 'importeinteres' => 0,
+            'importeapli' => 0, 'aplicado' => 0,
+        ]);
+    }
+
+    public function test_deuda_identica_verifica_y_pasa(): void
+    {
+        $fecha = '2030-02-10';
+        $cid = $this->escenarioNuevo($fecha, cap: 420.00, int: 100.00, ops: [520]);
+        $this->escenarioLegacy($cid, $fecha, cap: 420.00, int: 100.00, ops: [520]);
+        $this->conCronogramas($cid, saldoNuevo: 480.00, saldoLegacy: 480.00);
+
+        $this->artisan('reports:comparar-legacy', ['--fecha' => $fecha])
+            ->expectsOutputToContain('1/1 con saldo idéntico en ambos sistemas')
+            ->assertExitCode(0);
+    }
+
+    public function test_deuda_distinta_es_issue_aunque_la_caja_cuadre(): void
+    {
+        // El invariante del mundo interés-primero: las etiquetas pueden diferir,
+        // la DEUDA jamás. Caja idéntica pero saldos 480 vs 500 → issue.
+        $fecha = '2030-02-11';
+        $cid = $this->escenarioNuevo($fecha, cap: 420.00, int: 100.00, ops: [520]);
+        $this->escenarioLegacy($cid, $fecha, cap: 420.00, int: 100.00, ops: [520]);
+        $this->conCronogramas($cid, saldoNuevo: 480.00, saldoLegacy: 500.00);
+
+        $this->artisan('reports:comparar-legacy', ['--fecha' => $fecha])
+            ->expectsOutputToContain('DEUDA DISTINTA — saldo legacy S/ 500.00 vs nuevo S/ 480.00')
+            ->assertExitCode(1);
+    }
+
+    public function test_condiciones_del_credito_distintas_es_issue(): void
+    {
+        // Mismo importe pero tasa digitada distinta: sin este check, el error
+        // pasaba invisible y los cronogramas divergían para siempre.
+        $fecha = '2030-02-12';
+        $cid = $this->escenarioNuevo($fecha, cap: 100.00, int: 0.00, ops: [100]);
+        $this->escenarioLegacy($cid, $fecha, cap: 100.00, int: 0.00, ops: [100]);
+        $this->conCronogramas($cid, 0, 0);
+
+        DB::table('credits')->where('id', $cid)->update([
+            'fecha_actualizacion' => $fecha, 'importe' => 5000, 'interes' => 12, 'cuotas' => 24, 'tipo_planilla' => 1,
+        ]);
+        DB::connection('legacy')->table('cab_cuentacorriente')->insert([
+            'id' => $cid, 'importe' => 5000, 'interes' => 10, 'cuotas' => 24, 'tipoplani' => 1,
+            'fechaactua' => $fecha,
+        ]);
+
+        $this->artisan('reports:comparar-legacy', ['--fecha' => $fecha])
+            ->expectsOutputToContain('CONDICIONES DISTINTAS — tasa L/N 10%/12%')
             ->assertExitCode(1);
     }
 
