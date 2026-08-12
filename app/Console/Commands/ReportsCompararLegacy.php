@@ -155,6 +155,20 @@ class ReportsCompararLegacy extends Command
                     $cid, number_format($sumL($l), 2), number_format($sumL($n), 2), number_format($dTot, 2)));
                 $this->explicarOperaciones((int) $cid, $fecha, totalCuadra: false);
             } elseif (abs($dCap) > 0.005 || abs($dInt) > 0.005 || abs($dMora) > 0.005) {
+                // Con la regla interés-primero activa (12/08/2026), el desglose
+                // C/I difiere del legacy POR DISEÑO en los pagos parciales: el
+                // nuevo imputa interés primero y el legacy mantiene sus ramas.
+                // Se informa sin contar como issue — el veredicto es el total.
+                // La mora sí sigue siendo issue: esa no depende de la regla.
+                if (config('prestamos.imputacion') === 'interes' && abs($dMora) <= 0.005) {
+                    $this->line(sprintf('  · crédito %d: desglose C/I distinto (total igual S/ %s) — cap L/N %s/%s · int L/N %s/%s — esperado: regla interés-primero activa en el nuevo',
+                        $cid, number_format($sumL($l), 2),
+                        number_format($l->cap, 2), number_format($n->cap, 2),
+                        number_format($l->info, 2), number_format($n->info, 2)));
+
+                    continue;
+                }
+
                 $this->diferencia(sprintf('crédito %d: DESGLOSE DISTINTO (total igual S/ %s) — cap L/N %s/%s · int L/N %s/%s · mora L/N %s/%s',
                     $cid, number_format($sumL($l), 2),
                     number_format($l->cap, 2), number_format($n->cap, 2),

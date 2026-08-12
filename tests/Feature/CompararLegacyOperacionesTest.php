@@ -31,6 +31,12 @@ class CompararLegacyOperacionesTest extends TestCase
         config(['database.connections.legacy.database' => config('database.connections.mysql.database')]);
         DB::purge('legacy');
 
+        // Estos tests prueban la anotación de CAUSA del modo legacy (cuando el
+        // desglose C/I aún era issue). Con la regla interés-primero vigente por
+        // defecto, ese desglose pasa a ser informativo — se prueba aparte en
+        // ImputacionInteresPrimeroTest.
+        config(['prestamos.imputacion' => 'legacy']);
+
         $this->crearTablasLegacy();
     }
 

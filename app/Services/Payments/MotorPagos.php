@@ -34,6 +34,7 @@ final class MotorPagos
     public function __construct(
         private readonly LegacyEngine $legacy,
         private readonly DistribucionPago $uniforme,
+        private readonly ImputacionInteresPrimero $interesPrimero,
     ) {}
 
     /**
@@ -50,9 +51,41 @@ final class MotorPagos
     {
         $unpaid = is_array($unpaid) ? $unpaid : iterator_to_array($unpaid, false);
 
+        // Regla vigente (12/08/2026): INTERÉS PRIMERO para TODOS los créditos.
+        // Decisión de negocio consciente de que el desglose C/I deja de cuadrar
+        // con el legacy en parciales. Rollback: PRESTAMOS_IMPUTACION=legacy.
+        // El backtest no pasa por aquí (inyecta LegacyEngine directo).
+        if (config('prestamos.imputacion') === 'interes') {
+            return $this->viaInteresPrimero($monto, $unpaid);
+        }
+
         return $esCuotaUniforme
             ? $this->viaUniforme($monto, $unpaid, $esMensualUnaCuota)
             : $this->viaLegacy($monto, $unpaid, $esMensualUnaCuota);
+    }
+
+    /** Interés primero: caja y aplicación son la MISMA verdad (se deriva una de otra). */
+    private function viaInteresPrimero(float $monto, array $unpaid): array
+    {
+        $d = $this->interesPrimero->distribuir($monto, $unpaid);
+
+        $caja = [];
+        foreach ($d['rows'] as $r) {
+            $num = (int) $r['ins']->num_cuota;
+            // Interés antes que capital también en las filas de caja: es el
+            // orden real de imputación y el que verán tickets y reportes.
+            if ($r['int'] > 0.001) {
+                $caja[] = ['num' => $num, 'tipo' => 'I', 'monto' => $r['int']];
+            }
+            if ($r['cap'] > 0.001) {
+                $caja[] = ['num' => $num, 'tipo' => 'C', 'monto' => $r['cap']];
+            }
+            if ($r['exc'] > 0.001) {
+                $caja[] = ['num' => $num, 'tipo' => 'E', 'monto' => $r['exc']];
+            }
+        }
+
+        return $d + ['caja' => $caja];
     }
 
     /** Cuota uniforme: caja y aplicación son idénticas (comportamiento actual). */
