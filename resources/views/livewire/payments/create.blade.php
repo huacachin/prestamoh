@@ -1031,10 +1031,12 @@
                                                 <i class="ti ti-brand-whatsapp"></i>
                                             </a>
                                         @endif
-                                        <a href="{{ $rec['pdf'] }}"
+                                        {{-- Abre el recibo en línea (el mismo link firmado que
+                                             se manda por WhatsApp) en vez de descargar el PDF --}}
+                                        <a href="{{ $rec['ver'] }}" target="_blank" rel="noopener"
                                            class="btn btn-sm btn-secondary py-0 px-1"
-                                           title="Descargar recibo en PDF">
-                                            <i class="ti ti-file-download"></i>
+                                           title="Ver recibo">
+                                            <i class="ti ti-eye"></i>
                                         </a>
                                     @endif
                                 </td>
