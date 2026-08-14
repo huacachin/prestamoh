@@ -1119,6 +1119,20 @@
                                 <td></td>
                                 <td></td>
                             </tr>
+                            {{-- Interés pendiente del cronograma: interés total − pagado --}}
+                            @php
+                                $tIntPend = round($tInt - $tPagInt, 2);
+                                $tipIntPend = 'Interés '.number_format($tInt, 2).' − pagado '.number_format($tPagInt, 2).' = '.number_format($tIntPend, 2);
+                            @endphp
+                            <tr class="fw-bold" style="background:#f0f0f0;">
+                                <td colspan="{{ $tieneExc ? 8 : 7 }}" class="text-end text-danger"
+                                    data-bs-toggle="tooltip" title="{{ $tipIntPend }}" style="cursor:help;">Interés pendiente</td>
+                                <td class="text-end text-danger" data-bs-toggle="tooltip" title="{{ $tipIntPend }}" style="cursor:help;">{{ number_format($tIntPend, 2) }}</td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                            </tr>
                             {{-- La mora pagada vive en la columna Mora Pag. (por cuota).
                                  Si algún pago MORA quedó sin cuota asignada (caja > suma
                                  de cuotas), el residuo sale aquí para cuadrar con Caja 1. --}}

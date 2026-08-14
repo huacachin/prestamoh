@@ -330,6 +330,22 @@
                                 <td></td>
                                 <td></td>
                             </tr>
+                            {{-- Interés pendiente total: interés del cronograma − pagado --}}
+                            @php
+                                $intPendienteTotal = round($totals['interes'] - $tPagInt, 2);
+                                $tipIntPend = 'Interés '.number_format($totals['interes'], 2).' − pagado '.number_format($tPagInt, 2).' = '.number_format($intPendienteTotal, 2);
+                            @endphp
+                            <tr style="background-color:#f0f0f0; font-weight:500;">
+                                <td colspan="{{ $tieneExc ? 8 : 7 }}" class="text-center" style="color:red;"
+                                    data-bs-toggle="tooltip" title="{{ $tipIntPend }}"><b style="cursor:help;">Interés pendiente total</b></td>
+                                <td colspan="2" class="text-center" style="color:red;"
+                                    data-bs-toggle="tooltip" title="{{ $tipIntPend }}">
+                                    <b style="cursor:help;">{{ number_format($intPendienteTotal, 2) }}</b>
+                                </td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                            </tr>
                         @endif
                     </tbody>
                 </table>
