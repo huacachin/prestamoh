@@ -989,11 +989,11 @@
                                 @endphp
                                 <td class="text-end" style="white-space:nowrap;">
                                     @if($mPag > 0)
-                                        <span data-bs-toggle="tooltip" title="Mora pagada" style="cursor:help;"><i class="ti ti-arrow-down-left"></i> {{ number_format($mPag, 2) }}</span>
+                                        <span data-bs-toggle="tooltip" title="Mora pagada" style="cursor:help;">{{ number_format($mPag, 2) }}</span>
                                     @endif
                                     @if($me)
                                         @if($mPag > 0)<br>@endif
-                                        <span class="text-danger" data-bs-toggle="tooltip" title="Mora exonerada" style="cursor:help;"><i class="ti ti-arrow-up-right"></i> {{ number_format($me['monto'], 2) }} - D. {{ $me['dias'] }}</span>
+                                        <span class="text-danger" data-bs-toggle="tooltip" title="Mora exonerada" style="cursor:help;">{{ number_format($me['monto'], 2) }} - D. {{ $me['dias'] }}</span>
                                     @endif
                                     @if($mPag <= 0 && !$me)
                                         0.00
@@ -1059,11 +1059,11 @@
                                      informativa, no suma a los demás totales) --}}
                                 <td class="text-end" style="white-space:nowrap;">
                                     @if($tMoraPag > 0)
-                                        <span data-bs-toggle="tooltip" title="Mora pagada" style="cursor:help;"><i class="ti ti-arrow-down-left"></i> {{ number_format($tMoraPag, 2) }}</span>
+                                        <span data-bs-toggle="tooltip" title="Mora pagada" style="cursor:help;">{{ number_format($tMoraPag, 2) }}</span>
                                     @endif
                                     @if($tExon > 0)
                                         @if($tMoraPag > 0)<br>@endif
-                                        <span class="text-danger" data-bs-toggle="tooltip" title="Mora exonerada" style="cursor:help;"><i class="ti ti-arrow-up-right"></i> {{ number_format($tExon, 2) }}@if($tExonDias > 0) - D. {{ $tExonDias }}@endif</span>
+                                        <span class="text-danger" data-bs-toggle="tooltip" title="Mora exonerada" style="cursor:help;">{{ number_format($tExon, 2) }}@if($tExonDias > 0) - D. {{ $tExonDias }}@endif</span>
                                     @endif
                                     @if($tMoraPag <= 0 && $tExon <= 0)
                                         0.00
