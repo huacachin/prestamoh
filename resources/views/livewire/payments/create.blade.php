@@ -1059,8 +1059,8 @@
                             @endphp
                             <tr class="fw-bold" style="background:#f0f0f0;">
                                 <td colspan="{{ $tieneExc ? 8 : 7 }}" class="text-end text-danger"
-                                    title="{{ $tipRetraso }}" style="cursor:help;">Retraso</td>
-                                <td class="text-end text-danger" title="{{ $tipRetraso }}" style="cursor:help;">{{ number_format($tRetraso, 2) }}</td>
+                                    data-bs-toggle="tooltip" title="{{ $tipRetraso }}" style="cursor:help;">Retraso</td>
+                                <td class="text-end text-danger" data-bs-toggle="tooltip" title="{{ $tipRetraso }}" style="cursor:help;">{{ number_format($tRetraso, 2) }}</td>
                                 <td></td>
                                 <td></td>
                                 <td></td>

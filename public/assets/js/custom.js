@@ -323,3 +323,16 @@ window.addEventListener('go-back', function (e) {
     document.addEventListener('DOMContentLoaded', initSearchHistory);
     document.addEventListener('livewire:navigated', initSearchHistory);
 })();
+
+// Tooltips Bootstrap con delegación en body: los elementos con
+// data-bs-toggle="tooltip" funcionan aunque Livewire los re-renderice,
+// y container:body evita que los recorte un contenedor con overflow
+// (p.ej. la tabla del cronograma en /payments/create).
+(function () {
+    if (window.bootstrap && bootstrap.Tooltip) {
+        new bootstrap.Tooltip(document.body, {
+            selector: '[data-bs-toggle="tooltip"]',
+            container: 'body',
+        });
+    }
+})();
