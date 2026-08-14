@@ -2,8 +2,8 @@
 
 {{-- Excel del Reporte Estadístico de Caja: espejo FIEL de
      /reports/cash-statistics (equivalente del legacy caja-estadisticae1.php).
-     Detalles homologados con la pantalla: domingos con fondo rojo (por CELDA —
-     Excel ignora el bgcolor del <tr>), fila Promedio gris, rojos en totales,
+     Detalles homologados con la pantalla: domingos con fondo rojo SOLO en la
+     celda Fecha (como la pantalla), fila Promedio gris, rojos en totales,
      y las 7 secciones completas: diario, detalles y distribución del mes,
      resumen mensual (Total + Promedio), detalles y distribución del acumulado
      del año, y resumen anual. --}}
@@ -14,10 +14,9 @@
     $cellc = 'style="border-style:dotted solid dotted solid;text-align:center;"';
     $red = 'style="border-style:dotted solid dotted solid;text-align:right;color:red;"';
     $redc = 'style="border-style:dotted solid dotted solid;text-align:center;color:red;"';
-    // Domingo: mismo #ffe5e5 de la pantalla, aplicado celda a celda.
-    $dom = 'bgcolor="#ffe5e5" style="border-style:dotted solid dotted solid;text-align:right;"';
+    // Domingo: mismo #ffe5e5 de la pantalla, solo en la celda Fecha.
+    // Va como bgcolor del <td> porque Excel ignora el del <tr>.
     $domc = 'bgcolor="#ffe5e5" style="border-style:dotted solid dotted solid;text-align:center;"';
-    $domr = 'bgcolor="#ffe5e5" style="border-style:dotted solid dotted solid;text-align:right;color:red;"';
     // Promedio: fondo #f0f0f0 como la pantalla.
     $gris = 'bgcolor="#f0f0f0" style="border-style:dotted solid dotted solid;text-align:right;"';
     $grisc = 'bgcolor="#f0f0f0" style="border-style:dotted solid dotted solid;text-align:center;"';
@@ -70,27 +69,27 @@
         @foreach($rows as $r)
             <tr>
                 <td {!! $r['is_sunday'] ? $domc : $cellc !!}>{{ $r['day'] }}/{{ str_pad($month, 2, '0', STR_PAD_LEFT) }}/{{ $year }}</td>
-                <td {!! $r['is_sunday'] ? $dom : $celln !!}>{{ number_format($r['capital_t'], 2) }}</td>
-                <td {!! $r['is_sunday'] ? $dom : $celln !!}>{{ number_format($r['capital_cobrado'], 2) }}</td>
-                <td {!! $r['is_sunday'] ? $domc : $cellc !!}>{{ $r['mensual_n'] ?: '' }}</td>
-                <td {!! $r['is_sunday'] ? $dom : $celln !!}>{{ number_format($r['mensual_s'], 2) }}</td>
-                <td {!! $r['is_sunday'] ? $dom : $celln !!}>{{ number_format($r['mensual_mora'], 2) }}</td>
-                <td {!! $r['is_sunday'] ? $domc : $cellc !!}>{{ $r['semanal_n'] ?: '' }}</td>
-                <td {!! $r['is_sunday'] ? $dom : $celln !!}>{{ number_format($r['semanal_s'], 2) }}</td>
-                <td {!! $r['is_sunday'] ? $dom : $celln !!}>{{ number_format($r['semanal_mora'], 2) }}</td>
-                <td {!! $r['is_sunday'] ? $domc : $cellc !!}>{{ $r['diario_n'] ?: '' }}</td>
-                <td {!! $r['is_sunday'] ? $dom : $celln !!}>{{ number_format($r['diario_s'], 2) }}</td>
-                <td {!! $r['is_sunday'] ? $dom : $celln !!}>{{ number_format($r['diario_mora'], 2) }}</td>
-                <td {!! $r['is_sunday'] ? $domr : $red !!}>{{ number_format($r['total_credito'], 2) }}</td>
-                <td {!! $r['is_sunday'] ? $dom : $celln !!}>{{ number_format($r['otros_ing'], 2) }}</td>
-                <td {!! $r['is_sunday'] ? $dom : $celln !!}>{{ number_format($r['otros_egr'], 2) }}</td>
-                <td {!! $r['is_sunday'] ? $domr : $red !!}>{{ number_format($r['utilidad_caja3'], 2) }}</td>
-                <td {!! $r['is_sunday'] ? $dom : $celln !!}>{{ number_format($r['ing_fijos'], 2) }}</td>
-                <td {!! $r['is_sunday'] ? $dom : $celln !!}>{{ number_format($r['ing_otros'], 2) }}</td>
-                <td {!! $r['is_sunday'] ? $dom : $celln !!}>{{ number_format($r['ing_total'], 2) }}</td>
-                <td {!! $r['is_sunday'] ? $dom : $celln !!}>{{ number_format($r['egr_fijos'], 2) }}</td>
-                <td {!! $r['is_sunday'] ? $dom : $celln !!}>{{ number_format($r['egr_otros'], 2) }}</td>
-                <td {!! $r['is_sunday'] ? $dom : $celln !!}>{{ number_format($r['egr_total'], 2) }}</td>
+                <td {!! $celln !!}>{{ number_format($r['capital_t'], 2) }}</td>
+                <td {!! $celln !!}>{{ number_format($r['capital_cobrado'], 2) }}</td>
+                <td {!! $cellc !!}>{{ $r['mensual_n'] ?: '' }}</td>
+                <td {!! $celln !!}>{{ number_format($r['mensual_s'], 2) }}</td>
+                <td {!! $celln !!}>{{ number_format($r['mensual_mora'], 2) }}</td>
+                <td {!! $cellc !!}>{{ $r['semanal_n'] ?: '' }}</td>
+                <td {!! $celln !!}>{{ number_format($r['semanal_s'], 2) }}</td>
+                <td {!! $celln !!}>{{ number_format($r['semanal_mora'], 2) }}</td>
+                <td {!! $cellc !!}>{{ $r['diario_n'] ?: '' }}</td>
+                <td {!! $celln !!}>{{ number_format($r['diario_s'], 2) }}</td>
+                <td {!! $celln !!}>{{ number_format($r['diario_mora'], 2) }}</td>
+                <td {!! $red !!}>{{ number_format($r['total_credito'], 2) }}</td>
+                <td {!! $celln !!}>{{ number_format($r['otros_ing'], 2) }}</td>
+                <td {!! $celln !!}>{{ number_format($r['otros_egr'], 2) }}</td>
+                <td {!! $red !!}>{{ number_format($r['utilidad_caja3'], 2) }}</td>
+                <td {!! $celln !!}>{{ number_format($r['ing_fijos'], 2) }}</td>
+                <td {!! $celln !!}>{{ number_format($r['ing_otros'], 2) }}</td>
+                <td {!! $celln !!}>{{ number_format($r['ing_total'], 2) }}</td>
+                <td {!! $celln !!}>{{ number_format($r['egr_fijos'], 2) }}</td>
+                <td {!! $celln !!}>{{ number_format($r['egr_otros'], 2) }}</td>
+                <td {!! $celln !!}>{{ number_format($r['egr_total'], 2) }}</td>
             </tr>
         @endforeach
             <tr>

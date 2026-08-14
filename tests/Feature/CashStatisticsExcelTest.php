@@ -35,11 +35,11 @@ class CashStatisticsExcelTest extends TestCase
         $respuesta->assertSee('RESUMEN ANUAL', false);
 
         // Detalles visuales homologados con la pantalla (14/08):
-        // domingos pintados celda a celda (julio 2026 tiene 4: días 5/12/19/26,
-        // 22 columnas c/u) y la fila Promedio con fondo gris.
+        // domingos con la celda Fecha pintada (julio 2026 tiene 4: días
+        // 5/12/19/26) y la fila Promedio con fondo gris.
         $html = $respuesta->getContent();
-        $this->assertSame(4 * 22, substr_count($html, '#ffe5e5'),
-            'Los domingos deben pintarse en las 22 celdas de cada fila');
+        $this->assertSame(4, substr_count($html, '#ffe5e5'),
+            'Los domingos deben pintar SOLO su celda Fecha');
         $this->assertSame(22, substr_count($html, '#f0f0f0'),
             'La fila Promedio debe pintar sus 22 celdas de gris');
         $respuesta->assertSee('Promedio', false);
