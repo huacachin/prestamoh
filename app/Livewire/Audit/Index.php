@@ -19,6 +19,24 @@ class Index extends Component
 
     protected $paginationTheme = 'bootstrap';
 
+    /**
+     * Clasificación de acciones por el VERBO inicial de la descripción
+     * (réplica del filtro de acciones de newtaxivan). El Audit::log guarda
+     * texto libre pero con convención de verbo al inicio, así que el tipo se
+     * deriva del prefijo — cubre tanto los registros existentes como los
+     * nuevos, sin migración. Si se agrega un verbo nuevo en un Audit::log,
+     * añadirlo aquí para que filtre y lleve su badge.
+     */
+    public const ACCIONES = [
+        'creacion' => ['label' => 'Creación', 'badge' => 'success', 'verbos' => ['Creó', 'Registró', 'Agregó', 'Aperturó', 'Refinanció']],
+        'edicion' => ['label' => 'Edición', 'badge' => 'warning text-dark', 'verbos' => ['Editó', 'Actualizó', 'Ajustó', 'Reactivó', 'Cambió', 'Marcó']],
+        'eliminacion' => ['label' => 'Eliminación', 'badge' => 'danger', 'verbos' => ['Eliminó', 'Anuló', 'Desactivó', 'Revirtió', 'Borró', 'Quitó']],
+        'acceso' => ['label' => 'Acceso', 'badge' => 'secondary', 'verbos' => ['Inicio de sesión', 'Cerró sesión']],
+    ];
+
+    #[Url(as: 'accion', except: '')]
+    public string $accion = '';
+
     #[Url(as: 'desde', except: '')]
     public string $desde = '';
 
@@ -38,8 +56,22 @@ class Index extends Component
 
     public function limpiar(): void
     {
-        $this->reset(['desde', 'hasta', 'causer', 'buscar']);
+        $this->reset(['desde', 'hasta', 'causer', 'buscar', 'accion']);
         $this->resetPage();
+    }
+
+    /** Tipo de acción de una descripción (por su verbo inicial), o null. */
+    public function clasificar(string $descripcion): ?string
+    {
+        foreach (self::ACCIONES as $tipo => $cfg) {
+            foreach ($cfg['verbos'] as $verbo) {
+                if (str_starts_with($descripcion, $verbo)) {
+                    return $tipo;
+                }
+            }
+        }
+
+        return null;
     }
 
     public function render()
@@ -61,6 +93,13 @@ class Index extends Component
         }
         if (trim($this->buscar) !== '') {
             $query->where('description', 'like', '%'.trim($this->buscar).'%');
+        }
+        if (isset(self::ACCIONES[$this->accion])) {
+            $query->where(function ($q) {
+                foreach (self::ACCIONES[$this->accion]['verbos'] as $verbo) {
+                    $q->orWhere('description', 'like', $verbo.'%');
+                }
+            });
         }
 
         $logs = $query->paginate(30);

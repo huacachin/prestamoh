@@ -40,7 +40,7 @@
                             <label class="form-label mb-0 small">Hasta</label>
                             <input type="date" class="form-control form-control-sm" wire:model.live="hasta">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label class="form-label mb-0 small">Usuario</label>
                             <select class="form-select form-select-sm" wire:model.live="causer">
                                 <option value="">Todos</option>
@@ -49,7 +49,18 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
+                            <label class="form-label mb-0 small">Acción</label>
+                            {{-- Réplica del filtro de acciones de newtaxivan: el tipo se
+                                 deriva del verbo inicial de la descripción. --}}
+                            <select class="form-select form-select-sm" wire:model.live="accion">
+                                <option value="">Todas</option>
+                                @foreach(\App\Livewire\Audit\Index::ACCIONES as $tipo => $cfg)
+                                    <option value="{{ $tipo }}">{{ $cfg['label'] }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-2">
                             <label class="form-label mb-0 small">Buscar acción</label>
                             <input type="text" class="form-control form-control-sm" placeholder="Ej. pago, anuló, usuario…"
                                    wire:model.live.debounce.400ms="buscar" autocomplete="off">
@@ -83,7 +94,15 @@
                                             <span class="text-muted">—</span>
                                         @endif
                                     </td>
-                                    <td>{{ $log->description }}</td>
+                                    <td>
+                                        @php $tipoAccion = $this->clasificar($log->description); @endphp
+                                        @if($tipoAccion)
+                                            <span class="badge bg-{{ \App\Livewire\Audit\Index::ACCIONES[$tipoAccion]['badge'] }} me-1">
+                                                {{ \App\Livewire\Audit\Index::ACCIONES[$tipoAccion]['label'] }}
+                                            </span>
+                                        @endif
+                                        {{ $log->description }}
+                                    </td>
                                     <td class="text-nowrap">
                                         @if($log->subject_type)
                                             {{ $subjectLabels[$log->subject_type] ?? class_basename($log->subject_type) }}
