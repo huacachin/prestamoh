@@ -40,9 +40,6 @@
     @if($addr = config('printer.company_addr'))
         <div>{{ $addr }}</div>
     @endif
-    @if($t['sede'])
-        <div>{{ $t['sede'] }}</div>
-    @endif
 </div>
 
 <div class="sep-dbl"></div>
@@ -68,9 +65,6 @@
     <tr><td>Credito:</td><td class="der">#{{ $t['credit_id'] }}</td></tr>
     @if($t['cobrador'])
         <tr><td>Cobrador:</td><td class="der">{{ $t['cobrador'] }}</td></tr>
-    @endif
-    @if($t['asesor'])
-        <tr><td>Asesor:</td><td class="der">{{ $t['asesor'] }}</td></tr>
     @endif
 </table>
 

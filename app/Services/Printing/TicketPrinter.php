@@ -131,7 +131,11 @@ final class TicketPrinter
             'cliente' => $nombre ?: null,
             'documento' => $documento,
             'credit_id' => (int) $masivo->credit_id,
-            'cobrador' => $masivo->user ?: null,
+            // El voucher muestra el USERNAME del cobrador (pedido 14/08), pero
+            // mass_deletions.user guarda el nombre completo: se resuelve contra
+            // users.name. El asesor ya no se imprime (queda en la data por si
+            // otro consumidor lo necesita).
+            'cobrador' => $this->usernameCobrador($masivo->user),
             'asesor' => $masivo->advisor ?: null,
             'cuotas' => $cuotasTocadas,
             'detalle_cuotas' => $detalleCuotas,
@@ -180,10 +184,6 @@ final class TicketPrinter
             if ($addr = (string) config('printer.company_addr', '')) {
                 $this->pt($printer, Str::limit($addr, $columns)."\n");
             }
-            if ($t['sede']) {
-                $this->pt($printer, $t['sede']."\n");
-            }
-
             $this->pt($printer, $double."\n");
 
             // ── Tipo + número ───────────────────────────────────────────
@@ -214,9 +214,6 @@ final class TicketPrinter
 
             if ($t['cobrador']) {
                 $this->pt($printer, $this->row('Cobrador:', Str::limit($t['cobrador'], $columns - 10), $columns));
-            }
-            if ($t['asesor']) {
-                $this->pt($printer, $this->row('Asesor:', Str::limit($t['asesor'], $columns - 10), $columns));
             }
 
             $this->pt($printer, $sep."\n");
@@ -276,6 +273,22 @@ final class TicketPrinter
         }
 
         return $buffer->getBytes();
+    }
+
+    /**
+     * Username del cobrador a partir del nombre completo guardado en
+     * mass_deletions.user (comparación con TRIM: hay nombres con espacio
+     * final). Si ningún usuario calza —cobros del legacy con otro formato—
+     * se muestra el valor guardado tal cual.
+     */
+    private function usernameCobrador(?string $nombre): ?string
+    {
+        $nombre = trim((string) $nombre);
+        if ($nombre === '') {
+            return null;
+        }
+
+        return \App\Models\User::whereRaw('TRIM(name) = ?', [$nombre])->value('username') ?: $nombre;
     }
 
     private function saldoPendiente(int $creditId): float
