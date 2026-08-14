@@ -270,3 +270,56 @@ window.addEventListener('go-back', function (e) {
     if (history.length > 1) history.back();
     else location.href = fb;
 });
+
+// ===== Historial de busqueda propio (datalist + localStorage) =====
+// Portado de newtaxivan (custom.js): Chrome clasifica los buscadores como
+// "search box" y NO guarda su historial de autofill aunque el input tenga
+// name + autocomplete="on" — por eso el historial se maneja aqui.
+// Uso: al input agregarle data-search-history="clave" y list="<id>", y poner
+// un <datalist id="<id>" wire:ignore> al lado. Registra al enviar el form
+// (aunque Livewire haga .prevent, el evento submit igual dispara) y al
+// perder el foco con valor; guarda los ultimos 10 en localStorage.
+(function () {
+    function readHistory(key) {
+        try { return JSON.parse(localStorage.getItem(key)) || []; } catch (e) { return []; }
+    }
+
+    function initSearchHistory() {
+        document.querySelectorAll('input[data-search-history]').forEach(function (input) {
+            if (input.dataset.searchHistoryInit) return;
+            input.dataset.searchHistoryInit = '1';
+
+            var key = 'searchHist:' + input.dataset.searchHistory;
+            var datalist = input.getAttribute('list') ? document.getElementById(input.getAttribute('list')) : null;
+            if (!datalist) return;
+
+            var render = function () {
+                datalist.innerHTML = '';
+                readHistory(key).forEach(function (v) {
+                    var opt = document.createElement('option');
+                    opt.value = v;
+                    datalist.appendChild(opt);
+                });
+            };
+
+            var record = function () {
+                var v = (input.value || '').trim();
+                if (v.length < 2) return;
+                var items = readHistory(key).filter(function (x) {
+                    return x.toLowerCase() !== v.toLowerCase();
+                });
+                items.unshift(v);
+                localStorage.setItem(key, JSON.stringify(items.slice(0, 10)));
+                render();
+            };
+
+            if (input.form) input.form.addEventListener('submit', record);
+            input.addEventListener('change', record);
+
+            render();
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', initSearchHistory);
+    document.addEventListener('livewire:navigated', initSearchHistory);
+})();

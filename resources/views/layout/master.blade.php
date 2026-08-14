@@ -67,6 +67,8 @@
 @include('layout.script')
 <!-- scripts end-->
 <script src="{{asset('assets/vendor/sweetalert/sweetalert.js')}}"></script>
-<script src="{{ asset('assets/js/custom.js') }}"></script>
+{{-- ?v= por fecha de modificación: sin esto, el navegador sirve el custom.js
+     viejo de caché tras cada deploy y los fixes de JS no llegan al usuario. --}}
+<script src="{{ asset('assets/js/custom.js') }}?v={{ filemtime(public_path('assets/js/custom.js')) }}"></script>
 
 </html>

@@ -61,9 +61,14 @@
                                         <label class="form-check-label small" for="tipoUsuario">Usuario</label>
                                     </div>
                                 </div>
-                                <input type="text" name="compra" autocomplete="off" class="form-control form-control-sm"
+                                {{-- Historial propio (datalist + localStorage via data-search-history
+                                     en custom.js): Chrome no guarda autofill de cajas de búsqueda. --}}
+                                <input type="text" name="compra" autocomplete="on" class="form-control form-control-sm"
                                        wire:model.defer="compra"
+                                       list="incomes_search_hist"
+                                       data-search-history="cash_incomes"
                                        placeholder="Ingrese el texto a buscar">
+                                <datalist id="incomes_search_hist" wire:ignore></datalist>
                             </div>
 
                             <div class="col-md-2">
