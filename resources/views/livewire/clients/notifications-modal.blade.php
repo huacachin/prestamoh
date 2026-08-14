@@ -21,6 +21,37 @@
                 </div>
                 <div class="modal-body">
 
+                    {{-- Selector de crédito (multi-crédito): con un solo
+                         atrasado se auto-selecciona y esto no aparece --}}
+                    @if(count($creditosAtrasados) > 1)
+                        <div class="border rounded p-2 mb-3" style="background:#fffdf5;">
+                            <div class="small fw-semibold mb-1">
+                                <i class="ti ti-alert-triangle text-warning"></i>
+                                Este cliente tiene {{ count($creditosAtrasados) }} créditos atrasados — selecciona cuál notificar:
+                            </div>
+                            <div class="d-flex flex-column gap-1">
+                                @foreach($creditosAtrasados as $ca)
+                                    <button type="button"
+                                            class="btn btn-sm text-start {{ $creditId === $ca['id'] ? 'btn-dark' : 'btn-outline-secondary' }}"
+                                            wire:click="seleccionarCredito({{ $ca['id'] }})">
+                                        <b>Crédito #{{ $ca['id'] }}</b> — {{ $ca['tipo'] }} —
+                                        {{ $ca['vencidas'] }} cuotas vencidas —
+                                        S/ {{ number_format($ca['atrasado'], 2) }} atrasado
+                                        @if($ca['ultima'])
+                                            — última notif. {{ $ca['ultima'] }}
+                                        @else
+                                            — sin notificaciones
+                                        @endif
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    @elseif($creditId)
+                        <div class="small text-muted mb-2">
+                            Crédito <b>#{{ $creditId }}</b> — {{ $vencidas }} cuotas vencidas
+                        </div>
+                    @endif
+
                     {{-- Editor de nueva notificación --}}
                     @if($editor)
                         <div class="border rounded p-2 mb-3" style="background:#f6fbf7;">
@@ -39,7 +70,7 @@
                             </div>
                             <div class="form-text">Al enviar se guarda en el historial y se abre WhatsApp con el texto listo.</div>
                         </div>
-                    @else
+                    @elseif($creditId)
                         <button type="button" class="btn btn-sm btn-success mb-3" wire:click="nuevaNotif">
                             <i class="ti ti-plus"></i> Nueva notificación
                         </button>
@@ -63,7 +94,13 @@
                                 <tbody>
                                 @foreach($notifs as $n)
                                     <tr>
-                                        <td class="text-center fw-bold">{{ $n->numero }}</td>
+                                        <td class="text-center fw-bold">
+                                            {{ $n->numero }}
+                                            <span class="badge bg-secondary d-block mx-auto mt-1" style="font-size:9px; width:fit-content;"
+                                                  title="Crédito de la notificación">
+                                                {{ $n->credit_id ? '#'.$n->credit_id : 'General' }}
+                                            </span>
+                                        </td>
                                         <td class="text-center">
                                             {{ \Carbon\Carbon::parse($n->created_at)->format('d/m/Y H:i') }}
                                             @if($n->cuotas_vencidas !== null)
