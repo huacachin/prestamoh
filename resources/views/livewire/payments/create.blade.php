@@ -952,8 +952,7 @@
                             <th>Pagado Int.</th>
                             <th>Pagado</th>
                             <th>Saldo</th>
-                            <th>Mora Pag.</th>
-                            <th style="color:#ffd6d6;">Mora Exon.</th>
+                            <th>Mora</th>
                             <th>Estado</th>
                             <th>Fecha Pago</th>
                             <th class="text-center">Recibo</th>
@@ -981,11 +980,25 @@
                                 <td class="text-end">{{ number_format($inst->interes_aplicado, 2) }}</td>
                                 <td class="text-end">{{ number_format($inst->importe_aplicado + $inst->interes_aplicado + $inst->excedente_aplicado, 2) }}</td>
                                 <td class="text-end">{{ number_format($saldo, 2) }}</td>
-                                {{-- Mora pagada de la cuota (importe_mora + mora_interes,
-                                     los impomora/impomorai del legacy) --}}
-                                <td class="text-end">{{ number_format($inst->importe_mora + $inst->mora_interes, 2) }}</td>
-                                @php $me = $moraExon[$inst->num_cuota] ?? null; @endphp
-                                <td class="text-end" style="color:red; white-space:nowrap;">{{ number_format($me['monto'] ?? 0, 2) }}@if($me) - D. {{ $me['dias'] }}@endif</td>
+                                {{-- Mora unificada: pagada (negro, flecha de entrada:
+                                     importe_mora + mora_interes, los impomora/impomorai del
+                                     legacy) y exonerada (rojo, flecha de salida) --}}
+                                @php
+                                    $me = $moraExon[$inst->num_cuota] ?? null;
+                                    $mPag = $inst->importe_mora + $inst->mora_interes;
+                                @endphp
+                                <td class="text-end" style="white-space:nowrap;">
+                                    @if($mPag > 0)
+                                        <span data-bs-toggle="tooltip" title="Mora pagada" style="cursor:help;"><i class="ti ti-arrow-down-left"></i> {{ number_format($mPag, 2) }}</span>
+                                    @endif
+                                    @if($me)
+                                        @if($mPag > 0)<br>@endif
+                                        <span class="text-danger" data-bs-toggle="tooltip" title="Mora exonerada" style="cursor:help;"><i class="ti ti-arrow-up-right"></i> {{ number_format($me['monto'], 2) }} - D. {{ $me['dias'] }}</span>
+                                    @endif
+                                    @if($mPag <= 0 && !$me)
+                                        0.00
+                                    @endif
+                                </td>
                                 <td>
                                     @if($inst->pagado)
                                         <span class="badge bg-success">Pagado</span>
@@ -1038,13 +1051,24 @@
                                 <td class="text-end">{{ number_format($tPagInt, 2) }}</td>
                                 <td class="text-end">{{ number_format($tPagCap + $tPagInt + $tPagExc, 2) }}</td>
                                 <td class="text-end">{{ number_format($tSaldo, 2) }}</td>
-                                <td class="text-end">{{ number_format($tMoraPag, 2) }}</td>
                                 @php
                                     $tExon = collect($moraExon)->sum('monto');
                                     $tExonDias = collect($moraExon)->sum('dias');
                                 @endphp
-                                {{-- Mora exonerada: informativa, no suma a los demás totales --}}
-                                <td class="text-end" style="color:red; white-space:nowrap;">{{ number_format($tExon, 2) }}@if($tExonDias > 0) - D. {{ $tExonDias }}@endif</td>
+                                {{-- Total Mora: pagada y exonerada juntas (la exonerada es
+                                     informativa, no suma a los demás totales) --}}
+                                <td class="text-end" style="white-space:nowrap;">
+                                    @if($tMoraPag > 0)
+                                        <span data-bs-toggle="tooltip" title="Mora pagada" style="cursor:help;"><i class="ti ti-arrow-down-left"></i> {{ number_format($tMoraPag, 2) }}</span>
+                                    @endif
+                                    @if($tExon > 0)
+                                        @if($tMoraPag > 0)<br>@endif
+                                        <span class="text-danger" data-bs-toggle="tooltip" title="Mora exonerada" style="cursor:help;"><i class="ti ti-arrow-up-right"></i> {{ number_format($tExon, 2) }}@if($tExonDias > 0) - D. {{ $tExonDias }}@endif</span>
+                                    @endif
+                                    @if($tMoraPag <= 0 && $tExon <= 0)
+                                        0.00
+                                    @endif
+                                </td>
                                 <td></td>
                                 <td></td>
                                 <td></td>
@@ -1071,7 +1095,6 @@
                                 <td></td>
                                 <td></td>
                                 <td></td>
-                                <td></td>
                             </tr>
                             {{-- La mora pagada vive en la columna Mora Pag. (por cuota).
                                  Si algún pago MORA quedó sin cuota asignada (caja > suma
@@ -1085,7 +1108,6 @@
                                 <tr class="fw-bold" style="background:#f0f0f0;">
                                     <td colspan="{{ $tieneExc ? 9 : 8 }}" class="text-end">Mora sin cuota asignada</td>
                                     <td class="text-end">{{ number_format($moraSinCuota, 2) }}</td>
-                                    <td></td>
                                     <td></td>
                                     <td></td>
                                     <td></td>
