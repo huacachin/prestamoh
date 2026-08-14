@@ -6,6 +6,7 @@ use App\Models\Client;
 use App\Models\Credit;
 use App\Models\User;
 use App\Support\Audit;
+use App\Support\MorosidadClientes;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
@@ -223,39 +224,10 @@ class Index extends Component
         // Solo IDs del conjunto filtrado (liviano): base para morosidad y chips.
         $clientIds = (clone $query)->pluck('clients.id')->toArray();
 
-        // Morosidad: cuotas vencidas impagas por crédito activo; por cliente
-        // se toma el PEOR de sus créditos (2 → fila naranja, 3+ → fila roja).
-        $morosidad = [];
-        if (! empty($clientIds)) {
-            $rows = DB::table('credits as c')
-                ->join('credit_installments as i', 'i.credit_id', '=', 'c.id')
-                ->whereIn('c.client_id', $clientIds)
-                ->where('c.situacion', 'Activo')
-                ->where('i.pagado', 0)
-                ->whereNotNull('i.fecha_vencimiento')
-                ->where('i.fecha_vencimiento', '<', now()->format('Y-m-d'))
-                ->groupBy('c.id', 'c.client_id')
-                ->selectRaw('c.client_id, COUNT(*) as vencidas')
-                ->get();
-            foreach ($rows as $r) {
-                $morosidad[$r->client_id] = max($morosidad[$r->client_id] ?? 0, (int) $r->vencidas);
-            }
-        }
-
-        // Expedientes en ejecución: ya están en manos legales, así que salen del
-        // recuento de morosidad y tienen chip propio. Si no, aparecerían entre
-        // los morosos y falsearían el trabajo pendiente de cobranza.
-        // El estado se anota a mano en "zona" (ej. "SIGM.S-Ejecucion 08/04"), de
-        // ahí la búsqueda por el prefijo común de Ejecucion y Ejecución.
-        $enEjecucion = [];
-        if ($clientIds !== []) {
-            $enEjecucion = array_flip(
-                Client::whereIn('id', $clientIds)
-                    ->where('zona', 'like', '%ejecuc%')
-                    ->pluck('id')
-                    ->all()
-            );
-        }
+        // Morosidad + expedientes en ejecución: cálculo compartido con el
+        // Excel de clientes (App\Support\MorosidadClientes) para que pantalla
+        // y archivo cuadren siempre. Reglas documentadas en el helper.
+        ['morosidad' => $morosidad, 'enEjecucion' => $enEjecucion] = MorosidadClientes::calcular($clientIds);
         $countEjecucion = count($enEjecucion);
 
         // Conteos para los chips (sobre TODO el conjunto filtrado, no la página).
@@ -272,19 +244,9 @@ class Index extends Component
 
         // Chip seleccionado → se restringe la query por IDs del nivel
         if ($this->morosidadFiltro !== '') {
-            $idsNivel = array_values(array_filter($clientIds, function ($id) use ($morosidad, $enEjecucion) {
-                $v = $morosidad[$id] ?? 0;
-                $ejecucion = isset($enEjecucion[$id]);
-
-                return match ($this->morosidadFiltro) {
-                    'ejecucion' => $ejecucion,
-                    'critico' => $v >= 4 && ! $ejecucion,
-                    'rojo' => $v === 3 && ! $ejecucion,
-                    'naranja' => $v === 2 && ! $ejecucion,
-                    default => $v < 2 && ! $ejecucion, // aldia
-                };
-            }));
-            $query->whereIn('clients.id', $idsNivel);
+            $query->whereIn('clients.id', MorosidadClientes::idsDelNivel(
+                $clientIds, $this->morosidadFiltro, $morosidad, $enEjecucion
+            ));
         }
 
         $totalFiltrados = match ($this->morosidadFiltro) {

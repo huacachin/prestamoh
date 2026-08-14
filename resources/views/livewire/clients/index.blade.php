@@ -66,7 +66,9 @@
                             <button type="submit" class="btn btn-sm btn-primary">
                                 <i class="ti ti-search f-s-12"></i> Buscar
                             </button>
-                            <a href="{{ route('exports.clients') }}?nexpediente={{ $nexpediente }}&documento={{ $documento }}&nombre={{ $nombre }}&ruta={{ $ruta }}&giro={{ $giro }}&ejecutivo={{ $ejecutivo }}"
+                            {{-- estado = chip de morosidad activo: sin él, el Excel salía sin
+                                 el filtro de al día / 2 / 3 / 4+ / ejecución. --}}
+                            <a href="{{ route('exports.clients') }}?nexpediente={{ $nexpediente }}&documento={{ $documento }}&nombre={{ $nombre }}&ruta={{ $ruta }}&giro={{ $giro }}&ejecutivo={{ $ejecutivo }}&estado={{ $morosidadFiltro }}"
                                class="btn btn-sm btn-success" target="_blank">
                                 <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
                             </a>
