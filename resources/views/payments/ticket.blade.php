@@ -85,9 +85,9 @@
 
 <div class="toolbar">
     <button type="button" class="primary" onclick="window.print()">Imprimir</button>
-    @if(!empty($pdfUrl))
-        <a href="{{ $pdfUrl }}" class="primary" style="background:#198754; text-align:center; text-decoration:none; padding:8px 10px; border-radius:4px; color:#fff; flex:1; font-size:13px;">Descargar PDF</a>
-    @endif
+    {{-- Imagen en vez de PDF (pedido 14/08): el recibo se baja como PNG
+         renderizado en el navegador (html2canvas), listo para WhatsApp. --}}
+    <button type="button" id="btn-imagen" class="primary" style="background:#198754;">Descargar imagen</button>
     @if(empty($publico))
         <button type="button" class="ghost" onclick="window.close()">Cerrar</button>
     @endif
@@ -176,5 +176,29 @@
 
 </div>
 
+<script src="{{ asset('assets/vendor/html2canvas/html2canvas.min.js') }}"></script>
+<script>
+    // Renderiza el ticket a PNG (2x para que se lea nítido en el celular)
+    // y lo descarga; el layout es el mismo HTML que se ve en pantalla.
+    document.getElementById('btn-imagen').addEventListener('click', function () {
+        var btn = this;
+        btn.disabled = true;
+        html2canvas(document.querySelector('.ticket'), {
+            scale: 2,
+            backgroundColor: '#ffffff',
+        }).then(function (canvas) {
+            canvas.toBlob(function (blob) {
+                var a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'recibo-{{ $t['numero'] }}.png';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+                btn.disabled = false;
+            }, 'image/png');
+        }).catch(function () { btn.disabled = false; });
+    });
+</script>
 </body>
 </html>
