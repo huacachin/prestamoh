@@ -85,9 +85,9 @@
 
 <div class="toolbar">
     <button type="button" class="primary" onclick="window.print()">Imprimir</button>
-    {{-- Imagen en vez de PDF (pedido 14/08): el recibo se baja como PNG
-         renderizado en el navegador (html2canvas), listo para WhatsApp. --}}
-    <button type="button" id="btn-imagen" class="primary" style="background:#198754;">Descargar imagen</button>
+    {{-- Imagen en vez de PDF (pedido 14/08): el recibo se COPIA como PNG
+         al portapapeles (html2canvas), listo para pegar en WhatsApp. --}}
+    <button type="button" id="btn-imagen" class="primary" style="background:#198754;">Copiar imagen</button>
     @if(empty($publico))
         <button type="button" class="ghost" onclick="window.close()">Cerrar</button>
     @endif
@@ -178,16 +178,27 @@
 
 <script src="{{ asset('assets/vendor/html2canvas/html2canvas.min.js') }}"></script>
 <script>
-    // Renderiza el ticket a PNG (2x para que se lea nítido en el celular)
-    // y lo descarga; el layout es el mismo HTML que se ve en pantalla.
+    // Copia el ticket como PNG (2x, nítido en el celular) al portapapeles
+    // para pegarlo directo en WhatsApp. El blob va como PROMESA dentro del
+    // ClipboardItem: Safari/iPhone exige construirlo en el mismo gesto del
+    // usuario, antes de que el render async termine. Si el navegador no
+    // soporta copiar imágenes, cae a descargarla.
     document.getElementById('btn-imagen').addEventListener('click', function () {
         var btn = this;
-        btn.disabled = true;
-        html2canvas(document.querySelector('.ticket'), {
-            scale: 2,
-            backgroundColor: '#ffffff',
-        }).then(function (canvas) {
-            canvas.toBlob(function (blob) {
+        var renderBlob = function () {
+            return html2canvas(document.querySelector('.ticket'), {
+                scale: 2,
+                backgroundColor: '#ffffff',
+            }).then(function (canvas) {
+                return new Promise(function (res) { canvas.toBlob(res, 'image/png'); });
+            });
+        };
+        var listo = function (texto) {
+            btn.textContent = texto;
+            setTimeout(function () { btn.textContent = 'Copiar imagen'; btn.disabled = false; }, 2500);
+        };
+        var descargar = function () {
+            renderBlob().then(function (blob) {
                 var a = document.createElement('a');
                 a.href = URL.createObjectURL(blob);
                 a.download = 'recibo-{{ $t['numero'] }}.png';
@@ -195,9 +206,18 @@
                 a.click();
                 a.remove();
                 setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
-                btn.disabled = false;
-            }, 'image/png');
-        }).catch(function () { btn.disabled = false; });
+                listo('Imagen descargada');
+            }).catch(function () { listo('Copiar imagen'); });
+        };
+
+        btn.disabled = true;
+        if (navigator.clipboard && window.ClipboardItem) {
+            navigator.clipboard.write([new ClipboardItem({ 'image/png': renderBlob() })])
+                .then(function () { listo('¡Imagen copiada!'); })
+                .catch(descargar);
+        } else {
+            descargar();
+        }
     });
 </script>
 </body>
