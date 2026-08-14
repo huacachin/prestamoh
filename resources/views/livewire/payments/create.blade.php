@@ -952,6 +952,7 @@
                             <th>Pagado Int.</th>
                             <th>Pagado</th>
                             <th>Saldo</th>
+                            <th>Mora Pag.</th>
                             <th style="color:#ffd6d6;">Mora Exon.</th>
                             <th>Estado</th>
                             <th>Fecha Pago</th>
@@ -980,6 +981,9 @@
                                 <td class="text-end">{{ number_format($inst->interes_aplicado, 2) }}</td>
                                 <td class="text-end">{{ number_format($inst->importe_aplicado + $inst->interes_aplicado + $inst->excedente_aplicado, 2) }}</td>
                                 <td class="text-end">{{ number_format($saldo, 2) }}</td>
+                                {{-- Mora pagada de la cuota (importe_mora + mora_interes,
+                                     los impomora/impomorai del legacy) --}}
+                                <td class="text-end">{{ number_format($inst->importe_mora + $inst->mora_interes, 2) }}</td>
                                 @php $me = $moraExon[$inst->num_cuota] ?? null; @endphp
                                 <td class="text-end" style="color:red; white-space:nowrap;">{{ number_format($me['monto'] ?? 0, 2) }}@if($me) - D. {{ $me['dias'] }}@endif</td>
                                 <td>
@@ -1020,6 +1024,7 @@
                             $tPagInt = $credit->installments->sum('interes_aplicado');
                             $tPagExc = $credit->installments->sum('excedente_aplicado');
                             $tSaldo  = $credit->installments->sum(fn ($i) => $i->saldoPendiente());
+                            $tMoraPag = $credit->installments->sum(fn ($i) => $i->importe_mora + $i->mora_interes);
                         @endphp
                         <tfoot>
                             <tr class="fw-bold" style="background:#f0f0f0;">
@@ -1033,6 +1038,7 @@
                                 <td class="text-end">{{ number_format($tPagInt, 2) }}</td>
                                 <td class="text-end">{{ number_format($tPagCap + $tPagInt + $tPagExc, 2) }}</td>
                                 <td class="text-end">{{ number_format($tSaldo, 2) }}</td>
+                                <td class="text-end">{{ number_format($tMoraPag, 2) }}</td>
                                 @php
                                     $tExon = collect($moraExon)->sum('monto');
                                     $tExonDias = collect($moraExon)->sum('dias');
@@ -1065,28 +1071,26 @@
                                 <td></td>
                                 <td></td>
                                 <td></td>
+                                <td></td>
                             </tr>
-                            {{-- Pagos de MORA del crédito: van sin installment_id, así que
-                                 no aparecen en ninguna fila de cuota ni en sus totales, pero
-                                 sí en Caja 1. El legacy los listaba igual bajo la tabla
-                                 (ingresos documento=MORA en pagossmasivo.php). --}}
+                            {{-- La mora pagada vive en la columna Mora Pag. (por cuota).
+                                 Si algún pago MORA quedó sin cuota asignada (caja > suma
+                                 de cuotas), el residuo sale aquí para cuadrar con Caja 1. --}}
                             @php
-                                $morasPagadas = \App\Models\Payment::where('credit_id', $credit->id)
-                                    ->where('tipo', 'MORA')->orderBy('fecha')->orderBy('id')->get();
+                                $moraPagadaCaja = (float) \App\Models\Payment::where('credit_id', $credit->id)
+                                    ->where('tipo', 'MORA')->sum('monto');
+                                $moraSinCuota = round($moraPagadaCaja - $tMoraPag, 2);
                             @endphp
-                            @foreach($morasPagadas as $mp)
-                                <tr>
-                                    <td class="fw-bold">Mora</td>
-                                    <td></td>
-                                    <td colspan="{{ $tieneExc ? 5 : 4 }}" class="small">{{ $mp->detalle }}</td>
-                                    <td class="text-end fw-bold">{{ number_format($mp->monto, 2) }}</td>
+                            @if($moraSinCuota > 0.01)
+                                <tr class="fw-bold" style="background:#f0f0f0;">
+                                    <td colspan="{{ $tieneExc ? 9 : 8 }}" class="text-end">Mora sin cuota asignada</td>
+                                    <td class="text-end">{{ number_format($moraSinCuota, 2) }}</td>
                                     <td></td>
                                     <td></td>
-                                    <td><span class="badge bg-secondary">Mora</span></td>
-                                    <td>{{ \Carbon\Carbon::parse($mp->fecha)->format('d/m/Y') }}</td>
+                                    <td></td>
                                     <td></td>
                                 </tr>
-                            @endforeach
+                            @endif
                         </tfoot>
                     </table>
                 </div>
