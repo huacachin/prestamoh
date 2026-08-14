@@ -101,9 +101,9 @@
                             @endif
                             <th class="text-center">Total</th>
                             <th class="text-center">Mora</th>
-                            <th class="text-center" style="color:#ffd6d6;">Mora Exon.</th>
                             <th class="text-center">Pagado</th>
                             <th class="text-center">Fecha Pago</th>
+                            <th class="text-center">Rec.</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -120,13 +120,45 @@
                                     <td style="{{ $st }}" class="text-end">{{ number_format($row['excedente'], 2) }}</td>
                                 @endif
                                 <td style="{{ $st }}" class="text-end">{{ number_format($row['total'], 2) }}</td>
-                                <td style="{{ $st }}" class="text-end">{{ number_format($row['mora'], 2) }}</td>
-                                <td class="text-end" style="color:red; white-space:nowrap;">{{ number_format($row['mora_exon'], 2) }}@if($row['mora_exon_dias'] > 0) - D. {{ $row['mora_exon_dias'] }}@endif</td>
+                                {{-- Mora unificada (homologada con /payments/create):
+                                     pagada en negro, exonerada en rojo, con tooltips --}}
+                                @php
+                                    $mpc = $moraPagadaCuotas[$row['installment_id']]
+                                        ?? [['num' => $row['n'], 'monto' => $row['mora'], 'dias' => null]];
+                                    $tipMoraPag = 'Mora pagada de '.count($mpc).' cuota(s):<br>'
+                                        .collect($mpc)->take(15)->map(fn ($it) =>
+                                            'Cuota '.$it['num'].': '.number_format($it['monto'], 2)
+                                            .($it['dias'] ? ' - D. '.$it['dias'] : ''))->implode('<br>')
+                                        .(count($mpc) > 15 ? '<br>…' : '')
+                                        .'<br>Total: '.number_format(collect($mpc)->sum('monto'), 2)
+                                        .(collect($mpc)->sum('dias') ? ' - D. '.collect($mpc)->sum('dias') : '');
+                                @endphp
+                                <td class="text-end" style="white-space:nowrap;">
+                                    @if($row['mora'] > 0)
+                                        <span data-bs-toggle="tooltip" data-bs-html="true" title="{{ $tipMoraPag }}" style="cursor:help;">{{ number_format($row['mora'], 2) }}</span>
+                                    @endif
+                                    @if($row['mora_exon'] > 0)
+                                        @if($row['mora'] > 0)<br>@endif
+                                        <span class="text-danger" data-bs-toggle="tooltip" title="Mora exonerada" style="cursor:help;">{{ number_format($row['mora_exon'], 2) }} - D. {{ $row['mora_exon_dias'] }}</span>
+                                    @endif
+                                    @if($row['mora'] <= 0 && $row['mora_exon'] <= 0)
+                                        0.00
+                                    @endif
+                                </td>
                                 <td style="{{ $st }}" class="text-end">{{ number_format($row['pagado'], 2) }}</td>
                                 <td style="{{ $st }}">
                                     {{ $row['fecha_pago'] }}
                                     @if($row['hora'])
                                         <small>{{ $row['hora'] }}</small>
+                                    @endif
+                                </td>
+                                <td class="text-center" style="white-space:nowrap;">
+                                    @php $rec = $recibos[$row['installment_id']] ?? null; @endphp
+                                    @if($rec)
+                                        <button type="button" class="btn btn-sm btn-secondary py-0 px-1"
+                                                title="Ver recibo" onclick="abrirRecibo(@js($rec['ver']))">
+                                            <i class="ti ti-eye"></i>
+                                        </button>
                                     @endif
                                 </td>
                             </tr>
@@ -143,8 +175,13 @@
                                     <td class="text-center"><b>0.00</b></td>
                                 @endif
                                 <td class="text-center"><b>0.00</b></td>
-                                <td class="text-end"><b>{{ number_format($row['mora'], 2) }}</b></td>
-                                <td class="text-end" style="color:red; white-space:nowrap;"><b>{{ number_format($row['mora_exon'], 2) }}@if($row['mora_exon_dias'] > 0) - D. {{ $row['mora_exon_dias'] }}@endif</b></td>
+                                <td class="text-end" style="white-space:nowrap;">
+                                    @if($row['mora'] > 0)
+                                        <b><span data-bs-toggle="tooltip" title="Mora pagada" style="cursor:help;">{{ number_format($row['mora'], 2) }}</span></b>
+                                    @else
+                                        <b>0.00</b>
+                                    @endif
+                                </td>
                                 <td class="text-end"><b>{{ number_format($row['pagado'], 2) }}</b></td>
                                 <td>
                                     <b>{{ $row['fecha_pago'] }}</b>
@@ -152,6 +189,7 @@
                                         <font color="red">{{ $row['hora'] }}</font>
                                     @endif
                                 </td>
+                                <td></td>
                             </tr>
                         @endforeach
 
@@ -171,10 +209,38 @@
                                     <td class="text-end"><b>{{ number_format($totals['excedente'], 2) }}</b></td>
                                 @endif
                                 <td class="text-end"><b>{{ number_format($totals['capital'] + $totals['interes'] + $totals['excedente'], 2) }}</b></td>
-                                <td class="text-end"><b>{{ number_format($moraGlobal, 2) }}</b></td>
-                                {{-- Mora exonerada: informativa, NO suma a los demás totales --}}
-                                <td class="text-end" style="color:red; white-space:nowrap;"><b>{{ number_format($exonGlobal, 2) }}@if($exonDiasGlobal > 0) - D. {{ $exonDiasGlobal }}@endif</b></td>
+                                {{-- Total Mora: pagada (negro) y exonerada (rojo) juntas; la
+                                     exonerada es informativa, NO suma a los demás totales --}}
+                                @php
+                                    $itemsMoraTotal = collect($rows)->where('mora', '>', 0)
+                                        ->flatMap(fn ($r) => $moraPagadaCuotas[$r['installment_id']]
+                                            ?? [['num' => $r['n'], 'monto' => $r['mora'], 'dias' => null]])
+                                        ->groupBy('num')
+                                        ->map(fn ($g, $num) => ['num' => (int) $num, 'monto' => $g->sum('monto'), 'dias' => $g->sum('dias') ?: null])
+                                        ->sortBy('num')->values();
+                                    $tipMoraPagTotal = 'Mora pagada de '.$itemsMoraTotal->count().' cuota(s):<br>'
+                                        .$itemsMoraTotal->take(15)->map(fn ($it) =>
+                                            'Cuota '.$it['num'].': '.number_format($it['monto'], 2)
+                                            .($it['dias'] ? ' - D. '.$it['dias'] : ''))->implode('<br>')
+                                        .($itemsMoraTotal->count() > 15 ? '<br>…' : '')
+                                        .($sumOtrosMora > 0 ? '<br>Sin cuota: '.number_format($sumOtrosMora, 2) : '')
+                                        .'<br>Total: '.number_format($moraGlobal, 2)
+                                        .($itemsMoraTotal->sum('dias') ? ' - D. '.$itemsMoraTotal->sum('dias') : '');
+                                @endphp
+                                <td class="text-end" style="white-space:nowrap;">
+                                    @if($moraGlobal > 0)
+                                        <b><span data-bs-toggle="tooltip" data-bs-html="true" title="{{ $tipMoraPagTotal }}" style="cursor:help;">{{ number_format($moraGlobal, 2) }}</span></b>
+                                    @endif
+                                    @if($exonGlobal > 0)
+                                        @if($moraGlobal > 0)<br>@endif
+                                        <b><span class="text-danger" data-bs-toggle="tooltip" title="Mora exonerada" style="cursor:help;">{{ number_format($exonGlobal, 2) }}@if($exonDiasGlobal > 0) - D. {{ $exonDiasGlobal }}@endif</span></b>
+                                    @endif
+                                    @if($moraGlobal <= 0 && $exonGlobal <= 0)
+                                        <b>0.00</b>
+                                    @endif
+                                </td>
                                 <td class="text-end"><b>{{ number_format($pagadoGlobal, 2) }}</b></td>
+                                <td></td>
                                 <td></td>
                             </tr>
                             {{-- Total recibido: solo aporta cuando hay mora (pagos + mora) --}}
@@ -209,4 +275,32 @@
             </div>
         </div>
     </div>
+
+    {{-- Modal del recibo (homologado con /payments/create): iframe del recibo
+         público en esta misma ventana. allow=clipboard-write: sin eso el botón
+         "Copiar imagen" del recibo no puede escribir al portapapeles. --}}
+    <div class="modal fade" id="modal-recibo" tabindex="-1" wire:ignore>
+        <div class="modal-dialog modal-dialog-centered" style="max-width:430px;">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title">Recibo</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <iframe id="iframe-recibo" src="about:blank" allow="clipboard-write"
+                            style="width:100%; height:75vh; border:0;"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        function abrirRecibo(url) {
+            document.getElementById('iframe-recibo').src = url;
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-recibo')).show();
+        }
+        // Al cerrar se descarga el iframe: no queda el recibo cargado de fondo
+        document.getElementById('modal-recibo').addEventListener('hidden.bs.modal', function () {
+            document.getElementById('iframe-recibo').src = 'about:blank';
+        });
+    </script>
 </div>

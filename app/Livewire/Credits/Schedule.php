@@ -184,6 +184,7 @@ class Schedule extends Component
 
             $rows[] = [
                 'tipo' => 'cuota',
+                'installment_id' => (int) $ins->id,
                 'n' => $tt,
                 'periodo' => $venc,
                 'capital' => $cap,
@@ -262,6 +263,10 @@ class Schedule extends Component
             'saldo' => $saldo,
             'totalGeneral' => $totalGeneral,
             'capPendienteTotal' => $capPendienteTotal,
+            // Homologado con /payments/create: recibo por cuota (modal) y
+            // desglose de la mora pagada para los tooltips de la columna Mora
+            'recibos' => \App\Support\RecibosCuota::porCuota($this->credit),
+            'moraPagadaCuotas' => \App\Support\MoraPagada::porCuota($this->credit),
         ]);
     }
 }
