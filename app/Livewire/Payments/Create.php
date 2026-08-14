@@ -1434,7 +1434,56 @@ class Create extends Component
             'fecsimMin' => $fecsimMin,
             'moraExon' => $this->credit ? MoraExonerada::porCuota($this->credit) : [],
             'recibos' => $this->recibosPorCuota(),
+            'moraPagadaCuotas' => $this->moraPagadaCuotas(),
         ]);
+    }
+
+    /**
+     * A qué cuotas pertenece la mora pagada que carga cada cuota, vía la
+     * operación de cobro: los pagos MORA del sistema nuevo llevan fila
+     * tipo M en mass_deletion_details (apunta a la cuota donde se anotó la
+     * mora) y las cuotas C/I/E de esa misma operación son las que generaron
+     * el atraso. La mora migrada del legacy no tiene vínculo: pertenece a
+     * su propia cuota (allá venía anotada cuota por cuota) y no aparece en
+     * este mapa — el blade usa la propia cuota como fallback.
+     *
+     * @return array<int, list<int>> installment_id → números de cuota
+     */
+    private function moraPagadaCuotas(): array
+    {
+        if (! $this->credit) {
+            return [];
+        }
+
+        // El filtro tipo=M es obligatorio: payment_id solo, colisiona con
+        // filas C/I de la migración que referencian otros pagos (ids
+        // reutilizados por el autoincrement tras migrate:fresh).
+        $ops = DB::table('mass_deletion_details as m')
+            ->join('payments as p', 'p.id', '=', 'm.payment_id')
+            ->where('p.credit_id', $this->credit->id)
+            ->where('p.tipo', 'MORA')
+            ->where('m.tipo', 'M')
+            ->get(['m.mass_deletion_id', 'm.installment_id']);
+        if ($ops->isEmpty()) {
+            return [];
+        }
+
+        $cuotasPorOp = DB::table('mass_deletion_details as d')
+            ->join('credit_installments as ci', 'ci.id', '=', 'd.installment_id')
+            ->whereIn('d.mass_deletion_id', $ops->pluck('mass_deletion_id')->unique()->all())
+            ->whereIn('d.tipo', ['C', 'I', 'E'])
+            ->distinct()
+            ->get(['d.mass_deletion_id', 'ci.num_cuota'])
+            ->groupBy('mass_deletion_id');
+
+        $map = [];
+        foreach ($ops as $o) {
+            $nums = ($cuotasPorOp[$o->mass_deletion_id] ?? collect())->pluck('num_cuota');
+            $map[$o->installment_id] = collect($map[$o->installment_id] ?? [])
+                ->merge($nums)->unique()->sort()->values()->all();
+        }
+
+        return $map;
     }
 
     /**
