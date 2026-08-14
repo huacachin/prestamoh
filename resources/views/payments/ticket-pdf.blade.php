@@ -86,8 +86,6 @@
             <tr><td>&nbsp;Cuota {{ $dc['num'] }}{{ $dc['parcial'] ? ' (amortizada)' : '' }}:</td><td class="der">{{ number_format($dc['monto'], 2) }}</td></tr>
         @endforeach
     @endif
-    <tr><td>Capital:</td><td class="der">{{ number_format($t['capital'], 2) }}</td></tr>
-    <tr><td>Interes:</td><td class="der">{{ number_format($t['interes'], 2) }}</td></tr>
     @if($t['excedente'] > 0.001)
         <tr><td>Excedente:</td><td class="der">{{ number_format($t['excedente'], 2) }}</td></tr>
     @endif

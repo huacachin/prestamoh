@@ -237,8 +237,8 @@ final class TicketPrinter
                 }
             }
 
-            $this->pt($printer, $this->row('Capital:', number_format($t['capital'], 2), $columns));
-            $this->pt($printer, $this->row('Interes:', number_format($t['interes'], 2), $columns));
+            // Capital e Interes globales fuera a pedido del negocio (15/08): el
+            // desglose por cuota ya cuenta la historia y el TOTAL cierra.
             if ($t['excedente'] > 0.001) {
                 $this->pt($printer, $this->row('Excedente:', number_format($t['excedente'], 2), $columns));
             }

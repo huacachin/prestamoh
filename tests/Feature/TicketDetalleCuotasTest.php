@@ -77,6 +77,11 @@ class TicketDetalleCuotasTest extends TestCase
         $html = view('payments.ticket', ['t' => $t, 'autoprint' => false, 'esCopia' => false, 'logo' => null])->render();
         $this->assertStringContainsString('Cuota 1:', $html);
         $this->assertStringContainsString('Cuota 2 (amortizada):', $html);
+
+        // Las líneas globales Capital/Interes salieron a pedido del negocio
+        // (15/08): el desglose por cuota cuenta la historia y el TOTAL cierra.
+        $this->assertStringNotContainsString('Capital:', $html);
+        $this->assertStringNotContainsString('Interes:', $html);
     }
 
     public function test_una_sola_cuota_completa_no_repite_el_desglose(): void
