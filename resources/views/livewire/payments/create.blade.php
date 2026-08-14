@@ -955,7 +955,7 @@
                             <th>Mora</th>
                             <th>Estado</th>
                             <th>Fecha Pago</th>
-                            <th class="text-center">Recibo</th>
+                            <th class="text-center">Rec.</th>
                         </tr>
                         </thead>
                         <tbody>
