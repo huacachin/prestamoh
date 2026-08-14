@@ -112,18 +112,20 @@
                     </thead>
                     <tbody>
                         {{-- Cuotas regulares --}}
-                        @php $nVencida = 0; $hoy = now()->format('Y-m-d'); @endphp
+                        @php $nVencida = 0; $nPendiente = 0; $hoy = now()->format('Y-m-d'); @endphp
                         @foreach($rows as $row)
                             @php
                                 $st = $row['color'] ? 'color:'.$row['color'].';' : '';
-                                // Vencida impaga: fila roja + contador legacy delante
-                                // del número (1-16, 2-17, ...) como /payments/create
+                                // Vencidas y pendientes con contador legacy delante del
+                                // número (1-16, 2-17, ...) como /payments/create
                                 $vencida = ! $row['flag_pagado'] && $row['periodo'] !== '' && $row['periodo'] < $hoy;
+                                $pendiente = ! $row['flag_pagado'] && ! $vencida;
                                 if ($vencida) $nVencida++;
+                                if ($pendiente) $nPendiente++;
                             @endphp
                             {{-- Roja: vencida impaga (gana). Amarillo: pagada tarde. --}}
                             <tr @if($vencida) class="table-danger" @elseif($row['tarde']) style="background-color:#fff3cd;" @endif>
-                                <td style="{{ $st }}" class="text-center">@if($vencida){{ $nVencida }}-@endif{{ $row['n'] }}</td>
+                                <td style="{{ $st }}" class="text-center">@if($vencida){{ $nVencida }}-@elseif($pendiente){{ $nPendiente }}-@endif{{ $row['n'] }}</td>
                                 <td style="{{ $st }}" class="text-center">{{ $row['periodo'] }}</td>
                                 <td style="{{ $st }}" class="text-end">{{ number_format($row['capital'], 2) }}</td>
                                 <td style="{{ $st }}" class="text-end">{{ number_format($row['interes'], 2) }}</td>

@@ -959,17 +959,20 @@
                         </tr>
                         </thead>
                         <tbody>
-                        @php $nVencida = 0; @endphp
+                        @php $nVencida = 0; $nPendiente = 0; @endphp
                         @foreach($credit->installments as $inst)
                             @php
                                 $saldo = $inst->saldoPendiente();
                                 $vencida = !$inst->pagado && $inst->fecha_vencimiento?->isPast();
+                                $pendiente = !$inst->pagado && !$vencida;
                                 if ($vencida) $nVencida++;
+                                if ($pendiente) $nPendiente++;
                             @endphp
                             <tr class="{{ $vencida ? 'table-danger' : '' }}">
-                                {{-- Numeración del legacy: las vencidas llevan su propio
-                                     contador delante del número de cuota (1-16, 2-17, ...) --}}
-                                <td>@if($vencida){{ $nVencida }}-@endif{{ $inst->num_cuota }}</td>
+                                {{-- Numeración del legacy: vencidas y pendientes llevan su
+                                     propio contador delante del número de cuota (1-16, 2-17...)
+                                     así se ve de un vistazo cuántas hay de cada una --}}
+                                <td>@if($vencida){{ $nVencida }}-@elseif($pendiente){{ $nPendiente }}-@endif{{ $inst->num_cuota }}</td>
                                 <td>{{ $inst->fecha_vencimiento?->format('d/m/Y') }}</td>
                                 <td class="text-end">{{ number_format($inst->importe_cuota, 2) }}</td>
                                 <td class="text-end">{{ number_format($inst->importe_interes, 2) }}</td>
