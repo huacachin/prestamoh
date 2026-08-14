@@ -16,7 +16,7 @@
             <tr>
                 <th {!! $hd !!} width="40">N&deg;</th>
                 <th {!! $hd !!} width="90">FECHA</th>
-                <th {!! $hd !!} width="200">DATOS DEL CLIENTE</th>
+                <th {!! $hd !!} width="200">DESCRIP.</th>
                 <th {!! $hd !!} width="160">DETALLES</th>
                 <th {!! $hd !!} width="100">INGRESO</th>
                 <th {!! $hd !!} width="100">EGRESO</th>

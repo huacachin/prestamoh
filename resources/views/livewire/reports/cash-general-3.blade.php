@@ -69,7 +69,7 @@
                                     <tr>
                                         <th class="text-center text-nowrap">N&deg;</th>
                                         <th class="text-center text-nowrap">FECHA</th>
-                                        <th class="text-center text-nowrap">DATOS DEL CLIENTE</th>
+                                        <th class="text-center text-nowrap">DESCRIP.</th>
                                         <th class="text-center col-wrap">DETALLES</th>
                                         <th class="text-center text-nowrap">INGRESO</th>
                                         <th class="text-center text-nowrap">EGRESO</th>
