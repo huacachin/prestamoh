@@ -986,15 +986,19 @@
                                 @php
                                     $me = $moraExon[$inst->num_cuota] ?? null;
                                     $mPag = $inst->importe_mora + $inst->mora_interes;
-                                    // Cuotas de la operación que generó esta mora; la mora
+                                    // Desglose de la operación que generó esta mora; la mora
                                     // migrada del legacy pertenece a su propia cuota.
-                                    $mpc = $moraPagadaCuotas[$inst->id] ?? [$inst->num_cuota];
-                                    $tipMoraPag = 'Mora pagada de '.count($mpc).' cuota(s)'
-                                        .(count($mpc) <= 10 ? ': '.implode(', ', $mpc) : '');
+                                    $mpc = $moraPagadaCuotas[$inst->id]
+                                        ?? [['num' => $inst->num_cuota, 'monto' => $mPag, 'dias' => null]];
+                                    $tipMoraPag = 'Mora pagada de '.count($mpc).' cuota(s):<br>'
+                                        .collect($mpc)->take(15)->map(fn ($it) =>
+                                            'Cuota '.$it['num'].': '.number_format($it['monto'], 2)
+                                            .($it['dias'] ? ' - D. '.$it['dias'] : ''))->implode('<br>')
+                                        .(count($mpc) > 15 ? '<br>…' : '');
                                 @endphp
                                 <td class="text-end" style="white-space:nowrap;">
                                     @if($mPag > 0)
-                                        <span data-bs-toggle="tooltip" title="{{ $tipMoraPag }}" style="cursor:help;">{{ number_format($mPag, 2) }}</span>
+                                        <span data-bs-toggle="tooltip" data-bs-html="true" title="{{ $tipMoraPag }}" style="cursor:help;">{{ number_format($mPag, 2) }}</span>
                                     @endif
                                     @if($me)
                                         @if($mPag > 0)<br>@endif
@@ -1059,19 +1063,25 @@
                                 @php
                                     $tExon = collect($moraExon)->sum('monto');
                                     $tExonDias = collect($moraExon)->sum('dias');
-                                    // Unión de las cuotas a las que pertenece toda la mora pagada
-                                    $cuotasMoraTotal = $credit->installments
+                                    // Desglose por cuota de toda la mora pagada del crédito
+                                    $itemsMoraTotal = $credit->installments
                                         ->filter(fn ($i) => $i->importe_mora + $i->mora_interes > 0)
-                                        ->flatMap(fn ($i) => $moraPagadaCuotas[$i->id] ?? [$i->num_cuota])
-                                        ->unique()->sort()->values();
-                                    $tipMoraPagTotal = 'Mora pagada de '.$cuotasMoraTotal->count().' cuota(s)'
-                                        .($cuotasMoraTotal->count() <= 10 ? ': '.$cuotasMoraTotal->implode(', ') : '');
+                                        ->flatMap(fn ($i) => $moraPagadaCuotas[$i->id]
+                                            ?? [['num' => $i->num_cuota, 'monto' => $i->importe_mora + $i->mora_interes, 'dias' => null]])
+                                        ->groupBy('num')
+                                        ->map(fn ($g, $num) => ['num' => (int) $num, 'monto' => $g->sum('monto'), 'dias' => $g->sum('dias') ?: null])
+                                        ->sortBy('num')->values();
+                                    $tipMoraPagTotal = 'Mora pagada de '.$itemsMoraTotal->count().' cuota(s):<br>'
+                                        .$itemsMoraTotal->take(15)->map(fn ($it) =>
+                                            'Cuota '.$it['num'].': '.number_format($it['monto'], 2)
+                                            .($it['dias'] ? ' - D. '.$it['dias'] : ''))->implode('<br>')
+                                        .($itemsMoraTotal->count() > 15 ? '<br>…' : '');
                                 @endphp
                                 {{-- Total Mora: pagada y exonerada juntas (la exonerada es
                                      informativa, no suma a los demás totales) --}}
                                 <td class="text-end" style="white-space:nowrap;">
                                     @if($tMoraPag > 0)
-                                        <span data-bs-toggle="tooltip" title="{{ $tipMoraPagTotal }}" style="cursor:help;">{{ number_format($tMoraPag, 2) }}</span>
+                                        <span data-bs-toggle="tooltip" data-bs-html="true" title="{{ $tipMoraPagTotal }}" style="cursor:help;">{{ number_format($tMoraPag, 2) }}</span>
                                     @endif
                                     @if($tExon > 0)
                                         @if($tMoraPag > 0)<br>@endif
