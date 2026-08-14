@@ -1066,6 +1066,27 @@
                                 <td></td>
                                 <td></td>
                             </tr>
+                            {{-- Pagos de MORA del crédito: van sin installment_id, así que
+                                 no aparecen en ninguna fila de cuota ni en sus totales, pero
+                                 sí en Caja 1. El legacy los listaba igual bajo la tabla
+                                 (ingresos documento=MORA en pagossmasivo.php). --}}
+                            @php
+                                $morasPagadas = \App\Models\Payment::where('credit_id', $credit->id)
+                                    ->where('tipo', 'MORA')->orderBy('fecha')->orderBy('id')->get();
+                            @endphp
+                            @foreach($morasPagadas as $mp)
+                                <tr>
+                                    <td class="fw-bold">Mora</td>
+                                    <td></td>
+                                    <td colspan="{{ $tieneExc ? 5 : 4 }}" class="small">{{ $mp->detalle }}</td>
+                                    <td class="text-end fw-bold">{{ number_format($mp->monto, 2) }}</td>
+                                    <td></td>
+                                    <td></td>
+                                    <td><span class="badge bg-secondary">Mora</span></td>
+                                    <td>{{ \Carbon\Carbon::parse($mp->fecha)->format('d/m/Y') }}</td>
+                                    <td></td>
+                                </tr>
+                            @endforeach
                         </tfoot>
                     </table>
                 </div>
