@@ -1119,6 +1119,40 @@
                                 <td></td>
                                 <td></td>
                             </tr>
+                            {{-- Filas homologadas con /credits/{id}/schedule: Total pagado
+                                 + mora (solo si hay mora), Saldo y Capital pendiente total --}}
+                            @php
+                                $moraPagadaCaja = (float) \App\Models\Payment::where('credit_id', $credit->id)
+                                    ->where('tipo', 'MORA')->sum('monto');
+                                $tPagadoTotal = $tPagCap + $tPagInt + $tPagExc;
+                                $capPendiente = round($tCap - $tPagCap, 2);
+                            @endphp
+                            @if($moraPagadaCaja > 0)
+                                <tr class="fw-bold" style="background:#f0f0f0;">
+                                    <td colspan="{{ $tieneExc ? 8 : 7 }}" class="text-end">Total pagado + mora</td>
+                                    <td class="text-end">{{ number_format($tPagadoTotal + $moraPagadaCaja, 2) }}</td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+                            @endif
+                            <tr class="fw-bold" style="background:#f0f0f0;">
+                                <td colspan="{{ $tieneExc ? 8 : 7 }}" class="text-end text-danger">Saldo</td>
+                                <td class="text-end text-danger">{{ number_format($tSaldo, 2) }}</td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                            <tr class="fw-bold" style="background:#f0f0f0;">
+                                <td colspan="{{ $tieneExc ? 8 : 7 }}" class="text-end text-danger">Capital pendiente total</td>
+                                <td class="text-end text-danger">{{ number_format($capPendiente, 2) }}</td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                            </tr>
                             {{-- Interés pendiente del cronograma: interés total − pagado --}}
                             @php
                                 $tIntPend = round($tInt - $tPagInt, 2);
@@ -1136,11 +1170,7 @@
                             {{-- La mora pagada vive en la columna Mora Pag. (por cuota).
                                  Si algún pago MORA quedó sin cuota asignada (caja > suma
                                  de cuotas), el residuo sale aquí para cuadrar con Caja 1. --}}
-                            @php
-                                $moraPagadaCaja = (float) \App\Models\Payment::where('credit_id', $credit->id)
-                                    ->where('tipo', 'MORA')->sum('monto');
-                                $moraSinCuota = round($moraPagadaCaja - $tMoraPag, 2);
-                            @endphp
+                            @php $moraSinCuota = round($moraPagadaCaja - $tMoraPag, 2); @endphp
                             @if($moraSinCuota > 0.01)
                                 <tr class="fw-bold" style="background:#f0f0f0;">
                                     <td colspan="{{ $tieneExc ? 9 : 8 }}" class="text-end">Mora sin cuota asignada</td>
