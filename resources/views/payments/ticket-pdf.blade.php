@@ -80,6 +80,12 @@
     @if($t['cuotas'])
         <tr><td>Cuotas:</td><td class="der">{{ implode(',', $t['cuotas']) }}</td></tr>
     @endif
+    {{-- Desglose por cuota (solo si hay varias o alguna quedó amortizada). --}}
+    @if($t['detalle_cuotas_visible'] ?? false)
+        @foreach($t['detalle_cuotas'] as $dc)
+            <tr><td>&nbsp;Cuota {{ $dc['num'] }}{{ $dc['parcial'] ? ' (amortizada)' : '' }}:</td><td class="der">{{ number_format($dc['monto'], 2) }}</td></tr>
+        @endforeach
+    @endif
     <tr><td>Capital:</td><td class="der">{{ number_format($t['capital'], 2) }}</td></tr>
     <tr><td>Interes:</td><td class="der">{{ number_format($t['interes'], 2) }}</td></tr>
     @if($t['excedente'] > 0.001)

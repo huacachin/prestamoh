@@ -85,22 +85,36 @@ final class TicketPrinter
         $masivo->loadMissing([
             'credit.client',
             'credit.headquarter:id,name',
-            'details.installment:id,num_cuota',
+            'details.installment:id,num_cuota,pagado',
         ]);
 
         $totales = ['C' => 0.0, 'I' => 0.0, 'E' => 0.0, 'M' => 0.0];
-        $cuotasTocadas = [];
+        // Desglose POR CUOTA (capital+interés+excedente que recibió cada una en
+        // ESTE cobro). La mora queda fuera: va como línea global aparte. Se
+        // marca "amortizada" la cuota que quedó sin completar — refleja el
+        // estado ACTUAL, así que una reimpresión posterior puede mostrarla ya
+        // completa, que es lo esperado.
+        $porCuota = [];
         foreach ($masivo->details as $d) {
             $tipo = (string) ($d->tipo ?? '');
             if (isset($totales[$tipo])) {
                 $totales[$tipo] += (float) $d->amount;
             }
-            if ($d->installment?->num_cuota !== null && $tipo === 'C') {
-                $cuotasTocadas[] = $d->installment->num_cuota;
+            if ($d->installment?->num_cuota !== null && in_array($tipo, ['C', 'I', 'E'], true)) {
+                $num = (int) $d->installment->num_cuota;
+                $porCuota[$num]['monto'] = ($porCuota[$num]['monto'] ?? 0.0) + (float) $d->amount;
+                $porCuota[$num]['parcial'] = ! (bool) $d->installment->pagado;
             }
         }
-        $cuotasTocadas = array_values(array_unique($cuotasTocadas));
-        sort($cuotasTocadas);
+        ksort($porCuota);
+
+        $detalleCuotas = [];
+        foreach ($porCuota as $num => $info) {
+            $detalleCuotas[] = ['num' => $num, 'monto' => round($info['monto'], 2), 'parcial' => $info['parcial']];
+        }
+        // Con interés-primero una cuota puede recibir solo interés: entra igual
+        // al listado (antes solo se listaban las que recibían capital).
+        $cuotasTocadas = array_keys($porCuota);
 
         $client = $masivo->credit?->client;
         $nombre = $client
@@ -120,6 +134,11 @@ final class TicketPrinter
             'cobrador' => $masivo->user ?: null,
             'asesor' => $masivo->advisor ?: null,
             'cuotas' => $cuotasTocadas,
+            'detalle_cuotas' => $detalleCuotas,
+            // El desglose por cuota solo aporta cuando hay varias o alguna
+            // quedó amortizada; con una sola cuota completa duplicaría el total.
+            'detalle_cuotas_visible' => count($detalleCuotas) > 1
+                || array_any($detalleCuotas, fn ($c) => $c['parcial']),
             'capital' => round($totales['C'], 2),
             'interes' => round($totales['I'], 2),
             'excedente' => round($totales['E'], 2),
@@ -205,6 +224,17 @@ final class TicketPrinter
             // ── Detalle por tipo (C, I, E, M) ────────────────────────────
             if ($t['cuotas']) {
                 $this->pt($printer, $this->row('Cuotas:', implode(',', $t['cuotas']), $columns));
+            }
+            // Desglose por cuota: cuánto recibió cada una en este cobro, con
+            // marca de amortizada cuando quedó sin completar.
+            if ($t['detalle_cuotas_visible'] ?? false) {
+                foreach ($t['detalle_cuotas'] as $dc) {
+                    $this->pt($printer, $this->row(
+                        ' Cuota '.$dc['num'].($dc['parcial'] ? ' (amortizada)' : '').':',
+                        number_format($dc['monto'], 2),
+                        $columns
+                    ));
+                }
             }
 
             $this->pt($printer, $this->row('Capital:', number_format($t['capital'], 2), $columns));
