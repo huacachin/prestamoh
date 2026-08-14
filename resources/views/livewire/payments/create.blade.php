@@ -1024,20 +1024,13 @@
                                 <td class="text-center" style="white-space:nowrap;">
                                     @php $rec = $recibos[$inst->id] ?? null; @endphp
                                     @if($rec)
-                                        @if($rec['wa'])
-                                            <a href="{{ $rec['wa'] }}" target="_blank" rel="noopener"
-                                               class="btn btn-sm btn-success py-0 px-1"
-                                               title="Enviar recibo por WhatsApp al cliente">
-                                                <i class="ti ti-brand-whatsapp"></i>
-                                            </a>
-                                        @endif
-                                        {{-- Abre el recibo en línea (el mismo link firmado que
-                                             se manda por WhatsApp) en vez de descargar el PDF --}}
-                                        <a href="{{ $rec['ver'] }}" target="_blank" rel="noopener"
-                                           class="btn btn-sm btn-secondary py-0 px-1"
-                                           title="Ver recibo">
+                                        {{-- Único botón (el de WhatsApp se quitó 14/08): abre el
+                                             recibo en un modal sobre esta misma ventana, donde
+                                             está el "Copiar imagen" --}}
+                                        <button type="button" class="btn btn-sm btn-secondary py-0 px-1"
+                                                title="Ver recibo" onclick="abrirRecibo(@js($rec['ver']))">
                                             <i class="ti ti-eye"></i>
-                                        </a>
+                                        </button>
                                     @endif
                                 </td>
                             </tr>
@@ -1149,5 +1142,32 @@
             </div>
         </div>
     @endif
+    {{-- Modal del recibo: iframe del recibo público en esta misma ventana.
+         allow=clipboard-write: sin eso el botón "Copiar imagen" del recibo
+         no puede escribir al portapapeles desde dentro del iframe. --}}
+    <div class="modal fade" id="modal-recibo" tabindex="-1" wire:ignore>
+        <div class="modal-dialog modal-dialog-centered" style="max-width:430px;">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title">Recibo</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <iframe id="iframe-recibo" src="about:blank" allow="clipboard-write"
+                            style="width:100%; height:75vh; border:0;"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        function abrirRecibo(url) {
+            document.getElementById('iframe-recibo').src = url;
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-recibo')).show();
+        }
+        // Al cerrar se descarga el iframe: no queda el recibo cargado de fondo
+        document.getElementById('modal-recibo').addEventListener('hidden.bs.modal', function () {
+            document.getElementById('iframe-recibo').src = 'about:blank';
+        });
+    </script>
 <span id="final"></span>
 </div>
