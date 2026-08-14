@@ -39,7 +39,10 @@
     {{-- Ficha personal --}}
     <div class="card shadow-sm">
         <div class="card-body p-0">
-            <table class="table table-bordered mb-0" style="font-size: 13px;">
+            {{-- Responsive: en pantallas angostas la tabla scrollea dentro de su
+                 contenedor en vez de estrujar las celdas hasta hacerlas ilegibles. --}}
+            <div class="table-responsive">
+            <table class="table table-bordered mb-0" style="font-size: 13px; min-width: 640px;">
                 <tr>
                     <td colspan="4" class="bg-primary text-white" style="font-weight:500; padding:6px 12px;">Ficha Personal</td>
                 </tr>
@@ -92,6 +95,7 @@
                     <td colspan="4" style="background-color:#e9ecef; font-weight:500; padding:6px 12px;">Historial de Pagos</td>
                 </tr>
             </table>
+            </div>
         </div>
     </div>
 
