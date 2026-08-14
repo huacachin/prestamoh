@@ -34,17 +34,20 @@
                             <div class="col">
                                 <label class="form-label mb-0 small"><b>Nombre</b></label>
                                 <input type="text" class="form-control form-control-sm"
-                                       wire:model="nombre" name="nombre" autocomplete="off" placeholder="Nombres">
+                                       wire:model="nombre" name="nombre" autocomplete="on" list="clients_nombre_hist" data-search-history="clients_nombre" placeholder="Nombres">
+                                <datalist id="clients_nombre_hist" wire:ignore></datalist>
                             </div>
                             <div class="col">
                                 <label class="form-label mb-0 small"><b>T.Credito</b></label>
                                 <input type="text" class="form-control form-control-sm"
-                                       wire:model="ruta" name="ruta" autocomplete="off" placeholder="Ruta">
+                                       wire:model="ruta" name="ruta" autocomplete="on" list="clients_ruta_hist" data-search-history="clients_ruta" placeholder="Ruta">
+                                <datalist id="clients_ruta_hist" wire:ignore></datalist>
                             </div>
                             <div class="col">
                                 <label class="form-label mb-0 small"><b>Giro</b></label>
                                 <input type="text" class="form-control form-control-sm"
-                                       wire:model="giro" name="giro" autocomplete="off" placeholder="Giro">
+                                       wire:model="giro" name="giro" autocomplete="on" list="clients_giro_hist" data-search-history="clients_giro" placeholder="Giro">
+                                <datalist id="clients_giro_hist" wire:ignore></datalist>
                             </div>
                             <div class="col">
                                 <label class="form-label mb-0 small"><b>Asesor</b></label>
