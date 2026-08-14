@@ -24,12 +24,14 @@
                             <div class="col">
                                 <label class="form-label mb-0 small"><b>Expediente</b></label>
                                 <input type="text" class="form-control form-control-sm"
-                                       wire:model="nexpediente" name="nexpediente" autocomplete="off" placeholder="Numero Expediente">
+                                       wire:model="nexpediente" name="nexpediente" autocomplete="on" list="clients_expediente_hist" data-search-history="clients_expediente" placeholder="Numero Expediente">
+                                <datalist id="clients_expediente_hist" wire:ignore></datalist>
                             </div>
                             <div class="col">
                                 <label class="form-label mb-0 small"><b>DNI</b></label>
                                 <input type="text" class="form-control form-control-sm"
-                                       wire:model="documento" name="documento" autocomplete="off" placeholder="DNI">
+                                       wire:model="documento" name="documento" autocomplete="on" list="clients_documento_hist" data-search-history="clients_documento" placeholder="DNI">
+                                <datalist id="clients_documento_hist" wire:ignore></datalist>
                             </div>
                             <div class="col">
                                 <label class="form-label mb-0 small"><b>Nombre</b></label>
