@@ -195,6 +195,14 @@ class Schedule extends Component
                 'mora_exon' => $moraExon,
                 'mora_exon_dias' => $moraExonDias,
                 'pagado' => $pagado,
+                // Vista cronograma (homologada con /payments/create): lo
+                // aplicado por tipo, el saldo y el estado real de la cuota.
+                'pagado_cap' => (float) $ins->importe_aplicado,
+                'pagado_int' => (float) $ins->interes_aplicado,
+                'pagado_exc' => (float) $ins->excedente_aplicado,
+                'saldo' => round($cap + $int + $exc
+                    - (float) $ins->importe_aplicado - (float) $ins->interes_aplicado - (float) $ins->excedente_aplicado, 2),
+                'flag_pagado' => (bool) $ins->pagado,
                 'hora' => $hora,
                 'fecha_pago' => $fechaPago,
                 'color' => $color,
@@ -238,6 +246,11 @@ class Schedule extends Component
                 'mora_exon' => $moraExon,
                 'mora_exon_dias' => $moraExonDias,
                 'pagado' => (float) $info['monto'],
+                'pagado_cap' => 0.0,
+                'pagado_int' => 0.0,
+                'pagado_exc' => 0.0,
+                'saldo' => 0.0,
+                'flag_pagado' => null,
                 'hora' => $info['hora'],
                 'fecha_pago' => $f,
                 'color' => '',

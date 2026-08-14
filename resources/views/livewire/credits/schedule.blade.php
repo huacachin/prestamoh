@@ -91,35 +91,49 @@
                 @php $tieneExc = ($totals['excedente'] ?? 0) > 0; @endphp
                 <table class="table table-bordered table-hover" style="font-size: 11px;">
                     <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
+                        {{-- Columnas homologadas con /payments/create --}}
                         <tr>
-                            <th class="text-center">N° Cuota</th>
-                            <th class="text-center">Periodo</th>
+                            <th class="text-center">Cuota</th>
+                            <th class="text-center">Fecha Venc.</th>
                             <th class="text-center">Capital</th>
                             <th class="text-center">Interés</th>
                             @if($tieneExc)
                                 <th class="text-center">Excedente</th>
                             @endif
-                            <th class="text-center">Total</th>
-                            <th class="text-center">Mora</th>
+                            <th class="text-center">Pagado Cap.</th>
+                            <th class="text-center">Pagado Int.</th>
                             <th class="text-center">Pagado</th>
+                            <th class="text-center">Saldo</th>
+                            <th class="text-center">Mora</th>
+                            <th class="text-center">Estado</th>
                             <th class="text-center">Fecha Pago</th>
                             <th class="text-center">Rec.</th>
                         </tr>
                     </thead>
                     <tbody>
                         {{-- Cuotas regulares --}}
+                        @php $nVencida = 0; $hoy = now()->format('Y-m-d'); @endphp
                         @foreach($rows as $row)
-                            @php $st = $row['color'] ? 'color:'.$row['color'].';' : ''; @endphp
-                            {{-- Amarillo: pago realizado después de la fecha de vencimiento --}}
-                            <tr @if($row['tarde']) style="background-color:#fff3cd;" @endif>
-                                <td style="{{ $st }}" class="text-center">{{ $row['n'] }}</td>
+                            @php
+                                $st = $row['color'] ? 'color:'.$row['color'].';' : '';
+                                // Vencida impaga: fila roja + contador legacy delante
+                                // del número (1-16, 2-17, ...) como /payments/create
+                                $vencida = ! $row['flag_pagado'] && $row['periodo'] !== '' && $row['periodo'] < $hoy;
+                                if ($vencida) $nVencida++;
+                            @endphp
+                            {{-- Roja: vencida impaga (gana). Amarillo: pagada tarde. --}}
+                            <tr @if($vencida) class="table-danger" @elseif($row['tarde']) style="background-color:#fff3cd;" @endif>
+                                <td style="{{ $st }}" class="text-center">@if($vencida){{ $nVencida }}-@endif{{ $row['n'] }}</td>
                                 <td style="{{ $st }}" class="text-center">{{ $row['periodo'] }}</td>
                                 <td style="{{ $st }}" class="text-end">{{ number_format($row['capital'], 2) }}</td>
                                 <td style="{{ $st }}" class="text-end">{{ number_format($row['interes'], 2) }}</td>
                                 @if($tieneExc)
                                     <td style="{{ $st }}" class="text-end">{{ number_format($row['excedente'], 2) }}</td>
                                 @endif
-                                <td style="{{ $st }}" class="text-end">{{ number_format($row['total'], 2) }}</td>
+                                <td style="{{ $st }}" class="text-end">{{ number_format($row['pagado_cap'], 2) }}</td>
+                                <td style="{{ $st }}" class="text-end">{{ number_format($row['pagado_int'], 2) }}</td>
+                                <td style="{{ $st }}" class="text-end">{{ number_format($row['pagado_cap'] + $row['pagado_int'] + $row['pagado_exc'], 2) }}</td>
+                                <td style="{{ $st }}" class="text-end">{{ number_format($row['saldo'], 2) }}</td>
                                 {{-- Mora unificada (homologada con /payments/create):
                                      pagada en negro, exonerada en rojo, con tooltips --}}
                                 @php
@@ -145,7 +159,15 @@
                                         0.00
                                     @endif
                                 </td>
-                                <td style="{{ $st }}" class="text-end">{{ number_format($row['pagado'], 2) }}</td>
+                                <td class="text-center">
+                                    @if($row['flag_pagado'])
+                                        <span class="badge bg-success">Pagado</span>
+                                    @elseif($vencida)
+                                        <span class="badge bg-danger">Vencida</span>
+                                    @else
+                                        <span class="badge bg-warning">Pendiente</span>
+                                    @endif
+                                </td>
                                 <td style="{{ $st }}">
                                     {{ $row['fecha_pago'] }}
                                     @if($row['hora'])
@@ -175,6 +197,9 @@
                                     <td class="text-center"><b>0.00</b></td>
                                 @endif
                                 <td class="text-center"><b>0.00</b></td>
+                                <td class="text-center"><b>0.00</b></td>
+                                <td class="text-end"><b>{{ number_format($row['pagado'], 2) }}</b></td>
+                                <td></td>
                                 <td class="text-end" style="white-space:nowrap;">
                                     @if($row['mora'] > 0)
                                         <b><span data-bs-toggle="tooltip" title="Mora pagada" style="cursor:help;">{{ number_format($row['mora'], 2) }}</span></b>
@@ -182,7 +207,7 @@
                                         <b>0.00</b>
                                     @endif
                                 </td>
-                                <td class="text-end"><b>{{ number_format($row['pagado'], 2) }}</b></td>
+                                <td class="text-center"><span class="badge bg-secondary">Otros</span></td>
                                 <td>
                                     <b>{{ $row['fecha_pago'] }}</b>
                                     @if($row['hora'])
@@ -201,6 +226,12 @@
                                 $exonDiasGlobal = $totals['mora_exon_dias'] + $sumOtrosExonDias;
                                 $pagadoGlobal = $totals['pagado'] + $sumOtros;
                             @endphp
+                            @php
+                                $tPagCap = collect($rows)->sum('pagado_cap');
+                                $tPagInt = collect($rows)->sum('pagado_int');
+                                $tPagExc = collect($rows)->sum('pagado_exc');
+                                $tSaldoCol = collect($rows)->sum('saldo');
+                            @endphp
                             <tr style="background-color:#f0f0f0; font-weight:500;">
                                 <td colspan="2" class="text-center"><b>Totales</b></td>
                                 <td class="text-end"><b>{{ number_format($totals['capital'], 2) }}</b></td>
@@ -208,7 +239,10 @@
                                 @if($tieneExc)
                                     <td class="text-end"><b>{{ number_format($totals['excedente'], 2) }}</b></td>
                                 @endif
-                                <td class="text-end"><b>{{ number_format($totals['capital'] + $totals['interes'] + $totals['excedente'], 2) }}</b></td>
+                                <td class="text-end"><b>{{ number_format($tPagCap, 2) }}</b></td>
+                                <td class="text-end"><b>{{ number_format($tPagInt, 2) }}</b></td>
+                                <td class="text-end"><b>{{ number_format($tPagCap + $tPagInt + $tPagExc + $sumOtros, 2) }}</b></td>
+                                <td class="text-end"><b>{{ number_format($tSaldoCol, 2) }}</b></td>
                                 {{-- Total Mora: pagada (negro) y exonerada (rojo) juntas; la
                                      exonerada es informativa, NO suma a los demás totales --}}
                                 @php
@@ -239,34 +273,61 @@
                                         <b>0.00</b>
                                     @endif
                                 </td>
-                                <td class="text-end"><b>{{ number_format($pagadoGlobal, 2) }}</b></td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                            {{-- Retraso (homologado con /payments/create): lo impago SOLO
+                                 de las cuotas vencidas, alineado bajo la columna Saldo --}}
+                            @php
+                                $vencidasRetraso = collect($rows)
+                                    ->filter(fn ($r) => ! $r['flag_pagado'] && $r['periodo'] !== '' && $r['periodo'] < $hoy);
+                                $tRetraso = $vencidasRetraso->sum('saldo');
+                                $nVencRetraso = $vencidasRetraso->count();
+                                $montoCuotaVenc = (float) ($vencidasRetraso->first()['total'] ?? 0);
+                                $tipRetraso = abs($montoCuotaVenc * $nVencRetraso - $tRetraso) < 0.01
+                                    ? 'Cuota S/ '.number_format($montoCuotaVenc, 2).' × '.$nVencRetraso.' cuota(s) vencida(s) = S/ '.number_format($tRetraso, 2)
+                                    : $nVencRetraso.' cuota(s) vencida(s) con saldo pendiente = S/ '.number_format($tRetraso, 2);
+                            @endphp
+                            <tr style="background-color:#f0f0f0; font-weight:500;">
+                                <td colspan="{{ $tieneExc ? 8 : 7 }}" class="text-end text-danger"
+                                    data-bs-toggle="tooltip" title="{{ $tipRetraso }}" style="cursor:help;"><b>Retraso</b></td>
+                                <td class="text-end text-danger" data-bs-toggle="tooltip" title="{{ $tipRetraso }}" style="cursor:help;"><b>{{ number_format($tRetraso, 2) }}</b></td>
+                                <td></td>
+                                <td></td>
                                 <td></td>
                                 <td></td>
                             </tr>
                             {{-- Total recibido: solo aporta cuando hay mora (pagos + mora) --}}
                             @if($moraGlobal > 0)
                                 <tr style="background-color:#f0f0f0; font-weight:500;">
-                                    <td colspan="{{ $tieneExc ? 6 : 5 }}" class="text-center"><b>Total pagado + mora</b></td>
-                                    <td colspan="3" class="text-center">
+                                    <td colspan="{{ $tieneExc ? 8 : 7 }}" class="text-center"><b>Total pagado + mora</b></td>
+                                    <td colspan="2" class="text-center">
                                         <b>{{ number_format($totalGeneral, 2) }}</b>
                                     </td>
+                                    <td></td>
+                                    <td></td>
                                     <td></td>
                                 </tr>
                             @endif
                             {{-- Saldo = capital + interés − pagado (la mora se cobra aparte) --}}
                             <tr style="background-color:#f0f0f0; font-weight:500;">
-                                <td colspan="{{ $tieneExc ? 6 : 5 }}" class="text-center" style="color:red;"><b>Saldo</b></td>
-                                <td colspan="3" class="text-center" style="color:red;">
+                                <td colspan="{{ $tieneExc ? 8 : 7 }}" class="text-center" style="color:red;"><b>Saldo</b></td>
+                                <td colspan="2" class="text-center" style="color:red;">
                                     <b>{{ number_format(abs($saldo), 2) }}</b>
                                 </td>
+                                <td></td>
+                                <td></td>
                                 <td></td>
                             </tr>
                             {{-- Capital pendiente total (misma fórmula que /payments/create) --}}
                             <tr style="background-color:#f0f0f0; font-weight:500;">
-                                <td colspan="{{ $tieneExc ? 6 : 5 }}" class="text-center" style="color:red;"><b>Capital pendiente total</b></td>
-                                <td colspan="3" class="text-center" style="color:red;">
+                                <td colspan="{{ $tieneExc ? 8 : 7 }}" class="text-center" style="color:red;"><b>Capital pendiente total</b></td>
+                                <td colspan="2" class="text-center" style="color:red;">
                                     <b>{{ number_format($capPendienteTotal, 2) }}</b>
                                 </td>
+                                <td></td>
+                                <td></td>
                                 <td></td>
                             </tr>
                         @endif
