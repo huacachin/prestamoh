@@ -104,7 +104,10 @@
         <div class="card-body pb-2">
             <div class="d-flex justify-content-end mb-1"><x-scroll-bottom-btn scrollable="#tabla-cliente" /></div>
                     <div id="tabla-cliente" class="table-responsive" style="max-height: 650px; overflow:auto;">
-                <table class="table table-bordered table-striped table-hover table-autofit" style="font-size: 11px;">
+                {{-- min-width: con 25 columnas y width:100% (table-autofit), sin un piso
+                     el navegador estruja las celdas en vez de activar el scroll del
+                     table-responsive. Bajo 1300px la tabla desborda y scrollea. --}}
+                <table class="table table-bordered table-striped table-hover table-autofit" style="font-size: 11px; min-width: 1300px;">
                     <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                         <tr>
                             <th class="text-center">N°</th>
