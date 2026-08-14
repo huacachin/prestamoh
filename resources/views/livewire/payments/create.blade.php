@@ -990,11 +990,14 @@
                                     // migrada del legacy pertenece a su propia cuota.
                                     $mpc = $moraPagadaCuotas[$inst->id]
                                         ?? [['num' => $inst->num_cuota, 'monto' => $mPag, 'dias' => null]];
+                                    $diasMpc = collect($mpc)->sum('dias');
                                     $tipMoraPag = 'Mora pagada de '.count($mpc).' cuota(s):<br>'
                                         .collect($mpc)->take(15)->map(fn ($it) =>
                                             'Cuota '.$it['num'].': '.number_format($it['monto'], 2)
                                             .($it['dias'] ? ' - D. '.$it['dias'] : ''))->implode('<br>')
-                                        .(count($mpc) > 15 ? '<br>…' : '');
+                                        .(count($mpc) > 15 ? '<br>…' : '')
+                                        .'<br>Total: '.number_format(collect($mpc)->sum('monto'), 2)
+                                        .($diasMpc ? ' - D. '.$diasMpc : '');
                                 @endphp
                                 <td class="text-end" style="white-space:nowrap;">
                                     @if($mPag > 0)
@@ -1071,11 +1074,14 @@
                                         ->groupBy('num')
                                         ->map(fn ($g, $num) => ['num' => (int) $num, 'monto' => $g->sum('monto'), 'dias' => $g->sum('dias') ?: null])
                                         ->sortBy('num')->values();
+                                    $diasMoraTotal = $itemsMoraTotal->sum('dias');
                                     $tipMoraPagTotal = 'Mora pagada de '.$itemsMoraTotal->count().' cuota(s):<br>'
                                         .$itemsMoraTotal->take(15)->map(fn ($it) =>
                                             'Cuota '.$it['num'].': '.number_format($it['monto'], 2)
                                             .($it['dias'] ? ' - D. '.$it['dias'] : ''))->implode('<br>')
-                                        .($itemsMoraTotal->count() > 15 ? '<br>…' : '');
+                                        .($itemsMoraTotal->count() > 15 ? '<br>…' : '')
+                                        .'<br>Total: '.number_format($tMoraPag, 2)
+                                        .($diasMoraTotal ? ' - D. '.$diasMoraTotal : '');
                                 @endphp
                                 {{-- Total Mora: pagada y exonerada juntas (la exonerada es
                                      informativa, no suma a los demás totales) --}}
