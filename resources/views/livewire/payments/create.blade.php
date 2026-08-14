@@ -1046,13 +1046,21 @@
                             {{-- Retraso del legacy (saldoPendi): lo impago SOLO de las
                                  cuotas vencidas, alineado bajo la columna Saldo --}}
                             @php
-                                $tRetraso = $credit->installments
-                                    ->filter(fn ($i) => !$i->pagado && $i->fecha_vencimiento?->isPast())
-                                    ->sum(fn ($i) => $i->saldoPendiente());
+                                $vencidasRetraso = $credit->installments
+                                    ->filter(fn ($i) => !$i->pagado && $i->fecha_vencimiento?->isPast());
+                                $tRetraso = $vencidasRetraso->sum(fn ($i) => $i->saldoPendiente());
+                                $nVencRetraso = $vencidasRetraso->count();
+                                $montoCuotaVenc = ($vencidasRetraso->first()?->importe_cuota ?? 0)
+                                    + ($vencidasRetraso->first()?->importe_interes ?? 0);
+                                // Si hay pagos parciales el producto no cierra: el tooltip lo dice tal cual.
+                                $tipRetraso = abs($montoCuotaVenc * $nVencRetraso - $tRetraso) < 0.01
+                                    ? 'Cuota S/ '.number_format($montoCuotaVenc, 2).' × '.$nVencRetraso.' cuota(s) vencida(s) = S/ '.number_format($tRetraso, 2)
+                                    : $nVencRetraso.' cuota(s) vencida(s) con saldo pendiente = S/ '.number_format($tRetraso, 2);
                             @endphp
                             <tr class="fw-bold" style="background:#f0f0f0;">
-                                <td colspan="{{ $tieneExc ? 8 : 7 }}" class="text-end text-danger">Retraso</td>
-                                <td class="text-end text-danger">{{ number_format($tRetraso, 2) }}</td>
+                                <td colspan="{{ $tieneExc ? 8 : 7 }}" class="text-end text-danger"
+                                    title="{{ $tipRetraso }}" style="cursor:help;">Retraso</td>
+                                <td class="text-end text-danger" title="{{ $tipRetraso }}" style="cursor:help;">{{ number_format($tRetraso, 2) }}</td>
                                 <td></td>
                                 <td></td>
                                 <td></td>
