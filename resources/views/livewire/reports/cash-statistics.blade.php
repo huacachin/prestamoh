@@ -44,6 +44,10 @@
                                 <button type="button" class="btn btn-sm btn-secondary flex-shrink-0" onclick="window.print()">
                                     <i class="ti ti-printer f-s-12"></i> Imprimir
                                 </button>
+                                <a href="{{ route('exports.reports.cash-statistics', ['month' => $month, 'year' => $year]) }}"
+                                   class="btn btn-sm btn-success text-nowrap flex-shrink-0" target="_blank">
+                                    <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
+                                </a>
                                 <x-scroll-bottom-btn class="flex-shrink-0" scrollable="#tabla-mensual" />
                             </div>
                         </div>

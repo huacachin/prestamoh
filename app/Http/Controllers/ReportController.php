@@ -7,6 +7,7 @@ use App\Livewire\Reports\Cancelled;
 use App\Livewire\Reports\CashGeneral1;
 use App\Livewire\Reports\CashGeneral2;
 use App\Livewire\Reports\CashGeneral3;
+use App\Livewire\Reports\CashStatistics;
 use App\Livewire\Reports\Delinquent;
 use App\Livewire\Reports\Payments;
 use App\Livewire\Reports\Portfolio;
@@ -219,6 +220,32 @@ class ReportController extends Controller
         return XlsResponse::make('exports.reports.cash-general-3', [
             'report' => $d['report'],
         ], 'Reporte General Caja 3.xls');
+    }
+
+    // Equivalente del legacy caja-estadisticae1.php: el Excel espejo de
+    // /reports/cash-statistics (diario del mes + detalles + distribucion +
+    // resumen mensual y anual), con los mismos datos que pinta la pantalla.
+    public function exportCashStatistics(Request $request)
+    {
+        $c = new CashStatistics;
+        $c->month = (int) $request->query('month', now()->month);
+        $c->year = (int) $request->query('year', now()->year);
+
+        $d = $c->render()->getData();
+
+        return XlsResponse::make('exports.reports.cash-statistics', [
+            'rows' => $d['rows'],
+            'totals' => $d['totals'],
+            'detalleSummary' => $d['detalleSummary'],
+            'distribution' => $d['distribution'],
+            'months' => $d['months'],
+            'monthRowsData' => $d['monthRowsData'],
+            'monthTotals' => $d['monthTotals'],
+            'yearRowsData' => $d['yearRowsData'],
+            'yearTotals' => $d['yearTotals'],
+            'month' => $c->month,
+            'year' => $c->year,
+        ], 'Reporte Estadistico De Caja.xls');
     }
 
     public function exportAdvisor(Request $request)
