@@ -23,6 +23,16 @@ Route::middleware('signed')->group(function () {
     Route::get('recibo/{massDeletionId}/pdf', [PaymentController::class, 'reciboPdf'])->name('recibo.pdf');
 });
 
+// Acortador propio: /s/{code} → redirige al destino guardado (links de recibo
+// para WhatsApp). Público sin firma: el destino ES la URL firmada — la
+// seguridad viaja dentro del destino, no en el código corto.
+Route::get('s/{code}', function (string $code) {
+    $link = \App\Models\ShortLink::where('code', $code)->firstOrFail();
+    $link->increment('hits');
+
+    return redirect()->away($link->destino);
+})->name('short-link');
+
 // === Logout ===
 Route::post('/logout', function (Request $request) {
     auth()->logout();

@@ -8,6 +8,7 @@ use App\Models\CreditInstallment;
 use App\Models\Expense;
 use App\Models\MassDeletion;
 use App\Models\Payment;
+use App\Models\ShortLink;
 use App\Services\Payments\MotorPagos;
 use App\Services\Printing\TicketPrinter;
 use App\Support\Audit;
@@ -1488,7 +1489,10 @@ class Create extends Component
                 $msg = $empresa.': su recibo de pago #'.str_pad((string) $mdId, 6, '0', STR_PAD_LEFT)
                     .' del '.Carbon::parse($cobro->date)->format('d/m/Y')
                     .' por S/ '.number_format((float) $cobro->amount, 2)
-                    .'. Vealo aqui: '.$ver;
+                    // Link corto (/s/{code}): la URL firmada mide ~130 caracteres
+                    // y dentro del mensaje espanta; el corto es idempotente por
+                    // recibo, así que la tabla no crece con cada render.
+                    .'. Vealo aqui: '.ShortLink::para($ver);
                 $wa = 'https://api.whatsapp.com/send?phone=51'.$tel.'&text='.rawurlencode($msg);
             }
 
