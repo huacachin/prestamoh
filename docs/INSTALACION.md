@@ -446,13 +446,15 @@ copia no trae, **parar**: habría que reconciliar primero.
 
 **(b) ¿Qué tablas NO vienen del legacy y prod tiene más completas?**
 
-Éstas se pierden si no se preservan. Al 2026-08-09 son:
+Éstas se pierden si no se preservan. Al 2026-08-17 son:
 
 | Tabla | Preservar | Por qué |
 |---|---|---|
 | `activity_log` | **SÍ** | Auditoría (`Audit::log`) — historia real, no reproducible |
 | `cache_morosidad_diaria` | **SÍ** | Snapshots diarios de morosidad |
 | `mora_overrides` | **SÍ** si tiene filas | Bitácora de ajustes de mora |
+| `short_links` | **SÍ** | Acortadores de recibos ya enviados por WhatsApp — si se pierden, esos links mueren |
+| `client_notifications` | **SÍ** | Notificaciones de cobranza + compromisos de pago (con `credit_id` desde 14/08) |
 | `sessions`, `cache` | No | Desechables (se vuelven a loguear) |
 
 Detectarlas automáticamente: comparar `COUNT(*)` de cada tabla local vs prod y
@@ -466,7 +468,8 @@ mysqldump --single-transaction --quick --routines --triggers laravel_prestamo | 
 gzip -t "$F" && ls -lh "$F"
 # 2) Extraer las tablas a preservar
 mysqldump --single-transaction --quick laravel_prestamo \
-  activity_log cache_morosidad_diaria mora_overrides | gzip -1 > /root/preservar_$(date +%F).sql.gz'
+  activity_log cache_morosidad_diaria mora_overrides short_links client_notifications \
+  | gzip -1 > /root/preservar_$(date +%F).sql.gz'
 
 # 3) Subir el dump nuevo
 scp ~/Desktop/laravel_prestamo_*.sql.gz huacachin-nuevo:/root/
