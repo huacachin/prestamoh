@@ -61,8 +61,9 @@ class RolePermissionSeeder extends Seeder
                 // administrador opera SOLO el día en curso; lo histórico es
                 // exclusivo del director.
                 'caja.eliminar',
-                'clientes.eliminar', 'clientes.editar-identidad',
-                'creditos.eliminar', 'pagos.eliminar', 'pagos.mora-manual',
+                // Eliminar clientes/créditos y editar identidad (DNI, nombres):
+                // exclusivos del director (mapa confirmado 21/08).
+                'pagos.eliminar', 'pagos.mora-manual',
                 'reportes.credito-diario', 'reportes.credito-mensual', 'reportes.credito-semanal',
                 'reportes.cartera', 'reportes.pagos', 'reportes.morosidad', 'reportes.caja',
                 'reportes.asesor', 'reportes.caja-estadistica', 'reportes.credito-estadistica',
@@ -79,7 +80,7 @@ class RolePermissionSeeder extends Seeder
 
             // ─── ANALISTA DE CRÉDITOS (ex Asesor: captura, ve sus créditos) ───
             'analista-creditos' => [
-                'dashboard',
+                // Sin dashboard: entra directo a su listado de créditos.
                 'clientes', 'creditos', 'pagos',
                 'clientes.scope-propio',
                 'reportes.credito-diario', 'reportes.credito-mensual', 'reportes.credito-semanal',

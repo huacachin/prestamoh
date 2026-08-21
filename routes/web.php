@@ -1,13 +1,18 @@
 <?php
 
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CashController;
+use App\Http\Controllers\ClientController;
+use App\Http\Controllers\ConceptController;
+use App\Http\Controllers\CreditController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ExchangeRateController;
+use App\Http\Controllers\HeadquarterController;
+use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ShortLinkController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Http\Request;
-use App\Http\Controllers\{
-    DashboardController, ClientController, CreditController,
-    PaymentController, CashController, ReportController,
-    UserController, HeadquarterController, ConceptController,
-    ExchangeRateController
-};
 
 // === Público ===
 // Route::view / Route::redirect en vez de closures: route:cache no admite
@@ -27,10 +32,10 @@ Route::middleware('signed')->group(function () {
 
 // Acortador propio: /s/{code} → redirige al destino guardado (links de recibo
 // para WhatsApp). Ver ShortLinkController.
-Route::get('s/{code}', \App\Http\Controllers\ShortLinkController::class)->name('short-link');
+Route::get('s/{code}', ShortLinkController::class)->name('short-link');
 
 // === Logout ===
-Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name('logout');
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // === Protegido ===
 Route::middleware('auth')->group(function () {
@@ -90,8 +95,8 @@ Route::middleware('auth')->group(function () {
     Route::get('cash/expenses/{id}/gallery', [CashController::class, 'expenseGallery'])->name('cash.expenses.gallery')->middleware('permission:caja.egresos');
 
     // Reportes
-    // Desembolsos: drill-down del dashboard (mismo acceso que el panel, solo auth)
-    Route::get('reports/desembolsos', [ReportController::class, 'desembolsos'])->name('reports.desembolsos');
+    // Desembolsos: drill-down del dashboard (mismo acceso que el panel)
+    Route::get('reports/desembolsos', [ReportController::class, 'desembolsos'])->name('reports.desembolsos')->middleware('permission:dashboard');
     Route::get('reports/portfolio', [ReportController::class, 'portfolio'])->name('reports.portfolio')->middleware('permission:reportes.cartera');
     Route::get('reports/payments', [ReportController::class, 'payments'])->name('reports.payments')->middleware('permission:reportes.pagos');
     Route::get('reports/delinquent', [ReportController::class, 'delinquent'])->name('reports.delinquent')->middleware('permission:reportes.morosidad');
@@ -134,24 +139,24 @@ Route::middleware('auth')->group(function () {
     Route::get('/exports/clients', [ClientController::class, 'export'])->name('exports.clients');
     Route::get('/exports/credits', [CreditController::class, 'export'])->name('exports.credits');
     Route::get('/exports/payments', [PaymentController::class, 'export'])->name('exports.payments');
-    Route::get('/exports/payments/daily',   [PaymentController::class, 'exportDaily'])->name('exports.payments.daily');
-    Route::get('/exports/payments/weekly',  [PaymentController::class, 'exportWeekly'])->name('exports.payments.weekly');
+    Route::get('/exports/payments/daily', [PaymentController::class, 'exportDaily'])->name('exports.payments.daily');
+    Route::get('/exports/payments/weekly', [PaymentController::class, 'exportWeekly'])->name('exports.payments.weekly');
     Route::get('/exports/payments/monthly', [PaymentController::class, 'exportMonthly'])->name('exports.payments.monthly');
     Route::get('/exports/incomes', [CashController::class, 'exportIncomes'])->name('exports.incomes');
     Route::get('/exports/expenses', [CashController::class, 'exportExpenses'])->name('exports.expenses');
     Route::get('/exports/concepts', [ConceptController::class, 'export'])->name('exports.concepts');
-    Route::get('/exports/reports/portfolio',     [ReportController::class, 'exportPortfolio'])->name('exports.reports.portfolio');
-    Route::get('/exports/reports/delinquent',    [ReportController::class, 'exportDelinquent'])->name('exports.reports.delinquent');
-    Route::get('/exports/reports/cancelled',     [ReportController::class, 'exportCancelled'])->name('exports.reports.cancelled');
-    Route::get('/exports/reports/payments',      [ReportController::class, 'exportPayments'])->name('exports.reports.payments');
-    Route::get('/exports/reports/cash-general-1',[ReportController::class, 'exportCashGeneral1'])->name('exports.reports.cash-general-1');
-    Route::get('/exports/reports/cash-general-2',[ReportController::class, 'exportCashGeneral2'])->name('exports.reports.cash-general-2');
-    Route::get('/exports/reports/cash-general-3',[ReportController::class, 'exportCashGeneral3'])->name('exports.reports.cash-general-3');
-    Route::get('/exports/reports/cash-statistics',[ReportController::class, 'exportCashStatistics'])->name('exports.reports.cash-statistics');
-    Route::get('/exports/reports/credit-statistics',[ReportController::class, 'exportCreditStatistics'])->name('exports.reports.credit-statistics');
-    Route::get('/exports/reports/advisor',       [ReportController::class, 'exportAdvisor'])->name('exports.reports.advisor');
-    Route::get('/exports/reports/simulator',     [ReportController::class, 'exportSimulator'])->name('exports.reports.simulator');
+    Route::get('/exports/reports/portfolio', [ReportController::class, 'exportPortfolio'])->name('exports.reports.portfolio');
+    Route::get('/exports/reports/delinquent', [ReportController::class, 'exportDelinquent'])->name('exports.reports.delinquent');
+    Route::get('/exports/reports/cancelled', [ReportController::class, 'exportCancelled'])->name('exports.reports.cancelled');
+    Route::get('/exports/reports/payments', [ReportController::class, 'exportPayments'])->name('exports.reports.payments');
+    Route::get('/exports/reports/cash-general-1', [ReportController::class, 'exportCashGeneral1'])->name('exports.reports.cash-general-1');
+    Route::get('/exports/reports/cash-general-2', [ReportController::class, 'exportCashGeneral2'])->name('exports.reports.cash-general-2');
+    Route::get('/exports/reports/cash-general-3', [ReportController::class, 'exportCashGeneral3'])->name('exports.reports.cash-general-3');
+    Route::get('/exports/reports/cash-statistics', [ReportController::class, 'exportCashStatistics'])->name('exports.reports.cash-statistics');
+    Route::get('/exports/reports/credit-statistics', [ReportController::class, 'exportCreditStatistics'])->name('exports.reports.credit-statistics');
+    Route::get('/exports/reports/advisor', [ReportController::class, 'exportAdvisor'])->name('exports.reports.advisor');
+    Route::get('/exports/reports/simulator', [ReportController::class, 'exportSimulator'])->name('exports.reports.simulator');
     Route::get('/exports/credits/mass-deletions', [CreditController::class, 'exportMassDeletions'])->name('exports.credits.mass-deletions');
     Route::get('/exports/credits/{id}/schedule', [CreditController::class, 'exportSchedule'])->name('exports.credits.schedule');
-    Route::get('/exports/clients/{id}/history',  [ClientController::class, 'exportHistory'])->name('exports.clients.history');
+    Route::get('/exports/clients/{id}/history', [ClientController::class, 'exportHistory'])->name('exports.clients.history');
 });

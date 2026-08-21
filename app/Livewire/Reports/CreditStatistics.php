@@ -4,6 +4,7 @@ namespace App\Livewire\Reports;
 
 use App\Services\CajaDailyService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -62,8 +63,18 @@ class CreditStatistics extends Component
         }
     }
 
+    /** Analista (scope-propio): solo SU cartera; la columna Ingresos (caja global) va vacía. */
+    private function soloCartera(): bool
+    {
+        return auth()->user()?->can('clientes.scope-propio') ?? false;
+    }
+
     public function render()
     {
+        if ($this->soloCartera()) {
+            $this->nomasesores = (string) auth()->user()->username;
+        }
+
         // Self-healing: "Ingresos Créditos" sale de cache_ingreso_diario (legacy:
         // huaca_totalesmor, que escribe reporte1a = sub_ingresos + mora por día).
         // Laravel no la mantenía, así que la recomputamos del mes visto con datos
@@ -82,9 +93,9 @@ class CreditStatistics extends Component
             ->selectRaw('COUNT(*) c, COALESCE(SUM(monto),0) s, COALESCE(MAX(id),0) m')->first();
         $huella = md5(json_encode($fp).'|'.$endLimit);
         $huellaKey = "ingdiario-fp:{$year}-{$month}";
-        if (\Illuminate\Support\Facades\Cache::get($huellaKey) !== $huella) {
+        if (! $this->soloCartera() && Cache::get($huellaKey) !== $huella) {
             $this->rebuildIngresoDiario($year, $month, $endLimit);
-            \Illuminate\Support\Facades\Cache::put($huellaKey, $huella, now()->addDays(45));
+            Cache::put($huellaKey, $huella, now()->addDays(45));
         }
 
         // ─── DAILY TABLE (selected month) ──────────────────────────────
@@ -99,7 +110,9 @@ class CreditStatistics extends Component
             '09' => 'Septiembre', '10' => 'Octubre', '11' => 'Noviembre', '12' => 'Diciembre',
         ];
 
-        $asesores = DB::table('users')->orderBy('name')->pluck('name', 'username');
+        $asesores = DB::table('users')
+            ->when($this->soloCartera(), fn ($q) => $q->where('username', auth()->user()->username))
+            ->orderBy('name')->pluck('name', 'username');
 
         return view('livewire.reports.credit-statistics', [
             'dailyRows' => $dailyRows,
@@ -188,8 +201,8 @@ class CreditStatistics extends Component
             ->pluck('total', 'fecha')
             ->toArray();
 
-        // Ingresos diarios desde cache_ingreso_diario
-        $ingresos = DB::table('cache_ingreso_diario')
+        // Ingresos diarios desde cache_ingreso_diario (caja global: vacío para scope-propio)
+        $ingresos = $this->soloCartera() ? [] : DB::table('cache_ingreso_diario')
             ->whereBetween('fecha', [$mIni, $mFin])
             ->pluck('importe', 'fecha')
             ->toArray();
@@ -286,8 +299,8 @@ class CreditStatistics extends Component
             ->pluck('total', 'mes')
             ->toArray();
 
-        // Ingresos del año por mes
-        $ingresos = DB::table('cache_ingreso_diario')
+        // Ingresos del año por mes (caja global: vacío para scope-propio)
+        $ingresos = $this->soloCartera() ? [] : DB::table('cache_ingreso_diario')
             ->whereBetween('fecha', ["{$year}-01-01", "{$year}-12-31"])
             ->selectRaw('MONTH(fecha) as mes, SUM(importe) as total')
             ->groupByRaw('MONTH(fecha)')

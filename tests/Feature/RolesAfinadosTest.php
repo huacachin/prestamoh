@@ -43,10 +43,17 @@ class RolesAfinadosTest extends TestCase
             $this->assertFalse($admin->hasPermissionTo($p), "administrador NO debe tener $p");
             $this->assertTrue($director->hasPermissionTo($p), "director SÍ debe tener $p");
         }
-        // Lo del día lo conserva
-        foreach (['clientes.eliminar', 'creditos.eliminar', 'caja.eliminar', 'registro.eliminar-masivo'] as $p) {
+        // Eliminar registros y editar identidad: exclusivos del director (21/08)
+        foreach (['clientes.eliminar', 'creditos.eliminar', 'clientes.editar-identidad'] as $p) {
+            $this->assertFalse($admin->hasPermissionTo($p), "administrador NO debe tener $p");
+            $this->assertTrue($director->hasPermissionTo($p), "director SÍ debe tener $p");
+        }
+        // Lo operativo del día lo conserva
+        foreach (['caja.eliminar', 'registro.eliminar-masivo', 'usuarios.gestionar-permisos'] as $p) {
             $this->assertTrue($admin->hasPermissionTo($p), "administrador debe conservar $p");
         }
+        // Analista sin dashboard
+        $this->assertFalse(Role::findByName('analista-creditos')->hasPermissionTo('dashboard'));
     }
 
     private function analistaConCreditos(): array
@@ -159,6 +166,31 @@ class RolesAfinadosTest extends TestCase
         $this->actingAs($director);
         $this->get("/cash/incomes/{$ingAyer}/edit")->assertOk();
         $this->get("/cash/expenses/{$egrAyer}/edit")->assertOk();
+    }
+
+    /** Sin permiso dashboard se aterriza en /credits; el drill-down queda cerrado. */
+    public function test_analista_sin_dashboard_aterriza_en_creditos(): void
+    {
+        [$analista] = $this->analistaConCreditos();
+        $this->actingAs($analista);
+
+        $this->get('/dashboard')->assertRedirect(route('credits.index'));
+        $this->get('/reports/desembolsos')->assertForbidden();
+    }
+
+    /** Los reportes del analista solo muestran SU cartera. */
+    public function test_reportes_del_analista_solo_su_cartera(): void
+    {
+        [$analista, $miCredito, $ajenoCredito] = $this->analistaConCreditos();
+        // El reporte diario filtra tipo_planilla=4
+        Credit::whereKey([$miCredito->id, $ajenoCredito->id])->update(['tipo_planilla' => 4]);
+
+        $this->actingAs($analista);
+        $cartera = $this->get('/reports/portfolio');
+        $cartera->assertOk()->assertSee('Cliente Propio')->assertDontSee('Cliente Ajeno');
+
+        $diario = $this->get('/payments/daily');
+        $diario->assertOk()->assertSee('Cliente Propio')->assertDontSee('Cliente Ajeno');
     }
 
     public function test_director_y_administrador_siguen_creando(): void

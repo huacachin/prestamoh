@@ -59,6 +59,11 @@ class Portfolio extends Component
             ])
             ->where('situacion', '<>', 'Cancelado');
 
+        // Analista (scope-propio): siempre y solo SU cartera
+        if (auth()->user()?->can('clientes.scope-propio')) {
+            $query->whereHas('client', fn ($c) => $c->where('asesor_id', auth()->id()));
+        }
+
         if ($this->selemes0 !== '' && $this->selecano0 !== '') {
             $query->whereYear('fecha_actualizacion', $this->selecano0)
                 ->whereMonth('fecha_actualizacion', $this->selemes0);

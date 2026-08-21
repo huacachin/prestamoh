@@ -24,6 +24,11 @@ class Monthly extends Component
 
     public function render()
     {
+        // Analista (scope-propio): siempre y solo SU cartera
+        if (auth()->user()?->can('clientes.scope-propio')) {
+            $this->ejecutivo = (string) auth()->id();
+        }
+
         $today = now()->format('Y-m-d');
 
         $query = Credit::query()
@@ -227,7 +232,9 @@ class Monthly extends Component
         $morosidadPct = $tot['saldo'] > 0 ? ($sub['mora']['saldo'] * 100) / $tot['saldo'] : 0;
         $activosPct = $tot['saldo'] > 0 ? ($sub['activo']['saldo'] * 100) / $tot['saldo'] : 0;
 
-        $asesores = User::orderBy('name')->get(['id', 'name']);
+        $asesores = User::query()
+            ->when(auth()->user()?->can('clientes.scope-propio'), fn ($q) => $q->whereKey(auth()->id()))
+            ->orderBy('name')->get(['id', 'name']);
 
         return view('livewire.payments.monthly', [
             'rows' => $rows,

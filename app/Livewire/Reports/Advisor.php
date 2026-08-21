@@ -46,6 +46,11 @@ class Advisor extends Component
 
     public function render()
     {
+        // Analista (scope-propio): siempre y solo SU cartera
+        if (auth()->user()?->can('clientes.scope-propio')) {
+            $this->ejecutivo = (string) auth()->id();
+        }
+
         $year = (int) $this->selecano;
         $month = (int) $this->selemes;
         $startDate = Carbon::createFromDate($year, $month, 1)->startOfDay();
@@ -197,7 +202,9 @@ class Advisor extends Component
         $monthlyHistory = $this->buildMonthlyHistory($year);
 
         // ─── Asesores para el dropdown ────────────────────────────────────
-        $asesores = User::orderBy('name')->get(['id', 'name']);
+        $asesores = User::query()
+            ->when(auth()->user()?->can('clientes.scope-propio'), fn ($q) => $q->whereKey(auth()->id()))
+            ->orderBy('name')->get(['id', 'name']);
 
         $months = [
             '01' => 'Enero', '02' => 'Febrero', '03' => 'Marzo', '04' => 'Abril',
