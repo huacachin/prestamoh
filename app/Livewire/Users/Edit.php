@@ -4,9 +4,10 @@ namespace App\Livewire\Users;
 
 use App\Models\Headquarter;
 use App\Models\User;
+use App\Support\Audit;
+use Database\Seeders\RoleSetupSeeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
-use Database\Seeders\RoleSetupSeeder;
 use Livewire\Component;
 
 class Edit extends Component
@@ -14,37 +15,51 @@ class Edit extends Component
     public User $user;
 
     public string $name = '';
+
     public string $username = '';
+
     public string $pwd = '';
+
     public ?string $email = null;
+
     public string $document_type = 'DNI';
+
     public string $document_number = '';
+
     public string $phone = '';
+
     public ?int $headquarter_id = null;
+
     public ?int $selectedRoleId = null;
 
     public $headquarters;
+
     public $roles = [];
 
     public function mount(int $id)
     {
-        if (!auth()->user()?->can('configuracion.usuarios')) {
+        if (! auth()->user()?->can('configuracion.usuarios')) {
             abort(403);
         }
 
         $this->user = User::with('roles')->findOrFail($id);
 
         $this->headquarters = Headquarter::where('status', 'active')->get(['id', 'name']);
-        $this->roles = RoleSetupSeeder::orderedRoles();
+        // Solo los roles asignables; si el usuario ya tiene uno fuera de la
+        // lista (histórico), se muestra para no ocultar su estado real.
+        $rolActual = $this->user->roles()->value('name');
+        $this->roles = RoleSetupSeeder::orderedRoles()
+            ->filter(fn ($r) => in_array($r->name, RoleSetupSeeder::ROLES_ASIGNABLES, true) || $r->name === $rolActual)
+            ->values();
 
-        $this->name            = $this->user->name;
-        $this->username        = $this->user->username;
-        $this->email           = $this->user->email;
-        $this->document_type   = $this->user->document_type ?? 'DNI';
+        $this->name = $this->user->name;
+        $this->username = $this->user->username;
+        $this->email = $this->user->email;
+        $this->document_type = $this->user->document_type ?? 'DNI';
         $this->document_number = $this->user->document_number ?? '';
-        $this->phone           = $this->user->phone ?? '';
-        $this->headquarter_id  = $this->user->headquarter_id;
-        $this->selectedRoleId  = $this->user->roles()->value('id');
+        $this->phone = $this->user->phone ?? '';
+        $this->headquarter_id = $this->user->headquarter_id;
+        $this->selectedRoleId = $this->user->roles()->value('id');
     }
 
     protected function rules()
@@ -52,15 +67,17 @@ class Edit extends Component
         $id = $this->user->id;
 
         return [
-            'name'            => ['required', 'string', 'max:255'],
-            'username'        => ['required', 'string', 'min:3', 'max:64', Rule::unique('users', 'username')->ignore($id)],
-            'email'           => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($id)],
-            'pwd'             => ['nullable', 'string', 'min:8'],
-            'document_type'   => ['required', 'string', 'max:3'],
+            'name' => ['required', 'string', 'max:255'],
+            'username' => ['required', 'string', 'min:3', 'max:64', Rule::unique('users', 'username')->ignore($id)],
+            'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($id)],
+            'pwd' => ['nullable', 'string', 'min:8'],
+            'document_type' => ['required', 'string', 'max:3'],
             'document_number' => ['required', 'string', 'max:11', Rule::unique('users', 'document_number')->ignore($id)->where(fn ($q) => $q->where('document_type', $this->document_type))],
-            'phone'           => ['required', 'string', 'max:15'],
-            'headquarter_id'  => ['nullable', 'integer', 'exists:headquarters,id'],
-            'selectedRoleId'  => ['nullable', 'integer', 'exists:roles,id'],
+            'phone' => ['required', 'string', 'max:15'],
+            'headquarter_id' => ['nullable', 'integer', 'exists:headquarters,id'],
+            // Solo ids de la lista visible (asignables + rol actual): el resto
+            // del catálogo está bloqueado también en el backend.
+            'selectedRoleId' => ['nullable', 'integer', Rule::in(collect($this->roles)->pluck('id'))],
         ];
     }
 
@@ -74,16 +91,16 @@ class Edit extends Component
         $this->validate();
 
         $payload = [
-            'name'            => $this->name,
-            'username'        => $this->username,
-            'email'           => $this->email,
-            'document_type'   => $this->document_type,
+            'name' => $this->name,
+            'username' => $this->username,
+            'email' => $this->email,
+            'document_type' => $this->document_type,
             'document_number' => $this->document_number,
-            'phone'           => $this->phone,
-            'headquarter_id'  => $this->headquarter_id,
+            'phone' => $this->phone,
+            'headquarter_id' => $this->headquarter_id,
         ];
 
-        if (!empty($this->pwd)) {
+        if (! empty($this->pwd)) {
             $payload['password'] = Hash::make($this->pwd);
         }
 
@@ -95,9 +112,10 @@ class Edit extends Component
         }
         $this->user->syncRoles($roleName ? [$roleName] : []);
 
-        \App\Support\Audit::log("Editó el usuario {$this->user->username} ({$this->user->name})", $this->user);
+        Audit::log("Editó el usuario {$this->user->username} ({$this->user->name})", $this->user);
 
         session()->flash('user_success', 'Usuario actualizado correctamente.');
+
         return redirect()->route('settings.users.index');
     }
 

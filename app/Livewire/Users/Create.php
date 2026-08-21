@@ -4,38 +4,48 @@ namespace App\Livewire\Users;
 
 use App\Models\Headquarter;
 use App\Models\User;
+use App\Support\Audit;
+use Database\Seeders\RoleSetupSeeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
-use Database\Seeders\RoleSetupSeeder;
 use Livewire\Component;
 
 class Create extends Component
 {
     public string $name = '';
+
     public string $username = '';
+
     public string $pwd = '';
+
     public ?string $email = null;
+
     public string $document_type = 'DNI';
+
     public string $document_number = '';
+
     public string $phone = '';
+
     public ?int $headquarter_id = null;
+
     public ?int $selectedRoleId = null;
 
     public $headquarters;
+
     public $roles = [];
 
     protected function rules()
     {
         return [
-            'name'            => ['required', 'string', 'max:255'],
-            'username'        => ['required', 'string', 'min:3', 'max:64', Rule::unique('users', 'username')],
-            'email'           => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')],
-            'pwd'             => ['required', 'string', 'min:8'],
-            'document_type'   => ['required', 'string', 'max:3'],
+            'name' => ['required', 'string', 'max:255'],
+            'username' => ['required', 'string', 'min:3', 'max:64', Rule::unique('users', 'username')],
+            'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')],
+            'pwd' => ['required', 'string', 'min:8'],
+            'document_type' => ['required', 'string', 'max:3'],
             'document_number' => ['required', 'string', 'max:11', Rule::unique('users', 'document_number')->where(fn ($q) => $q->where('document_type', $this->document_type))],
-            'phone'           => ['required', 'string', 'max:15'],
-            'headquarter_id'  => ['nullable', 'integer', 'exists:headquarters,id'],
-            'selectedRoleId'  => ['nullable', 'integer', 'exists:roles,id'],
+            'phone' => ['required', 'string', 'max:15'],
+            'headquarter_id' => ['nullable', 'integer', 'exists:headquarters,id'],
+            'selectedRoleId' => ['nullable', 'integer', Rule::in(RoleSetupSeeder::asignableRoles()->pluck('id'))],
         ];
     }
 
@@ -46,12 +56,13 @@ class Create extends Component
 
     public function mount()
     {
-        if (!auth()->user()?->can('configuracion.usuarios')) {
+        if (! auth()->user()?->can('configuracion.usuarios')) {
             abort(403);
         }
 
         $this->headquarters = Headquarter::where('status', 'active')->get(['id', 'name']);
-        $this->roles = RoleSetupSeeder::orderedRoles();
+        // Solo los roles asignables (el resto del catálogo queda bloqueado)
+        $this->roles = RoleSetupSeeder::asignableRoles();
     }
 
     public function clean(): void
@@ -64,14 +75,14 @@ class Create extends Component
         $this->validate();
 
         $user = User::create([
-            'name'            => $this->name,
-            'username'        => $this->username,
-            'email'           => $this->email,
-            'password'        => Hash::make($this->pwd),
-            'document_type'   => $this->document_type,
+            'name' => $this->name,
+            'username' => $this->username,
+            'email' => $this->email,
+            'password' => Hash::make($this->pwd),
+            'document_type' => $this->document_type,
             'document_number' => $this->document_number,
-            'phone'           => $this->phone,
-            'headquarter_id'  => $this->headquarter_id,
+            'phone' => $this->phone,
+            'headquarter_id' => $this->headquarter_id,
         ]);
 
         if ($this->selectedRoleId) {
@@ -81,9 +92,10 @@ class Create extends Component
             }
         }
 
-        \App\Support\Audit::log("Creó el usuario {$user->username} ({$user->name})", $user);
+        Audit::log("Creó el usuario {$user->username} ({$user->name})", $user);
 
         session()->flash('user_success', 'Usuario creado correctamente.');
+
         return redirect()->route('settings.users.index');
     }
 
