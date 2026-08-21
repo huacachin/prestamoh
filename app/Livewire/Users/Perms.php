@@ -4,23 +4,30 @@ namespace App\Livewire\Users;
 
 use App\Models\Permission;
 use App\Models\User;
+use App\Support\PermisosVista;
 use Database\Seeders\RoleSetupSeeder;
 use Livewire\Component;
+use Spatie\Permission\PermissionRegistrar;
 
 class Perms extends Component
 {
     public User $user;
 
     public ?string $permsUserName = null;
+
     public ?int $selectedRoleId = null;
+
     public array $selectedPermissionNames = [];
+
     public array $aclGroups = [];
+
     public $roles = [];
+
     public bool $canEdit = true;
 
     public function mount(int $id)
     {
-        if (!auth()->user()?->can('usuarios.gestionar-permisos')) {
+        if (! auth()->user()?->can('usuarios.gestionar-permisos')) {
             abort(403);
         }
 
@@ -52,16 +59,16 @@ class Perms extends Component
         // Estructura idéntica al sidebar (resources/views/layout/sidebar.blade.php)
         $sidebarStructure = [
             [
-                'type'  => 'single',
-                'key'   => 'dashboard',
+                'type' => 'single',
+                'key' => 'dashboard',
                 'title' => 'Panel De Control',
                 'permissions' => [
                     ['perm' => 'dashboard', 'label' => 'Panel De Control'],
                 ],
             ],
             [
-                'type'  => 'group',
-                'key'   => 'configuracion',
+                'type' => 'group',
+                'key' => 'configuracion',
                 'title' => 'Configuración',
                 'permissions' => [
                     ['perm' => 'configuracion.usuarios',   'label' => 'Usuarios'],
@@ -69,8 +76,8 @@ class Perms extends Component
                 ],
             ],
             [
-                'type'  => 'group',
-                'key'   => 'registro',
+                'type' => 'group',
+                'key' => 'registro',
                 'title' => 'Registro',
                 'permissions' => [
                     ['perm' => 'registro.activar',          'label' => 'Activar Prestamos'],
@@ -85,8 +92,8 @@ class Perms extends Component
                 ],
             ],
             [
-                'type'  => 'group',
-                'key'   => 'caja',
+                'type' => 'group',
+                'key' => 'caja',
                 'title' => 'Caja',
                 'permissions' => [
                     ['perm' => 'caja.apertura', 'label' => 'Apertura Caja'],
@@ -95,8 +102,8 @@ class Perms extends Component
                 ],
             ],
             [
-                'type'  => 'group',
-                'key'   => 'reportes',
+                'type' => 'group',
+                'key' => 'reportes',
                 'title' => 'Reportes',
                 'permissions' => [
                     ['perm' => 'reportes.credito-diario',      'label' => 'Reporte Credito D.'],
@@ -128,10 +135,12 @@ class Perms extends Component
                     $items[] = ['key' => $p['perm'], 'label' => $p['label']];
                 }
             }
-            if (empty($items)) continue;
+            if (empty($items)) {
+                continue;
+            }
 
             $groups[$g['key']] = [
-                'type'  => $g['type'],
+                'type' => $g['type'],
                 'title' => $g['title'],
                 'items' => $items,
             ];
@@ -142,21 +151,25 @@ class Perms extends Component
 
     public function selectGroup(string $groupKey): void
     {
-        if (!isset($this->aclGroups[$groupKey])) return;
+        if (! isset($this->aclGroups[$groupKey])) {
+            return;
+        }
         $keys = array_column($this->aclGroups[$groupKey]['items'], 'key');
         $this->selectedPermissionNames = array_values(array_unique(array_merge($this->selectedPermissionNames, $keys)));
     }
 
     public function deselectGroup(string $groupKey): void
     {
-        if (!isset($this->aclGroups[$groupKey])) return;
+        if (! isset($this->aclGroups[$groupKey])) {
+            return;
+        }
         $keys = array_column($this->aclGroups[$groupKey]['items'], 'key');
         $this->selectedPermissionNames = array_values(array_diff($this->selectedPermissionNames, $keys));
     }
 
     public function savePerms(): void
     {
-        if (!auth()->user()?->can('usuarios.gestionar-permisos')) {
+        if (! auth()->user()?->can('usuarios.gestionar-permisos')) {
             abort(403);
         }
 
@@ -168,10 +181,13 @@ class Perms extends Component
         }
         $user->syncRoles($roleName ? [$roleName] : []);
 
-        $names = Permission::whereIn('name', $this->selectedPermissionNames)->pluck('name')->all();
-        $user->syncPermissions($names);
+        // Los checkboxes son la visibilidad de módulos; los permisos finos
+        // directos (fuera de la lista de vista) se conservan tal cual.
+        $names = Permission::whereIn('name', $this->selectedPermissionNames)->pluck('name');
+        $finos = $user->permissions()->pluck('name')->diff(PermisosVista::LISTA);
+        $user->syncPermissions($names->merge($finos)->unique()->values()->all());
 
-        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         $this->dispatch('successAlert', ['message' => 'Rol & permisos actualizados']);
     }

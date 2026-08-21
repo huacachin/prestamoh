@@ -260,6 +260,8 @@ php artisan db:seed                  # ejecutar seeders
 
 **Roles legacy eliminados**: `superusuario`, `asesor`, `cobranza`, `web`. Si la importación trae usuarios con esos nombres, el comando `installation:migrate-roles` los re-mapea automáticamente al equivalente nuevo (ya está incluido en `installation:run-all`).
 
+**Visualización por usuario (`/users/{id}/perms`)**: los checkboxes de esa pantalla son permisos DIRECTOS del usuario y MANDAN sobre el rol para el acceso a módulos (Gate::before en `AppServiceProvider` + `App\Support\PermisosVista`; el director está exento). Al asignar o cambiar un rol, el override de `User::assignRole/syncRoles` siembra los checks según la matriz del rol — la remigración los reconstruye sola vía `migrate-roles`. ⚠️ Los checks PERSONALIZADOS (desmarcados a mano después) se pierden en cada refresh, igual que los cambios de rol a mano: re-aplicarlos tras el ciclo. `PermisosVistaSeeder` resetea la vista de TODOS los usuarios a la matriz de su rol (solo para bootstrap o reparación).
+
 **Mapping aplicado por `migrate-roles`:**
 
 | Rol legacy | Rol nuevo |
