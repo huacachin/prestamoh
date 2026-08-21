@@ -60,39 +60,21 @@ class CreditController extends Controller
         $c->mount($id);
         $d = $c->render()->getData();
 
-        $fmt = fn ($f) => $f ? \Carbon\Carbon::parse($f)->format('d/m/Y') : '';
-
-        // Cuotas regulares del cronograma
-        $rows = collect($d['rows'])->map(fn ($r) => (object) [
-            'num'        => $r['n'],
-            'periodo'    => $fmt($r['periodo']),
-            'capital'    => $r['capital'],
-            'interes'    => $r['interes'],
-            'total'      => $r['total'],
-            'mora'       => $r['mora'],
-            'pagado'     => $r['pagado'],
-            'fecha_pago' => $fmt($r['fecha_pago']),
-            'color'      => $r['color'],
-        ]);
-
-        // Pagos OTROS (fuera del cronograma) — la vista los pinta como "extras"
-        $dailyExtras = collect($d['otrosRows'])->map(fn ($r) => [
-            'num'    => $r['n'],
-            'mora'   => $r['mora'],
-            'pagado' => $r['pagado'],
-            'fecha'  => $fmt($r['fecha_pago']),
-        ])->all();
-
+        // Homologado 21/08: el Excel es espejo de la pantalla (mismas columnas
+        // Cuota..Fecha Pago, numeración de vencidas/pendientes, Mora unificada
+        // y las filas del pie), así que recibe la data del componente tal cual.
         return \App\Support\XlsResponse::make('exports.schedule', [
-            'rows'         => $rows,
-            'totCap'       => $d['totals']['capital'],
-            'totInt'       => $d['totals']['interes'],
-            'totMora'      => $d['totals']['mora'],
-            'totPag'       => $d['totals']['pagado'],
-            'dailyExtras'  => $dailyExtras,
-            'sumMoraExtra' => $d['sumOtrosMora'],
-            'sumImpoExtra' => $d['sumOtros'],
-            'saldo'        => $d['saldo'],
+            'credit' => $c->credit,
+            'rows' => $d['rows'],
+            'otrosRows' => $d['otrosRows'],
+            'totals' => $d['totals'],
+            'sumOtros' => $d['sumOtros'],
+            'sumOtrosMora' => $d['sumOtrosMora'],
+            'sumOtrosExon' => $d['sumOtrosExon'],
+            'sumOtrosExonDias' => $d['sumOtrosExonDias'],
+            'saldo' => $d['saldo'],
+            'totalGeneral' => $d['totalGeneral'],
+            'capPendienteTotal' => $d['capPendienteTotal'],
         ], 'Cronograma.xls');
     }
 }
