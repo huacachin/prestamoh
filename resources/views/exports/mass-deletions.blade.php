@@ -30,8 +30,8 @@
                     <td {!! $cell !!}><b>&nbsp;&nbsp;{{ $i + 1 }}</b></td>
                     <td {!! $cell !!}>{{ $r->date?->format('d/m/Y') }}</td>
                     <td {!! $cell !!}>{{ $r->time }}</td>
-                    <td {!! $cell !!}>{{ $r->performed_by ?? $r->user }}</td>
-                    <td {!! $cell !!}>{{ $r->advisor }}</td>
+                    <td {!! $cell !!}>{{ \App\Support\Usernames::de($r->performed_by ?? $r->user) }}</td>
+                    <td {!! $cell !!}>{{ \App\Support\Usernames::de($r->advisor) }}</td>
                     <td {!! $cell !!}>{{ $cliente }}</td>
                     <td {!! $cell !!}>{{ $r->credit_id }}</td>
                     <td {!! $cell !!}>{{ number_format($r->amount, 2) }}</td>

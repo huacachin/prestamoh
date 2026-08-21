@@ -101,8 +101,8 @@
                                     <td class="text-center">{{ $loop->iteration }}</td>
                                     <td class="text-center">{{ $record->date?->format('d/m/Y') }}</td>
                                     <td class="text-center">{{ $record->time }}</td>
-                                    <td>{{ $record->performed_by ?? $record->user }}</td>
-                                    <td>{{ $record->advisor }}</td>
+                                    <td>{{ \App\Support\Usernames::de($record->performed_by ?? $record->user) }}</td>
+                                    <td>{{ \App\Support\Usernames::de($record->advisor) }}</td>
                                     <td>{{ trim($record->credit?->client?->apellido_pat . ' ' . $record->credit?->client?->apellido_mat . ' ' . $record->credit?->client?->nombre) }}</td>
                                     <td class="text-center">
                                         @if($record->credit_id)
@@ -150,8 +150,8 @@
                                         </div>
                                         <div class="col-6"><b>Fecha:</b> {{ $record->date?->format('d/m/Y') }}</div>
                                         <div class="col-6"><b>Hora:</b> {{ $record->time }}</div>
-                                        <div class="col-6"><b>Usuario:</b> {{ $record->performed_by ?? $record->user }}</div>
-                                        <div class="col-12"><b>Asesor:</b> {{ $record->advisor }}</div>
+                                        <div class="col-6"><b>Usuario:</b> {{ \App\Support\Usernames::de($record->performed_by ?? $record->user) }}</div>
+                                        <div class="col-12"><b>Asesor:</b> {{ \App\Support\Usernames::de($record->advisor) }}</div>
                                     </div>
                                     @if($canEdit)
                                         <div class="mt-2">

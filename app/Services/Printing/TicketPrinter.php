@@ -131,11 +131,12 @@ final class TicketPrinter
             'cliente' => $nombre ?: null,
             'documento' => $documento,
             'credit_id' => (int) $masivo->credit_id,
-            // El voucher muestra el USERNAME del cobrador (pedido 14/08), pero
-            // mass_deletions.user guarda el nombre completo: se resuelve contra
-            // users.name. El asesor ya no se imprime (queda en la data por si
-            // otro consumidor lo necesita).
-            'cobrador' => $this->usernameCobrador($masivo->user),
+            // El voucher muestra el USERNAME del cobrador (pedido 14/08). Tras
+            // el refresh del 17/08 las operaciones migradas traen user vacío y
+            // el username del legacy en performed_by; las nuevas guardan el
+            // nombre completo y Usernames::de lo resuelve. El asesor ya no se
+            // imprime (queda en la data por si otro consumidor lo necesita).
+            'cobrador' => $this->usernameCobrador($masivo->performed_by ?: $masivo->user),
             'asesor' => $masivo->advisor ?: null,
             'cuotas' => $cuotasTocadas,
             'detalle_cuotas' => $detalleCuotas,
@@ -275,20 +276,10 @@ final class TicketPrinter
         return $buffer->getBytes();
     }
 
-    /**
-     * Username del cobrador a partir del nombre completo guardado en
-     * mass_deletions.user (comparación con TRIM: hay nombres con espacio
-     * final). Si ningún usuario calza —cobros del legacy con otro formato—
-     * se muestra el valor guardado tal cual.
-     */
+    /** Username del cobrador — lógica compartida en App\Support\Usernames. */
     private function usernameCobrador(?string $nombre): ?string
     {
-        $nombre = trim((string) $nombre);
-        if ($nombre === '') {
-            return null;
-        }
-
-        return \App\Models\User::whereRaw('TRIM(name) = ?', [$nombre])->value('username') ?: $nombre;
+        return \App\Support\Usernames::de($nombre);
     }
 
     private function saldoPendiente(int $creditId): float
