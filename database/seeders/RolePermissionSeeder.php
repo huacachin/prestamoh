@@ -41,7 +41,7 @@ class RolePermissionSeeder extends Seeder
                 'dashboard',
                 'clientes', 'creditos', 'pagos',
                 'pagos.mora-manual',
-                'caja.apertura', 'caja.ingresos', 'caja.egresos',
+                'caja.apertura', 'caja.ingresos', 'caja.egresos', 'caja.ver-todo',
                 'reportes.credito-diario', 'reportes.credito-mensual', 'reportes.credito-semanal',
                 'reportes.cartera', 'reportes.pagos', 'reportes.morosidad', 'reportes.caja',
                 'reportes.asesor', 'reportes.caja-estadistica', 'reportes.credito-estadistica',
@@ -56,7 +56,7 @@ class RolePermissionSeeder extends Seeder
             'administrador' => [
                 'dashboard',
                 'clientes', 'creditos', 'pagos',
-                'caja.apertura', 'caja.ingresos', 'caja.egresos',
+                'caja.apertura', 'caja.ingresos', 'caja.egresos', 'caja.ver-todo',
                 // Sin bypass-fecha-anterior ni editar-historico (21/08): el
                 // administrador opera SOLO el día en curso; lo histórico es
                 // exclusivo del director.
@@ -122,7 +122,7 @@ class RolePermissionSeeder extends Seeder
             'contabilidad' => [
                 'dashboard',
                 'creditos', 'pagos',
-                'caja.apertura', 'caja.ingresos', 'caja.egresos', 'caja.editar-historico',
+                'caja.apertura', 'caja.ingresos', 'caja.egresos', 'caja.ver-todo', 'caja.editar-historico',
                 'reportes.credito-diario', 'reportes.credito-mensual', 'reportes.credito-semanal',
                 'reportes.cartera', 'reportes.pagos', 'reportes.morosidad', 'reportes.caja',
                 'reportes.asesor', 'reportes.caja-estadistica', 'reportes.credito-estadistica',

@@ -59,6 +59,7 @@ class PermissionCatalogSeeder extends Seeder
             // ─── Permisos finos sobre acciones de Caja ───
             ['name' => 'caja.bypass-fecha-anterior', 'label' => 'Bypass fecha anterior', 'module' => 'caja', 'module_label' => 'Caja', 'description' => 'Permite registrar/editar movimientos con fecha de mes anterior'],
             ['name' => 'caja.editar-historico',      'label' => 'Editar histórico',      'module' => 'caja', 'module_label' => 'Caja', 'description' => 'Editar ingresos/egresos ya creados (no del día)'],
+            ['name' => 'caja.ver-todo',              'label' => 'Ver toda la caja',      'module' => 'caja', 'module_label' => 'Caja', 'description' => 'Ver ingresos/egresos de todos los usuarios (sin poder editar lo histórico)'],
             ['name' => 'caja.eliminar',              'label' => 'Eliminar',              'module' => 'caja', 'module_label' => 'Caja', 'description' => 'Eliminar ingresos/egresos y sus adjuntos'],
 
             // ─── Permisos finos sobre Clientes / Créditos / Pagos ───

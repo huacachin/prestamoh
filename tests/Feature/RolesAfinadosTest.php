@@ -4,11 +4,13 @@ namespace Tests\Feature;
 
 use App\Models\Client;
 use App\Models\Credit;
+use App\Models\Headquarter;
 use App\Models\User;
 use Database\Seeders\PermissionCatalogSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Database\Seeders\RoleSetupSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -96,6 +98,29 @@ class RolesAfinadosTest extends TestCase
         $this->get("/credits/{$ajenoCredito->id}/schedule")->assertForbidden();
         $this->get("/payments/create/{$miCredito->id}")->assertOk();
         $this->get("/payments/create/{$ajenoCredito->id}")->assertForbidden();
+    }
+
+    /** El administrador VE todos los ingresos/egresos aunque no edite lo histórico. */
+    public function test_administrador_ve_el_listado_completo_de_caja(): void
+    {
+        $sede = Headquarter::create(['name' => 'Principal']);
+        $admin = User::factory()->create(['username' => 'adm-caja', 'headquarter_id' => $sede->id]);
+        $admin->assignRole('administrador');
+        $otro = User::factory()->create(['username' => 'otro-cajero', 'headquarter_id' => $sede->id]);
+
+        DB::table('incomes')->insert([
+            'reason' => 'Fijos', 'detail' => 'Ingreso De Otro Usuario Historico', 'total' => 100,
+            'date' => now()->subDays(10)->format('Y-m-d'), 'user_id' => $otro->id,
+            'headquarter_id' => $sede->id, 'caja' => 1, 'documento' => 'GUIA',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->actingAs($admin);
+        $this->assertTrue($admin->can('caja.ver-todo'));
+        $desde = now()->subDays(15)->format('Y-m-d');
+        $hasta = now()->format('Y-m-d');
+        $this->get("/cash/incomes?desde={$desde}&hasta={$hasta}")
+            ->assertOk()->assertSee('Ingreso De Otro Usuario Historico');
     }
 
     public function test_director_y_administrador_siguen_creando(): void

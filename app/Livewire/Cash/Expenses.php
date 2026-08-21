@@ -51,7 +51,7 @@ class Expenses extends Component
         }
 
         // Operadores de caja (sin caja.editar-historico): solo sus propios egresos diarios
-        if (! $user->can('caja.editar-historico')) {
+        if (! $user->canAny(['caja.editar-historico', 'caja.ver-todo'])) {
             $query->where('user_id', $user->id)
                 ->where('reason', 'Diario');
         }

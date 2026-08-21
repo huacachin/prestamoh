@@ -55,7 +55,7 @@ class Incomes extends Component
             $incomeQuery->where('headquarter_id', $hqId);
         }
 
-        if (! $user->can('caja.editar-historico')) {
+        if (! $user->canAny(['caja.editar-historico', 'caja.ver-todo'])) {
             $incomeQuery->where('user_id', $user->id)
                 ->where('reason', 'Diario');
         }
@@ -84,7 +84,7 @@ class Incomes extends Component
             $payQuery->where('headquarter_id', $hqId);
         }
 
-        if (! $user->can('caja.editar-historico')) {
+        if (! $user->canAny(['caja.editar-historico', 'caja.ver-todo'])) {
             $payQuery->where('user_id', $user->id);
         }
 
