@@ -20,7 +20,9 @@ class Credit extends Model
         return match ((int) $this->tipo_planilla) {
             1 => round($cuota * self::TASA_MORA_PCT / 100 / 7, 2),
             3 => round($cuota * self::TASA_MORA_PCT / 100 / 30, 2),
-            default => (float) $this->mora1,
+            // round: mora1 es decimal(10,4); con >2 decimales el cobro y la
+            // fórmula mostrada (días × tarifa a 2 dec.) divergirían por céntimos.
+            default => round((float) $this->mora1, 2),
         };
     }
 

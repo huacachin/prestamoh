@@ -78,8 +78,8 @@ class PreviewMoraParidadTest extends TestCase
         $this->assertEqualsWithDelta($rate, (float) $preview['mora_rate'], 0.005);
 
         // La fórmula se pinta en el ticket del modal y bajo el campo Total Mora
-        $comp->assertSee('3 d × '.number_format($rate, 2));
-        $comp->assertSee('= 3 días × S/ '.number_format($rate, 2));
+        $comp->assertSee('3 días × '.number_format($rate, 2));
+        $comp->assertSee('= 3 días × '.number_format($rate, 2));
     }
 
     public function test_lo_previsualizado_es_exactamente_lo_cobrado(): void
@@ -118,7 +118,10 @@ class PreviewMoraParidadTest extends TestCase
             ->set('moraMotivo', 'Acuerdo con el cliente')
             ->call('confirmarPago');
 
-        $comp->assertDontSee('3 d × ');
+        // La fórmula del form desaparece (las tarjetas de escenario siguen
+        // mostrando la calculada: son otra cosa) y el ticket no la etiqueta.
+        $comp->assertDontSee('= 3 días × '.number_format(round(1100 * 5 / 100 / 30, 2), 2));
+        $this->assertFalse($comp->get('preview')['mora_es_calculada']);
         $comp->assertSee('Mora ajustada a mano');
     }
 }

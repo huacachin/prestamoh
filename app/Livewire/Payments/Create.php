@@ -1082,10 +1082,15 @@ class Create extends Component
             'interes' => $dist['interes'],
             'excedente' => $dist['excedente'],
             'mora' => round($moraTicket, 2),
-            // Fórmula de la mora para el modal: N días × tarifa = total. Solo
-            // se pinta cuando la mora es la calculada (sin override ni extras).
+            // Fórmula de la mora para el modal: N días × tarifa = total. El flag
+            // dice si la fila Mora del ticket ES la calculada (sin override, sin
+            // reserva y sin mora-interés sumada) — se decide por ORIGEN, no por
+            // coincidencia numérica.
             'mora_dias' => (int) ($calcs['dias_final'] ?? 0),
             'mora_rate' => round((float) ($calcs['mora_rate'] ?? 0), 2),
+            'mora_es_calculada' => ! ($calcs['mora_ajustada'] ?? false)
+                && $moraQueSeCobra > 0.001
+                && abs($moraTicket - $moraQueSeCobra) < 0.005,
             'total' => $total,
             'saldo' => max(0.0, $saldo),
             'cancela' => $this->cancel,

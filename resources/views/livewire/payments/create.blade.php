@@ -199,12 +199,15 @@
                                 Total Mora
                                 @if($puedeMora)
                                     <i class="ti {{ ((float)$monto) > 0 ? 'ti-pencil' : 'ti-lock' }} f-s-12"
-                                       title="{{ ((float)$monto) > 0 ? 'Editable (override gerencial)' : 'Escribe el Monto a Pagar para habilitar' }}"></i>
+                                       title="{{ ((float)$monto) > 0 ? 'Editable (override gerencial)' : 'Escribe el Monto a Pagar para poder ajustarla' }}"></i>
                                 @endif
                             </label>
                             @if($puedeMora)
+                                {{-- wire:key: sin él el morph reusa el mismo <input> al alternar
+                                     editable↔readonly y el value tipeado se queda pegado en el DOM. --}}
                                 @if(((float)$monto) > 0)
                                     <input type="number" name="moraManual" autocomplete="off" step="0.01" min="0"
+                                           wire:key="mora-editable"
                                            class="form-control form-control-sm input-rojo"
                                            wire:model.live.debounce.400ms="moraManual"
                                            placeholder="{{ number_format($c['total_mora_calc'], 2) }}"
@@ -213,6 +216,7 @@
                                     {{-- Sin monto aún: se muestra la calculada (nunca un campo vacío);
                                          al escribir el monto se vuelve editable ya precargada. --}}
                                     <input type="text" class="form-control form-control-sm input-rojo"
+                                           wire:key="mora-readonly"
                                            value="{{ number_format($c['total_mora_calc'], 2) }}" readonly
                                            title="Escribe el Monto a Pagar para poder ajustarla">
                                 @endif
@@ -220,9 +224,9 @@
                                 <input type="text" class="form-control form-control-sm input-rojo"
                                        value="{{ number_format($c['total_mora'], 2) }}" readonly>
                             @endif
-                            @if(($c['dias_final'] ?? 0) > 0 && ($c['mora_rate'] ?? 0) > 0)
+                            @if(($c['dias_final'] ?? 0) > 0 && ($c['mora_rate'] ?? 0) > 0 && ! ($c['mora_ajustada'] ?? false))
                                 <div class="small text-muted mt-1">
-                                    = {{ $c['dias_final'] }} {{ $c['dias_final'] === 1 ? 'día' : 'días' }} × S/ {{ number_format($c['mora_rate'], 2) }}
+                                    = {{ $c['dias_final'] }} {{ $c['dias_final'] === 1 ? 'día' : 'días' }} × {{ number_format($c['mora_rate'], 2) }}
                                 </div>
                             @endif
                         </div>
@@ -569,14 +573,14 @@
                                 @endif
                                 @if($preview['mora'] > 0.001)
                                     @php
-                                        // La fórmula solo cuando la mora del ticket ES días × tarifa
-                                        // (sin override, sin mora-interés sumada, sin reserva).
-                                        $formulaMora = ! ($preview['mora_ajustada'] ?? false)
-                                            && ($preview['mora_dias'] ?? 0) > 0
-                                            && abs($preview['mora'] - round(($preview['mora_dias'] ?? 0) * ($preview['mora_rate'] ?? 0), 2)) < 0.005;
+                                        // La fórmula solo cuando la fila Mora ES la calculada
+                                        // (flag por origen desde construirPreview).
+                                        $formulaMora = ($preview['mora_es_calculada'] ?? false)
+                                            && ($preview['mora_dias'] ?? 0) > 0;
+                                        $dMod = (int) ($preview['mora_dias'] ?? 0);
                                     @endphp
                                     <div class="tp-row">
-                                        <span>Mora{{ $formulaMora ? ' ('.$preview['mora_dias'].' d × '.number_format($preview['mora_rate'], 2).')' : '' }}:</span>
+                                        <span>Mora{{ $formulaMora ? ' ('.$dMod.' '.($dMod === 1 ? 'día' : 'días').' × '.number_format($preview['mora_rate'], 2).')' : '' }}:</span>
                                         <span>{{ number_format($preview['mora'], 2) }}</span>
                                     </div>
                                 @endif
@@ -637,11 +641,10 @@
                                 <span>Capital + interés: <b>S/ {{ number_format($preview['cancelar_cap_int'], 2) }}</b></span>
                                 @if(($preview['mora_pendiente'] ?? 0) > 0.001)
                                     @php
-                                        $formulaPend = ! ($preview['mora_ajustada'] ?? false)
-                                            && ($preview['mora_dias'] ?? 0) > 0
-                                            && abs($preview['mora_pendiente'] - round(($preview['mora_dias'] ?? 0) * ($preview['mora_rate'] ?? 0), 2)) < 0.005;
+                                        $dPend = (int) ($preview['mora_dias'] ?? 0);
+                                        $formulaPend = ! ($preview['mora_ajustada'] ?? false) && $dPend > 0;
                                     @endphp
-                                    <span style="color:#c0392b;">Mora pendiente{{ $formulaPend ? ' ('.$preview['mora_dias'].' días × '.number_format($preview['mora_rate'], 2).')' : '' }}: <b>S/ {{ number_format($preview['mora_pendiente'], 2) }}</b></span>
+                                    <span style="color:#c0392b;">Mora pendiente{{ $formulaPend ? ' ('.$dPend.' '.($dPend === 1 ? 'día' : 'días').' × '.number_format($preview['mora_rate'], 2).')' : '' }}: <b>S/ {{ number_format($preview['mora_pendiente'], 2) }}</b></span>
                                 @endif
                             </div>
                             <div class="fw-semibold small mb-1">¿Cancelar el crédito?</div>
