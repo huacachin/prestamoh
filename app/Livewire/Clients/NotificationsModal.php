@@ -3,6 +3,9 @@
 namespace App\Livewire\Clients;
 
 use App\Models\Client;
+use App\Support\Garantias;
+use App\Support\NumerosEnLetras;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -116,7 +119,7 @@ class NotificationsModal extends Component
                 },
                 'vencidas' => (int) $r->vencidas,
                 'atrasado' => round((float) $r->atrasado, 2),
-                'ultima' => $u ? 'N° '.$u->numero.' del '.\Carbon\Carbon::parse($u->fecha)->format('d/m/Y') : null,
+                'ultima' => $u ? 'N° '.$u->numero.' del '.Carbon::parse($u->fecha)->format('d/m/Y') : null,
             ];
         })->values()->all();
     }
@@ -188,9 +191,68 @@ class NotificationsModal extends Component
         $ultima = $q->orderByDesc('numero')->value('mensaje');
 
         $this->texto = $ultima ?? ($nivel3
-            ? "⚖️ *COMUNICADO DE REGULARIZACIÓN DE PAGO*\nEstimado(a) Sr.(a) {$this->clientName}:\nReferencia: Crédito N° {$this->creditId}\n"
+            ? $this->plantillaNivel3()
             : $this->plantillaDosCuotas());
         $this->editor = true;
+    }
+
+    /**
+     * Plantilla de nivel 3+ según la GARANTÍA del cliente (prefijo del campo
+     * "T. Crédito" = clients.zona): requerimiento final vehicular SIGM,
+     * requerimiento final hipotecario, o el comunicado genérico si la
+     * garantía no es ninguna de las dos. Texto legal provisto por el área
+     * legal (21/08); queda editable antes de enviar.
+     */
+    private function plantillaNivel3(): string
+    {
+        $client = Client::find($this->clientId);
+        $garantia = Garantias::de($client?->zona);
+
+        if ($garantia === Garantias::OTRA) {
+            return "⚖️ *COMUNICADO DE REGULARIZACIÓN DE PAGO*\nEstimado(a) Sr.(a) {$this->clientName}:\nReferencia: Crédito N° {$this->creditId}\n";
+        }
+
+        // Variables del requerimiento
+        $nombre = mb_strtoupper(trim(($client->nombre ?? '').' '.($client->apellido_pat ?? '').' '.($client->apellido_mat ?? '')));
+        $fem = ($client->sexo ?? '') === 'F';
+        $estimado = $fem ? 'Estimada' : 'Estimado';
+        $notificado = $fem ? 'notificada' : 'notificado';
+        $cuotas = NumerosEnLetras::conteo($this->vencidas);
+
+        // Monto atrasado = lo impago de las cuotas vencidas (el "Retraso")
+        $retraso = round((float) DB::table('credit_installments')
+            ->where('credit_id', $this->creditId)
+            ->where('pagado', 0)
+            ->whereNotNull('fecha_vencimiento')
+            ->where('fecha_vencimiento', '<', now()->format('Y-m-d'))
+            ->selectRaw('COALESCE(SUM(importe_cuota + importe_interes + importe_excedente
+                - importe_aplicado - interes_aplicado - excedente_aplicado), 0) as s')
+            ->value('s'), 2);
+        $monto = 'S/ '.number_format($retraso, 2).' ('.NumerosEnLetras::monto($retraso).')';
+
+        $cuerpoComun = "Por medio de la presente, se le comunica que, de la revisión de su crédito, se ha verificado el incumplimiento del pago de {$cuotas} CUOTAS VENCIDAS, manteniendo un monto total atrasado de {$monto}, más los intereses moratorios y demás conceptos que correspondan conforme al contrato.\n\n"
+            ."En tal sentido, se le REQUIERE DE MANERA FINAL E IMPRORROGABLE que, dentro del plazo máximo de CUARENTA Y OCHO (48) HORAS, contadas desde la recepción del presente comunicado, proceda a regularizar íntegramente las cuotas vencidas y el monto pendiente de pago, o presente una propuesta formal de pago para evaluación exclusiva del acreedor.\n\n";
+
+        $firma = "Atentamente,\n⚖️Abog. Rosa Linda Tafur Cuenca\nÁrea Legal Huacachin";
+
+        if ($garantia === Garantias::VEHICULAR) {
+            return "⚖️ *REQUERIMIENTO FINAL DE REGULARIZACIÓN DE PAGO - GARANTIA VEHICULAR SIGM* ⚖️\n\n"
+                ."{$estimado} sr(a) {$nombre}:\nReferencia: Crédito N° {$this->creditId}\n\n"
+                .$cuerpoComun
+                ."De conformidad con lo pactado en el contrato de credito vehicular con Garantia Mobiliaria en el SIGM, así como de lo dispuesto en el artículo 1323° del Código Civil; se le APERCIBE EXPRESAMENTE que, de no cumplir con la regularización dentro del plazo otorgado, el acreedor podrá declarar el VENCIMIENTO ANTICIPADO de la obligación, quedando vencidas y exigibles la totalidad de las cuotas pendientes de pago, e iniciar de manera inmediata la EJECUCIÓN EXTRAJUDICIAL DE LA GARANTÍA MOBILIARIA, incluyendo la TOMA DE POSESIÓN DEL VEHÍCULO, conforme a lo pactado contractualmente y a la normativa vigente, sin necesidad de cursar un nuevo requerimiento.\n\n"
+                ."Asimismo, cualquier pago parcial efectuado luego del vencimiento del plazo otorgado no suspenderá ni dejará sin efecto las acciones correspondientes, salvo aceptación expresa del acreedor.\n\n"
+                ."La presente constituye el ÚLTIMO REQUERIMIENTO PREVIO A LA EJECUCIÓN EXTRAJUDICIAL Y TOMA DE POSESIÓN DEL VEHÍCULO, quedando usted debidamente {$notificado} para los fines legales correspondientes.\n\n"
+                .$firma;
+        }
+
+        return "⚖️ *REQUERIMIENTO FINAL DE REGULARIZACIÓN DE PAGO - GARANTIA HIPOTECARIA* ⚖️\n\n"
+            ."{$estimado} sr(a) {$nombre}:\nReferencia: Crédito N° {$this->creditId}\n\n"
+            .$cuerpoComun
+            ."Se le APERCIBE EXPRESAMENTE que, de no cumplir con la regularización dentro del plazo otorgado, de conformidad con lo pactado contractualmente y con el artículo 1323° del Código Civil, el incumplimiento de tres (03) cuotas faculta al acreedor a DECLARAR EL VENCIMIENTO ANTICIPADO DE LA OBLIGACIÓN Y EXIGIR EL PAGO INMEDIATO DEL SALDO TOTAL PENDIENTE, dándose por vencidas y exigibles las cuotas que se encontraban pendientes de vencimiento.\n\n"
+            ."En consecuencia, el acreedor podrá iniciar de manera inmediata la EJECUCIÓN DE LA GARANTÍA HIPOTECARIA, a efectos de hacer efectivo el cobro de la totalidad de la obligación mediante el REMATE DEL INMUEBLE HIPOTECADO, conforme a lo pactado contractualmente y a la normativa vigente, sin necesidad de cursar un nuevo requerimiento.\n\n"
+            ."Asimismo, cualquier pago parcial efectuado luego del vencimiento del plazo otorgado no suspenderá ni dejará sin efecto el vencimiento anticipado ni las acciones de ejecución de la garantía, salvo aceptación expresa del acreedor.\n\n"
+            ."La presente constituye el ÚLTIMO REQUERIMIENTO PREVIO A LA EJECUCIÓN DE LA GARANTÍA HIPOTECARIA Y REMATE DEL INMUEBLE, quedando usted debidamente {$notificado} para los fines legales correspondientes.\n\n"
+            .$firma;
     }
 
     /**
