@@ -400,6 +400,13 @@ mysql -uroot -h127.0.0.1 laravel_prestamo \
 
 # Verificación final: DEBE decir "✓ Sistema OK — sin problemas detectados."
 php artisan installation:check
+
+# 6) Roles: la matriz sale del RolePermissionSeeder (paso 1) y las asignaciones
+#    del `nivel` legacy vía migrate-roles (SuperUsuario→director, Asesor→
+#    analista-creditos, Administrador→administrador). OJO: si algún rol se
+#    cambió A MANO en prestamoh y no coincide con el nivel del legacy, el
+#    refresh lo REVIERTE — verificar tras cada ciclo:
+php artisan tinker --execute='foreach (\App\Models\User::with("roles")->get() as $u) echo $u->username." -> ".$u->getRoleNames()->implode(",").PHP_EOL;'
 ```
 
 ### 8.4 Validar antes de subir nada
