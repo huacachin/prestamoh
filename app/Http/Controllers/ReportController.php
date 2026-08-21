@@ -251,6 +251,31 @@ class ReportController extends Controller
         ], 'Reporte Estadistico De Caja.xls');
     }
 
+    // Excel espejo de /reports/credit-statistics (diaria del mes + mensual
+    // del año, columnas Cap./Int. por tasa), con los filtros de la pantalla.
+    public function exportCreditStatistics(Request $request)
+    {
+        $c = new \App\Livewire\Reports\CreditStatistics;
+        $c->selemes = (string) $request->query('mes', date('m'));
+        $c->selecano = (string) $request->query('anio', date('Y'));
+        $c->seletipl = (string) $request->query('tipo', '');
+        $c->nomasesores = (string) $request->query('asesor', 'Todos');
+
+        $d = $c->render()->getData();
+
+        return XlsResponse::make('exports.reports.credit-statistics', [
+            'dailyRows' => $d['dailyRows'],
+            'dailyTotals' => $d['dailyTotals'],
+            'dailyRates' => $d['dailyRates'],
+            'monthlyRows' => $d['monthlyRows'],
+            'monthlyTotals' => $d['monthlyTotals'],
+            'monthlyRates' => $d['monthlyRates'],
+            'months' => $d['months'],
+            'selemes' => $c->selemes,
+            'selecano' => $c->selecano,
+        ], 'Reporte Estadistico De Credito.xls');
+    }
+
     public function exportAdvisor(Request $request)
     {
         $c = new Advisor;

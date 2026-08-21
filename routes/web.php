@@ -157,6 +157,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/exports/reports/cash-general-2',[ReportController::class, 'exportCashGeneral2'])->name('exports.reports.cash-general-2');
     Route::get('/exports/reports/cash-general-3',[ReportController::class, 'exportCashGeneral3'])->name('exports.reports.cash-general-3');
     Route::get('/exports/reports/cash-statistics',[ReportController::class, 'exportCashStatistics'])->name('exports.reports.cash-statistics');
+    Route::get('/exports/reports/credit-statistics',[ReportController::class, 'exportCreditStatistics'])->name('exports.reports.credit-statistics');
     Route::get('/exports/reports/advisor',       [ReportController::class, 'exportAdvisor'])->name('exports.reports.advisor');
     Route::get('/exports/reports/simulator',     [ReportController::class, 'exportSimulator'])->name('exports.reports.simulator');
     Route::get('/exports/credits/mass-deletions', [CreditController::class, 'exportMassDeletions'])->name('exports.credits.mass-deletions');
