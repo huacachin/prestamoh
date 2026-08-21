@@ -237,10 +237,11 @@ class Index extends Component
             fn ($v, $id) => $cumple($v) && ! isset($enEjecucion[$id]),
             ARRAY_FILTER_USE_BOTH
         ));
-        $countCritico = $mora(fn ($v) => $v >= 4);
+        $countMasde8 = $mora(fn ($v) => $v > 8);
+        $countCritico = $mora(fn ($v) => $v >= 4 && $v <= 8);
         $countRojo = $mora(fn ($v) => $v === 3);
         $countNaranja = $mora(fn ($v) => $v === 2);
-        $countAldia = count($clientIds) - $countCritico - $countRojo - $countNaranja - $countEjecucion;
+        $countAldia = count($clientIds) - $countMasde8 - $countCritico - $countRojo - $countNaranja - $countEjecucion;
 
         // Chip seleccionado → se restringe la query por IDs del nivel
         if ($this->morosidadFiltro !== '') {
@@ -251,6 +252,7 @@ class Index extends Component
 
         $totalFiltrados = match ($this->morosidadFiltro) {
             'ejecucion' => $countEjecucion,
+            'masde8' => $countMasde8,
             'critico' => $countCritico,
             'rojo' => $countRojo,
             'naranja' => $countNaranja,
@@ -283,6 +285,6 @@ class Index extends Component
 
         $puedeCoords = $this->puedeGuardarCoords();
 
-        return view('livewire.clients.index', compact('clients', 'asesores', 'estadoCreditos', 'morosidad', 'puedeCoords', 'countAldia', 'countNaranja', 'countRojo', 'countCritico', 'countEjecucion', 'waEnviadosHoy', 'totalFiltrados'));
+        return view('livewire.clients.index', compact('clients', 'asesores', 'estadoCreditos', 'morosidad', 'puedeCoords', 'countAldia', 'countNaranja', 'countRojo', 'countCritico', 'countMasde8', 'countEjecucion', 'waEnviadosHoy', 'totalFiltrados'));
     }
 }

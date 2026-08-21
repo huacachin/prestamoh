@@ -58,7 +58,8 @@ final class MorosidadClientes
 
     /**
      * IDs del conjunto que caen en el nivel pedido
-     * ('aldia' | 'naranja' | 'rojo' | 'critico' | 'ejecucion').
+     * ('aldia' | 'naranja' | 'rojo' | 'critico' | 'masde8' | 'ejecucion').
+     * critico = 4 a 8 vencidas; masde8 = más de 8 (niveles excluyentes).
      *
      * @param  array<int, int>  $clientIds
      * @param  array<int, int>  $morosidad
@@ -73,7 +74,8 @@ final class MorosidadClientes
 
             return match ($nivel) {
                 'ejecucion' => $ejecucion,
-                'critico' => $v >= 4 && ! $ejecucion,
+                'masde8' => $v > 8 && ! $ejecucion,
+                'critico' => $v >= 4 && $v <= 8 && ! $ejecucion,
                 'rojo' => $v === 3 && ! $ejecucion,
                 'naranja' => $v === 2 && ! $ejecucion,
                 default => $v < 2 && ! $ejecucion, // aldia
