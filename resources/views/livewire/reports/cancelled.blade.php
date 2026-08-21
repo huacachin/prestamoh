@@ -150,7 +150,7 @@
                                         <td class="text-center" style="color: {{ $row['st_color'] }};">{{ $row['tot2'] }}</td>
                                         <td>
                                             @if($row['client_id'])
-                                                <a href="{{ route('clients.show', $row['client_id']) }}" target="_blank" style="color:inherit; text-decoration:underline;">{{ $row['exp'] }}</a>
+                                                <a href="{{ route('clients.show', $row['client_id']) }}" target="_blank" style="color:inherit; text-decoration:none;">{{ $row['exp'] }}</a>
                                             @else
                                                 {{ $row['exp'] }}
                                             @endif

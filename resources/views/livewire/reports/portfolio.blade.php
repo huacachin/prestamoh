@@ -433,7 +433,7 @@
                                     <td class="text-center">{{ $r['n'] }}</td>
                                     <td class="text-center">
                                         @if($r['client_id'])
-                                            <a href="{{ route('clients.show', $r['client_id']) }}" target="_blank" style="color:inherit; text-decoration:underline;">{{ $r['exp'] }}</a>
+                                            <a href="{{ route('clients.show', $r['client_id']) }}" target="_blank" style="color:inherit; text-decoration:none;">{{ $r['exp'] }}</a>
                                         @else
                                             {{ $r['exp'] }}
                                         @endif

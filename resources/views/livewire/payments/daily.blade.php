@@ -89,7 +89,7 @@
                                         <td>{{ $row['fecha'] }}</td>
                                         <td style="{{ !$row['has_imagen'] ? 'background-color:yellow;' : '' }}">
                                             @if($row['client_id'])
-                                                <a href="{{ route('clients.show', $row['client_id']) }}" target="_blank" style="color:inherit; text-decoration:underline;">{{ $row['expediente'] }}</a>
+                                                <a href="{{ route('clients.show', $row['client_id']) }}" target="_blank" style="color:inherit; text-decoration:none;">{{ $row['expediente'] }}</a>
                                             @else
                                                 {{ $row['expediente'] }}
                                             @endif
