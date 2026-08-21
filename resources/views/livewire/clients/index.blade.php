@@ -95,8 +95,8 @@
                                     ['aldia',   'verde',   'Al día', $countAldia,   'Sin cuotas vencidas relevantes (0 o 1)'],
                                     ['naranja', 'naranja', '2',      $countNaranja, 'Algún crédito activo con exactamente 2 cuotas vencidas'],
                                     ['rojo',    'rojo',    '3',      $countRojo,    'Algún crédito activo con exactamente 3 cuotas vencidas'],
-                                    ['critico', 'critico', '4-8',    $countCritico, 'Algún crédito activo con entre 4 y 8 cuotas vencidas'],
-                                    ['masde8',  'rojo',    '+8',     $countMasde8,  'Algún crédito activo con más de 8 cuotas vencidas'],
+                                    ['critico', 'critico', '4-7',    $countCritico, 'Algún crédito activo con entre 4 y 7 cuotas vencidas'],
+                                    ['masde8',  'rojo',    '+8',     $countMasde8,  'Algún crédito activo con 8 o más cuotas vencidas'],
                                 ];
                             @endphp
                             <div class="moros-chips ms-md-2" role="group" aria-label="Filtro de morosidad">

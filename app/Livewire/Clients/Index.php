@@ -237,8 +237,8 @@ class Index extends Component
             fn ($v, $id) => $cumple($v) && ! isset($enEjecucion[$id]),
             ARRAY_FILTER_USE_BOTH
         ));
-        $countMasde8 = $mora(fn ($v) => $v > 8);
-        $countCritico = $mora(fn ($v) => $v >= 4 && $v <= 8);
+        $countMasde8 = $mora(fn ($v) => $v >= 8);
+        $countCritico = $mora(fn ($v) => $v >= 4 && $v <= 7);
         $countRojo = $mora(fn ($v) => $v === 3);
         $countNaranja = $mora(fn ($v) => $v === 2);
         $countAldia = count($clientIds) - $countMasde8 - $countCritico - $countRojo - $countNaranja - $countEjecucion;
