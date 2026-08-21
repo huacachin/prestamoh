@@ -38,6 +38,37 @@ class CashStatistics extends Component
      * en Laravel las recomputamos al abrir el reporte (self-healing) para que la
      * tabla diaria y el resumen cuadren con cash-general-1 y el legacy. Sin cron.
      */
+    /**
+     * Huella barata de los datos que alimentan las caches del mes visto
+     * (payments/incomes/expenses del mes + credits global). Si la huella no
+     * cambió desde el último rebuild, las caches siguen válidas y el render
+     * se ahorra ~65-94 escrituras + la hidratación pesada de CajaDailyService.
+     * El self-healing se conserva: cualquier pago/ingreso/egreso/crédito nuevo
+     * o editado cambia la huella y dispara el rebuild completo, igual que antes.
+     */
+    private function huellaCaches(int $year, int $month, string $endLimit): string
+    {
+        $start = Carbon::create($year, $month, 1)->format('Y-m-d');
+        $end = Carbon::create($year, $month)->endOfMonth()->format('Y-m-d');
+
+        $fp = [
+            DB::table('payments')->whereBetween('fecha', [$start, $end])
+                ->selectRaw('COUNT(*) c, COALESCE(SUM(monto),0) s, COALESCE(MAX(id),0) m')->first(),
+            DB::table('incomes')->whereBetween('date', [$start, $end])
+                ->selectRaw('COUNT(*) c, COALESCE(SUM(total),0) s, COALESCE(MAX(id),0) m')->first(),
+            DB::table('expenses')->whereBetween('date', [$start, $end])
+                ->selectRaw('COUNT(*) c, COALESCE(SUM(total),0) s, COALESCE(MAX(id),0) m')->first(),
+            // credits completa: capital_neto y capitalActivado dependen de toda
+            // la tabla (importe cubre ediciones raw que no toquen updated_at)
+            DB::table('credits')
+                ->selectRaw('COUNT(*) c, COALESCE(SUM(importe),0) s, COALESCE(MAX(updated_at),"") u')->first(),
+        ];
+
+        // endLimit dentro de la huella: al cruzar la medianoche cambia el
+        // límite de días a materializar y toca reconstruir.
+        return md5(json_encode($fp).'|'.$endLimit);
+    }
+
     private function rebuildCajaCaches(int $year, int $month, string $endLimit): void
     {
         $svc = app(CajaDailyService::class);
@@ -162,8 +193,8 @@ class CashStatistics extends Component
         // egreso (legacy: $totalImporteG5 = SUM por día de (créditos activados ese
         // día con cod_rem<>'REF' + egresos caja 1 modo Fijos/Otros))
         $capitalActivado = (float) DB::table('credits')
-            ->whereYear('fecha_actualizacion', $year)
-            ->whereMonth('fecha_actualizacion', $month)
+            ->where('fecha_actualizacion', '>=', $start)
+            ->where('fecha_actualizacion', '<', Carbon::parse($end)->addDay()->format('Y-m-d'))
             ->where(function ($q) {
                 $q->where('cod_rem', '<>', 'REF')->orWhereNull('cod_rem');
             })
@@ -221,11 +252,21 @@ class CashStatistics extends Component
         // Self-healing: recomputa las caches diarias del mes desde datos vivos
         // (igual que el legacy reporte1a/data_capineto las mantienen). DEBE ir
         // antes de recalcularResumenMes y de leer las caches para la tabla diaria.
-        $this->rebuildCajaCaches($year, $month, $endLimit);
+        // Con huella: si los datos del mes no cambiaron desde el último rebuild,
+        // se salta (antes eran 65-94 escrituras por CADA interacción Livewire).
+        $huella = $this->huellaCaches($year, $month, $endLimit);
+        $huellaKey = "cajacache-fp:{$year}-{$month}";
+        if (\Illuminate\Support\Facades\Cache::get($huellaKey) !== $huella) {
+            $this->rebuildCajaCaches($year, $month, $endLimit);
 
-        // Replica el comportamiento del legacy caja-estadistica.php (línea 556):
-        // recalcula y persiste el resumen del mes ANTES de leerlo para la tabla 2.
-        $this->recalcularResumenMes($year, $month);
+            // Replica el comportamiento del legacy caja-estadistica.php (L556):
+            // recalcula y persiste el resumen del mes ANTES de leerlo.
+            $this->recalcularResumenMes($year, $month);
+
+            // La huella se guarda DESPUÉS del rebuild: si algo falla a medias,
+            // el próximo render reintenta en vez de dar la cache por buena.
+            \Illuminate\Support\Facades\Cache::put($huellaKey, $huella, now()->addDays(45));
+        }
 
         // ─── PRECARGAR DATOS DEL MES (cacheados, igual al legacy) ──────
         // Capital T. (legacy: huaca_capineto)
@@ -405,14 +446,15 @@ class CashStatistics extends Component
         $ingTotal = $ingMS + $ingD + $ingOtrosCat;
 
         // EGRESO por aa (Diario, Mensual, D.M)
+        // Rangos sargables (whereYear/whereMonth anulaban expenses_date_index)
         $egrDiario = (float) Expense::where('caja', 1)
-            ->whereYear('date', $year)->whereMonth('date', $month)
+            ->whereBetween('date', [$startMonth, $endMonth])
             ->where('reason', 'Diario')->sum('total');
         $egrMensual = (float) Expense::where('caja', 1)
-            ->whereYear('date', $year)->whereMonth('date', $month)
+            ->whereBetween('date', [$startMonth, $endMonth])
             ->where('reason', 'Mensual')->sum('total');
         $egrDM = (float) Expense::where('caja', 1)
-            ->whereYear('date', $year)->whereMonth('date', $month)
+            ->whereBetween('date', [$startMonth, $endMonth])
             ->where('reason', 'D.M')->sum('total');
 
         $newvalor2 = round($egrDM / 2, 2);
@@ -469,8 +511,7 @@ class CashStatistics extends Component
 
         // Capital Neto por mes (sum capital_neto por mes)
         $capNetoByMes = DB::table('capital_neto')
-            ->whereYear('fecha', $year)
-            ->where(DB::raw('MONTH(fecha)'), '<=', $month)
+            ->whereBetween('fecha', ["{$year}-01-01", $endMonth])
             ->selectRaw('MONTH(fecha) as m, SUM(importe) as total')
             ->groupBy('m')
             ->pluck('total', 'm');
@@ -478,8 +519,7 @@ class CashStatistics extends Component
         // Egresos del mes por aa (Diario, Mensual, D.M)
         $egresosMonthly = DB::table('expenses')
             ->where('caja', 1)
-            ->whereYear('date', $year)
-            ->where(DB::raw('MONTH(date)'), '<=', $month)
+            ->whereBetween('date', ["{$year}-01-01", $endMonth])
             ->whereIn('reason', ['Diario', 'Mensual', 'D.M'])
             ->selectRaw('MONTH(date) as m, reason, SUM(total) as total')
             ->groupBy('m', 'reason')
@@ -595,9 +635,9 @@ class CashStatistics extends Component
         $ingTotal_M = $ingMS_M + $ingD_M + $ingOtros_M;
 
         // Egresos del año seleccionado (todos los meses hasta el seleccionado) por aa
-        $egrDiarioY = (float) DB::table('expenses')->where('caja', 1)->whereYear('date', $year)->where(DB::raw('MONTH(date)'), '<=', $month)->where('reason', 'Diario')->sum('total');
-        $egrMensualY = (float) DB::table('expenses')->where('caja', 1)->whereYear('date', $year)->where(DB::raw('MONTH(date)'), '<=', $month)->where('reason', 'Mensual')->sum('total');
-        $egrDMY = (float) DB::table('expenses')->where('caja', 1)->whereYear('date', $year)->where(DB::raw('MONTH(date)'), '<=', $month)->where('reason', 'D.M')->sum('total');
+        $egrDiarioY = (float) DB::table('expenses')->where('caja', 1)->whereBetween('date', ["{$year}-01-01", $endMonth])->where('reason', 'Diario')->sum('total');
+        $egrMensualY = (float) DB::table('expenses')->where('caja', 1)->whereBetween('date', ["{$year}-01-01", $endMonth])->where('reason', 'Mensual')->sum('total');
+        $egrDMY = (float) DB::table('expenses')->where('caja', 1)->whereBetween('date', ["{$year}-01-01", $endMonth])->where('reason', 'D.M')->sum('total');
 
         $newvalor2_M = round($egrDMY / 2, 2);
         $egrMS_M = $egrMensualY + $newvalor2_M;

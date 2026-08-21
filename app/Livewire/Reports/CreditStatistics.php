@@ -72,7 +72,20 @@ class CreditStatistics extends Component
         $month = (int) $this->selemes;
         $endMonth = Carbon::create($year, $month)->endOfMonth()->format('Y-m-d');
         $today = Carbon::today()->format('Y-m-d');
-        $this->rebuildIngresoDiario($year, $month, min($endMonth, $today));
+        $endLimit = min($endMonth, $today);
+
+        // Huella: si los pagos del mes no cambiaron desde el último rebuild,
+        // cache_ingreso_diario sigue válida y se ahorran las ~30 escrituras
+        // por render. Cualquier pago nuevo/revertido/editado cambia la huella.
+        $startMonth = sprintf('%04d-%02d-01', $year, $month);
+        $fp = DB::table('payments')->whereBetween('fecha', [$startMonth, $endMonth])
+            ->selectRaw('COUNT(*) c, COALESCE(SUM(monto),0) s, COALESCE(MAX(id),0) m')->first();
+        $huella = md5(json_encode($fp).'|'.$endLimit);
+        $huellaKey = "ingdiario-fp:{$year}-{$month}";
+        if (\Illuminate\Support\Facades\Cache::get($huellaKey) !== $huella) {
+            $this->rebuildIngresoDiario($year, $month, $endLimit);
+            \Illuminate\Support\Facades\Cache::put($huellaKey, $huella, now()->addDays(45));
+        }
 
         // ─── DAILY TABLE (selected month) ──────────────────────────────
         [$dailyRows, $dailyTotals, $dailyRates] = $this->buildDaily();
@@ -121,12 +134,14 @@ class CreditStatistics extends Component
         $year = (int) $this->selecano;
         $month = (int) $this->selemes;
         $daysInMonth = Carbon::createFromDate($year, $month, 1)->daysInMonth;
+        // Rangos sargables (whereYear/whereMonth anulaban los índices de fecha)
+        $mIni = sprintf('%04d-%02d-01', $year, $month);
+        $mFin = Carbon::createFromDate($year, $month, 1)->endOfMonth()->format('Y-m-d');
 
         // Capital colocado: credits por fecha de desembolso + interes
         $agg = $this->applyFilters(
             DB::table('credits')
-                ->whereYear('fecha_actualizacion', $year)
-                ->whereMonth('fecha_actualizacion', $month)
+                ->whereBetween('fecha_actualizacion', [$mIni, $mFin])
         )
             ->selectRaw('fecha_actualizacion as fecha, interes, SUM(importe) as total_importe')
             ->groupBy('fecha_actualizacion', 'interes')
@@ -145,8 +160,7 @@ class CreditStatistics extends Component
         $aggInt = $this->applyFilters(
             DB::table('credit_installments as ci')
                 ->join('credits as c', 'c.id', '=', 'ci.credit_id')
-                ->whereYear('ci.fecha_vencimiento', $year)
-                ->whereMonth('ci.fecha_vencimiento', $month),
+                ->whereBetween('ci.fecha_vencimiento', [$mIni, $mFin]),
             'c.'
         )
             ->selectRaw('ci.fecha_vencimiento as fecha, c.interes, SUM(ci.importe_interes) as total_interes')
@@ -167,8 +181,7 @@ class CreditStatistics extends Component
         // Total importe por fecha (independiente del rate, para "Egresos Capital")
         $egresos = $this->applyFilters(
             DB::table('credits')
-                ->whereYear('fecha_actualizacion', $year)
-                ->whereMonth('fecha_actualizacion', $month)
+                ->whereBetween('fecha_actualizacion', [$mIni, $mFin])
         )
             ->selectRaw('fecha_actualizacion as fecha, SUM(importe) as total')
             ->groupBy('fecha_actualizacion')
@@ -177,8 +190,7 @@ class CreditStatistics extends Component
 
         // Ingresos diarios desde cache_ingreso_diario
         $ingresos = DB::table('cache_ingreso_diario')
-            ->whereYear('fecha', $year)
-            ->whereMonth('fecha', $month)
+            ->whereBetween('fecha', [$mIni, $mFin])
             ->pluck('importe', 'fecha')
             ->toArray();
 
@@ -232,7 +244,7 @@ class CreditStatistics extends Component
 
         // Capital colocado: credits por mes de desembolso + interes
         $agg = $this->applyFilters(
-            DB::table('credits')->whereYear('fecha_actualizacion', $year)
+            DB::table('credits')->whereBetween('fecha_actualizacion', ["{$year}-01-01", "{$year}-12-31"])
         )
             ->selectRaw('MONTH(fecha_actualizacion) as mes, interes, SUM(importe) as total_importe')
             ->groupByRaw('MONTH(fecha_actualizacion), interes')
@@ -247,7 +259,7 @@ class CreditStatistics extends Component
         $aggInt = $this->applyFilters(
             DB::table('credit_installments as ci')
                 ->join('credits as c', 'c.id', '=', 'ci.credit_id')
-                ->whereYear('ci.fecha_vencimiento', $year),
+                ->whereBetween('ci.fecha_vencimiento', ["{$year}-01-01", "{$year}-12-31"]),
             'c.'
         )
             ->selectRaw('MONTH(ci.fecha_vencimiento) as mes, c.interes, SUM(ci.importe_interes) as total_interes')
@@ -267,7 +279,7 @@ class CreditStatistics extends Component
 
         // Egresos capital por mes
         $egresos = $this->applyFilters(
-            DB::table('credits')->whereYear('fecha_actualizacion', $year)
+            DB::table('credits')->whereBetween('fecha_actualizacion', ["{$year}-01-01", "{$year}-12-31"])
         )
             ->selectRaw('MONTH(fecha_actualizacion) as mes, SUM(importe) as total')
             ->groupByRaw('MONTH(fecha_actualizacion)')
@@ -276,7 +288,7 @@ class CreditStatistics extends Component
 
         // Ingresos del año por mes
         $ingresos = DB::table('cache_ingreso_diario')
-            ->whereYear('fecha', $year)
+            ->whereBetween('fecha', ["{$year}-01-01", "{$year}-12-31"])
             ->selectRaw('MONTH(fecha) as mes, SUM(importe) as total')
             ->groupByRaw('MONTH(fecha)')
             ->pluck('total', 'mes')
