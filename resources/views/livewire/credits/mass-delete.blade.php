@@ -56,9 +56,10 @@
                             <button type="submit" class="btn btn-sm btn-primary">
                                 <i class="ti ti-search f-s-12"></i> Buscar
                             </button>
-                            <button type="button" wire:click="exportExcel" class="btn btn-sm btn-success">
+                            <a href="{{ route('exports.credits.mass-deletions', ['tipo' => $tipo, 'buscar' => $compra, 'desde' => $fei, 'hasta' => $fef]) }}"
+                               class="btn btn-sm btn-success">
                                 <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
-                            </button>
+                            </a>
                         </div>
                     </form>
 

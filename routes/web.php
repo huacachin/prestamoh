@@ -159,6 +159,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/exports/reports/cash-statistics',[ReportController::class, 'exportCashStatistics'])->name('exports.reports.cash-statistics');
     Route::get('/exports/reports/advisor',       [ReportController::class, 'exportAdvisor'])->name('exports.reports.advisor');
     Route::get('/exports/reports/simulator',     [ReportController::class, 'exportSimulator'])->name('exports.reports.simulator');
+    Route::get('/exports/credits/mass-deletions', [CreditController::class, 'exportMassDeletions'])->name('exports.credits.mass-deletions');
     Route::get('/exports/credits/{id}/schedule', [CreditController::class, 'exportSchedule'])->name('exports.credits.schedule');
     Route::get('/exports/clients/{id}/history',  [ClientController::class, 'exportHistory'])->name('exports.clients.history');
 });

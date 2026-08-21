@@ -36,6 +36,20 @@ class CreditController extends Controller
         ], 'Prestamos.xls');
     }
 
+    // Excel de /credits/mass-delete. Ruta dedicada (no acción Livewire):
+    // Livewire ignora respuestas que no sean streamDownload y el botón
+    // wire:click no descargaba nada.
+    public function exportMassDeletions(Request $request)
+    {
+        $c = new \App\Livewire\Credits\MassDelete();
+        $c->tipo = (string) $request->query('tipo', '1');
+        $c->compra = (string) $request->query('buscar', '');
+        $c->fei = (string) $request->query('desde', now()->format('Y-m-d'));
+        $c->fef = (string) $request->query('hasta', now()->format('Y-m-d'));
+
+        return $c->exportExcel();
+    }
+
     public function exportSchedule(int $id)
     {
         // Fuente de verdad: el mismo componente que pinta la pantalla del cronograma,
