@@ -29,6 +29,21 @@ class Activate extends Component
         }
     }
 
+    /**
+     * Saldo pendiente del cronograma (cap + int + exc − aplicados). Un
+     * crédito cancelado/refinanciado con saldo > 0 quedó así a propósito
+     * (interés condonado al cancelar, o saldo trasladado al refinanciar):
+     * re-activarlo reabriría deuda que ya no existe.
+     */
+    private function saldoPendienteDe(int $creditId): float
+    {
+        return round((float) \Illuminate\Support\Facades\DB::table('credit_installments')
+            ->where('credit_id', $creditId)
+            ->selectRaw('SUM(importe_cuota + importe_interes + importe_excedente
+                - importe_aplicado - interes_aplicado - excedente_aplicado) s')
+            ->value('s'), 2);
+    }
+
     public function activate()
     {
         if (!$this->selectedId) {
@@ -39,6 +54,13 @@ class Activate extends Component
         $credit = Credit::find($this->selectedId);
         if (!$credit) {
             $this->dispatch('errorAlert', ['message' => 'El préstamo seleccionado no existe.']);
+            return;
+        }
+
+        $saldo = $this->saldoPendienteDe($credit->id);
+        if ($saldo > 0.01) {
+            $this->dispatch('errorAlert', ['message' => 'No se puede re-activar: el crédito tiene saldo pendiente de S/ '.number_format($saldo, 2).'.']);
+
             return;
         }
 
@@ -88,14 +110,17 @@ class Activate extends Component
             $results = $query->orderByDesc('id')->limit(20)->get();
         }
 
+        $saldoSel = 0.0;
         if ($this->selectedId) {
             $selectedCredit = Credit::with('client:id,nombre,apellido_pat,apellido_mat,documento')
                 ->find($this->selectedId);
+            $saldoSel = $this->saldoPendienteDe($this->selectedId);
         }
 
         return view('livewire.credits.activate', [
             'results'        => $results,
             'selectedCredit' => $selectedCredit,
+            'saldoSel'       => $saldoSel,
         ]);
     }
 }

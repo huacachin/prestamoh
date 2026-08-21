@@ -68,8 +68,10 @@
 
                         {{-- Botón --}}
                         <div class="col-md-4">
-                            <button class="btn btn-primary {{ !$selectedId ? 'disabled' : '' }}"
-                                    @if(!$selectedId) disabled @endif
+                            @php $bloqueado = !$selectedId || $saldoSel > 0.01; @endphp
+                            <button class="btn btn-primary {{ $bloqueado ? 'disabled' : '' }}"
+                                    @if($bloqueado) disabled @endif
+                                    @if($saldoSel > 0.01) title="El crédito tiene saldo pendiente: no se puede re-activar" @endif
                                     wire:confirm="¿Está seguro de Re-Activar este Préstamo?"
                                     wire:click="activate">
                                 <i class="ti ti-refresh f-s-14"></i> Confirmar Re-Activar
@@ -97,7 +99,19 @@
                             @if($selectedCredit->fecha_cancelacion)
                                 <div><b>Fecha Cancelación:</b> {{ $selectedCredit->fecha_cancelacion->format('d/m/Y') }}</div>
                             @endif
+                            <div>
+                                <b>Saldo pendiente:</b>
+                                <span class="{{ $saldoSel > 0.01 ? 'text-danger fw-bold' : '' }}">S/ {{ number_format($saldoSel, 2) }}</span>
+                            </div>
                         </div>
+                        @if($saldoSel > 0.01)
+                            <div class="alert alert-danger mt-2 mb-0 py-2">
+                                <i class="ti ti-alert-triangle"></i>
+                                <b>No se puede re-activar:</b> el crédito quedó
+                                {{ $selectedCredit->situacion === 'Refinanciado' ? 'refinanciado (su saldo pasó al crédito nuevo)' : 'cancelado' }}
+                                con un saldo pendiente de S/ {{ number_format($saldoSel, 2) }} — re-activarlo reabriría esa deuda.
+                            </div>
+                        @endif
                     @endif
                 </div>
             </div>
