@@ -95,6 +95,13 @@ class Edit extends Component
     public function mount(int $id): void
     {
         $this->client = Client::findOrFail($id);
+
+        // Analista (scope-propio): solo SUS clientes
+        abort_if(
+            (auth()->user()?->can('clientes.scope-propio') ?? false)
+            && (int) $this->client->asesor_id !== (int) auth()->id(),
+            403, 'Este cliente no pertenece a tu cartera.'
+        );
         $this->clientId = $id;
 
         $user = auth()->user();

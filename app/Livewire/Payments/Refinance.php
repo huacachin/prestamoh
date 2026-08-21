@@ -118,6 +118,10 @@ class Refinance extends Component
 
     public function refinance()
     {
+        // fechar es la fecha de REGISTRO (caja/reportes): siempre hoy, la
+        // propiedad pública es manipulable desde el cliente.
+        $this->fechar = now()->format('Y-m-d');
+
         if ($this->importePagadoAlgo <= 0) {
             $this->addError('refinance', 'No se puede refinanciar: el crédito no tiene pagos previos.');
 

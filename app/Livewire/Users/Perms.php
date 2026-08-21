@@ -173,13 +173,14 @@ class Perms extends Component
             abort(403);
         }
 
+        // El director no se edita desde aquí (canEdit=false solo ocultaba el
+        // botón; la acción Livewire seguía siendo invocable).
+        abort_unless($this->canEdit, 403, 'Los permisos del Director no se editan.');
+
         $user = $this->user;
 
-        $roleName = null;
-        if ($this->selectedRoleId) {
-            $roleName = collect($this->roles)->firstWhere('id', $this->selectedRoleId)?->name;
-        }
-        $user->syncRoles($roleName ? [$roleName] : []);
+        // El ROL no se toca desde esta pantalla (se cambia en /users/{id}/edit);
+        // aquí solo se administran los checkboxes de visibilidad.
 
         // Los checkboxes son la visibilidad de módulos; los permisos finos
         // directos (fuera de la lista de vista) se conservan tal cual.

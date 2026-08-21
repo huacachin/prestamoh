@@ -74,7 +74,7 @@ class Edit extends Component
             'headquarter_id' => ['nullable', 'integer', 'exists:headquarters,id'],
             // Solo ids de la lista visible (asignables + rol actual): el resto
             // del catálogo está bloqueado también en el backend.
-            'selectedRoleId' => ['nullable', 'integer', Rule::in(collect($this->roles)->pluck('id'))],
+            'selectedRoleId' => ['nullable', 'integer', Rule::in($this->rolesAsignablesIds())],
         ];
     }
 
@@ -96,6 +96,17 @@ class Edit extends Component
     public function update()
     {
         $this->validate();
+
+        // Anti-lockout: un director no puede quitarse su propio rol de director
+        // (si es el único, nadie más podría gestionar usuarios/permisos).
+        if ($this->user->id === auth()->id() && $this->user->hasRole('director')) {
+            $rolNuevo = collect($this->roles)->firstWhere('id', $this->selectedRoleId)?->name;
+            if ($rolNuevo !== 'director') {
+                $this->dispatch('errorAlert', ['message' => 'No puedes quitarte tu propio rol de Director.']);
+
+                return;
+            }
+        }
 
         $payload = [
             'name' => $this->name,

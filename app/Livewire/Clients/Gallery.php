@@ -15,6 +15,7 @@ class Gallery extends Component
     use WithFileUploads;
 
     public Client $client;
+
     public int $clientId;
 
     public array $files = [];
@@ -24,7 +25,7 @@ class Gallery extends Component
     protected function rules(): array
     {
         return [
-            'files'   => 'required|array|min:1',
+            'files' => 'required|array|min:1',
             'files.*' => 'image|mimes:jpg,jpeg,png,gif,webp|max:10240',
         ];
     }
@@ -33,15 +34,22 @@ class Gallery extends Component
     {
         return [
             'files.required' => 'Selecciona o arrastra al menos una imagen.',
-            'files.*.image'  => 'Cada archivo debe ser una imagen.',
-            'files.*.mimes'  => 'Formatos válidos: JPG, PNG, GIF o WebP.',
-            'files.*.max'    => 'Cada imagen debe pesar máximo 10 MB.',
+            'files.*.image' => 'Cada archivo debe ser una imagen.',
+            'files.*.mimes' => 'Formatos válidos: JPG, PNG, GIF o WebP.',
+            'files.*.max' => 'Cada imagen debe pesar máximo 10 MB.',
         ];
     }
 
     public function mount(int $id): void
     {
         $this->client = Client::findOrFail($id);
+
+        // Analista (scope-propio): solo SUS clientes
+        abort_if(
+            (auth()->user()?->can('clientes.scope-propio') ?? false)
+            && (int) $this->client->asesor_id !== (int) auth()->id(),
+            403, 'Este cliente no pertenece a tu cartera.'
+        );
         $this->clientId = $id;
 
         $this->puedeEliminar = auth()->user()?->can('clientes.eliminar') ?? false;
@@ -55,35 +63,37 @@ class Gallery extends Component
         $clientId = $this->client->id;
 
         $absThumbDir = $disk->path("clients/{$clientId}/thumbs");
-        if (!is_dir($absThumbDir)) {
+        if (! is_dir($absThumbDir)) {
             @mkdir($absThumbDir, 0775, true);
         }
 
         $count = 0;
         foreach ($this->files as $file) {
-            if (!$file) continue;
+            if (! $file) {
+                continue;
+            }
 
-            $ext  = strtolower($file->getClientOriginalExtension() ?: 'jpg');
-            $name = Str::uuid()->toString() . '.' . $ext;
+            $ext = strtolower($file->getClientOriginalExtension() ?: 'jpg');
+            $name = Str::uuid()->toString().'.'.$ext;
 
-            $relPath  = "clients/{$clientId}/{$name}";
+            $relPath = "clients/{$clientId}/{$name}";
             $thumbRel = "clients/{$clientId}/thumbs/{$name}";
 
             $disk->putFileAs("clients/{$clientId}", $file, $name);
 
-            $absSrc   = $disk->path($relPath);
+            $absSrc = $disk->path($relPath);
             $absThumb = $disk->path($thumbRel);
             $this->makeThumbnail($absSrc, $absThumb, 200);
 
             ClientAttachment::create([
-                'client_id'     => $clientId,
-                'filename'      => $name,
+                'client_id' => $clientId,
+                'filename' => $name,
                 'original_name' => $file->getClientOriginalName(),
-                'path'          => $relPath,
-                'thumb_path'    => is_file($absThumb) ? $thumbRel : null,
-                'mime'          => $file->getMimeType(),
-                'size'          => $file->getSize(),
-                'uploaded_by'   => auth()->user()->username ?? auth()->user()->name ?? null,
+                'path' => $relPath,
+                'thumb_path' => is_file($absThumb) ? $thumbRel : null,
+                'mime' => $file->getMimeType(),
+                'size' => $file->getSize(),
+                'uploaded_by' => auth()->user()->username ?? auth()->user()->name ?? null,
             ]);
             $count++;
         }
@@ -103,21 +113,31 @@ class Gallery extends Component
 
     public function questionDelete(int $id): void
     {
-        if (!$this->puedeEliminar) return;
+        if (! $this->puedeEliminar) {
+            return;
+        }
         $this->dispatch('questionDelete', ['id' => $id]);
     }
 
     #[On('register_destroy')]
     public function deleteAttachment(int $id): void
     {
-        if (!$this->puedeEliminar) return;
+        if (! $this->puedeEliminar) {
+            return;
+        }
 
         $att = ClientAttachment::where('client_id', $this->clientId)->find($id);
-        if (!$att) return;
+        if (! $att) {
+            return;
+        }
 
         $disk = Storage::disk('public');
-        if ($att->path && $disk->exists($att->path))             $disk->delete($att->path);
-        if ($att->thumb_path && $disk->exists($att->thumb_path)) $disk->delete($att->thumb_path);
+        if ($att->path && $disk->exists($att->path)) {
+            $disk->delete($att->path);
+        }
+        if ($att->thumb_path && $disk->exists($att->thumb_path)) {
+            $disk->delete($att->thumb_path);
+        }
 
         $att->delete();
         // Nota: no dispatcheamos successAlert porque custom.js ya muestra
@@ -126,9 +146,13 @@ class Gallery extends Component
 
     private function makeThumbnail(string $src, string $dst, int $maxWidth): bool
     {
-        if (!is_file($src)) return false;
+        if (! is_file($src)) {
+            return false;
+        }
         $info = @getimagesize($src);
-        if (!$info) return false;
+        if (! $info) {
+            return false;
+        }
         [$w, $h, $type] = $info;
 
         $ratio = $maxWidth / max(1, $w);
@@ -136,13 +160,19 @@ class Gallery extends Component
         $newH = (int) round($h * ($w > $maxWidth ? $ratio : 1));
 
         switch ($type) {
-            case IMAGETYPE_JPEG: $img = @imagecreatefromjpeg($src); break;
-            case IMAGETYPE_PNG:  $img = @imagecreatefrompng($src);  break;
-            case IMAGETYPE_GIF:  $img = @imagecreatefromgif($src);  break;
-            case IMAGETYPE_WEBP: $img = function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($src) : null; break;
+            case IMAGETYPE_JPEG: $img = @imagecreatefromjpeg($src);
+                break;
+            case IMAGETYPE_PNG:  $img = @imagecreatefrompng($src);
+                break;
+            case IMAGETYPE_GIF:  $img = @imagecreatefromgif($src);
+                break;
+            case IMAGETYPE_WEBP: $img = function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($src) : null;
+                break;
             default: $img = null;
         }
-        if (!$img) return false;
+        if (! $img) {
+            return false;
+        }
 
         $thumb = imagecreatetruecolor($newW, $newH);
         if ($type === IMAGETYPE_PNG || $type === IMAGETYPE_GIF || $type === IMAGETYPE_WEBP) {
@@ -154,14 +184,15 @@ class Gallery extends Component
 
         $ok = match ($type) {
             IMAGETYPE_JPEG => @imagejpeg($thumb, $dst, 85),
-            IMAGETYPE_PNG  => @imagepng($thumb, $dst, 6),
-            IMAGETYPE_GIF  => @imagegif($thumb, $dst),
+            IMAGETYPE_PNG => @imagepng($thumb, $dst, 6),
+            IMAGETYPE_GIF => @imagegif($thumb, $dst),
             IMAGETYPE_WEBP => function_exists('imagewebp') ? @imagewebp($thumb, $dst, 85) : false,
-            default        => false,
+            default => false,
         };
 
         imagedestroy($img);
         imagedestroy($thumb);
+
         return (bool) $ok;
     }
 

@@ -6,6 +6,7 @@ use App\Models\Concept;
 use App\Models\Income;
 use App\Support\Audit;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -16,6 +17,7 @@ class EditIncome extends Component
 
     public Income $income;
 
+    #[Locked]
     public int $incomeId;
 
     public string $date = '';
@@ -37,18 +39,8 @@ class EditIncome extends Component
         $this->income = Income::findOrFail($id);
         $this->incomeId = $id;
 
-        // Sin caja.editar-historico solo se puede editar lo registrado HOY, y
-        // solo lo propio salvo que se vea toda la caja (el listado ya oculta el
-        // botón; esto cierra el acceso por URL).
-        $user = auth()->user();
-        $esDeHoy = $this->income->date->format('Y-m-d') === now()->format('Y-m-d');
-        $propioOVeTodo = ($user?->can('caja.ver-todo') ?? false) || $this->income->user_id === $user?->id;
-        abort_unless(
-            ($user?->can('caja.editar-historico') ?? false) || ($esDeHoy && $propioOVeTodo),
-            403,
-            'Solo se pueden editar movimientos del día.'
-        );
-        $this->canEditDate = $user?->can('caja.bypass-fecha-anterior') ?? false;
+        $this->autorizar();
+        $this->canEditDate = auth()->user()?->can('caja.bypass-fecha-anterior') ?? false;
 
         $this->date = $this->income->date->format('Y-m-d');
         $this->reason = (string) $this->income->reason;
@@ -65,14 +57,33 @@ class EditIncome extends Component
         'image' => 'nullable|image|max:2048',
     ];
 
+    /**
+     * Sin caja.editar-historico solo lo registrado HOY, y solo lo propio salvo
+     * caja.ver-todo. Se llama en mount() Y en cada acción (update/destroy):
+     * Livewire hidrata sin re-ejecutar mount, así que el guard debe repetirse.
+     */
+    private function autorizar(): void
+    {
+        $user = auth()->user();
+        $esDeHoy = $this->income->date->format('Y-m-d') === now()->format('Y-m-d');
+        $propioOVeTodo = ($user?->can('caja.ver-todo') ?? false) || $this->income->user_id === $user?->id;
+        abort_unless(
+            ($user?->can('caja.editar-historico') ?? false) || ($esDeHoy && $propioOVeTodo),
+            403,
+            'Solo se pueden editar movimientos del día.'
+        );
+    }
+
     public function update(): void
     {
+        $this->autorizar();
+
         try {
             $this->validate();
 
             $data = [
                 // Sin bypass-fecha-anterior la fecha original no se toca
-                'date' => $this->canEditDate ? $this->date : $this->income->date->format('Y-m-d'),
+                'date' => (auth()->user()?->can('caja.bypass-fecha-anterior') ?? false) ? $this->date : $this->income->date->format('Y-m-d'),
                 'reason' => $this->reason,
                 'detail' => $this->detail,
                 'total' => $this->total,
@@ -113,6 +124,7 @@ class EditIncome extends Component
         if (! auth()->user()?->can('caja.eliminar')) {
             abort(403);
         }
+        $this->autorizar();
 
         // Espejo caja 3 (legacy ingresos-modificar2.php): el borrado elimina ingreso Y ingreso3.
         // (Nota: el legacy NO sincroniza caja3 al EDITAR un ingreso, por eso update() no la toca.)

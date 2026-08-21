@@ -52,6 +52,13 @@ class PaymentController extends Controller
      */
     public function ticket(int $massDeletionId, TicketPrinter $printer)
     {
+        // Analista (scope-propio): solo recibos de cobros de SU cartera
+        if (auth()->user()?->can('clientes.scope-propio') ?? false) {
+            $asesorId = MassDeletion::with('credit.client:id,asesor_id')->findOrFail($massDeletionId)
+                ->credit?->client?->asesor_id;
+            abort_if((int) $asesorId !== (int) auth()->id(), 403, 'Este cobro no pertenece a tu cartera.');
+        }
+
         return view('payments.ticket', $this->datosRecibo($massDeletionId, $printer) + [
             'publico' => false,
         ]);

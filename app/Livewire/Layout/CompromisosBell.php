@@ -21,8 +21,12 @@ class CompromisosBell extends Component
 {
     public function marcarCumplido(int $compId): void
     {
+        // Analista (scope-propio): solo compromisos de SU cartera
         DB::table('compromisos_pago')
             ->where('id', $compId)
+            ->when(auth()->user()?->can('clientes.scope-propio'), fn ($q) => $q->whereIn(
+                'client_id', DB::table('clients')->where('asesor_id', auth()->id())->select('id')
+            ))
             ->update(['cumplido_at' => now(), 'updated_at' => now()]);
     }
 
@@ -37,6 +41,7 @@ class CompromisosBell extends Component
             ->join('clients as c', 'c.id', '=', 'p.client_id')
             ->whereNull('p.cumplido_at')
             ->where('p.fecha', '<=', $limite)
+            ->when(auth()->user()?->can('clientes.scope-propio'), fn ($q) => $q->where('c.asesor_id', auth()->id()))
             ->orderBy('p.fecha')
             ->get([
                 'p.id', 'p.fecha as compromiso_fecha', 'p.detalle as compromiso_detalle', 'p.credit_id',

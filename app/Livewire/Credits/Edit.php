@@ -4,6 +4,7 @@ namespace App\Livewire\Credits;
 
 use App\Models\Credit;
 use App\Support\Audit;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -11,6 +12,7 @@ class Edit extends Component
 {
     public Credit $credit;
 
+    #[Locked]
     public int $creditId;
 
     public string $fecha_prestamo = '';
@@ -72,6 +74,39 @@ class Edit extends Component
     {
         $this->validate();
 
+        $user = auth()->user();
+
+        // Re-validación de lo que mount() exige: las acciones Livewire no
+        // vuelven a pasar por mount, así que el guard debe vivir también aquí.
+        abort_if($user?->can('clientes.scope-propio') ?? false, 403);
+        abort_unless(
+            ($user?->can('caja.editar-historico') ?? false)
+            || $this->credit->fecha_prestamo?->format('Y-m-d') === now()->format('Y-m-d'),
+            403, 'Solo se pueden editar créditos registrados hoy.'
+        );
+
+        // Sin bypass-fecha-anterior la fecha del crédito no se toca.
+        if (! ($user?->can('caja.bypass-fecha-anterior') ?? false)) {
+            $this->fecha_prestamo = $this->credit->fecha_prestamo?->format('Y-m-d') ?? $this->fecha_prestamo;
+        }
+
+        // Cambiar la situación desde aquí exige el permiso de Cambiar Estado y
+        // respeta la regla de saldo (mismo gate que /credits/change-status).
+        if ($this->situacion !== $this->credit->situacion) {
+            abort_unless($user?->can('registro.estado') ?? false, 403, 'Sin permiso para cambiar el estado.');
+            if (in_array($this->situacion, ['Cancelado', 'Refinanciado'], true)) {
+                $saldo = $this->credit->saldoPendienteCronograma();
+                if ($saldo > 0.01) {
+                    $this->dispatch('errorAlert', ['message' => 'No se puede cambiar a '.$this->situacion.': saldo pendiente de S/ '.number_format($saldo, 2).'.']);
+
+                    return;
+                }
+            }
+            if ($this->situacion === 'Eliminado') {
+                abort_unless($user?->can('creditos.eliminar') ?? false, 403, 'Sin permiso para eliminar créditos.');
+            }
+        }
+
         $this->credit->update([
             'fecha_prestamo' => $this->fecha_prestamo,
             'importe' => $this->importe,
@@ -99,7 +134,27 @@ class Edit extends Component
     #[On('register_destroy')]
     public function destroy(int $id): void
     {
-        $credit = Credit::findOrFail($id);
+        // Solo el crédito montado (el evento es global) y con los MISMOS gates
+        // que Credits/Index::delete: permiso + del día (salvo histórico) + sin pagos.
+        if ($id !== $this->creditId) {
+            return;
+        }
+
+        $user = auth()->user();
+        abort_unless($user?->can('creditos.eliminar') ?? false, 403, 'Sin permiso para eliminar créditos.');
+
+        $credit = Credit::withCount('payments')->findOrFail($id);
+        abort_unless(
+            ($user?->can('caja.editar-historico') ?? false)
+            || ($credit->fecha_prestamo?->format('Y-m-d') === now()->format('Y-m-d') && ! $credit->refinanciado),
+            403, 'Solo se pueden eliminar créditos registrados hoy.'
+        );
+        if ($credit->payments_count > 0) {
+            $this->dispatch('errorAlert', ['message' => 'No se puede eliminar: el crédito tiene pagos registrados.']);
+
+            return;
+        }
+
         $credit->update(['situacion' => 'Eliminado']);
         Audit::log("Eliminó el crédito #{$id}", $credit);
         session()->flash('credit_success', 'Crédito eliminado.');

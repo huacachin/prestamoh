@@ -135,28 +135,29 @@ Route::middleware('auth')->group(function () {
     // Configuración - Tipo de Cambio
     Route::get('exchange-rates', [ExchangeRateController::class, 'index'])->name('settings.exchange-rates.index')->middleware('permission:configuracion.tipo-cambio');
 
-    // Exports
-    Route::get('/exports/clients', [ClientController::class, 'export'])->name('exports.clients');
-    Route::get('/exports/credits', [CreditController::class, 'export'])->name('exports.credits');
-    Route::get('/exports/payments', [PaymentController::class, 'export'])->name('exports.payments');
-    Route::get('/exports/payments/daily', [PaymentController::class, 'exportDaily'])->name('exports.payments.daily');
-    Route::get('/exports/payments/weekly', [PaymentController::class, 'exportWeekly'])->name('exports.payments.weekly');
-    Route::get('/exports/payments/monthly', [PaymentController::class, 'exportMonthly'])->name('exports.payments.monthly');
-    Route::get('/exports/incomes', [CashController::class, 'exportIncomes'])->name('exports.incomes');
-    Route::get('/exports/expenses', [CashController::class, 'exportExpenses'])->name('exports.expenses');
-    Route::get('/exports/concepts', [ConceptController::class, 'export'])->name('exports.concepts');
-    Route::get('/exports/reports/portfolio', [ReportController::class, 'exportPortfolio'])->name('exports.reports.portfolio');
-    Route::get('/exports/reports/delinquent', [ReportController::class, 'exportDelinquent'])->name('exports.reports.delinquent');
-    Route::get('/exports/reports/cancelled', [ReportController::class, 'exportCancelled'])->name('exports.reports.cancelled');
-    Route::get('/exports/reports/payments', [ReportController::class, 'exportPayments'])->name('exports.reports.payments');
-    Route::get('/exports/reports/cash-general-1', [ReportController::class, 'exportCashGeneral1'])->name('exports.reports.cash-general-1');
-    Route::get('/exports/reports/cash-general-2', [ReportController::class, 'exportCashGeneral2'])->name('exports.reports.cash-general-2');
-    Route::get('/exports/reports/cash-general-3', [ReportController::class, 'exportCashGeneral3'])->name('exports.reports.cash-general-3');
-    Route::get('/exports/reports/cash-statistics', [ReportController::class, 'exportCashStatistics'])->name('exports.reports.cash-statistics');
-    Route::get('/exports/reports/credit-statistics', [ReportController::class, 'exportCreditStatistics'])->name('exports.reports.credit-statistics');
-    Route::get('/exports/reports/advisor', [ReportController::class, 'exportAdvisor'])->name('exports.reports.advisor');
-    Route::get('/exports/reports/simulator', [ReportController::class, 'exportSimulator'])->name('exports.reports.simulator');
-    Route::get('/exports/credits/mass-deletions', [CreditController::class, 'exportMassDeletions'])->name('exports.credits.mass-deletions');
-    Route::get('/exports/credits/{id}/schedule', [CreditController::class, 'exportSchedule'])->name('exports.credits.schedule');
-    Route::get('/exports/clients/{id}/history', [ClientController::class, 'exportHistory'])->name('exports.clients.history');
+    // Exports — cada uno con el permiso del módulo al que pertenece
+    // (mismo modelo de visualización que las vistas; doble-check 21/08)
+    Route::get('/exports/clients', [ClientController::class, 'export'])->name('exports.clients')->middleware('permission:clientes');
+    Route::get('/exports/credits', [CreditController::class, 'export'])->name('exports.credits')->middleware('permission:creditos');
+    Route::get('/exports/payments', [PaymentController::class, 'export'])->name('exports.payments')->middleware('permission:pagos');
+    Route::get('/exports/payments/daily', [PaymentController::class, 'exportDaily'])->name('exports.payments.daily')->middleware('permission:reportes.credito-diario');
+    Route::get('/exports/payments/weekly', [PaymentController::class, 'exportWeekly'])->name('exports.payments.weekly')->middleware('permission:reportes.credito-semanal');
+    Route::get('/exports/payments/monthly', [PaymentController::class, 'exportMonthly'])->name('exports.payments.monthly')->middleware('permission:reportes.credito-mensual');
+    Route::get('/exports/incomes', [CashController::class, 'exportIncomes'])->name('exports.incomes')->middleware('permission:caja.ingresos');
+    Route::get('/exports/expenses', [CashController::class, 'exportExpenses'])->name('exports.expenses')->middleware('permission:caja.egresos');
+    Route::get('/exports/concepts', [ConceptController::class, 'export'])->name('exports.concepts')->middleware('permission:configuracion.conceptos');
+    Route::get('/exports/reports/portfolio', [ReportController::class, 'exportPortfolio'])->name('exports.reports.portfolio')->middleware('permission:reportes.cartera');
+    Route::get('/exports/reports/delinquent', [ReportController::class, 'exportDelinquent'])->name('exports.reports.delinquent')->middleware('permission:reportes.morosidad');
+    Route::get('/exports/reports/cancelled', [ReportController::class, 'exportCancelled'])->name('exports.reports.cancelled')->middleware('permission:reportes.cancelados');
+    Route::get('/exports/reports/payments', [ReportController::class, 'exportPayments'])->name('exports.reports.payments')->middleware('permission:reportes.pagos');
+    Route::get('/exports/reports/cash-general-1', [ReportController::class, 'exportCashGeneral1'])->name('exports.reports.cash-general-1')->middleware('permission:reportes.caja-general-1');
+    Route::get('/exports/reports/cash-general-2', [ReportController::class, 'exportCashGeneral2'])->name('exports.reports.cash-general-2')->middleware('permission:reportes.caja-general-2');
+    Route::get('/exports/reports/cash-general-3', [ReportController::class, 'exportCashGeneral3'])->name('exports.reports.cash-general-3')->middleware('permission:reportes.caja-general-3');
+    Route::get('/exports/reports/cash-statistics', [ReportController::class, 'exportCashStatistics'])->name('exports.reports.cash-statistics')->middleware('permission:reportes.caja-estadistica');
+    Route::get('/exports/reports/credit-statistics', [ReportController::class, 'exportCreditStatistics'])->name('exports.reports.credit-statistics')->middleware('permission:reportes.credito-estadistica');
+    Route::get('/exports/reports/advisor', [ReportController::class, 'exportAdvisor'])->name('exports.reports.advisor')->middleware('permission:reportes.asesor');
+    Route::get('/exports/reports/simulator', [ReportController::class, 'exportSimulator'])->name('exports.reports.simulator')->middleware('permission:reportes.simulador');
+    Route::get('/exports/credits/mass-deletions', [CreditController::class, 'exportMassDeletions'])->name('exports.credits.mass-deletions')->middleware('permission:registro.eliminar-masivo');
+    Route::get('/exports/credits/{id}/schedule', [CreditController::class, 'exportSchedule'])->name('exports.credits.schedule')->middleware('permission:creditos');
+    Route::get('/exports/clients/{id}/history', [ClientController::class, 'exportHistory'])->name('exports.clients.history')->middleware('permission:clientes');
 });

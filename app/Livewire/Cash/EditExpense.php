@@ -6,6 +6,7 @@ use App\Models\Concept;
 use App\Models\Expense;
 use App\Support\Audit;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -16,6 +17,7 @@ class EditExpense extends Component
 
     public Expense $expense;
 
+    #[Locked]
     public int $expenseId;
 
     public string $date = '';
@@ -41,18 +43,8 @@ class EditExpense extends Component
         $this->expense = Expense::findOrFail($id);
         $this->expenseId = $id;
 
-        // Sin caja.editar-historico solo se puede editar lo registrado HOY, y
-        // solo lo propio salvo que se vea toda la caja (el listado ya oculta el
-        // botón; esto cierra el acceso por URL).
-        $user = auth()->user();
-        $esDeHoy = $this->expense->date->format('Y-m-d') === now()->format('Y-m-d');
-        $propioOVeTodo = ($user?->can('caja.ver-todo') ?? false) || $this->expense->user_id === $user?->id;
-        abort_unless(
-            ($user?->can('caja.editar-historico') ?? false) || ($esDeHoy && $propioOVeTodo),
-            403,
-            'Solo se pueden editar movimientos del día.'
-        );
-        $this->canEditDate = $user?->can('caja.bypass-fecha-anterior') ?? false;
+        $this->autorizar();
+        $this->canEditDate = auth()->user()?->can('caja.bypass-fecha-anterior') ?? false;
 
         $this->date = $this->expense->date->format('Y-m-d');
         $this->reason = (string) $this->expense->reason;
@@ -73,14 +65,33 @@ class EditExpense extends Component
         'image' => 'nullable|image|max:2048',
     ];
 
+    /**
+     * Sin caja.editar-historico solo lo registrado HOY, y solo lo propio salvo
+     * caja.ver-todo. Se llama en mount() Y en cada acción (update/destroy):
+     * Livewire hidrata sin re-ejecutar mount, así que el guard debe repetirse.
+     */
+    private function autorizar(): void
+    {
+        $user = auth()->user();
+        $esDeHoy = $this->expense->date->format('Y-m-d') === now()->format('Y-m-d');
+        $propioOVeTodo = ($user?->can('caja.ver-todo') ?? false) || $this->expense->user_id === $user?->id;
+        abort_unless(
+            ($user?->can('caja.editar-historico') ?? false) || ($esDeHoy && $propioOVeTodo),
+            403,
+            'Solo se pueden editar movimientos del día.'
+        );
+    }
+
     public function update(): void
     {
+        $this->autorizar();
+
         try {
             $this->validate();
 
             $data = [
                 // Sin bypass-fecha-anterior la fecha original no se toca
-                'date' => $this->canEditDate ? $this->date : $this->expense->date->format('Y-m-d'),
+                'date' => (auth()->user()?->can('caja.bypass-fecha-anterior') ?? false) ? $this->date : $this->expense->date->format('Y-m-d'),
                 'reason' => $this->reason,
                 'detail' => $this->detail,
                 'total' => $this->total,
@@ -135,6 +146,7 @@ class EditExpense extends Component
         if (! auth()->user()?->can('caja.eliminar')) {
             abort(403);
         }
+        $this->autorizar();
 
         // Espejo caja 3 (legacy gastos-modificar22.php): el borrado elimina entrada Y entrada3.
         Expense::where('caja', 3)->where('parent_id', $id)->delete();

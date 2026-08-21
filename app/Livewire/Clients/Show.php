@@ -15,6 +15,13 @@ class Show extends Component
     {
         $this->client = Client::with(['asesor:id,name', 'headquarter:id,name'])
             ->findOrFail($id);
+
+        // Analista (scope-propio): solo SUS clientes
+        abort_if(
+            (auth()->user()?->can('clientes.scope-propio') ?? false)
+            && (int) $this->client->asesor_id !== (int) auth()->id(),
+            403, 'Este cliente no pertenece a tu cartera.'
+        );
     }
 
     public function render()

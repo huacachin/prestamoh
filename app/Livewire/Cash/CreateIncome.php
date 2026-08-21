@@ -194,11 +194,13 @@ class CreateIncome extends Component
         $user = auth()->user();
 
         // Forzar restricciones por rol antes de validar (defensa server-side)
-        if (! $this->canChooseOtros) {
+        // Decidir por el PERMISO (las propiedades públicas son manipulables
+        // desde el cliente en Livewire).
+        if (! $user->canAny(['caja.editar-historico', 'caja.ver-todo'])) {
             $this->modo = 'Fijos';
             $this->reason = 'Diario';
         }
-        if (! $this->canEditDate) {
+        if (! $user->can('caja.bypass-fecha-anterior')) {
             $this->date = now()->format('Y-m-d');
         }
 

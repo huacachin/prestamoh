@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 /** Excel del Reporte Estadístico de Crédito — espejo de /reports/credit-statistics. */
@@ -13,7 +14,9 @@ class CreditStatisticsExcelTest extends TestCase
 
     public function test_el_excel_descarga_con_las_dos_secciones(): void
     {
-        $this->actingAs(User::factory()->create(['username' => 'tester']));
+        $tester = User::factory()->create(['username' => 'tester']);
+        $tester->givePermissionTo(Permission::findOrCreate('reportes.credito-estadistica', 'web'));
+        $this->actingAs($tester);
 
         $respuesta = $this->get(route('exports.reports.credit-statistics', [
             'mes' => '07', 'anio' => '2026',

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 /**
@@ -16,7 +17,9 @@ class CashStatisticsExcelTest extends TestCase
 
     public function test_el_excel_descarga_con_las_cinco_secciones(): void
     {
-        $this->actingAs(User::factory()->create(['username' => 'tester']));
+        $tester = User::factory()->create(['username' => 'tester']);
+        $tester->givePermissionTo(Permission::findOrCreate('reportes.caja-estadistica', 'web'));
+        $this->actingAs($tester);
 
         $respuesta = $this->get(route('exports.reports.cash-statistics', [
             'month' => 7, 'year' => 2026,

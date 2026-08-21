@@ -3,13 +3,17 @@
 namespace App\Livewire\Credits;
 
 use App\Models\Credit;
+use App\Support\Audit;
 use Livewire\Component;
 
 class Activate extends Component
 {
     public $tipoe = 'Pago-Credito';
+
     public $search = '';
+
     public $selectedId = null;
+
     public $showDropdown = false;
 
     public function updatedSearch()
@@ -25,7 +29,7 @@ class Activate extends Component
 
         $credit = Credit::with('client:id,nombre,apellido_pat,apellido_mat,documento')->find($id);
         if ($credit) {
-            $this->search = $credit->id . ' - ' . trim(($credit->client?->apellido_pat ?? '') . ' ' . ($credit->client?->apellido_mat ?? '') . ' ' . ($credit->client?->nombre ?? ''));
+            $this->search = $credit->id.' - '.trim(($credit->client?->apellido_pat ?? '').' '.($credit->client?->apellido_mat ?? '').' '.($credit->client?->nombre ?? ''));
         }
     }
 
@@ -37,15 +41,28 @@ class Activate extends Component
 
     public function activate()
     {
-        if (!$this->selectedId) {
+        if (! $this->selectedId) {
             $this->dispatch('errorAlert', ['message' => 'Debe seleccionar un préstamo.']);
+
             return;
         }
 
         $credit = Credit::find($this->selectedId);
-        if (!$credit) {
+        if (! $credit) {
             $this->dispatch('errorAlert', ['message' => 'El préstamo seleccionado no existe.']);
+
             return;
+        }
+
+        // Re-validación del filtro del buscador: sin bypass solo se re-activan
+        // créditos cancelados HOY (la lista escopada no protege la acción).
+        if (! auth()->user()->can('caja.bypass-fecha-anterior')) {
+            $fc = $credit->fecha_cancelacion?->format('Y-m-d') ?? substr((string) $credit->fecha_cancelacion, 0, 10);
+            if ($fc !== now()->format('Y-m-d')) {
+                $this->dispatch('errorAlert', ['message' => 'Solo se pueden re-activar créditos cancelados hoy.']);
+
+                return;
+            }
         }
 
         $saldo = $this->saldoPendienteDe($credit->id);
@@ -56,13 +73,13 @@ class Activate extends Component
         }
 
         $credit->update([
-            'refinanciado'      => false,
-            'estado'            => 1,
-            'situacion'         => 'Activo',
+            'refinanciado' => false,
+            'estado' => 1,
+            'situacion' => 'Activo',
             'fecha_cancelacion' => null,
         ]);
 
-        \App\Support\Audit::log("Re-activó el crédito #{$credit->id}", $credit);
+        Audit::log("Re-activó el crédito #{$credit->id}", $credit);
 
         $this->selectedId = null;
         $this->search = '';
@@ -84,18 +101,17 @@ class Activate extends Component
                 ->select('id', 'client_id', 'importe', 'situacion', 'fecha_cancelacion', 'cuotas', 'tipo_planilla', 'interes', 'fecha_prestamo');
 
             // Sin permiso de bypass, solo se activan los cancelados HOY (legacy).
-            if (!$user->can('caja.bypass-fecha-anterior')) {
+            if (! $user->can('caja.bypass-fecha-anterior')) {
                 $query->where('fecha_cancelacion', today());
             }
 
             $query->where(function ($q) use ($term) {
                 $q->where('id', 'like', "%{$term}%")
-                  ->orWhereHas('client', fn ($c) =>
-                      $c->where('nombre', 'like', "%{$term}%")
+                    ->orWhereHas('client', fn ($c) => $c->where('nombre', 'like', "%{$term}%")
                         ->orWhere('apellido_pat', 'like', "%{$term}%")
                         ->orWhere('apellido_mat', 'like', "%{$term}%")
                         ->orWhere('documento', 'like', "%{$term}%")
-                  );
+                    );
             });
 
             $results = $query->orderByDesc('id')->limit(20)->get();
@@ -109,9 +125,9 @@ class Activate extends Component
         }
 
         return view('livewire.credits.activate', [
-            'results'        => $results,
+            'results' => $results,
             'selectedCredit' => $selectedCredit,
-            'saldoSel'       => $saldoSel,
+            'saldoSel' => $saldoSel,
         ]);
     }
 }

@@ -34,7 +34,7 @@
             // 'can' => 'permiso' | ['perm1','perm2'] (por defecto ALL)
             if (isset($item['can'])) {
                 if (is_array($item['can'])) {
-                    $ok = $ok && $u->hasAllPermissions($item['can']);
+                    $ok = $ok && collect($item['can'])->every(fn ($p) => $u->can($p));
                 } else {
                     $ok = $ok && $u->can($item['can']);
                 }
@@ -42,12 +42,12 @@
 
             // 'canAny' => ['perm1','perm2'] (OR)
             if (isset($item['canAny'])) {
-                $ok = $ok && $u->hasAnyPermission((array) $item['canAny']);
+                $ok = $ok && $u->canAny((array) $item['canAny']);
             }
 
             // 'canAll' => ['perm1','perm2'] (AND)
             if (isset($item['canAll'])) {
-                $ok = $ok && $u->hasAllPermissions((array) $item['canAll']);
+                $ok = $ok && collect((array) $item['canAll'])->every(fn ($p) => $u->can($p));
             }
 
             // Opcional: roles

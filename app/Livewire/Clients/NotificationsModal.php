@@ -130,6 +130,14 @@ class NotificationsModal extends Component
     #[On('abrir-notifs')]
     public function abrir(int $clientId): void
     {
+        // Analista (scope-propio): solo clientes de SU cartera (el evento es
+        // invocable desde el navegador con cualquier clientId)
+        abort_if(
+            (auth()->user()?->can('clientes.scope-propio') ?? false)
+            && ! Client::where('id', $clientId)->where('asesor_id', auth()->id())->exists(),
+            403, 'Este cliente no pertenece a tu cartera.'
+        );
+
         $client = Client::findOrFail($clientId);
 
         $this->clientId = $clientId;

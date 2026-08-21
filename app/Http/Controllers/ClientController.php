@@ -131,6 +131,13 @@ class ClientController extends Controller
     {
         $client = Client::find($id);
 
+        // Analista (scope-propio): solo el historial de SUS clientes
+        abort_if(
+            (auth()->user()?->can('clientes.scope-propio') ?? false)
+            && (int) ($client?->asesor_id) !== (int) auth()->id(),
+            403, 'Este cliente no pertenece a tu cartera.'
+        );
+
         $credits = Credit::where('client_id', $id)
             ->orderBy('fecha_prestamo', 'asc')->get();
 

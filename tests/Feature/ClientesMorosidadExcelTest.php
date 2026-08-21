@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Support\MorosidadClientes;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -35,7 +36,9 @@ class ClientesMorosidadExcelTest extends TestCase
         // La vista arma el select de asesores con este permiso.
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        $this->actingAs(User::factory()->create(['username' => 'tester']));
+        $tester = User::factory()->create(['username' => 'tester']);
+        $tester->givePermissionTo(Permission::findOrCreate('clientes', 'web'));
+        $this->actingAs($tester);
 
         $this->alDia = $this->cliente('Aldia Perez', vencidas: 0);
         $this->rojo = $this->cliente('Rojo Gomez', vencidas: 3);
