@@ -4,12 +4,29 @@ namespace App\Livewire\Reports;
 
 use App\Models\CreditInstallment;
 use Carbon\Carbon;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 class Delinquent extends Component
 {
+    use WithPagination;
+
+    protected $paginationTheme = 'bootstrap';
+
+    /** true = sin paginar (lo usa el export a Excel para traer todo). */
+    public bool $todos = false;
+
+    /** Al cambiar cualquier filtro se vuelve a la página 1. */
+    public function updating($name, $value): void
+    {
+        if (in_array($name, ['selemes0', 'selecano0', 'seletipl0', 'exp', 'codigo', 'cdni', 'cnombre', 'casesor', 'fechai', 'fechaf'], true)) {
+            $this->resetPage();
+        }
+    }
+
     #[Url(as: 'mes', except: '')]
     public $selemes0 = '';
 
@@ -221,6 +238,18 @@ class Delinquent extends Component
         $tc = (float) (DB::table('exchange_rates')->orderByDesc('fecha')->value('compra') ?? 1);
         if ($tc <= 0) {
             $tc = 1;
+        }
+
+        // Los totales de arriba ya se calcularon sobre TODO el conjunto; la
+        // tabla se pagina para no mandar ~12 MB de HTML por interacción.
+        if (! $this->todos) {
+            $porPagina = 100;
+            $pagina = $this->getPage();
+            $rows = new LengthAwarePaginator(
+                array_slice($rows, ($pagina - 1) * $porPagina, $porPagina),
+                count($rows), $porPagina, $pagina,
+                ['path' => request()->url(), 'pageName' => 'page']
+            );
         }
 
         return view('livewire.reports.delinquent', [

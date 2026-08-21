@@ -218,6 +218,8 @@
                             @endif
                         </table>
                     </div>
+
+                    {{ $rows->links() }}
                 </div>
             </div>
         </div>

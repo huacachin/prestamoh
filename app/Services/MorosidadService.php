@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -118,10 +119,39 @@ final class MorosidadService
         $fin = Carbon::parse($hasta);
         while ($cursor->lte($fin)) {
             $f = $cursor->format('Y-m-d');
-            if (! isset($existentes[$f]) || $f === $hoy) {
+            if (! isset($existentes[$f])) {
                 $this->snapshot($f);
+            } elseif ($f === $hoy) {
+                // El día en curso se re-calcula solo si hubo movimiento desde
+                // el último snapshot (antes: en CADA interacción del dashboard).
+                // La huella se guarda DESPUÉS del snapshot: si falla a medias,
+                // el próximo render reintenta en vez de darlo por bueno.
+                [$key, $huella] = $this->huellaHoy();
+                if (Cache::get($key) !== $huella) {
+                    $this->snapshot($f);
+                    Cache::put($key, $huella, now()->addDay());
+                }
             }
             $cursor->addDay();
         }
+    }
+
+    /**
+     * Huella barata del movimiento que altera la morosidad de HOY: pagos del
+     * día + estado global de créditos.
+     *
+     * @return array{0: string, 1: string} [cache key, hash]
+     */
+    private function huellaHoy(): array
+    {
+        $hoy = Carbon::today()->format('Y-m-d');
+        $fp = [
+            DB::table('payments')->where('fecha', $hoy)
+                ->selectRaw('COUNT(*) c, COALESCE(SUM(monto),0) s, COALESCE(MAX(id),0) m')->first(),
+            DB::table('credits')
+                ->selectRaw('COUNT(*) c, COALESCE(MAX(updated_at),"") u')->first(),
+        ];
+
+        return ['morosidad-hoy-fp:'.$hoy, md5(json_encode($fp))];
     }
 }

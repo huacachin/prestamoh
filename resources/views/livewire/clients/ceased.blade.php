@@ -221,9 +221,11 @@
                             <div class="text-center text-muted py-4">No se encontraron resultados</div>
                         @endforelse
                         <div class="text-center mt-2">
-                            <span class="badge bg-warning text-dark">Total: {{ $clients->count() }}</span>
+                            <span class="badge bg-warning text-dark">Total: {{ $clients->total() }}</span>
                         </div>
                     </div>
+
+                    {{ $clients->links() }}
                 </div>
             </div>
         </div>

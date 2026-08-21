@@ -6,11 +6,28 @@ use App\Models\Credit;
 use App\Models\CreditInstallment;
 use App\Models\Payment;
 use App\Models\User;
+use Illuminate\Pagination\AbstractPaginator;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 class Index extends Component
 {
+    use WithPagination;
+
+    protected $paginationTheme = 'bootstrap';
+
+    /** true = sin paginar (lo usa el export a Excel para traer todo). */
+    public bool $todos = false;
+
+    /** Al cambiar cualquier filtro se vuelve a la página 1. */
+    public function updating($name, $value): void
+    {
+        if (in_array($name, ['nombre', 'codigo', 'ejecutivo', 'seletipl'], true)) {
+            $this->resetPage();
+        }
+    }
+
     #[Url(as: 'nombre', except: '')]
     public string $nombre = '';
 
@@ -70,7 +87,9 @@ class Index extends Component
     public function render()
     {
         $query = Credit::query()
-            ->with(['client:id,expediente,nombre,apellido_pat,apellido_mat,documento,asesor_id', 'user:id,name,username'])
+            // client.asesor eager: el blade lo pinta por fila y era un N+1
+            // de ~180 queries a users en cada render
+            ->with(['client:id,expediente,nombre,apellido_pat,apellido_mat,documento,asesor_id', 'client.asesor:id,name,username', 'user:id,name,username'])
             ->where('estado', 1)
             ->where('situacion', '<>', 'Cancelado');
 
@@ -95,10 +114,28 @@ class Index extends Component
             $query->where('tipo_planilla', $this->seletipl);
         }
 
-        $credits = $query->orderByDesc('fecha_prestamo')->get();
+        // Totales generales: por SQL sobre el conjunto COMPLETO filtrado
+        // (la tabla se pagina, pero los totales siguen siendo globales)
+        $tot = (clone $query)->reorder()
+            ->selectRaw('COALESCE(SUM(importe),0) s, COALESCE(SUM(ROUND(importe * interes / 100, 2)),0) i')
+            ->toBase()->first();
+        $pag = CreditInstallment::whereIn('credit_id', (clone $query)->reorder()->select('id'))
+            ->selectRaw('COALESCE(SUM(importe_aplicado),0) iapli, COALESCE(SUM(interes_aplicado),0) aplido')
+            ->first();
 
-        // Pre-calcular sumas de pagos por credit_id (para evitar N+1)
-        $creditIds = $credits->pluck('id')->toArray();
+        $sumtotal = (float) $tot->s;
+        $suminter = (float) $tot->i;
+        $sumtotax = $sumtotal + $suminter;
+        $sumpagos = (float) $pag->iapli + (float) $pag->aplido;
+        $sumsaldo = $sumtotal - (float) $pag->iapli - (float) $pag->aplido + $suminter;
+
+        // Paginado (100 por página como /clients); el Excel pide todo con $todos
+        $ordered = $query->orderByDesc('fecha_prestamo')->orderByDesc('id');
+        $credits = $this->todos ? $ordered->get() : $ordered->paginate(100);
+
+        // Pre-calcular sumas de pagos por credit_id de la página (evita N+1)
+        $creditIds = collect($credits instanceof AbstractPaginator ? $credits->items() : $credits)
+            ->pluck('id')->toArray();
         $pagosMap = [];
         if (! empty($creditIds)) {
             $sums = CreditInstallment::whereIn('credit_id', $creditIds)
@@ -117,25 +154,6 @@ class Index extends Component
             ->where('status', 'active')
             ->orderBy('name')
             ->get(['id', 'name', 'username']);
-
-        // Totales generales
-        $sumtotal = 0;
-        $suminter = 0;
-        $sumtotax = 0;
-        $sumpagos = 0;
-        $sumsaldo = 0;
-
-        foreach ($credits as $c) {
-            $iapli = $pagosMap[$c->id]['iapli'] ?? 0;
-            $aplido = $pagosMap[$c->id]['aplido'] ?? 0;
-            $inter = round(($c->importe * $c->interes) / 100, 2);
-
-            $sumtotal += $c->importe;
-            $suminter += $inter;
-            $sumtotax += $c->importe + $inter;
-            $sumpagos += $iapli + $aplido;
-            $sumsaldo += $c->importe - $iapli - $aplido + $inter;
-        }
 
         return view('livewire.credits.index', [
             'credits' => $credits,

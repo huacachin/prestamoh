@@ -219,9 +219,11 @@
                             <div class="text-center text-muted py-4">No se encontraron resultados</div>
                         @endforelse
                         <div class="text-center mt-2">
-                            <span class="badge bg-primary">Total: {{ number_format($sumtotal, 2) }} | Saldo: {{ number_format($sumsaldo, 2) }} | {{ $credits->count() }} créditos</span>
+                            <span class="badge bg-primary">Total: {{ number_format($sumtotal, 2) }} | Saldo: {{ number_format($sumsaldo, 2) }} | {{ $credits->total() }} créditos</span>
                         </div>
                     </div>
+
+                    {{ $credits->links() }}
 
                 </div>
             </div>

@@ -18,6 +18,7 @@ class CreditController extends Controller
     public function export(Request $request)
     {
         $c = new \App\Livewire\Credits\Index();
+        $c->todos = true; // el Excel exporta el conjunto completo, sin paginar
         $c->nombre    = (string) $request->query('nombre', '');
         $c->codigo    = (string) $request->query('codigo', '');
         $c->ejecutivo = (string) $request->query('ejecutivo', '');

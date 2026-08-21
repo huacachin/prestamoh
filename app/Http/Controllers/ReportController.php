@@ -115,6 +115,7 @@ class ReportController extends Controller
     public function exportDelinquent(Request $request)
     {
         $c = new Delinquent;
+        $c->todos = true; // el Excel exporta el conjunto completo, sin paginar
         $c->selemes0 = (string) $request->query('selemes0', '');
         $c->selecano0 = (string) $request->query('selecano0', '');
         $c->seletipl0 = (string) $request->query('seletipl0', '');

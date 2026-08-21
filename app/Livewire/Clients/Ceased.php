@@ -8,9 +8,22 @@ use App\Models\User;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 class Ceased extends Component
 {
+    use WithPagination;
+
+    protected $paginationTheme = 'bootstrap';
+
+    /** Al cambiar cualquier filtro se vuelve a la página 1. */
+    public function updating($name, $value): void
+    {
+        if (in_array($name, ['nexpediente', 'documento', 'nombre', 'ruta', 'ejecutivo'], true)) {
+            $this->resetPage();
+        }
+    }
+
     #[Url(as: 'expediente', except: '')]
     public $nexpediente = '';
 
@@ -75,7 +88,8 @@ class Ceased extends Component
             $query->where('zona', 'like', '%'.trim($this->ruta).'%');
         }
 
-        $clients = $query->orderByRaw('CAST(expediente AS UNSIGNED) ASC')->get();
+        // Paginado (100 por página como /clients): antes bajaban ~8 MB de HTML
+        $clients = $query->orderByRaw('CAST(expediente AS UNSIGNED) ASC')->paginate(100);
 
         $asesores = User::permission('creditos.ser-asesor-responsable')
             ->where('status', 'active')
