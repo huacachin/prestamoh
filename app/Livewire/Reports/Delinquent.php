@@ -67,31 +67,37 @@ class Delinquent extends Component
             ->join('clients as cl', 'c.client_id', '=', 'cl.id')
             ->leftJoin('users as u', 'cl.asesor_id', '=', 'u.id')
             ->where('c.situacion', '<>', 'Cancelado')
-            ->where('credit_installments.pagado', false)
-            ->select(
-                'credit_installments.*',
-                'c.id as credit_id',
-                'c.importe as credit_importe',
-                'c.interes as credit_interes',
-                'c.cuotas as credit_cuotas',
-                'c.tipo_planilla',
-                'c.fecha_actualizacion',
-                'c.cod_rem',
-                'c.situacion',
-                'cl.id as client_id',
-                'cl.expediente',
-                'cl.documento as cli_dni',
-                'cl.nombre as cli_nombre',
-                'cl.apellido_pat as cli_pat',
-                'cl.apellido_mat as cli_mat',
-                'cl.celular1 as cli_cel',
-                'u.username as asesor_user',
-                'u.name as asesor_name'
-            );
+            ->where('credit_installments.pagado', false);
+
+        // Columnas del listado: se aplican DESPUÉS de clonar la base para los
+        // agregados (si vivieran en la base, el selectRaw agregado se les
+        // sumaría y only_full_group_by lo rechaza).
+        $columnas = [
+            'credit_installments.*',
+            'c.id as credit_id',
+            'c.importe as credit_importe',
+            'c.interes as credit_interes',
+            'c.cuotas as credit_cuotas',
+            'c.tipo_planilla',
+            'c.fecha_actualizacion',
+            'c.cod_rem',
+            'c.situacion',
+            'cl.id as client_id',
+            'cl.expediente',
+            'cl.documento as cli_dni',
+            'cl.nombre as cli_nombre',
+            'cl.apellido_pat as cli_pat',
+            'cl.apellido_mat as cli_mat',
+            'cl.celular1 as cli_cel',
+            'u.username as asesor_user',
+            'u.name as asesor_name',
+        ];
 
         if ($this->selemes0 !== '' && $this->selecano0 !== '') {
-            $query->whereYear('c.fecha_actualizacion', $this->selecano0)
-                ->whereMonth('c.fecha_actualizacion', $this->selemes0);
+            // Rango sargable (whereYear/whereMonth anulaban el índice de fecha)
+            $ini = sprintf('%04d-%02d-01', (int) $this->selecano0, (int) $this->selemes0);
+            $fin = Carbon::parse($ini)->endOfMonth()->format('Y-m-d');
+            $query->whereBetween('c.fecha_actualizacion', [$ini, $fin]);
         }
         if ($this->exp !== '') {
             $query->where('cl.expediente', $this->exp);
@@ -122,9 +128,49 @@ class Delinquent extends Component
                 ->where('credit_installments.fecha_vencimiento', '<=', $this->fechaf);
         }
 
-        $items = $query->orderBy('credit_installments.fecha_vencimiento', 'asc')->get();
+        // ─── AGREGADOS POR SQL (pantalla): antes se hidrataban las ~4,000
+        // cuotas como modelos y se sumaba todo en PHP (~1.5s de CPU en prod);
+        // ahora los totales/conteos salen de 2 queries agregadas y solo se
+        // procesa en PHP la página visible. El Excel ($todos) conserva la
+        // ruta completa porque necesita todas las filas.
+        $porPagina = 100;
+        $pagina = $this->getPage();
+        $offset = 0;
+        $aggTotals = null;
 
-        // ─── PROCESAR ──────────────────────────────────────────────────
+        if (! $this->todos) {
+            $agg = (clone $query)->toBase()->selectRaw('
+                COUNT(*) n,
+                COALESCE(SUM(credit_installments.importe_cuota), 0) cuota,
+                COALESCE(SUM(credit_installments.importe_interes), 0) interes,
+                COALESCE(SUM(credit_installments.importe_cuota + credit_installments.importe_interes), 0) total,
+                COALESCE(SUM(credit_installments.importe_aplicado + credit_installments.interes_aplicado), 0) pago,
+                COALESCE(SUM(credit_installments.importe_cuota + credit_installments.importe_interes
+                    - credit_installments.importe_aplicado - credit_installments.interes_aplicado), 0) saldo,
+                COALESCE(SUM(CASE WHEN credit_installments.fecha_vencimiento > CURDATE() THEN 1 ELSE 0 END), 0) vignt
+            ')->first();
+            $tipos = (clone $query)->toBase()
+                ->selectRaw('c.tipo_planilla tp, COUNT(DISTINCT c.id) n')
+                ->groupBy('c.tipo_planilla')
+                ->pluck('n', 'tp');
+            $aggTotals = ['agg' => $agg, 'tipos' => $tipos];
+
+            $offset = ($pagina - 1) * $porPagina;
+            // Tiebreaker por id: sin él, LIMIT/OFFSET puede repetir u omitir
+            // filas entre páginas cuando hay empates de fecha (y coincide con
+            // el orden natural del índice InnoDB, que sufija la PK).
+            $items = $query->select($columnas)
+                ->orderBy('credit_installments.fecha_vencimiento', 'asc')
+                ->orderBy('credit_installments.id', 'asc')
+                ->skip($offset)->take($porPagina)->get();
+        } else {
+            // Export: mismo orden de siempre (solo fecha) para no alterar el
+            // orden histórico de las filas del Excel dentro de cada día.
+            $items = $query->select($columnas)
+                ->orderBy('credit_installments.fecha_vencimiento', 'asc')->get();
+        }
+
+        // ─── PROCESAR (solo la página en pantalla; todo en el Excel) ───
         $today = Carbon::today();
         $rows = [];
 
@@ -141,7 +187,7 @@ class Delinquent extends Component
         $vignt = $venc = 0;
         $creditTipoSeen = [];
 
-        $rrrr = 0;
+        $rrrr = $offset; // correlativo global aunque la tabla esté paginada
         foreach ($items as $i) {
             $rrrr++;
             $importeCuota = (float) $i->importe_cuota;
@@ -240,14 +286,27 @@ class Delinquent extends Component
             $tc = 1;
         }
 
-        // Los totales de arriba ya se calcularon sobre TODO el conjunto; la
-        // tabla se pagina para no mandar ~12 MB de HTML por interacción.
+        // Pantalla: los totales/conteos del pie salen de las queries agregadas
+        // (el loop de arriba solo procesó la página visible).
         if (! $this->todos) {
-            $porPagina = 100;
-            $pagina = $this->getPage();
+            $agg = $aggTotals['agg'];
+            $tipos = $aggTotals['tipos'];
+
+            $totals = [
+                'cuota' => (float) $agg->cuota,
+                'interes' => (float) $agg->interes,
+                'total' => (float) $agg->total,
+                'pago' => (float) $agg->pago,
+                'saldo' => (float) $agg->saldo,
+            ];
+            $sempo = (int) ($tipos[1] ?? 0);
+            $mempo = (int) ($tipos[3] ?? 0);
+            $dempo = (int) ($tipos[4] ?? 0);
+            $vignt = (int) $agg->vignt;
+            $venc = (int) $agg->n - $vignt;
+
             $rows = new LengthAwarePaginator(
-                array_slice($rows, ($pagina - 1) * $porPagina, $porPagina),
-                count($rows), $porPagina, $pagina,
+                $rows, (int) $agg->n, $porPagina, $pagina,
                 ['path' => request()->url(), 'pageName' => 'page']
             );
         }
