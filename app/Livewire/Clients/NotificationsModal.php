@@ -38,8 +38,11 @@ class NotificationsModal extends Component
 
     public string $texto = '';
 
-    // Compromiso de pago (edición inline por notificación)
+    // Compromisos de pago (VARIOS por notificación): compNotifId = notificación
+    // donde se está agregando uno nuevo; compEditId = compromiso en edición.
     public ?int $compNotifId = null;
+
+    public ?int $compEditId = null;
 
     public string $compFecha = '';
 
@@ -323,18 +326,35 @@ class NotificationsModal extends Component
         $this->dispatch('notif-enviada');
     }
 
-    /** Abre el mini-form de compromiso de una notificación (precarga si ya tiene). */
+    /** Abre el mini-form para AGREGAR un compromiso a una notificación. */
     public function abrirCompromiso(int $notifId): void
     {
-        $n = DB::table('client_notifications')
-            ->where('id', $notifId)->where('client_id', $this->clientId)->first();
-        if (! $n) {
+        $existe = DB::table('client_notifications')
+            ->where('id', $notifId)->where('client_id', $this->clientId)->exists();
+        if (! $existe) {
             return;
         }
 
         $this->compNotifId = $notifId;
-        $this->compFecha = $n->compromiso_fecha ?? '';
-        $this->compDetalle = (string) ($n->compromiso_detalle ?? '');
+        $this->compEditId = null;
+        $this->compFecha = '';
+        $this->compDetalle = '';
+        $this->resetErrorBag();
+    }
+
+    /** Abre el mini-form para EDITAR un compromiso existente. */
+    public function editarCompromiso(int $compId): void
+    {
+        $c = DB::table('compromisos_pago')
+            ->where('id', $compId)->where('client_id', $this->clientId)->first();
+        if (! $c) {
+            return;
+        }
+
+        $this->compEditId = $compId;
+        $this->compNotifId = $c->client_notification_id;
+        $this->compFecha = substr((string) $c->fecha, 0, 10);
+        $this->compDetalle = (string) ($c->detalle ?? '');
         $this->resetErrorBag();
     }
 
@@ -345,19 +365,54 @@ class NotificationsModal extends Component
             ['compFecha.required' => 'Indica la fecha en que se compromete a pagar.']
         );
 
-        DB::table('client_notifications')
-            ->where('id', $this->compNotifId)->where('client_id', $this->clientId)
-            ->update([
-                'compromiso_fecha' => $this->compFecha,
-                'compromiso_detalle' => $this->compDetalle !== '' ? $this->compDetalle : null,
-                'compromiso_user_id' => auth()->id(),
-                'compromiso_registrado_at' => now(),
-                'compromiso_cumplido_at' => null,
+        if ($this->compEditId) {
+            DB::table('compromisos_pago')
+                ->where('id', $this->compEditId)->where('client_id', $this->clientId)
+                ->update([
+                    'fecha' => $this->compFecha,
+                    'detalle' => $this->compDetalle !== '' ? $this->compDetalle : null,
+                    'updated_at' => now(),
+                ]);
+        } else {
+            $n = DB::table('client_notifications')
+                ->where('id', $this->compNotifId)->where('client_id', $this->clientId)->first();
+            if (! $n) {
+                return;
+            }
+            DB::table('compromisos_pago')->insert([
+                'client_id' => $this->clientId,
+                'credit_id' => $n->credit_id,
+                'client_notification_id' => $n->id,
+                'fecha' => $this->compFecha,
+                'detalle' => $this->compDetalle !== '' ? $this->compDetalle : null,
+                'user_id' => auth()->id(),
+                'created_at' => now(),
                 'updated_at' => now(),
             ]);
+        }
 
-        $this->compNotifId = null;
+        $this->reset(['compNotifId', 'compEditId', 'compFecha', 'compDetalle']);
         $this->dispatch('successAlert', ['message' => 'Compromiso de pago guardado.']);
+    }
+
+    /** Alterna cumplido/pendiente (editable, como todo lo demás). */
+    public function toggleCumplido(int $compId): void
+    {
+        $c = DB::table('compromisos_pago')
+            ->where('id', $compId)->where('client_id', $this->clientId)->first();
+        if (! $c) {
+            return;
+        }
+
+        DB::table('compromisos_pago')->where('id', $compId)
+            ->update(['cumplido_at' => $c->cumplido_at ? null : now(), 'updated_at' => now()]);
+    }
+
+    public function eliminarCompromiso(int $compId): void
+    {
+        DB::table('compromisos_pago')
+            ->where('id', $compId)->where('client_id', $this->clientId)->delete();
+        $this->dispatch('successAlert', ['message' => 'Compromiso eliminado.']);
     }
 
     public function render()
@@ -372,6 +427,15 @@ class NotificationsModal extends Component
                 ->get(['n.*', 'u.username as usuario', 'u.name as usuario_name'])
             : collect();
 
-        return view('livewire.clients.notifications-modal', compact('notifs'));
+        // Compromisos (varios por notificación), agrupados para la columna
+        $compromisos = $this->clientId
+            ? DB::table('compromisos_pago')
+                ->where('client_id', $this->clientId)
+                ->orderBy('fecha')->orderBy('id')
+                ->get()
+                ->groupBy('client_notification_id')
+            : collect();
+
+        return view('livewire.clients.notifications-modal', compact('notifs', 'compromisos'));
     }
 }

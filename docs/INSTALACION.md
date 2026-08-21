@@ -454,7 +454,8 @@ copia no trae, **parar**: habría que reconciliar primero.
 | `cache_morosidad_diaria` | **SÍ** | Snapshots diarios de morosidad |
 | `mora_overrides` | **SÍ** si tiene filas | Bitácora de ajustes de mora |
 | `short_links` | **SÍ** | Acortadores de recibos ya enviados por WhatsApp — si se pierden, esos links mueren |
-| `client_notifications` | **SÍ** | Notificaciones de cobranza + compromisos de pago (con `credit_id` desde 14/08) |
+| `client_notifications` | **SÍ** | Notificaciones de cobranza (con `credit_id` desde 14/08) |
+| `compromisos_pago` | **SÍ** | Compromisos de pago múltiples (tabla propia desde 21/08) |
 | `sessions`, `cache` | No | Desechables (se vuelven a loguear) |
 
 Detectarlas automáticamente: comparar `COUNT(*)` de cada tabla local vs prod y
@@ -468,7 +469,7 @@ mysqldump --single-transaction --quick --routines --triggers laravel_prestamo | 
 gzip -t "$F" && ls -lh "$F"
 # 2) Extraer las tablas a preservar
 mysqldump --single-transaction --quick laravel_prestamo \
-  activity_log cache_morosidad_diaria mora_overrides short_links client_notifications \
+  activity_log cache_morosidad_diaria mora_overrides short_links client_notifications compromisos_pago \
   | gzip -1 > /root/preservar_$(date +%F).sql.gz'
 
 # 3) Subir el dump nuevo

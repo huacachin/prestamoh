@@ -19,12 +19,11 @@ use Livewire\Component;
  */
 class CompromisosBell extends Component
 {
-    public function marcarCumplido(int $notifId): void
+    public function marcarCumplido(int $compId): void
     {
-        DB::table('client_notifications')
-            ->where('id', $notifId)
-            ->whereNotNull('compromiso_fecha')
-            ->update(['compromiso_cumplido_at' => now(), 'updated_at' => now()]);
+        DB::table('compromisos_pago')
+            ->where('id', $compId)
+            ->update(['cumplido_at' => now(), 'updated_at' => now()]);
     }
 
     public function render()
@@ -32,14 +31,15 @@ class CompromisosBell extends Component
         $hoy = now()->startOfDay();
         $limite = $hoy->copy()->addDays(2)->format('Y-m-d');
 
-        $compromisos = DB::table('client_notifications as n')
-            ->join('clients as c', 'c.id', '=', 'n.client_id')
-            ->whereNotNull('n.compromiso_fecha')
-            ->whereNull('n.compromiso_cumplido_at')
-            ->where('n.compromiso_fecha', '<=', $limite)
-            ->orderBy('n.compromiso_fecha')
+        // Desde compromisos_pago (varios por notificación); cada uno con su
+        // propia fecha sale/entra de la campana de forma independiente.
+        $compromisos = DB::table('compromisos_pago as p')
+            ->join('clients as c', 'c.id', '=', 'p.client_id')
+            ->whereNull('p.cumplido_at')
+            ->where('p.fecha', '<=', $limite)
+            ->orderBy('p.fecha')
             ->get([
-                'n.id', 'n.compromiso_fecha', 'n.compromiso_detalle',
+                'p.id', 'p.fecha as compromiso_fecha', 'p.detalle as compromiso_detalle', 'p.credit_id',
                 'c.id as client_id', 'c.documento', 'c.apellido_pat', 'c.apellido_mat', 'c.nombre', 'c.celular1',
             ])
             ->map(function ($r) use ($hoy) {

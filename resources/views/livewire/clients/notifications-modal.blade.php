@@ -124,13 +124,56 @@
                                         </td>
                                         <td class="text-center">{{ $n->usuario ?? $n->usuario_name ?? '—' }}</td>
                                         <td>
-                                            @if($compNotifId === $n->id)
-                                                {{-- Mini-form de compromiso --}}
-                                                <div class="d-flex flex-column gap-1">
+                                            {{-- Compromisos MÚLTIPLES por notificación (ej. "25/08
+                                                 paga 2 cuotas" + "30/08 paga 3"), todos editables --}}
+                                            @foreach($compromisos[$n->id] ?? [] as $comp)
+                                                @if($compEditId === $comp->id)
+                                                    <div class="d-flex flex-column gap-1 mb-1 border rounded p-1">
+                                                        <input type="date" class="form-control form-control-sm @error('compFecha') is-invalid @enderror"
+                                                               wire:model="compFecha">
+                                                        @error('compFecha') <div class="text-danger" style="font-size:10px;">{{ $message }}</div> @enderror
+                                                        <input type="text" class="form-control form-control-sm" placeholder="Detalle (ej. paga 2 cuotas)"
+                                                               wire:model="compDetalle" maxlength="5000">
+                                                        <div class="d-flex gap-1">
+                                                            <button type="button" class="btn btn-xs btn-dark" style="padding:2px 8px; font-size:10px;"
+                                                                    wire:click="guardarCompromiso">Guardar</button>
+                                                            <button type="button" class="btn btn-xs btn-secondary" style="padding:2px 8px; font-size:10px;"
+                                                                    wire:click="$set('compEditId', null)">Cancelar</button>
+                                                        </div>
+                                                    </div>
+                                                @else
+                                                    @php
+                                                        $cf = \Carbon\Carbon::parse($comp->fecha);
+                                                        $dias = now()->startOfDay()->diffInDays($cf->copy()->startOfDay(), false);
+                                                        $cfColor = $comp->cumplido_at ? '#6c757d' : ($dias <= 0 ? '#dc3545' : ($dias <= 2 ? '#fd7e14' : '#198754'));
+                                                    @endphp
+                                                    <div class="d-flex align-items-start gap-1 mb-1" style="line-height:1.2;">
+                                                        <div class="flex-grow-1">
+                                                            <b style="color: {{ $cfColor }};"><i class="ti ti-calendar-event"></i> {{ $cf->format('d/m/Y') }}</b>
+                                                            @if($comp->cumplido_at)
+                                                                <span class="badge bg-success" style="font-size:9px;">cumplido</span>
+                                                            @endif
+                                                            @if($comp->detalle)
+                                                                <div class="text-muted" style="font-size:11px;">{{ $comp->detalle }}</div>
+                                                            @endif
+                                                        </div>
+                                                        <a href="#" wire:click.prevent="toggleCumplido({{ $comp->id }})"
+                                                           title="{{ $comp->cumplido_at ? 'Volver a pendiente' : 'Marcar cumplido' }}"
+                                                           class="{{ $comp->cumplido_at ? 'text-secondary' : 'text-success' }}"><i class="ti ti-check"></i></a>
+                                                        <a href="#" wire:click.prevent="editarCompromiso({{ $comp->id }})" title="Editar"><i class="ti ti-pencil"></i></a>
+                                                        <a href="#" wire:click.prevent="eliminarCompromiso({{ $comp->id }})"
+                                                           wire:confirm="¿Eliminar este compromiso?" title="Eliminar" class="text-danger"><i class="ti ti-trash"></i></a>
+                                                    </div>
+                                                @endif
+                                            @endforeach
+
+                                            @if($compNotifId === $n->id && ! $compEditId)
+                                                {{-- Mini-form de compromiso NUEVO --}}
+                                                <div class="d-flex flex-column gap-1 border rounded p-1">
                                                     <input type="date" class="form-control form-control-sm @error('compFecha') is-invalid @enderror"
                                                            wire:model="compFecha">
                                                     @error('compFecha') <div class="text-danger" style="font-size:10px;">{{ $message }}</div> @enderror
-                                                    <input type="text" class="form-control form-control-sm" placeholder="Detalle (opcional)"
+                                                    <input type="text" class="form-control form-control-sm" placeholder="Detalle (ej. paga 2 cuotas)"
                                                            wire:model="compDetalle" maxlength="5000">
                                                     <div class="d-flex gap-1">
                                                         <button type="button" class="btn btn-xs btn-dark" style="padding:2px 8px; font-size:10px;"
@@ -139,31 +182,10 @@
                                                                 wire:click="$set('compNotifId', null)">Cancelar</button>
                                                     </div>
                                                 </div>
-                                            @elseif($n->compromiso_fecha)
-                                                @php
-                                                    $cf = \Carbon\Carbon::parse($n->compromiso_fecha);
-                                                    $dias = now()->startOfDay()->diffInDays($cf->copy()->startOfDay(), false);
-                                                    $cfColor = $dias <= 0 ? '#dc3545' : ($dias <= 2 ? '#fd7e14' : '#198754');
-                                                @endphp
-                                                <div>
-                                                    @if($n->compromiso_registrado_at)
-                                                        <div class="text-muted" style="font-size:10px;">
-                                                            <i class="ti ti-pencil"></i> Registrado el {{ \Carbon\Carbon::parse($n->compromiso_registrado_at)->format('d/m/Y H:i') }}
-                                                        </div>
-                                                    @endif
-                                                    <b style="color: {{ $cfColor }};"><i class="ti ti-calendar-event"></i> {{ $cf->format('d/m/Y') }}</b>
-                                                    @if($n->compromiso_cumplido_at)
-                                                        <span class="badge bg-success" style="font-size:9px;">cumplido</span>
-                                                    @endif
-                                                    @if($n->compromiso_detalle)
-                                                        <div class="text-muted" style="font-size:11px;">{{ $n->compromiso_detalle }}</div>
-                                                    @endif
-                                                    <a href="#" wire:click.prevent="abrirCompromiso({{ $n->id }})" style="font-size:10px;">editar</a>
-                                                </div>
                                             @else
                                                 <button type="button" class="btn btn-xs btn-outline-dark" style="padding:2px 8px; font-size:10px;"
                                                         wire:click="abrirCompromiso({{ $n->id }})">
-                                                    <i class="ti ti-calendar-plus"></i> Compromiso
+                                                    <i class="ti ti-calendar-plus"></i> {{ isset($compromisos[$n->id]) ? 'Agregar' : 'Compromiso' }}
                                                 </button>
                                             @endif
                                         </td>
