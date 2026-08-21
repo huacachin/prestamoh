@@ -81,8 +81,11 @@ class NotificacionGarantiaTest extends TestCase
         $this->assertStringContainsString('GARANTIA VEHICULAR SIGM', $texto);
         $this->assertStringContainsString('TOMA DE POSESIÓN DEL VEHÍCULO', $texto);
         $this->assertStringContainsString('VICTOR RAUL ALHUAY QUISPE', $texto);
-        $this->assertStringContainsString('TRES (03) CUOTAS VENCIDAS', $texto);
-        $this->assertStringContainsString('S/ 3,000.00 (TRES MIL CON 00/100)', $texto);
+        // Negritas de WhatsApp (formato del área legal 21/08)
+        $this->assertStringContainsString('*TRES (03) CUOTAS VENCIDAS*', $texto);
+        $this->assertStringContainsString('*S/ 3,000.00 (TRES MIL CON 00/100)*', $texto);
+        $this->assertStringContainsString('*TOMA DE POSESIÓN DEL VEHÍCULO*', $texto);
+        $this->assertStringContainsString('*⚖️Abog. Rosa Linda Tafur Cuenca*', $texto);
         $this->assertStringContainsString("Crédito N° {$credit->id}", $texto);
         $this->assertStringContainsString('Estimado sr(a)', $texto);
         $this->assertStringContainsString('debidamente notificado', $texto);
