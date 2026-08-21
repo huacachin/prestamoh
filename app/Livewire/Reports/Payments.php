@@ -86,7 +86,9 @@ class Payments extends Component
                 'n' => $contador,
                 'fecha' => $first->fecha->format('Y-m-d'),
                 'hora' => $first->hora,
-                'usuario' => $first->usuario,
+                // Username, no nombre: los pagos migrados ya lo traen y los
+                // nuevos guardan el nombre completo — Usernames::de normaliza
+                'usuario' => \App\Support\Usernames::de($first->usuario),
                 'asesor' => $first->asesor,
                 'cliente' => $first->credit?->client
                     ? trim(($first->credit->client->apellido_pat ?? '').' '.($first->credit->client->apellido_mat ?? '').' '.($first->credit->client->nombre ?? ''))
