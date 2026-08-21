@@ -3,15 +3,20 @@
 namespace App\Livewire\Credits;
 
 use App\Models\Credit;
+use App\Support\Audit;
 use Carbon\Carbon;
 use Livewire\Component;
 
 class ChangeStatus extends Component
 {
     public string $tipoe = 'Credito';
+
     public string $fecha = '';
+
     public string $search = '';
+
     public ?int $selectedId = null;
+
     public bool $showDropdown = false;
 
     // Legacy estado.php solo deja la opción "Cancelado" activa en el <select>
@@ -32,35 +37,41 @@ class ChangeStatus extends Component
     public function selectCredit(int $id): void
     {
         $credit = Credit::with('client:id,nombre,apellido_pat,apellido_mat,documento')->find($id);
-        if (!$credit) return;
+        if (! $credit) {
+            return;
+        }
 
-        $this->selectedId  = $id;
+        $this->selectedId = $id;
         $this->showDropdown = false;
-        $this->search = $credit->id . ' - ' . trim(($credit->client?->apellido_pat ?? '') . ' ' . ($credit->client?->apellido_mat ?? '') . ' ' . ($credit->client?->nombre ?? ''));
+        $this->search = $credit->id.' - '.trim(($credit->client?->apellido_pat ?? '').' '.($credit->client?->apellido_mat ?? '').' '.($credit->client?->nombre ?? ''));
     }
 
     public function changeStatus(): void
     {
-        if (!$this->selectedId) {
+        if (! $this->selectedId) {
             $this->dispatch('errorAlert', ['message' => 'Debe seleccionar un crédito.']);
+
             return;
         }
-        if (!$this->fecha) {
+        if (! $this->fecha) {
             $this->dispatch('errorAlert', ['message' => 'La fecha es obligatoria.']);
+
             return;
         }
 
-        // Bloqueo de fecha de mes anterior (legacy: solo SuperUsuario bypass)
+        // Mapa 21/08: sin bypass solo se cambia estado con fecha del día
         $hoy = now();
         $sel = Carbon::parse($this->fecha);
-        if ($sel->format('Ym') < $hoy->format('Ym') && !auth()->user()?->can('caja.bypass-fecha-anterior')) {
-            $this->dispatch('errorAlert', ['message' => 'No es posible eliminar, Fecha mes anterior.']);
+        if ($sel->format('Y-m-d') !== $hoy->format('Y-m-d') && ! auth()->user()?->can('caja.bypass-fecha-anterior')) {
+            $this->dispatch('errorAlert', ['message' => 'Solo se puede cambiar el estado con fecha del día.']);
+
             return;
         }
 
         $credit = Credit::find($this->selectedId);
-        if (!$credit) {
+        if (! $credit) {
             $this->dispatch('errorAlert', ['message' => 'El crédito seleccionado no existe.']);
+
             return;
         }
 
@@ -75,12 +86,12 @@ class ChangeStatus extends Component
 
         // Legacy: UPDATE cab_cuentacorriente SET situacion='Cancelado', estado=0, fechacan=$fecha WHERE id=...
         $credit->update([
-            'situacion'         => 'Cancelado',
-            'estado'            => 0,
+            'situacion' => 'Cancelado',
+            'estado' => 0,
             'fecha_cancelacion' => $this->fecha,
         ]);
 
-        \App\Support\Audit::log("Anuló (canceló) el crédito #{$credit->id} con fecha {$this->fecha}", $credit);
+        Audit::log("Anuló (canceló) el crédito #{$credit->id} con fecha {$this->fecha}", $credit);
 
         $this->reset(['selectedId', 'search', 'showDropdown']);
         $this->fecha = now()->format('Y-m-d');

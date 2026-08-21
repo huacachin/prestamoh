@@ -212,6 +212,14 @@ class Create extends Component
             'Tu rol no permite esta acción.');
         $this->validate();
 
+        // Mapa 21/08: sin bypass-fecha-anterior el crédito se registra con fecha del día.
+        if (! auth()->user()->can('caja.bypass-fecha-anterior')
+            && $this->fechad !== now()->format('Y-m-d')) {
+            $this->dispatch('errorAlert', ['message' => 'Solo puedes registrar créditos con fecha del día.']);
+
+            return;
+        }
+
         // Validar que el código de préstamo no esté en uso (race condition / edición manual)
         if (DB::table('credits')->where('id', $this->codpre_)->exists()) {
             $this->addError('codpre_', 'El código de préstamo ya está utilizado.');

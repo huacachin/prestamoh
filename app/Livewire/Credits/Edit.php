@@ -47,6 +47,14 @@ class Edit extends Component
         abort_if(auth()->user()?->can('clientes.scope-propio') ?? false, 403,
             'Tu rol no permite esta acción.');
         $this->credit = Credit::with('payments')->findOrFail($id);
+
+        // Mapa 21/08: sin editar-historico solo se editan créditos registrados HOY.
+        abort_unless(
+            (auth()->user()?->can('caja.editar-historico') ?? false)
+            || $this->credit->fecha_prestamo?->format('Y-m-d') === now()->format('Y-m-d'),
+            403,
+            'Solo se pueden editar créditos registrados hoy.'
+        );
         $this->creditId = $id;
 
         $this->fecha_prestamo = $this->credit->fecha_prestamo?->format('Y-m-d') ?? '';

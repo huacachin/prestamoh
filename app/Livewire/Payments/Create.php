@@ -457,10 +457,9 @@ class Create extends Component
             }
         }
 
-        if (! auth()->user()->can('caja.bypass-fecha-anterior')) {
-            if (Carbon::parse($this->fecpag)->format('Ym') < now()->format('Ym')) {
-                return 'No es posible registrar pago en mes anterior.';
-            }
+        // Mapa 21/08: los cobros se registran SOLO con fecha del día (todos los roles).
+        if (Carbon::parse($this->fecpag)->format('Y-m-d') !== now()->format('Y-m-d')) {
+            return 'Los cobros se registran solo con fecha del día.';
         }
 
         if ($this->monto > $this->buildCalcs()['saldo_pendiente'] + 0.01) {

@@ -69,9 +69,8 @@ class RolePermissionSeeder extends Seeder
                 'reportes.asesor', 'reportes.caja-estadistica', 'reportes.credito-estadistica',
                 'reportes.caja-general-1', 'reportes.caja-general-2', 'reportes.caja-general-3',
                 'reportes.cancelados', 'reportes.simulador',
-                'configuracion.usuarios', 'configuracion.sucursales',
+                // Usuarios, permisos y sucursales: solo director (permisos-nuevos 21/08)
                 'configuracion.conceptos', 'configuracion.tipo-cambio',
-                'usuarios.gestionar-permisos',
                 'registro.activar', 'registro.estado', 'registro.cesados',
                 'registro.eliminar-masivo',
                 'transacciones.autorizar',
@@ -86,7 +85,6 @@ class RolePermissionSeeder extends Seeder
                 'reportes.credito-diario', 'reportes.credito-mensual', 'reportes.credito-semanal',
                 'reportes.cartera', 'reportes.asesor', 'reportes.simulador',
                 'reportes.credito-estadistica',
-                'registro.cesados',
             ],
 
             // ─── AREA LEGAL (consulta + cambia estado para casos legales) ───

@@ -95,9 +95,11 @@
                 <a href="{{ route('payments.create', $credit->id) }}" class="btn btn-sm btn-outline-success">
                     <i class="ti ti-currency-dollar"></i> Registrar Pago
                 </a>
-                <a href="{{ route('credits.edit', $credit->id) }}" class="btn btn-sm btn-outline-warning">
-                    <i class="ti ti-edit"></i> Editar
-                </a>
+                @if(!auth()->user()->can('clientes.scope-propio') && (auth()->user()->can('caja.editar-historico') || $credit->fecha_prestamo?->format('Y-m-d') === now()->format('Y-m-d')))
+                    <a href="{{ route('credits.edit', $credit->id) }}" class="btn btn-sm btn-outline-warning">
+                        <i class="ti ti-edit"></i> Editar
+                    </a>
+                @endif
                 <a href="{{ route('credits.index') }}" class="btn btn-sm btn-secondary">Volver</a>
             </div>
         </div>

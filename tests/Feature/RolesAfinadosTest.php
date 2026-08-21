@@ -43,17 +43,23 @@ class RolesAfinadosTest extends TestCase
             $this->assertFalse($admin->hasPermissionTo($p), "administrador NO debe tener $p");
             $this->assertTrue($director->hasPermissionTo($p), "director SÍ debe tener $p");
         }
-        // Eliminar registros y editar identidad: exclusivos del director (21/08)
-        foreach (['clientes.eliminar', 'creditos.eliminar', 'clientes.editar-identidad'] as $p) {
+        // Exclusivos del director (permisos-nuevos 21/08): eliminar registros,
+        // identidad, usuarios/permisos y sucursales
+        foreach ([
+            'clientes.eliminar', 'creditos.eliminar', 'clientes.editar-identidad',
+            'configuracion.usuarios', 'usuarios.gestionar-permisos', 'configuracion.sucursales',
+        ] as $p) {
             $this->assertFalse($admin->hasPermissionTo($p), "administrador NO debe tener $p");
             $this->assertTrue($director->hasPermissionTo($p), "director SÍ debe tener $p");
         }
         // Lo operativo del día lo conserva
-        foreach (['caja.eliminar', 'registro.eliminar-masivo', 'usuarios.gestionar-permisos'] as $p) {
+        foreach (['caja.eliminar', 'registro.eliminar-masivo', 'configuracion.conceptos'] as $p) {
             $this->assertTrue($admin->hasPermissionTo($p), "administrador debe conservar $p");
         }
-        // Analista sin dashboard
-        $this->assertFalse(Role::findByName('analista-creditos')->hasPermissionTo('dashboard'));
+        // Analista sin dashboard ni cesados
+        $ana = Role::findByName('analista-creditos');
+        $this->assertFalse($ana->hasPermissionTo('dashboard'));
+        $this->assertFalse($ana->hasPermissionTo('registro.cesados'));
     }
 
     private function analistaConCreditos(): array
@@ -191,6 +197,30 @@ class RolesAfinadosTest extends TestCase
 
         $diario = $this->get('/payments/daily');
         $diario->assertOk()->assertSee('Cliente Propio')->assertDontSee('Cliente Ajeno');
+    }
+
+    /** El administrador edita solo créditos registrados HOY; el director cualquiera. */
+    public function test_administrador_edita_solo_creditos_de_hoy(): void
+    {
+        $admin = User::factory()->create(['username' => 'adm-cred']);
+        $admin->assignRole('administrador');
+        $cliente = Client::create(['nombre' => 'Cliente Editable', 'asesor_id' => $admin->id]);
+
+        $base = [
+            'client_id' => $cliente->id, 'importe' => 1000, 'cuotas' => 4, 'tipo_planilla' => 1,
+            'interes' => 10, 'interes_total' => 100, 'situacion' => 'Activo', 'estado' => 1,
+        ];
+        $hoy = Credit::create($base + ['fecha_prestamo' => now()->format('Y-m-d')]);
+        $viejo = Credit::create($base + ['fecha_prestamo' => now()->subDays(5)->format('Y-m-d')]);
+
+        $this->actingAs($admin);
+        $this->get("/credits/{$hoy->id}/edit")->assertOk();
+        $this->get("/credits/{$viejo->id}/edit")->assertForbidden();
+
+        $director = User::factory()->create(['username' => 'dir-cred']);
+        $director->assignRole('director');
+        $this->actingAs($director);
+        $this->get("/credits/{$viejo->id}/edit")->assertOk();
     }
 
     public function test_director_y_administrador_siguen_creando(): void
