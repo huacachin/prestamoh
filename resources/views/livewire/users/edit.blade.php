@@ -112,8 +112,13 @@
                     <div class="perm-col-controls">
                         <div class="perm-chips">
                             @forelse($roles as $r)
-                                <label class="chip-radio">
-                                    <input type="radio" class="form-check-input" name="role_single_edit" value="{{ $r->id }}" wire:model="selectedRoleId">
+                                @php
+                                    $asignable = in_array($r->name, \Database\Seeders\RoleSetupSeeder::ROLES_ASIGNABLES, true)
+                                        || $r->id === $selectedRoleId;
+                                @endphp
+                                <label class="chip-radio" @if(! $asignable) style="opacity:.45; cursor:not-allowed;" title="Rol deshabilitado por ahora" @endif>
+                                    <input type="radio" class="form-check-input" name="role_single_edit" value="{{ $r->id }}"
+                                           wire:model="selectedRoleId" @if(! $asignable) disabled @endif>
                                     <span>{{ ucfirst($r->name) }}</span>
                                 </label>
                             @empty

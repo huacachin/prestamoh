@@ -45,12 +45,9 @@ class Edit extends Component
         $this->user = User::with('roles')->findOrFail($id);
 
         $this->headquarters = Headquarter::where('status', 'active')->get(['id', 'name']);
-        // Solo los roles asignables; si el usuario ya tiene uno fuera de la
-        // lista (histórico), se muestra para no ocultar su estado real.
-        $rolActual = $this->user->roles()->value('name');
-        $this->roles = RoleSetupSeeder::orderedRoles()
-            ->filter(fn ($r) => in_array($r->name, RoleSetupSeeder::ROLES_ASIGNABLES, true) || $r->name === $rolActual)
-            ->values();
+        // Catálogo COMPLETO (los no-asignables se pintan deshabilitados);
+        // el rol actual del usuario siempre cuenta como seleccionable.
+        $this->roles = RoleSetupSeeder::orderedRoles();
 
         $this->name = $this->user->name;
         $this->username = $this->user->username;
@@ -79,6 +76,16 @@ class Edit extends Component
             // del catálogo está bloqueado también en el backend.
             'selectedRoleId' => ['nullable', 'integer', Rule::in(collect($this->roles)->pluck('id'))],
         ];
+    }
+
+    /** Ids asignables + el rol actual del usuario (para poder conservarlo). */
+    private function rolesAsignablesIds(): array
+    {
+        $rolActual = $this->user?->roles()->value('name');
+
+        return RoleSetupSeeder::orderedRoles()
+            ->filter(fn ($r) => in_array($r->name, RoleSetupSeeder::ROLES_ASIGNABLES, true) || $r->name === $rolActual)
+            ->pluck('id')->all();
     }
 
     protected $validationAttributes = [

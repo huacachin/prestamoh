@@ -61,8 +61,8 @@ class Create extends Component
         }
 
         $this->headquarters = Headquarter::where('status', 'active')->get(['id', 'name']);
-        // Solo los roles asignables (el resto del catálogo queda bloqueado)
-        $this->roles = RoleSetupSeeder::asignableRoles();
+        // Catálogo completo: los no-asignables se pintan deshabilitados
+        $this->roles = RoleSetupSeeder::orderedRoles();
     }
 
     public function clean(): void
