@@ -181,21 +181,28 @@ class NotificationsModal extends Component
 
         // Recalcula AL MOMENTO del click (pudo cambiar desde que se abrió el modal)
         $this->vencidas = $this->cuotasVencidasDeCredito($this->creditId);
-        $nivel3 = $this->vencidas >= 3;
+        // Escalado (21/08): 2 = aviso preventivo; 3 EXACTAS = requerimiento
+        // final; 4+ = comunicado de ejecución (extrajudicial vehicular /
+        // pre-aviso judicial hipotecario).
+        $bucket = $this->vencidas >= 4 ? 'ejecucion' : ($this->vencidas >= 3 ? 'final' : 'dos');
 
-        // Reutiliza el último mensaje del mismo nivel DE ESTE CRÉDITO (así el
+        // Reutiliza el último mensaje del MISMO NIVEL de este crédito (así el
         // texto recuperado ya trae el número de crédito correcto).
         $q = DB::table('client_notifications')
             ->where('client_id', $this->clientId)
             ->where('credit_id', $this->creditId);
-        $nivel3
-            ? $q->where('cuotas_vencidas', '>=', 3)
-            : $q->where('cuotas_vencidas', 2);
+        match ($bucket) {
+            'ejecucion' => $q->where('cuotas_vencidas', '>=', 4),
+            'final' => $q->where('cuotas_vencidas', 3),
+            default => $q->where('cuotas_vencidas', 2),
+        };
         $ultima = $q->orderByDesc('numero')->value('mensaje');
 
-        $this->texto = $ultima ?? ($nivel3
-            ? $this->plantillaNivel3()
-            : $this->plantillaDosCuotas());
+        $this->texto = $ultima ?? match ($bucket) {
+            'ejecucion' => $this->plantillaEjecucion(),
+            'final' => $this->plantillaRequerimientoFinal(),
+            default => $this->plantillaDosCuotas(),
+        };
         $this->editor = true;
     }
 
@@ -206,23 +213,14 @@ class NotificationsModal extends Component
      * garantía no es ninguna de las dos. Texto legal provisto por el área
      * legal (21/08); queda editable antes de enviar.
      */
-    private function plantillaNivel3(): string
+    /**
+     * Datos comunes de las plantillas legales: garantía, nombre en mayúsculas,
+     * género, cuotas vencidas y monto atrasado (Retraso) del crédito elegido.
+     */
+    private function datosLegales(): array
     {
         $client = Client::find($this->clientId);
-        $garantia = Garantias::de($client?->zona);
 
-        if ($garantia === Garantias::OTRA) {
-            return "⚖️ *COMUNICADO DE REGULARIZACIÓN DE PAGO*\nEstimado(a) Sr.(a) {$this->clientName}:\nReferencia: Crédito N° {$this->creditId}\n";
-        }
-
-        // Variables del requerimiento
-        $nombre = mb_strtoupper(trim(($client->nombre ?? '').' '.($client->apellido_pat ?? '').' '.($client->apellido_mat ?? '')));
-        $fem = ($client->sexo ?? '') === 'F';
-        $estimado = $fem ? 'Estimada' : 'Estimado';
-        $notificado = $fem ? 'notificada' : 'notificado';
-        $cuotas = NumerosEnLetras::conteo($this->vencidas);
-
-        // Monto atrasado = lo impago de las cuotas vencidas (el "Retraso")
         $retraso = round((float) DB::table('credit_installments')
             ->where('credit_id', $this->creditId)
             ->where('pagado', 0)
@@ -231,6 +229,28 @@ class NotificationsModal extends Component
             ->selectRaw('COALESCE(SUM(importe_cuota + importe_interes + importe_excedente
                 - importe_aplicado - interes_aplicado - excedente_aplicado), 0) as s')
             ->value('s'), 2);
+
+        $fem = ($client?->sexo ?? '') === 'F';
+
+        return [
+            'garantia' => Garantias::de($client?->zona),
+            'nombre' => mb_strtoupper(trim(($client?->nombre ?? '').' '.($client?->apellido_pat ?? '').' '.($client?->apellido_mat ?? ''))),
+            'estimado' => $fem ? 'Estimada' : 'Estimado',
+            'notificado' => $fem ? 'notificada' : 'notificado',
+            'retraso' => $retraso,
+        ];
+    }
+
+    private function plantillaRequerimientoFinal(): string
+    {
+        ['garantia' => $garantia, 'nombre' => $nombre, 'estimado' => $estimado,
+            'notificado' => $notificado, 'retraso' => $retraso] = $this->datosLegales();
+
+        if ($garantia === Garantias::OTRA) {
+            return "⚖️ *COMUNICADO DE REGULARIZACIÓN DE PAGO*\nEstimado(a) Sr.(a) {$this->clientName}:\nReferencia: Crédito N° {$this->creditId}\n";
+        }
+
+        $cuotas = NumerosEnLetras::conteo($this->vencidas);
         $monto = 'S/ '.number_format($retraso, 2).' ('.NumerosEnLetras::monto($retraso).')';
 
         $cuerpoComun = "Por medio de la presente, se le comunica que, de la revisión de su crédito, se ha verificado el incumplimiento del pago de *{$cuotas} CUOTAS VENCIDAS*, manteniendo un monto total atrasado de *{$monto}*, más los intereses moratorios y demás conceptos que correspondan conforme al contrato.\n\n"
@@ -255,6 +275,53 @@ class NotificationsModal extends Component
             ."En consecuencia, el acreedor podrá iniciar de manera inmediata la *EJECUCIÓN DE LA GARANTÍA HIPOTECARIA*, a efectos de hacer efectivo el cobro de la totalidad de la obligación mediante el *REMATE DEL INMUEBLE HIPOTECADO*, conforme a lo pactado contractualmente y a la normativa vigente, sin necesidad de cursar un nuevo requerimiento.\n\n"
             ."Asimismo, cualquier pago parcial efectuado luego del vencimiento del plazo otorgado *no suspenderá ni dejará sin efecto el vencimiento anticipado ni las acciones de ejecución de la garantía*, salvo aceptación expresa del acreedor.\n\n"
             ."La presente constituye el *ÚLTIMO REQUERIMIENTO PREVIO A LA EJECUCIÓN DE LA GARANTÍA HIPOTECARIA Y REMATE DEL INMUEBLE*, quedando usted debidamente {$notificado} para los fines legales correspondientes.\n\n"
+            .$firma;
+    }
+
+    /**
+     * Nivel 4-7 (y 8+ mientras no exista un escalón propio): comunicado de
+     * EJECUCIÓN — extrajudicial con toma de posesión (vehicular SIGM) o
+     * pre-aviso de ejecución judicial con remate (hipotecaria). Plazo de 24h.
+     * Texto del área legal (21/08); editable antes de enviar.
+     */
+    private function plantillaEjecucion(): string
+    {
+        ['garantia' => $garantia, 'nombre' => $nombre, 'estimado' => $estimado,
+            'notificado' => $notificado, 'retraso' => $retraso] = $this->datosLegales();
+
+        if ($garantia === Garantias::OTRA) {
+            return "⚖️ *COMUNICADO DE REGULARIZACIÓN DE PAGO*\nEstimado(a) Sr.(a) {$this->clientName}:\nReferencia: Crédito N° {$this->creditId}\n";
+        }
+
+        $letras = NumerosEnLetras::entero($this->vencidas);
+        $montoLetras = NumerosEnLetras::monto($retraso);
+        $firma = "Atentamente,\n*⚖️Abog. Rosa Linda Tafur Cuenca*\n*Área Legal Huacachin*";
+
+        if ($garantia === Garantias::VEHICULAR) {
+            $cuotas = $this->vencidas.'('.$letras.')';
+            $monto = 'S/'.number_format($retraso, 2).' ('.$montoLetras.' SOLES)';
+
+            return "*COMUNICADO DE EJECUCIÓN EXTRAJUDICIAL - GARANTIA VEHICULAR SIGM⚖️*\n"
+                ."{$estimado} sr(a) *{$nombre}*:\nReferencia: Crédito N° {$this->creditId}\n"
+                ."Por medio del presente, se le comunica que, respecto del *CONTRATO DE CRÉDITO VEHICULAR CON CONSTITUCIÓN DE GARANTÍA MOBILIARIA EN EL SIGM*, se ha verificado que mantiene *{$cuotas} CUOTAS VENCIDAS E IMPAGAS*, ascendiendo actualmente la deuda a un *MONTO TOTAL DE {$monto}*, más los intereses moratorios, gastos administrativos y demás conceptos que correspondan conforme a lo pactado contractualmente.\n"
+                ."Pese a los requerimientos y comunicaciones de cobranza efectuados previamente, *LA OBLIGACIÓN NO HA SIDO REGULARIZADA DENTRO DE LOS PLAZOS OTORGADOS*. En consecuencia, conforme a las *CLÁUSULAS 8.1 Y 10 DEL CONTRATO*, ante el incumplimiento de tres o más cuotas, el acreedor se encuentra facultado para *DECLARAR EL VENCIMIENTO DE LAS CUOTAS PENDIENTES E INICIAR LA EJECUCIÓN EXTRAJUDICIAL DE LA GARANTÍA MOBILIARIA*, incluyendo la *TOMA DE POSESIÓN DEL VEHÍCULO OTORGADO EN GARANTÍA*.\n"
+                ."En tal sentido, se le otorga un *PLAZO FINAL E IMPRORROGABLE DE VEINTICUATRO (24) HORAS*, contado desde la recepción del presente comunicado, para proceder con la *CANCELACIÓN TOTAL DE LA DEUDA PENDIENTE* o presentar una *PROPUESTA FORMAL DE PAGO*, la cual deberá ser expresamente aceptada por el acreedor.\n"
+                ."*DE NO REGULARIZARSE LA OBLIGACIÓN DENTRO DEL PLAZO SEÑALADO*, se continuará de manera inmediata con el *PROCEDIMIENTO DE EJECUCIÓN EXTRAJUDICIAL DE LA GARANTÍA MOBILIARIA* y las acciones destinadas a la *TOMA DE POSESIÓN DEL VEHÍCULO*, conforme a las facultades previstas en el contrato, al Decreto Legislativo N.° 1400 y a la garantía mobiliaria inscrita en el Sistema Informativo de Garantías Mobiliarias – SIGM.\n"
+                ."Se deja expresa constancia de que *LA FALTA DE ENTREGA VOLUNTARIA DEL VEHÍCULO NO SUSPENDERÁ LAS ACCIONES DE EJECUCIÓN QUE LEGAL Y CONTRACTUALMENTE CORRESPONDAN*. Por ello, se le requiere comunicarse y regularizar su situación *DENTRO DE LAS PRÓXIMAS 24 HORAS*, a fin de evitar la continuación del procedimiento de ejecución.\n"
+                .$firma;
+        }
+
+        $cuotas = str_pad((string) $this->vencidas, 2, '0', STR_PAD_LEFT).' ('.$letras.')';
+        $monto = 'S/ '.number_format($retraso, 2).' ('.$montoLetras.' SOLES)';
+
+        return "*PRE-AVISO DE EJECUCIÓN JUDICIAL - GARANTIA HIPOTECARIA⚖️*\n"
+            ."{$estimado} sr(a) *{$nombre}*:\nReferencia: Crédito N° {$this->creditId}\n"
+            ."Por medio de la presente, me dirijo a usted respecto del *CRÉDITO HIPOTECARIO GARANTIZADO MEDIANTE ESCRITURA PÚBLICA DE CONSTITUCIÓN DE HIPOTECA*, constituida a favor del acreedor. De la revisión de su obligación, se ha verificado que actualmente mantiene *{$cuotas} CUOTAS VENCIDAS E IMPAGAS*, ascendiendo la deuda a un *MONTO TOTAL DE {$monto}*, más los intereses moratorios, gastos administrativos y demás conceptos que correspondan conforme a lo pactado contractualmente.\n"
+            ."Pese a los requerimientos y comunicaciones de cobranza efectuados previamente, *LA OBLIGACIÓN NO HA SIDO REGULARIZADA DENTRO DE LOS PLAZOS OTORGADOS*. En consecuencia, conforme a las cláusulas de la Escritura Pública de Constitución de Hipoteca y del Contrato Privado de Crédito Hipotecario, el incumplimiento de las cuotas pactadas faculta al acreedor a *DAR POR VENCIDAS LAS CUOTAS PENDIENTES Y EXIGIR EL PAGO ÍNTEGRO DE LA OBLIGACIÓN*, así como a *INICIAR LA EJECUCIÓN JUDICIAL DE LA GARANTÍA HIPOTECARIA*.\n"
+            ."En tal sentido, se le otorga un *PLAZO FINAL E IMPRORROGABLE DE VEINTICUATRO (24) HORAS*, contado desde la recepción del presente comunicado, para efectuar la *CANCELACIÓN DE LA DEUDA PENDIENTE* o presentar una *PROPUESTA FORMAL DE REGULARIZACIÓN*, la cual deberá ser expresamente evaluada y aceptada por el acreedor.\n"
+            ."*DE NO REGULARIZARSE LA OBLIGACIÓN DENTRO DEL PLAZO SEÑALADO*, el acreedor procederá a *INICIAR LAS ACCIONES JUDICIALES PARA LA EJECUCIÓN DE LA GARANTÍA HIPOTECARIA*, conforme a los artículos 720° y siguientes del Código Procesal Civil, pudiendo continuarse el procedimiento hasta el *REMATE JUDICIAL DEL INMUEBLE OTORGADO EN GARANTÍA*, a efectos de obtener el pago de la obligación pendiente, intereses moratorios, gastos administrativos, costas y costos que legalmente correspondan.\n"
+            ."Por lo expuesto, se le *REQUIERE COMUNICARSE Y REGULARIZAR SU OBLIGACIÓN DENTRO DE LAS PRÓXIMAS 24 HORAS*, a fin de evitar el inicio de la *EJECUCIÓN JUDICIAL DE LA GARANTÍA HIPOTECARIA Y EL PROCEDIMIENTO DESTINADO AL REMATE DEL INMUEBLE*.\n"
+            ."Sin otro particular, queda usted debidamente {$notificado} para los fines legales correspondientes.\n"
             .$firma;
     }
 

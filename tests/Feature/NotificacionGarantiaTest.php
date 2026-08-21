@@ -109,6 +109,62 @@ class NotificacionGarantiaTest extends TestCase
         $this->assertStringNotContainsString('VEHÍCULO', $texto);
     }
 
+    /** Con 4+ vencidas el vehicular pasa al comunicado de EJECUCIÓN (24h). */
+    public function test_con_cuatro_vencidas_vehicular_recibe_ejecucion_extrajudicial(): void
+    {
+        $this->actingAs(User::factory()->create(['username' => 'tester']));
+        [$client] = $this->clienteConCredito('SIGM.S');
+        // La cuota 4 también vencida (4 en total)
+        CreditInstallment::where('credit_id', Credit::where('client_id', $client->id)->value('id'))
+            ->where('num_cuota', 4)
+            ->update(['fecha_vencimiento' => now()->subDay()->format('Y-m-d')]);
+
+        $c = Livewire::test(NotificationsModal::class)
+            ->call('abrir', $client->id)
+            ->call('nuevaNotif');
+
+        $texto = $c->get('texto');
+        $this->assertStringContainsString('COMUNICADO DE EJECUCIÓN EXTRAJUDICIAL - GARANTIA VEHICULAR SIGM', $texto);
+        $this->assertStringContainsString('*4(CUATRO) CUOTAS VENCIDAS E IMPAGAS*', $texto);
+        $this->assertStringContainsString('VEINTICUATRO (24) HORAS', $texto);
+        $this->assertStringContainsString('SOLES)', $texto);
+        $this->assertStringNotContainsString('REQUERIMIENTO FINAL', $texto);
+    }
+
+    public function test_con_cuatro_vencidas_hipotecaria_recibe_preaviso_judicial(): void
+    {
+        $this->actingAs(User::factory()->create(['username' => 'tester']));
+        [$client] = $this->clienteConCredito('Gar. Hip.M', 'F');
+        CreditInstallment::where('credit_id', Credit::where('client_id', $client->id)->value('id'))
+            ->where('num_cuota', 4)
+            ->update(['fecha_vencimiento' => now()->subDay()->format('Y-m-d')]);
+
+        $c = Livewire::test(NotificationsModal::class)
+            ->call('abrir', $client->id)
+            ->call('nuevaNotif');
+
+        $texto = $c->get('texto');
+        $this->assertStringContainsString('PRE-AVISO DE EJECUCIÓN JUDICIAL - GARANTIA HIPOTECARIA', $texto);
+        $this->assertStringContainsString('*04 (CUATRO) CUOTAS VENCIDAS E IMPAGAS*', $texto);
+        $this->assertStringContainsString('REMATE JUDICIAL DEL INMUEBLE', $texto);
+        $this->assertStringContainsString('debidamente notificada', $texto);
+    }
+
+    /** Con 3 EXACTAS sigue el requerimiento final (el escalón anterior). */
+    public function test_con_tres_exactas_sigue_el_requerimiento_final(): void
+    {
+        $this->actingAs(User::factory()->create(['username' => 'tester']));
+        [$client] = $this->clienteConCredito('SIGM.S');
+
+        $texto = Livewire::test(NotificationsModal::class)
+            ->call('abrir', $client->id)
+            ->call('nuevaNotif')
+            ->get('texto');
+
+        $this->assertStringContainsString('REQUERIMIENTO FINAL', $texto);
+        $this->assertStringNotContainsString('EJECUCIÓN EXTRAJUDICIAL - GARANTIA', $texto);
+    }
+
     public function test_sin_garantia_conserva_el_comunicado_generico(): void
     {
         $this->actingAs(User::factory()->create(['username' => 'tester']));
