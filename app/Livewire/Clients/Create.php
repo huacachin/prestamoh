@@ -58,7 +58,7 @@ class Create extends Component
         // Analista (scope-propio): solo ve/paga SUS créditos — no crea ni edita
         abort_if(auth()->user()?->can('clientes.scope-propio') ?? false, 403,
             'Tu rol no permite esta acción.');
-        $this->asesores = User::permission('creditos.ser-asesor-responsable')
+        $this->asesores = User::query()
             ->where('status', 'active')
             ->orderBy('name')
             ->get(['id', 'name']);

@@ -272,7 +272,7 @@ class Refinance extends Component
 
     public function render()
     {
-        $asesores = User::permission('creditos.ser-asesor-responsable')
+        $asesores = User::query()
             ->where('status', 'active')
             ->orderBy('name')
             ->get(['id', 'name', 'username']);

@@ -10,7 +10,6 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
-use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -34,7 +33,6 @@ class RefinanceInteresMostradoTest extends TestCase
         ]);
 
         // La vista arma el select de asesores con este permiso.
-        Permission::findOrCreate('creditos.ser-asesor-responsable', 'web');
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         return User::factory()->create(['username' => 'tester', 'headquarter_id' => 1]);

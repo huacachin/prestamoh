@@ -197,7 +197,7 @@ class Advisor extends Component
         $monthlyHistory = $this->buildMonthlyHistory($year);
 
         // ─── Asesores para el dropdown ────────────────────────────────────
-        $asesores = User::permission('creditos.ser-asesor-responsable')->orderBy('name')->get(['id', 'name']);
+        $asesores = User::orderBy('name')->get(['id', 'name']);
 
         $months = [
             '01' => 'Enero', '02' => 'Febrero', '03' => 'Marzo', '04' => 'Abril',

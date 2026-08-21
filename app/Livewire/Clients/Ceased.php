@@ -91,7 +91,7 @@ class Ceased extends Component
         // Paginado (100 por página como /clients): antes bajaban ~8 MB de HTML
         $clients = $query->orderByRaw('CAST(expediente AS UNSIGNED) ASC')->paginate(100);
 
-        $asesores = User::permission('creditos.ser-asesor-responsable')
+        $asesores = User::query()
             ->where('status', 'active')
             ->orderBy('name')
             ->get(['id', 'name', 'username']);

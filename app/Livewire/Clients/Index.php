@@ -215,8 +215,8 @@ class Index extends Component
             $query->where('giro', 'like', '%'.trim($this->giro).'%');
         }
 
-        // Asesores para dropdown: cualquier usuario que pueda ser "asesor responsable" o tenga acceso amplio.
-        $asesores = User::permission('creditos.ser-asesor-responsable')
+        // Asesores para dropdown: cualquier usuario activo puede ser asesor responsable.
+        $asesores = User::query()
             ->where('status', 'active')
             ->orderBy('name')
             ->get(['id', 'name', 'username']);

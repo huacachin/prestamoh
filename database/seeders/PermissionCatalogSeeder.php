@@ -66,7 +66,6 @@ class PermissionCatalogSeeder extends Seeder
             ['name' => 'clientes.scope-propio',         'label' => 'Solo mis clientes',    'module' => 'clientes', 'module_label' => 'Clientes', 'description' => 'Limita la lista a clientes asignados al usuario'],
             ['name' => 'clientes.eliminar',             'label' => 'Eliminar clientes',    'module' => 'clientes', 'module_label' => 'Clientes', 'description' => 'Eliminar clientes y sus adjuntos'],
             ['name' => 'creditos.eliminar',             'label' => 'Eliminar créditos',    'module' => 'creditos', 'module_label' => 'Créditos', 'description' => 'Eliminar registros de créditos'],
-            ['name' => 'creditos.ser-asesor-responsable', 'label' => 'Ser asesor responsable', 'module' => 'creditos', 'module_label' => 'Créditos', 'description' => 'El usuario aparece en el select "Asesor responsable" de clientes/créditos/refinanciamientos'],
             ['name' => 'pagos.eliminar',                'label' => 'Eliminar/anular pagos', 'module' => 'pagos',    'module_label' => 'Pagos',    'description' => 'Anular o eliminar pagos registrados'],
             ['name' => 'pagos.mora-manual',             'label' => 'Mora manual',          'module' => 'pagos',    'module_label' => 'Pagos',    'description' => 'Editar/override del Total Mora al registrar un pago'],
 

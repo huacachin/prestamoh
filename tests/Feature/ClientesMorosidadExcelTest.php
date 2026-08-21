@@ -10,7 +10,6 @@ use App\Models\User;
 use App\Support\MorosidadClientes;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
-use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -34,7 +33,6 @@ class ClientesMorosidadExcelTest extends TestCase
         parent::setUp();
 
         // La vista arma el select de asesores con este permiso.
-        Permission::findOrCreate('creditos.ser-asesor-responsable', 'web');
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         $this->actingAs(User::factory()->create(['username' => 'tester']));
