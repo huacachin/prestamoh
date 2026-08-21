@@ -4,7 +4,6 @@ namespace App\Livewire\Concepts;
 
 use App\Models\Concept;
 use Illuminate\Validation\ValidationException;
-use Livewire\Attributes\On;
 use Livewire\Component;
 
 class Edit extends Component
@@ -51,23 +50,8 @@ class Edit extends Component
         'factor_egreso' => 'nullable|numeric|min:0',
     ];
 
-    public function questionDelete(int $id): void
-    {
-        $this->dispatch('questionDelete', ['id' => $id]);
-    }
-
-    #[On('register_destroy')]
-    public function destroy(int $id): void
-    {
-        if (! auth()->user()?->can('configuracion.conceptos')) {
-            abort(403);
-        }
-
-        Concept::findOrFail($id)->delete();
-        \App\Support\Audit::log("Eliminó el concepto #{$id}");
-        session()->flash('concept_success', 'Concepto eliminado correctamente.');
-        $this->redirectRoute('settings.concepts.index');
-    }
+    // La eliminación se quitó de esta pantalla (pedido 20/08): los conceptos
+    // referencian ingresos/egresos históricos y borrarlos los dejaba huérfanos.
 
     public function update(): void
     {

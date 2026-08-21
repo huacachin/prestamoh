@@ -107,9 +107,6 @@
                         <button type="button" class="btn btn-sm btn-primary" wire:click="update">
                             Guardar cambios
                         </button>
-                        <button type="button" class="btn btn-sm btn-danger" wire:click="questionDelete({{ $conceptId }})">
-                            Eliminar
-                        </button>
                         <a href="{{ route('settings.concepts.index') }}" class="btn btn-sm btn-secondary">Volver</a>
                     </div>
 
