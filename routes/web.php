@@ -10,9 +10,11 @@ use App\Http\Controllers\{
 };
 
 // === Público ===
+// Route::view / Route::redirect en vez de closures: route:cache no admite
+// rutas closure y estas dos lo eran.
 Route::middleware('guest')->group(function () {
-    Route::get('/login', fn () => view('auth.index'))->name('login');
-    Route::get('/', fn () => redirect()->route('login'));
+    Route::view('/login', 'auth.index')->name('login');
+    Route::redirect('/', '/login');
 });
 
 // Recibo público: el cliente lo abre desde el link de WhatsApp, sin login.
@@ -24,22 +26,11 @@ Route::middleware('signed')->group(function () {
 });
 
 // Acortador propio: /s/{code} → redirige al destino guardado (links de recibo
-// para WhatsApp). Público sin firma: el destino ES la URL firmada — la
-// seguridad viaja dentro del destino, no en el código corto.
-Route::get('s/{code}', function (string $code) {
-    $link = \App\Models\ShortLink::where('code', $code)->firstOrFail();
-    $link->increment('hits');
-
-    return redirect()->away($link->destino);
-})->name('short-link');
+// para WhatsApp). Ver ShortLinkController.
+Route::get('s/{code}', \App\Http\Controllers\ShortLinkController::class)->name('short-link');
 
 // === Logout ===
-Route::post('/logout', function (Request $request) {
-    auth()->logout();
-    $request->session()->invalidate();
-    $request->session()->regenerateToken();
-    return redirect()->route('login');
-})->name('logout');
+Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name('logout');
 
 // === Protegido ===
 Route::middleware('auth')->group(function () {
@@ -48,7 +39,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
 
     // Auditoría (solo rol director)
-    Route::get('audit', fn () => view('audit.index'))->name('audit.index')->middleware('role:director');
+    Route::view('audit', 'audit.index')->name('audit.index')->middleware('role:director');
 
     // Clientes
     Route::get('clients/ceased', [ClientController::class, 'ceased'])->name('clients.ceased')->middleware('permission:registro.cesados');
