@@ -29,19 +29,10 @@ class Activate extends Component
         }
     }
 
-    /**
-     * Saldo pendiente del cronograma (cap + int + exc − aplicados). Un
-     * crédito cancelado/refinanciado con saldo > 0 quedó así a propósito
-     * (interés condonado al cancelar, o saldo trasladado al refinanciar):
-     * re-activarlo reabriría deuda que ya no existe.
-     */
+    /** Regla compartida con /credits/change-status: ver Credit::saldoPendienteCronograma(). */
     private function saldoPendienteDe(int $creditId): float
     {
-        return round((float) \Illuminate\Support\Facades\DB::table('credit_installments')
-            ->where('credit_id', $creditId)
-            ->selectRaw('SUM(importe_cuota + importe_interes + importe_excedente
-                - importe_aplicado - interes_aplicado - excedente_aplicado) s')
-            ->value('s'), 2);
+        return Credit::find($creditId)?->saldoPendienteCronograma() ?? 0.0;
     }
 
     public function activate()

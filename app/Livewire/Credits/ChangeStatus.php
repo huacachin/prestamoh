@@ -64,6 +64,15 @@ class ChangeStatus extends Component
             return;
         }
 
+        // Con saldo pendiente no se cancela a mano: sería condonar deuda viva.
+        // El crédito se cancela pagando (o por el flujo de refinanciación).
+        $saldo = $credit->saldoPendienteCronograma();
+        if ($saldo > 0.01) {
+            $this->dispatch('errorAlert', ['message' => 'No se puede cancelar: el crédito tiene saldo pendiente de S/ '.number_format($saldo, 2).'.']);
+
+            return;
+        }
+
         // Legacy: UPDATE cab_cuentacorriente SET situacion='Cancelado', estado=0, fechacan=$fecha WHERE id=...
         $credit->update([
             'situacion'         => 'Cancelado',
@@ -102,11 +111,13 @@ class ChangeStatus extends Component
                 ->get();
         }
 
+        $saldoSel = 0.0;
         if ($this->selectedId) {
             $selectedCredit = Credit::with('client:id,nombre,apellido_pat,apellido_mat,documento')
                 ->find($this->selectedId);
+            $saldoSel = $selectedCredit?->saldoPendienteCronograma() ?? 0.0;
         }
 
-        return view('livewire.credits.change-status', compact('results', 'selectedCredit'));
+        return view('livewire.credits.change-status', compact('results', 'selectedCredit', 'saldoSel'));
     }
 }

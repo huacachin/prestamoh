@@ -88,8 +88,10 @@
 
                         {{-- Botón --}}
                         <div class="col-md-2">
-                            <button class="btn btn-primary w-100"
-                                    @if(!$selectedId) disabled @endif
+                            @php $bloqueado = !$selectedId || $saldoSel > 0.01; @endphp
+                            <button class="btn btn-primary w-100 {{ $bloqueado ? 'disabled' : '' }}"
+                                    @if($bloqueado) disabled @endif
+                                    @if($saldoSel > 0.01) title="El crédito tiene saldo pendiente: no se puede cancelar" @endif
                                     wire:confirm="¿Está seguro de cambiar el estado del crédito a Cancelado?"
                                     wire:click="changeStatus">
                                 <i class="ti ti-refresh f-s-14"></i> Cambiar Estado
@@ -118,7 +120,19 @@
                                 @endphp
                                 <span class="badge {{ $bc }}">{{ $selectedCredit->situacion }}</span>
                             </div>
+                            <div>
+                                <b>Saldo pendiente:</b>
+                                <span class="{{ $saldoSel > 0.01 ? 'text-danger fw-bold' : '' }}">S/ {{ number_format($saldoSel, 2) }}</span>
+                            </div>
                         </div>
+                        @if($saldoSel > 0.01)
+                            <div class="alert alert-danger mt-2 mb-0 py-2">
+                                <i class="ti ti-alert-triangle"></i>
+                                <b>No se puede cancelar:</b> el crédito tiene un saldo pendiente de
+                                S/ {{ number_format($saldoSel, 2) }} — cancelarlo a mano condonaría esa deuda.
+                                El crédito se cancela pagando el saldo (o por refinanciación).
+                            </div>
+                        @endif
                     @endif
                 </div>
             </div>

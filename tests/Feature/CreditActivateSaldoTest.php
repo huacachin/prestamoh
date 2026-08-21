@@ -72,4 +72,32 @@ class CreditActivateSaldoTest extends TestCase
 
         $this->assertSame('Activo', $credit->fresh()->situacion);
     }
+
+    public function test_cambiar_estado_con_saldo_pendiente_no_cancela(): void
+    {
+        $this->actingAs(User::factory()->create(['username' => 'tester']));
+        $credit = $this->credito(0);
+        $credit->update(['situacion' => 'Activo', 'estado' => 1, 'fecha_cancelacion' => null]);
+
+        Livewire::test(\App\Livewire\Credits\ChangeStatus::class)
+            ->set('selectedId', $credit->id)
+            ->call('changeStatus')
+            ->assertDispatched('errorAlert');
+
+        $this->assertSame('Activo', $credit->fresh()->situacion);
+    }
+
+    public function test_cambiar_estado_sin_saldo_cancela(): void
+    {
+        $this->actingAs(User::factory()->create(['username' => 'tester']));
+        $credit = $this->credito(250);
+        $credit->update(['situacion' => 'Activo', 'estado' => 1, 'fecha_cancelacion' => null]);
+
+        Livewire::test(\App\Livewire\Credits\ChangeStatus::class)
+            ->set('selectedId', $credit->id)
+            ->call('changeStatus')
+            ->assertDispatched('successAlert');
+
+        $this->assertSame('Cancelado', $credit->fresh()->situacion);
+    }
 }

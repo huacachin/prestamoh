@@ -54,6 +54,20 @@ class Credit extends Model
         return $this->hasMany(CreditInstallment::class);
     }
 
+    /**
+     * Saldo pendiente del cronograma (cap + int + exc − aplicados). Regla de
+     * negocio (20/08): un crédito con saldo no se puede cancelar a mano ni
+     * re-activar — cancelar condonaría deuda viva, y re-activar un
+     * cancelado/refinanciado con saldo reabriría deuda condonada/trasladada.
+     */
+    public function saldoPendienteCronograma(): float
+    {
+        return round((float) $this->installments()
+            ->selectRaw('SUM(importe_cuota + importe_interes + importe_excedente
+                - importe_aplicado - interes_aplicado - excedente_aplicado) as s')
+            ->value('s'), 2);
+    }
+
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
