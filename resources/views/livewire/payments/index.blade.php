@@ -74,7 +74,7 @@
                                     <td class="text-center">{{ $credits->firstItem() + $loop->index }}</td>
                                     <td class="text-center">
                                         @if($credit->client?->id)
-                                            <a href="{{ route('clients.show', $credit->client->id) }}" target="_blank" style="color:inherit; text-decoration:underline;">{{ $credit->client?->expediente }}</a>
+                                            <a href="{{ route('clients.show', $credit->client->id) }}" target="_blank" style="color:inherit; text-decoration:none;">{{ $credit->client?->expediente }}</a>
                                         @else
                                             {{ $credit->client?->expediente }}
                                         @endif
