@@ -2,30 +2,70 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Expense;
+use App\Models\Income;
+use App\Models\Payment;
+use App\Support\XlsResponse;
 use Illuminate\Http\Request;
 
 class CashController extends Controller
 {
-    public function opening() { return view('cash.opening'); }
-    public function incomes() { return view('cash.incomes'); }
-    public function createIncome() { return view('cash.create-income'); }
-    public function editIncome(int $id) { return view('cash.edit-income', compact('id')); }
-    public function incomeGallery(int $id) { return view('cash.income-gallery', compact('id')); }
-    public function expenses() { return view('cash.expenses'); }
-    public function createExpense() { return view('cash.create-expense'); }
-    public function editExpense(int $id) { return view('cash.edit-expense', compact('id')); }
-    public function expenseGallery(int $id) { return view('cash.expense-gallery', compact('id')); }
+    public function opening()
+    {
+        return view('cash.opening');
+    }
+
+    public function incomes()
+    {
+        return view('cash.incomes');
+    }
+
+    public function createIncome()
+    {
+        return view('cash.create-income');
+    }
+
+    public function editIncome(int $id)
+    {
+        return view('cash.edit-income', compact('id'));
+    }
+
+    public function incomeGallery(int $id)
+    {
+        return view('cash.income-gallery', compact('id'));
+    }
+
+    public function expenses()
+    {
+        return view('cash.expenses');
+    }
+
+    public function createExpense()
+    {
+        return view('cash.create-expense');
+    }
+
+    public function editExpense(int $id)
+    {
+        return view('cash.edit-expense', compact('id'));
+    }
+
+    public function expenseGallery(int $id)
+    {
+        return view('cash.expense-gallery', compact('id'));
+    }
+
     public function exportIncomes(Request $request)
     {
         $user = auth()->user();
 
-        $tipo    = (string) $request->query('tipo', '1');
-        $compra  = (string) $request->query('compra', '');
-        $fei     = (string) $request->query('fei', now()->format('Y-m-d'));
-        $fef     = (string) $request->query('fef', now()->format('Y-m-d'));
+        $tipo = (string) $request->query('tipo', '1');
+        $compra = (string) $request->query('compra', '');
+        $fei = (string) $request->query('fei', now()->format('Y-m-d'));
+        $fef = (string) $request->query('fef', now()->format('Y-m-d'));
         $crossHQ = $user?->can('acceso.cross-headquarter') ?? false;
-        $hqId    = $user?->headquarter_id ?? 1;
-        $editarHistorico = $user?->can('caja.editar-historico') ?? false;
+        $hqId = $user?->headquarter_id ?? 1;
+        $editarHistorico = $user?->canAny(['caja.editar-historico', 'caja.ver-todo']) ?? false;
 
         $term = trim($compra);
 
@@ -40,7 +80,7 @@ class CashController extends Controller
             }
         };
 
-        $incQ = \App\Models\Income::query()
+        $incQ = Income::query()
             ->where('caja', 1)
             ->where(function ($q) {
                 $q->where('modo', '<>', 'Compra')->orWhereNull('modo');
@@ -65,7 +105,7 @@ class CashController extends Controller
         }
         $incomes = $incQ->get();
 
-        $payQ = \App\Models\Payment::query()
+        $payQ = Payment::query()
             ->with(['credit.client:id,nombre,apellido_pat,apellido_mat', 'user:id,name,username']);
 
         if (! $crossHQ) {
@@ -141,12 +181,12 @@ class CashController extends Controller
             }
         }
 
-        return \App\Support\XlsResponse::make('exports.incomes', [
-            'rows'    => $rows,
-            'total'   => $total,
-            'tofijo'  => $tofijo,
-            'totros'  => $totros,
-            'tocapi'  => $tocapi,
+        return XlsResponse::make('exports.incomes', [
+            'rows' => $rows,
+            'total' => $total,
+            'tofijo' => $tofijo,
+            'totros' => $totros,
+            'tocapi' => $tocapi,
             'totinte' => $totinte,
             'totmora' => $totmora,
         ], 'Ingresos.xls');
@@ -156,17 +196,17 @@ class CashController extends Controller
     {
         $user = auth()->user();
 
-        $tipo    = (string) $request->query('tipo', '1');
-        $compra  = (string) $request->query('compra', '');
-        $fei     = (string) $request->query('fei', now()->format('Y-m-d'));
-        $fef     = (string) $request->query('fef', now()->format('Y-m-d'));
+        $tipo = (string) $request->query('tipo', '1');
+        $compra = (string) $request->query('compra', '');
+        $fei = (string) $request->query('fei', now()->format('Y-m-d'));
+        $fef = (string) $request->query('fef', now()->format('Y-m-d'));
         $crossHQ = $user?->can('acceso.cross-headquarter') ?? false;
-        $hqId    = $user?->headquarter_id ?? 1;
-        $editarHistorico = $user?->can('caja.editar-historico') ?? false;
+        $hqId = $user?->headquarter_id ?? 1;
+        $editarHistorico = $user?->canAny(['caja.editar-historico', 'caja.ver-todo']) ?? false;
 
         $term = trim($compra);
 
-        $query = \App\Models\Expense::query()
+        $query = Expense::query()
             ->where('caja', 1)
             ->where(function ($q) {
                 $q->where('modo', '<>', 'Compra')->orWhereNull('modo');
@@ -218,14 +258,14 @@ class CashController extends Controller
             }
         }
 
-        return \App\Support\XlsResponse::make('exports.expenses', [
-            'rows'      => $rows,
-            'total'     => $total,
-            'tofijo'    => $tofijo,
-            'totros'    => $totros,
+        return XlsResponse::make('exports.expenses', [
+            'rows' => $rows,
+            'total' => $total,
+            'tofijo' => $tofijo,
+            'totros' => $totros,
             'sumdiario' => $sumdiario,
-            'summensu'  => $summensu,
-            'sumdm'     => $sumdm,
+            'summensu' => $summensu,
+            'sumdm' => $sumdm,
         ], 'Egresos.xls');
     }
 }

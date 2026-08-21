@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\Cash\CreateExpense;
+use App\Livewire\Cash\CreateIncome;
 use App\Models\Client;
 use App\Models\Credit;
 use App\Models\Headquarter;
@@ -11,6 +13,7 @@ use Database\Seeders\RolePermissionSeeder;
 use Database\Seeders\RoleSetupSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -121,6 +124,41 @@ class RolesAfinadosTest extends TestCase
         $hasta = now()->format('Y-m-d');
         $this->get("/cash/incomes?desde={$desde}&hasta={$hasta}")
             ->assertOk()->assertSee('Ingreso De Otro Usuario Historico');
+    }
+
+    /** El administrador edita SOLO lo del día (guard de servidor); el director cualquier fecha. */
+    public function test_administrador_edita_solo_lo_del_dia_en_caja(): void
+    {
+        $sede = Headquarter::create(['name' => 'Principal']);
+        $admin = User::factory()->create(['username' => 'adm-caja2', 'headquarter_id' => $sede->id]);
+        $admin->assignRole('administrador');
+
+        $base = [
+            'reason' => 'Fijos', 'detail' => 'x', 'total' => 50,
+            'user_id' => $admin->id, 'headquarter_id' => $sede->id, 'caja' => 1,
+            'created_at' => now(), 'updated_at' => now(),
+        ];
+        $ingHoy = DB::table('incomes')->insertGetId($base + ['date' => now()->format('Y-m-d'), 'documento' => 'GUIA']);
+        $ingAyer = DB::table('incomes')->insertGetId($base + ['date' => now()->subDays(5)->format('Y-m-d'), 'documento' => 'GUIA']);
+        $egrHoy = DB::table('expenses')->insertGetId($base + ['date' => now()->format('Y-m-d')]);
+        $egrAyer = DB::table('expenses')->insertGetId($base + ['date' => now()->subDays(5)->format('Y-m-d')]);
+
+        $this->actingAs($admin);
+        $this->get("/cash/incomes/{$ingHoy}/edit")->assertOk();
+        $this->get("/cash/incomes/{$ingAyer}/edit")->assertForbidden();
+        $this->get("/cash/expenses/{$egrHoy}/edit")->assertOk();
+        $this->get("/cash/expenses/{$egrAyer}/edit")->assertForbidden();
+
+        // Crear con el formulario completo (Fijos y Otros)
+        Livewire::test(CreateIncome::class)->assertSet('canChooseOtros', true);
+        Livewire::test(CreateExpense::class)->assertSet('canChooseOtros', true);
+
+        // Director: lo histórico sigue abierto
+        $director = User::factory()->create(['username' => 'dir-caja', 'headquarter_id' => $sede->id]);
+        $director->assignRole('director');
+        $this->actingAs($director);
+        $this->get("/cash/incomes/{$ingAyer}/edit")->assertOk();
+        $this->get("/cash/expenses/{$egrAyer}/edit")->assertOk();
     }
 
     public function test_director_y_administrador_siguen_creando(): void

@@ -5,6 +5,7 @@ namespace App\Livewire\Cash;
 use App\Livewire\Cash\Concerns\SavesExpenseAttachments;
 use App\Models\Concept;
 use App\Models\Expense;
+use App\Support\Audit;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -41,8 +42,8 @@ class CreateExpense extends Component
 
         $user = auth()->user();
         $this->canEditDate = $user->can('caja.bypass-fecha-anterior');
-        // "Otros" implica registrar fuera del flujo Diario; lo limitamos a quienes pueden tocar histórico.
-        $this->canChooseOtros = $user->can('caja.editar-historico');
+        // "Otros" implica registrar fuera del flujo Diario; lo limitamos a quienes gestionan la caja completa.
+        $this->canChooseOtros = $user->canAny(['caja.editar-historico', 'caja.ver-todo']);
 
         if (! $this->canChooseOtros) {
             $this->modo = 'Fijos';
@@ -194,7 +195,7 @@ class CreateExpense extends Component
             // Adjuntos en el MISMO paso (si se cargaron imágenes).
             $count = $this->storeExpenseAttachments($expense, $this->files);
 
-            \App\Support\Audit::log('Registró egreso de '.(float) $this->total, $expense);
+            Audit::log('Registró egreso de '.(float) $this->total, $expense);
 
             $msg = $count > 0
                 ? "Egreso registrado con {$count} ".($count === 1 ? 'imagen' : 'imágenes').'.'

@@ -30,10 +30,23 @@ class EditIncome extends Component
 
     public ?string $current_image = null;
 
+    public bool $canEditDate = false;
+
     public function mount(int $id): void
     {
         $this->income = Income::findOrFail($id);
         $this->incomeId = $id;
+
+        // Sin caja.editar-historico solo se puede editar lo registrado HOY
+        // (el listado ya oculta el botón; esto cierra el acceso por URL).
+        $user = auth()->user();
+        abort_unless(
+            ($user?->can('caja.editar-historico') ?? false)
+            || $this->income->date->format('Y-m-d') === now()->format('Y-m-d'),
+            403,
+            'Solo se pueden editar movimientos del día.'
+        );
+        $this->canEditDate = $user?->can('caja.bypass-fecha-anterior') ?? false;
 
         $this->date = $this->income->date->format('Y-m-d');
         $this->reason = (string) $this->income->reason;
@@ -56,7 +69,8 @@ class EditIncome extends Component
             $this->validate();
 
             $data = [
-                'date' => $this->date,
+                // Sin bypass-fecha-anterior la fecha original no se toca
+                'date' => $this->canEditDate ? $this->date : $this->income->date->format('Y-m-d'),
                 'reason' => $this->reason,
                 'detail' => $this->detail,
                 'total' => $this->total,

@@ -5,6 +5,7 @@ namespace App\Livewire\Cash;
 use App\Livewire\Cash\Concerns\SavesIncomeAttachments;
 use App\Models\Concept;
 use App\Models\Income;
+use App\Support\Audit;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -49,7 +50,7 @@ class CreateIncome extends Component
 
         $user = auth()->user();
         $this->canEditDate = $user->can('caja.bypass-fecha-anterior');
-        $this->canChooseOtros = $user->can('caja.editar-historico');
+        $this->canChooseOtros = $user->canAny(['caja.editar-historico', 'caja.ver-todo']);
 
         if (! $this->canChooseOtros) {
             $this->modo = 'Fijos';
@@ -247,7 +248,7 @@ class CreateIncome extends Component
             // Adjuntos en el MISMO paso (si se cargaron imágenes).
             $count = $this->storeIncomeAttachments($income, $this->files);
 
-            \App\Support\Audit::log('Registró ingreso de '.(float) $this->total, $income);
+            Audit::log('Registró ingreso de '.(float) $this->total, $income);
 
             $msg = $count > 0
                 ? "Ingreso registrado con {$count} ".($count === 1 ? 'imagen' : 'imágenes').'.'
