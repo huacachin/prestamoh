@@ -19,7 +19,7 @@
                 <div class="perm-row">
                     <div class="perm-col-title">Nombre</div>
                     <div class="perm-col-controls">
-                        <input type="text" class="form-control form-control-sm" placeholder="Ingresar nombre" wire:model.live="name" name="name" autocomplete="name">
+                        <input type="text" class="form-control form-control-sm" placeholder="Ingresar nombre" wire:model.live.debounce.500ms="name" name="name" autocomplete="name">
                         @error('name') <span class="title-modules small">{{ $message }}</span> @enderror
                     </div>
                 </div>

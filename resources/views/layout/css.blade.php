@@ -1,5 +1,7 @@
+{{-- Purga 21/08: weather/flags/prism/animate/fontawesome eliminados (0 usos
+     reales; los iconos del sistema son tabler ti-*) y Poppins reducido a los
+     pesos usados. --}}
 <!-- Animation css -->
-<link rel="stylesheet" href="{{ asset('assets/vendor/animation/animate.min.css') }}">
 
 <!-- jQuery UI datepicker css -->
 <link rel="stylesheet" href="{{ asset('assets/vendor/jquery-ui/jquery-ui.css') }}">
@@ -22,24 +24,19 @@
 <!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700;800;900&display=swap"
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
       rel="stylesheet">
 
 <!-- Weather icon css-->
-<link rel="stylesheet" type="text/css" href="{{ asset('assets/vendor/weather/weather-icons.css') }}">
-<link rel="stylesheet" type="text/css" href="{{ asset('assets/vendor/weather/weather-icons-wind.css') }}">
 
 <!--font-awesome-css-->
-<link rel="stylesheet" href="{{asset('assets/vendor/fontawesome/css/all.css')}}">
 
 <!--Flag Icon css-->
-<link rel="stylesheet" type="text/css" href="{{ asset('assets/vendor/flag-icons-master/flag-icon.css') }}">
 
 <!-- Tabler icons-->
 <link rel="stylesheet" type="text/css" href="{{ asset('assets/vendor/tabler-icons/tabler-icons.css') }}">
 
 <!-- Prism css-->
-<link rel="stylesheet" type="text/css" href="{{ asset('assets/vendor/prism/prism.min.css') }}">
 
 <!-- Bootstrap css-->
 <link rel="stylesheet" type="text/css" href="{{ asset('assets/vendor/bootstrap/bootstrap.min.css') }}">

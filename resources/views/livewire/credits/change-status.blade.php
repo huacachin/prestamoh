@@ -30,7 +30,7 @@
                         {{-- Fecha de Pago --}}
                         <div class="col-md-2">
                             <label class="form-label"><b>Fecha de Pago</b></label>
-                            <input type="text" name="fecha" autocomplete="off" class="form-control dates" wire:model.live="fecha">
+                            <input type="text" name="fecha" autocomplete="off" class="form-control dates" wire:model.live.debounce.500ms="fecha">
                         </div>
 
                         {{-- Código - búsqueda con dropdown --}}
