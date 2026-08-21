@@ -57,7 +57,10 @@ class RolePermissionSeeder extends Seeder
                 'dashboard',
                 'clientes', 'creditos', 'pagos',
                 'caja.apertura', 'caja.ingresos', 'caja.egresos',
-                'caja.bypass-fecha-anterior', 'caja.editar-historico', 'caja.eliminar',
+                // Sin bypass-fecha-anterior ni editar-historico (21/08): el
+                // administrador opera SOLO el día en curso; lo histórico es
+                // exclusivo del director.
+                'caja.eliminar',
                 'clientes.eliminar', 'clientes.editar-identidad',
                 'creditos.eliminar', 'pagos.eliminar', 'pagos.mora-manual',
                 'reportes.credito-diario', 'reportes.credito-mensual', 'reportes.credito-semanal',
@@ -69,7 +72,7 @@ class RolePermissionSeeder extends Seeder
                 'configuracion.conceptos', 'configuracion.tipo-cambio',
                 'usuarios.gestionar-permisos',
                 'registro.activar', 'registro.estado', 'registro.cesados',
-                'registro.eliminar-masivo', 'registro.eliminar-masivo.revertir',
+                'registro.eliminar-masivo',
                 'transacciones.autorizar',
                 'acceso.cross-headquarter',
             ],

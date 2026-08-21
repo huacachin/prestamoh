@@ -59,9 +59,11 @@
                             <button type="submit" class="btn btn-sm btn-primary">
                                 <i class="ti ti-search f-s-12"></i> Buscar
                             </button>
+                            @unless(auth()->user()->can('clientes.scope-propio'))
                             <a href="{{ route('credits.create') }}" class="btn btn-sm btn-danger">
                                 <i class="ti ti-plus f-s-12"></i> Nuevo
                             </a>
+                        @endunless
                             <a href="{{ route('exports.credits') }}?nombre={{ $nombre }}&codigo={{ $codigo }}&ejecutivo={{ $ejecutivo }}&seletipl={{ $seletipl }}"
                                class="btn btn-sm btn-success" target="_blank">
                                 <i class="ti ti-file-spreadsheet f-s-12"></i> Excel

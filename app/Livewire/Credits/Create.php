@@ -63,6 +63,9 @@ class Create extends Component
 
     public function mount(?int $clientId = null)
     {
+        // Analista (scope-propio): solo ve/paga SUS créditos — no crea ni edita
+        abort_if(auth()->user()?->can('clientes.scope-propio') ?? false, 403,
+            'Tu rol no permite esta acción.');
         $hoy = Carbon::today();
         $this->fechar = $hoy->format('Y-m-d');
         $this->fechad = $hoy->format('Y-m-d');
@@ -205,6 +208,8 @@ class Create extends Component
 
     public function save()
     {
+        abort_if(auth()->user()?->can('clientes.scope-propio') ?? false, 403,
+            'Tu rol no permite esta acción.');
         $this->validate();
 
         // Validar que el código de préstamo no esté en uso (race condition / edición manual)

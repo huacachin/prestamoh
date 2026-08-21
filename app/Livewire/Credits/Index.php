@@ -93,6 +93,11 @@ class Index extends Component
             ->where('estado', 1)
             ->where('situacion', '<>', 'Cancelado');
 
+        // Analista (scope-propio): solo SUS créditos (clientes a su cargo)
+        if (auth()->user()?->can('clientes.scope-propio')) {
+            $query->whereHas('client', fn ($c) => $c->where('asesor_id', auth()->id()));
+        }
+
         if (trim($this->nombre) !== '') {
             $term = trim($this->nombre);
             $query->whereHas('client', function ($c) use ($term) {

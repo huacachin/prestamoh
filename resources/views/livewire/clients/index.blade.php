@@ -73,9 +73,11 @@
                                 <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
                             </a>
                                 <x-scroll-bottom-btn />
+                            @unless(auth()->user()->can('clientes.scope-propio'))
                             <a href="{{ route('clients.create') }}" class="btn btn-sm btn-danger">
                                 <i class="ti ti-user-plus f-s-12"></i> Nuevo Cliente
                             </a>
+                        @endunless
 
                             {{-- Chips de morosidad: cada uno abre una ventana nueva ya filtrada,
                                  conservando los filtros de búsqueda que estén puestos. --}}

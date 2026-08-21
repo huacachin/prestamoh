@@ -23,6 +23,12 @@ class Show extends Component
             'user:id,name',
             'headquarter:id,name',
         ])->findOrFail($id);
+
+        // Analista (scope-propio): solo SUS créditos
+        if ((auth()->user()?->can('clientes.scope-propio') ?? false)
+            && $this->credit?->client?->asesor_id !== auth()->id()) {
+            abort(403, 'Solo puedes ver tus propios créditos.');
+        }
     }
 
     public function printPayment(int $massDeletionId, TicketPrinter $printer)

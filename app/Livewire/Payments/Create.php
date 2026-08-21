@@ -8,15 +8,15 @@ use App\Models\CreditInstallment;
 use App\Models\Expense;
 use App\Models\MassDeletion;
 use App\Models\Payment;
-use App\Models\ShortLink;
 use App\Services\Payments\MotorPagos;
 use App\Services\Printing\TicketPrinter;
 use App\Support\Audit;
 use App\Support\MoraExonerada;
+use App\Support\MoraPagada;
+use App\Support\RecibosCuota;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\URL;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -158,6 +158,12 @@ class Create extends Component
                 ->find($creditId);
 
             if ($this->credit) {
+                // Analista (scope-propio): solo SUS créditos
+                if ((auth()->user()?->can('clientes.scope-propio') ?? false)
+                    && $this->credit?->client?->asesor_id !== auth()->id()) {
+                    abort(403, 'Solo puedes ver tus propios créditos.');
+                }
+
                 $this->autoCorrectCentavos();
                 $this->ajusteInteresUltimaCuotaDiario(); // C13
                 $this->credit->refresh();
@@ -1446,7 +1452,7 @@ class Create extends Component
      */
     private function moraPagadaCuotas(): array
     {
-        return $this->credit ? \App\Support\MoraPagada::porCuota($this->credit) : [];
+        return $this->credit ? MoraPagada::porCuota($this->credit) : [];
     }
 
     /**
@@ -1457,6 +1463,6 @@ class Create extends Component
      */
     private function recibosPorCuota(): array
     {
-        return $this->credit ? \App\Support\RecibosCuota::porCuota($this->credit) : [];
+        return $this->credit ? RecibosCuota::porCuota($this->credit) : [];
     }
 }

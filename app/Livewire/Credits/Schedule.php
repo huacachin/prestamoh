@@ -3,6 +3,8 @@
 namespace App\Livewire\Credits;
 
 use App\Models\Credit;
+use App\Support\MoraPagada;
+use App\Support\RecibosCuota;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
@@ -14,6 +16,12 @@ class Schedule extends Component
     public function mount(int $id)
     {
         $this->credit = Credit::with(['client.asesor:id,name'])->findOrFail($id);
+        // Analista (scope-propio): solo SUS créditos
+        if ((auth()->user()?->can('clientes.scope-propio') ?? false)
+            && $this->credit?->client?->asesor_id !== auth()->id()) {
+            abort(403, 'Solo puedes ver tus propios créditos.');
+        }
+
     }
 
     public function render()
@@ -278,8 +286,8 @@ class Schedule extends Component
             'capPendienteTotal' => $capPendienteTotal,
             // Homologado con /payments/create: recibo por cuota (modal) y
             // desglose de la mora pagada para los tooltips de la columna Mora
-            'recibos' => \App\Support\RecibosCuota::porCuota($this->credit),
-            'moraPagadaCuotas' => \App\Support\MoraPagada::porCuota($this->credit),
+            'recibos' => RecibosCuota::porCuota($this->credit),
+            'moraPagadaCuotas' => MoraPagada::porCuota($this->credit),
         ]);
     }
 }

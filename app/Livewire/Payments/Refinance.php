@@ -47,6 +47,9 @@ class Refinance extends Component
 
     public function mount(int $creditId)
     {
+        // Analista (scope-propio): solo ve/paga SUS créditos — no crea ni edita
+        abort_if(auth()->user()?->can('clientes.scope-propio') ?? false, 403,
+            'Tu rol no permite esta acción.');
         $this->credit = Credit::with(['client.asesor:id,name', 'installments' => fn ($q) => $q->orderBy('num_cuota')])
             ->findOrFail($creditId);
 

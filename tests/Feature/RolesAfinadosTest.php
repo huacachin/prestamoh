@@ -1,0 +1,115 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Client;
+use App\Models\Credit;
+use App\Models\User;
+use Database\Seeders\PermissionCatalogSeeder;
+use Database\Seeders\RolePermissionSeeder;
+use Database\Seeders\RoleSetupSeeder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
+use Tests\TestCase;
+
+/**
+ * Afinado de roles (21/08): director todo y de cualquier día; administrador
+ * lo mismo pero SOLO del día; analista-creditos solo VE sus créditos y paga
+ * (no crea clientes ni créditos, no refinancia, no ve créditos ajenos).
+ */
+class RolesAfinadosTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(PermissionCatalogSeeder::class);
+        $this->seed(RoleSetupSeeder::class);
+        $this->seed(RolePermissionSeeder::class);
+    }
+
+    public function test_administrador_pierde_los_poderes_historicos_y_director_los_conserva(): void
+    {
+        $admin = Role::findByName('administrador');
+        $director = Role::findByName('director');
+
+        foreach (['caja.bypass-fecha-anterior', 'caja.editar-historico', 'registro.eliminar-masivo.revertir'] as $p) {
+            $this->assertFalse($admin->hasPermissionTo($p), "administrador NO debe tener $p");
+            $this->assertTrue($director->hasPermissionTo($p), "director SÍ debe tener $p");
+        }
+        // Lo del día lo conserva
+        foreach (['clientes.eliminar', 'creditos.eliminar', 'caja.eliminar', 'registro.eliminar-masivo'] as $p) {
+            $this->assertTrue($admin->hasPermissionTo($p), "administrador debe conservar $p");
+        }
+    }
+
+    private function analistaConCreditos(): array
+    {
+        $analista = User::factory()->create(['username' => 'analista']);
+        $analista->assignRole('analista-creditos');
+
+        $otroAsesor = User::factory()->create(['username' => 'otro-asesor']);
+        $mio = Client::create(['nombre' => 'Cliente Propio', 'asesor_id' => $analista->id]);
+        $ajeno = Client::create(['nombre' => 'Cliente Ajeno', 'asesor_id' => $otroAsesor->id]);
+
+        $miCredito = Credit::create([
+            'client_id' => $mio->id, 'fecha_prestamo' => now()->format('Y-m-d'), 'importe' => 1000,
+            'cuotas' => 4, 'tipo_planilla' => 1, 'interes' => 10, 'interes_total' => 100,
+            'situacion' => 'Activo', 'estado' => 1,
+        ]);
+        $ajenoCredito = Credit::create([
+            'client_id' => $ajeno->id, 'fecha_prestamo' => now()->format('Y-m-d'), 'importe' => 2000,
+            'cuotas' => 4, 'tipo_planilla' => 1, 'interes' => 10, 'interes_total' => 200,
+            'situacion' => 'Activo', 'estado' => 1,
+        ]);
+
+        return [$analista, $miCredito, $ajenoCredito];
+    }
+
+    public function test_analista_no_crea_clientes_ni_creditos_ni_refinancia(): void
+    {
+        [$analista, $miCredito] = $this->analistaConCreditos();
+        $this->actingAs($analista);
+
+        $this->get('/clients/create')->assertForbidden();
+        $this->get('/credits/create')->assertForbidden();
+        $this->get("/credits/{$miCredito->id}/edit")->assertForbidden();
+        $this->get("/payments/refinance/{$miCredito->id}")->assertForbidden();
+    }
+
+    public function test_analista_solo_ve_y_paga_sus_creditos(): void
+    {
+        [$analista, $miCredito, $ajenoCredito] = $this->analistaConCreditos();
+        $this->actingAs($analista);
+
+        // Listado: solo el propio
+        $lista = $this->get('/credits');
+        $lista->assertOk();
+        $lista->assertSee('Cliente Propio');
+        $lista->assertDontSee('Cliente Ajeno');
+
+        // Ficha, cronograma y cobro: propio sí, ajeno 403
+        $this->get("/credits/{$miCredito->id}")->assertOk();
+        $this->get("/credits/{$ajenoCredito->id}")->assertForbidden();
+        $this->get("/credits/{$miCredito->id}/schedule")->assertOk();
+        $this->get("/credits/{$ajenoCredito->id}/schedule")->assertForbidden();
+        $this->get("/payments/create/{$miCredito->id}")->assertOk();
+        $this->get("/payments/create/{$ajenoCredito->id}")->assertForbidden();
+    }
+
+    public function test_director_y_administrador_siguen_creando(): void
+    {
+        $director = User::factory()->create(['username' => 'dir']);
+        $director->assignRole('director');
+        $this->actingAs($director);
+        $this->get('/clients/create')->assertOk();
+        $this->get('/credits/create')->assertOk();
+
+        $admin = User::factory()->create(['username' => 'adm']);
+        $admin->assignRole('administrador');
+        $this->actingAs($admin);
+        $this->get('/clients/create')->assertOk();
+        $this->get('/credits/create')->assertOk();
+    }
+}
