@@ -104,22 +104,7 @@ class MoraPagada
     /** Días de mora entre dos fechas con el mismo reloj del cálculo de mora. */
     private static function diasMoraEntre(Carbon $desde, Carbon $hasta, bool $diasCorridos): int
     {
-        $diff = (int) floor($desde->diffInDays($hasta, false));
-        if ($diff <= 0) {
-            return 0;
-        }
-        if ($diasCorridos) {
-            return $diff;
-        }
-        $d = 0;
-        $cur = $desde->copy();
-        for ($i = 1; $i <= $diff; $i++) {
-            $cur->addDay();
-            if (! in_array($cur->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])) {
-                $d++;
-            }
-        }
-
-        return $d;
+        // $diasCorridos == (tipo_planilla === 3): DiasAtraso aplica la misma regla
+        return DiasAtraso::entre($diasCorridos ? 3 : 1, $desde, $hasta);
     }
 }

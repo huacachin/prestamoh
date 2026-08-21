@@ -3,6 +3,7 @@
 namespace App\Livewire\Credits;
 
 use App\Models\Credit;
+use App\Support\DiasAtraso;
 use App\Support\MoraPagada;
 use App\Support\RecibosCuota;
 use Carbon\Carbon;
@@ -158,20 +159,8 @@ class Schedule extends Component
             $moraExonDias = 0;
             $moraRate = $this->credit->moraDiaria((float) $ins->importe_cuota + (float) $ins->importe_interes + (float) $ins->importe_excedente);
             if ($fechaPago !== '' && $ins->fecha_vencimiento && $moraRate > 0) {
-                $vencC = Carbon::parse($ins->fecha_vencimiento);
-                $diff = (int) floor($vencC->diffInDays(Carbon::parse($fechaPago), false));
-                if ($diff > 0) {
-                    if ($tipoPlanilla === 3) {
-                        $moraExonDias = $diff;
-                    } else {
-                        $cur = $vencC->copy();
-                        for ($i = 1; $i <= $diff; $i++) {
-                            $cur->addDay();
-                            if (! in_array($cur->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])) {
-                                $moraExonDias++;
-                            }
-                        }
-                    }
+                $moraExonDias = DiasAtraso::entre($tipoPlanilla, $ins->fecha_vencimiento, $fechaPago);
+                if ($moraExonDias > 0) {
                     $moraExon = round(max(0, $moraExonDias * $moraRate - $mora), 2);
                     if ($moraExon <= 0) {
                         $moraExonDias = 0;

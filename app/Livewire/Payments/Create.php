@@ -11,6 +11,7 @@ use App\Models\Payment;
 use App\Services\Payments\MotorPagos;
 use App\Services\Printing\TicketPrinter;
 use App\Support\Audit;
+use App\Support\DiasAtraso;
 use App\Support\MoraExonerada;
 use App\Support\MoraPagada;
 use App\Support\RecibosCuota;
@@ -369,19 +370,9 @@ class Create extends Component
         if ($minFechaStr) {
             $diff = (int) floor(Carbon::parse($minFechaStr)->diffInDays($al, false));
             if ($diff > 0) {
-                if ((int) $this->credit->tipo_planilla === 3) {
-                    $diasddd = $diff;
-                } else {
-                    $cur = Carbon::parse($minFechaStr);
-                    for ($i = 1; $i <= $diff; $i++) {
-                        $cur->addDay();
-                        if (! in_array($cur->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])) {
-                            $diasddd++;
-                        }
-                    }
-                }
+                $diasddd = DiasAtraso::entre((int) $this->credit->tipo_planilla, $minFechaStr, $al);
             } elseif ($diff < 0) {
-                $diasddd = $diff;
+                $diasddd = $diff; // aún no vence: negativo solo para display
             }
         }
         $diasFinal = max(0, (int) $diasddd);
@@ -1091,6 +1082,10 @@ class Create extends Component
             'interes' => $dist['interes'],
             'excedente' => $dist['excedente'],
             'mora' => round($moraTicket, 2),
+            // Fórmula de la mora para el modal: N días × tarifa = total. Solo
+            // se pinta cuando la mora es la calculada (sin override ni extras).
+            'mora_dias' => (int) ($calcs['dias_final'] ?? 0),
+            'mora_rate' => round((float) ($calcs['mora_rate'] ?? 0), 2),
             'total' => $total,
             'saldo' => max(0.0, $saldo),
             'cancela' => $this->cancel,

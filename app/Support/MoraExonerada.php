@@ -110,23 +110,11 @@ class MoraExonerada
                 continue;
             }
 
-            $venc = Carbon::parse($ins->fecha_vencimiento);
-            $diff = (int) floor($venc->diffInDays(Carbon::parse($fechaPago), false));
-            if ($diff <= 0) {
+            // dias=0 (no venció, o atraso solo de fin de semana) nunca produce
+            // monto > 0, así que el continue es solo un atajo.
+            $dias = DiasAtraso::entre($tipoPlanilla, $ins->fecha_vencimiento, $fechaPago);
+            if ($dias <= 0) {
                 continue;
-            }
-
-            $dias = 0;
-            if ($tipoPlanilla === 3) {
-                $dias = $diff;
-            } else {
-                $cur = $venc->copy();
-                for ($i = 1; $i <= $diff; $i++) {
-                    $cur->addDay();
-                    if (! in_array($cur->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])) {
-                        $dias++;
-                    }
-                }
             }
 
             $rate = $credit->moraDiaria((float) $ins->importe_cuota + (float) $ins->importe_interes);
