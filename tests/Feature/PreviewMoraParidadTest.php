@@ -80,6 +80,10 @@ class PreviewMoraParidadTest extends TestCase
         // La fórmula se pinta en el ticket del modal y bajo el campo Total Mora
         $comp->assertSee('3 días × '.number_format($rate, 2));
         $comp->assertSee('= 3 días × '.number_format($rate, 2));
+
+        // La franja en vivo anuncia el mismo total que el modal confirmará
+        $comp->assertSee('Total a cobrar: S/ '.number_format(100 + $totalMora, 2));
+        $this->assertEqualsWithDelta(100 + $totalMora, (float) $preview['total'], 0.005);
     }
 
     public function test_lo_previsualizado_es_exactamente_lo_cobrado(): void

@@ -1034,15 +1034,14 @@ class Create extends Component
      * capital y "Mora" es solo la que queda asociada a una cuota, aunque el
      * TOTAL sí incluye toda la mora cobrada.
      */
-    private function construirPreview(): array
+    /**
+     * Totales del cobro con las reglas del ticket (reserva, cancelación, mora
+     * interés). Fuente ÚNICA: la consume construirPreview() (modal) y la franja
+     * "Total a cobrar" del formulario — lo que se ve al digitar es exactamente
+     * lo que el modal confirma y pagar() cobra.
+     */
+    private function resumenCobro(array $calcs): array
     {
-        $calcs = $this->buildCalcs();
-        $cronograma = $this->cronogramaSimulado();
-        $unpaid = $cronograma->where('pagado', 0)->sortBy('num_cuota')->values();
-
-        $isMensualUnaCuota = ((int) $this->credit->tipo_planilla === 3 && (int) $this->credit->cuotas === 1);
-        $dist = $this->simularDistribucion((float) $this->monto, $unpaid, $isMensualUnaCuota);
-
         $totMora = (float) $calcs['total_mora'];
         $quitarMoras = $this->cancel && $this->cancelSinMora;
         $moraAcum = ($this->cancel && ! $quitarMoras)
@@ -1055,11 +1054,38 @@ class Create extends Component
             $moraTicket += (float) $this->impointe2;
         }
 
-        $total = round(
-            (float) $this->monto + $moraQueSeCobra + $moraAcum
-            + (float) $this->impointe2 + (float) $this->impomora,
-            2
-        );
+        return [
+            'monto' => round((float) $this->monto, 2),
+            'total_mora' => round($totMora, 2),
+            'mora_cobrar' => round($moraQueSeCobra, 2),
+            'mora_ticket' => round($moraTicket, 2),
+            'mora_acum' => $moraAcum,
+            'impointe2' => round((float) $this->impointe2, 2),
+            'impomora' => round((float) $this->impomora, 2),
+            'reserva' => $this->ckmora && ! $this->cancel && $totMora > 0.001,
+            'total' => round(
+                (float) $this->monto + $moraQueSeCobra + $moraAcum
+                + (float) $this->impointe2 + (float) $this->impomora,
+                2
+            ),
+        ];
+    }
+
+    private function construirPreview(): array
+    {
+        $calcs = $this->buildCalcs();
+        $cronograma = $this->cronogramaSimulado();
+        $unpaid = $cronograma->where('pagado', 0)->sortBy('num_cuota')->values();
+
+        $isMensualUnaCuota = ((int) $this->credit->tipo_planilla === 3 && (int) $this->credit->cuotas === 1);
+        $dist = $this->simularDistribucion((float) $this->monto, $unpaid, $isMensualUnaCuota);
+
+        $r = $this->resumenCobro($calcs);
+        $totMora = $r['total_mora'];
+        $moraAcum = $r['mora_acum'];
+        $moraQueSeCobra = $r['mora_cobrar'];
+        $moraTicket = $r['mora_ticket'];
+        $total = $r['total'];
 
         $aplicado = $dist['capital'] + $dist['interes'] + $dist['excedente'];
         $saldo = $this->cancel ? 0.0 : round($this->saldoDe($cronograma) - $aplicado, 2);
@@ -1432,8 +1458,11 @@ class Create extends Component
             }
         }
 
+        $calcsView = $this->buildCalcs();
+
         return view('livewire.payments.create', [
-            'calcs' => $this->buildCalcs(),
+            'calcs' => $calcsView,
+            'resumen' => $this->credit ? $this->resumenCobro($calcsView) : null,
             'sim' => $this->deudaCalcs($alSim),    // a la fecha simulada: tarjetas
             'cancelarHoy' => $this->deudaCalcs()['cancelar_cap_int'], // gate del switch Cancelado
             'fecsimMin' => $fecsimMin,

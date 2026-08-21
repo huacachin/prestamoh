@@ -154,8 +154,36 @@
                     </div>
 
                     @if($esPagable)
-                    {{-- ── Atraso ── --}}
-                    <h6 class="mb-1 mt-3" style="color:red;">Atraso</h6>
+                    {{-- ── Atraso: tarjeta de estado (semáforo) con los campos de siempre ── --}}
+                    @php
+                        $diasEstado = (int) $c['dias_atraso'];
+                        $hayAtraso = $c['fecha_venc'] && $diasEstado > 0;
+                        $alDia = $c['fecha_venc'] && $diasEstado <= 0;
+                    @endphp
+                    <div class="mt-3 p-2 rounded-2"
+                         style="border:1px solid {{ $hayAtraso ? '#f1aeb5' : '#a3cfbb' }}; background:{{ $hayAtraso ? '#fdf3f4' : '#f2faf5' }};">
+                        <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+                            <h6 class="mb-0" style="color:red;">Atraso</h6>
+                            @if($hayAtraso)
+                                <span class="badge bg-danger">
+                                    <i class="ti ti-alert-triangle"></i>
+                                    {{ $diasEstado }} {{ $diasEstado === 1 ? 'día' : 'días' }} de atraso
+                                </span>
+                                @if(($c['total_mora_calc'] ?? 0) > 0.001)
+                                    <span class="small fw-semibold text-danger">
+                                        Mora: S/ {{ number_format($c['total_mora_calc'], 2) }}
+                                        ({{ $c['dias_final'] }} {{ $c['dias_final'] === 1 ? 'día' : 'días' }} × {{ number_format($c['mora_rate'], 2) }})
+                                    </span>
+                                @endif
+                            @elseif($alDia)
+                                <span class="badge bg-success">
+                                    <i class="ti ti-circle-check"></i>
+                                    {{ $diasEstado === 0 ? 'Vence hoy' : 'Al día · sin mora' }}
+                                </span>
+                            @else
+                                <span class="badge bg-secondary">Sin cuotas pendientes</span>
+                            @endif
+                        </div>
                     <div class="row g-2">
                         {{-- Mora acumulada (exonerada) histórica: informativa, igual al
                              total de la columna Mora Exon. del cronograma. NO entra en
@@ -255,6 +283,7 @@
                             </div>
                         @endif
                     </div>
+                    </div>
 
                     {{-- ── Registrar Pago ──
                          (El legacy tenía "Mora ¿?" para la mora extra al sobrepagar; aquí el
@@ -286,6 +315,33 @@
                                    wire:model="fecpag" readonly>
                         </div>
                     </div>
+
+                    {{-- Total a cobrar EN VIVO: mismos números del modal (resumenCobro),
+                         para que el total nunca sea una sorpresa al confirmar. --}}
+                    @if($resumen && (float) $monto > 0)
+                        <div class="mt-2 p-2 rounded-2 d-flex align-items-center gap-3 flex-wrap"
+                             style="background:#eef6ff; border:1px solid #b6d4fe;">
+                            <span class="small">Monto <b>{{ number_format($resumen['monto'], 2) }}</b></span>
+                            @if($resumen['mora_cobrar'] > 0.001)
+                                <span class="small">+ Mora <b class="text-danger">{{ number_format($resumen['mora_cobrar'], 2) }}</b></span>
+                            @endif
+                            @if($resumen['mora_acum'] > 0.001)
+                                <span class="small">+ Mora acumulada <b class="text-danger">{{ number_format($resumen['mora_acum'], 2) }}</b></span>
+                            @endif
+                            @if($resumen['impointe2'] > 0.001)
+                                <span class="small">+ Mora interés <b>{{ number_format($resumen['impointe2'], 2) }}</b></span>
+                            @endif
+                            @if($resumen['impomora'] > 0.001)
+                                <span class="small">+ Otros <b>{{ number_format($resumen['impomora'], 2) }}</b></span>
+                            @endif
+                            @if($resumen['reserva'])
+                                <span class="small text-primary"><i class="ti ti-clock"></i> Mora reservada: S/ {{ number_format($resumen['total_mora'], 2) }} no se cobra hoy</span>
+                            @endif
+                            <span class="ms-auto fw-bold" style="font-size:15px;">
+                                Total a cobrar: S/ {{ number_format($resumen['total'], 2) }}
+                            </span>
+                        </div>
+                    @endif
 
 
                     {{-- Switches --}}
