@@ -101,7 +101,6 @@
                     @php
                         $puedeEditarHistorico = auth()->user()->can('caja.editar-historico');
                         $puedeEliminar       = auth()->user()->can('caja.eliminar');
-                        $userId = auth()->id();
                         $hoy = now()->format('Y-m-d');
                     @endphp
 
@@ -132,7 +131,6 @@
                                     $rowColor = ($expense->modo === 'Otros') ? 'color: red;' : '';
                                     $canEdit = $puedeEditarHistorico || (
                                         $expense->date?->format('Y-m-d') === $hoy
-                                        && $expense->user_id === $userId
                                     );
                                 @endphp
                                 <tr style="background-color: {{ $rowBg }}; {{ $rowColor }}"
@@ -309,7 +307,6 @@
                                 $isOtros = $expense->modo === 'Otros';
                                 $canEdit = $puedeEditarHistorico || (
                                     $expense->date?->format('Y-m-d') === $hoy
-                                    && $expense->user_id === $userId
                                 );
                             @endphp
                             <div class="card mb-2 shadow-sm {{ $isOtros ? 'border-danger' : '' }}">

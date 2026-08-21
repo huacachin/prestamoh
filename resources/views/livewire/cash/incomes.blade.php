@@ -101,7 +101,6 @@
                     @php
                         $puedeEditarHistorico = auth()->user()->can('caja.editar-historico');
                         $puedeEliminar       = auth()->user()->can('caja.eliminar');
-                        $userId = auth()->id();
                         $hoy = now()->format('Y-m-d');
                     @endphp
 
@@ -130,9 +129,10 @@
                                     $rowBg = ($loop->iteration % 2 === 0) ? '#ffffff' : '#F2F2EC';
                                     // Legacy: solo modo='Otros' en rojo. CREDITO no recibe color especial.
                                     $rowColor = ($row['modo'] === 'Otros') ? 'color: red;' : '';
+                                    // Del día lo edita quien lo ve: el scope del listado ya limita
+                                    // a los operadores a sus propios movimientos (caja.ver-todo).
                                     $canEdit = $row['editable'] && ($puedeEditarHistorico || (
                                         $row['date']?->format('Y-m-d') === $hoy
-                                        && $row['user_id'] === $userId
                                     ));
                                 @endphp
                                 <tr style="background-color: {{ $rowBg }}; {{ $rowColor }}"
@@ -334,7 +334,6 @@
                                     && !$isGat
                                     && ($puedeEditarHistorico || (
                                         $row['date']?->format('Y-m-d') === $hoy
-                                        && $row['user_id'] === $userId
                                     ));
                             @endphp
                             <div class="card mb-2 shadow-sm {{ $isOtros ? 'border-danger' : '' }}">

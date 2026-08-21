@@ -37,12 +37,14 @@ class EditIncome extends Component
         $this->income = Income::findOrFail($id);
         $this->incomeId = $id;
 
-        // Sin caja.editar-historico solo se puede editar lo registrado HOY
-        // (el listado ya oculta el botón; esto cierra el acceso por URL).
+        // Sin caja.editar-historico solo se puede editar lo registrado HOY, y
+        // solo lo propio salvo que se vea toda la caja (el listado ya oculta el
+        // botón; esto cierra el acceso por URL).
         $user = auth()->user();
+        $esDeHoy = $this->income->date->format('Y-m-d') === now()->format('Y-m-d');
+        $propioOVeTodo = ($user?->can('caja.ver-todo') ?? false) || $this->income->user_id === $user?->id;
         abort_unless(
-            ($user?->can('caja.editar-historico') ?? false)
-            || $this->income->date->format('Y-m-d') === now()->format('Y-m-d'),
+            ($user?->can('caja.editar-historico') ?? false) || ($esDeHoy && $propioOVeTodo),
             403,
             'Solo se pueden editar movimientos del día.'
         );

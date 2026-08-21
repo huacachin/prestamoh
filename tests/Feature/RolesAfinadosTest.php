@@ -156,8 +156,18 @@ class RolesAfinadosTest extends TestCase
         $egrHoy = DB::table('expenses')->insertGetId($base + ['date' => now()->format('Y-m-d')]);
         $egrAyer = DB::table('expenses')->insertGetId($base + ['date' => now()->subDays(5)->format('Y-m-d')]);
 
+        // Movimientos de HOY de OTRO usuario: el administrador también los edita
+        // (el candado de dueño hacía parecer que ingresos no se podían editar:
+        // los ingresos del día los registran los cobradores, no el admin)
+        $otro = User::factory()->create(['username' => 'cobrador-caja', 'headquarter_id' => $sede->id]);
+        $ingHoyAjeno = DB::table('incomes')->insertGetId(
+            array_merge($base, ['user_id' => $otro->id, 'date' => now()->format('Y-m-d'), 'documento' => 'GUIA'])
+        );
+
         $this->actingAs($admin);
         $this->get("/cash/incomes/{$ingHoy}/edit")->assertOk();
+        $this->get("/cash/incomes/{$ingHoyAjeno}/edit")->assertOk();
+        $this->get('/cash/incomes?desde=&hasta=')->assertSee("/cash/incomes/{$ingHoyAjeno}/edit");
         $this->get("/cash/incomes/{$ingAyer}/edit")->assertForbidden();
         $this->get("/cash/expenses/{$egrHoy}/edit")->assertOk();
         $this->get("/cash/expenses/{$egrAyer}/edit")->assertForbidden();
@@ -172,6 +182,12 @@ class RolesAfinadosTest extends TestCase
         $this->actingAs($director);
         $this->get("/cash/incomes/{$ingAyer}/edit")->assertOk();
         $this->get("/cash/expenses/{$egrAyer}/edit")->assertOk();
+
+        // Operador de caja (sin ver-todo): lo ajeno sigue cerrado aunque sea de hoy
+        $operador = User::factory()->create(['username' => 'operador-caja', 'headquarter_id' => $sede->id]);
+        $operador->assignRole('caja');
+        $this->actingAs($operador);
+        $this->get("/cash/incomes/{$ingHoyAjeno}/edit")->assertForbidden();
     }
 
     /** Sin permiso dashboard se aterriza en /credits; el drill-down queda cerrado. */
