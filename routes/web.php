@@ -6,6 +6,7 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\ConceptController;
 use App\Http\Controllers\CreditController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DocumentoClienteController;
 use App\Http\Controllers\ExchangeRateController;
 use App\Http\Controllers\HeadquarterController;
 use App\Http\Controllers\PaymentController;
@@ -54,6 +55,9 @@ Route::middleware('auth')->group(function () {
         Route::get('clients/{id}/edit', [ClientController::class, 'edit'])->name('clients.edit');
         Route::get('clients/{id}/gallery', [ClientController::class, 'gallery'])->name('clients.gallery');
         Route::get('clients/{id}/aval', [ClientController::class, 'aval'])->name('clients.aval');
+        Route::get('clients/{id}/documentos', [ClientController::class, 'documentos'])->name('clients.documentos');
+        Route::get('clients/documentos/{id}/pdf', [DocumentoClienteController::class, 'pdf'])->name('clients.documentos.pdf');
+        Route::get('clients/documentos/{id}/word', [DocumentoClienteController::class, 'word'])->name('clients.documentos.word');
         Route::get('clients/{id}', [ClientController::class, 'show'])->name('clients.show');
     });
 

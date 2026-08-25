@@ -11,7 +11,11 @@ class Vehiculo extends Model
 
     protected $fillable = [
         'client_id', 'placa', 'marca', 'modelo', 'nro_motor', 'nro_serie',
-        'categoria', 'anio_modelo', 'carroceria', 'color', 'combustible',
+        'categoria', 'anio_modelo', 'carroceria', 'color', 'combustible', 'valor',
+    ];
+
+    protected $casts = [
+        'valor' => 'decimal:2',
     ];
 
     public function client(): BelongsTo

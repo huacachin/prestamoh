@@ -213,10 +213,14 @@
                                             Aval
                                         </a>
                                     </td>
-                                    <td class="text-center">
+                                    <td class="text-center text-nowrap">
                                         <a href="{{ route('clients.gallery', $client->id) }}"
                                            class="btn btn-xs {{ ($client->attachments_count ?? 0) > 0 ? 'btn-info' : 'btn-danger' }}" style="padding: 2px 8px; font-size: 10px;">
                                             Adjuntos
+                                        </a>
+                                        <a href="{{ route('clients.documentos', $client->id) }}"
+                                           class="btn btn-xs btn-dark" style="padding: 2px 8px; font-size: 10px;" title="Documentos">
+                                            <i class="ti ti-file-text"></i>
                                         </a>
                                     </td>
                                     <td class="text-center">
@@ -336,6 +340,7 @@
                                         <a href="{{ route('clients.show', $client->id) }}" class="btn btn-xs btn-primary" style="padding: 2px 8px; font-size: 10px;">Prestamo</a>
                                         <a href="{{ route('clients.aval', $client->id) }}" class="btn btn-xs {{ ($client->avales_count ?? 0) > 0 ? 'btn-primary' : 'btn-danger' }}" style="padding: 2px 8px; font-size: 10px;">Aval</a>
                                         <a href="{{ route('clients.gallery', $client->id) }}" class="btn btn-xs {{ ($client->attachments_count ?? 0) > 0 ? 'btn-info' : 'btn-danger' }}" style="padding: 2px 8px; font-size: 10px;">Adjuntos</a>
+                                        <a href="{{ route('clients.documentos', $client->id) }}" class="btn btn-xs btn-dark" style="padding: 2px 8px; font-size: 10px;" title="Documentos"><i class="ti ti-file-text"></i> Docs</a>
                                         @php
                                             $vencM = $morosidad[$client->id] ?? 0;
                                             $waTelM = preg_replace('/\D/', '', (string) $client->celular1);

@@ -41,6 +41,11 @@ class ClientController extends Controller
         return view('clients.aval', compact('id'));
     }
 
+    public function documentos(int $id)
+    {
+        return view('clients.documentos', compact('id'));
+    }
+
     public function ceased()
     {
         return view('clients.ceased');
