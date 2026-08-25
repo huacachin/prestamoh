@@ -25,6 +25,14 @@ class RenderDocumento
     /** @param  'pdf'|'word'|'previa'  $medio */
     public static function datosDesdeSnapshot(array $snapshot, string $tipo, string $medio): array
     {
+        // El contrato se renderiza con view-model (los partials consumen $vm, no $d).
+        if ($tipo === 'contrato') {
+            return [
+                'vm' => GeneradorContrato::vmDesdeSnapshot($snapshot),
+                'medio' => $medio,
+            ];
+        }
+
         return [
             'd' => $snapshot,
             'medio' => $medio,

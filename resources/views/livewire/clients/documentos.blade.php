@@ -33,12 +33,10 @@
                     <button type="button" class="btn btn-sm btn-success" wire:click="abrirModalAnexo1">
                         <i class="ti ti-file-plus"></i> Generar Anexo 1
                     </button>
-                    {{-- Fases 2-3: placeholders (tooltip en el span porque un botón disabled no dispara title) --}}
-                    <span class="d-inline-block" tabindex="0" title="Próximamente">
-                        <button type="button" class="btn btn-sm btn-outline-secondary" disabled>
-                            <i class="ti ti-file-plus"></i> Generar Contrato
-                        </button>
-                    </span>
+                    <button type="button" class="btn btn-sm btn-dark" wire:click="abrirModalContrato">
+                        <i class="ti ti-file-plus"></i> Generar Contrato
+                    </button>
+                    {{-- Fase 3: placeholder (tooltip en el span porque un botón disabled no dispara title) --}}
                     <span class="d-inline-block" tabindex="0" title="Próximamente">
                         <button type="button" class="btn btn-sm btn-outline-secondary" disabled>
                             <i class="ti ti-file-plus"></i> Generar Anexo 2
@@ -89,6 +87,13 @@
                                           style="font-size:10px; {{ $anulado ? 'text-decoration: line-through;' : '' }}">
                                         {{ $doc->tipoLabel() }}
                                     </span>
+                                    @if($doc->modelo)
+                                        @php $nombreModelo = $this->nombreModelo($doc->modelo); @endphp
+                                        <br>
+                                        <small class="text-muted" style="font-size:9px;">
+                                            {{ $nombreModelo === $doc->modelo ? $doc->modelo : "{$doc->modelo} — {$nombreModelo}" }}
+                                        </small>
+                                    @endif
                                 </td>
                                 <td class="text-center">#{{ $doc->credit_id }}</td>
                                 <td class="text-center fw-bold">v{{ $doc->version }}</td>
@@ -227,6 +232,484 @@
                         <i class="ti ti-file-check"></i>
                         <span wire:loading.remove wire:target="generar">Generar</span>
                         <span wire:loading wire:target="generar">Generando…</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ═══ Modal "Generar Contrato" (garantía mobiliaria — wizard de modelos) ═══ --}}
+    <div class="modal fade" id="contratoModal" tabindex="-1" aria-hidden="true" wire:ignore.self
+         x-data="{ modal: null }"
+         x-init="modal = bootstrap.Modal.getOrCreateInstance($el);"
+         x-on:contrato-modal-open.window="modal.show()"
+         x-on:contrato-modal-close.window="modal.hide()">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title mb-0">
+                        <i class="ti ti-file-plus text-dark"></i>
+                        Generar Contrato — Garantía mobiliaria · {{ $client->fullName() }}
+                    </h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+
+                    @if($creditosActivos->isEmpty())
+                        <div class="alert alert-warning py-2 small mb-0">
+                            <i class="ti ti-alert-triangle"></i>
+                            El cliente no tiene créditos activos: no hay obligación que garantizar.
+                        </div>
+                    @elseif(empty($modelosAgrupados))
+                        <div class="alert alert-warning py-2 small mb-0">
+                            <i class="ti ti-alert-triangle"></i>
+                            El catálogo de modelos del contrato no está disponible.
+                        </div>
+                    @else
+
+                        {{-- ── 1 · Modelo ── --}}
+                        <div class="mb-3">
+                            <div class="fw-bold small text-uppercase border-bottom pb-1 mb-2">1 · Modelo de contrato</div>
+                            <div class="row g-2 align-items-end">
+                                <div class="col-md-7">
+                                    <label class="form-label small fw-semibold mb-1">Modelo *</label>
+                                    <select class="form-select form-select-sm @error('modeloContrato') is-invalid @enderror"
+                                            wire:model.live="modeloContrato">
+                                        <option value="">— Selecciona el modelo del área —</option>
+                                        @foreach($modelosAgrupados as $grupo => $opciones)
+                                            <optgroup label="{{ $grupo }}">
+                                                @foreach($opciones as $clave => $nombre)
+                                                    <option value="{{ $clave }}">{{ $clave }} — {{ $nombre }}</option>
+                                                @endforeach
+                                            </optgroup>
+                                        @endforeach
+                                    </select>
+                                    @error('modeloContrato') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                </div>
+                                <div class="col-md-5">
+                                    @if($presetContrato)
+                                        <div class="d-flex gap-1 flex-wrap pb-1">
+                                            @if($presetContrato['custodia'])
+                                                <span class="badge bg-warning text-dark" style="font-size:10px;">Custodia</span>
+                                            @elseif($presetContrato['gps'])
+                                                <span class="badge bg-success" style="font-size:10px;">Con GPS</span>
+                                            @else
+                                                <span class="badge bg-secondary" style="font-size:10px;">Sin GPS</span>
+                                            @endif
+                                            <span class="badge bg-light text-dark border" style="font-size:10px;">
+                                                {{ $presetContrato['personas'] === 'empresa' ? 'Persona jurídica' : ($presetContrato['personas'] === 2 ? '2 deudores' : '1 deudor') }}
+                                            </span>
+                                            <span class="badge bg-light text-dark border" style="font-size:10px;">
+                                                {{ count($presetContrato['slots']) }} {{ count($presetContrato['slots']) === 1 ? 'bien' : 'bienes' }}
+                                            </span>
+                                            @if($presetContrato['destino'] === 'tercero')
+                                                <span class="badge bg-info text-dark" style="font-size:10px;">Depósito a tercero</span>
+                                            @elseif($presetContrato['destino'] === 'gerente')
+                                                <span class="badge bg-info text-dark" style="font-size:10px;">Depósito al gerente</span>
+                                            @endif
+                                        </div>
+                                    @else
+                                        <div class="text-muted small pb-1">Elige el modelo para completar las demás secciones.</div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+
+                        @if($presetContrato)
+                            {{-- ── 2 · Crédito y vehículo(s) ── --}}
+                            <div class="mb-3">
+                                <div class="fw-bold small text-uppercase border-bottom pb-1 mb-2">2 · Crédito y vehículo(s)</div>
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold mb-1">Crédito *</label>
+                                        <select class="form-select form-select-sm @error('contratoCreditoId') is-invalid @enderror"
+                                                wire:model.live="contratoCreditoId">
+                                            <option value="">— Selecciona el crédito —</option>
+                                            @foreach($creditosActivos as $c)
+                                                <option value="{{ $c->id }}">
+                                                    #{{ $c->id }} — S/ {{ number_format((float) $c->importe, 2) }} — {{ $c->cuotas }} cuotas ({{ $c->tipoPlanillaLabel() }})
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        @error('contratoCreditoId') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                    </div>
+                                </div>
+
+                                @if($vehiculos->isEmpty())
+                                    <div class="alert alert-warning py-2 small mt-2 mb-0">
+                                        <i class="ti ti-alert-triangle"></i>
+                                        El cliente no tiene vehículos registrados: registra el vehículo (con placa) en su ficha antes de emitir el contrato.
+                                    </div>
+                                @else
+                                    <div class="row g-2 mt-0">
+                                        @foreach($contratoVehiculos as $i => $slot)
+                                            <div class="col-md-6" wire:key="contrato-slot-{{ $i }}">
+                                                <label class="form-label small fw-semibold mb-1">
+                                                    Vehículo {{ $i + 1 }} (garantía) *
+                                                    @if($slot['es_futuro'])
+                                                        <span class="badge bg-warning text-dark" style="font-size:9px;">Bien futuro</span>
+                                                    @endif
+                                                </label>
+                                                <select class="form-select form-select-sm @error('contratoVehiculos.'.$i.'.vehiculo_id') is-invalid @enderror"
+                                                        wire:model.live="contratoVehiculos.{{ $i }}.vehiculo_id">
+                                                    <option value="">— Selecciona el vehículo —</option>
+                                                    @foreach($vehiculos as $v)
+                                                        <option value="{{ $v->id }}">{{ $v->descripcion() }}</option>
+                                                    @endforeach
+                                                </select>
+                                                @error('contratoVehiculos.'.$i.'.vehiculo_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+
+                                                @if($slot['es_futuro'])
+                                                    <div class="row g-1 mt-1">
+                                                        <div class="col-4">
+                                                            <input type="text" class="form-control form-control-sm" placeholder="Acta notarial"
+                                                                   title="N° de acta notarial de transferencia"
+                                                                   wire:model.blur="contratoVehiculos.{{ $i }}.acta">
+                                                        </div>
+                                                        <div class="col-4">
+                                                            <input type="text" class="form-control form-control-sm" placeholder="Kardex (ej. 0373-2026)"
+                                                                   wire:model.blur="contratoVehiculos.{{ $i }}.kardex">
+                                                        </div>
+                                                        <div class="col-4">
+                                                            <input type="text" class="form-control form-control-sm" placeholder="Notario"
+                                                                   wire:model.blur="contratoVehiculos.{{ $i }}.notario">
+                                                        </div>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </div>
+
+                            {{-- ── 3 · Deudor(es) / Empresa ── --}}
+                            <div class="mb-3">
+                                <div class="fw-bold small text-uppercase border-bottom pb-1 mb-2">
+                                    3 · {{ $presetContrato['personas'] === 'empresa' ? 'Deudora (persona jurídica)' : 'Deudor(es)' }}
+                                </div>
+
+                                @if($presetContrato['personas'] === 'empresa')
+                                    <div class="row g-2">
+                                        <div class="col-md-6">
+                                            <label class="form-label small mb-1">Razón social *</label>
+                                            <input type="text" class="form-control form-control-sm @error('empresa.razon_social') is-invalid @enderror"
+                                                   wire:model.blur="empresa.razon_social">
+                                            @error('empresa.razon_social') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small mb-1">RUC *</label>
+                                            <input type="text" class="form-control form-control-sm @error('empresa.ruc') is-invalid @enderror"
+                                                   wire:model.blur="empresa.ruc">
+                                            @error('empresa.ruc') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small mb-1">Partida registral</label>
+                                            <input type="text" class="form-control form-control-sm" wire:model.blur="empresa.partida">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label small mb-1">Oficina registral</label>
+                                            <input type="text" class="form-control form-control-sm" wire:model.blur="empresa.oficina_registral">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label small mb-1">Correo</label>
+                                            <input type="email" class="form-control form-control-sm @error('empresa.correo') is-invalid @enderror"
+                                                   wire:model.blur="empresa.correo">
+                                            @error('empresa.correo') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label small mb-1">Domicilio</label>
+                                            <input type="text" class="form-control form-control-sm" wire:model.blur="empresa.domicilio">
+                                        </div>
+                                    </div>
+
+                                    <div class="small fw-semibold mt-2 mb-1">Gerente general (firma en representación)</div>
+                                    <div class="row g-2">
+                                        <div class="col-md-6">
+                                            <label class="form-label small mb-1">Nombre completo *</label>
+                                            <input type="text" class="form-control form-control-sm @error('gerente.nombre') is-invalid @enderror"
+                                                   wire:model.blur="gerente.nombre">
+                                            @error('gerente.nombre') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small mb-1">DNI *</label>
+                                            <input type="text" class="form-control form-control-sm @error('gerente.dni') is-invalid @enderror"
+                                                   wire:model.blur="gerente.dni">
+                                            @error('gerente.dni') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small mb-1">Género *</label>
+                                            <select class="form-select form-select-sm @error('gerente.genero') is-invalid @enderror"
+                                                    wire:model.live="gerente.genero">
+                                                <option value="M">Masculino</option>
+                                                <option value="F">Femenino</option>
+                                            </select>
+                                            @error('gerente.genero') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label small mb-1">Ocupación</label>
+                                            <input type="text" class="form-control form-control-sm" wire:model.blur="gerente.ocupacion">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label small mb-1">Estado civil</label>
+                                            <select class="form-select form-select-sm" wire:model.live="gerente.estado_civil">
+                                                <option value="">—</option>
+                                                @foreach($estadosCiviles as $valor => $etiqueta)
+                                                    <option value="{{ $valor }}">{{ $etiqueta }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label small mb-1">Domicilio</label>
+                                            <input type="text" class="form-control form-control-sm" wire:model.blur="gerente.domicilio">
+                                        </div>
+                                    </div>
+                                @else
+                                    @foreach($deudores as $i => $d)
+                                        <div class="border rounded p-2 mb-2 {{ $i === 1 ? 'bg-light' : '' }}" wire:key="contrato-deudor-{{ $i }}">
+                                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                                <span class="small fw-semibold">
+                                                    Deudor {{ $i + 1 }}
+                                                    @if($i === 0) <span class="text-muted fw-normal">(ficha del cliente — todo editable)</span> @endif
+                                                </span>
+                                                @if($i === 1 && $codeudorClientId)
+                                                    <span class="badge bg-primary d-inline-flex align-items-center gap-1" style="font-size:10px;">
+                                                        {{ $codeudorNombre }}
+                                                        <button type="button" class="btn btn-link btn-sm text-white p-0 text-decoration-none"
+                                                                style="font-size:10px; line-height:1;"
+                                                                wire:click="quitarCodeudorContrato" title="Quitar codeudor">
+                                                            <i class="ti ti-x"></i> Quitar
+                                                        </button>
+                                                    </span>
+                                                @endif
+                                            </div>
+
+                                            @if($i === 1 && ! $codeudorClientId)
+                                                <div class="position-relative mb-2">
+                                                    <input type="text" class="form-control form-control-sm"
+                                                           placeholder="Buscar codeudor por nombre o DNI (mín. 2 caracteres)…"
+                                                           wire:model.live.debounce.300ms="buscarCodeudor">
+                                                    @if($codeudoresEncontrados->isNotEmpty())
+                                                        <div class="list-group position-absolute w-100 shadow-sm"
+                                                             style="z-index:1080; max-height:200px; overflow:auto;">
+                                                            @foreach($codeudoresEncontrados as $cod)
+                                                                <button type="button" class="list-group-item list-group-item-action py-1 small"
+                                                                        wire:key="codeudor-{{ $cod->id }}"
+                                                                        wire:click="seleccionarCodeudorContrato({{ $cod->id }})">
+                                                                    {{ $cod->fullName() }} — {{ $cod->documento }}
+                                                                </button>
+                                                            @endforeach
+                                                        </div>
+                                                    @endif
+                                                    <div class="form-text" style="font-size:10px;">
+                                                        Vincula un cliente registrado o escribe los datos manualmente abajo.
+                                                    </div>
+                                                </div>
+                                            @endif
+
+                                            <div class="row g-2">
+                                                <div class="col-md-6">
+                                                    <label class="form-label small mb-1">Nombre completo *</label>
+                                                    <input type="text" class="form-control form-control-sm @error('deudores.'.$i.'.nombre') is-invalid @enderror"
+                                                           wire:model.blur="deudores.{{ $i }}.nombre">
+                                                    @error('deudores.'.$i.'.nombre') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label small mb-1">DNI *</label>
+                                                    <input type="text" class="form-control form-control-sm @error('deudores.'.$i.'.dni') is-invalid @enderror"
+                                                           wire:model.blur="deudores.{{ $i }}.dni">
+                                                    @error('deudores.'.$i.'.dni') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label small mb-1">Sexo *</label>
+                                                    <select class="form-select form-select-sm @error('deudores.'.$i.'.sexo') is-invalid @enderror"
+                                                            wire:model.live="deudores.{{ $i }}.sexo">
+                                                        <option value="M">Masculino (EL DEUDOR)</option>
+                                                        <option value="F">Femenino (LA DEUDORA)</option>
+                                                    </select>
+                                                    @error('deudores.'.$i.'.sexo') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label small mb-1">Nacionalidad</label>
+                                                    <input type="text" class="form-control form-control-sm" wire:model.blur="deudores.{{ $i }}.nacionalidad">
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label small mb-1">Ocupación</label>
+                                                    <input type="text" class="form-control form-control-sm" wire:model.blur="deudores.{{ $i }}.ocupacion">
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label small mb-1">Estado civil</label>
+                                                    <select class="form-select form-select-sm" wire:model.live="deudores.{{ $i }}.estado_civil">
+                                                        <option value="">—</option>
+                                                        @foreach($estadosCiviles as $valor => $etiqueta)
+                                                            <option value="{{ $valor }}">{{ $etiqueta }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label small mb-1">Correo</label>
+                                                    <input type="email" class="form-control form-control-sm @error('deudores.'.$i.'.correo') is-invalid @enderror"
+                                                           wire:model.blur="deudores.{{ $i }}.correo">
+                                                    @error('deudores.'.$i.'.correo') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                                </div>
+                                                <div class="col-12">
+                                                    <label class="form-label small mb-1">Domicilio</label>
+                                                    <input type="text" class="form-control form-control-sm" wire:model.blur="deudores.{{ $i }}.domicilio">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                @endif
+                            </div>
+
+                            {{-- ── 4 · Montos y condiciones ── --}}
+                            <div class="mb-2">
+                                <div class="fw-bold small text-uppercase border-bottom pb-1 mb-2">4 · Montos y condiciones</div>
+
+                                @if($contratoCreditoId && $totalCronograma === null)
+                                    <div class="alert alert-warning py-1 small">
+                                        <i class="ti ti-alert-triangle"></i>
+                                        El crédito seleccionado no tiene cronograma con montos: el contrato no podrá emitirse.
+                                    </div>
+                                @endif
+
+                                <div class="row g-2">
+                                    <div class="col-md-3">
+                                        <label class="form-label small mb-1">Valor del bien (S/)</label>
+                                        <input type="number" step="0.01" min="0"
+                                               class="form-control form-control-sm @error('valorBien') is-invalid @enderror"
+                                               wire:model.live="valorBien" placeholder="0.00">
+                                        @error('valorBien') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                        <div class="form-text" style="font-size:10px;">Default: valor en ficha del (los) vehículo(s).</div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small mb-1">Monto máximo (S/)</label>
+                                        <input type="number" step="0.01" min="0"
+                                               class="form-control form-control-sm @error('montoMaximo') is-invalid @enderror"
+                                               wire:model.live="montoMaximo" placeholder="0.00">
+                                        @error('montoMaximo') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                        @if($totalCronograma !== null)
+                                            <div class="form-text" style="font-size:10px;">
+                                                Total real del cronograma: S/ {{ number_format($totalCronograma, 2) }}
+                                            </div>
+                                        @endif
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small mb-1">Cuota (S/)</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" step="0.01" min="0"
+                                                   class="form-control @error('cuotaContrato') is-invalid @enderror"
+                                                   wire:model.live="cuotaContrato" @readonly(! $editarCuota)>
+                                            <button class="btn btn-outline-secondary" type="button" wire:click="$toggle('editarCuota')"
+                                                    title="{{ $editarCuota ? 'Bloquear la cuota' : 'Editar la cuota (default: la del cronograma)' }}">
+                                                <i class="ti {{ $editarCuota ? 'ti-lock-open' : 'ti-pencil' }}"></i>
+                                            </button>
+                                        </div>
+                                        @error('cuotaContrato') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                                        <div class="form-text" style="font-size:10px;">Default: cuota del cronograma (moda).</div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small mb-1">Fecha del contrato *</label>
+                                        <input type="date" class="form-control form-control-sm @error('fechaContrato') is-invalid @enderror"
+                                               wire:model.live="fechaContrato">
+                                        @error('fechaContrato') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small mb-1">Banco del desembolso *</label>
+                                        <select class="form-select form-select-sm @error('bancoDesembolso') is-invalid @enderror"
+                                                wire:model.live="bancoDesembolso">
+                                            <option value="">— Selecciona el banco —</option>
+                                            @foreach($bancosDesembolso as $clave => $nombreLegal)
+                                                <option value="{{ $clave }}">{{ $nombreLegal }}</option>
+                                            @endforeach
+                                        </select>
+                                        @error('bancoDesembolso') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                        <div class="form-text" style="font-size:10px;">
+                                            La cláusula de constancia lo menciona; el voucher va aparte, en el Anexo 2.
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 d-flex align-items-end">
+                                        @if($presetContrato['destino'] === 'gerente')
+                                            <div class="alert alert-info py-1 small mb-0 w-100">
+                                                <i class="ti ti-info-circle"></i>
+                                                El modelo elegido consigna el desembolso al gerente general de la empresa deudora.
+                                            </div>
+                                        @elseif($presetContrato['destino'] === 'propio')
+                                            <div class="alert alert-light border py-1 small mb-0 w-100">
+                                                <i class="ti ti-info-circle"></i>
+                                                El modelo elegido consigna el desembolso a cuenta propia del deudor.
+                                            </div>
+                                        @endif
+                                    </div>
+
+                                    @if($presetContrato['destino'] === 'tercero')
+                                        <div class="col-12">
+                                            <div class="border rounded p-2">
+                                                <div class="small fw-semibold mb-1">Tercero autorizado a recibir el desembolso</div>
+                                                <div class="row g-2">
+                                                    <div class="col-md-6">
+                                                        <label class="form-label small mb-1">Nombre completo *</label>
+                                                        <input type="text" class="form-control form-control-sm @error('tercero.nombre') is-invalid @enderror"
+                                                               wire:model.blur="tercero.nombre">
+                                                        @error('tercero.nombre') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label small mb-1">DNI *</label>
+                                                        <input type="text" class="form-control form-control-sm @error('tercero.dni') is-invalid @enderror"
+                                                               wire:model.blur="tercero.dni">
+                                                        @error('tercero.dni') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label small mb-1">N° de cuenta</label>
+                                                        <input type="text" class="form-control form-control-sm" wire:model.blur="tercero.cuenta">
+                                                    </div>
+                                                    <div class="col-12">
+                                                        <label class="form-label small mb-1">Motivo del depósito a tercero</label>
+                                                        <input type="text" class="form-control form-control-sm" wire:model.blur="tercero.motivo"
+                                                               placeholder="Ej.: pago del saldo de precio del vehículo al vendedor">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endif
+
+                                    <div class="col-12">
+                                        <label class="form-label small mb-1">Cláusulas adicionales (opcional)</label>
+                                        <textarea rows="3" class="form-control form-control-sm @error('clausulasAdicionales') is-invalid @enderror"
+                                                  wire:model.blur="clausulasAdicionales"
+                                                  placeholder="Texto íntegro de cláusulas extra; se insertan antes del cierre del contrato."></textarea>
+                                        @error('clausulasAdicionales') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+
+                        {{-- Vista previa (mismo render 'previa' del snapshot que se emitirá) --}}
+                        @if($htmlPreviewContrato !== '')
+                            <div class="border rounded mt-3 p-1 bg-light">
+                                <iframe srcdoc="{{ $htmlPreviewContrato }}"
+                                        style="width:100%; height:60vh; border:1px solid #ccc; background:#fff;"
+                                        title="Vista previa del contrato"></iframe>
+                            </div>
+                        @endif
+                    @endif
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-sm btn-outline-dark"
+                            wire:click="previsualizarContrato" wire:loading.attr="disabled"
+                            wire:target="previsualizarContrato,generarContrato"
+                            @disabled($creditosActivos->isEmpty() || empty($modelosAgrupados))>
+                        <i class="ti ti-eye"></i>
+                        <span wire:loading.remove wire:target="previsualizarContrato">Vista previa</span>
+                        <span wire:loading wire:target="previsualizarContrato">Generando previa…</span>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-dark"
+                            wire:click="generarContrato" wire:loading.attr="disabled"
+                            wire:target="previsualizarContrato,generarContrato"
+                            @disabled($creditosActivos->isEmpty() || empty($modelosAgrupados))>
+                        <i class="ti ti-file-check"></i>
+                        <span wire:loading.remove wire:target="generarContrato">Generar contrato</span>
+                        <span wire:loading wire:target="generarContrato">Generando…</span>
                     </button>
                 </div>
             </div>
