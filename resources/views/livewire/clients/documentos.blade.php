@@ -36,12 +36,9 @@
                     <button type="button" class="btn btn-sm btn-dark" wire:click="abrirModalContrato">
                         <i class="ti ti-file-plus"></i> Generar Contrato
                     </button>
-                    {{-- Fase 3: placeholder (tooltip en el span porque un botón disabled no dispara title) --}}
-                    <span class="d-inline-block" tabindex="0" title="Próximamente">
-                        <button type="button" class="btn btn-sm btn-outline-secondary" disabled>
-                            <i class="ti ti-file-plus"></i> Generar Anexo 2
-                        </button>
-                    </span>
+                    <button type="button" class="btn btn-sm btn-info" wire:click="abrirModalAnexo2">
+                        <i class="ti ti-file-plus"></i> Generar Anexo 2
+                    </button>
                     <a href="{{ route('clients.show', $client->id) }}" class="btn btn-sm btn-secondary">
                         <i class="ti ti-arrow-back"></i> Regresar al cliente
                     </a>
@@ -710,6 +707,162 @@
                         <i class="ti ti-file-check"></i>
                         <span wire:loading.remove wire:target="generarContrato">Generar contrato</span>
                         <span wire:loading wire:target="generarContrato">Generando…</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ═══ Modal "Generar Anexo 2" (constancia de entrega del monto — FASE 3) ═══ --}}
+    <div class="modal fade" id="anexo2Modal" tabindex="-1" aria-hidden="true" wire:ignore.self
+         x-data="{ modal: null }"
+         x-init="modal = bootstrap.Modal.getOrCreateInstance($el);"
+         x-on:anexo2-modal-open.window="modal.show()"
+         x-on:anexo2-modal-close.window="modal.hide()">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title mb-0">
+                        <i class="ti ti-file-plus text-info"></i>
+                        Generar Anexo 2 — Constancia de entrega del monto · {{ $client->fullName() }}
+                    </h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+
+                    @if($creditosActivos->isEmpty())
+                        <div class="alert alert-warning py-2 small mb-0">
+                            <i class="ti ti-alert-triangle"></i>
+                            El cliente no tiene créditos activos: no hay desembolso que constatar.
+                        </div>
+                    @else
+                        {{-- ── Crédito, fecha y combo banco × modalidad ── --}}
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold mb-1">Crédito desembolsado *</label>
+                                <select class="form-select form-select-sm @error('anexo2CreditoId') is-invalid @enderror"
+                                        wire:model.live="anexo2CreditoId">
+                                    <option value="">— Selecciona el crédito —</option>
+                                    @foreach($creditosActivos as $c)
+                                        <option value="{{ $c->id }}">
+                                            #{{ $c->id }} — S/ {{ number_format((float) $c->importe, 2) }} — {{ $c->cuotas }} cuotas ({{ $c->tipoPlanillaLabel() }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('anexo2CreditoId') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold mb-1">Fecha del documento *</label>
+                                <input type="date" class="form-control form-control-sm @error('fechaAnexo2') is-invalid @enderror"
+                                       wire:model.live="fechaAnexo2" max="{{ now()->format('Y-m-d') }}">
+                                @error('fechaAnexo2') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold mb-1">Banco del voucher *</label>
+                                <select class="form-select form-select-sm @error('anexo2Banco') is-invalid @enderror"
+                                        wire:model.live="anexo2Banco">
+                                    <option value="">— Selecciona el banco —</option>
+                                    @foreach($bancosVoucher as $clave => $nombre)
+                                        <option value="{{ $clave }}">{{ $nombre }}</option>
+                                    @endforeach
+                                </select>
+                                @error('anexo2Banco') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold mb-1">Modalidad de la operación *</label>
+                                <select class="form-select form-select-sm @error('anexo2Modalidad') is-invalid @enderror"
+                                        wire:model.live="anexo2Modalidad" @disabled($anexo2Banco === '')>
+                                    <option value="">— Selecciona la modalidad —</option>
+                                    @foreach($modalidadesAnexo2 as $mod)
+                                        <option value="{{ $mod }}">{{ $modalidadesVoucher[$mod] ?? $mod }}</option>
+                                    @endforeach
+                                </select>
+                                @error('anexo2Modalidad') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                @if($anexo2Banco === '')
+                                    <div class="form-text" style="font-size:10px;">Elige primero el banco: cada uno tiene sus modalidades.</div>
+                                @endif
+                            </div>
+                        </div>
+
+                        {{-- ── Transcripción del voucher (inputs dinámicos del combo) ── --}}
+                        @if(! empty($camposAnexo2))
+                            <div class="mt-3" wire:key="anexo2-campos-{{ $anexo2Banco }}-{{ $anexo2Modalidad }}">
+                                <div class="fw-bold small text-uppercase border-bottom pb-1 mb-2">
+                                    Transcripción del voucher — {{ $tituloVoucherAnexo2 }}
+                                </div>
+                                <div class="row g-2">
+                                    @foreach($camposAnexo2 as $clave => [$label, $requerido])
+                                        <div class="col-md-4" wire:key="anexo2-campo-{{ $anexo2Banco }}-{{ $anexo2Modalidad }}-{{ $clave }}">
+                                            <label class="form-label small mb-1">
+                                                {{ $label }}@if($requerido) *@endif
+                                            </label>
+                                            <input type="text" class="form-control form-control-sm"
+                                                   wire:model.blur="anexo2Campos.{{ $clave }}"
+                                                   placeholder="{{ $requerido ? 'Tal como figura en el voucher' : 'Opcional' }}">
+                                            @if($clave === 'monto' && $montoDesembolsoAnexo2 !== null)
+                                                <div class="form-text" style="font-size:10px;">
+                                                    Debe coincidir con el desembolso: S/ {{ number_format($montoDesembolsoAnexo2, 2) }}
+                                                </div>
+                                            @endif
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+
+                        {{-- ── Foto del comprobante (opcional; se embebe en la constancia) ── --}}
+                        <div class="mt-3">
+                            <div class="fw-bold small text-uppercase border-bottom pb-1 mb-2">Foto del comprobante</div>
+                            <div class="row g-2 align-items-start">
+                                <div class="col-md-6">
+                                    <input type="file" accept="image/*"
+                                           class="form-control form-control-sm @error('comprobante') is-invalid @enderror"
+                                           wire:model="comprobante">
+                                    @error('comprobante') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                    <div class="form-text" style="font-size:10px;">
+                                        Imagen del voucher (máx. 4 MB). Sin foto, la constancia sale solo con la transcripción.
+                                    </div>
+                                    <div wire:loading wire:target="comprobante" class="small text-muted">
+                                        <i class="ti ti-loader"></i> Subiendo imagen…
+                                    </div>
+                                </div>
+                                @if($comprobante && ! $errors->has('comprobante'))
+                                    <div class="col-md-6 text-center">
+                                        <img src="{{ $comprobante->temporaryUrl() }}" alt="Comprobante subido"
+                                             class="border rounded" style="max-height:160px; max-width:100%;">
+                                        <div class="form-text" style="font-size:10px;">Se embeberá al generar (la vista previa no la incluye).</div>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+
+                        {{-- Vista previa (render 'previa' del snapshot; la foto sale como recuadro placeholder) --}}
+                        @if($htmlPreviewAnexo2 !== '')
+                            <div class="border rounded mt-3 p-1 bg-light">
+                                <iframe srcdoc="{{ $htmlPreviewAnexo2 }}"
+                                        style="width:100%; height:60vh; border:1px solid #ccc; background:#fff;"
+                                        title="Vista previa del Anexo 2"></iframe>
+                            </div>
+                        @endif
+                    @endif
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-sm btn-outline-dark"
+                            wire:click="previsualizarAnexo2" wire:loading.attr="disabled"
+                            wire:target="previsualizarAnexo2,generarAnexo2,comprobante"
+                            @disabled($creditosActivos->isEmpty())>
+                        <i class="ti ti-eye"></i>
+                        <span wire:loading.remove wire:target="previsualizarAnexo2">Vista previa</span>
+                        <span wire:loading wire:target="previsualizarAnexo2">Generando previa…</span>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-info"
+                            wire:click="generarAnexo2" wire:loading.attr="disabled"
+                            wire:target="previsualizarAnexo2,generarAnexo2,comprobante"
+                            @disabled($creditosActivos->isEmpty())>
+                        <i class="ti ti-file-check"></i>
+                        <span wire:loading.remove wire:target="generarAnexo2">Generar</span>
+                        <span wire:loading wire:target="generarAnexo2">Generando…</span>
                     </button>
                 </div>
             </div>

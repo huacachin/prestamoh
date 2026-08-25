@@ -7,29 +7,37 @@ use App\Models\Credit;
 use App\Models\DocumentoCliente;
 use App\Models\Vehiculo;
 use App\Services\Documentos\GeneradorAnexo1;
+use App\Services\Documentos\GeneradorAnexo2;
 use App\Services\Documentos\GeneradorContrato;
 use App\Support\Audit;
 use App\Support\Documentos\BancosVoucher;
 use App\Support\Documentos\ModelosContrato;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 /**
  * Apartado "Documentos" del cliente: historial de documentos emitidos
  * (Anexo 1, Contrato, Anexo 2) con descargas en PDF y Word, y los modales de
- * generación del Anexo 1 (cronograma) y del Contrato de garantía mobiliaria
- * (wizard con los 32 modelos del área — FASE 2). El Anexo 2 llega en la
- * fase 3 (por eso su botón sigue como placeholder deshabilitado).
+ * generación del Anexo 1 (cronograma), del Contrato de garantía mobiliaria
+ * (wizard con los 32 modelos del área — FASE 2) y del Anexo 2 (constancia de
+ * entrega del monto: transcripción del voucher bancario + foto — FASE 3).
  *
  * Todo documento se emite congelando un snapshot: la lista solo lee de
- * documentos_cliente; la generación vive en GeneradorAnexo1/GeneradorContrato.
+ * documentos_cliente; la generación vive en GeneradorAnexo1/GeneradorContrato/
+ * GeneradorAnexo2.
  * Validación SUAVE en el contrato: solo se bloquea lo imposible (deudor sin
  * nombre/DNI, sin vehículo, sin cronograma); el resto son campos editables
  * con defaults del sistema que van al snapshot tal como el usuario los deje.
  */
 class Documentos extends Component
 {
+    use WithFileUploads;
+
     public int $clientId;
 
     // ── Estado del modal "Generar Anexo 1" ──
@@ -120,6 +128,27 @@ class Documentos extends Component
     public string $clausulasAdicionales = '';
 
     public string $htmlPreviewContrato = '';
+
+    // ── Estado del modal "Generar Anexo 2" (constancia de entrega — FASE 3) ──
+
+    public ?int $anexo2CreditoId = null;
+
+    /** Clave de BancosVoucher::BANCOS del banco del voucher. */
+    public string $anexo2Banco = '';
+
+    /** Clave de BancosVoucher::MODALIDADES (solo los combos válidos del banco). */
+    public string $anexo2Modalidad = '';
+
+    /** Transcripción del voucher (clave de campo => valor), según ::campos(). */
+    public array $anexo2Campos = [];
+
+    /** Fecha del documento (Y-m-d del input date; $datos la lleva d/m/Y). */
+    public string $fechaAnexo2 = '';
+
+    /** Foto del comprobante bancario (upload temporal de Livewire, opcional). */
+    public $comprobante = null;
+
+    public string $htmlPreviewAnexo2 = '';
 
     protected function rules(): array
     {
@@ -309,6 +338,12 @@ class Documentos extends Component
         if (in_array($raiz, $propsContrato, true)) {
             $this->htmlPreviewContrato = '';
         }
+
+        // Ídem para el Anexo 2 (el comprobante no invalida: la previa nunca lo incluye)
+        $propsAnexo2 = ['anexo2CreditoId', 'anexo2Banco', 'anexo2Modalidad', 'anexo2Campos', 'fechaAnexo2'];
+        if (in_array($raiz, $propsAnexo2, true)) {
+            $this->htmlPreviewAnexo2 = '';
+        }
     }
 
     /** Vincula el codeudor buscado y precarga sus campos editables. */
@@ -398,6 +433,227 @@ class Documentos extends Component
         } catch (\Throwable) {
             return $clave;
         }
+    }
+
+    // ═══ Anexo 2 — Constancia de entrega del monto (FASE 3) ═══
+
+    /** Abre el modal del Anexo 2 con el crédito y la fecha precargados. */
+    public function abrirModalAnexo2(): void
+    {
+        $creditos = $this->creditosActivos();
+
+        $this->anexo2CreditoId = $creditos->count() === 1 ? $creditos->first()->id : null;
+        $this->anexo2Banco = '';
+        $this->anexo2Modalidad = '';
+        $this->anexo2Campos = [];
+        $this->fechaAnexo2 = now()->format('Y-m-d');
+        $this->comprobante = null;
+        $this->htmlPreviewAnexo2 = '';
+        $this->resetErrorBag();
+
+        $this->dispatch('anexo2-modal-open');
+    }
+
+    /** Al cambiar de crédito se vuelve a sugerir el monto del voucher. */
+    public function updatedAnexo2CreditoId(): void
+    {
+        $this->sugerirMontoAnexo2();
+    }
+
+    /** Cambiar de banco rearma la modalidad (autoselección si solo hay una). */
+    public function updatedAnexo2Banco(): void
+    {
+        $modalidades = BancosVoucher::combosDisponibles()[$this->anexo2Banco] ?? [];
+        $this->anexo2Modalidad = count($modalidades) === 1 ? $modalidades[0] : '';
+        $this->rearmarCamposAnexo2();
+    }
+
+    public function updatedAnexo2Modalidad(): void
+    {
+        $this->rearmarCamposAnexo2();
+    }
+
+    /** Valida la imagen apenas se sube; si no pasa, se descarta el archivo. */
+    public function updatedComprobante(): void
+    {
+        try {
+            $this->validateOnly('comprobante', $this->reglasAnexo2(), $this->mensajesAnexo2());
+        } catch (ValidationException $e) {
+            $this->comprobante = null;
+
+            throw $e;
+        }
+    }
+
+    /** Vista previa SIN imagen (imagen_path null → recuadro placeholder). */
+    public function previsualizarAnexo2(): void
+    {
+        $this->validate($this->reglasAnexo2(), $this->mensajesAnexo2());
+
+        $seleccion = $this->seleccionAnexo2();
+        if (! $seleccion) {
+            return;
+        }
+        [$client, $credit] = $seleccion;
+
+        try {
+            $this->htmlPreviewAnexo2 = GeneradorAnexo2::previsualizar($client, $credit, $this->datosAnexo2(null));
+        } catch (InvalidArgumentException $e) {
+            // Campos requeridos faltantes o monto que no cuadra con el desembolso
+            $this->htmlPreviewAnexo2 = '';
+            $this->dispatch('errorAlert', ['message' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            $this->htmlPreviewAnexo2 = '';
+            report($e);
+            $this->dispatch('errorAlert', ['message' => 'No se pudo generar la vista previa: '.$e->getMessage()]);
+        }
+    }
+
+    public function generarAnexo2(): void
+    {
+        $this->validate($this->reglasAnexo2(), $this->mensajesAnexo2());
+
+        $seleccion = $this->seleccionAnexo2();
+        if (! $seleccion) {
+            return;
+        }
+        [$client, $credit] = $seleccion;
+
+        $path = null;
+
+        try {
+            if ($this->comprobante) {
+                $path = $this->comprobante->store("documentos/cliente-{$this->clientId}", 'public');
+            }
+
+            // El Audit del Anexo 2 lo registra el propio servicio (patrón del generador).
+            $doc = GeneradorAnexo2::generar($client, $credit, $this->datosAnexo2($path));
+
+            $this->comprobante = null;
+            $this->htmlPreviewAnexo2 = '';
+            $this->dispatch('anexo2-modal-close');
+            $this->dispatch('successAlert', ['message' => "Anexo 2 v{$doc->version} generado."]);
+        } catch (InvalidArgumentException $e) {
+            $this->limpiarComprobanteFallido($path);
+            $this->dispatch('errorAlert', ['message' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            $this->limpiarComprobanteFallido($path);
+            report($e);
+            $this->dispatch('errorAlert', ['message' => 'No se pudo generar el documento: '.$e->getMessage()]);
+        }
+    }
+
+    /** Client + Credit activo del cliente + combo banco×modalidad, validados. */
+    private function seleccionAnexo2(): ?array
+    {
+        $client = Client::findOrFail($this->clientId);
+
+        $credit = Credit::activo()
+            ->where('client_id', $this->clientId)
+            ->find($this->anexo2CreditoId);
+        if (! $credit) {
+            $this->dispatch('errorAlert', ['message' => 'El crédito seleccionado no es un crédito activo del cliente.']);
+
+            return null;
+        }
+
+        if (! BancosVoucher::esComboValido($this->anexo2Banco, $this->anexo2Modalidad)) {
+            $this->dispatch('errorAlert', ['message' => 'La modalidad elegida no está disponible para ese banco.']);
+
+            return null;
+        }
+
+        return [$client, $credit];
+    }
+
+    /** $datos con el contrato de claves que espera GeneradorAnexo2. */
+    private function datosAnexo2(?string $imagenPath): array
+    {
+        return [
+            'banco' => $this->anexo2Banco,
+            'modalidad' => $this->anexo2Modalidad,
+            'campos' => array_map(fn ($v) => trim((string) $v), $this->anexo2Campos),
+            'imagen_path' => $imagenPath,
+            'fecha' => Carbon::parse($this->fechaAnexo2)->format('d/m/Y'),
+        ];
+    }
+
+    /** Rearma los inputs dinámicos del combo elegido (todos vacíos + monto sugerido). */
+    private function rearmarCamposAnexo2(): void
+    {
+        $this->anexo2Campos = [];
+
+        if (! BancosVoucher::esComboValido($this->anexo2Banco, $this->anexo2Modalidad)) {
+            return;
+        }
+
+        foreach (array_keys(BancosVoucher::campos($this->anexo2Banco, $this->anexo2Modalidad)) as $clave) {
+            $this->anexo2Campos[$clave] = '';
+        }
+
+        $this->sugerirMontoAnexo2();
+    }
+
+    /** Pre-sugiere el campo 'monto' con el importe desembolsado del crédito. */
+    private function sugerirMontoAnexo2(): void
+    {
+        if (! array_key_exists('monto', $this->anexo2Campos)) {
+            return;
+        }
+
+        $importe = $this->importeCreditoAnexo2();
+        if ($importe !== null) {
+            $this->anexo2Campos['monto'] = number_format($importe, 2, '.', '');
+        }
+    }
+
+    /** Importe del crédito activo elegido en el modal del Anexo 2 (null si no hay). */
+    private function importeCreditoAnexo2(): ?float
+    {
+        if (! $this->anexo2CreditoId) {
+            return null;
+        }
+
+        $credit = Credit::activo()
+            ->where('client_id', $this->clientId)
+            ->find($this->anexo2CreditoId);
+
+        return $credit ? round((float) $credit->importe, 2) : null;
+    }
+
+    /** Borra el comprobante ya guardado cuando la generación falló después. */
+    private function limpiarComprobanteFallido(?string $path): void
+    {
+        if ($path) {
+            Storage::disk('public')->delete($path);
+        }
+    }
+
+    private function reglasAnexo2(): array
+    {
+        return [
+            'anexo2CreditoId' => ['required', 'integer'],
+            'anexo2Banco' => ['required', Rule::in(array_keys(BancosVoucher::BANCOS))],
+            'anexo2Modalidad' => ['required', Rule::in(array_keys(BancosVoucher::MODALIDADES))],
+            'fechaAnexo2' => ['required', 'date', 'before_or_equal:today'],
+            'comprobante' => ['nullable', 'image', 'max:4096'],
+        ];
+    }
+
+    private function mensajesAnexo2(): array
+    {
+        return [
+            'anexo2CreditoId.required' => 'Selecciona el crédito desembolsado.',
+            'anexo2Banco.required' => 'Selecciona el banco del voucher.',
+            'anexo2Banco.in' => 'Banco no válido.',
+            'anexo2Modalidad.required' => 'Selecciona la modalidad de la operación.',
+            'anexo2Modalidad.in' => 'Modalidad no válida.',
+            'fechaAnexo2.required' => 'Indica la fecha del documento.',
+            'fechaAnexo2.date' => 'La fecha del documento no es válida.',
+            'fechaAnexo2.before_or_equal' => 'La fecha del documento no puede ser futura.',
+            'comprobante.image' => 'El comprobante debe ser una imagen (JPG, PNG, WEBP…).',
+            'comprobante.max' => 'La imagen del comprobante debe pesar máximo 4 MB.',
+        ];
     }
 
     /**
@@ -1044,6 +1300,14 @@ class Documentos extends Component
                 ->get();
         }
 
+        // Anexo 2: modalidades válidas del banco elegido y campos del combo
+        $modalidadesAnexo2 = $this->anexo2Banco !== ''
+            ? (BancosVoucher::combosDisponibles()[$this->anexo2Banco] ?? [])
+            : [];
+        $camposAnexo2 = BancosVoucher::esComboValido($this->anexo2Banco, $this->anexo2Modalidad)
+            ? BancosVoucher::campos($this->anexo2Banco, $this->anexo2Modalidad)
+            : [];
+
         return view('livewire.clients.documentos', [
             'client' => $client,
             'documentos' => $documentos,
@@ -1054,6 +1318,14 @@ class Documentos extends Component
             'codeudoresEncontrados' => $codeudoresEncontrados,
             'bancosDesembolso' => BancosVoucher::NOMBRES_LEGALES,
             'estadosCiviles' => self::ESTADOS_CIVILES,
+            'bancosVoucher' => BancosVoucher::BANCOS,
+            'modalidadesVoucher' => BancosVoucher::MODALIDADES,
+            'modalidadesAnexo2' => $modalidadesAnexo2,
+            'camposAnexo2' => $camposAnexo2,
+            'tituloVoucherAnexo2' => $camposAnexo2 !== []
+                ? BancosVoucher::titulo($this->anexo2Banco, $this->anexo2Modalidad)
+                : '',
+            'montoDesembolsoAnexo2' => $this->importeCreditoAnexo2(),
         ]);
     }
 }
