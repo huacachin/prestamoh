@@ -78,6 +78,20 @@ Vite with entry points:
 - Locale: `es`
 - Timezone: `America/Lima`
 
+## Módulo Área Legal
+
+Módulo integrado (rama `feat/area-legal`): garantías mobiliarias SIGM con
+generación de contratos PDF, notaría, expedientes judiciales, papeletas, caja
+legal (`incomes`/`expenses` con `caja=4`, aislada de la operativa) y campana de
+alertas. Rol `area-legal` con permisos `legal.*`.
+
+**Antes de tocar migraciones/poblado del módulo o re-migrar sus datos, leer
+`docs/AREA-LEGAL.md`** — documenta qué tablas escribe cada importador, las
+garantías de aislamiento del sistema de préstamos (nunca se escribe en
+clients/credits/installments/payments; reglas de `caja=4`), el comando
+orquestador `legal:poblar {carpeta} --dry-run`, las claves de idempotencia,
+los números de referencia de la corrida validada y el runbook completo.
+
 ## Legacy Reference
 Legacy PHP code in `/Users/antony/projects/_legacy-prestamo/`
 - `sistema/` — Backend PHP files
