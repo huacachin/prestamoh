@@ -51,6 +51,16 @@ class Show extends Component
             'vehiculos', 'avisos.registradoPor', 'contratos.generadoPor',
         ])->findOrFail($this->garantiaId);
 
-        return view('livewire.legal.garantias.show', compact('garantia'));
+        // Otras garantías del mismo cliente (el Excel histórico trajo deudores
+        // duplicados entre hojas de tasa): si esta no está vigente pero existe
+        // una vigente, la vista lo avisa — los contratos se emiten sobre la vigente.
+        $otrasGarantias = $garantia->client_id
+            ? Garantia::where('client_id', $garantia->client_id)
+                ->where('id', '!=', $garantia->id)
+                ->orderByDesc('id')
+                ->get(['id', 'estado', 'credit_id'])
+            : collect();
+
+        return view('livewire.legal.garantias.show', compact('garantia', 'otrasGarantias'));
     }
 }

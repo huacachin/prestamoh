@@ -47,6 +47,26 @@
         </div>
     @endif
 
+    @php $gemelasVigentes = $otrasGarantias->where('estado', 'vigente'); @endphp
+    @if($garantia->estado !== 'vigente' && $gemelasVigentes->isNotEmpty())
+        <div class="alert alert-info py-2 mb-3" style="font-size:12px;">
+            <i class="ti ti-info-circle"></i>
+            <b>Este cliente tiene {{ $gemelasVigentes->count() > 1 ? 'garantías vigentes' : 'una garantía vigente' }}:</b>
+            @foreach($gemelasVigentes as $otra)
+                <a href="{{ route('legal.garantias.show', $otra->id) }}" class="fw-bold">garantía #{{ $otra->id }} (crédito #{{ $otra->credit_id }})</a>@if(! $loop->last), @endif
+            @endforeach
+            — los contratos y avisos nuevos se gestionan sobre la vigente; esta ({{ \App\Models\Garantia::ESTADOS[$garantia->estado] ?? $garantia->estado }}) queda como historial.
+        </div>
+    @elseif($otrasGarantias->isNotEmpty())
+        <p class="text-muted mb-3" style="font-size:11px;">
+            <i class="ti ti-versions"></i> Otras garantías del cliente:
+            @foreach($otrasGarantias as $otra)
+                <a href="{{ route('legal.garantias.show', $otra->id) }}">#{{ $otra->id }}</a>
+                <span class="text-lowercase">({{ \App\Models\Garantia::ESTADOS[$otra->estado] ?? $otra->estado }})</span>@if(! $loop->last) · @endif
+            @endforeach
+        </p>
+    @endif
+
     <div class="row g-3">
         {{-- ═══ Datos del crédito ═══ --}}
         <div class="col-md-4">
