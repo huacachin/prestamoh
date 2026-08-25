@@ -337,4 +337,21 @@ class DocumentoContratoTest extends TestCase
         // Nada llegó a emitirse: la validación corta ANTES de persistir.
         $this->assertSame(0, DocumentoCliente::count());
     }
+
+    /**
+     * Regresión (26/08): el wizard envía la fecha 'd/m/Y' y Carbon::parse la
+     * interpretaba como m/d/Y — con día > 12 reventaba la vista previa
+     * ("Could not parse '24/08/2026'").
+     */
+    public function test_fecha_en_formato_del_wizard_no_revienta(): void
+    {
+        $this->mundo();
+
+        $datos = $this->datosWizard('a1');
+        $datos['fecha'] = '24/08/2026';
+
+        $html = $this->generador()->previsualizar($this->client, $this->credit, [$this->vehiculo->id], 'a1', $datos);
+
+        $this->assertStringContainsString('24 DE AGOSTO DEL 2026', $html);
+    }
 }

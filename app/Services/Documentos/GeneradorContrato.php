@@ -151,7 +151,11 @@ class GeneradorContrato
             ];
         }
 
-        $fecha = Carbon::parse($snapshot['fecha']);
+        // La fecha llega 'd/m/Y' desde el wizard o 'Y-m-d' del default —
+        // Carbon::parse interpreta las barras como m/d/Y y revienta con día > 12.
+        $fecha = preg_match('/^\d{2}\/\d{2}\/\d{4}$/', (string) $snapshot['fecha'])
+            ? Carbon::createFromFormat('d/m/Y', $snapshot['fecha'])->startOfDay()
+            : Carbon::parse($snapshot['fecha']);
 
         // Sin tenor gráfico aquí (va en el Anexo 2): la cláusula de constancia
         // solo menciona la denominación legal del banco elegido.
