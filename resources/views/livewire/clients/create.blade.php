@@ -195,6 +195,64 @@
                     </div>
                 </div>
 
+                <hr class="my-2" style="border-color:#e8e2d5;">
+
+                {{-- ════════ Datos del Vehículo (opcional) ════════ --}}
+                <h6 class="mb-1" style="color:red;">Datos del Vehículo <span class="text-muted small fw-normal">(opcional)</span></h6>
+                <div class="row g-2">
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">Placa</label>
+                        <input type="text" class="form-control form-control-sm text-uppercase @error('placa') is-invalid @enderror"
+                               wire:model.defer="placa" name="placa" maxlength="10" autocomplete="off" placeholder="ABC-123">
+                        @error('placa') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">Marca</label>
+                        <input type="text" class="form-control form-control-sm"
+                               wire:model.defer="marca" name="marca" maxlength="50" autocomplete="off" placeholder="Toyota">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">Modelo</label>
+                        <input type="text" class="form-control form-control-sm"
+                               wire:model.defer="modelo" name="modelo" maxlength="50" autocomplete="off" placeholder="Hiace">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">N° de Motor</label>
+                        <input type="text" class="form-control form-control-sm text-uppercase"
+                               wire:model.defer="nro_motor" name="nro_motor" maxlength="30" autocomplete="off">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">N° de Serie</label>
+                        <input type="text" class="form-control form-control-sm text-uppercase"
+                               wire:model.defer="nro_serie" name="nro_serie" maxlength="30" autocomplete="off">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">Categoría</label>
+                        <input type="text" class="form-control form-control-sm"
+                               wire:model.defer="categoria" name="categoria" maxlength="30" autocomplete="off" placeholder="M2-C3">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">Año de Modelo</label>
+                        <input type="text" class="form-control form-control-sm"
+                               wire:model.defer="anio_modelo" name="anio_modelo" maxlength="10" autocomplete="off" placeholder="2018">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">Carrocería</label>
+                        <input type="text" class="form-control form-control-sm"
+                               wire:model.defer="carroceria" name="carroceria" maxlength="50" autocomplete="off" placeholder="Microbus">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">Color</label>
+                        <input type="text" class="form-control form-control-sm"
+                               wire:model.defer="color" name="color" maxlength="50" autocomplete="off" placeholder="Blanco">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">Combustible</label>
+                        <input type="text" class="form-control form-control-sm"
+                               wire:model.defer="combustible" name="combustible" maxlength="30" autocomplete="off" placeholder="GNV / Gasolina">
+                    </div>
+                </div>
+
                 {{-- ════════ Acciones ════════ --}}
                 <div class="d-flex gap-2 justify-content-center mt-3">
                     <button type="submit" class="btn btn-sm btn-dark" wire:loading.attr="disabled" wire:target="save">

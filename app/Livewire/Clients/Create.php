@@ -51,6 +51,27 @@ class Create extends Component
 
     public ?int $asesor_id = null;
 
+    // ── Datos del vehículo (opcionales; pedido 26/08) ──────
+    public ?string $placa = null;
+
+    public ?string $marca = null;
+
+    public ?string $modelo = null;
+
+    public ?string $nro_motor = null;
+
+    public ?string $nro_serie = null;
+
+    public ?string $categoria = null;
+
+    public ?string $anio_modelo = null;
+
+    public ?string $carroceria = null;
+
+    public ?string $color = null;
+
+    public ?string $combustible = null;
+
     public $asesores;
 
     public function mount(): void
@@ -211,6 +232,8 @@ class Create extends Component
             'apellido_pat', 'apellido_mat', 'nombre', 'sexo', 'fecha_nacimiento',
             'documento', 'tipo_documento',
             'direccion', 'giro', 'zona', 'celular1', 'celular2',
+            'placa', 'marca', 'modelo', 'nro_motor', 'nro_serie',
+            'categoria', 'anio_modelo', 'carroceria', 'color', 'combustible',
         ]);
         $this->sexo = 'M';
         $this->tipo_documento = 'DNI';
@@ -236,6 +259,26 @@ class Create extends Component
             'celular1' => 'nullable|string|max:20',
             'celular2' => 'nullable|string|max:20',
             'asesor_id' => 'nullable|exists:users,id',
+            // Vehículo: todo opcional, pero si se llena algún dato técnico la
+            // placa es obligatoria (es la clave del registro) y única.
+            'placa' => 'nullable|string|max:10|unique:vehiculos,placa|required_with:marca,modelo,nro_motor,nro_serie,categoria,anio_modelo,carroceria,color,combustible',
+            'marca' => 'nullable|string|max:50',
+            'modelo' => 'nullable|string|max:50',
+            'nro_motor' => 'nullable|string|max:30',
+            'nro_serie' => 'nullable|string|max:30',
+            'categoria' => 'nullable|string|max:30',
+            'anio_modelo' => 'nullable|string|max:10',
+            'carroceria' => 'nullable|string|max:50',
+            'color' => 'nullable|string|max:50',
+            'combustible' => 'nullable|string|max:30',
+        ];
+    }
+
+    protected function messages(): array
+    {
+        return [
+            'placa.required_with' => 'Ingresa la placa: es obligatoria si registras datos del vehículo.',
+            'placa.unique' => 'Esa placa ya está registrada en otro cliente.',
         ];
     }
 
@@ -243,6 +286,13 @@ class Create extends Component
     {
         abort_if(auth()->user()?->can('clientes.scope-propio') ?? false, 403,
             'Tu rol no permite esta acción.');
+
+        // Normalizar ANTES de validar, para que el unique de placa compare
+        // contra lo que realmente se guardará.
+        $this->placa = strtoupper(trim((string) $this->placa)) ?: null;
+        $this->nro_motor = strtoupper(trim((string) $this->nro_motor)) ?: null;
+        $this->nro_serie = strtoupper(trim((string) $this->nro_serie)) ?: null;
+
         $this->validate();
 
         // Re-confirmar duplicado al guardar (race condition)
@@ -280,6 +330,26 @@ class Create extends Component
                 'updated_at' => now(),
             ]);
 
+            // Vehículo opcional: solo si hay placa (la validación ya exigió
+            // placa cuando se llenó cualquier otro dato técnico)
+            if ($this->placa !== null) {
+                DB::table('vehiculos')->insert([
+                    'client_id' => $clientId,
+                    'placa' => $this->placa,
+                    'marca' => $this->marca ?: null,
+                    'modelo' => $this->modelo ?: null,
+                    'nro_motor' => $this->nro_motor,
+                    'nro_serie' => $this->nro_serie,
+                    'categoria' => $this->categoria ?: null,
+                    'anio_modelo' => $this->anio_modelo ?: null,
+                    'carroceria' => $this->carroceria ?: null,
+                    'color' => $this->color ?: null,
+                    'combustible' => $this->combustible ?: null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
             // Avanzar correlativo al expediente que terminó usando el usuario
             DB::table('correlativos')
                 ->where('tipo', 'Cliente')
@@ -290,7 +360,8 @@ class Create extends Component
         });
 
         $createdClient = Client::find($this->newClientId);
-        Audit::log('Creó el cliente '.($createdClient?->fullName() ?? $this->documento), $createdClient);
+        Audit::log('Creó el cliente '.($createdClient?->fullName() ?? $this->documento), $createdClient,
+            $this->placa !== null ? ['vehiculo' => $this->placa] : []);
 
         return redirect()->route('clients.gallery', $this->newClientId);
     }
