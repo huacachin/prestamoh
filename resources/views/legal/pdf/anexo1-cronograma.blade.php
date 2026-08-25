@@ -85,7 +85,7 @@
         <td>{{ $vm->montoCifra('cuota') }}</td>
     </tr>
     <tr>
-        <th>FECHA DE INICIO</th>
+        <th>FECHA DEL CONTRATO</th>
         <td>{{ $vm->fechaSimple }}</td>
     </tr>
 </table>

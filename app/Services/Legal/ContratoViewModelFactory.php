@@ -98,7 +98,10 @@ class ContratoViewModelFactory
         ])->values()->all();
 
         // ─── Cronograma real (credit_installments; filas 0 = fines de semana del diario) ───
+        // sortBy explícito: la relación installments no ordena y la BD puede
+        // devolver las filas en cualquier orden (bug real: la cuota 48 salía primera).
         $cuotasReales = $credit->installments
+            ->sortBy('num_cuota')->values()
             ->map(fn ($i) => [
                 'n' => $i->num_cuota,
                 'fecha' => Carbon::parse($i->fecha_vencimiento)->format('d/m/Y'),
