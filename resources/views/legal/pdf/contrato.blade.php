@@ -12,6 +12,10 @@
 </head>
 <body>
 
+@if ($paraPdf ?? true)
+    <div class="pie-pagina">{{ $vm->numero }} — Página <span class="num"></span></div>
+@endif
+
 @include('legal.pdf.partials.encabezado')
 
 @foreach ($vm->clausulas as $clave)

@@ -1,13 +1,43 @@
 {{-- Estilos compartidos del contrato y anexos. REGLA dompdf (heredada de
-     payments/ticket-pdf): nada de flexbox — solo bloques y tablas. --}}
+     payments/ticket-pdf): nada de flexbox — solo bloques y tablas.
+     Recibe $paraPdf del orquestador: en PDF los márgenes van en @page (los
+     documentos se imprimen para notaría: izquierdo más ancho para el legajo)
+     y el pie numera las páginas; en la vista previa HTML el margen va como
+     padding del body. --}}
 <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    @if($paraPdf ?? true)
+    @page { margin: 2.2cm 2cm 2.4cm 2.8cm; }
+    .pie-pagina {
+        position: fixed;
+        bottom: -1.2cm;
+        left: 0;
+        right: 0;
+        text-align: right;
+        font-size: 7.5pt;
+        color: #444;
+    }
+    .pie-pagina .num:after { content: counter(page); }
+    @endif
+    /* OJO dompdf (verificado empíricamente con 3.1.6): el marco de página
+       hereda el estilo del elemento raíz, así que NI el selector universal *
+       NI `html` pueden llevar margin — ambos anulan los márgenes de @page.
+       Reset con lista explícita SIN html: */
+    body, div, p, h1, h2, h3, h4, table, thead, tbody, tfoot, tr, th, td,
+    ul, ol, li, span, b, i, strong, em, img {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
     body {
         font-family: "DejaVu Serif", serif;
         font-size: 9.5pt;
         line-height: 1.45;
         color: #000;
         margin: 0;
+        @if(! ($paraPdf ?? true))
+        padding: 2.2cm 2cm 2.4cm 2.8cm;
+        background: #fff;
+        @endif
     }
     .titulo-contrato {
         font-size: 11pt;
