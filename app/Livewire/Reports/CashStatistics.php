@@ -7,6 +7,7 @@ use App\Models\Income;
 use App\Models\Payment;
 use App\Services\CajaDailyService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -54,9 +55,11 @@ class CashStatistics extends Component
         $fp = [
             DB::table('payments')->whereBetween('fecha', [$start, $end])
                 ->selectRaw('COUNT(*) c, COALESCE(SUM(monto),0) s, COALESCE(MAX(id),0) m')->first(),
-            DB::table('incomes')->whereBetween('date', [$start, $end])
+            // Solo cajas 1 y 3: los asientos del Área Legal (caja=4) no entran a
+            // este reporte y no deben invalidar su caché mensual.
+            DB::table('incomes')->whereIn('caja', [1, 3])->whereBetween('date', [$start, $end])
                 ->selectRaw('COUNT(*) c, COALESCE(SUM(total),0) s, COALESCE(MAX(id),0) m')->first(),
-            DB::table('expenses')->whereBetween('date', [$start, $end])
+            DB::table('expenses')->whereIn('caja', [1, 3])->whereBetween('date', [$start, $end])
                 ->selectRaw('COUNT(*) c, COALESCE(SUM(total),0) s, COALESCE(MAX(id),0) m')->first(),
             // credits completa: capital_neto y capitalActivado dependen de toda
             // la tabla (importe cubre ediciones raw que no toquen updated_at)
@@ -256,7 +259,7 @@ class CashStatistics extends Component
         // se salta (antes eran 65-94 escrituras por CADA interacción Livewire).
         $huella = $this->huellaCaches($year, $month, $endLimit);
         $huellaKey = "cajacache-fp:{$year}-{$month}";
-        if (\Illuminate\Support\Facades\Cache::get($huellaKey) !== $huella) {
+        if (Cache::get($huellaKey) !== $huella) {
             $this->rebuildCajaCaches($year, $month, $endLimit);
 
             // Replica el comportamiento del legacy caja-estadistica.php (L556):
@@ -265,7 +268,7 @@ class CashStatistics extends Component
 
             // La huella se guarda DESPUÉS del rebuild: si algo falla a medias,
             // el próximo render reintenta en vez de dar la cache por buena.
-            \Illuminate\Support\Facades\Cache::put($huellaKey, $huella, now()->addDays(45));
+            Cache::put($huellaKey, $huella, now()->addDays(45));
         }
 
         // ─── PRECARGAR DATOS DEL MES (cacheados, igual al legacy) ──────

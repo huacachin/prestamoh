@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             HeadquartersSeeder::class,
             UsersSeeder::class,
             ConceptsSeeder::class,
+            LegalSettingsSeeder::class,
         ]);
     }
 }

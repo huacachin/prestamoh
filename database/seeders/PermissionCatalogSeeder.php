@@ -69,6 +69,18 @@ class PermissionCatalogSeeder extends Seeder
             ['name' => 'pagos.eliminar',                'label' => 'Eliminar/anular pagos', 'module' => 'pagos',    'module_label' => 'Pagos',    'description' => 'Anular o eliminar pagos registrados'],
             ['name' => 'pagos.mora-manual',             'label' => 'Mora manual',          'module' => 'pagos',    'module_label' => 'Pagos',    'description' => 'Editar/override del Total Mora al registrar un pago'],
 
+            // ─── Área Legal ───
+            // Los 7 entran juntos desde la fase 1 aunque algunas pantallas
+            // lleguen en fases posteriores: este seeder BORRA todo permiso
+            // fuera del catálogo, y las matrices de rol ya los referencian.
+            ['name' => 'legal.garantias',     'label' => 'Garantías SIGM',    'module' => 'legal', 'module_label' => 'Área Legal', 'description' => 'Garantías mobiliarias, vehículos y avisos SIGM'],
+            ['name' => 'legal.contratos',     'label' => 'Contratos',         'module' => 'legal', 'module_label' => 'Área Legal', 'description' => 'Generación de contratos y anexos en PDF'],
+            ['name' => 'legal.notaria',       'label' => 'Notaría',           'module' => 'legal', 'module_label' => 'Área Legal', 'description' => 'Seguimiento de trámites notariales'],
+            ['name' => 'legal.judicial',      'label' => 'Expedientes Jud.',  'module' => 'legal', 'module_label' => 'Área Legal', 'description' => 'Expedientes judiciales, actuaciones y plazos'],
+            ['name' => 'legal.papeletas',     'label' => 'Papeletas',         'module' => 'legal', 'module_label' => 'Área Legal', 'description' => 'Papeletas de tránsito y recursos'],
+            ['name' => 'legal.caja',          'label' => 'Caja Legal',        'module' => 'legal', 'module_label' => 'Área Legal', 'description' => 'Movimientos de caja del área legal'],
+            ['name' => 'legal.configuracion', 'label' => 'Config. Legal',     'module' => 'legal', 'module_label' => 'Área Legal', 'description' => 'Constantes del área legal (acreedor, apoderada, cuentas)'],
+
             // ─── Permisos finos transversales ───
             ['name' => 'usuarios.gestionar-permisos', 'label' => 'Gestionar permisos',      'module' => 'configuracion', 'module_label' => 'Configuración',  'description' => 'Modificar la matriz de permisos de otros usuarios'],
             ['name' => 'transacciones.autorizar',     'label' => 'Autorizar transacciones', 'module' => 'transacciones', 'module_label' => 'Transacciones', 'description' => 'Autorizar acciones que requieren visto bueno gerencial (anulaciones, ajustes, etc.)'],

@@ -17,6 +17,7 @@ class Client extends Model
         'email', 'giro', 'capital', 'celular1', 'celular2',
         'direccion', 'referencia', 'distrito', 'provincia', 'departamento',
         'zona', 'contacto_emergencia', 'telefono_contacto',
+        'estado_civil', 'ocupacion', 'nacionalidad',
         'banco_haberes', 'cuenta_haberes', 'banco_cts', 'cuenta_cts',
         'afp', 'cussp', 'latitud', 'longitud', 'latitud2', 'longitud2', 'imagen',
         'observaciones', 'asesor_id', 'headquarter_id', 'status',
@@ -63,6 +64,21 @@ class Client extends Model
     public function avales(): HasMany
     {
         return $this->hasMany(ClientAval::class);
+    }
+
+    public function garantias(): HasMany
+    {
+        return $this->hasMany(Garantia::class);
+    }
+
+    public function vehiculos(): HasMany
+    {
+        return $this->hasMany(Vehiculo::class);
+    }
+
+    public function expedientesJudiciales(): HasMany
+    {
+        return $this->hasMany(ExpedienteJudicial::class);
     }
 
     public function scopeActive($q)

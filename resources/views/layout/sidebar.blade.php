@@ -77,6 +77,22 @@
         ],
 
         [
+            'id'       => 'legal',
+            'title'    => 'Área Legal',
+            'icon'     => 'ti ti-gavel',
+            'canAny'   => ['legal.garantias', 'legal.notaria', 'legal.judicial', 'legal.papeletas', 'legal.caja', 'legal.configuracion'],
+            'children' => [
+                ['title' => 'Garantías SIGM',  'route' => 'legal.garantias.index',   'can' => 'legal.garantias'],
+                ['title' => 'Vehículos',       'route' => 'legal.vehiculos',         'can' => 'legal.garantias'],
+                ['title' => 'Notaría',         'route' => 'legal.notaria',           'can' => 'legal.notaria'],
+                ['title' => 'Expedientes Jud.', 'route' => 'legal.expedientes.index', 'can' => 'legal.judicial'],
+                ['title' => 'Papeletas',       'route' => 'legal.papeletas',         'can' => 'legal.papeletas'],
+                ['title' => 'Caja Legal',      'route' => 'legal.caja',              'can' => 'legal.caja'],
+                ['title' => 'Config. Legal',   'route' => 'legal.settings',          'can' => 'legal.configuracion'],
+            ],
+        ],
+
+        [
             'id'    => 'auditoria',
             'title' => 'Auditoría',
             'icon'  => 'ti ti-shield-lock',
