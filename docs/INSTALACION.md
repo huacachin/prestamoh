@@ -465,6 +465,8 @@ copia no trae, **parar**: habría que reconciliar primero.
 | `short_links` | **SÍ** | Acortadores de recibos ya enviados por WhatsApp — si se pierden, esos links mueren |
 | `client_notifications` | **SÍ** | Notificaciones de cobranza (con `credit_id` desde 14/08) |
 | `compromisos_pago` | **SÍ** | Compromisos de pago múltiples (tabla propia desde 21/08) |
+| `vehiculos` | **SÍ** | Datos de vehículo del wizard de clientes (desde 22/08, solo existen en prod) |
+| `documentos_cliente` | **SÍ** | Contratos/anexos generados (los PDF viven en storage, que no se toca; los registros van aquí) |
 | `sessions`, `cache` | No | Desechables (se vuelven a loguear) |
 
 Detectarlas automáticamente: comparar `COUNT(*)` de cada tabla local vs prod y
@@ -479,6 +481,7 @@ gzip -t "$F" && ls -lh "$F"
 # 2) Extraer las tablas a preservar
 mysqldump --single-transaction --quick laravel_prestamo \
   activity_log cache_morosidad_diaria mora_overrides short_links client_notifications compromisos_pago \
+  vehiculos documentos_cliente \
   | gzip -1 > /root/preservar_$(date +%F).sql.gz'
 
 # 3) Subir el dump nuevo
