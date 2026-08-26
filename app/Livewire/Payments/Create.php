@@ -55,7 +55,7 @@ class Create extends Component
     // Motivo del ajuste. Obligatorio cuando el override CAMBIA el monto: sin él
     // el cobro no se confirma. Queda en `mora_overrides` + auditoría, para que
     // toda rebaja de mora tenga responsable y explicación.
-    public ?string $moraMotivo = null;
+    public ?string $moraMotivo = 'Mora exonerada'; // pre-escrito, editable
 
     // Fecha "Calcular al" de las tarjetas de escenario (simulador de cotización).
     public string $fecsim = '';
@@ -73,12 +73,11 @@ class Create extends Component
 
     // Exoneración al cancelar (desglosada 26/08): cada mora tiene su switch.
     // Solo actúan con el crédito cancelándose; exigen motivo (bitácora).
-    // Por DEFECTO se exonera (pedido 26/08): el cajero apaga para cobrar.
-    public bool $quitarMora = true;         // exonera la mora vigente (días × tarifa)
+    public bool $quitarMora = false;        // exonera la mora vigente (días × tarifa)
 
-    public bool $quitarMoraAcum = true;     // exonera la mora acumulada (exonerada histórica)
+    public bool $quitarMoraAcum = false;    // exonera la mora acumulada (exonerada histórica)
 
-    public string $condonarMotivo = '';
+    public string $condonarMotivo = 'Mora exonerada'; // pre-escrito, editable
 
     public bool $cancelUltimaCuota = false; // interés de todo el cronograma, no solo a la fecha
 
@@ -283,7 +282,7 @@ class Create extends Component
     {
         if ($value) {
             $this->moraManual = null;
-            $this->moraMotivo = null;
+            $this->moraMotivo = 'Mora exonerada';
         }
     }
 
@@ -299,7 +298,7 @@ class Create extends Component
             }
         } else {
             $this->moraManual = null;
-            $this->moraMotivo = null;
+            $this->moraMotivo = 'Mora exonerada';
         }
     }
 
