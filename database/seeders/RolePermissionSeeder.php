@@ -72,7 +72,9 @@ class RolePermissionSeeder extends Seeder
                 // Usuarios, permisos y sucursales: solo director (permisos-nuevos 21/08)
                 'configuracion.conceptos', 'configuracion.tipo-cambio',
                 'registro.activar', 'registro.estado', 'registro.cesados',
-                'registro.eliminar-masivo',
+                // revertir = anular cobros; el código lo limita a operaciones
+                // del DÍA para quien no tiene caja.editar-historico (26/08)
+                'registro.eliminar-masivo', 'registro.eliminar-masivo.revertir',
                 'transacciones.autorizar',
                 'acceso.cross-headquarter',
             ],

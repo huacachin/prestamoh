@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Livewire\Credits\Activate;
 use App\Livewire\Credits\Edit as CreditsEdit;
+use App\Livewire\Credits\MassDeleteEdit;
 use App\Models\Client;
 use App\Models\Credit;
+use App\Models\MassDeletion;
 use App\Models\User;
 use Database\Seeders\PermissionCatalogSeeder;
 use Database\Seeders\RolePermissionSeeder;
@@ -109,6 +111,40 @@ class PermisosDobleCheckTest extends TestCase
 
         $this->assertSame(now()->format('Y-m-d'), $credit->fresh()->fecha_prestamo?->format('Y-m-d'),
             'sin bypass la fecha del crédito no se toca');
+    }
+
+    public function test_reverse_masivo_solo_del_dia_para_administrador(): void
+    {
+        $admin = User::factory()->create(['username' => 'adm-rev']);
+        $admin->assignRole('administrador');
+        $this->actingAs($admin);
+
+        $hoy = MassDeletion::create([
+            'credit_id' => null, 'amount' => 100,
+            'date' => now()->format('Y-m-d'), 'time' => '10:00:00', 'user' => 'adm-rev',
+        ]);
+        $ayer = MassDeletion::create([
+            'credit_id' => null, 'amount' => 100,
+            'date' => now()->subDays(3)->format('Y-m-d'), 'time' => '10:00:00', 'user' => 'adm-rev',
+        ]);
+
+        // Histórico: bloqueado (el registro sobrevive)
+        Livewire::test(MassDeleteEdit::class, ['id' => $ayer->id])
+            ->call('reverse');
+        $this->assertNotNull($ayer->fresh(), 'cobro histórico NO se revierte sin editar-historico');
+
+        // Del día: procede (el registro desaparece)
+        Livewire::test(MassDeleteEdit::class, ['id' => $hoy->id])
+            ->call('reverse');
+        $this->assertNull($hoy->fresh(), 'cobro del día SÍ se revierte');
+
+        // Director: lo histórico sigue abierto
+        $director = User::factory()->create(['username' => 'dir-rev']);
+        $director->assignRole('director');
+        $this->actingAs($director);
+        Livewire::test(MassDeleteEdit::class, ['id' => $ayer->id])
+            ->call('reverse');
+        $this->assertNull($ayer->fresh(), 'el director revierte cualquier fecha');
     }
 
     public function test_activate_no_reactiva_cancelados_antiguos_sin_bypass(): void

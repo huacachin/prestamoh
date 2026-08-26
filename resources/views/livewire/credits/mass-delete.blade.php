@@ -65,7 +65,7 @@
 
                     @php
                         $hoy = now()->format('Y-m-d');
-                        $puedeEditarHistorico = auth()->user()->can('registro.eliminar-masivo.revertir');
+                        $puedeEditarHistorico = auth()->user()->can('caja.editar-historico');
                     @endphp
 
                     {{-- Tabla Desktop --}}
