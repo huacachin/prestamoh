@@ -86,6 +86,7 @@ class CondonacionMoraTest extends TestCase
         Livewire::test(Create::class, ['creditId' => $credit->id])
             ->set('monto', 1300)
             ->set('decisionTotal', 'si')          // cancela el crédito
+            ->set('quitarMora', false)            // APAGA el default para cobrar la vigente
             ->set('moraManual', 15)               // mora vigente negociada
             ->set('moraMotivo', 'Acuerdo con el cliente')
             ->set('quitarMoraAcum', true)         // perdona SOLO la acumulada
@@ -164,8 +165,10 @@ class CondonacionMoraTest extends TestCase
         $comp = Livewire::test(Create::class, ['creditId' => $credit->id])
             ->set('monto', 1300)
             ->set('decisionTotal', 'si')
+            ->set('quitarMora', false)            // apaga el default para poder editar
             ->set('moraManual', 15)
             ->set('quitarMora', true)             // precedencia: limpia el override
+            ->set('quitarMoraAcum', false)        // la acumulada SÍ se cobra (veredicto mixto)
             ->set('condonarMotivo', 'Condonación total autorizada')
             ->call('confirmarPago');
 
@@ -173,10 +176,10 @@ class CondonacionMoraTest extends TestCase
         $preview = $comp->get('preview');
         $this->assertEqualsWithDelta(0.0, (float) $preview['mora'], 0.001, 'el ticket no cobra mora');
         $this->assertGreaterThan(0, (float) $preview['condonada_vigente'], 'el modal declara la condonación');
-        $comp->assertSee('Condonación al cancelar');
+        $comp->assertSee('Exoneración al cancelar');
 
         // Veredicto por mora en el bloque de la decisión (antes: "Mora pendiente")
-        $comp->assertSee('Mora: se condona al cancelar');
+        $comp->assertSee('Mora: se exonera al cancelar');
         $comp->assertSee('Mora acumulada: se cobra');
         $comp->assertDontSee('Mora pendiente');
     }

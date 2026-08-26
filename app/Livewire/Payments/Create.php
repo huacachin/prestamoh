@@ -71,11 +71,12 @@ class Create extends Component
      */
     public string $decisionTotal = '';
 
-    // Condonación al cancelar (desglosada 26/08): cada mora tiene su switch.
+    // Exoneración al cancelar (desglosada 26/08): cada mora tiene su switch.
     // Solo actúan con el crédito cancelándose; exigen motivo (bitácora).
-    public bool $quitarMora = false;        // condona la mora vigente (días × tarifa)
+    // Por DEFECTO se exonera (pedido 26/08): el cajero apaga para cobrar.
+    public bool $quitarMora = true;         // exonera la mora vigente (días × tarifa)
 
-    public bool $quitarMoraAcum = false;    // condona la mora acumulada (exonerada histórica)
+    public bool $quitarMoraAcum = true;     // exonera la mora acumulada (exonerada histórica)
 
     public string $condonarMotivo = '';
 
@@ -455,11 +456,19 @@ class Create extends Component
             return 'Indica el motivo del ajuste de la mora (mínimo 5 caracteres).';
         }
 
-        // Condonar (quitar mora / mora acumulada al cancelar) también exige
-        // motivo: es dinero que se deja de cobrar, misma regla que el ajuste.
-        if ($this->cancel && ($this->quitarMora || $this->quitarMoraAcum)
-            && mb_strlen(trim((string) $this->condonarMotivo)) < 5) {
-            return 'Indica el motivo de la condonación de mora (mínimo 5 caracteres).';
+        // Exonerar también exige motivo: es dinero que se deja de cobrar,
+        // misma regla que el ajuste. Solo si HAY mora que exonerar (>0):
+        // con los switches encendidos por defecto, un crédito sin mora
+        // se cancela sin pedir nada.
+        if ($this->cancel) {
+            $exoneraVigente = $this->quitarMora
+                && (float) $this->buildCalcs()['total_mora_calc'] > 0.001;
+            $exoneraAcum = $this->quitarMoraAcum
+                && round(collect(MoraExonerada::porCuota($this->credit))->sum('monto'), 2) > 0.001;
+            if (($exoneraVigente || $exoneraAcum)
+                && mb_strlen(trim((string) $this->condonarMotivo)) < 5) {
+                return 'Indica el motivo de la exoneración de mora (mínimo 5 caracteres).';
+            }
         }
 
         // Método de pago: si es depósito, valida sus campos y el voucher.

@@ -206,8 +206,8 @@
                                 {{-- Condonada por el switch: manda sobre el campo (editable o no) --}}
                                 <input type="text" class="form-control form-control-sm input-rojo"
                                        style="text-decoration: line-through;"
-                                       value="0.00 — condonada" readonly
-                                       title="Mora condonada al cancelar (switch Quitar mora)">
+                                       value="0.00 — exonerada" readonly
+                                       title="Mora exonerada al cancelar (switch Exonerar mora)">
                             @elseif($puedeMora)
                                 <input type="number" name="moraManual" autocomplete="off" step="0.01" min="0"
                                        class="form-control form-control-sm input-rojo"
@@ -580,7 +580,7 @@
                         <div class="alert alert-info d-flex align-items-start gap-2 py-2 mx-3 mt-2 mb-0" style="font-size: 12px;">
                             <i class="ti ti-eraser f-s-16 mt-1"></i>
                             <div>
-                                <b>Condonación al cancelar:</b>
+                                <b>Exoneración al cancelar:</b>
                                 @if(($preview['condonada_vigente'] ?? 0) > 0.001)
                                     Mora S/ {{ number_format($preview['condonada_vigente'], 2) }}@if(($preview['condonada_acum'] ?? 0) > 0.001) ·@endif
                                 @endif
@@ -653,14 +653,14 @@
                                     @elseif($preview['reserva_mora'] ?? false)
                                         <span style="color:#b8860b;">Mora: reservada — queda como deuda <b>S/ {{ number_format($vVig, 2) }}</b></span>
                                     @else
-                                        <span style="color:#6b7280;">Mora: se condona al cancelar <b style="text-decoration: line-through;">S/ {{ number_format($vCondVig > 0.001 ? $vCondVig : $vVig, 2) }}</b></span>
+                                        <span style="color:#6b7280;">Mora: se exonera al cancelar <b style="text-decoration: line-through;">S/ {{ number_format($vCondVig > 0.001 ? $vCondVig : $vVig, 2) }}</b></span>
                                     @endif
                                 </div>
                             @endif
                             @if($vAcumCobra > 0.001 || $vCondAcum > 0.001)
                                 <div class="small mb-2">
                                     @if($vCondAcum > 0.001)
-                                        <span style="color:#6b7280;">Mora acumulada: se condona al cancelar <b style="text-decoration: line-through;">S/ {{ number_format($vCondAcum, 2) }}</b></span>
+                                        <span style="color:#6b7280;">Mora acumulada: se exonera al cancelar <b style="text-decoration: line-through;">S/ {{ number_format($vCondAcum, 2) }}</b></span>
                                     @else
                                         <span style="color:#c0392b;">Mora acumulada: se cobra <b>S/ {{ number_format($vAcumCobra, 2) }}</b></span>
                                     @endif
@@ -941,14 +941,14 @@
 
                             {{-- Opciones de la cotización --}}
                             <div class="rounded p-2 mt-2 mb-2" style="background:#f2f4f7;">
-                                {{-- Condonación desglosada (26/08): cada mora con su switch,
+                                {{-- Exoneración desglosada (26/08): cada mora con su switch (default ON),
                                      con el monto en la etiqueta y motivo obligatorio. --}}
                                 @if($sim['mora'] > 0.005)
                                     <div class="form-check form-switch mb-1">
                                         <input class="form-check-input" type="checkbox" role="switch"
                                                id="quitarMora" wire:model.live="quitarMora">
                                         <label class="form-check-label small fw-semibold" for="quitarMora">
-                                            Quitar mora (S/ {{ number_format($sim['mora'], 2) }})
+                                            Exonerar mora (S/ {{ number_format($sim['mora'], 2) }})
                                         </label>
                                     </div>
                                 @endif
@@ -957,7 +957,7 @@
                                         <input class="form-check-input" type="checkbox" role="switch"
                                                id="quitarMoraAcum" wire:model.live="quitarMoraAcum">
                                         <label class="form-check-label small fw-semibold" for="quitarMoraAcum">
-                                            Quitar mora acumulada (S/ {{ number_format($moraAcumTotal, 2) }})
+                                            Exonerar mora acumulada (S/ {{ number_format($moraAcumTotal, 2) }})
                                         </label>
                                     </div>
                                 @endif
@@ -965,7 +965,7 @@
                                     <input type="text" autocomplete="off" maxlength="255"
                                            class="form-control form-control-sm mb-1"
                                            wire:model.live.debounce.500ms="condonarMotivo"
-                                           placeholder="Motivo de la condonación (obligatorio)">
+                                           placeholder="Motivo de la exoneración (obligatorio)">
                                 @endif
                                 <div class="form-check form-switch mb-0">
                                     <input class="form-check-input" type="checkbox" role="switch"
