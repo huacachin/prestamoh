@@ -414,7 +414,12 @@ class MigrateLegacyData extends Command
                     // fecha_pago: NULL hasta que esté pagada. El legacy no guarda la fecha
                     // real del pago a nivel cuota; cuando flpago=1 usamos la fecha del
                     // cronograma como aproximación (igual que hacía el legacy).
-                    $fechaPago = ($li->flpago == 1 && $fechaVenc) ? $fechaVenc : null;
+                    // Fecha REAL del pago: fechamov (último movimiento que la dejó
+                    // pagada) — es lo que el legacy muestra en su columna "Fecha Pago".
+                    // fechapago (=$fechaVenc) es el VENCIMIENTO, no el día del pago.
+                    $fechaMov = ($li->fechamov && strlen((string) $li->fechamov) >= 10)
+                        ? substr((string) $li->fechamov, 0, 10) : null;
+                    $fechaPago = ($li->flpago == 1) ? ($fechaMov ?: $fechaVenc) : null;
 
                     $batch[] = [
                         'id' => $li->id,

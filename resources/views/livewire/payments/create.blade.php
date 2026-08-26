@@ -1023,7 +1023,7 @@
                                         <span class="badge bg-warning">Pendiente</span>
                                     @endif
                                 </td>
-                                <td>{{ $inst->fecha_pago?->format('d/m/Y') }}</td>
+                                <td>{{ $inst->pagado ? $inst->fecha_pago?->format('d/m/Y') : '' }}</td>
                                 <td class="text-center" style="white-space:nowrap;">
                                     @php $rec = $recibos[$inst->id] ?? null; @endphp
                                     @if($rec)
