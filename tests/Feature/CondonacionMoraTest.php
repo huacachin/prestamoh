@@ -140,6 +140,31 @@ class CondonacionMoraTest extends TestCase
         $this->assertSame('Cancelado', $credit->fresh()->situacion);
     }
 
+    /** Paridad estricta: el TOTAL del modal == amount cobrado, con exoneración de acumulada. */
+    public function test_el_total_del_modal_es_el_cobrado_al_exonerar_acumulada(): void
+    {
+        $this->cajero(conMoraManual: false);
+        $credit = $this->creditoConAmbasMoras();
+
+        $comp = Livewire::test(Create::class, ['creditId' => $credit->id])
+            ->set('monto', 1300)
+            ->set('decisionTotal', 'si')
+            ->set('quitarMoraAcum', true)
+            ->call('confirmarPago');
+
+        $preview = $comp->get('preview');
+        $this->assertEqualsWithDelta(0.0, (float) $preview['mora_acum_cobrar'], 0.001, 'el modal no debe sumar la acumulada exonerada');
+        $this->assertGreaterThan(0, (float) $preview['condonada_acum']);
+
+        $comp->call('pagar');
+
+        $cobrado = (float) DB::table('mass_deletions')->where('credit_id', $credit->id)->value('amount');
+        $this->assertEqualsWithDelta((float) $preview['total'], $cobrado, 0.005,
+            'el TOTAL del modal debe ser exactamente lo cobrado');
+        $this->assertSame(0, DB::table('payments')->where('credit_id', $credit->id)
+            ->where('documento', 'MORA ACUM.')->count());
+    }
+
     public function test_condonar_sin_motivo_no_deja_cobrar(): void
     {
         $this->cajero(conMoraManual: false);

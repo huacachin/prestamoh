@@ -284,6 +284,25 @@ class Create extends Component
             $this->moraManual = null;
             $this->moraMotivo = 'Mora exonerada';
         }
+        $this->refrescarPreview();
+    }
+
+    public function updatedQuitarMoraAcum(): void
+    {
+        $this->refrescarPreview();
+    }
+
+    public function updatedCondonarMotivo(): void
+    {
+        $this->refrescarPreview();
+    }
+
+    /** Si el ticket del modal ya está armado, cualquier cambio de switches lo reconstruye. */
+    private function refrescarPreview(): void
+    {
+        if ($this->preview) {
+            $this->preview = $this->construirPreview();
+        }
     }
 
     public function updatedMonto(): void
