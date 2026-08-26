@@ -174,5 +174,10 @@ class CondonacionMoraTest extends TestCase
         $this->assertEqualsWithDelta(0.0, (float) $preview['mora'], 0.001, 'el ticket no cobra mora');
         $this->assertGreaterThan(0, (float) $preview['condonada_vigente'], 'el modal declara la condonación');
         $comp->assertSee('Condonación al cancelar');
+
+        // Veredicto por mora en el bloque de la decisión (antes: "Mora pendiente")
+        $comp->assertSee('Mora: se condona al cancelar');
+        $comp->assertSee('Mora acumulada: se cobra');
+        $comp->assertDontSee('Mora pendiente');
     }
 }

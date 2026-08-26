@@ -1165,7 +1165,9 @@ class Create extends Component
             'interes' => $dist['interes'],
             'excedente' => $dist['excedente'],
             'mora' => round($moraTicket, 2),
-            // Condonaciones al cancelar: montos y motivo para el veredicto del modal
+            // Veredicto del modal: qué se cobra y qué se condona de cada mora
+            'mora_cobrar' => round($moraQueSeCobra, 2),
+            'mora_acum_cobrar' => round($moraAcum, 2),
             'condonada_vigente' => ($quitarVigente && (float) $calcs['total_mora_calc'] > 0.001)
                 ? round((float) $calcs['total_mora_calc'], 2) : 0.0,
             'condonada_acum' => ($quitarAcum && $moraAcumTeorica > 0.001) ? $moraAcumTeorica : 0.0,

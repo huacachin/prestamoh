@@ -633,12 +633,39 @@
                             <div class="fw-bold mb-1" style="color:#b26a00;">
                                 <i class="ti ti-alert-triangle"></i> Este pago cubre el TOTAL del crédito
                             </div>
-                            <div class="d-flex gap-3 flex-wrap small mb-2">
+                            @php
+                                // Veredicto por mora: se actualiza en vivo (el preview se
+                                // reconstruye al elegir Sí/No) y dice el DESTINO real, no
+                                // un "pendiente" ambiguo.
+                                $vVig = (float) ($preview['mora_pendiente'] ?? 0);
+                                $vCobra = (float) ($preview['mora_cobrar'] ?? 0);
+                                $vCondVig = (float) ($preview['condonada_vigente'] ?? 0);
+                                $vAcumCobra = (float) ($preview['mora_acum_cobrar'] ?? 0);
+                                $vCondAcum = (float) ($preview['condonada_acum'] ?? 0);
+                            @endphp
+                            <div class="d-flex gap-3 flex-wrap small mb-1">
                                 <span>Capital + interés: <b>S/ {{ number_format($preview['cancelar_cap_int'], 2) }}</b></span>
-                                @if(($preview['mora_pendiente'] ?? 0) > 0.001)
-                                    <span style="color:#c0392b;">Mora pendiente: <b>S/ {{ number_format($preview['mora_pendiente'], 2) }}</b></span>
-                                @endif
                             </div>
+                            @if($vCobra > 0.001 || $vVig > 0.001 || $vCondVig > 0.001)
+                                <div class="small mb-1">
+                                    @if($vCobra > 0.001)
+                                        <span style="color:#c0392b;">Mora: se cobra <b>S/ {{ number_format($vCobra, 2) }}</b>{{ ($preview['mora_ajustada'] ?? false) ? ' (ajustada a mano)' : '' }}</span>
+                                    @elseif($preview['reserva_mora'] ?? false)
+                                        <span style="color:#b8860b;">Mora: reservada — queda como deuda <b>S/ {{ number_format($vVig, 2) }}</b></span>
+                                    @else
+                                        <span style="color:#6b7280;">Mora: se condona al cancelar <b style="text-decoration: line-through;">S/ {{ number_format($vCondVig > 0.001 ? $vCondVig : $vVig, 2) }}</b></span>
+                                    @endif
+                                </div>
+                            @endif
+                            @if($vAcumCobra > 0.001 || $vCondAcum > 0.001)
+                                <div class="small mb-2">
+                                    @if($vCondAcum > 0.001)
+                                        <span style="color:#6b7280;">Mora acumulada: se condona al cancelar <b style="text-decoration: line-through;">S/ {{ number_format($vCondAcum, 2) }}</b></span>
+                                    @else
+                                        <span style="color:#c0392b;">Mora acumulada: se cobra <b>S/ {{ number_format($vAcumCobra, 2) }}</b></span>
+                                    @endif
+                                </div>
+                            @endif
                             <div class="fw-semibold small mb-1">¿Cancelar el crédito?</div>
                             <div class="d-flex gap-3 flex-wrap">
                                 <div class="form-check">
