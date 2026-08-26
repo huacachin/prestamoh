@@ -71,7 +71,13 @@ class Create extends Component
      */
     public string $decisionTotal = '';
 
-    public bool $cancelSinMora = false;     // quitar mora y mora acumulada del total
+    // Condonación al cancelar (desglosada 26/08): cada mora tiene su switch.
+    // Solo actúan con el crédito cancelándose; exigen motivo (bitácora).
+    public bool $quitarMora = false;        // condona la mora vigente (días × tarifa)
+
+    public bool $quitarMoraAcum = false;    // condona la mora acumulada (exonerada histórica)
+
+    public string $condonarMotivo = '';
 
     public bool $cancelUltimaCuota = false; // interés de todo el cronograma, no solo a la fecha
 
@@ -271,6 +277,15 @@ class Create extends Component
      * roles autorizados, precargado con la mora calculada para que puedan
      * ajustarlo. Si el monto vuelve a 0/vacío, se rebloquea y vuelve al cálculo.
      */
+    /** Quitar mora manda sobre el campo Total Mora: al encenderlo, el override se limpia. */
+    public function updatedQuitarMora($value): void
+    {
+        if ($value) {
+            $this->moraManual = null;
+            $this->moraMotivo = null;
+        }
+    }
+
     public function updatedMonto(): void
     {
         if (! $this->canEditMora()) {
@@ -440,6 +455,13 @@ class Create extends Component
             return 'Indica el motivo del ajuste de la mora (mínimo 5 caracteres).';
         }
 
+        // Condonar (quitar mora / mora acumulada al cancelar) también exige
+        // motivo: es dinero que se deja de cobrar, misma regla que el ajuste.
+        if ($this->cancel && ($this->quitarMora || $this->quitarMoraAcum)
+            && mb_strlen(trim((string) $this->condonarMotivo)) < 5) {
+            return 'Indica el motivo de la condonación de mora (mínimo 5 caracteres).';
+        }
+
         // Método de pago: si es depósito, valida sus campos y el voucher.
         if ($this->metodoPago === 'deposito') {
             $this->validate([
@@ -570,14 +592,15 @@ class Create extends Component
             $totMora = (float) $calcs['total_mora'];
             $diasA = (int) $calcs['dias_atraso'];
 
-            // Moras al cancelar: "Quitar mora y mora acumulada" perdona ambas.
-            // Si no se quitan, la mora acumulada (Mora Exon. de cuotas pagadas
-            // tarde) se cobra como pago MORA propio para que caja y reportes
-            // la perciban como mora. Se calcula ANTES de distribuir el pago.
-            $quitarMoras = $this->cancel && $this->cancelSinMora;
-            $moraAcumACobrar = ($this->cancel && ! $quitarMoras)
-                ? round(collect(MoraExonerada::porCuota($this->credit))->sum('monto'), 2)
-                : 0.0;
+            // Moras al cancelar (desglosadas): cada switch condona SU mora.
+            // La acumulada (Mora Exon. de cuotas pagadas tarde) que no se
+            // condona se cobra como pago MORA propio. Se calcula ANTES de
+            // distribuir el pago; la teórica se conserva para la bitácora.
+            $quitarVigente = $this->cancel && $this->quitarMora;
+            $quitarAcum = $this->cancel && $this->quitarMoraAcum;
+            $moraExonC = $this->cancel ? collect(MoraExonerada::porCuota($this->credit)) : collect();
+            $moraAcumTeorica = round($moraExonC->sum('monto'), 2);
+            $moraAcumACobrar = ($this->cancel && ! $quitarAcum) ? $moraAcumTeorica : 0.0;
 
             // ─── 1) DIAS MORA si hay descuento ─────────────────────────────
             if ($diasA > 0) {
@@ -591,7 +614,7 @@ class Create extends Component
             // amount = SOLO lo realmente cobrado al cliente.
             // Si Reserva Mora está marcada, $totMora se acumula pero NO se cobra → no suma.
             // Las moras manuales (impointe2/impomora) sí se cobran siempre.
-            $moraQueSeCobra = ($this->ckmora || $quitarMoras) ? 0 : $totMora;
+            $moraQueSeCobra = ($this->ckmora || $quitarVigente) ? 0 : $totMora;
             $totalGeneral = round(
                 $this->monto
                 + $moraQueSeCobra
@@ -756,7 +779,7 @@ class Create extends Component
             // Se asocia a la PRIMERA cuota tocada hoy (origen del atraso) o, si no hay
             // ninguna, a la primera cuota vencida pendiente. Más intuitivo que el legacy.
             $moraPaymentId = null;
-            if ($totMora > 0.001 && ! $this->ckmora && ! $quitarMoras) {
+            if ($totMora > 0.001 && ! $this->ckmora && ! $quitarVigente) {
                 $insTarget = $this->primeraCuotaParaMora($touchedThisPayment);
 
                 $moraDetalle = ($calcs['mora_manual'] ?? false) ? 'Mora de cuota' : "Mora Acumulada Dias : {$diasA}";
@@ -781,13 +804,16 @@ class Create extends Component
                 $moraCalc = (float) $calcs['total_mora_calc'];
                 $motivo = trim((string) $this->moraMotivo);
 
+                // mora_cobrada = lo que ENTRÓ a caja (antes registraba el monto
+                // del override aunque una reserva o condonación lo dejara en 0).
                 DB::table('mora_overrides')->insert([
                     'credit_id' => $this->credit->id,
                     'payment_id' => $moraPaymentId,
                     'mass_deletion_id' => $massHeaderId,
+                    'tipo' => 'ajuste',
                     'mora_calculada' => round($moraCalc, 2),
-                    'mora_cobrada' => round($totMora, 2),
-                    'diferencia' => round($totMora - $moraCalc, 2),
+                    'mora_cobrada' => round($moraQueSeCobra, 2),
+                    'diferencia' => round($moraQueSeCobra - $moraCalc, 2),
                     'dias_atraso' => $diasA,
                     'mora_diaria' => round((float) $calcs['mora_rate'], 2),
                     'motivo' => $motivo,
@@ -801,18 +827,64 @@ class Create extends Component
                 // rastro del ajuste se cae con él (no queda auditoría fantasma).
                 Audit::log(
                     'Ajustó la mora del crédito #'.$this->credit->id.': calculada S/ '
-                        .number_format($moraCalc, 2).' → cobrada S/ '.number_format($totMora, 2)
+                        .number_format($moraCalc, 2).' → cobrada S/ '.number_format($moraQueSeCobra, 2)
                         .' ('.$motivo.')',
                     $this->credit,
                     [
                         'mora_calculada' => round($moraCalc, 2),
-                        'mora_cobrada' => round($totMora, 2),
-                        'diferencia' => round($totMora - $moraCalc, 2),
+                        'mora_cobrada' => round($moraQueSeCobra, 2),
+                        'diferencia' => round($moraQueSeCobra - $moraCalc, 2),
                         'dias_atraso' => $diasA,
                         'motivo' => $motivo,
                         'fecha' => $this->fecpag,
                     ]
                 );
+            }
+
+            // ─── 5c) BITÁCORA DE CONDONACIONES (switches al cancelar) ──────
+            // Cada condonación deja su fila: antes perdonar TODO con el switch
+            // no dejaba rastro mientras ajustar S/1 exigía motivo.
+            $motivoCond = trim((string) $this->condonarMotivo);
+            if ($quitarVigente && (float) $calcs['total_mora_calc'] > 0.001) {
+                $condVig = round((float) $calcs['total_mora_calc'], 2);
+                DB::table('mora_overrides')->insert([
+                    'credit_id' => $this->credit->id,
+                    'payment_id' => null,
+                    'mass_deletion_id' => $massHeaderId,
+                    'tipo' => 'condonacion-vigente',
+                    'mora_calculada' => $condVig,
+                    'mora_cobrada' => 0,
+                    'diferencia' => -$condVig,
+                    'dias_atraso' => $diasA,
+                    'mora_diaria' => round((float) $calcs['mora_rate'], 2),
+                    'motivo' => $motivoCond,
+                    'fecha' => $this->fecpag,
+                    'user_id' => $userId,
+                    'usuario' => $usuario,
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+                Audit::log('Condonó la mora vigente del crédito #'.$this->credit->id
+                    .' al cancelar: S/ '.number_format($condVig, 2).' ('.$motivoCond.')', $this->credit);
+            }
+            if ($quitarAcum && $moraAcumTeorica > 0.001) {
+                DB::table('mora_overrides')->insert([
+                    'credit_id' => $this->credit->id,
+                    'payment_id' => null,
+                    'mass_deletion_id' => $massHeaderId,
+                    'tipo' => 'condonacion-acumulada',
+                    'mora_calculada' => $moraAcumTeorica,
+                    'mora_cobrada' => 0,
+                    'diferencia' => -$moraAcumTeorica,
+                    'dias_atraso' => (int) $moraExonC->sum('dias'),
+                    'mora_diaria' => 0,
+                    'motivo' => $motivoCond,
+                    'fecha' => $this->fecpag,
+                    'user_id' => $userId,
+                    'usuario' => $usuario,
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+                Audit::log('Condonó la mora acumulada del crédito #'.$this->credit->id
+                    .' al cancelar: S/ '.number_format($moraAcumTeorica, 2).' ('.$motivoCond.')', $this->credit);
             }
 
             // ─── 7) MORA CAPITAL manual (impomora) ─────────────────────────
@@ -930,7 +1002,7 @@ class Create extends Component
 
         $this->reset([
             'monto', 'obs', 'ckmora', 'cancel', 'impointe2', 'impomora',
-            'idpre', 'moraManual', 'moraMotivo', 'cancelSinMora', 'cancelUltimaCuota', 'decisionTotal',
+            'idpre', 'moraManual', 'moraMotivo', 'quitarMora', 'quitarMoraAcum', 'condonarMotivo', 'cancelUltimaCuota', 'decisionTotal',
             'metodoPago', 'depBanco', 'depCuenta', 'depCuentaOtra', 'depCanal',
             'depFecha', 'voucherFoto', 'egresoCreadoId',
         ]);
@@ -1053,11 +1125,13 @@ class Create extends Component
         $dist = $this->simularDistribucion((float) $this->monto, $unpaid, $isMensualUnaCuota);
 
         $totMora = (float) $calcs['total_mora'];
-        $quitarMoras = $this->cancel && $this->cancelSinMora;
-        $moraAcum = ($this->cancel && ! $quitarMoras)
+        $quitarVigente = $this->cancel && $this->quitarMora;
+        $quitarAcum = $this->cancel && $this->quitarMoraAcum;
+        $moraAcumTeorica = $this->cancel
             ? round(collect(MoraExonerada::porCuota($this->credit))->sum('monto'), 2)
             : 0.0;
-        $moraQueSeCobra = ($this->ckmora || $quitarMoras) ? 0.0 : $totMora;
+        $moraAcum = ($this->cancel && ! $quitarAcum) ? $moraAcumTeorica : 0.0;
+        $moraQueSeCobra = ($this->ckmora || $quitarVigente) ? 0.0 : $totMora;
 
         $moraTicket = $moraQueSeCobra;
         if ((float) $this->impointe2 > 0.001 && $this->idpre) {
@@ -1091,6 +1165,11 @@ class Create extends Component
             'interes' => $dist['interes'],
             'excedente' => $dist['excedente'],
             'mora' => round($moraTicket, 2),
+            // Condonaciones al cancelar: montos y motivo para el veredicto del modal
+            'condonada_vigente' => ($quitarVigente && (float) $calcs['total_mora_calc'] > 0.001)
+                ? round((float) $calcs['total_mora_calc'], 2) : 0.0,
+            'condonada_acum' => ($quitarAcum && $moraAcumTeorica > 0.001) ? $moraAcumTeorica : 0.0,
+            'condonar_motivo' => trim((string) $this->condonarMotivo),
             'total' => $total,
             'saldo' => max(0.0, $saldo),
             'cancela' => $this->cancel,
