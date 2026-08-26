@@ -18,6 +18,7 @@ class DocumentoClienteController extends Controller
     public function pdf(int $id)
     {
         $doc = DocumentoCliente::findOrFail($id);
+        $this->autorizarCartera($doc);
 
         abort_unless($doc->pdf_path && Storage::disk('public')->exists($doc->pdf_path), 404);
 
@@ -27,11 +28,22 @@ class DocumentoClienteController extends Controller
     public function word(int $id)
     {
         $doc = DocumentoCliente::findOrFail($id);
+        $this->autorizarCartera($doc);
 
         return DocResponse::make(
             RenderDocumento::vista($doc->tipo),
             RenderDocumento::datos($doc, paraPdf: false),
             $doc->nombreArchivo().'.doc'
+        );
+    }
+
+    /** Analista (scope-propio): solo documentos de SUS clientes (los ids son enumerables). */
+    private function autorizarCartera(DocumentoCliente $doc): void
+    {
+        abort_if(
+            (auth()->user()?->can('clientes.scope-propio') ?? false)
+            && (int) $doc->client?->asesor_id !== (int) auth()->id(),
+            403, 'Este documento no pertenece a tu cartera.'
         );
     }
 }
