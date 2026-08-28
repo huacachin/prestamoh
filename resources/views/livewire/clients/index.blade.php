@@ -265,14 +265,15 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="16" class="py-4 text-muted text-center">No se encontraron resultados</td>
+                                    <td colspan="14" class="py-4 text-muted text-center">No se encontraron resultados</td>
                                 </tr>
                             @endforelse
                             </tbody>
                             <tfoot class="bg-primary">
                                 <tr>
                                     <td colspan="2">TOTAL</td>
-                                    <td colspan="12"></td>
+                                    {{-- 2 + 10 + 1 + 1 = 14 columnas (ver la cabecera) --}}
+                                    <td colspan="10"></td>
                                     <td class="text-center fw-bold">{{ $totalFiltrados }}</td>
                                     <td></td>
                                 </tr>
