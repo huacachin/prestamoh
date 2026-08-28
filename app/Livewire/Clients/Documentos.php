@@ -10,6 +10,7 @@ use App\Models\Vehiculo;
 use App\Services\Documentos\GeneradorAnexo1;
 use App\Services\Documentos\GeneradorAnexo2;
 use App\Services\Documentos\GeneradorContrato;
+use App\Services\Factiliza;
 use App\Support\Audit;
 use App\Support\Documentos\BancosVoucher;
 use App\Support\Documentos\DomicilioLegal;
@@ -133,6 +134,18 @@ class Documentos extends Component
         'nombre' => '', 'dni' => '', 'banco' => '', 'cuenta' => '',
         'motivo' => self::MOTIVO_TERCERO,
     ];
+
+    /**
+     * Campos del gerente / tercero que llenó la consulta de documento — se
+     * pintan EN ROJO (convención de la casa: lo de la API se distingue de lo
+     * tecleado). También marca lo heredado de una ficha ya registrada.
+     *
+     * @var array<int, string>
+     */
+    public array $autoGerente = [];
+
+    /** @var array<int, string> */
+    public array $autoTercero = [];
 
     /** Valor del bien (S/); default: suma del valor en ficha de los vehículos. */
     public string $valorBien = '';
@@ -381,6 +394,8 @@ class Documentos extends Component
         $this->fechaContrato = now()->format('Y-m-d');
         $this->clausulasAdicionales = '';
         $this->htmlPreviewContrato = '';
+        $this->autoGerente = [];
+        $this->autoTercero = [];
         $this->resetErrorBag();
 
         $this->recalcularMontosContrato();
@@ -428,6 +443,114 @@ class Documentos extends Component
     }
 
     /** Vincula el codeudor buscado y precarga sus campos editables. */
+    /**
+     * Consulta el documento del GERENTE: primero la ficha local (si la
+     * persona ya está registrada, ocupación, sexo, estado civil,
+     * nacionalidad y domicilio se HEREDAN del cliente), y si no, el
+     * endpoint de DNI/CE — que trae nombre, sexo y domicilio de RENIEC.
+     * Todo lo llenado se pinta en rojo (autoGerente).
+     */
+    public function consultarDocGerente(Factiliza $api): void
+    {
+        $doc = trim((string) $this->gerente['dni']);
+        if ($doc === '') {
+            $this->dispatch('errorAlert', ['message' => 'Escribe el documento del gerente antes de consultar.']);
+
+            return;
+        }
+
+        $this->autoGerente = [];
+
+        $ficha = Client::where('documento', $doc)->first();
+        if ($ficha !== null) {
+            $this->gerente['nombre'] = mb_strtoupper($ficha->fullName());
+            $this->gerente['sexo'] = $ficha->sexo === 'F' ? 'F' : 'M';
+            $this->gerente['nacionalidad'] = $ficha->nacionalidad ?: Nacionalidades::DEFECTO;
+            $this->gerente['ocupacion'] = mb_strtoupper(trim((string) ($ficha->ocupacion ?? '')));
+            $estadoCivil = mb_strtoupper(trim((string) ($ficha->estado_civil ?? '')));
+            if (isset(self::ESTADOS_CIVILES[$estadoCivil])) {
+                $this->gerente['estado_civil'] = $estadoCivil;
+            }
+            $this->gerente['domicilio'] = $this->domicilioDe($ficha);
+            $this->autoGerente = ['nombre', 'sexo', 'nacionalidad', 'ocupacion', 'estado_civil', 'domicilio'];
+            $this->dispatch('successAlert', ['message' => "Gerente heredado de la ficha de {$ficha->fullName()}. Verifica los datos."]);
+
+            return;
+        }
+
+        $r = ($this->gerente['tipo_documento'] ?? 'DNI') === 'CE' ? $api->cee($doc) : $api->dni($doc);
+        if (! $r['ok']) {
+            $this->dispatch('errorAlert', ['message' => $r['error'].' Puedes completar los datos a mano.']);
+
+            return;
+        }
+
+        $nombre = trim(implode(' ', array_filter([
+            $r['data']['nombre'] ?? '', $r['data']['apellido_pat'] ?? '', $r['data']['apellido_mat'] ?? '',
+        ])));
+        if ($nombre !== '') {
+            $this->gerente['nombre'] = mb_strtoupper($nombre);
+            $this->autoGerente[] = 'nombre';
+        }
+        if (in_array($r['data']['sexo'] ?? null, ['M', 'F'], true)) {
+            $this->gerente['sexo'] = $r['data']['sexo'];
+            $this->autoGerente[] = 'sexo';
+        }
+        $domicilio = DomicilioLegal::armar(
+            $r['data']['direccion'] ?? null,
+            $r['data']['distrito'] ?? null,
+            $r['data']['provincia'] ?? null,
+            $r['data']['departamento'] ?? null,
+        );
+        if ($domicilio !== '') {
+            $this->gerente['domicilio'] = $domicilio;
+            $this->autoGerente[] = 'domicilio';
+        }
+        $this->dispatch('successAlert', ['message' => 'Datos del gerente cargados desde la consulta. Verifica y completa lo que falte.']);
+    }
+
+    /**
+     * Consulta el documento del TERCERO autorizado: ficha local primero,
+     * endpoint de DNI después. Solo llena el nombre (lo demás del tercero
+     * es de la operación, no de la persona).
+     */
+    public function consultarDocTercero(Factiliza $api): void
+    {
+        $doc = trim((string) $this->tercero['dni']);
+        if ($doc === '') {
+            $this->dispatch('errorAlert', ['message' => 'Escribe el DNI del tercero antes de consultar.']);
+
+            return;
+        }
+
+        $this->autoTercero = [];
+
+        $ficha = Client::where('documento', $doc)->first();
+        if ($ficha !== null) {
+            $this->tercero['nombre'] = mb_strtoupper($ficha->fullName());
+            $this->autoTercero = ['nombre'];
+            $this->dispatch('successAlert', ['message' => 'Nombre del tercero heredado de su ficha.']);
+
+            return;
+        }
+
+        $r = $api->dni($doc);
+        if (! $r['ok']) {
+            $this->dispatch('errorAlert', ['message' => $r['error'].' Puedes completar el nombre a mano.']);
+
+            return;
+        }
+
+        $nombre = trim(implode(' ', array_filter([
+            $r['data']['nombre'] ?? '', $r['data']['apellido_pat'] ?? '', $r['data']['apellido_mat'] ?? '',
+        ])));
+        if ($nombre !== '') {
+            $this->tercero['nombre'] = mb_strtoupper($nombre);
+            $this->autoTercero = ['nombre'];
+        }
+        $this->dispatch('successAlert', ['message' => 'Nombre del tercero cargado desde la consulta.']);
+    }
+
     public function seleccionarCodeudorContrato(int $id): void
     {
         if ($id === $this->clientId) {

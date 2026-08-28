@@ -15,6 +15,8 @@ use App\Support\Documentos\Genero;
 use App\Support\Documentos\ModelosContrato;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
@@ -189,6 +191,86 @@ class ContratoEspecFinalTest extends TestCase
 
         $this->assertStringContainsString('IDENTIFICADO CON CARNÉ DE EXTRANJERÍA N° 001234567', $html);
         $this->assertStringNotContainsString('CON DNI N° 001234567', $html);
+    }
+
+    // ── 3b · Consulta de documento en el wizard (gerente y tercero) ───────
+
+    public function test_el_gerente_hereda_de_la_ficha_si_esta_registrado(): void
+    {
+        [$client] = $this->mundo(['tipo_documento' => 'RUC', 'documento' => '20609999993']);
+        // La gerenta ya es cliente registrada: ocupación, sexo, estado civil,
+        // nacionalidad y domicilio se HEREDAN de su ficha.
+        Client::create([
+            'expediente' => '9970', 'nombre' => 'GERENTA', 'apellido_pat' => 'REGISTRADA', 'apellido_mat' => 'YA',
+            'tipo_documento' => 'DNI', 'documento' => '41752169', 'sexo' => 'F',
+            'nacionalidad' => 'VENEZOLANO', 'ocupacion' => 'independiente', 'estado_civil' => 'casado',
+            'direccion' => 'JR. LOS ALPES 69', 'distrito' => 'BELLAVISTA',
+            'provincia' => 'CALLAO', 'departamento' => 'CALLAO',
+            'headquarter_id' => $this->sede->id, 'status' => 'active',
+        ]);
+
+        $comp = Livewire::test(Documentos::class, ['id' => $client->id])
+            ->call('abrirModalContrato')
+            ->set('gerente.dni', '41752169')
+            ->call('consultarDocGerente');
+
+        $g = $comp->get('gerente');
+        // fullName() = apellidos + nombres (convención de la casa)
+        $this->assertSame('REGISTRADA YA GERENTA', $g['nombre']);
+        $this->assertSame('F', $g['sexo']);
+        $this->assertSame('VENEZOLANO', $g['nacionalidad']);
+        $this->assertSame('INDEPENDIENTE', $g['ocupacion']);
+        $this->assertSame('CASADO', $g['estado_civil']);
+        $this->assertStringContainsString('PROVINCIA CONSTITUCIONAL DEL CALLAO', $g['domicilio']);
+        // Y todo lo heredado queda marcado en rojo.
+        $this->assertEqualsCanonicalizing(
+            ['nombre', 'sexo', 'nacionalidad', 'ocupacion', 'estado_civil', 'domicilio'],
+            $comp->get('autoGerente')
+        );
+    }
+
+    public function test_el_gerente_cae_a_la_api_si_no_esta_registrado(): void
+    {
+        config(['services.factiliza.token' => 'token-de-prueba']);
+        Http::fake(['*/dni/info/*' => Http::response([
+            'success' => true,
+            'data' => [
+                'nombres' => 'JACK YELTSIN', 'apellido_paterno' => 'BLAS', 'apellido_materno' => 'SULLCA',
+                'direccion' => 'AV. SALAVERRY 2900', 'distrito' => 'MAGDALENA DEL MAR',
+                'provincia' => 'LIMA', 'departamento' => 'LIMA', 'sexo' => 'M',
+            ],
+        ])]);
+
+        [$client] = $this->mundo(['tipo_documento' => 'RUC', 'documento' => '20609999994']);
+
+        $comp = Livewire::test(Documentos::class, ['id' => $client->id])
+            ->call('abrirModalContrato')
+            ->set('gerente.dni', '46964491')
+            ->call('consultarDocGerente');
+
+        $g = $comp->get('gerente');
+        $this->assertSame('JACK YELTSIN BLAS SULLCA', $g['nombre']);
+        $this->assertStringContainsString('PROVINCIA Y DEPARTAMENTO DE LIMA', $g['domicilio']);
+        $this->assertContains('nombre', $comp->get('autoGerente'));
+    }
+
+    public function test_el_tercero_consulta_su_dni(): void
+    {
+        config(['services.factiliza.token' => 'token-de-prueba']);
+        Http::fake(['*/dni/info/*' => Http::response([
+            'success' => true,
+            'data' => ['nombres' => 'CARLOS ALEXIS', 'apellido_paterno' => 'HUAMAN', 'apellido_materno' => 'FLORES'],
+        ])]);
+
+        [$client] = $this->mundo();
+
+        $comp = Livewire::test(Documentos::class, ['id' => $client->id])
+            ->call('abrirModalContrato')
+            ->set('tercero.dni', '74218017')
+            ->call('consultarDocTercero');
+
+        $this->assertSame('CARLOS ALEXIS HUAMAN FLORES', $comp->get('tercero')['nombre']);
+        $this->assertSame(['nombre'], $comp->get('autoTercero'));
     }
 
     // ── 4 · Catálogo de estado civil cerrado ──────────────────────────────

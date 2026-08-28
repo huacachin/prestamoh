@@ -1,6 +1,15 @@
 {{-- $embebido: dentro de la pestaña de /clients/{id}/edit se omiten cabecera,
      breadcrumb y card (los pone la página padre). --}}
 <div @class(['container-fluid' => ! $embebido])>
+    {{-- Convención de la casa: lo que llena una consulta (API o ficha) va EN ROJO. --}}
+    <style>
+        .campo-api {
+            color: #c0392b !important;
+            font-weight: 600;
+            border-color: #e6a6a0 !important;
+            background-color: #fff7f6 !important;
+        }
+    </style>
     @unless($embebido)
     <div class="row">
         <div class="col-sm-6">
@@ -473,7 +482,7 @@
                                     <div class="row g-2">
                                         <div class="col-md-6">
                                             <label class="form-label small mb-1">Nombre completo *</label>
-                                            <input type="text" class="form-control form-control-sm @error('gerente.nombre') is-invalid @enderror"
+                                            <input type="text" class="form-control form-control-sm @error('gerente.nombre') is-invalid @enderror @if(in_array('nombre', $autoGerente)) campo-api @endif"
                                                    wire:model.blur="gerente.nombre">
                                             @error('gerente.nombre') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                         </div>
@@ -487,12 +496,18 @@
                                                 </select>
                                                 <input type="text" class="form-control form-control-sm @error('gerente.dni') is-invalid @enderror"
                                                        wire:model.blur="gerente.dni">
+                                                <button type="button" class="btn btn-danger" wire:click="consultarDocGerente"
+                                                        wire:loading.attr="disabled" wire:target="consultarDocGerente"
+                                                        title="Consultar: hereda de la ficha si está registrado; si no, RENIEC/Migraciones">
+                                                    <span wire:loading.remove wire:target="consultarDocGerente"><i class="ti ti-search"></i></span>
+                                                    <span wire:loading wire:target="consultarDocGerente" class="small">…</span>
+                                                </button>
                                             </div>
                                             @error('gerente.dni') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                                         </div>
                                         <div class="col-md-3">
                                             <label class="form-label small mb-1">Género *</label>
-                                            <select class="form-select form-select-sm @error('gerente.sexo') is-invalid @enderror"
+                                            <select class="form-select form-select-sm @error('gerente.sexo') is-invalid @enderror @if(in_array('sexo', $autoGerente)) campo-api @endif"
                                                     wire:model.live="gerente.sexo">
                                                 <option value="M">Masculino</option>
                                                 <option value="F">Femenino</option>
@@ -502,7 +517,7 @@
                                         <div class="col-md-3">
                                             <label class="form-label small mb-1">Nacionalidad *</label>
                                             {{-- No flexiona (misma regla que el deudor). --}}
-                                            <select class="form-select form-select-sm @error('gerente.nacionalidad') is-invalid @enderror"
+                                            <select class="form-select form-select-sm @error('gerente.nacionalidad') is-invalid @enderror @if(in_array('nacionalidad', $autoGerente)) campo-api @endif"
                                                     wire:model.blur="gerente.nacionalidad">
                                                 @foreach(\App\Support\Documentos\Nacionalidades::paraValor($gerente['nacionalidad'] ?? null) as $opcion)
                                                     <option value="{{ $opcion }}">{{ $opcion }}</option>
@@ -512,11 +527,11 @@
                                         </div>
                                         <div class="col-md-4">
                                             <label class="form-label small mb-1">Ocupación</label>
-                                            <input type="text" class="form-control form-control-sm" wire:model.blur="gerente.ocupacion">
+                                            <input type="text" class="form-control form-control-sm @if(in_array('ocupacion', $autoGerente)) campo-api @endif" wire:model.blur="gerente.ocupacion">
                                         </div>
                                         <div class="col-md-4">
                                             <label class="form-label small mb-1">Estado civil</label>
-                                            <select class="form-select form-select-sm" wire:model.live="gerente.estado_civil">
+                                            <select class="form-select form-select-sm @if(in_array('estado_civil', $autoGerente)) campo-api @endif" wire:model.live="gerente.estado_civil">
                                                 <option value="">—</option>
                                                 @foreach($estadosCiviles as $valor => $etiqueta)
                                                     <option value="{{ $valor }}">{{ $etiqueta }}</option>
@@ -525,7 +540,7 @@
                                         </div>
                                         <div class="col-md-4">
                                             <label class="form-label small mb-1">Domicilio</label>
-                                            <input type="text" class="form-control form-control-sm" wire:model.blur="gerente.domicilio">
+                                            <input type="text" class="form-control form-control-sm @if(in_array('domicilio', $autoGerente)) campo-api @endif" wire:model.blur="gerente.domicilio">
                                         </div>
                                     </div>
                                 @else
@@ -713,15 +728,22 @@
                                                 <div class="row g-2">
                                                     <div class="col-md-6">
                                                         <label class="form-label small mb-1">Nombre completo *</label>
-                                                        <input type="text" class="form-control form-control-sm @error('tercero.nombre') is-invalid @enderror"
+                                                        <input type="text" class="form-control form-control-sm @error('tercero.nombre') is-invalid @enderror @if(in_array('nombre', $autoTercero)) campo-api @endif"
                                                                wire:model.blur="tercero.nombre">
                                                         @error('tercero.nombre') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                                     </div>
                                                     <div class="col-md-3">
                                                         <label class="form-label small mb-1">DNI *</label>
-                                                        <input type="text" class="form-control form-control-sm @error('tercero.dni') is-invalid @enderror"
-                                                               wire:model.blur="tercero.dni">
-                                                        @error('tercero.dni') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                                        <div class="input-group input-group-sm">
+                                                            <input type="text" class="form-control form-control-sm @error('tercero.dni') is-invalid @enderror"
+                                                                   wire:model.blur="tercero.dni">
+                                                            <button type="button" class="btn btn-danger" wire:click="consultarDocTercero"
+                                                                    wire:loading.attr="disabled" wire:target="consultarDocTercero" title="Consultar DNI">
+                                                                <span wire:loading.remove wire:target="consultarDocTercero"><i class="ti ti-search"></i></span>
+                                                                <span wire:loading wire:target="consultarDocTercero" class="small">…</span>
+                                                            </button>
+                                                        </div>
+                                                        @error('tercero.dni') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                                                     </div>
                                                     <div class="col-md-3">
                                                         <label class="form-label small mb-1">Banco *</label>
