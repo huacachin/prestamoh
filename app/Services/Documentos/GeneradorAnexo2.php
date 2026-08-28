@@ -89,7 +89,11 @@ class GeneradorAnexo2
         }
 
         // ─── Cuadre del monto: la constancia debe reproducir el desembolso ───
-        $montoTexto = trim((string) ($campos['monto'] ?? ''));
+        // El BBVA declara IMPORTE PAGADO = abonado + ITF: si el voucher trae
+        // el IMPORTE ABONADO por separado, el cuadre va contra ESE, que es lo
+        // que el deudor recibió de verdad. El ITF no es parte del desembolso.
+        $montoTexto = trim((string) ($campos['monto_abonado'] ?? ''))
+            ?: trim((string) ($campos['monto'] ?? ''));
         if ($montoTexto !== '') {
             $montoVoucher = self::parsearMonto($montoTexto);
 
@@ -182,17 +186,54 @@ class GeneradorAnexo2
     }
 
     /**
-     * Parsea el monto tal como se transcribe del voucher: tolera 'S/.', 'S/',
-     * separador de miles con coma y espacios ("S/ 8,000.00" → 8000.00).
-     * Devuelve null si tras limpiar no queda un número.
+     * Parsea el monto tal como se transcribe del voucher REAL. Los formatos
+     * que traen los comprobantes del área (verificados contra los .docx de
+     * "3. Anexo 2 - Constancia de entrega del monto"):
+     *
+     *   "S/ 8,000.00"              → 8000.00   (el único que ya funcionaba)
+     *   "S/*****15,000.00"         → 15000.00  (BCP enmascara con asteriscos)
+     *   "S/ 12.000.00"             → 12000.00  (miles con PUNTO)
+     *   "DEPOSITO **** 25,000.00"  → 25000.00  (texto delante del número)
+     *   "-7,000.00"                → 7000.00   (BBVA muestra el cargo en
+     *                                           negativo; el cuadre compara
+     *                                           magnitudes, no signos)
+     *
+     * Estrategia: extraer el ÚLTIMO token numérico de la cadena (el monto va
+     * siempre al final), decidir el separador decimal por posición (los
+     * últimos 2 dígitos tras el último . o ,) y devolver el valor absoluto.
+     * Devuelve null si no hay ningún número.
      */
     private static function parsearMonto(string $valor): ?float
     {
-        // 'S/.' antes que 'S/': quitar primero 'S/' dejaría un '.' suelto
-        // adelante y "S/. 8000" se leería como 0.8000.
-        $limpio = str_ireplace(['s/.', 's/', ','], '', $valor);
-        $limpio = preg_replace('/\s+/u', '', (string) $limpio) ?? '';
+        // El monto es el último grupo numérico (dígitos con . , intercalados).
+        if (! preg_match_all('/\d[\d.,]*/u', $valor, $m) || $m[0] === []) {
+            return null;
+        }
+        $token = rtrim(end($m[0]), '.,');
 
-        return is_numeric($limpio) ? round((float) $limpio, 2) : null;
+        $ultimoPunto = strrpos($token, '.');
+        $ultimaComa = strrpos($token, ',');
+
+        if ($ultimoPunto === false && $ultimaComa === false) {
+            return round(abs((float) $token), 2);
+        }
+
+        // El separador DECIMAL es el último de los dos; el resto son miles.
+        // Cubre "12.000.00" (miles con punto y decimal con punto: solo el
+        // último punto es decimal) y "12,000.00" por igual.
+        $posDecimal = max((int) $ultimoPunto, (int) $ultimaComa);
+        $decimales = substr($token, $posDecimal + 1);
+
+        // Un separador seguido de 3 dígitos al final es de MILES, no decimal
+        // ("25,000" → 25000; "1.500" → 1500).
+        if (strlen($decimales) === 3) {
+            $entero = preg_replace('/[.,]/', '', $token);
+
+            return round(abs((float) $entero), 2);
+        }
+
+        $entero = preg_replace('/[.,]/', '', substr($token, 0, $posDecimal));
+
+        return round(abs((float) ($entero.'.'.$decimales)), 2);
     }
 }

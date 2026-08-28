@@ -61,6 +61,14 @@
     ul.vinetas { margin: 0 0 8px 18px; padding: 0; }
     ul.vinetas li { text-align: justify; margin: 0 0 6px 0; }
 
+    /* Listas NUMERADAS: las maestras usan numeración decimal (1., 2., 3...)
+       en OCTAVO, NOVENO y DÉCIMO QUINTO — no bullets. El propio texto lo
+       exige: "EN CASO DE LA HIPÓTESIS PREVISTA EN EL NUMERAL PRECEDENTE"
+       no apunta a nada si no hay numerales. El start del segundo bloque de
+       GPS continúa la cuenta tras el párrafo intercalado. */
+    ol.numerada { margin: 0 0 8px 18px; padding: 0; list-style-type: decimal; }
+    ol.numerada li { text-align: justify; margin: 0 0 6px 0; }
+
     table.datos {
         width: 100%;
         border-collapse: collapse;

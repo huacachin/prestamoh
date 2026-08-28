@@ -7,6 +7,12 @@
     $bienHayFuturo = array_filter($vm->bienes, fn ($b) => ! empty($b['esFuturo'])) !== [];
     $bienHayPresente = array_filter($vm->bienes, fn ($b) => empty($b['esFuturo'])) !== [];
     $bienMixto = $bienHayFuturo && $bienHayPresente;
+
+    // "PROPIEDAD: BIENES PROPIO" (sic) en los 6 modelos de DOS bienes
+    // presentes (a.1.2/a.2.2/a.3.2/b.1.2/b.2.2/b.3.2) — verificado contra
+    // los Word: los de dos bienes FUTUROS (a.x.3) mantienen "BIEN PROPIO"
+    // en singular. Se calca tal cual, con su concordancia y todo.
+    $bienPropiedad = ($bienPlural && ! $bienHayFuturo) ? 'BIENES PROPIO' : 'BIEN PROPIO';
 @endphp
 <div class="clausula">
     <div class="clausula-titulo">{{ $vm->ord->de('bien') }}: IDENTIFICACIÓN {{ $bienPlural ? 'DE LOS BIENES OBJETO' : 'DEL BIEN OBJETO' }} DE GARANTÍA</div>
@@ -29,6 +35,6 @@
             ], fn ($v) => trim((string) $v) !== '');
             $bienLinea = implode('; ', array_map(fn ($k, $v) => "{$k}: {$v}", array_keys($bienAttrs), $bienAttrs));
         @endphp
-        <p class="parrafo">VEHÍCULO{{ $bienPlural ? ' '.($i + 1) : '' }}@if ($bienMixto) {{ ! empty($b['esFuturo']) ? '(BIEN FUTURO)' : '(BIEN PRESENTE)' }}@endif: {{ $bienLinea }}; PROPIEDAD: BIEN PROPIO (EN ADELANTE {{ $bienPlural ? 'LOS VEHICULOS' : 'EL VEHICULO' }}).</p>
+        <p class="parrafo">VEHÍCULO{{ $bienPlural ? ' '.($i + 1) : '' }}@if ($bienMixto) {{ ! empty($b['esFuturo']) ? '(BIEN FUTURO)' : '(BIEN PRESENTE)' }}@endif: {{ $bienLinea }}; PROPIEDAD: {{ $bienPropiedad }} (EN ADELANTE {{ $bienPlural ? 'LOS VEHICULOS' : 'EL VEHICULO' }}).</p>
     @endforeach
 </div>

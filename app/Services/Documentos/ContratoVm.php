@@ -63,6 +63,29 @@ final class ContratoVm
     }
 
     /** true si el contrato es de persona jurídica (empresa deudora) */
+    /**
+     * Título oficial del contrato según la variante (a.1 / a.1.4 / a.1.5 /
+     * a.1.6). ÚNICA fuente: lo consumen el encabezado y la cita del Anexo 1
+     * en la cláusula de ejecución — antes esta última hardcodeaba el título
+     * base y en los modelos de bien futuro citaba un documento con OTRO
+     * nombre que el de su propia carátula.
+     */
+    public function titulo(): string
+    {
+        $futuros = array_filter($this->bienes, fn ($b) => ! empty($b['esFuturo']));
+        $todosFuturos = $futuros !== [] && count($futuros) === count($this->bienes);
+        $mixto = $futuros !== [] && ! $todosFuturos;
+
+        $nucleo = match (true) {
+            $this->custodia => 'CONSTITUCIÓN DE GARANTÍA MOBILIARIA CON POSESIÓN',
+            $todosFuturos => 'PRE-CONSTITUCIÓN DE GARANTÍA MOBILIARIA',
+            $mixto => 'CONSTITUCIÓN DE GARANTÍA MOBILIARIA SOBRE BIEN FUTURO Y BIEN PRESENTE',
+            default => 'CONSTITUCIÓN DE GARANTÍA MOBILIARIA',
+        };
+
+        return "CONTRATO DE CRÉDITO VEHICULAR CON {$nucleo} EN EL SISTEMA INFORMATIVO DE GARANTÍAS MOBILIARIAS – SIGM";
+    }
+
     public function esJuridica(): bool
     {
         return ($this->deudores[0]['esJuridica'] ?? false) === true;
