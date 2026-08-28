@@ -150,7 +150,7 @@
                                     <th class="text-center">Giro</th>
                                     <th class="text-center">Asesor</th>
                                     {{-- Adjuntos y Documentos viven ahora como pestañas en editar cliente (28/08) --}}
-                                    <th class="text-center" colspan="2">Opciones</th>
+                                    <th class="text-center">Opciones</th>
                                     <th class="text-center">C.</th>
                                     <th class="text-center">N.</th>
                                     <th class="text-center" title="Recordatorio WhatsApp (morosos)"><i class="ti ti-brand-whatsapp"></i></th>
@@ -208,12 +208,19 @@
                                             Prestamo
                                         </a>
                                     </td>
+                                    {{-- OCULTO 28/08 — pendiente de reestructurar los avales
+                                         (ver docs/PENDIENTES.md § Avales). NO borrar: la ruta,
+                                         el componente y los datos siguen intactos; esto se
+                                         vuelve a mostrar quitando el @if(false).
+                                    --}}
+                                    @if(false)
                                     <td class="text-center">
                                         <a href="{{ route('clients.aval', $client->id) }}"
                                            class="btn btn-xs {{ ($client->avales_count ?? 0) > 0 ? 'btn-primary' : 'btn-danger' }}" style="padding: 2px 8px; font-size: 10px;">
                                             Aval
                                         </a>
                                     </td>
+                                    @endif
                                     <td class="text-center">
                                         @if($client->latitud && $client->longitud)
                                             <a href="https://maps.google.com/?q={{ $client->latitud }},{{ $client->longitud }}" target="_blank">
@@ -329,7 +336,10 @@
                                     </div>
                                     <div class="d-flex gap-1 mt-2">
                                         <a href="{{ route('clients.show', $client->id) }}" class="btn btn-xs btn-primary" style="padding: 2px 8px; font-size: 10px;">Prestamo</a>
+                                        {{-- OCULTO 28/08 (ver docs/PENDIENTES.md § Avales) --}}
+                                        @if(false)
                                         <a href="{{ route('clients.aval', $client->id) }}" class="btn btn-xs {{ ($client->avales_count ?? 0) > 0 ? 'btn-primary' : 'btn-danger' }}" style="padding: 2px 8px; font-size: 10px;">Aval</a>
+                                        @endif
                                         @php
                                             $vencM = $morosidad[$client->id] ?? 0;
                                             $waTelM = preg_replace('/\D/', '', (string) $client->celular1);
