@@ -1,5 +1,30 @@
 # Tareas pendientes
 
+## GPS de cliente — reestructuración pendiente (deuda técnica, 2026-08-28)
+
+**Estado:** funcional en la pestaña GPS de editar cliente; pendiente rediseño.
+
+Las columnas "C." (casa) y "N." (negocio) del listado de clientes se
+movieron a la pestaña **GPS** de `/clients/{id}/edit`
+(`App\Livewire\Clients\Gps`), con la misma mecánica de siempre: pegar
+"lat, lng" o un enlace de Google Maps. El parser quedó extraído a
+`App\Support\Coordenadas` (antes vivía inline en el listado).
+
+### Qué falta al reestructurar
+
+1. **Capturar desde el navegador**: hoy se pega texto. En el celular
+   podría usarse `navigator.geolocation` (como ya hace /payments/create)
+   para tomar la ubicación al estar parado en la puerta del cliente.
+2. **Mapa embebido** para confirmar el punto antes de guardar, en vez de
+   abrir Google Maps en otra pestaña.
+3. **Más de dos ubicaciones**: hoy son dos columnas fijas en `clients`
+   (latitud/longitud y latitud2/longitud2). Si aparecen más direcciones,
+   conviene una tabla propia.
+4. **Historial**: los cambios quedan en `activity_log` pero no se ve
+   quién movió un punto ni cuándo desde la pantalla.
+
+---
+
 ## Avales — reestructuración pendiente (deuda técnica, 2026-08-28)
 
 **Estado:** botón OCULTO en `/clients`, funcionalidad intacta.

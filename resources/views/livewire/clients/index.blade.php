@@ -151,8 +151,7 @@
                                     <th class="text-center">Asesor</th>
                                     {{-- Adjuntos y Documentos viven ahora como pestañas en editar cliente (28/08) --}}
                                     <th class="text-center">Opciones</th>
-                                    <th class="text-center">C.</th>
-                                    <th class="text-center">N.</th>
+                                    {{-- C. y N. (GPS casa/negocio) migraron a la pestaña GPS de editar cliente (28/08) --}}
                                     <th class="text-center" title="Recordatorio WhatsApp (morosos)"><i class="ti ti-brand-whatsapp"></i></th>
                                 </tr>
                             </thead>
@@ -222,32 +221,6 @@
                                     </td>
                                     @endif
                                     <td class="text-center">
-                                        @if($client->latitud && $client->longitud)
-                                            <a href="https://maps.google.com/?q={{ $client->latitud }},{{ $client->longitud }}" target="_blank">
-                                                <i class="ti ti-map-pin f-s-18 text-success"></i>
-                                            </a>
-                                        @elseif($puedeCoords)
-                                            <i class="ti ti-map-pin-off f-s-18 text-danger" style="cursor:pointer;"
-                                               title="Agregar coordenadas de Casa"
-                                               wire:click="openCoord({{ $client->id }}, 'casa')"></i>
-                                        @else
-                                            <i class="ti ti-map-pin-off f-s-18 text-danger"></i>
-                                        @endif
-                                    </td>
-                                    <td class="text-center">
-                                        @if($client->latitud2 && $client->longitud2)
-                                            <a href="https://maps.google.com/?q={{ $client->latitud2 }},{{ $client->longitud2 }}" target="_blank">
-                                                <i class="ti ti-map-pin f-s-18 text-success"></i>
-                                            </a>
-                                        @elseif($puedeCoords)
-                                            <i class="ti ti-map-pin-off f-s-18 text-danger" style="cursor:pointer;"
-                                               title="Agregar coordenadas de Negocio"
-                                               wire:click="openCoord({{ $client->id }}, 'negocio')"></i>
-                                        @else
-                                            <i class="ti ti-map-pin-off f-s-18 text-danger"></i>
-                                        @endif
-                                    </td>
-                                    <td class="text-center">
                                         @php $waTel = preg_replace('/\D/', '', (string) $client->celular1); @endphp
                                         @if($venc >= 2 && $waTel !== '')
                                             <a href="#" wire:click.prevent="$dispatch('abrir-notifs', { clientId: {{ $client->id }} })"
@@ -265,15 +238,15 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="14" class="py-4 text-muted text-center">No se encontraron resultados</td>
+                                    <td colspan="12" class="py-4 text-muted text-center">No se encontraron resultados</td>
                                 </tr>
                             @endforelse
                             </tbody>
                             <tfoot class="bg-primary">
                                 <tr>
                                     <td colspan="2">TOTAL</td>
-                                    {{-- 2 + 10 + 1 + 1 = 14 columnas (ver la cabecera) --}}
-                                    <td colspan="10"></td>
+                                    {{-- 2 + 8 + 1 + 1 = 12 columnas (ver la cabecera) --}}
+                                    <td colspan="8"></td>
                                     <td class="text-center fw-bold">{{ $totalFiltrados }}</td>
                                     <td></td>
                                 </tr>
@@ -308,32 +281,6 @@
                                         <div class="col-6"><b>Asesor:</b> {{ $client->asesor?->username ?? $client->asesor?->name }}</div>
                                         <div class="col-6"><b>Fecha:</b> {{ $client->fecha_registro?->format('Y-m-d') }}</div>
                                         <div class="col-6"><b>Usuario:</b> {{ $client->usuario }}</div>
-                                        <div class="col-6">
-                                            @if($client->latitud && $client->longitud)
-                                                <a href="https://maps.google.com/?q={{ $client->latitud }},{{ $client->longitud }}" target="_blank">
-                                                    <i class="ti ti-map-pin f-s-14 text-success"></i> Casa
-                                                </a>
-                                            @elseif($puedeCoords)
-                                                <span style="cursor:pointer;" wire:click="openCoord({{ $client->id }}, 'casa')">
-                                                    <i class="ti ti-map-pin-off f-s-14 text-danger"></i> Casa
-                                                </span>
-                                            @else
-                                                <i class="ti ti-map-pin-off f-s-14 text-danger"></i> Casa
-                                            @endif
-                                        </div>
-                                        <div class="col-6">
-                                            @if($client->latitud2 && $client->longitud2)
-                                                <a href="https://maps.google.com/?q={{ $client->latitud2 }},{{ $client->longitud2 }}" target="_blank">
-                                                    <i class="ti ti-map-pin f-s-14 text-success"></i> Trabajo
-                                                </a>
-                                            @elseif($puedeCoords)
-                                                <span style="cursor:pointer;" wire:click="openCoord({{ $client->id }}, 'negocio')">
-                                                    <i class="ti ti-map-pin-off f-s-14 text-danger"></i> Trabajo
-                                                </span>
-                                            @else
-                                                <i class="ti ti-map-pin-off f-s-14 text-danger"></i> Trabajo
-                                            @endif
-                                        </div>
                                     </div>
                                     <div class="d-flex gap-1 mt-2">
                                         <a href="{{ route('clients.show', $client->id) }}" class="btn btn-xs btn-primary" style="padding: 2px 8px; font-size: 10px;">Prestamo</a>
@@ -371,45 +318,6 @@
             </div>
         </div>
     </div>
-    {{-- Modal: pegar/registrar coordenadas (Casa / Negocio) --}}
-    <div class="modal fade" id="coordModal" tabindex="-1" aria-hidden="true" wire:ignore.self
-         x-data="{ modal: null }"
-         x-init="modal = bootstrap.Modal.getOrCreateInstance($el);
-                 $el.addEventListener('shown.bs.modal', () => $refs.paste && $refs.paste.focus());"
-         x-on:coord-open.window="modal.show()"
-         x-on:coord-close.window="modal.hide()">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header py-2">
-                    <h6 class="modal-title mb-0">
-                        <i class="ti ti-map-pin text-success"></i>
-                        Coordenadas {{ $coordTipo === 'negocio' ? 'Negocio' : 'Casa' }}
-                    </h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                </div>
-                <div class="modal-body">
-                    @if($coordClientName)
-                        <p class="small text-muted mb-2"><b>Cliente:</b> {{ $coordClientName }}</p>
-                    @endif
-                    <label class="form-label small fw-semibold mb-1">Pega aquí las coordenadas</label>
-                    <textarea class="form-control form-control-sm" id="coordPaste" rows="2"
-                              x-ref="paste" wire:model="coordPaste"
-                              placeholder="-12.014431, -76.824936"></textarea>
-                    <div class="form-text">
-                        Formato: <code>latitud, longitud</code>. También admite pegar un enlace de Google Maps.
-                    </div>
-                </div>
-                <div class="modal-footer py-2">
-                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-sm btn-dark" wire:click="saveCoord" wire:loading.attr="disabled" wire:target="saveCoord">
-                        <span wire:loading.remove wire:target="saveCoord">Guardar</span>
-                        <span wire:loading wire:target="saveCoord">Guardando…</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     {{-- Modal de notificaciones (componente hijo: sus clicks no re-renderizan la lista) --}}
     <livewire:clients.notifications-modal />
 

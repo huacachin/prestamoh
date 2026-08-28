@@ -26,13 +26,24 @@
                     'vehiculos' => ['Vehículos', 'ti-car'],
                     'documentos' => ['Documentos', 'ti-file-text'],
                     'adjuntos' => ['Adjuntos', 'ti-photo'],
+                    'gps' => ['GPS', 'ti-map-pin'],
                 ];
             @endphp
-            <div class="d-flex flex-wrap gap-1 mb-3 pb-2" style="border-bottom:1px solid #e9ecef;">
+            {{-- En móvil las pestañas no se apilan: se deslizan en una tira
+                 horizontal (patrón habitual y no roba alto de pantalla). --}}
+            <style>
+                .tabs-cliente { display:flex; gap:4px; overflow-x:auto; -webkit-overflow-scrolling:touch;
+                                border-bottom:1px solid #e9ecef; padding-bottom:8px; margin-bottom:16px; }
+                .tabs-cliente::-webkit-scrollbar { height:0; }
+                .tabs-cliente .btn { white-space:nowrap; flex:0 0 auto; font-size:12px; line-height:1.2; }
+                @media (max-width: 575.98px) {
+                    .tabs-cliente .btn { font-size:13px; padding:6px 10px; }
+                }
+            </style>
+            <div class="tabs-cliente">
                 @foreach($tabs as $clave => [$titulo, $icono])
                     <button type="button"
                             class="btn btn-sm py-1 px-2 {{ $tab === $clave ? 'btn-dark' : 'btn-link text-muted text-decoration-none' }}"
-                            style="font-size:12px; line-height:1.2;"
                             wire:click="$set('tab', '{{ $clave }}')">
                         <i class="ti {{ $icono }} f-s-14"></i> {{ $titulo }}
                     </button>
@@ -52,6 +63,11 @@
             {{-- ════════ Adjuntos ════════ --}}
             @if($tab === 'adjuntos')
                 <livewire:clients.gallery :id="$clientId" :embebido="true" :key="'gal-'.$clientId" />
+            @endif
+
+            {{-- ════════ GPS (antes columnas C. y N. del listado) ════════ --}}
+            @if($tab === 'gps')
+                <livewire:clients.gps :id="$clientId" :key="'gps-'.$clientId" />
             @endif
 
             {{-- ════════ Datos del cliente ════════ --}}
