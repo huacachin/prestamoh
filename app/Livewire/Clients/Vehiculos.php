@@ -64,6 +64,15 @@ class Vehiculos extends Component
      */
     public array $autoCampos = [];
 
+    // ── Copropietario (tramo D) ──
+    // El vehículo compartido habilita los contratos de dos deudores (a.3.x):
+    // el wizard precarga al copropietario como codeudor y filtra los modelos.
+
+    /** Vehículo cuyo panel de copropietario está abierto (null = ninguno). */
+    public ?int $coproVehiculoId = null;
+
+    public string $buscarCopro = '';
+
     public function mount(int $id): void
     {
         $this->client = Client::findOrFail($id);
@@ -219,6 +228,58 @@ class Vehiculos extends Component
         $this->msg = "Datos de la placa {$placa} cargados. Verifica antes de guardar.";
     }
 
+    // ── Copropietario ──
+
+    public function abrirCopro(int $vehiculoId): void
+    {
+        $this->autorizarEdicion();
+        Vehiculo::where('client_id', $this->clientId)->findOrFail($vehiculoId);
+        $this->coproVehiculoId = $this->coproVehiculoId === $vehiculoId ? null : $vehiculoId;
+        $this->buscarCopro = '';
+    }
+
+    public function vincularCopro(int $vehiculoId, int $clientId): void
+    {
+        $this->autorizarEdicion();
+        $v = Vehiculo::where('client_id', $this->clientId)->findOrFail($vehiculoId);
+
+        if ($clientId === $this->clientId) {
+            $this->msgType = 'err';
+            $this->msg = 'El titular ya es dueño del vehículo: elige a otra persona como copropietario.';
+
+            return;
+        }
+
+        $copro = Client::active()->find($clientId);
+        if (! $copro) {
+            $this->msgType = 'err';
+            $this->msg = 'El cliente seleccionado no está activo.';
+
+            return;
+        }
+
+        $v->copropietarios()->syncWithoutDetaching([$clientId => ['rol' => 'copropietario']]);
+
+        Audit::log("Vinculó a {$copro->fullName()} como copropietario del vehículo {$v->placa}", $this->client);
+        $this->msgType = 'ok';
+        $this->msg = "{$copro->fullName()} quedó como copropietario del vehículo {$v->placa}.";
+        $this->coproVehiculoId = null;
+        $this->buscarCopro = '';
+    }
+
+    public function quitarCopro(int $vehiculoId, int $clientId): void
+    {
+        $this->autorizarEdicion();
+        $v = Vehiculo::where('client_id', $this->clientId)->findOrFail($vehiculoId);
+        $copro = Client::find($clientId);
+
+        $v->copropietarios()->detach($clientId);
+
+        Audit::log('Quitó a '.($copro?->fullName() ?? "#{$clientId}")." como copropietario del vehículo {$v->placa}", $this->client);
+        $this->msgType = 'ok';
+        $this->msg = 'Copropietario retirado del vehículo '.$v->placa.'.';
+    }
+
     private function autorizarEdicion(): void
     {
         abort_unless($this->puedeEditar, 403, 'Tu rol no permite editar vehículos.');
@@ -233,8 +294,23 @@ class Vehiculos extends Component
 
     public function render()
     {
+        $term = trim($this->buscarCopro);
+        $candidatos = ($this->coproVehiculoId !== null && mb_strlen($term) >= 2)
+            ? Client::active()
+                ->whereKeyNot($this->clientId)
+                ->where(function ($q) use ($term) {
+                    $q->where('documento', 'like', "%{$term}%")
+                        ->orWhereRaw("CONCAT_WS(' ', apellido_pat, apellido_mat, nombre) LIKE ?", ["%{$term}%"])
+                        ->orWhereRaw("CONCAT_WS(' ', nombre, apellido_pat, apellido_mat) LIKE ?", ["%{$term}%"]);
+                })
+                ->orderBy('apellido_pat')
+                ->limit(10)
+                ->get()
+            : collect();
+
         return view('livewire.clients.vehiculos', [
-            'listado' => Vehiculo::where('client_id', $this->clientId)->orderBy('id')->get(),
+            'listado' => Vehiculo::with('copropietarios')->where('client_id', $this->clientId)->orderBy('id')->get(),
+            'coproCandidatos' => $candidatos,
         ]);
     }
 }

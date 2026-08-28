@@ -45,7 +45,7 @@
                                 {{ $vm->g->deudor() }}
                             @else
                                 {{ mb_strtoupper($celda['nombre']) }}<br>
-                                DNI N° {{ $celda['dni'] }}<br>
+                                {{ $celda['documentoTipo'] ?? 'DNI' }} N° {{ $celda['dni'] }}<br>
                                 {{ $vm->g->deudor() }}
                             @endif
                         </div>

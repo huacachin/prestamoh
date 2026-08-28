@@ -4,7 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Client extends Model
 {
@@ -74,6 +76,20 @@ class Client extends Model
     public function vehiculos(): HasMany
     {
         return $this->hasMany(Vehiculo::class);
+    }
+
+    /** Datos de persona jurídica (solo clientes con tipo_documento RUC). */
+    public function empresa(): HasOne
+    {
+        return $this->hasOne(ClientEmpresa::class);
+    }
+
+    /** Vehículos donde este cliente es COPROPIETARIO (no titular). */
+    public function vehiculosCompartidos(): BelongsToMany
+    {
+        return $this->belongsToMany(Vehiculo::class, 'cliente_vehiculo')
+            ->withPivot('rol')
+            ->withTimestamps();
     }
 
     public function expedientesJudiciales(): HasMany

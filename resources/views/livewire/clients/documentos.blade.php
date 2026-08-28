@@ -487,6 +487,17 @@
                                             </select>
                                             @error('gerente.sexo') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                         </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small mb-1">Nacionalidad *</label>
+                                            {{-- No flexiona (misma regla que el deudor). --}}
+                                            <select class="form-select form-select-sm @error('gerente.nacionalidad') is-invalid @enderror"
+                                                    wire:model.blur="gerente.nacionalidad">
+                                                @foreach(\App\Support\Documentos\Nacionalidades::paraValor($gerente['nacionalidad'] ?? null) as $opcion)
+                                                    <option value="{{ $opcion }}">{{ $opcion }}</option>
+                                                @endforeach
+                                            </select>
+                                            @error('gerente.nacionalidad') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                        </div>
                                         <div class="col-md-4">
                                             <label class="form-label small mb-1">Ocupación</label>
                                             <input type="text" class="form-control form-control-sm" wire:model.blur="gerente.ocupacion">

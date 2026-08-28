@@ -15,7 +15,7 @@
     // repite por persona cuando el contrato lleva dos (a.3).
     $nucleo = fn (array $d) => trim($d['nombre'])
         .', DE NACIONALIDAD '.$d['nacionalidad']
-        .', '.$d['g']->flex('IDENTIFICADO').' CON DNI N° '.$d['dni']
+        .', '.$d['g']->flex('IDENTIFICADO').' CON '.($d['documentoTipo'] ?? 'DNI').' N° '.$d['dni']
         .', OCUPACIÓN '.$d['ocupacion']
         .', ESTADO CIVIL '.$d['g']->flex($d['estadoCivil']);
 

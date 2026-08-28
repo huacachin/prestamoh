@@ -259,6 +259,7 @@ class GeneradorContrato
                 foreach ([
                     'nombre' => 'el nombre',
                     'dni' => 'el DNI',
+                    'nacionalidad' => 'la nacionalidad',
                     'ocupacion' => 'la ocupación',
                     'estadoCivil' => 'el estado civil',
                     'domicilio' => 'el domicilio',
@@ -461,6 +462,10 @@ class GeneradorContrato
                 'sexo' => mb_strtoupper(trim((string) (($o['sexo'] ?? null) ?: $ficha?->sexo ?: 'M'))),
                 'nombre' => mb_strtoupper(trim((string) (($o['nombre'] ?? null) ?: $ficha?->fullName() ?: ''))),
                 'dni' => trim((string) (($o['dni'] ?? null) ?: $ficha?->documento ?: '')),
+                // "CON DNI N°" estaba hardcodeado: un deudor con carné de
+                // extranjería salía "IDENTIFICADO CON DNI N° <su CE>". Mismo
+                // patrón que ya usaban los Anexos 1 y 2 (documento_tipo).
+                'documentoTipo' => self::etiquetaDocumento($ficha?->tipo_documento),
                 'ruc' => null,
                 'partida' => null,
                 'oficinaRegistral' => null,
@@ -519,6 +524,20 @@ class GeneradorContrato
      * fija el preset del modelo; solo el mixto (futuro_presente) lo decide el
      * wizard vehículo por vehículo.
      */
+    /**
+     * Etiqueta del documento de identidad tal como la escribe el contrato:
+     * "IDENTIFICADO CON {etiqueta} N° ...". El CE se expande a su nombre
+     * completo porque "CON CE N°" no es la forma legal.
+     */
+    private static function etiquetaDocumento(?string $tipo): string
+    {
+        return match (mb_strtoupper(trim((string) $tipo))) {
+            'CE' => 'CARNÉ DE EXTRANJERÍA',
+            'RUC' => 'RUC',
+            default => 'DNI',
+        };
+    }
+
     /**
      * Fecha de la transferencia vehicular en el formato de las maestras:
      * "04 DE MAYO DEL 2026". Devuelve null si no vino o no se puede parsear,

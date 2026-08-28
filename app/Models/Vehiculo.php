@@ -66,6 +66,24 @@ class Vehiculo extends Model
         return $this->belongsTo(Client::class);
     }
 
+    /**
+     * Copropietarios (pivote cliente_vehiculo). `client_id` sigue siendo el
+     * propietario principal; sin filas en el pivote, es el único dueño.
+     */
+    public function copropietarios(): BelongsToMany
+    {
+        return $this->belongsToMany(Client::class, 'cliente_vehiculo')
+            ->withPivot('rol')
+            ->withTimestamps();
+    }
+
+    /** ¿$clientId es dueño (titular o copropietario) de este vehículo? */
+    public function perteneceA(int $clientId): bool
+    {
+        return (int) $this->client_id === $clientId
+            || $this->copropietarios()->whereKey($clientId)->exists();
+    }
+
     public function garantias(): BelongsToMany
     {
         return $this->belongsToMany(Garantia::class, 'garantia_vehiculo')

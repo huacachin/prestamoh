@@ -468,6 +468,7 @@ copia no trae, **parar**: habría que reconciliar primero.
 | `vehiculos` | **SÍ** | Datos de vehículo del wizard de clientes (desde 22/08, solo existen en prod) |
 | `documentos_cliente` | **SÍ** | Contratos/anexos generados (los PDF viven en storage, que no se toca; los registros van aquí) |
 | `garantias`, `garantia_vehiculo`, `sigm_avisos`, `contratos`, `legal_adjuntos`, `legal_settings`, `tramites_notariales`, `expedientes_judiciales`, `actuaciones_judiciales`, `plazos_judiciales`, `papeletas`, `papeleta_recursos` | **SÍ** | Módulo Área Legal (fusión 28/08) — garantías SIGM, avisos, contratos emitidos, notaría, judicial, papeletas y su configuración |
+| `cliente_vehiculo`, `client_empresas`, `empresa_representantes` | **SÍ** | Tramo D contratos (28/08) — copropietarios de vehículos, ficha de persona jurídica y representantes legales |
 | `sessions`, `cache` | No | Desechables (se vuelven a loguear) |
 
 Detectarlas automáticamente: comparar `COUNT(*)` de cada tabla local vs prod y
@@ -485,6 +486,7 @@ mysqldump --single-transaction --quick laravel_prestamo \
   vehiculos documentos_cliente \
   garantias garantia_vehiculo sigm_avisos contratos legal_adjuntos legal_settings tramites_notariales \
   expedientes_judiciales actuaciones_judiciales plazos_judiciales papeletas papeleta_recursos \
+  cliente_vehiculo client_empresas empresa_representantes \
   | gzip -1 > /root/preservar_$(date +%F).sql.gz'
 
 # 3) Subir el dump nuevo

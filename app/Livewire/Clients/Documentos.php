@@ -3,6 +3,7 @@
 namespace App\Livewire\Clients;
 
 use App\Models\Client;
+use App\Models\ClientEmpresa;
 use App\Models\Credit;
 use App\Models\DocumentoCliente;
 use App\Models\Vehiculo;
@@ -13,6 +14,7 @@ use App\Support\Audit;
 use App\Support\Documentos\BancosVoucher;
 use App\Support\Documentos\DomicilioLegal;
 use App\Support\Documentos\ModelosContrato;
+use App\Support\Documentos\Nacionalidades;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -113,8 +115,8 @@ class Documentos extends Component
      * y toda gerenta salía IDENTIFICADO/SOLTERO/INSCRITO.
      */
     public array $gerente = [
-        'nombre' => '', 'dni' => '', 'sexo' => 'M', 'ocupacion' => '',
-        'estado_civil' => '', 'domicilio' => '',
+        'nombre' => '', 'dni' => '', 'sexo' => 'M', 'nacionalidad' => 'PERUANO',
+        'ocupacion' => '', 'estado_civil' => '', 'domicilio' => '',
     ];
 
     /**
@@ -325,17 +327,41 @@ class Documentos extends Component
         $this->buscarCodeudor = '';
         $this->codeudorClientId = null;
         $this->codeudorNombre = '';
+
+        // Copropietario registrado en algún vehículo del cliente → se precarga
+        // como codeudor y el selector pasa a ofrecer los modelos de DOS
+        // deudores (a.3.x / b.3.x). Se puede quitar a mano en el wizard.
+        $copropietario = $client->vehiculos()
+            ->with('copropietarios')->get()
+            ->flatMap(fn ($v) => $v->copropietarios)
+            ->unique('id')
+            ->first();
+        if ($copropietario !== null) {
+            $this->codeudorClientId = $copropietario->id;
+            $this->codeudorNombre = $copropietario->fullName();
+            $this->deudores[1] = $this->deudorDesdeFicha($copropietario);
+        }
+
+        // Persona jurídica: precarga desde client_empresas + representante
+        // vigente (tramo D) — antes se retipeaba todo en cada contrato.
+        $fichaEmpresa = $client->empresa;
+        $vigente = $fichaEmpresa?->representanteVigente;
         $this->empresa = [
             'razon_social' => mb_strtoupper($client->fullName()),
             'ruc' => trim((string) $client->documento),
-            'partida' => '',
-            'oficina_registral' => '',
-            'correo' => $this->correoFicha($client),
-            'domicilio' => $this->domicilioDe($client),
+            'partida' => (string) ($fichaEmpresa->partida_registral ?? ''),
+            'oficina_registral' => (string) ($fichaEmpresa->oficina_registral ?? ''),
+            'correo' => (string) (($fichaEmpresa->correo ?? null) ?: $this->correoFicha($client)),
+            'domicilio' => (string) (($fichaEmpresa->domicilio ?? null) ?: $this->domicilioDe($client)),
         ];
         $this->gerente = [
-            'nombre' => '', 'dni' => '', 'sexo' => 'M', 'ocupacion' => '',
-            'estado_civil' => '', 'domicilio' => '',
+            'nombre' => (string) ($vigente->nombre ?? ''),
+            'dni' => (string) ($vigente->documento ?? ''),
+            'sexo' => ($vigente->sexo ?? 'M') === 'F' ? 'F' : 'M',
+            'nacionalidad' => (string) (($vigente->nacionalidad ?? null) ?: Nacionalidades::DEFECTO),
+            'ocupacion' => (string) ($vigente->ocupacion ?? ''),
+            'estado_civil' => (string) ($vigente->estado_civil ?? ''),
+            'domicilio' => (string) ($vigente->domicilio ?? ''),
         ];
         $this->tercero = [
             'nombre' => '', 'dni' => '', 'cuenta' => '',
@@ -463,12 +489,73 @@ class Documentos extends Component
                 $client, $credit, $vehiculoIds, $this->modeloContrato, $this->datosContrato()
             );
 
+            // Persona jurídica: lo tipeado queda en la ficha de la empresa
+            // para que el siguiente contrato precargue en vez de retipear.
+            $this->persistirEmpresa($client);
+
             $this->htmlPreviewContrato = '';
             $this->dispatch('contrato-modal-close');
             $this->dispatch('successAlert', ['message' => "Contrato v{$doc->version} generado."]);
         } catch (\Throwable $e) {
             $this->dispatch('errorAlert', ['message' => $this->mensajeDeExcepcion($e, 'No se pudo generar el contrato')]);
         }
+    }
+
+    /**
+     * Upsert de client_empresas + empresa_representantes tras emitir un
+     * contrato de persona jurídica (tramo D).
+     *
+     * Si el gerente tecleado es OTRA persona (documento distinto), el
+     * vigente anterior se marca vigente=false y se crea el nuevo: el poder
+     * cambió de titular y el historial queda auditable. Si es la misma
+     * persona, se actualizan sus datos en la misma fila.
+     */
+    private function persistirEmpresa(Client $client): void
+    {
+        $preset = $this->presetNormalizado();
+        if (($preset['personas'] ?? null) !== 'empresa') {
+            return;
+        }
+
+        $empresa = ClientEmpresa::updateOrCreate(
+            ['client_id' => $client->id],
+            [
+                'partida_registral' => trim((string) $this->empresa['partida']) ?: null,
+                'oficina_registral' => trim((string) $this->empresa['oficina_registral']) ?: null,
+                'domicilio' => trim((string) $this->empresa['domicilio']) ?: null,
+                'correo' => trim((string) $this->empresa['correo']) ?: null,
+            ],
+        );
+
+        $documento = trim((string) $this->gerente['dni']);
+        if ($documento === '') {
+            return;
+        }
+
+        $datos = [
+            'nombre' => mb_strtoupper(trim((string) $this->gerente['nombre'])),
+            'documento' => $documento,
+            'sexo' => ($this->gerente['sexo'] ?? 'M') === 'F' ? 'F' : 'M',
+            'nacionalidad' => Nacionalidades::normalizar($this->gerente['nacionalidad'] ?? null),
+            'ocupacion' => trim((string) $this->gerente['ocupacion']) ?: null,
+            'estado_civil' => trim((string) $this->gerente['estado_civil']) ?: null,
+            'domicilio' => trim((string) $this->gerente['domicilio']) ?: null,
+            'vigente' => true,
+        ];
+
+        $vigente = $empresa->representanteVigente;
+        if ($vigente !== null && $vigente->documento === $documento) {
+            $vigente->update($datos);
+
+            return;
+        }
+
+        if ($vigente !== null) {
+            $vigente->update(['vigente' => false]);
+            Audit::log("Cambio de representante legal de {$client->fullName()}: {$vigente->nombre} → {$datos['nombre']}", $client);
+        }
+
+        $empresa->representantes()->create($datos);
     }
 
     /** Nombre "humano" de un modelo para la lista (fallback: la clave tal cual). */
@@ -781,9 +868,20 @@ class Documentos extends Component
             ->get();
     }
 
+    /**
+     * Vehículos elegibles para el contrato: los del titular, los que comparte
+     * como copropietario y — con codeudor anexado — también los del codeudor.
+     * Es lo que permite emitir a.3.x con el vehículo a nombre del codeudor,
+     * que antes se rechazaba con "no pertenece al cliente".
+     */
     private function vehiculosCliente()
     {
-        return Vehiculo::where('client_id', $this->clientId)->orderBy('id')->get();
+        $duenos = array_values(array_filter([$this->clientId, $this->codeudorClientId]));
+
+        return Vehiculo::where(function ($q) use ($duenos) {
+            $q->whereIn('client_id', $duenos)
+                ->orWhereHas('copropietarios', fn ($c) => $c->whereKey($duenos));
+        })->orderBy('id')->get()->unique('id')->values();
     }
 
     private function valorDe(?int $vehiculoId): string
@@ -963,8 +1061,14 @@ class Documentos extends Component
             return '';
         }
 
-        $valores = Vehiculo::where('client_id', $this->clientId)
-            ->whereIn('id', $ids)
+        // Mismo criterio que seleccionContrato(): valen los vehículos de
+        // cualquiera de los deudores (titular o copropietario).
+        $duenos = array_values(array_filter([$this->clientId, $this->codeudorClientId]));
+        $valores = Vehiculo::whereIn('id', $ids)
+            ->where(function ($q) use ($duenos) {
+                $q->whereIn('client_id', $duenos)
+                    ->orWhereHas('copropietarios', fn ($c) => $c->whereKey($duenos));
+            })
             ->pluck('valor')
             ->filter(fn ($v) => $v !== null);
 
@@ -1053,9 +1157,17 @@ class Documentos extends Component
             return null;
         }
 
-        $propios = Vehiculo::where('client_id', $this->clientId)->whereIn('id', $ids)->count();
-        if ($propios !== count($ids)) {
-            $this->dispatch('errorAlert', ['message' => 'Uno de los vehículos seleccionados no pertenece al cliente.']);
+        // Cada vehículo debe pertenecer a ALGUNO de los deudores del contrato
+        // (titular o copropietario) — no solo al cliente del crédito.
+        $duenos = array_values(array_filter([$this->clientId, $this->codeudorClientId]));
+        $validos = Vehiculo::whereIn('id', $ids)
+            ->where(function ($q) use ($duenos) {
+                $q->whereIn('client_id', $duenos)
+                    ->orWhereHas('copropietarios', fn ($c) => $c->whereKey($duenos));
+            })
+            ->count();
+        if ($validos !== count($ids)) {
+            $this->dispatch('errorAlert', ['message' => 'Uno de los vehículos seleccionados no pertenece a ninguno de los deudores del contrato.']);
 
             return null;
         }
@@ -1095,6 +1207,7 @@ class Documentos extends Component
                     'nombre' => trim((string) $this->gerente['nombre']),
                     'dni' => trim((string) $this->gerente['dni']),
                     'sexo' => ($this->gerente['sexo'] ?? 'M') === 'F' ? 'F' : 'M',
+                    'nacionalidad' => Nacionalidades::normalizar($this->gerente['nacionalidad'] ?? null),
                     'ocupacion' => trim((string) $this->gerente['ocupacion']),
                     'estado_civil' => trim((string) $this->gerente['estado_civil']),
                     'domicilio' => trim((string) $this->gerente['domicilio']),
@@ -1177,6 +1290,7 @@ class Documentos extends Component
                 'gerente.nombre' => ['required', 'string', 'max:150'],
                 'gerente.dni' => ['required', 'string', 'max:15'],
                 'gerente.sexo' => ['required', Rule::in(['M', 'F'])],
+                'gerente.nacionalidad' => ['required', 'string', 'max:50'],
                 'gerente.ocupacion' => ['nullable', 'string', 'max:100'],
                 'gerente.estado_civil' => ['nullable', 'string', 'max:30'],
                 'gerente.domicilio' => ['nullable', 'string', 'max:300'],

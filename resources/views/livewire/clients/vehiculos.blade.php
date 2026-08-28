@@ -156,6 +156,10 @@
                                             wire:click="editar({{ $v->id }})" title="Editar">
                                         <i class="ti ti-edit"></i>
                                     </button>
+                                    <button type="button" class="btn btn-xs {{ $v->copropietarios->isNotEmpty() ? 'btn-dark' : 'btn-outline-dark' }} py-0 px-1"
+                                            wire:click="abrirCopro({{ $v->id }})" title="Copropietario">
+                                        <i class="ti ti-users"></i>
+                                    </button>
                                     <button type="button" class="btn btn-xs btn-outline-danger py-0 px-1"
                                             wire:click="eliminar({{ $v->id }})"
                                             wire:confirm="¿Eliminar el vehículo {{ $v->placa }}? Esta acción no se puede deshacer."
@@ -165,6 +169,52 @@
                                 </td>
                             @endif
                         </tr>
+
+                        {{-- Copropietarios: habilitan el contrato de DOS deudores
+                             (a.3.x) con este mismo vehículo compartido. --}}
+                        @if($v->copropietarios->isNotEmpty() || $coproVehiculoId === $v->id)
+                            <tr wire:key="veh-copro-{{ $v->id }}" class="table-light">
+                                <td colspan="{{ $puedeEditar ? 8 : 7 }}" class="py-1">
+                                    <div class="d-flex flex-wrap align-items-center gap-2 small">
+                                        <span class="text-muted"><i class="ti ti-users"></i> Copropietarios:</span>
+                                        @forelse($v->copropietarios as $cop)
+                                            <span class="badge bg-dark" wire:key="copro-{{ $v->id }}-{{ $cop->id }}">
+                                                {{ $cop->fullName() }} — {{ $cop->documento }}
+                                                @if($puedeEditar)
+                                                    <a href="#" class="text-white ms-1" title="Quitar copropietario"
+                                                       wire:click.prevent="quitarCopro({{ $v->id }}, {{ $cop->id }})"
+                                                       wire:confirm="¿Quitar a {{ $cop->fullName() }} como copropietario de {{ $v->placa }}?">
+                                                        <i class="ti ti-x"></i>
+                                                    </a>
+                                                @endif
+                                            </span>
+                                        @empty
+                                            <span class="text-muted fst-italic">ninguno</span>
+                                        @endforelse
+                                    </div>
+
+                                    @if($puedeEditar && $coproVehiculoId === $v->id)
+                                        <div class="position-relative mt-1" style="max-width: 420px;">
+                                            <input type="text" class="form-control form-control-sm"
+                                                   placeholder="Buscar cliente por nombre o DNI (mín. 2 caracteres)…"
+                                                   wire:model.live.debounce.300ms="buscarCopro">
+                                            @if($coproCandidatos->isNotEmpty())
+                                                <div class="list-group position-absolute w-100 shadow-sm"
+                                                     style="z-index:1080; max-height:200px; overflow:auto;">
+                                                    @foreach($coproCandidatos as $cand)
+                                                        <button type="button" class="list-group-item list-group-item-action py-1 small"
+                                                                wire:key="copro-cand-{{ $v->id }}-{{ $cand->id }}"
+                                                                wire:click="vincularCopro({{ $v->id }}, {{ $cand->id }})">
+                                                            {{ $cand->fullName() }} — {{ $cand->documento }}
+                                                        </button>
+                                                    @endforeach
+                                                </div>
+                                            @endif
+                                        </div>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endif
                     @endforeach
                 </tbody>
             </table>
