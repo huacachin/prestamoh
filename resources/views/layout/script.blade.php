@@ -144,6 +144,9 @@ document.addEventListener('click', function (e) {
         isRTL: false, showMonthAfterYear: false, yearSuffix: ''
     };
     jQuery.datepicker.setDefaults(jQuery.datepicker.regional['es']);
+    // El rango por defecto de jQuery UI es ±10 años (el selector de año se
+    // quedaba en 2016 hacia atrás y no dejaba elegir una fecha de nacimiento).
+    jQuery.datepicker.setDefaults({ yearRange: '1930:c+10' });
 
     // onSelect: dispara el evento input nativo para que Livewire capture el valor.
     function syncLivewire(input) {

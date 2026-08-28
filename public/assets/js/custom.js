@@ -30,6 +30,8 @@ $(function () {
     }
 
     $.datepicker.setDefaults($.datepicker.regional['es']);
+    // Rango de años amplio: el ±10 por defecto no alcanza para fechas de nacimiento
+    $.datepicker.setDefaults({ yearRange: '1930:c+10' });
 });
 
 // =========================================================
@@ -51,6 +53,7 @@ function _applyDatepickers(pairs, wire) {
         $el.datepicker({
             changeMonth: true,
             changeYear: true,
+            yearRange: '1930:c+10',
             dateFormat: 'yy-mm-dd',
             onSelect: function (dateText) {
                 wire.set(pair[1], dateText);
