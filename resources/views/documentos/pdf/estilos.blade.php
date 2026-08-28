@@ -108,6 +108,30 @@
         font-weight: bold;
         margin: 0 0 10px 0;
     }
+    /* ── Anexo 1 a UNA hoja (28/08): bloques en paralelo ──────────────────
+       dompdf no soporta flex/grid, así que la maquetación en columnas se
+       arma con tablas contenedoras sin bordes. --------------------------- */
+    table.grid2 { width: 100%; border-collapse: separate; border-spacing: 0; margin: 0 0 8px 0; }
+    table.grid2 > tr > td, table.grid2 td.celda { width: 50%; vertical-align: top; padding: 0; }
+    table.grid2 td.izq { padding-right: 5px; }
+    table.grid2 td.der { padding-left: 5px; }
+
+    /* Bloques de datos compactos (mismo aspecto, menos alto por fila) */
+    table.datos.compacta { margin: 0 0 6px 0; font-size: 8.5pt; }
+    table.datos.compacta th, table.datos.compacta td { padding: 1.5px 5px; line-height: 1.25; }
+
+    /* Cronograma repartido en varias columnas para que entre en la hoja */
+    .cron-titulo { font-size: 8.5pt; font-weight: bold; text-transform: uppercase; margin: 2px 0 3px 0; }
+    table.cron-cols { width: 100%; border-collapse: separate; border-spacing: 0; }
+    table.cron-cols > tr > td, table.cron-cols td.col { vertical-align: top; padding: 0 4px 0 0; }
+    table.cron-mini { width: 100%; border-collapse: collapse; font-size: 8pt; }
+    table.cron-mini th, table.cron-mini td { border: 0.6pt solid #000; padding: 1px 4px; }
+    table.cron-mini th { background: #eee; text-align: center; font-size: 7.5pt; }
+    table.cron-mini td.num { text-align: right; width: 14%; }
+    table.cron-mini td.fecha { text-align: center; }
+    table.cron-mini td.monto { text-align: right; }
+    .cron-total { margin-top: 5px; font-size: 9pt; font-weight: bold; text-align: right; }
+
     table.cronograma { width: 60%; margin: 6px auto 10px auto; border-collapse: collapse; font-size: 9pt; }
     table.cronograma th, table.cronograma td { border: 0.6pt solid #000; padding: 2px 6px; }
     table.cronograma th { background: #eee; text-align: center; }
