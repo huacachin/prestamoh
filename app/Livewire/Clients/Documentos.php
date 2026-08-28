@@ -65,6 +65,9 @@ class Documentos extends Component
     /** Correo hardcodeado del legacy: jamás se precarga como correo real. */
     private const CORREO_LEGACY = 'g@huacachin.com';
 
+    /** Motivo del depósito a tercero: texto fijo de la maestra a.1.1. */
+    public const MOTIVO_TERCERO = 'EL DEUDOR PRESENTA PROBLEMAS ADMINISTRATIVOS CON SUS CUENTAS PERSONALES';
+
     /** Opciones de estado civil del wizard (valor => etiqueta). */
     public const ESTADOS_CIVILES = [
         'SOLTERO' => 'Soltero(a)',
@@ -102,14 +105,26 @@ class Documentos extends Component
         'oficina_registral' => '', 'correo' => '', 'domicilio' => '',
     ];
 
-    /** Gerente general de la empresa deudora (firma en representación). */
+    /**
+     * Gerente general de la empresa deudora (firma en representación).
+     * La clave es 'sexo' — no 'genero' — porque es la que lee
+     * GeneradorContrato::deudorJuridico(); con la anterior nunca coincidían
+     * y toda gerenta salía IDENTIFICADO/SOLTERO/INSCRITO.
+     */
     public array $gerente = [
-        'nombre' => '', 'dni' => '', 'genero' => 'M', 'ocupacion' => '',
+        'nombre' => '', 'dni' => '', 'sexo' => 'M', 'ocupacion' => '',
         'estado_civil' => '', 'domicilio' => '',
     ];
 
-    /** Tercero autorizado a recibir el desembolso (modelos de depósito a tercero). */
-    public array $tercero = ['nombre' => '', 'dni' => '', 'cuenta' => '', 'motivo' => ''];
+    /**
+     * Tercero autorizado a recibir el desembolso (modelos de depósito a tercero).
+     * El motivo trae el texto fijo de la maestra a.1.1 (allí va en negro, no
+     * es un dato variable), editable por si el caso es otro.
+     */
+    public array $tercero = [
+        'nombre' => '', 'dni' => '', 'cuenta' => '',
+        'motivo' => self::MOTIVO_TERCERO,
+    ];
 
     /** Valor del bien (S/); default: suma del valor en ficha de los vehículos. */
     public string $valorBien = '';
@@ -318,10 +333,13 @@ class Documentos extends Component
             'domicilio' => $this->domicilioDe($client),
         ];
         $this->gerente = [
-            'nombre' => '', 'dni' => '', 'genero' => 'M', 'ocupacion' => '',
+            'nombre' => '', 'dni' => '', 'sexo' => 'M', 'ocupacion' => '',
             'estado_civil' => '', 'domicilio' => '',
         ];
-        $this->tercero = ['nombre' => '', 'dni' => '', 'cuenta' => '', 'motivo' => ''];
+        $this->tercero = [
+            'nombre' => '', 'dni' => '', 'cuenta' => '',
+            'motivo' => self::MOTIVO_TERCERO,
+        ];
         $this->valorBien = '';
         $this->bancoDesembolso = '';
         $this->fechaContrato = now()->format('Y-m-d');
@@ -829,45 +847,10 @@ class Documentos extends Component
         return max(1, min(2, (int) $p));
     }
 
-    /**
-     * es_futuro por slot de vehículo. Tolera las formas razonables del
-     * catálogo: lista por vehículo ('futuro'/'presente' o ['es_futuro' =>
-     * bool]), un conteo (1, 2, '2') o un código compacto ('2f', '1f1p'),
-     * más 'futuros'/'futuro' como override global del preset.
-     */
+    /** es_futuro por slot de vehículo, desde el mapa del catálogo. */
     private function slotsFuturoDe(array $preset): array
     {
-        $spec = $preset['bienes'] ?? $preset['vehiculos'] ?? 1;
-        $slots = [];
-
-        if (is_array($spec)) {
-            foreach (array_values($spec) as $item) {
-                $slots[] = is_array($item)
-                    ? (bool) ($item['es_futuro'] ?? $item['futuro'] ?? false)
-                    : str_starts_with(mb_strtolower(trim((string) $item)), 'f');
-            }
-        } else {
-            preg_match_all('/(\d)\s*([a-z]*)/', mb_strtolower(trim((string) $spec)), $m, PREG_SET_ORDER);
-            foreach ($m as $token) {
-                $futuro = str_starts_with($token[2], 'f');
-                for ($i = 0; $i < (int) $token[1]; $i++) {
-                    $slots[] = $futuro;
-                }
-            }
-        }
-
-        $slots = array_slice($slots === [] ? [false] : $slots, 0, 2);
-
-        $futuros = $preset['futuros'] ?? $preset['futuro'] ?? null;
-        if (is_bool($futuros)) {
-            $slots = array_fill(0, count($slots), $futuros);
-        } elseif (is_array($futuros)) {
-            foreach ($slots as $i => $actual) {
-                $slots[$i] = (bool) ($futuros[$i] ?? $actual);
-            }
-        }
-
-        return $slots;
+        return ModelosContrato::slots((string) ($preset['bienes'] ?? 'presente'));
     }
 
     /** Rearma slots de vehículo y deudores según el preset del modelo elegido. */
@@ -891,7 +874,7 @@ class Documentos extends Component
                 'vehiculo_id' => $previo['vehiculo_id']
                     ?? ($vehiculos->count() === count($preset['slots']) ? $vehiculos->get($i)?->id : null),
                 'es_futuro' => $esFuturo,
-                'acta' => (string) ($previo['acta'] ?? ''),
+                'fecha_acta' => (string) ($previo['fecha_acta'] ?? ''),
                 'kardex' => (string) ($previo['kardex'] ?? ''),
                 'notario' => (string) ($previo['notario'] ?? ''),
             ];
@@ -1129,7 +1112,7 @@ class Documentos extends Component
                 'gerente' => [
                     'nombre' => trim((string) $this->gerente['nombre']),
                     'dni' => trim((string) $this->gerente['dni']),
-                    'genero' => ($this->gerente['genero'] ?? 'M') === 'F' ? 'F' : 'M',
+                    'sexo' => ($this->gerente['sexo'] ?? 'M') === 'F' ? 'F' : 'M',
                     'ocupacion' => trim((string) $this->gerente['ocupacion']),
                     'estado_civil' => trim((string) $this->gerente['estado_civil']),
                     'domicilio' => trim((string) $this->gerente['domicilio']),
@@ -1163,7 +1146,7 @@ class Documentos extends Component
         foreach ($this->contratoVehiculos as $slot) {
             $datos['bienes'][(int) $slot['vehiculo_id']] = [
                 'es_futuro' => (bool) $slot['es_futuro'],
-                'acta' => trim((string) $slot['acta']) ?: null,
+                'fecha_acta' => trim((string) $slot['fecha_acta']) ?: null,
                 'kardex' => trim((string) $slot['kardex']) ?: null,
                 'notario' => trim((string) $slot['notario']) ?: null,
             ];
@@ -1192,7 +1175,7 @@ class Documentos extends Component
             'clausulasAdicionales' => ['nullable', 'string', 'max:5000'],
             'contratoVehiculos' => ['required', 'array', 'min:1'],
             'contratoVehiculos.*.vehiculo_id' => ['required', 'integer'],
-            'contratoVehiculos.*.acta' => ['nullable', 'string', 'max:60'],
+            'contratoVehiculos.*.fecha_acta' => ['nullable', 'date'],
             'contratoVehiculos.*.kardex' => ['nullable', 'string', 'max:20'],
             'contratoVehiculos.*.notario' => ['nullable', 'string', 'max:120'],
         ];
@@ -1211,7 +1194,7 @@ class Documentos extends Component
                 'empresa.domicilio' => ['nullable', 'string', 'max:300'],
                 'gerente.nombre' => ['required', 'string', 'max:150'],
                 'gerente.dni' => ['required', 'string', 'max:15'],
-                'gerente.genero' => ['required', Rule::in(['M', 'F'])],
+                'gerente.sexo' => ['required', Rule::in(['M', 'F'])],
                 'gerente.ocupacion' => ['nullable', 'string', 'max:100'],
                 'gerente.estado_civil' => ['nullable', 'string', 'max:30'],
                 'gerente.domicilio' => ['nullable', 'string', 'max:300'],
@@ -1271,8 +1254,8 @@ class Documentos extends Component
             'empresa.correo.email' => 'El correo de la empresa no es válido.',
             'gerente.nombre.required' => 'Ingresa el nombre del gerente general.',
             'gerente.dni.required' => 'Ingresa el DNI del gerente general.',
-            'gerente.genero.required' => 'Indica el género del gerente general.',
-            'gerente.genero.in' => 'El género del gerente debe ser M o F.',
+            'gerente.sexo.required' => 'Indica el género del gerente general.',
+            'gerente.sexo.in' => 'El género del gerente debe ser M o F.',
             'tercero.nombre.required' => 'Ingresa el nombre del tercero autorizado a recibir el desembolso.',
             'tercero.dni.required' => 'Ingresa el DNI del tercero autorizado.',
         ];

@@ -74,6 +74,29 @@ final class ModelosContrato
         'b32' => ['nombre' => 'b.3.2 Deudores. 2 Bienes Presentes', 'personas' => 2, 'gps' => false, 'custodia' => false, 'bienes' => '2presentes', 'destino' => 'propio'],
     ];
 
+    /**
+     * es_futuro por slot de vehículo, para cada valor de 'bienes'.
+     *
+     * Mapa explícito a propósito: la versión anterior parseaba la cadena con
+     * una regex que exigía un dígito, así que 'futuro' y 'futuro_presente'
+     * no enganchaban y caían a un único bien presente — los 6 modelos .4/.5
+     * se emitían como el contrato base. El ORDEN importa: en a.1.5 el
+     * vehículo 1 es el futuro y el 2 el presente.
+     */
+    public const SLOTS_BIENES = [
+        'presente' => [false],
+        'futuro' => [true],
+        '2presentes' => [false, false],
+        '2futuros' => [true, true],
+        'futuro_presente' => [true, false],
+    ];
+
+    /** @return array<int, bool> es_futuro por slot; 1 bien presente si el valor es desconocido. */
+    public static function slots(string $bienes): array
+    {
+        return self::SLOTS_BIENES[$bienes] ?? [false];
+    }
+
     /** @return array<string, array{nombre: string, personas: int|string, gps: bool, custodia: bool, bienes: string, destino: string}> */
     public static function todos(): array
     {

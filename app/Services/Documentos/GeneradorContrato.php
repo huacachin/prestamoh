@@ -46,7 +46,8 @@ use Illuminate\Support\Facades\Storage;
  *  - tercero{nombre, dni, cuenta, motivo}  (presets con destino 'tercero')
  *  - banco (clave de BancosVoucher — la cláusula de constancia lo menciona;
  *    el tenor gráfico del voucher queda para el Anexo 2)
- *  - bienes[vehiculo_id]{es_futuro, acta_notarial, kardex, notario, fecha_acta}
+ *  - bienes[vehiculo_id]{es_futuro, fecha_acta, kardex, notario}  (sin N° de
+ *    acta: ninguna de las 32 maestras lo cita)
  *  - clausulas_adicionales
  */
 class GeneradorContrato
@@ -411,6 +412,26 @@ class GeneradorContrato
      * fija el preset del modelo; solo el mixto (futuro_presente) lo decide el
      * wizard vehículo por vehículo.
      */
+    /**
+     * Fecha de la transferencia vehicular en el formato de las maestras:
+     * "04 DE MAYO DEL 2026". Devuelve null si no vino o no se puede parsear,
+     * y entonces el guard (fase 3) es quien impide emitir con el hueco.
+     */
+    private static function fechaActa(mixed $valor): ?string
+    {
+        if (! filled($valor)) {
+            return null;
+        }
+
+        try {
+            $f = Carbon::parse((string) $valor);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return mb_strtoupper($f->format('d').' DE '.FechaEnLetras::mes($f->month).' DEL '.$f->format('Y'));
+    }
+
     private static function bienes(array $vehiculoIds, array $preset, array $datosBienes): array
     {
         $vehiculos = Vehiculo::whereIn('id', $vehiculoIds)->get()->keyBy('id');
@@ -442,10 +463,9 @@ class GeneradorContrato
                 'combustible' => mb_strtoupper(trim((string) $v->combustible)),
                 'valor' => (float) $v->valor,
                 'esFuturo' => $esFuturo,
-                'actaNotarial' => filled($d['acta_notarial'] ?? null) ? trim((string) $d['acta_notarial']) : null,
                 'kardex' => filled($d['kardex'] ?? null) ? trim((string) $d['kardex']) : null,
                 'notario' => filled($d['notario'] ?? null) ? mb_strtoupper(trim((string) $d['notario'])) : null,
-                'fechaActa' => filled($d['fecha_acta'] ?? null) ? $d['fecha_acta'] : null,
+                'fechaActa' => self::fechaActa($d['fecha_acta'] ?? null),
             ];
         }
 

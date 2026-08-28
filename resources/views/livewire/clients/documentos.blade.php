@@ -398,11 +398,15 @@
                                                 @error('contratoVehiculos.'.$i.'.vehiculo_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
 
                                                 @if($slot['es_futuro'])
+                                                    {{-- Bien futuro: los tres datos del acta de transferencia que
+                                                         cita la cláusula de declaración jurada. La FECHA es la
+                                                         "fecha de transferencia" que exige la guía del área. --}}
                                                     <div class="row g-1 mt-1">
                                                         <div class="col-4">
-                                                            <input type="text" class="form-control form-control-sm" placeholder="Acta notarial"
-                                                                   title="N° de acta notarial de transferencia"
-                                                                   wire:model.blur="contratoVehiculos.{{ $i }}.acta">
+                                                            <input type="date" class="form-control form-control-sm @error('contratoVehiculos.'.$i.'.fecha_acta') is-invalid @enderror"
+                                                                   title="Fecha de la transferencia vehicular"
+                                                                   wire:model.blur="contratoVehiculos.{{ $i }}.fecha_acta">
+                                                            @error('contratoVehiculos.'.$i.'.fecha_acta') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                                         </div>
                                                         <div class="col-4">
                                                             <input type="text" class="form-control form-control-sm" placeholder="Kardex (ej. 0373-2026)"
@@ -476,12 +480,12 @@
                                         </div>
                                         <div class="col-md-3">
                                             <label class="form-label small mb-1">Género *</label>
-                                            <select class="form-select form-select-sm @error('gerente.genero') is-invalid @enderror"
-                                                    wire:model.live="gerente.genero">
+                                            <select class="form-select form-select-sm @error('gerente.sexo') is-invalid @enderror"
+                                                    wire:model.live="gerente.sexo">
                                                 <option value="M">Masculino</option>
                                                 <option value="F">Femenino</option>
                                             </select>
-                                            @error('gerente.genero') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                            @error('gerente.sexo') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                         </div>
                                         <div class="col-md-4">
                                             <label class="form-label small mb-1">Ocupación</label>
