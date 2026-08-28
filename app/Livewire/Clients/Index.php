@@ -173,7 +173,8 @@ class Index extends Component
         $query = Client::query()
             ->where('status', 'active')
             ->with(['asesor:id,name,username', 'headquarter:id,name'])
-            ->withCount(['avales', 'attachments']);
+            // attachments ya no se cuenta: el botón Adjuntos salió del listado (28/08)
+            ->withCount('avales');
 
         if ($user->can('clientes.scope-propio')) {
             $query->where('asesor_id', $user->id);

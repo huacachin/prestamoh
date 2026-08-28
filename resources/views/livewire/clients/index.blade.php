@@ -149,7 +149,8 @@
                                     <th class="text-center">T.Credito</th>
                                     <th class="text-center">Giro</th>
                                     <th class="text-center">Asesor</th>
-                                    <th class="text-center" colspan="3">Opciones</th>
+                                    {{-- Adjuntos y Documentos viven ahora como pestañas en editar cliente (28/08) --}}
+                                    <th class="text-center" colspan="2">Opciones</th>
                                     <th class="text-center">C.</th>
                                     <th class="text-center">N.</th>
                                     <th class="text-center" title="Recordatorio WhatsApp (morosos)"><i class="ti ti-brand-whatsapp"></i></th>
@@ -211,16 +212,6 @@
                                         <a href="{{ route('clients.aval', $client->id) }}"
                                            class="btn btn-xs {{ ($client->avales_count ?? 0) > 0 ? 'btn-primary' : 'btn-danger' }}" style="padding: 2px 8px; font-size: 10px;">
                                             Aval
-                                        </a>
-                                    </td>
-                                    <td class="text-center text-nowrap">
-                                        <a href="{{ route('clients.gallery', $client->id) }}"
-                                           class="btn btn-xs {{ ($client->attachments_count ?? 0) > 0 ? 'btn-info' : 'btn-danger' }}" style="padding: 2px 8px; font-size: 10px;">
-                                            Adjuntos
-                                        </a>
-                                        <a href="{{ route('clients.documentos', $client->id) }}"
-                                           class="btn btn-xs btn-dark" style="padding: 2px 8px; font-size: 10px;" title="Documentos">
-                                            <i class="ti ti-file-text"></i>
                                         </a>
                                     </td>
                                     <td class="text-center">
@@ -339,8 +330,6 @@
                                     <div class="d-flex gap-1 mt-2">
                                         <a href="{{ route('clients.show', $client->id) }}" class="btn btn-xs btn-primary" style="padding: 2px 8px; font-size: 10px;">Prestamo</a>
                                         <a href="{{ route('clients.aval', $client->id) }}" class="btn btn-xs {{ ($client->avales_count ?? 0) > 0 ? 'btn-primary' : 'btn-danger' }}" style="padding: 2px 8px; font-size: 10px;">Aval</a>
-                                        <a href="{{ route('clients.gallery', $client->id) }}" class="btn btn-xs {{ ($client->attachments_count ?? 0) > 0 ? 'btn-info' : 'btn-danger' }}" style="padding: 2px 8px; font-size: 10px;">Adjuntos</a>
-                                        <a href="{{ route('clients.documentos', $client->id) }}" class="btn btn-xs btn-dark" style="padding: 2px 8px; font-size: 10px;" title="Documentos"><i class="ti ti-file-text"></i> Docs</a>
                                         @php
                                             $vencM = $morosidad[$client->id] ?? 0;
                                             $waTelM = preg_replace('/\D/', '', (string) $client->celular1);
