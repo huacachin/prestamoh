@@ -13,13 +13,13 @@ $(function () {
             nextText: 'Siguiente',
             currentText: 'Hoy',
             monthNames: [
-                'enero','febrero','marzo','abril','mayo','junio',
-                'julio','agosto','septiembre','octubre','noviembre','diciembre'
+                'Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'
             ],
-            monthNamesShort: ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'],
-            dayNames: ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'],
-            dayNamesShort: ['dom','lun','mar','mié','jue','vie','sáb'],
-            dayNamesMin: ['Do','Lu','Ma','Mi','Ju','Vi','Sa'],
+            monthNamesShort: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
+            dayNames: ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'],
+            dayNamesShort: ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'],
+            dayNamesMin: ['Do','Lu','Ma','Mi','Ju','Vi','Sá'],
             weekHeader: 'Sm',
             dateFormat: 'yy-mm-dd',
             firstDay: 1,
