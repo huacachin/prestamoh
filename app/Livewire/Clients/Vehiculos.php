@@ -88,6 +88,15 @@ class Vehiculos extends Component
 
     public ?string $coproDocMsg = null;
 
+    /**
+     * Campos del alta rápida que llenó la consulta de documento — se pintan
+     * EN ROJO (convención de toda la casa: lo que viene de la API se
+     * distingue de lo tecleado).
+     *
+     * @var array<int, string>
+     */
+    public array $autoCopro = [];
+
     public function mount(int $id): void
     {
         $this->client = Client::findOrFail($id);
@@ -298,7 +307,7 @@ class Vehiculos extends Component
     public function cancelarCrearCopro(): void
     {
         $this->coproCreando = false;
-        $this->reset('nuevoCopro', 'coproDocMsg');
+        $this->reset('nuevoCopro', 'coproDocMsg', 'autoCopro');
         $this->resetErrorBag();
     }
 
@@ -330,17 +339,22 @@ class Vehiculos extends Component
             return;
         }
 
+        // Lo que llena la API se pinta EN ROJO ($autoCopro → .campo-api).
+        $this->autoCopro = [];
         foreach (['nombre', 'apellido_pat', 'apellido_mat', 'direccion', 'distrito', 'departamento'] as $campo) {
             if (! empty($r['data'][$campo])) {
                 $this->nuevoCopro[$campo] = (string) $r['data'][$campo];
+                $this->autoCopro[] = $campo;
             }
         }
         if (! empty($r['data']['sexo']) && in_array($r['data']['sexo'], ['M', 'F'], true)) {
             $this->nuevoCopro['sexo'] = $r['data']['sexo'];
+            $this->autoCopro[] = 'sexo';
         }
         $provincia = mb_strtoupper(trim((string) ($r['data']['provincia'] ?? '')));
         if (isset(Create::PROVINCIAS[$provincia])) {
             $this->nuevoCopro['provincia'] = $provincia;
+            $this->autoCopro[] = 'provincia';
         }
         $this->coproDocMsg = 'Datos cargados. Verifica y completa lo que falte.';
     }
