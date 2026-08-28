@@ -219,6 +219,16 @@ class GeneradorContrato
         $snapshot = self::construirSnapshot($client, $credit, $vehiculoIds, $modelo, $datos);
         $errores = [];
 
+        // El modelo elegido debe corresponder al sexo del deudor: los 10 pares
+        // Deudor/Deudora son idénticos salvo el nombre, así que elegir el que
+        // no toca producía un contrato con el género cambiado y sin aviso.
+        $sexoDeudor = $snapshot['deudores'][0]['sexo'] ?? null;
+        if (! ModelosContrato::coherenteConSexo($modelo, $sexoDeudor)) {
+            $errores[] = 'El modelo "'.$preset['nombre'].'" es para un deudor de sexo '
+                .($preset['sexo'] === 'F' ? 'femenino' : 'masculino')
+                .', y la ficha dice '.($sexoDeudor === 'F' ? 'femenino' : 'masculino').'.';
+        }
+
         foreach ($snapshot['deudores'] as $i => $d) {
             $rol = $d['esJuridica'] ? 'la empresa deudora' : ($i === 0 ? 'el deudor' : 'el codeudor');
 

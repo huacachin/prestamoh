@@ -213,7 +213,7 @@ class ContratoTramoBTest extends TestCase
     {
         [$client, $credit, $v] = $this->mundoCompleto();
 
-        $errores = GeneradorContrato::validar($client, $credit, [$v->id], 'a1', $this->datos());
+        $errores = GeneradorContrato::validar($client, $credit, [$v->id], 'a2', $this->datos());
 
         $this->assertSame([], $errores, 'Una ficha completa debe poder emitir: '.implode(' | ', $errores));
     }
@@ -227,7 +227,7 @@ class ContratoTramoBTest extends TestCase
             'distrito' => null, 'provincia' => null, 'departamento' => null, 'direccion' => null,
         ]);
 
-        $errores = GeneradorContrato::validar($client, $credit, [$v->id], 'a1', $this->datos());
+        $errores = GeneradorContrato::validar($client, $credit, [$v->id], 'a2', $this->datos());
         $texto = implode(' | ', $errores);
 
         $this->assertNotEmpty($errores);
@@ -258,7 +258,7 @@ class ContratoTramoBTest extends TestCase
             'ocupacion' => 'transportista', 'estado_civil' => 'soltero',
         ]);
 
-        $texto = implode(' | ', GeneradorContrato::validar($client, $credit, [$v->id], 'a1', $this->datos()));
+        $texto = implode(' | ', GeneradorContrato::validar($client, $credit, [$v->id], 'a2', $this->datos()));
 
         $this->assertStringNotContainsString('ocupación', $texto);
         $this->assertStringNotContainsString('estado civil', $texto);
@@ -269,7 +269,7 @@ class ContratoTramoBTest extends TestCase
         [$client, $credit, $v] = $this->mundoCompleto(['documento' => '46781402', 'expediente' => '9402']);
 
         // a.1.4 = un bien futuro; sin fecha de acta, kárdex ni notario.
-        $errores = GeneradorContrato::validar($client, $credit, [$v->id], 'a14', $this->datos());
+        $errores = GeneradorContrato::validar($client, $credit, [$v->id], 'a24', $this->datos());
         $texto = implode(' | ', $errores);
 
         $this->assertStringContainsString('fecha de transferencia', $texto);
@@ -277,7 +277,7 @@ class ContratoTramoBTest extends TestCase
         $this->assertStringContainsString('notario', $texto);
 
         // Con los tres datos, deja emitir.
-        $ok = GeneradorContrato::validar($client, $credit, [$v->id], 'a14', $this->datos() + [
+        $ok = GeneradorContrato::validar($client, $credit, [$v->id], 'a24', $this->datos() + [
             'bienes' => [$v->id => [
                 'es_futuro' => true, 'fecha_acta' => '2026-05-04',
                 'kardex' => '0373-2026', 'notario' => 'JULIO BLAS',
@@ -290,7 +290,7 @@ class ContratoTramoBTest extends TestCase
     {
         [$client, $credit, $v] = $this->mundoCompleto(['documento' => '46781403', 'expediente' => '9403']);
 
-        $texto = implode(' | ', GeneradorContrato::validar($client, $credit, [$v->id], 'a1', $this->datos()));
+        $texto = implode(' | ', GeneradorContrato::validar($client, $credit, [$v->id], 'a2', $this->datos()));
 
         $this->assertStringNotContainsString('partida registral', $texto);
         $this->assertStringNotContainsString('gerente', $texto);
@@ -317,7 +317,7 @@ class ContratoTramoBTest extends TestCase
             ['placa' => 'GRD999', 'nro_motor' => null, 'valor' => null],
         );
 
-        $texto = implode(' | ', GeneradorContrato::validar($client, $credit, [$v->id], 'a1', $this->datos()));
+        $texto = implode(' | ', GeneradorContrato::validar($client, $credit, [$v->id], 'a2', $this->datos()));
 
         $this->assertStringContainsString('N° de motor', $texto);
         $this->assertStringContainsString('valor del vehículo', $texto);
@@ -328,7 +328,7 @@ class ContratoTramoBTest extends TestCase
         [$client, $credit, $v] = $this->mundoCompleto(['documento' => '46781406', 'expediente' => '9406']);
 
         // a.1.2 exige DOS bienes presentes y solo llega uno.
-        $texto = implode(' | ', GeneradorContrato::validar($client, $credit, [$v->id], 'a12', $this->datos()));
+        $texto = implode(' | ', GeneradorContrato::validar($client, $credit, [$v->id], 'a22', $this->datos()));
 
         $this->assertStringContainsString('exige 2 vehículo(s) y llegaron 1', $texto);
     }
@@ -337,7 +337,7 @@ class ContratoTramoBTest extends TestCase
     {
         [$client, $credit, $v] = $this->mundoCompleto(['documento' => '46781407', 'expediente' => '9407']);
 
-        $texto = implode(' | ', GeneradorContrato::validar($client, $credit, [$v->id], 'a1', []));
+        $texto = implode(' | ', GeneradorContrato::validar($client, $credit, [$v->id], 'a2', []));
 
         $this->assertStringContainsString('banco del desembolso', $texto);
     }
@@ -349,7 +349,7 @@ class ContratoTramoBTest extends TestCase
         ]);
 
         $this->expectException(\InvalidArgumentException::class);
-        GeneradorContrato::previsualizar($client, $credit, [$v->id], 'a1', $this->datos());
+        GeneradorContrato::previsualizar($client, $credit, [$v->id], 'a2', $this->datos());
     }
 
     // ── 4 · La nacionalidad va en masculino ───────────────────────────────
@@ -368,7 +368,7 @@ class ContratoTramoBTest extends TestCase
         $this->assertSame('PERUANO', $client->nacionalidad);
 
         // El cliente es MUJER (sexo F en mundoCompleto).
-        $html = GeneradorContrato::previsualizar($client, $credit, [$v->id], 'a1', $this->datos());
+        $html = GeneradorContrato::previsualizar($client, $credit, [$v->id], 'a2', $this->datos());
 
         $this->assertStringContainsString('DE NACIONALIDAD PERUANO', $html);
         $this->assertStringNotContainsString('PERUANA', $html);

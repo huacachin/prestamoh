@@ -1,5 +1,9 @@
 {{-- Cierre y firmas. En las plantillas maestras cada firmante aparece DOS
      VECES (dos juegos completos de firmas para notaría): se replica igual.
+     El rótulo bajo la línea es COLECTIVO ($vm->g), no el género individual:
+     a.3 pone "LOS DEUDORES" en las dos cajas aunque los firmantes sean de
+     distinto sexo, y a.2 pone "LA DEUDORA". Con el género por firmante salía
+     "EL DEUDOR" en una caja y "LA DEUDORA" en la otra.
      Datos de apoderada/acreedor desde $vm->constante(...) — nunca hardcodeados.
      Se corrige el typo del original: ACREEDEDOR → ACREEDOR. --}}
 @php
@@ -38,11 +42,11 @@
                                 RUC N° {{ $celda['ruc'] }}<br>
                                 GERENTE GENERAL: {{ mb_strtoupper($celda['gerente']['nombre']) }}<br>
                                 DNI N° {{ $celda['gerente']['dni'] }}<br>
-                                {{ $celda['g']->deudor() }}
+                                {{ $vm->g->deudor() }}
                             @else
                                 {{ mb_strtoupper($celda['nombre']) }}<br>
                                 DNI N° {{ $celda['dni'] }}<br>
-                                {{ $celda['g']->deudor() }}
+                                {{ $vm->g->deudor() }}
                             @endif
                         </div>
                     </td>

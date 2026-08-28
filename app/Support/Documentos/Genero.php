@@ -19,12 +19,44 @@ final class Genero
     private function __construct(
         private readonly bool $femenino,
         private readonly bool $plural,
+        private readonly bool $juridica = false,
     ) {}
 
-    /** @param string $genero 'M'|'F' (clients.sexo) */
+    /**
+     * @param  string  $genero  'M'|'F' (clients.sexo)
+     *
+     * PERSONA JURÍDICA — DOS EJES. La empresa no se redacta toda en femenino:
+     * el rol DEUDOR va en masculino y solo la familia CONSTITUYENTE concuerda
+     * con "la empresa". Contado sobre la maestra a.4: 44 "EL DEUDOR" y CERO
+     * "LA DEUDORA"; 4 "EL MISMO", 4 "POR EL DEUDOR", 1 "DEL DEUDOR", 1
+     * "OBLIGADO", 1 "PROHIBIDO" — todos masculinos. En femenino solo aparecen
+     * los de la cláusula de declaración jurada, que habla LA CONSTITUYENTE:
+     * "SER PROPIETARIA" y "ESTAR LEGITIMADA" (más "LA CONSTITUYENTE" y
+     * "IDENTIFICADA", que en los partials ya van literales).
+     *
+     * Por eso la base de la jurídica es MASCULINA y el eje femenino se pide
+     * explícitamente con constituyente().
+     */
     public static function de(string $genero, bool $juridica = false): self
     {
-        return new self($juridica || mb_strtoupper(trim($genero)) === 'F', false);
+        return $juridica
+            ? new self(femenino: false, plural: false, juridica: true)
+            : new self(mb_strtoupper(trim($genero)) === 'F', false);
+    }
+
+    /**
+     * Eje CONSTITUYENTE: femenino en la persona jurídica (concuerda con "la
+     * empresa"), idéntico a sí mismo en persona natural. Se usa donde el
+     * sujeto de la frase es quien constituye la garantía y no quien debe.
+     */
+    public function constituyente(): self
+    {
+        return $this->juridica ? new self(femenino: true, plural: false, juridica: true) : $this;
+    }
+
+    public function esJuridica(): bool
+    {
+        return $this->juridica;
     }
 
     /** @param list<string> $generos géneros individuales, ej. ['M','F'] — plural masculino si hay al menos un 'M' */

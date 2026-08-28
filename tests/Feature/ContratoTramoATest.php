@@ -129,10 +129,15 @@ class ContratoTramoATest extends TestCase
      * tercero y los datos de acta de ambos vehículos. Cada preset toma solo
      * lo que le corresponde, así que sirve para recorrer los 32.
      */
-    private function datosCompletos(): array
+    private function datosCompletos(?string $modelo = null): array
     {
+        // El modelo y el sexo del deudor deben concordar (los 10 pares
+        // Deudor/Deudora solo se diferencian en eso), así que el primer
+        // deudor toma el sexo que el preset declara.
+        $sexo = $modelo !== null ? (ModelosContrato::get($modelo)['sexo'] ?? 'F') : 'F';
+
         return [
-            'deudores' => [$this->deudor('F'), $this->deudor('M')],
+            'deudores' => [$this->deudor($sexo ?? 'F'), $this->deudor('M')],
             'empresa' => [
                 'razon_social' => 'TRANSPORTES ROSA S.A.C.',
                 'ruc' => '20601234567',
@@ -170,7 +175,7 @@ class ContratoTramoATest extends TestCase
             ? [$this->v1->id, $this->v2->id]
             : [$this->v1->id];
 
-        return GeneradorContrato::previsualizar($this->client, $this->credit, $ids, $modelo, $this->datosCompletos());
+        return GeneradorContrato::previsualizar($this->client, $this->credit, $ids, $modelo, $this->datosCompletos($modelo));
     }
 
     // ── 1 · El mapa de slots ──────────────────────────────────────────────

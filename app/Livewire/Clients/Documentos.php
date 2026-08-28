@@ -1264,20 +1264,32 @@ class Documentos extends Component
      * Catálogo agrupado para el select del modelo: 'Con GPS' / 'Custodia' /
      * 'Sin GPS' (vacío si el catálogo aún no está disponible).
      */
+    /**
+     * Modelos que el selector puede ofrecer para ESTE cliente, agrupados por
+     * tipo de garantía.
+     *
+     * Filtrado por la ficha: un cliente con sexo M no ve los modelos
+     * "Deudora", una persona jurídica solo ve a.4 / a.4.1, y los de dos
+     * deudores aparecen únicamente si el contrato lleva codeudor. Antes se
+     * ofrecían los 32 y elegir "a.2 Deudora" sobre un hombre producía un
+     * contrato en masculino sin ninguna advertencia.
+     */
     private function modelosAgrupados(): array
     {
         try {
-            $nombres = ModelosContrato::nombres();
+            $client = Client::find($this->clientId);
+            $aplicables = ModelosContrato::aplicables(
+                sexo: $client?->sexo,
+                juridica: mb_strtoupper(trim((string) $client?->tipo_documento)) === 'RUC',
+                conCodeudor: $this->codeudorClientId !== null,
+            );
         } catch (\Throwable) {
             return [];
         }
 
         $grupos = ['Con GPS' => [], 'Custodia' => [], 'Sin GPS' => []];
-        foreach ($nombres as $clave => $nombre) {
-            $preset = $this->presetDe((string) $clave) ?? [];
-            $custodia = (bool) ($preset['custodia'] ?? str_contains(mb_strtolower((string) $nombre), 'custodia'));
-            $gps = (bool) ($preset['gps'] ?? str_starts_with((string) $clave, 'a'));
-            $grupos[$custodia ? 'Custodia' : ($gps ? 'Con GPS' : 'Sin GPS')][$clave] = $nombre;
+        foreach ($aplicables as $clave => $preset) {
+            $grupos[$preset['custodia'] ? 'Custodia' : ($preset['gps'] ? 'Con GPS' : 'Sin GPS')][$clave] = $preset['nombre'];
         }
 
         return array_filter($grupos);

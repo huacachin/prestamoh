@@ -72,4 +72,30 @@ final class Ordinales
 
         return $decenas[$d].($u > 0 ? ' '.$unidades[$u] : '');
     }
+
+    /**
+     * Ordinal FEMENINO: 5 → 'QUINTA', 8 → 'OCTAVA', 11 → 'DÉCIMA PRIMERA'.
+     *
+     * Las maestras mezclan los dos géneros a propósito y de forma consistente:
+     * el título de cada cláusula va en masculino ("OCTAVO: FORMAS DE
+     * EJECUCIÓN") y también las referencias de la cláusula SEGUNDO ("EL BIEN
+     * DESCRITO EN LA CLÁUSULA TERCERO"), pero DOS referencias cruzadas van en
+     * femenino: "DE ACUERDO CON LO SEÑALADO EN LA CLÁUSULA QUINTA" (dentro de
+     * OCTAVO) y "CONFORME SE SEÑALA EN LA CLAUSULA OCTAVA" (dentro de
+     * NOVENO). Verificado en a.1, a.2, a.3 y b.1.
+     */
+    public static function ordinalFemenino(int $n): string
+    {
+        return preg_replace_callback(
+            '/O\b/u',
+            fn () => 'A',
+            self::ordinal($n)
+        );
+    }
+
+    /** Como de(), pero en femenino (ver ordinalFemenino). */
+    public function deF(string $clave): string
+    {
+        return self::ordinalFemenino($this->numero($clave));
+    }
 }

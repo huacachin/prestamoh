@@ -27,7 +27,7 @@ use Throwable;
  *
  * Contrato de firmas de la spec F2 (los servicios se escriben en paralelo):
  *   ModelosContrato::todos()                      → los 32 presets
- *   ModelosContrato::get('a1')                    → preset {gps, custodia, destino, personas, bienes, ...}
+ *   ModelosContrato::get('a2')                    → preset {gps, custodia, destino, personas, bienes, ...}
  *   GeneradorContrato::construirSnapshot($client, $credit, $datos) → array
  *   GeneradorContrato::previsualizar($client, $credit, $datos)     → HTML (medio 'previa')
  *   GeneradorContrato::generar($client, $credit, $datos)           → DocumentoCliente
@@ -192,18 +192,18 @@ class DocumentoContratoTest extends TestCase
     {
         $this->assertCount(32, ModelosContrato::todos());
 
-        // a1 — contrato base: CON GPS, sin custodia
-        $a1 = ModelosContrato::get('a1');
-        $this->assertTrue((bool) data_get($a1, 'gps'), 'a1 debe traer GPS.');
-        $this->assertFalse((bool) data_get($a1, 'custodia'), 'a1 no lleva custodia.');
+        // a2 — contrato base (deudora): CON GPS, sin custodia
+        $a2 = ModelosContrato::get('a2');
+        $this->assertTrue((bool) data_get($a2, 'gps'), 'a.2 debe traer GPS.');
+        $this->assertFalse((bool) data_get($a2, 'custodia'), 'a.2 no lleva custodia.');
 
-        // a16 — con posesión (custodia), sin GPS
-        $a16 = ModelosContrato::get('a16');
-        $this->assertTrue((bool) data_get($a16, 'custodia'), 'a16 debe traer custodia.');
-        $this->assertFalse((bool) data_get($a16, 'gps'), 'a16 no lleva GPS.');
+        // a26 — con posesión (custodia), sin GPS
+        $a26 = ModelosContrato::get('a26');
+        $this->assertTrue((bool) data_get($a26, 'custodia'), 'a.2.6 debe traer custodia.');
+        $this->assertFalse((bool) data_get($a26, 'gps'), 'a.2.6 no lleva GPS.');
 
-        // b1 — serie B: sin GPS
-        $this->assertFalse((bool) data_get(ModelosContrato::get('b1'), 'gps'), 'b1 no lleva GPS.');
+        // b2 — serie B: sin GPS
+        $this->assertFalse((bool) data_get(ModelosContrato::get('b2'), 'gps'), 'b.2 no lleva GPS.');
 
         // a41 — persona jurídica con desembolso al gerente
         $a41 = ModelosContrato::get('a41');
@@ -229,7 +229,7 @@ class DocumentoContratoTest extends TestCase
     {
         $this->mundo();
 
-        $html = $this->generador()->previsualizar($this->client, $this->credit, [$this->vehiculo->id], 'a1', $this->datosWizard('a1'));
+        $html = $this->generador()->previsualizar($this->client, $this->credit, [$this->vehiculo->id], 'a2', $this->datosWizard('a2'));
 
         // Flexión F de la deudora (los Word del área traían "GINA ... IDENTIFICADO")
         $this->assertStringContainsString('LA DEUDORA', $html);
@@ -247,9 +247,9 @@ class DocumentoContratoTest extends TestCase
     {
         $this->mundo();
 
-        $preset = ModelosContrato::get('b1');
+        $preset = ModelosContrato::get('b2');
 
-        $html = $this->generador()->previsualizar($this->client, $this->credit, [$this->vehiculo->id], 'b1', $this->datosWizard('b1'));
+        $html = $this->generador()->previsualizar($this->client, $this->credit, [$this->vehiculo->id], 'b2', $this->datosWizard('b2'));
 
         // Sin GPS: la cláusula desaparece por completo
         $this->assertStringNotContainsString('DISPOSITIVO GPS', $html);
@@ -267,11 +267,11 @@ class DocumentoContratoTest extends TestCase
         $this->darPermisoClientes();
         Storage::fake('public');
 
-        $doc = $this->generador()->generar($this->client, $this->credit, [$this->vehiculo->id], 'a1', $this->datosWizard('a1'));
+        $doc = $this->generador()->generar($this->client, $this->credit, [$this->vehiculo->id], 'a2', $this->datosWizard('a2'));
 
         $this->assertInstanceOf(DocumentoCliente::class, $doc);
         $this->assertSame('contrato', $doc->tipo);
-        $this->assertSame('a1', $doc->modelo);
+        $this->assertSame('a2', $doc->modelo);
         $this->assertEquals(1, $doc->version);
         $this->assertSame('emitido', $doc->estado);
         $this->assertEquals($this->client->id, $doc->client_id);
@@ -292,13 +292,13 @@ class DocumentoContratoTest extends TestCase
         $vm = $this->generador()->vmDesdeSnapshot($doc->snapshot);
         $this->assertTrue($vm->gps, 'a1 emite con GPS.');
         $this->assertSame(
-            $this->ordinalRepresentantes(ModelosContrato::get('a1')),
+            $this->ordinalRepresentantes(ModelosContrato::get('a2')),
             $vm->ord->de('representantes'),
             'a1 con GPS: representantes se corre a la posición 10 (DÉCIMO).'
         );
 
         // Regenerar jamás pisa: crea v2
-        $doc2 = $this->generador()->generar($this->client, $this->credit, [$this->vehiculo->id], 'a1', $this->datosWizard('a1'));
+        $doc2 = $this->generador()->generar($this->client, $this->credit, [$this->vehiculo->id], 'a2', $this->datosWizard('a2'));
         $this->assertEquals(2, $doc2->version);
         $this->assertSame('contrato', $doc2->tipo);
         $this->assertSame(2, DocumentoCliente::where('tipo', 'contrato')->count());
@@ -324,16 +324,16 @@ class DocumentoContratoTest extends TestCase
         // override vacío hace fallback a la ficha (diseño correcto), así que
         // para el caso imposible hay que vaciar también la ficha.
         $this->client->update(['nombre' => '', 'apellido_pat' => '', 'apellido_mat' => '']);
-        $datos = $this->datosWizard('a1');
+        $datos = $this->datosWizard('a2');
         $datos['deudores'][0]['nombre'] = '';
         $e = $this->capturarExcepcion(
-            fn () => $this->generador()->generar($this->client, $this->credit, [$this->vehiculo->id], 'a1', $datos)
+            fn () => $this->generador()->generar($this->client, $this->credit, [$this->vehiculo->id], 'a2', $datos)
         );
         $this->assertMatchesRegularExpression('/nombre|deudor/iu', $e->getMessage());
 
         // 2) Sin vehículo seleccionado: no hay bien que gravar.
         $e = $this->capturarExcepcion(
-            fn () => $this->generador()->generar($this->client, $this->credit, [], 'a1', $this->datosWizard('a1'))
+            fn () => $this->generador()->generar($this->client, $this->credit, [], 'a2', $this->datosWizard('a2'))
         );
         $this->assertMatchesRegularExpression('/veh[ií]culo|bien|placa/iu', $e->getMessage());
 
@@ -350,10 +350,10 @@ class DocumentoContratoTest extends TestCase
     {
         $this->mundo();
 
-        $datos = $this->datosWizard('a1');
+        $datos = $this->datosWizard('a2');
         $datos['fecha'] = '24/08/2026';
 
-        $html = $this->generador()->previsualizar($this->client, $this->credit, [$this->vehiculo->id], 'a1', $datos);
+        $html = $this->generador()->previsualizar($this->client, $this->credit, [$this->vehiculo->id], 'a2', $datos);
 
         $this->assertStringContainsString('24 DE AGOSTO DEL 2026', $html);
     }
