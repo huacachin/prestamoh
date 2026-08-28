@@ -216,7 +216,8 @@
                                                                id="anx-veh-{{ $v->id }}"
                                                                value="{{ $v->id }}"
                                                                wire:model.live="anexoVehiculos">
-                                                        <label class="form-check-label small" for="anx-veh-{{ $v->id }}">
+                                                        {{-- ps-2: sin él la etiqueta queda pegada al checkbox --}}
+                                                        <label class="form-check-label small ps-2" for="anx-veh-{{ $v->id }}">
                                                             {{ $v->descripcion() }}
                                                         </label>
                                                     </div>
