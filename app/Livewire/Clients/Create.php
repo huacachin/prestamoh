@@ -4,13 +4,32 @@ namespace App\Livewire\Clients;
 
 use App\Models\Client;
 use App\Models\User;
+use App\Services\Factiliza;
 use App\Support\Audit;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Livewire\Component;
 
+/**
+ * Alta de cliente en DOS PASOS (28/08):
+ *   1. Datos del cliente (correo, ocupación y estado civil obligatorios).
+ *   2. Vehículos — VARIOS por cliente y totalmente opcional: se puede
+ *      terminar el alta sin registrar ninguno.
+ *
+ * Las consultas de DNI / RUC / carné de extranjería y de placa van contra
+ * Factiliza (App\Services\Factiliza), que entrega los nombres ya separados:
+ * se acabó el split posicional que rompía con apellidos compuestos.
+ */
 class Create extends Component
 {
+    public const OCUPACIONES = ['dependiente' => 'Dependiente', 'independiente' => 'Independiente', 'transportista' => 'Transportista'];
+
+    public const ESTADOS_CIVILES = ['soltero' => 'Soltero(a)', 'casado' => 'Casado(a)', 'viudo' => 'Viudo(a)', 'divorciado' => 'Divorciado(a)'];
+
+    public const TIPOS_DOCUMENTO = ['DNI' => 'DNI', 'RUC' => 'RUC', 'CE' => 'Carné de extranjería'];
+
+    // ── Wizard ─────────────────────────────────────────────
+    public int $paso = 1;
+
     // ── Búsqueda de documento ──────────────────────────────
     public string $docBuscar = '';
 
@@ -18,7 +37,7 @@ class Create extends Component
 
     public ?string $docMsgType = null; // 'ok' | 'warn' | 'err'
 
-    // ── Campos del formulario (homologado a clientenew.php) ──
+    // ── Paso 1: cliente ────────────────────────────────────
     public string $apellido_pat = '';
 
     public string $apellido_mat = '';
@@ -33,7 +52,13 @@ class Create extends Component
 
     public string $documento = '';
 
-    public string $tipo_documento = 'DNI'; // interno, no visible
+    public string $tipo_documento = 'DNI';
+
+    public string $email = '';
+
+    public string $ocupacion = 'transportista';
+
+    public string $estado_civil = 'soltero';
 
     public ?int $expediente = null;
 
@@ -51,28 +76,20 @@ class Create extends Component
 
     public ?int $asesor_id = null;
 
-    // ── Datos del vehículo (opcionales; pedido 26/08) ──────
-    public ?string $placa = null;
+    /**
+     * ── Paso 2: vehículos (0..N) ───────────────────────────
+     *
+     * @var array<int, array<string, string|null>>
+     */
+    public array $vehiculos = [];
 
-    public ?string $marca = null;
+    public ?string $vehMsg = null;
 
-    public ?string $modelo = null;
-
-    public ?string $nro_motor = null;
-
-    public ?string $nro_serie = null;
-
-    public ?string $categoria = null;
-
-    public ?string $anio_modelo = null;
-
-    public ?string $carroceria = null;
-
-    public ?string $color = null;
-
-    public ?string $combustible = null;
+    public ?string $vehMsgType = null;
 
     public $asesores;
+
+    public ?int $newClientId = null;
 
     public function mount(): void
     {
@@ -88,141 +105,177 @@ class Create extends Component
         $this->expediente = $correl + 1;
     }
 
-    /**
-     * Consulta DNI o RUC contra api.migo.pe — desambigua por longitud.
-     */
-    public function consultarDocumento(): void
+    // ─────────────────────────────────────────────────────────
+    //  Consulta de documento (Factiliza)
+    // ─────────────────────────────────────────────────────────
+
+    /** El tipo de documento elegido decide el endpoint: DNI / RUC / CE. */
+    public function consultarDocumento(Factiliza $api): void
     {
         $this->docMsg = null;
         $this->docMsgType = null;
 
-        $doc = preg_replace('/\D+/', '', (string) $this->docBuscar);
-        $len = strlen($doc);
+        $doc = trim((string) $this->docBuscar);
+        // DNI y RUC son numéricos; el carné de extranjería es alfanumérico.
+        if ($this->tipo_documento !== 'CE') {
+            $doc = preg_replace('/\D+/', '', $doc);
+        }
 
-        if ($len !== 8 && $len !== 11) {
+        if ($error = $this->validarLargoDocumento($doc)) {
             $this->docMsgType = 'err';
-            $this->docMsg = 'Ingrese DNI (8 dígitos) o RUC (11 dígitos).';
+            $this->docMsg = $error;
 
             return;
         }
 
-        // Bloqueo de duplicados
-        $exists = Client::where('documento', $doc)->first(['id', 'expediente', 'nombre', 'apellido_pat', 'apellido_mat']);
-        if ($exists) {
+        // Bloqueo de duplicados antes de gastar una consulta
+        $existe = Client::where('documento', $doc)->first(['id', 'expediente', 'nombre', 'apellido_pat', 'apellido_mat']);
+        if ($existe) {
             $this->docMsgType = 'warn';
-            $this->docMsg = "Documento ya registrado: #{$exists->id} · {$exists->fullName()} (exp. {$exists->expediente}).";
+            $this->docMsg = "Documento ya registrado: #{$existe->id} · {$existe->fullName()} (exp. {$existe->expediente}).";
 
             return;
         }
 
-        $token = config('services.migo.token');
-        $base = rtrim((string) config('services.migo.base'), '/');
+        // El documento se propaga SIEMPRE, aunque la consulta falle: así el
+        // operador no tiene que volver a tipearlo para cargarlo a mano.
+        $this->documento = $doc;
 
-        if (! $token) {
+        $resultado = match ($this->tipo_documento) {
+            'RUC' => $api->ruc($doc),
+            'CE' => $api->cee($doc),
+            default => $api->dni($doc),
+        };
+
+        if (! $resultado['ok']) {
             $this->docMsgType = 'err';
-            $this->docMsg = 'Falta token MIGO_PE_TOKEN en .env';
+            $this->docMsg = $resultado['error'].' Puedes completar los datos a mano.';
 
             return;
         }
 
-        try {
-            if ($len === 8) {
-                $this->buscarDni($doc, $base, $token);
-            } else {
-                $this->buscarRuc($doc, $base, $token);
+        $this->aplicarDatosDocumento($resultado['data']);
+    }
+
+    private function validarLargoDocumento(string $doc): ?string
+    {
+        return match ($this->tipo_documento) {
+            'DNI' => strlen($doc) === 8 ? null : 'El DNI debe tener 8 dígitos.',
+            'RUC' => strlen($doc) === 11 ? null : 'El RUC debe tener 11 dígitos.',
+            'CE' => (strlen($doc) >= 8 && strlen($doc) <= 12) ? null : 'El carné de extranjería debe tener entre 8 y 12 caracteres.',
+            default => 'Selecciona el tipo de documento.',
+        };
+    }
+
+    /** @param array<string, mixed> $d */
+    private function aplicarDatosDocumento(array $d): void
+    {
+        if ($this->tipo_documento === 'RUC') {
+            // La razón social entera va al campo Nombres; los apellidos no aplican.
+            $this->nombre = (string) ($d['nombre'] ?? '');
+            $this->apellido_pat = '';
+            $this->apellido_mat = '';
+            $this->docMsg = 'Razón social cargada en "Nombres". Apellidos no aplican para RUC.';
+        } else {
+            // DNI y CE: la API ya entrega los nombres separados.
+            $this->nombre = (string) ($d['nombre'] ?? '');
+            $this->apellido_pat = (string) ($d['apellido_pat'] ?? '');
+            $this->apellido_mat = (string) ($d['apellido_mat'] ?? '');
+            $this->docMsg = $this->tipo_documento === 'CE'
+                ? 'Datos cargados desde Migraciones. Verifica apellidos y nombres.'
+                : 'Datos cargados desde RENIEC. Verifica apellidos y nombres.';
+        }
+
+        foreach (['direccion' => 'direccion', 'distrito' => 'distrito'] as $origen => $destino) {
+            if (! empty($d[$origen]) && property_exists($this, $destino)) {
+                $this->{$destino} = (string) $d[$origen];
             }
-        } catch (\Throwable $e) {
-            $this->docMsgType = 'err';
-            $this->docMsg = 'Error consultando: '.$e->getMessage();
         }
-    }
-
-    private function buscarDni(string $dni, string $base, string $token): void
-    {
-        $resp = Http::timeout(8)
-            ->acceptJson()
-            ->asJson()
-            ->post("$base/dni", ['token' => $token, 'dni' => $dni]);
-
-        if (! $resp->ok()) {
-            $this->docMsgType = 'err';
-            $this->docMsg = "API respondió HTTP {$resp->status()}.";
-
-            return;
+        if (! empty($d['fecha_nacimiento'])) {
+            $this->fecha_nacimiento = (string) $d['fecha_nacimiento'];
         }
-
-        $j = $resp->json();
-        if (empty($j) || (isset($j['success']) && $j['success'] === false)) {
-            $this->docMsgType = 'err';
-            $this->docMsg = $j['message'] ?? 'No se encontraron datos para ese DNI.';
-
-            return;
-        }
-
-        // migo.pe devuelve un único campo "nombre" con formato "APELLIDOPAT APELLIDOMAT NOMBRES".
-        // Compatibilidad: si la API algún día devolviera campos separados, los respetamos.
-        $pat = $j['apellido_paterno'] ?? $j['apellidoPaterno'] ?? null;
-        $mat = $j['apellido_materno'] ?? $j['apellidoMaterno'] ?? null;
-        $nom = $j['nombres'] ?? null;
-        $full = trim((string) ($j['nombre'] ?? ''));
-
-        if ($pat === null && $mat === null && $nom === null && $full !== '') {
-            // Split: 1ª palabra = pat, 2ª = mat, resto = nombres
-            $partes = preg_split('/\s+/', $full, 3);
-            $pat = $partes[0] ?? '';
-            $mat = $partes[1] ?? '';
-            $nom = $partes[2] ?? '';
-        }
-
-        $this->apellido_pat = mb_convert_case(trim((string) $pat), MB_CASE_TITLE, 'UTF-8');
-        $this->apellido_mat = mb_convert_case(trim((string) $mat), MB_CASE_TITLE, 'UTF-8');
-        $this->nombre = mb_convert_case(trim((string) $nom), MB_CASE_TITLE, 'UTF-8');
-        $this->documento = $dni;
-        $this->tipo_documento = 'DNI';
-
-        $this->docMsgType = 'ok';
-        $this->docMsg = 'Datos cargados desde RENIEC. Verifique apellidos y nombres.';
-    }
-
-    private function buscarRuc(string $ruc, string $base, string $token): void
-    {
-        $resp = Http::timeout(8)
-            ->acceptJson()
-            ->asJson()
-            ->post("$base/ruc", ['token' => $token, 'ruc' => $ruc]);
-
-        if (! $resp->ok()) {
-            $this->docMsgType = 'err';
-            $this->docMsg = "API respondió HTTP {$resp->status()}.";
-
-            return;
-        }
-
-        $j = $resp->json();
-        if (empty($j) || (isset($j['success']) && $j['success'] === false)) {
-            $this->docMsgType = 'err';
-            $this->docMsg = $j['message'] ?? 'No se encontraron datos para ese RUC.';
-
-            return;
-        }
-
-        $razon = trim((string) ($j['nombre_o_razon_social'] ?? ''));
-        $direc = trim((string) ($j['direccion_simple'] ?? $j['direccion'] ?? ''));
-
-        // Para cualquier RUC, la razón social entera va al campo Nombres.
-        // Los apellidos quedan vacíos (no aplican).
-        $this->apellido_pat = '';
-        $this->apellido_mat = '';
-        $this->nombre = $razon;
-        $this->documento = $ruc;
-        $this->tipo_documento = 'RUC';
-
-        if ($direc !== '') {
-            $this->direccion = mb_convert_case($direc, MB_CASE_TITLE, 'UTF-8');
+        if (! empty($d['sexo'])) {
+            $this->sexo = (string) $d['sexo'];
         }
 
         $this->docMsgType = 'ok';
-        $this->docMsg = 'Razón social cargada en "Nombres". Apellidos no aplican para RUC.';
+    }
+
+    /** Cambiar el tipo de documento limpia el mensaje anterior (endpoint distinto). */
+    public function updatedTipoDocumento(): void
+    {
+        $this->docMsg = null;
+        $this->docMsgType = null;
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  Wizard
+    // ─────────────────────────────────────────────────────────
+
+    /** Paso 1 → 2: valida SOLO los campos del cliente. */
+    public function siguientePaso(): void
+    {
+        $this->validate($this->reglasCliente(), $this->messages());
+        $this->paso = 2;
+    }
+
+    public function pasoAnterior(): void
+    {
+        $this->paso = 1;
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  Paso 2: vehículos (varios, opcional)
+    // ─────────────────────────────────────────────────────────
+
+    public function agregarVehiculo(): void
+    {
+        $this->vehiculos[] = [
+            'placa' => '', 'marca' => '', 'modelo' => '', 'nro_motor' => '',
+            'nro_serie' => '', 'categoria' => '', 'anio_modelo' => '', 'carroceria' => '',
+            'color' => '', 'combustible' => '', 'valor' => '',
+        ];
+        $this->vehMsg = null;
+    }
+
+    public function quitarVehiculo(int $i): void
+    {
+        unset($this->vehiculos[$i]);
+        $this->vehiculos = array_values($this->vehiculos);
+        $this->resetErrorBag();
+        $this->vehMsg = null;
+    }
+
+    /** Autocompleta una fila de vehículo con los datos de la placa (Factiliza). */
+    public function consultarPlaca(int $i, Factiliza $api): void
+    {
+        $this->vehMsg = null;
+        $this->vehMsgType = null;
+
+        $placa = strtoupper(trim((string) ($this->vehiculos[$i]['placa'] ?? '')));
+        if ($placa === '') {
+            $this->vehMsgType = 'err';
+            $this->vehMsg = 'Escribe la placa que quieres consultar.';
+
+            return;
+        }
+
+        $resultado = $api->placa($placa);
+        if (! $resultado['ok']) {
+            $this->vehMsgType = 'err';
+            $this->vehMsg = $resultado['error'].' Puedes completar los datos a mano.';
+
+            return;
+        }
+
+        foreach ($resultado['data'] as $campo => $valor) {
+            if ($valor !== '' && array_key_exists($campo, $this->vehiculos[$i])) {
+                $this->vehiculos[$i][$campo] = $valor;
+            }
+        }
+
+        $this->vehMsgType = 'ok';
+        $this->vehMsg = "Datos de la placa {$placa} cargados. Verifica antes de guardar.";
     }
 
     public function clean(): void
@@ -230,17 +283,24 @@ class Create extends Component
         $this->reset([
             'docBuscar', 'docMsg', 'docMsgType',
             'apellido_pat', 'apellido_mat', 'nombre', 'sexo', 'fecha_nacimiento',
-            'documento', 'tipo_documento',
+            'documento', 'tipo_documento', 'email', 'ocupacion', 'estado_civil',
             'direccion', 'giro', 'zona', 'celular1', 'celular2',
-            'placa', 'marca', 'modelo', 'nro_motor', 'nro_serie',
-            'categoria', 'anio_modelo', 'carroceria', 'color', 'combustible',
+            'vehiculos', 'vehMsg', 'vehMsgType',
         ]);
         $this->sexo = 'M';
         $this->tipo_documento = 'DNI';
+        $this->ocupacion = 'transportista';
+        $this->estado_civil = 'soltero';
+        $this->paso = 1;
         $this->resetErrorBag();
     }
 
-    protected function rules(): array
+    // ─────────────────────────────────────────────────────────
+    //  Validación
+    // ─────────────────────────────────────────────────────────
+
+    /** @return array<string, mixed> */
+    private function reglasCliente(): array
     {
         $isRuc = $this->tipo_documento === 'RUC';
 
@@ -250,7 +310,11 @@ class Create extends Component
             'apellido_mat' => 'nullable|string|max:100',
             'sexo' => 'required|in:M,F',
             'fecha_nacimiento' => 'nullable|date',
-            'documento' => 'required|string|min:8|max:11|unique:clients,documento',
+            'tipo_documento' => 'required|in:'.implode(',', array_keys(self::TIPOS_DOCUMENTO)),
+            'documento' => 'required|string|min:8|max:12|unique:clients,documento',
+            'email' => 'required|email|max:150',
+            'ocupacion' => 'required|in:'.implode(',', array_keys(self::OCUPACIONES)),
+            'estado_civil' => 'required|in:'.implode(',', array_keys(self::ESTADOS_CIVILES)),
             'expediente' => 'required|integer|min:1',
             'direccion' => 'nullable|string|max:255',
             'giro' => 'nullable|string|max:100',
@@ -259,28 +323,54 @@ class Create extends Component
             'celular1' => 'nullable|string|max:20',
             'celular2' => 'nullable|string|max:20',
             'asesor_id' => 'nullable|exists:users,id',
-            // Vehículo: todo opcional, pero si se llena algún dato técnico la
-            // placa es obligatoria (es la clave del registro) y única.
-            'placa' => 'nullable|string|max:10|unique:vehiculos,placa|required_with:marca,modelo,nro_motor,nro_serie,categoria,anio_modelo,carroceria,color,combustible',
-            'marca' => 'nullable|string|max:50',
-            'modelo' => 'nullable|string|max:50',
-            'nro_motor' => 'nullable|string|max:30',
-            'nro_serie' => 'nullable|string|max:30',
-            'categoria' => 'nullable|string|max:30',
-            'anio_modelo' => 'nullable|string|max:10',
-            'carroceria' => 'nullable|string|max:50',
-            'color' => 'nullable|string|max:50',
-            'combustible' => 'nullable|string|max:30',
         ];
+    }
+
+    /**
+     * Vehículos: la lista puede ir VACÍA (paso opcional). De cada fila
+     * agregada solo se exige la placa — es la clave del registro.
+     *
+     * @return array<string, mixed>
+     */
+    private function reglasVehiculos(): array
+    {
+        return [
+            'vehiculos' => 'array',
+            'vehiculos.*.placa' => 'required|string|max:10|distinct|unique:vehiculos,placa',
+            'vehiculos.*.marca' => 'nullable|string|max:50',
+            'vehiculos.*.modelo' => 'nullable|string|max:50',
+            'vehiculos.*.nro_motor' => 'nullable|string|max:30',
+            'vehiculos.*.nro_serie' => 'nullable|string|max:30',
+            'vehiculos.*.categoria' => 'nullable|string|max:30',
+            'vehiculos.*.anio_modelo' => 'nullable|string|max:10',
+            'vehiculos.*.carroceria' => 'nullable|string|max:50',
+            'vehiculos.*.color' => 'nullable|string|max:50',
+            'vehiculos.*.combustible' => 'nullable|string|max:30',
+            'vehiculos.*.valor' => 'nullable|numeric|min:0',
+        ];
+    }
+
+    protected function rules(): array
+    {
+        return array_merge($this->reglasCliente(), $this->reglasVehiculos());
     }
 
     protected function messages(): array
     {
         return [
-            'placa.required_with' => 'Ingresa la placa: es obligatoria si registras datos del vehículo.',
-            'placa.unique' => 'Esa placa ya está registrada en otro cliente.',
+            'vehiculos.*.placa.required' => 'Ingresa la placa (o quita el vehículo de la lista).',
+            'vehiculos.*.placa.unique' => 'Esa placa ya está registrada en otro cliente.',
+            'vehiculos.*.placa.distinct' => 'La placa está repetida en la lista.',
+            'email.required' => 'El correo electrónico es obligatorio.',
+            'email.email' => 'Escribe un correo electrónico válido.',
+            'ocupacion.required' => 'Selecciona la ocupación.',
+            'estado_civil.required' => 'Selecciona el estado civil.',
         ];
     }
+
+    // ─────────────────────────────────────────────────────────
+    //  Guardado
+    // ─────────────────────────────────────────────────────────
 
     public function save()
     {
@@ -289,14 +379,17 @@ class Create extends Component
 
         // Normalizar ANTES de validar, para que el unique de placa compare
         // contra lo que realmente se guardará.
-        $this->placa = strtoupper(trim((string) $this->placa)) ?: null;
-        $this->nro_motor = strtoupper(trim((string) $this->nro_motor)) ?: null;
-        $this->nro_serie = strtoupper(trim((string) $this->nro_serie)) ?: null;
+        foreach ($this->vehiculos as $i => $v) {
+            foreach (['placa', 'nro_motor', 'nro_serie'] as $campo) {
+                $this->vehiculos[$i][$campo] = strtoupper(trim((string) ($v[$campo] ?? ''))) ?: null;
+            }
+        }
 
         $this->validate();
 
         // Re-confirmar duplicado al guardar (race condition)
         if (Client::where('documento', $this->documento)->exists()) {
+            $this->paso = 1;
             $this->addError('documento', 'El documento ya está registrado.');
 
             return;
@@ -314,7 +407,9 @@ class Create extends Component
                 'documento' => $this->documento,
                 'fecha_nacimiento' => $this->fecha_nacimiento,
                 'sexo' => $this->sexo,
-                'email' => 'g@huacachin.com',
+                'email' => trim($this->email),
+                'ocupacion' => $this->ocupacion,
+                'estado_civil' => $this->estado_civil,
                 'direccion' => $this->direccion,
                 'giro' => $this->giro,
                 'capital' => $this->capital !== null && $this->capital !== '' ? $this->capital : null,
@@ -330,21 +425,23 @@ class Create extends Component
                 'updated_at' => now(),
             ]);
 
-            // Vehículo opcional: solo si hay placa (la validación ya exigió
-            // placa cuando se llenó cualquier otro dato técnico)
-            if ($this->placa !== null) {
+            foreach ($this->vehiculos as $v) {
+                if (empty($v['placa'])) {
+                    continue;
+                }
                 DB::table('vehiculos')->insert([
                     'client_id' => $clientId,
-                    'placa' => $this->placa,
-                    'marca' => $this->marca ?: null,
-                    'modelo' => $this->modelo ?: null,
-                    'nro_motor' => $this->nro_motor,
-                    'nro_serie' => $this->nro_serie,
-                    'categoria' => $this->categoria ?: null,
-                    'anio_modelo' => $this->anio_modelo ?: null,
-                    'carroceria' => $this->carroceria ?: null,
-                    'color' => $this->color ?: null,
-                    'combustible' => $this->combustible ?: null,
+                    'placa' => $v['placa'],
+                    'marca' => $v['marca'] ?: null,
+                    'modelo' => $v['modelo'] ?: null,
+                    'nro_motor' => $v['nro_motor'] ?: null,
+                    'nro_serie' => $v['nro_serie'] ?: null,
+                    'categoria' => $v['categoria'] ?: null,
+                    'anio_modelo' => $v['anio_modelo'] ?: null,
+                    'carroceria' => $v['carroceria'] ?: null,
+                    'color' => $v['color'] ?: null,
+                    'combustible' => $v['combustible'] ?: null,
+                    'valor' => ($v['valor'] ?? '') !== '' ? $v['valor'] : null,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -355,18 +452,20 @@ class Create extends Component
                 ->where('tipo', 'Cliente')
                 ->update(['correl' => $expediente, 'updated_at' => now()]);
 
-            session()->flash('client_success', "Cliente registrado · expediente {$expediente}.");
+            $placas = collect($this->vehiculos)->pluck('placa')->filter()->implode(', ');
+            $msg = "Cliente registrado · expediente {$expediente}."
+                .($placas !== '' ? " Vehículos: {$placas}." : '');
+            session()->flash('client_success', $msg);
             $this->newClientId = $clientId;
         });
 
         $createdClient = Client::find($this->newClientId);
+        $placas = collect($this->vehiculos)->pluck('placa')->filter()->values()->all();
         Audit::log('Creó el cliente '.($createdClient?->fullName() ?? $this->documento), $createdClient,
-            $this->placa !== null ? ['vehiculo' => $this->placa] : []);
+            $placas !== [] ? ['vehiculos' => $placas] : []);
 
         return redirect()->route('clients.gallery', $this->newClientId);
     }
-
-    public ?int $newClientId = null;
 
     public function render()
     {

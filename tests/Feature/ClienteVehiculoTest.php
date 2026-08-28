@@ -12,9 +12,10 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * Datos del vehículo al crear cliente (pedido 26/08): sección OPCIONAL de 10
- * campos. Regla: sin placa no se crea vehículo; si se llena cualquier dato
- * técnico, la placa se vuelve obligatoria (es la clave y es única).
+ * Vehículos al crear cliente. Desde el wizard de 2 pasos (28/08) la lista es
+ * un array (0..N vehículos); estas pruebas cubren el vínculo con el cliente,
+ * la normalización de placa y el unique contra la BD. La cobertura del wizard
+ * en sí (pasos, campos obligatorios, consultas) vive en ClienteWizardTest.
  */
 class ClienteVehiculoTest extends TestCase
 {
@@ -42,6 +43,7 @@ class ClienteVehiculoTest extends TestCase
             'apellido_mat' => 'Vehicular',
             'documento' => '87654321',
             'sexo' => 'M',
+            'email' => 'vehicular@correo.com',
         ];
     }
 
@@ -53,16 +55,18 @@ class ClienteVehiculoTest extends TestCase
         foreach ($this->formularioBase() as $campo => $valor) {
             $c->set($campo, $valor);
         }
-        $c->set('placa', 'abc123')
-            ->set('marca', 'Toyota')
-            ->set('modelo', 'Hiace')
-            ->set('nro_motor', '2kd123456')
-            ->set('nro_serie', 'jt123456789')
-            ->set('categoria', 'M2-C3')
-            ->set('anio_modelo', '2018')
-            ->set('carroceria', 'Microbus')
-            ->set('color', 'Blanco')
-            ->set('combustible', 'GNV')
+        $c->call('agregarVehiculo')
+            ->set('vehiculos.0.placa', 'abc123')
+            ->set('vehiculos.0.marca', 'Toyota')
+            ->set('vehiculos.0.modelo', 'Hiace')
+            ->set('vehiculos.0.nro_motor', '2kd123456')
+            ->set('vehiculos.0.nro_serie', 'jt123456789')
+            ->set('vehiculos.0.categoria', 'M2-C3')
+            ->set('vehiculos.0.anio_modelo', '2018')
+            ->set('vehiculos.0.carroceria', 'Microbus')
+            ->set('vehiculos.0.color', 'Blanco')
+            ->set('vehiculos.0.combustible', 'GNV')
+            ->set('vehiculos.0.valor', 38000)
             ->call('save')
             ->assertHasNoErrors();
 
@@ -75,6 +79,7 @@ class ClienteVehiculoTest extends TestCase
         $this->assertSame('JT123456789', $vehiculo->nro_serie);
         $this->assertSame('Toyota', $vehiculo->marca);
         $this->assertSame('2018', $vehiculo->anio_modelo);
+        $this->assertEqualsWithDelta(38000, (float) $vehiculo->valor, 0.01);
         $this->assertTrue($cliente->vehiculos->contains($vehiculo));
     }
 
@@ -92,7 +97,7 @@ class ClienteVehiculoTest extends TestCase
         $this->assertSame(0, Vehiculo::count());
     }
 
-    public function test_datos_tecnicos_sin_placa_exigen_la_placa(): void
+    public function test_fila_de_vehiculo_sin_placa_exige_la_placa(): void
     {
         $this->operador();
 
@@ -100,11 +105,12 @@ class ClienteVehiculoTest extends TestCase
         foreach ($this->formularioBase() as $campo => $valor) {
             $c->set($campo, $valor);
         }
-        $c->set('marca', 'Toyota')
+        $c->call('agregarVehiculo')
+            ->set('vehiculos.0.marca', 'Toyota')
             ->call('save')
-            ->assertHasErrors(['placa' => 'required_with']);
+            ->assertHasErrors(['vehiculos.0.placa' => 'required']);
 
-        $this->assertSame(0, Client::count());
+        $this->assertSame(0, Client::where('documento', '87654321')->count());
         $this->assertSame(0, Vehiculo::count());
     }
 
@@ -122,9 +128,10 @@ class ClienteVehiculoTest extends TestCase
         foreach ($this->formularioBase() as $campo => $valor) {
             $c->set($campo, $valor);
         }
-        $c->set('placa', 'abc123') // se normaliza a ABC123 antes de validar
+        $c->call('agregarVehiculo')
+            ->set('vehiculos.0.placa', 'abc123') // se normaliza a ABC123 antes de validar
             ->call('save')
-            ->assertHasErrors(['placa' => 'unique']);
+            ->assertHasErrors(['vehiculos.0.placa' => 'unique']);
 
         $this->assertSame(0, Client::where('documento', '87654321')->count());
     }

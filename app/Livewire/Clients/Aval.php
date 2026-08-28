@@ -4,8 +4,8 @@ namespace App\Livewire\Clients;
 
 use App\Models\Client;
 use App\Models\ClientAval;
+use App\Services\Factiliza;
 use App\Support\Audit;
-use Illuminate\Support\Facades\Http;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -102,55 +102,30 @@ class Aval extends Component
             return;
         }
 
-        // 2. Buscar en migo.pe
-        $token = config('services.migo.token');
-        $base = rtrim((string) config('services.migo.base'), '/');
-        if (! $token) {
+        // 2. Buscar en Factiliza (DNI o RUC según longitud)
+        $api = app(Factiliza::class);
+        $resultado = strlen($doc) === 8 ? $api->dni($doc) : $api->ruc($doc);
+
+        if (! $resultado['ok']) {
             $this->dniMsgType = 'warn';
-            $this->dniMsg = 'No está en BD local. Ingrese los datos manualmente (RENIEC no configurado).';
+            $this->dniMsg = 'No está en BD local. '.$resultado['error'].' Ingrese los datos a mano.';
 
             return;
         }
 
-        try {
-            $endpoint = strlen($doc) === 8 ? '/dni' : '/ruc';
-            $payload = strlen($doc) === 8 ? ['token' => $token, 'dni' => $doc] : ['token' => $token, 'ruc' => $doc];
-
-            $resp = Http::timeout(8)->acceptJson()->asJson()->post("$base$endpoint", $payload);
-            if (! $resp->ok()) {
-                $this->dniMsgType = 'warn';
-                $this->dniMsg = "No está en BD local y RENIEC respondió HTTP {$resp->status()}. Ingrese a mano.";
-
-                return;
-            }
-
-            $j = $resp->json();
-            if (empty($j) || (isset($j['success']) && $j['success'] === false)) {
-                $this->dniMsgType = 'warn';
-                $this->dniMsg = 'No está en BD local ni en RENIEC. Ingrese los datos manualmente.';
-
-                return;
-            }
-
-            if (strlen($doc) === 8) {
-                // DNI: campo único 'nombre' con "APELLIDOPAT APELLIDOMAT NOMBRES"
-                $full = trim((string) ($j['nombre'] ?? ''));
-                $this->nombre = mb_convert_case($full, MB_CASE_TITLE, 'UTF-8');
-            } else {
-                // RUC: razón social entera
-                $razon = trim((string) ($j['nombre_o_razon_social'] ?? ''));
-                $this->nombre = $razon;
-                $direc = trim((string) ($j['direccion_simple'] ?? $j['direccion'] ?? ''));
-                if ($direc !== '') {
-                    $this->direccion = mb_convert_case($direc, MB_CASE_TITLE, 'UTF-8');
-                }
-            }
-            $this->dniMsgType = 'ok';
-            $this->dniMsg = 'Cargado desde RENIEC. Verifique antes de guardar.';
-        } catch (\Throwable $e) {
-            $this->dniMsgType = 'warn';
-            $this->dniMsg = 'No está en BD local y RENIEC falló: '.$e->getMessage().'. Ingrese a mano.';
+        $d = $resultado['data'];
+        if (strlen($doc) === 8) {
+            // La tabla de avales guarda un solo campo `nombre`
+            $this->nombre = trim(($d['apellido_pat'] ?? '').' '.($d['apellido_mat'] ?? '').' '.($d['nombre'] ?? ''));
+        } else {
+            $this->nombre = (string) ($d['nombre'] ?? '');
         }
+        if (! empty($d['direccion'])) {
+            $this->direccion = (string) $d['direccion'];
+        }
+
+        $this->dniMsgType = 'ok';
+        $this->dniMsg = 'Cargado desde '.(strlen($doc) === 8 ? 'RENIEC' : 'SUNAT').'. Verifique antes de guardar.';
     }
 
     private function resetCamposAval(): void

@@ -35,9 +35,17 @@ return [
         ],
     ],
 
+    // migo.pe: solo tipo de cambio (las consultas de documentos migraron a Factiliza)
     'migo' => [
         'token' => env('MIGO_PE_TOKEN'),
-        'base'  => 'https://api.migo.pe/api/v1',
+        'base' => 'https://api.migo.pe/api/v1',
+    ],
+
+    // Factiliza: consulta de DNI / RUC / carné de extranjería / placa.
+    // El token va SIEMPRE en .env (nunca en el repo).
+    'factiliza' => [
+        'token' => env('FACTILIZA_TOKEN'),
+        'base' => env('FACTILIZA_BASE', 'https://api.factiliza.com/v1'),
     ],
 
 ];
