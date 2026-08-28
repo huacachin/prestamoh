@@ -89,13 +89,16 @@ class RolePermissionSeeder extends Seeder
                 'reportes.credito-estadistica',
             ],
 
-            // ─── AREA LEGAL (consulta + cambia estado para casos legales) ───
+            // ─── AREA LEGAL (consulta + cambia estado + módulo legal completo) ───
             'area-legal' => [
                 'dashboard',
                 'clientes', 'creditos',
                 'reportes.cartera', 'reportes.morosidad', 'reportes.cancelados',
                 'reportes.credito-estadistica',
                 'registro.estado', 'registro.cesados',
+                'legal.garantias', 'legal.contratos', 'legal.notaria',
+                'legal.judicial', 'legal.papeletas', 'legal.caja',
+                'legal.configuracion',
             ],
 
             // ─── COBRANZAS (recibe pagos, ve cartera por cobrar) ───

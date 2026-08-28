@@ -28,7 +28,7 @@ class Index extends Component
      * añadirlo aquí para que filtre y lleve su badge.
      */
     public const ACCIONES = [
-        'creacion' => ['label' => 'Creación', 'badge' => 'success', 'verbos' => ['Creó', 'Registró', 'Agregó', 'Aperturó', 'Refinanció']],
+        'creacion' => ['label' => 'Creación', 'badge' => 'success', 'verbos' => ['Creó', 'Registró', 'Agregó', 'Aperturó', 'Refinanció', 'Generó']],
         'edicion' => ['label' => 'Edición', 'badge' => 'warning text-dark', 'verbos' => ['Editó', 'Actualizó', 'Ajustó', 'Reactivó', 'Cambió', 'Marcó']],
         'eliminacion' => ['label' => 'Eliminación', 'badge' => 'danger', 'verbos' => ['Eliminó', 'Anuló', 'Desactivó', 'Revirtió', 'Borró', 'Quitó']],
         'acceso' => ['label' => 'Acceso', 'badge' => 'secondary', 'verbos' => ['Inicio de sesión', 'Cerró sesión']],

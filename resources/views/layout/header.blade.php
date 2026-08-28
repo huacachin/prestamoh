@@ -63,6 +63,11 @@
                                     {{-- Campana de compromisos de pago (cobranza) --}}
                                     <livewire:layout.compromisos-bell />
 
+                                    {{-- Campana del Área Legal (renovaciones SIGM y trámites varados) --}}
+                                    @can('legal.garantias')
+                                        <livewire:layout.legal-bell />
+                                    @endcan
+
                                     <li class="header-profile">
                                         <div class="flex-shrink-0 dropdown">
                                             <a href="#" class="d-block head-icon pe-0" data-bs-toggle="dropdown"

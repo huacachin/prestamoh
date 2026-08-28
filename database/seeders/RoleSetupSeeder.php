@@ -46,7 +46,7 @@ class RoleSetupSeeder extends Seeder
      * existe para el futuro pero queda bloqueado en el formulario y en el
      * backend hasta que el negocio los active.
      */
-    public const ROLES_ASIGNABLES = ['director', 'administrador', 'analista-creditos'];
+    public const ROLES_ASIGNABLES = ['director', 'administrador', 'analista-creditos', 'area-legal'];
 
     /** Solo los roles asignables, en el orden de la jerarquía. */
     public static function asignableRoles(array $columns = ['id', 'name']): Collection

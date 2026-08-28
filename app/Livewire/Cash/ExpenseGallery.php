@@ -49,6 +49,10 @@ class ExpenseGallery extends Component
     public function mount(int $id, bool $embedded = false): void
     {
         $this->expense = Expense::findOrFail($id);
+
+        // Los asientos del Área Legal (caja=4) se gestionan desde su documento de
+        // origen (aviso SIGM / trámite notarial), nunca desde las pantallas de Caja.
+        abort_if((int) $this->expense->caja === 4, 403, 'Movimiento de la Caja Legal: se gestiona desde el Área Legal.');
         $this->expenseId = $id;
         $this->embedded = $embedded;
 

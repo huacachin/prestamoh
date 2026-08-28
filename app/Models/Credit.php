@@ -83,6 +83,11 @@ class Credit extends Model
         return $this->hasMany(LateFee::class);
     }
 
+    public function garantias(): HasMany
+    {
+        return $this->hasMany(Garantia::class);
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

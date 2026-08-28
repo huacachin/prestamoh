@@ -38,12 +38,19 @@ class Cash extends Component
         $summary = (object) ['total_ingresos' => 0, 'total_egresos' => 0, 'balance' => 0];
 
         if ($this->fecha_desde && $this->fecha_hasta) {
+            // Solo cajas operativas 1 y 3 (comportamiento histórico del reporte):
+            // los asientos del Área Legal (caja=4) llevan su propio tablero y no
+            // deben mezclarse aquí. OJO deuda técnica preexistente: incluir la
+            // caja 3 duplica los movimientos "Fijos" espejados — se conserva tal
+            // cual porque cambiarlo altera un reporte que el negocio ya concilia.
             $incomes = Income::query()
+                ->whereIn('caja', [1, 3])
                 ->whereBetween('date', [$this->fecha_desde, $this->fecha_hasta])
                 ->orderByDesc('date')
                 ->get();
 
             $expenses = Expense::query()
+                ->whereIn('caja', [1, 3])
                 ->whereBetween('date', [$this->fecha_desde, $this->fecha_hasta])
                 ->orderByDesc('date')
                 ->get();

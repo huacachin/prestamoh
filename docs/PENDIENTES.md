@@ -23,8 +23,9 @@ histórico (≈170k filas) se descartó explícitamente.
 
 ### Qué haría falta para cerrarlo
 
-1. `ALTER` de las dos columnas a `nullable()` (como ya las declara
-   `feat/area-legal` en `2026_08_24_000001`, que es lo correcto).
+1. ~~`ALTER` de las dos columnas a `nullable()`~~ — **HECHO en la fusión
+   con feat/area-legal** (`2026_08_28_100014`): adoptamos su diseño. No
+   tocó ninguna fila; solo destraba el paso 2.
 2. Un `UPDATE` que ponga `NULL` en las filas que nunca declararon el
    dato. El problema es distinguirlas: hoy un transportista soltero real
    y uno por default son idénticos. La heurística posible es

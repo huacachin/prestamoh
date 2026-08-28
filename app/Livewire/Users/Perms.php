@@ -122,6 +122,20 @@ class Perms extends Component
                     ['perm' => 'reportes.simulador',           'label' => 'Simulacro de Crédito'],
                 ],
             ],
+            [
+                'type' => 'group',
+                'key' => 'legal',
+                'title' => 'Área Legal',
+                'permissions' => [
+                    ['perm' => 'legal.garantias',     'label' => 'Garantías SIGM'],
+                    ['perm' => 'legal.contratos',     'label' => 'Contratos'],
+                    ['perm' => 'legal.notaria',       'label' => 'Notaría'],
+                    ['perm' => 'legal.judicial',      'label' => 'Expedientes Jud.'],
+                    ['perm' => 'legal.papeletas',     'label' => 'Papeletas'],
+                    ['perm' => 'legal.caja',          'label' => 'Caja Legal'],
+                    ['perm' => 'legal.configuracion', 'label' => 'Config. Legal'],
+                ],
+            ],
         ];
 
         // Sólo incluir items cuyo permiso EXISTA en BD (defensa contra cambios de schema)

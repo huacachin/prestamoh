@@ -66,9 +66,19 @@ class Client extends Model
         return $this->hasMany(ClientAval::class);
     }
 
+    public function garantias(): HasMany
+    {
+        return $this->hasMany(Garantia::class);
+    }
+
     public function vehiculos(): HasMany
     {
         return $this->hasMany(Vehiculo::class);
+    }
+
+    public function expedientesJudiciales(): HasMany
+    {
+        return $this->hasMany(ExpedienteJudicial::class);
     }
 
     public function scopeActive($q)

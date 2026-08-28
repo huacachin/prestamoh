@@ -49,6 +49,10 @@ class IncomeGallery extends Component
     public function mount(int $id, bool $embedded = false): void
     {
         $this->income = Income::findOrFail($id);
+
+        // Los asientos del Área Legal (caja=4) se gestionan desde su documento de
+        // origen (aviso SIGM / trámite notarial), nunca desde las pantallas de Caja.
+        abort_if((int) $this->income->caja === 4, 403, 'Movimiento de la Caja Legal: se gestiona desde el Área Legal.');
         $this->incomeId = $id;
         $this->embedded = $embedded;
 
