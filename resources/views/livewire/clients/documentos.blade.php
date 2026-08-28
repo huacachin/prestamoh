@@ -243,9 +243,12 @@
 
                         {{-- Vista previa (render 'previa' del snapshot congelado) --}}
                         @if($htmlPreview !== '')
-                            <div class="border rounded mt-3 p-1 bg-light">
+                            <div class="border rounded mt-3 p-2 bg-light" style="max-height:65vh; overflow:auto;">
+                                {{-- Proporción A4 VERTICAL: el iframe al 100% del modal hacía
+                                     ver el documento apaisado aunque el PDF sale parado. --}}
                                 <iframe srcdoc="{{ $htmlPreview }}"
-                                        style="width:100%; height:60vh; border:1px solid #ccc; background:#fff;"
+                                        style="width:21cm; height:29.7cm; max-width:100%; border:1px solid #ccc;
+                                               background:#fff; display:block; margin:0 auto;"
                                         title="Vista previa del Anexo 1"></iframe>
                             </div>
                         @endif
@@ -719,9 +722,12 @@
 
                         {{-- Vista previa (mismo render 'previa' del snapshot que se emitirá) --}}
                         @if($htmlPreviewContrato !== '')
-                            <div class="border rounded mt-3 p-1 bg-light">
+                            <div class="border rounded mt-3 p-2 bg-light" style="max-height:65vh; overflow:auto;">
+                                {{-- Proporción A4 VERTICAL: el iframe al 100% del modal hacía
+                                     ver el documento apaisado aunque el PDF sale parado. --}}
                                 <iframe srcdoc="{{ $htmlPreviewContrato }}"
-                                        style="width:100%; height:60vh; border:1px solid #ccc; background:#fff;"
+                                        style="width:21cm; height:29.7cm; max-width:100%; border:1px solid #ccc;
+                                               background:#fff; display:block; margin:0 auto;"
                                         title="Vista previa del contrato"></iframe>
                             </div>
                         @endif
@@ -875,9 +881,12 @@
 
                         {{-- Vista previa (render 'previa' del snapshot; la foto sale como recuadro placeholder) --}}
                         @if($htmlPreviewAnexo2 !== '')
-                            <div class="border rounded mt-3 p-1 bg-light">
+                            <div class="border rounded mt-3 p-2 bg-light" style="max-height:65vh; overflow:auto;">
+                                {{-- Proporción A4 VERTICAL: el iframe al 100% del modal hacía
+                                     ver el documento apaisado aunque el PDF sale parado. --}}
                                 <iframe srcdoc="{{ $htmlPreviewAnexo2 }}"
-                                        style="width:100%; height:60vh; border:1px solid #ccc; background:#fff;"
+                                        style="width:21cm; height:29.7cm; max-width:100%; border:1px solid #ccc;
+                                               background:#fff; display:block; margin:0 auto;"
                                         title="Vista previa del Anexo 2"></iframe>
                             </div>
                         @endif
