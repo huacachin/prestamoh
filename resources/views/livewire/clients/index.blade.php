@@ -61,6 +61,15 @@
                                     @endforeach
                                 </select>
                             </div>
+                            <div class="col">
+                                <label class="form-label mb-0 small"><b>Ver</b></label>
+                                {{-- Relacionados = copropietarios/codeudores sin crédito propio
+                                     (alta rápida): fuera del listado salvo que se pidan. --}}
+                                <select class="form-select form-select-sm" wire:model="verRelacionados">
+                                    <option value="">Clientes</option>
+                                    <option value="si">Personas relacionadas</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="d-flex gap-2 mb-2 align-items-center flex-wrap">
                             <button type="submit" class="btn btn-sm btn-primary">

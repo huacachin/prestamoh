@@ -22,13 +22,24 @@ class Client extends Model
         'zona', 'contacto_emergencia', 'telefono_contacto',
         'banco_haberes', 'cuenta_haberes', 'banco_cts', 'cuenta_cts',
         'afp', 'cussp', 'latitud', 'longitud', 'latitud2', 'longitud2', 'imagen',
-        'observaciones', 'asesor_id', 'headquarter_id', 'status',
+        'observaciones', 'asesor_id', 'headquarter_id', 'status', 'es_relacionado',
     ];
 
     protected $casts = [
         'fecha_registro' => 'date',
         'fecha_nacimiento' => 'date',
+        'es_relacionado' => 'boolean',
     ];
+
+    /**
+     * Solo clientes DE VERDAD (excluye a las personas relacionadas —
+     * copropietarios/codeudores creados desde el alta rápida, que no tienen
+     * crédito, asesor ni expediente y no deben inflar listas ni reportes).
+     */
+    public function scopeTitulares($q)
+    {
+        return $q->where('es_relacionado', false);
+    }
 
     public function fullName(): string
     {

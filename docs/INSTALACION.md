@@ -469,6 +469,7 @@ copia no trae, **parar**: habría que reconciliar primero.
 | `documentos_cliente` | **SÍ** | Contratos/anexos generados (los PDF viven en storage, que no se toca; los registros van aquí) |
 | `garantias`, `garantia_vehiculo`, `sigm_avisos`, `contratos`, `legal_adjuntos`, `legal_settings`, `tramites_notariales`, `expedientes_judiciales`, `actuaciones_judiciales`, `plazos_judiciales`, `papeletas`, `papeleta_recursos` | **SÍ** | Módulo Área Legal (fusión 28/08) — garantías SIGM, avisos, contratos emitidos, notaría, judicial, papeletas y su configuración |
 | `cliente_vehiculo`, `client_empresas`, `empresa_representantes` | **SÍ** | Tramo D contratos (28/08) — copropietarios de vehículos, ficha de persona jurídica y representantes legales |
+| `clients` (solo `es_relacionado=1`) | **SÍ, PARCIAL** | Personas relacionadas del alta rápida (28/08): NO existen en el legacy y la remigración las borra. Extraer con `--where="es_relacionado=1"` y reinsertar al final. **CUIDADO**: sus `id` deben seguir libres tras la remigración (los relacionados nacen con ids altos del autoincrement; verificar con `SELECT MAX(id) FROM clients` antes de reinsertar — si colisionara, hay que remapear también `cliente_vehiculo.client_id` y `garantias.codeudor_client_id`) |
 | `sessions`, `cache` | No | Desechables (se vuelven a loguear) |
 
 Detectarlas automáticamente: comparar `COUNT(*)` de cada tabla local vs prod y
@@ -488,6 +489,13 @@ mysqldump --single-transaction --quick laravel_prestamo \
   expedientes_judiciales actuaciones_judiciales plazos_judiciales papeletas papeleta_recursos \
   cliente_vehiculo client_empresas empresa_representantes \
   | gzip -1 > /root/preservar_$(date +%F).sql.gz'
+
+# 2b) Personas relacionadas (solo filas es_relacionado=1 de clients: no
+#     existen en el legacy — ver la fila "clients (solo es_relacionado=1)"
+#     de la tabla de arriba y su CUIDADO sobre ids)
+ssh huacachin-nuevo 'mysqldump --single-transaction --quick --no-create-info \
+  --where="es_relacionado=1" laravel_prestamo clients \
+  | gzip -1 > /root/preservar_relacionados_$(date +%F).sql.gz'
 
 # 3) Subir el dump nuevo
 scp ~/Desktop/laravel_prestamo_*.sql.gz huacachin-nuevo:/root/

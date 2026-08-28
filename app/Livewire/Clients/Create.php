@@ -9,6 +9,7 @@ use App\Support\Audit;
 use App\Support\Documentos\Nacionalidades;
 use App\Support\TiposCredito;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 
 /**
@@ -162,10 +163,35 @@ class Create extends Component
         }
 
         // Bloqueo de duplicados antes de gastar una consulta
-        $existe = Client::where('documento', $doc)->first(['id', 'expediente', 'nombre', 'apellido_pat', 'apellido_mat']);
-        if ($existe) {
+        $existe = Client::where('documento', $doc)->first();
+        if ($existe && ! $existe->es_relacionado) {
             $this->docMsgType = 'warn';
             $this->docMsg = "Documento ya registrado: #{$existe->id} · {$existe->fullName()} (exp. {$existe->expediente}).";
+
+            return;
+        }
+
+        // PROMOCIÓN: existe como persona relacionada (copropietario del alta
+        // rápida). Se precarga su ficha y al guardar se COMPLETA esa misma
+        // fila — mismo id, sus vehículos y vínculos intactos — en vez de
+        // duplicar a la persona.
+        if ($existe) {
+            $this->documento = $doc;
+            $this->tipo_documento = $existe->tipo_documento ?: $this->tipo_documento;
+            foreach (['nombre', 'apellido_pat', 'apellido_mat', 'direccion', 'distrito', 'departamento'] as $campo) {
+                $this->{$campo} = (string) ($existe->{$campo} ?? '');
+            }
+            $this->sexo = $existe->sexo ?: 'M';
+            $this->nacionalidad = $existe->nacionalidad ?: $this->nacionalidad;
+            $this->email = (string) ($existe->email ?? '');
+            $this->ocupacion = $existe->ocupacion ?: $this->ocupacion;
+            $this->estado_civil = $existe->estado_civil ?: $this->estado_civil;
+            if (isset(self::PROVINCIAS[(string) $existe->provincia])) {
+                $this->provincia = (string) $existe->provincia;
+            }
+            $this->fecha_nacimiento = $existe->fecha_nacimiento?->format('Y-m-d');
+            $this->docMsgType = 'ok';
+            $this->docMsg = "{$existe->fullName()} ya existe como PERSONA RELACIONADA: al guardar se completará su ficha como cliente (mismo registro, conserva sus vínculos).";
 
             return;
         }
@@ -373,7 +399,11 @@ class Create extends Component
             'sexo' => 'required|in:M,F',
             'fecha_nacimiento' => 'nullable|date',
             'tipo_documento' => 'required|in:'.implode(',', array_keys(self::TIPOS_DOCUMENTO)),
-            'documento' => 'required|string|min:8|max:12|unique:clients,documento',
+            // unique SOLO contra clientes de verdad: si el documento existe
+            // como persona relacionada, guardar PROMUEVE esa ficha (misma
+            // fila) en vez de duplicarla.
+            'documento' => ['required', 'string', 'min:8', 'max:12',
+                Rule::unique('clients', 'documento')->where(fn ($q) => $q->where('es_relacionado', false))],
             'email' => 'required|email|max:150',
             'ocupacion' => 'required|in:'.implode(',', array_keys(self::OCUPACIONES)),
             'estado_civil' => 'required|in:'.implode(',', array_keys(self::ESTADOS_CIVILES)),
@@ -455,8 +485,9 @@ class Create extends Component
 
         $this->validate();
 
-        // Re-confirmar duplicado al guardar (race condition)
-        if (Client::where('documento', $this->documento)->exists()) {
+        // Re-confirmar duplicado al guardar (race condition) — los
+        // relacionados no cuentan: a esos se los promueve.
+        if (Client::titulares()->where('documento', $this->documento)->exists()) {
             $this->paso = 1;
             $this->addError('documento', 'El documento ya está registrado.');
 
@@ -466,7 +497,7 @@ class Create extends Component
         $expediente = (int) $this->expediente;
 
         DB::transaction(function () use ($expediente) {
-            $clientId = DB::table('clients')->insertGetId([
+            $datosCliente = [
                 'expediente' => (string) $expediente,
                 'nombre' => $this->nombre,
                 'apellido_pat' => $this->apellido_pat,
@@ -493,9 +524,23 @@ class Create extends Component
                 'usuario' => auth()->user()->username ?? auth()->user()->name ?? null,
                 'fecha_registro' => now()->toDateString(),
                 'status' => 'active',
-                'created_at' => now(),
                 'updated_at' => now(),
-            ]);
+            ];
+
+            // PROMOCIÓN: si la persona ya existe como relacionada (alta
+            // rápida de copropietario), se completa ESA fila y se apaga la
+            // marca — mismo id, sus vehículos y vínculos quedan intactos.
+            $relacionado = Client::where('es_relacionado', true)
+                ->where('documento', $this->documento)
+                ->lockForUpdate()
+                ->first();
+
+            if ($relacionado !== null) {
+                $relacionado->update($datosCliente + ['es_relacionado' => false]);
+                $clientId = $relacionado->id;
+            } else {
+                $clientId = DB::table('clients')->insertGetId($datosCliente + ['created_at' => now()]);
+            }
 
             foreach ($this->vehiculos as $v) {
                 if (empty($v['placa'])) {

@@ -6,6 +6,7 @@ use App\Models\Client;
 use App\Models\Vehiculo;
 use App\Services\Factiliza;
 use App\Support\Audit;
+use App\Support\Documentos\Nacionalidades;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 
@@ -72,6 +73,20 @@ class Vehiculos extends Component
     public ?int $coproVehiculoId = null;
 
     public string $buscarCopro = '';
+
+    /** Alta rápida de PERSONA RELACIONADA (es_relacionado=1): solo los datos
+     *  que el contrato exige — sin expediente, asesor ni capital. */
+    public bool $coproCreando = false;
+
+    public array $nuevoCopro = [
+        'tipo_documento' => 'DNI', 'documento' => '', 'nombre' => '',
+        'apellido_pat' => '', 'apellido_mat' => '', 'sexo' => 'M',
+        'nacionalidad' => 'PERUANO', 'ocupacion' => 'transportista',
+        'estado_civil' => 'soltero', 'direccion' => '', 'distrito' => '',
+        'provincia' => 'LIMA', 'departamento' => 'LIMA', 'email' => '',
+    ];
+
+    public ?string $coproDocMsg = null;
 
     public function mount(int $id): void
     {
@@ -265,6 +280,133 @@ class Vehiculos extends Component
         $this->msg = "{$copro->fullName()} quedó como copropietario del vehículo {$v->placa}.";
         $this->coproVehiculoId = null;
         $this->buscarCopro = '';
+    }
+
+    public function abrirCrearCopro(): void
+    {
+        $this->autorizarEdicion();
+        $this->coproCreando = true;
+        $this->coproDocMsg = null;
+        // Si lo tipeado en el buscador parece un documento, arranca cargado.
+        $term = trim($this->buscarCopro);
+        if (preg_match('/^\d{8,12}$/', $term)) {
+            $this->nuevoCopro['documento'] = $term;
+        }
+        $this->resetErrorBag();
+    }
+
+    public function cancelarCrearCopro(): void
+    {
+        $this->coproCreando = false;
+        $this->reset('nuevoCopro', 'coproDocMsg');
+        $this->resetErrorBag();
+    }
+
+    /** Autocompleta la persona desde RENIEC/Migraciones (mismo servicio del alta). */
+    public function consultarDocCopro(Factiliza $api): void
+    {
+        $this->autorizarEdicion();
+        $doc = trim($this->nuevoCopro['documento']);
+        if ($doc === '') {
+            $this->coproDocMsg = 'Escribe el documento que quieres consultar.';
+
+            return;
+        }
+
+        // Si ya existe una ficha con ese documento (cliente o relacionado),
+        // no se duplica: se vincula esa directamente.
+        $existente = Client::where('documento', $doc)->first();
+        if ($existente !== null) {
+            $this->vincularCopro((int) $this->coproVehiculoId, $existente->id);
+            $this->cancelarCrearCopro();
+
+            return;
+        }
+
+        $r = $this->nuevoCopro['tipo_documento'] === 'CE' ? $api->cee($doc) : $api->dni($doc);
+        if (! $r['ok']) {
+            $this->coproDocMsg = $r['error'].' Puedes completar los datos a mano.';
+
+            return;
+        }
+
+        foreach (['nombre', 'apellido_pat', 'apellido_mat', 'direccion', 'distrito', 'departamento'] as $campo) {
+            if (! empty($r['data'][$campo])) {
+                $this->nuevoCopro[$campo] = (string) $r['data'][$campo];
+            }
+        }
+        if (! empty($r['data']['sexo']) && in_array($r['data']['sexo'], ['M', 'F'], true)) {
+            $this->nuevoCopro['sexo'] = $r['data']['sexo'];
+        }
+        $provincia = mb_strtoupper(trim((string) ($r['data']['provincia'] ?? '')));
+        if (isset(Create::PROVINCIAS[$provincia])) {
+            $this->nuevoCopro['provincia'] = $provincia;
+        }
+        $this->coproDocMsg = 'Datos cargados. Verifica y completa lo que falte.';
+    }
+
+    /**
+     * Crea la persona RELACIONADA (es_relacionado=1: sin expediente, asesor
+     * ni capital — no aparece en el listado ni en reportes) y la vincula como
+     * copropietaria del vehículo en el mismo paso.
+     */
+    public function crearYVincularCopro(): void
+    {
+        $this->autorizarEdicion();
+        $vehiculoId = (int) $this->coproVehiculoId;
+        Vehiculo::where('client_id', $this->clientId)->findOrFail($vehiculoId);
+
+        $this->nuevoCopro['documento'] = trim($this->nuevoCopro['documento']);
+        $this->nuevoCopro['nacionalidad'] = Nacionalidades::normalizar($this->nuevoCopro['nacionalidad']);
+
+        $this->validate([
+            'nuevoCopro.tipo_documento' => 'required|in:DNI,CE',
+            'nuevoCopro.documento' => 'required|string|min:8|max:12|unique:clients,documento',
+            'nuevoCopro.nombre' => 'required|string|max:200',
+            'nuevoCopro.apellido_pat' => 'required|string|max:100',
+            'nuevoCopro.apellido_mat' => 'nullable|string|max:100',
+            'nuevoCopro.sexo' => 'required|in:M,F',
+            'nuevoCopro.nacionalidad' => 'required|in:'.implode(',', Nacionalidades::OPCIONES),
+            'nuevoCopro.ocupacion' => 'required|in:'.implode(',', array_keys(Create::OCUPACIONES)),
+            'nuevoCopro.estado_civil' => 'required|in:'.implode(',', array_keys(Create::ESTADOS_CIVILES)),
+            'nuevoCopro.direccion' => 'required|string|max:255',
+            'nuevoCopro.distrito' => 'required|string|max:100',
+            'nuevoCopro.provincia' => 'required|in:'.implode(',', array_keys(Create::PROVINCIAS)),
+            'nuevoCopro.departamento' => 'required|string|max:100',
+            'nuevoCopro.email' => 'required|email|max:150',
+        ], [], [
+            'nuevoCopro.documento' => 'documento',
+            'nuevoCopro.nombre' => 'nombres',
+            'nuevoCopro.apellido_pat' => 'apellido paterno',
+            'nuevoCopro.email' => 'correo',
+        ]);
+
+        $copro = Client::create([
+            'nombre' => $this->nuevoCopro['nombre'],
+            'apellido_pat' => $this->nuevoCopro['apellido_pat'],
+            'apellido_mat' => $this->nuevoCopro['apellido_mat'] ?: null,
+            'tipo_documento' => $this->nuevoCopro['tipo_documento'],
+            'documento' => $this->nuevoCopro['documento'],
+            'sexo' => $this->nuevoCopro['sexo'],
+            'nacionalidad' => $this->nuevoCopro['nacionalidad'],
+            'ocupacion' => $this->nuevoCopro['ocupacion'],
+            'estado_civil' => $this->nuevoCopro['estado_civil'],
+            'direccion' => $this->nuevoCopro['direccion'],
+            'distrito' => mb_strtoupper(trim($this->nuevoCopro['distrito'])),
+            'provincia' => $this->nuevoCopro['provincia'],
+            'departamento' => mb_strtoupper(trim($this->nuevoCopro['departamento'])),
+            'email' => trim($this->nuevoCopro['email']),
+            'es_relacionado' => true,
+            'usuario' => auth()->user()->username ?? auth()->user()->name ?? null,
+            'fecha_registro' => now()->toDateString(),
+            'headquarter_id' => auth()->user()->headquarter_id ?? 1,
+            'status' => 'active',
+        ]);
+
+        Audit::log("Creó a {$copro->fullName()} como persona relacionada (alta rápida de copropietario)", $this->client);
+
+        $this->cancelarCrearCopro();
+        $this->vincularCopro($vehiculoId, $copro->id);
     }
 
     public function quitarCopro(int $vehiculoId, int $clientId): void

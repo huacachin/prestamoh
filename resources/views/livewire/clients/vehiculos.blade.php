@@ -215,7 +215,142 @@
                                             @elseif(mb_strlen(trim($buscarCopro)) >= 2)
                                                 <div class="small text-muted mt-1">Sin resultados para "{{ $buscarCopro }}".</div>
                                             @endif
+
+                                            @unless($coproCreando)
+                                                <button type="button" class="btn btn-sm btn-outline-success mt-1"
+                                                        wire:click="abrirCrearCopro">
+                                                    <i class="ti ti-user-plus"></i> No está registrado: crear persona
+                                                </button>
+                                            @endunless
                                         </div>
+
+                                        {{-- Alta rápida de PERSONA RELACIONADA: solo los datos que el
+                                             contrato exige. No aparece en el listado de clientes ni en
+                                             reportes (es_relacionado) hasta que pida su propio crédito. --}}
+                                        @if($coproCreando)
+                                            <div class="border rounded p-2 mt-2" style="background:#f6fbf7; max-width: 900px;">
+                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                    <span class="badge bg-success">Nueva persona relacionada</span>
+                                                    <span class="small text-muted">No aparece en la lista de clientes; solo firma contratos.</span>
+                                                </div>
+
+                                                @if($coproDocMsg)
+                                                    <div class="alert alert-info py-1 px-2 mb-2 small">{{ $coproDocMsg }}</div>
+                                                @endif
+
+                                                <div class="row g-2">
+                                                    <div class="col-6 col-md-3">
+                                                        <label class="form-label mb-0 small fw-semibold">Documento *</label>
+                                                        <div class="input-group input-group-sm">
+                                                            <select class="form-select form-select-sm" style="max-width:4.8rem;"
+                                                                    wire:model.live="nuevoCopro.tipo_documento">
+                                                                <option value="DNI">DNI</option>
+                                                                <option value="CE">CE</option>
+                                                            </select>
+                                                            <input type="text" class="form-control form-control-sm @error('nuevoCopro.documento') is-invalid @enderror"
+                                                                   wire:model.blur="nuevoCopro.documento">
+                                                            <button type="button" class="btn btn-danger" wire:click="consultarDocCopro"
+                                                                    wire:loading.attr="disabled" wire:target="consultarDocCopro" title="Consultar documento">
+                                                                <span wire:loading.remove wire:target="consultarDocCopro"><i class="ti ti-search"></i></span>
+                                                                <span wire:loading wire:target="consultarDocCopro" class="small">…</span>
+                                                            </button>
+                                                        </div>
+                                                        @error('nuevoCopro.documento') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                                                    </div>
+                                                    <div class="col-6 col-md-3">
+                                                        <label class="form-label mb-0 small fw-semibold">Ap. paterno *</label>
+                                                        <input type="text" class="form-control form-control-sm @error('nuevoCopro.apellido_pat') is-invalid @enderror"
+                                                               wire:model.blur="nuevoCopro.apellido_pat">
+                                                        @error('nuevoCopro.apellido_pat') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                                    </div>
+                                                    <div class="col-6 col-md-3">
+                                                        <label class="form-label mb-0 small fw-semibold">Ap. materno</label>
+                                                        <input type="text" class="form-control form-control-sm" wire:model.blur="nuevoCopro.apellido_mat">
+                                                    </div>
+                                                    <div class="col-6 col-md-3">
+                                                        <label class="form-label mb-0 small fw-semibold">Nombres *</label>
+                                                        <input type="text" class="form-control form-control-sm @error('nuevoCopro.nombre') is-invalid @enderror"
+                                                               wire:model.blur="nuevoCopro.nombre">
+                                                        @error('nuevoCopro.nombre') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                                    </div>
+
+                                                    <div class="col-6 col-md-2">
+                                                        <label class="form-label mb-0 small fw-semibold">Sexo *</label>
+                                                        <select class="form-select form-select-sm" wire:model.blur="nuevoCopro.sexo">
+                                                            <option value="M">Masculino</option>
+                                                            <option value="F">Femenino</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-6 col-md-2">
+                                                        <label class="form-label mb-0 small fw-semibold">Nacionalidad *</label>
+                                                        <select class="form-select form-select-sm" wire:model.blur="nuevoCopro.nacionalidad">
+                                                            @foreach(\App\Support\Documentos\Nacionalidades::OPCIONES as $op)
+                                                                <option value="{{ $op }}">{{ $op }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-6 col-md-2">
+                                                        <label class="form-label mb-0 small fw-semibold">Ocupación *</label>
+                                                        <select class="form-select form-select-sm" wire:model.blur="nuevoCopro.ocupacion">
+                                                            @foreach(\App\Livewire\Clients\Create::OCUPACIONES as $v => $et)
+                                                                <option value="{{ $v }}">{{ $et }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-6 col-md-2">
+                                                        <label class="form-label mb-0 small fw-semibold">Estado civil *</label>
+                                                        <select class="form-select form-select-sm" wire:model.blur="nuevoCopro.estado_civil">
+                                                            @foreach(\App\Livewire\Clients\Create::ESTADOS_CIVILES as $v => $et)
+                                                                <option value="{{ $v }}">{{ $et }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-12 col-md-4">
+                                                        <label class="form-label mb-0 small fw-semibold">Correo *</label>
+                                                        <input type="email" class="form-control form-control-sm @error('nuevoCopro.email') is-invalid @enderror"
+                                                               wire:model.blur="nuevoCopro.email" placeholder="persona@correo.com">
+                                                        @error('nuevoCopro.email') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                                    </div>
+
+                                                    <div class="col-12 col-md-4">
+                                                        <label class="form-label mb-0 small fw-semibold">Dirección *</label>
+                                                        <input type="text" class="form-control form-control-sm @error('nuevoCopro.direccion') is-invalid @enderror"
+                                                               wire:model.blur="nuevoCopro.direccion">
+                                                        @error('nuevoCopro.direccion') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                                    </div>
+                                                    <div class="col-6 col-md-3">
+                                                        <label class="form-label mb-0 small fw-semibold">Distrito *</label>
+                                                        <input type="text" class="form-control form-control-sm text-uppercase @error('nuevoCopro.distrito') is-invalid @enderror"
+                                                               wire:model.blur="nuevoCopro.distrito">
+                                                        @error('nuevoCopro.distrito') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                                    </div>
+                                                    <div class="col-6 col-md-2">
+                                                        <label class="form-label mb-0 small fw-semibold">Provincia *</label>
+                                                        <select class="form-select form-select-sm" wire:model.blur="nuevoCopro.provincia">
+                                                            @foreach(\App\Livewire\Clients\Create::PROVINCIAS as $v => $et)
+                                                                <option value="{{ $v }}">{{ $et }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-6 col-md-3">
+                                                        <label class="form-label mb-0 small fw-semibold">Departamento *</label>
+                                                        <input type="text" class="form-control form-control-sm text-uppercase @error('nuevoCopro.departamento') is-invalid @enderror"
+                                                               wire:model.blur="nuevoCopro.departamento">
+                                                        @error('nuevoCopro.departamento') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                                    </div>
+                                                </div>
+
+                                                <div class="d-flex gap-2 mt-2">
+                                                    <button type="button" class="btn btn-sm btn-success" wire:click="crearYVincularCopro"
+                                                            wire:loading.attr="disabled" wire:target="crearYVincularCopro">
+                                                        <i class="ti ti-user-plus"></i>
+                                                        <span wire:loading.remove wire:target="crearYVincularCopro">Crear y vincular</span>
+                                                        <span wire:loading wire:target="crearYVincularCopro">Creando…</span>
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-secondary" wire:click="cancelarCrearCopro">Cancelar</button>
+                                                </div>
+                                            </div>
+                                        @endif
                                     @endif
                                 </td>
                             </tr>

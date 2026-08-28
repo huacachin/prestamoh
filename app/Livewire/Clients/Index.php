@@ -59,6 +59,14 @@ class Index extends Component
     #[Url(as: 'estado', except: '')]
     public $morosidadFiltro = '';
 
+    /**
+     * '' = solo clientes (default) | 'si' = solo personas relacionadas.
+     * Los relacionados (copropietarios creados desde el alta rápida) no
+     * ensucian el listado: aparecen únicamente al pedirlos.
+     */
+    #[Url(as: 'relacionados', except: '')]
+    public $verRelacionados = '';
+
     #[On('register_destroy')]
     public function destroy(int $id): void
     {
@@ -79,6 +87,7 @@ class Index extends Component
 
         $query = Client::query()
             ->where('status', 'active')
+            ->where('es_relacionado', $this->verRelacionados === 'si')
             ->with(['asesor:id,name,username', 'headquarter:id,name'])
             // attachments ya no se cuenta: el botón Adjuntos salió del listado (28/08)
             ->withCount('avales');
