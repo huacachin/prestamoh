@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Support\Audit;
 use App\Support\TiposCredito;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class Edit extends Component
@@ -48,6 +49,10 @@ class Edit extends Component
     public ?string $celular2 = null;
 
     public ?string $zona = null;            // Legacy: T.Crédito
+
+    /** Pestaña activa del card: 'datos' | 'vehiculos' | 'adjuntos' (28/08). */
+    #[Url(as: 'tab', except: 'datos')]
+    public string $tab = 'datos';
 
     public ?int $asesor_id = null;
 

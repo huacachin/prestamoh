@@ -16,9 +16,41 @@
         </div>
     </div>
 
-    <form wire:submit.prevent="update">
-        <div class="card shadow-sm">
-            <div class="card-body">
+    <div class="card shadow-sm">
+        <div class="card-body">
+
+            {{-- ════════ Pestañas ════════ --}}
+            @php
+                $tabs = [
+                    'datos' => ['Datos del cliente', 'ti-user'],
+                    'vehiculos' => ['Vehículos', 'ti-car'],
+                    'adjuntos' => ['Adjuntos', 'ti-photo'],
+                ];
+            @endphp
+            <ul class="nav nav-tabs mb-3">
+                @foreach($tabs as $clave => [$titulo, $icono])
+                    <li class="nav-item">
+                        <button type="button" class="nav-link {{ $tab === $clave ? 'active' : '' }}"
+                                wire:click="$set('tab', '{{ $clave }}')">
+                            <i class="ti {{ $icono }}"></i> {{ $titulo }}
+                        </button>
+                    </li>
+                @endforeach
+            </ul>
+
+            {{-- ════════ Vehículos ════════ --}}
+            @if($tab === 'vehiculos')
+                <livewire:clients.vehiculos :id="$clientId" :key="'veh-'.$clientId" />
+            @endif
+
+            {{-- ════════ Adjuntos ════════ --}}
+            @if($tab === 'adjuntos')
+                <livewire:clients.gallery :id="$clientId" :embebido="true" :key="'gal-'.$clientId" />
+            @endif
+
+            {{-- ════════ Datos del cliente ════════ --}}
+            <div @if($tab !== 'datos') style="display:none;" @endif>
+            <form wire:submit.prevent="update">
 
                 @if ($errors->any())
                     <div class="alert alert-danger py-2 px-3 mb-2" style="font-size:12px;">
@@ -223,7 +255,9 @@
                         <i class="ti ti-arrow-back"></i> Regresar
                     </a>
                 </div>
+            </form>
             </div>
+
         </div>
-    </form>
+    </div>
 </div>
