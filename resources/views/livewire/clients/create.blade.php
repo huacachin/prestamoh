@@ -19,6 +19,16 @@
     <form wire:submit.prevent="save">
         <div class="card shadow-sm">
             <div class="card-body">
+                {{-- Campos traídos por la API (RENIEC/SUNAT/placa): en rojo para
+                     distinguirlos de lo tecleado a mano. --}}
+                <style>
+                    .campo-api {
+                        color: #c0392b !important;
+                        font-weight: 600;
+                        border-color: #e6a6a0 !important;
+                        background-color: #fff7f6 !important;
+                    }
+                </style>
 
                 {{-- ════════ Pasos del wizard ════════ --}}
                 <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
@@ -103,21 +113,21 @@
                                 Apellido Paterno
                                 @if($tipo_documento === 'RUC')<span class="text-muted small">(opcional)</span>@endif
                             </label>
-                            <input type="text" class="form-control form-control-sm @error('apellido_pat') is-invalid @enderror"
+                            <input type="text" class="form-control form-control-sm @error('apellido_pat') is-invalid @enderror @if(in_array('apellido_pat', $autoCliente)) campo-api @endif"
                                    wire:model.defer="apellido_pat" name="apellido_pat" autocomplete="family-name" placeholder="Apellido Paterno">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label mb-0 small fw-semibold">
                                 Apellido Materno <span class="text-muted small">(opcional)</span>
                             </label>
-                            <input type="text" class="form-control form-control-sm"
+                            <input type="text" class="form-control form-control-sm @if(in_array('apellido_mat', $autoCliente)) campo-api @endif"
                                    wire:model.defer="apellido_mat" name="apellido_mat" autocomplete="off" placeholder="Apellido Materno">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label mb-0 small fw-semibold">
                                 {{ $tipo_documento === 'RUC' ? 'Razón social' : 'Nombres' }}
                             </label>
-                            <input type="text" class="form-control form-control-sm @error('nombre') is-invalid @enderror"
+                            <input type="text" class="form-control form-control-sm @error('nombre') is-invalid @enderror @if(in_array('nombre', $autoCliente)) campo-api @endif"
                                    wire:model.defer="nombre" name="nombre" autocomplete="given-name"
                                    placeholder="{{ $tipo_documento === 'RUC' ? 'Razón social' : 'Nombres' }}">
                         </div>
@@ -128,18 +138,18 @@
 
                         <div class="col-md-2">
                             <label class="form-label mb-0 small fw-semibold">Sexo</label>
-                            <select class="form-select form-select-sm" wire:model.defer="sexo">
+                            <select class="form-select form-select-sm @if(in_array('sexo', $autoCliente)) campo-api @endif" wire:model.defer="sexo">
                                 <option value="F">Femenino</option>
                                 <option value="M">Masculino</option>
                             </select>
                         </div>
                         <div class="col-md-2">
                             <label class="form-label mb-0 small fw-semibold">Nacimiento</label>
-                            <input type="text" autocomplete="off" name="fecha_nacimiento" class="form-control form-control-sm dates" wire:model.defer="fecha_nacimiento">
+                            <input type="text" autocomplete="off" name="fecha_nacimiento" class="form-control form-control-sm dates @if(in_array('fecha_nacimiento', $autoCliente)) campo-api @endif" wire:model.defer="fecha_nacimiento">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label mb-0 small fw-semibold">N° de documento</label>
-                            <input type="text" class="form-control form-control-sm @error('documento') is-invalid @enderror"
+                            <input type="text" class="form-control form-control-sm @error('documento') is-invalid @enderror @if(in_array('documento', $autoCliente)) campo-api @endif"
                                    wire:model.defer="documento" name="documento" autocomplete="off" placeholder="Número de documento" maxlength="12">
                         </div>
                         <div class="col-md-2">
@@ -185,7 +195,7 @@
                     <div class="row g-2">
                         <div class="col-md-6">
                             <label class="form-label mb-0 small fw-semibold">Dirección</label>
-                            <input type="text" class="form-control form-control-sm"
+                            <input type="text" class="form-control form-control-sm @if(in_array('direccion', $autoCliente)) campo-api @endif"
                                    wire:model.defer="direccion" name="direccion" autocomplete="street-address" placeholder="Av. Arequipa Nro. 3400">
                         </div>
                         <div class="col-md-3">
@@ -307,11 +317,11 @@
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label mb-0 small fw-semibold">Marca</label>
-                                    <input type="text" class="form-control form-control-sm" wire:model.defer="vehiculos.{{ $i }}.marca" placeholder="Toyota">
+                                    <input type="text" class="form-control form-control-sm @if(in_array('marca', $autoVehiculo[$i] ?? [])) campo-api @endif" wire:model.defer="vehiculos.{{ $i }}.marca" placeholder="Toyota">
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label mb-0 small fw-semibold">Modelo</label>
-                                    <input type="text" class="form-control form-control-sm" wire:model.defer="vehiculos.{{ $i }}.modelo" placeholder="Hiace">
+                                    <input type="text" class="form-control form-control-sm @if(in_array('modelo', $autoVehiculo[$i] ?? [])) campo-api @endif" wire:model.defer="vehiculos.{{ $i }}.modelo" placeholder="Hiace">
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label mb-0 small fw-semibold">Valor del vehículo (S/)</label>
@@ -322,11 +332,11 @@
 
                                 <div class="col-md-3">
                                     <label class="form-label mb-0 small fw-semibold">N° de Motor</label>
-                                    <input type="text" class="form-control form-control-sm text-uppercase" wire:model.defer="vehiculos.{{ $i }}.nro_motor">
+                                    <input type="text" class="form-control form-control-sm text-uppercase @if(in_array('nro_motor', $autoVehiculo[$i] ?? [])) campo-api @endif" wire:model.defer="vehiculos.{{ $i }}.nro_motor">
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label mb-0 small fw-semibold">N° de Serie</label>
-                                    <input type="text" class="form-control form-control-sm text-uppercase" wire:model.defer="vehiculos.{{ $i }}.nro_serie">
+                                    <input type="text" class="form-control form-control-sm text-uppercase @if(in_array('nro_serie', $autoVehiculo[$i] ?? [])) campo-api @endif" wire:model.defer="vehiculos.{{ $i }}.nro_serie">
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label mb-0 small fw-semibold">Categoría</label>
@@ -343,7 +353,7 @@
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label mb-0 small fw-semibold">Color</label>
-                                    <input type="text" class="form-control form-control-sm" wire:model.defer="vehiculos.{{ $i }}.color" placeholder="Blanco">
+                                    <input type="text" class="form-control form-control-sm @if(in_array('color', $autoVehiculo[$i] ?? [])) campo-api @endif" wire:model.defer="vehiculos.{{ $i }}.color" placeholder="Blanco">
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label mb-0 small fw-semibold">Combustible</label>

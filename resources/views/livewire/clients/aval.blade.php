@@ -1,4 +1,7 @@
 <div class="container-fluid">
+    <style>
+        .campo-api { color:#c0392b !important; font-weight:600; border-color:#e6a6a0 !important; background-color:#fff7f6 !important; }
+    </style>
     <div class="row">
         <div class="col-sm-6">
             <h4 class="main-title title-modules">AVAL DEL CLIENTE</h4>
@@ -151,17 +154,17 @@
                     <div class="row g-2">
                         <div class="col-md-6">
                             <label class="form-label mb-0 small fw-semibold">Nombre</label>
-                            <input type="text" class="form-control form-control-sm @error('nombre') is-invalid @enderror"
+                            <input type="text" class="form-control form-control-sm @error('nombre') is-invalid @enderror @if(in_array('nombre', $autoCampos)) campo-api @endif"
                                    wire:model.defer="nombre" name="nombre" autocomplete="name" placeholder="Apellidos y nombres">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label mb-0 small fw-semibold">Dirección</label>
-                            <input type="text" class="form-control form-control-sm"
+                            <input type="text" class="form-control form-control-sm @if(in_array('direccion', $autoCampos)) campo-api @endif"
                                    wire:model.defer="direccion" name="direccion" autocomplete="street-address" placeholder="Av. Arequipa Nro. 3400">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label mb-0 small fw-semibold">Teléfono</label>
-                            <input type="text" class="form-control form-control-sm"
+                            <input type="text" class="form-control form-control-sm @if(in_array('telefono', $autoCampos)) campo-api @endif"
                                    wire:model.defer="telefono" name="telefono" autocomplete="tel" placeholder="999-999-999">
                         </div>
                     </div>

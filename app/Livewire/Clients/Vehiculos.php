@@ -57,6 +57,13 @@ class Vehiculos extends Component
 
     public ?string $msgType = null;
 
+    /**
+     * Campos que llenó la consulta de placa (se pintan en rojo).
+     *
+     * @var array<int, string>
+     */
+    public array $autoCampos = [];
+
     public function mount(int $id): void
     {
         $this->client = Client::findOrFail($id);
@@ -113,6 +120,7 @@ class Vehiculos extends Component
 
         $this->editandoId = $id;
         $this->creando = false;
+        $this->autoCampos = [];
         foreach (['placa', 'marca', 'modelo', 'nro_motor', 'nro_serie', 'categoria', 'anio_modelo', 'carroceria', 'color', 'combustible'] as $campo) {
             $this->{$campo} = (string) ($v->{$campo} ?? '');
         }
@@ -199,9 +207,11 @@ class Vehiculos extends Component
             return;
         }
 
+        $this->autoCampos = [];
         foreach ($resultado['data'] as $campo => $valor) {
             if ($valor !== '' && property_exists($this, $campo)) {
                 $this->{$campo} = $valor;
+                $this->autoCampos[] = $campo;
             }
         }
 
@@ -217,7 +227,7 @@ class Vehiculos extends Component
     private function limpiarFormulario(): void
     {
         $this->reset(['placa', 'marca', 'modelo', 'nro_motor', 'nro_serie', 'categoria',
-            'anio_modelo', 'carroceria', 'color', 'combustible', 'valor', 'editandoId', 'creando']);
+            'anio_modelo', 'carroceria', 'color', 'combustible', 'valor', 'editandoId', 'creando', 'autoCampos']);
         $this->resetErrorBag();
     }
 

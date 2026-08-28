@@ -1,4 +1,13 @@
 <div>
+    {{-- Campos traídos por la consulta de placa: en rojo. --}}
+    <style>
+        .campo-api {
+            color: #c0392b !important;
+            font-weight: 600;
+            border-color: #e6a6a0 !important;
+            background-color: #fff7f6 !important;
+        }
+    </style>
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
         <h6 class="mb-0" style="color:red;">
             Vehículos <span class="text-muted small fw-normal">({{ $listado->count() }})</span>
@@ -52,11 +61,11 @@
                 </div>
                 <div class="col-md-3">
                     <label class="form-label mb-0 small fw-semibold">Marca</label>
-                    <input type="text" class="form-control form-control-sm" wire:model.defer="marca" placeholder="Toyota">
+                    <input type="text" class="form-control form-control-sm @if(in_array('marca', $autoCampos)) campo-api @endif" wire:model.defer="marca" placeholder="Toyota">
                 </div>
                 <div class="col-md-3">
                     <label class="form-label mb-0 small fw-semibold">Modelo</label>
-                    <input type="text" class="form-control form-control-sm" wire:model.defer="modelo" placeholder="Hiace">
+                    <input type="text" class="form-control form-control-sm @if(in_array('modelo', $autoCampos)) campo-api @endif" wire:model.defer="modelo" placeholder="Hiace">
                 </div>
                 <div class="col-md-3">
                     <label class="form-label mb-0 small fw-semibold">Valor del vehículo (S/)</label>
@@ -67,11 +76,11 @@
 
                 <div class="col-md-3">
                     <label class="form-label mb-0 small fw-semibold">N° de Motor</label>
-                    <input type="text" class="form-control form-control-sm text-uppercase" wire:model.defer="nro_motor">
+                    <input type="text" class="form-control form-control-sm text-uppercase @if(in_array('nro_motor', $autoCampos)) campo-api @endif" wire:model.defer="nro_motor">
                 </div>
                 <div class="col-md-3">
                     <label class="form-label mb-0 small fw-semibold">N° de Serie</label>
-                    <input type="text" class="form-control form-control-sm text-uppercase" wire:model.defer="nro_serie">
+                    <input type="text" class="form-control form-control-sm text-uppercase @if(in_array('nro_serie', $autoCampos)) campo-api @endif" wire:model.defer="nro_serie">
                 </div>
                 <div class="col-md-3">
                     <label class="form-label mb-0 small fw-semibold">Categoría</label>
@@ -88,7 +97,7 @@
                 </div>
                 <div class="col-md-3">
                     <label class="form-label mb-0 small fw-semibold">Color</label>
-                    <input type="text" class="form-control form-control-sm" wire:model.defer="color" placeholder="Blanco">
+                    <input type="text" class="form-control form-control-sm @if(in_array('color', $autoCampos)) campo-api @endif" wire:model.defer="color" placeholder="Blanco">
                 </div>
                 <div class="col-md-3">
                     <label class="form-label mb-0 small fw-semibold">Combustible</label>

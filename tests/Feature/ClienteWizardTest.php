@@ -239,6 +239,52 @@ class ClienteWizardTest extends TestCase
         $comp->assertSet('vehMsgType', 'ok');
     }
 
+    public function test_marca_en_rojo_solo_los_campos_traidos_por_la_api(): void
+    {
+        Http::fake(['*/dni/info/*' => Http::response([
+            'status' => 200, 'success' => true,
+            'data' => [
+                'numero' => '27427864', 'nombres' => 'JOSE PEDRO',
+                'apellido_paterno' => 'CASTILLO', 'apellido_materno' => 'TERRONES',
+                'direccion' => 'CASERIO PUNA',
+            ],
+        ], 200)]);
+
+        $comp = Livewire::test(Create::class)
+            ->set('tipo_documento', 'DNI')
+            ->set('docBuscar', '27427864')
+            ->call('consultarDocumento');
+
+        $auto = $comp->get('autoCliente');
+        foreach (['nombre', 'apellido_pat', 'apellido_mat', 'direccion', 'documento'] as $campo) {
+            $this->assertContains($campo, $auto, "$campo debe marcarse como traído de la API");
+        }
+        // Lo que el operador teclea NO se marca
+        $this->assertNotContains('giro', $auto);
+        $this->assertNotContains('celular1', $auto);
+    }
+
+    public function test_marca_en_rojo_los_campos_traidos_por_la_placa(): void
+    {
+        Http::fake(['*/placa/info/*' => Http::response([
+            'status' => 200, 'success' => true,
+            'data' => ['placa' => 'F3H792', 'marca' => 'FIAT', 'modelo' => 'FIORINO', 'motor' => '8632404', 'serie' => '9BD255', 'color' => 'BLANCO'],
+        ], 200)]);
+
+        $comp = Livewire::test(Create::class)
+            ->call('agregarVehiculo')
+            ->set('vehiculos.0.placa', 'F3H792')
+            ->call('consultarPlaca', 0);
+
+        $auto = $comp->get('autoVehiculo')[0] ?? [];
+        foreach (['marca', 'modelo', 'nro_motor', 'nro_serie', 'color'] as $campo) {
+            $this->assertContains($campo, $auto);
+        }
+        // La API no devuelve estos: se quedan sin marcar
+        $this->assertNotContains('categoria', $auto);
+        $this->assertNotContains('anio_modelo', $auto);
+    }
+
     // ─── T. Crédito (clients.zona → garantía legal) ─────────
 
     public function test_t_credito_solo_acepta_las_opciones_del_catalogo(): void

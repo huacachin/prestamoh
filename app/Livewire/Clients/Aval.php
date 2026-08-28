@@ -25,7 +25,10 @@ class Aval extends Component
 
     public ?string $dniMsg = null;
 
-    public ?string $dniMsgType = null; // 'ok' | 'warn' | 'err'
+    public ?string $dniMsgType = null;
+
+    /** Campos traídos por la consulta (se pintan en rojo). @var array<int, string> */
+    public array $autoCampos = []; // 'ok' | 'warn' | 'err'
 
     public bool $puedeEditar = true;
 
@@ -96,6 +99,7 @@ class Aval extends Component
             $this->nombre = $clienteLocal->fullName();
             $this->direccion = $clienteLocal->direccion;
             $this->telefono = $clienteLocal->celular1;
+            $this->autoCampos = ['nombre', 'direccion', 'telefono'];
             $this->dniMsgType = 'ok';
             $this->dniMsg = 'Encontrado en BD local: '.$clienteLocal->fullName();
 
@@ -120,8 +124,10 @@ class Aval extends Component
         } else {
             $this->nombre = (string) ($d['nombre'] ?? '');
         }
+        $this->autoCampos = ['nombre'];
         if (! empty($d['direccion'])) {
             $this->direccion = (string) $d['direccion'];
+            $this->autoCampos[] = 'direccion';
         }
 
         $this->dniMsgType = 'ok';

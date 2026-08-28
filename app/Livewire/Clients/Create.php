@@ -88,6 +88,17 @@ class Create extends Component
 
     public ?string $vehMsgType = null;
 
+    /**
+     * Campos que llenó la consulta a la API (se pintan en rojo para que el
+     * operador distinga lo traído de RENIEC/SUNAT/placa de lo que tecleó él).
+     *
+     * @var array<int, string>
+     */
+    public array $autoCliente = [];
+
+    /** @var array<int, array<int, string>> por índice de vehículo */
+    public array $autoVehiculo = [];
+
     public $asesores;
 
     public ?int $newClientId = null;
@@ -171,17 +182,25 @@ class Create extends Component
     /** @param array<string, mixed> $d */
     private function aplicarDatosDocumento(array $d): void
     {
+        $this->autoCliente = [];
+
         if ($this->tipo_documento === 'RUC') {
             // La razón social entera va al campo Nombres; los apellidos no aplican.
             $this->nombre = (string) ($d['nombre'] ?? '');
             $this->apellido_pat = '';
             $this->apellido_mat = '';
+            $this->autoCliente[] = 'nombre';
             $this->docMsg = 'Razón social cargada en "Nombres". Apellidos no aplican para RUC.';
         } else {
             // DNI y CE: la API ya entrega los nombres separados.
             $this->nombre = (string) ($d['nombre'] ?? '');
             $this->apellido_pat = (string) ($d['apellido_pat'] ?? '');
             $this->apellido_mat = (string) ($d['apellido_mat'] ?? '');
+            foreach (['nombre', 'apellido_pat', 'apellido_mat'] as $campo) {
+                if ($this->{$campo} !== '') {
+                    $this->autoCliente[] = $campo;
+                }
+            }
             $this->docMsg = $this->tipo_documento === 'CE'
                 ? 'Datos cargados desde Migraciones. Verifica apellidos y nombres.'
                 : 'Datos cargados desde RENIEC. Verifica apellidos y nombres.';
@@ -190,14 +209,18 @@ class Create extends Component
         foreach (['direccion' => 'direccion', 'distrito' => 'distrito'] as $origen => $destino) {
             if (! empty($d[$origen]) && property_exists($this, $destino)) {
                 $this->{$destino} = (string) $d[$origen];
+                $this->autoCliente[] = $destino;
             }
         }
         if (! empty($d['fecha_nacimiento'])) {
             $this->fecha_nacimiento = (string) $d['fecha_nacimiento'];
+            $this->autoCliente[] = 'fecha_nacimiento';
         }
         if (! empty($d['sexo'])) {
             $this->sexo = (string) $d['sexo'];
+            $this->autoCliente[] = 'sexo';
         }
+        $this->autoCliente[] = 'documento';
 
         $this->docMsgType = 'ok';
     }
@@ -241,8 +264,9 @@ class Create extends Component
 
     public function quitarVehiculo(int $i): void
     {
-        unset($this->vehiculos[$i]);
+        unset($this->vehiculos[$i], $this->autoVehiculo[$i]);
         $this->vehiculos = array_values($this->vehiculos);
+        $this->autoVehiculo = array_values($this->autoVehiculo);
         $this->resetErrorBag();
         $this->vehMsg = null;
     }
@@ -269,9 +293,11 @@ class Create extends Component
             return;
         }
 
+        $this->autoVehiculo[$i] = [];
         foreach ($resultado['data'] as $campo => $valor) {
             if ($valor !== '' && array_key_exists($campo, $this->vehiculos[$i])) {
                 $this->vehiculos[$i][$campo] = $valor;
+                $this->autoVehiculo[$i][] = $campo;
             }
         }
 
@@ -286,7 +312,7 @@ class Create extends Component
             'apellido_pat', 'apellido_mat', 'nombre', 'sexo', 'fecha_nacimiento',
             'documento', 'tipo_documento', 'email', 'ocupacion', 'estado_civil',
             'direccion', 'giro', 'zona', 'celular1', 'celular2',
-            'vehiculos', 'vehMsg', 'vehMsgType',
+            'vehiculos', 'vehMsg', 'vehMsgType', 'autoCliente', 'autoVehiculo',
         ]);
         $this->sexo = 'M';
         $this->tipo_documento = 'DNI';
