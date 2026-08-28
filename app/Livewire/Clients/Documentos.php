@@ -496,6 +496,11 @@ class Documentos extends Component
             $this->gerente['sexo'] = $r['data']['sexo'];
             $this->autoGerente[] = 'sexo';
         }
+        $estadoCivilApi = mb_strtoupper(trim((string) ($r['data']['estado_civil'] ?? '')));
+        if ($estadoCivilApi !== '' && isset(self::ESTADOS_CIVILES[$estadoCivilApi])) {
+            $this->gerente['estado_civil'] = $estadoCivilApi;
+            $this->autoGerente[] = 'estado_civil';
+        }
         $domicilio = DomicilioLegal::armar(
             $r['data']['direccion'] ?? null,
             $r['data']['distrito'] ?? null,

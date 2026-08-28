@@ -351,6 +351,10 @@ class Vehiculos extends Component
             $this->nuevoCopro['sexo'] = $r['data']['sexo'];
             $this->autoCopro[] = 'sexo';
         }
+        if (! empty($r['data']['estado_civil']) && isset(Create::ESTADOS_CIVILES[$r['data']['estado_civil']])) {
+            $this->nuevoCopro['estado_civil'] = $r['data']['estado_civil'];
+            $this->autoCopro[] = 'estado_civil';
+        }
         $provincia = mb_strtoupper(trim((string) ($r['data']['provincia'] ?? '')));
         if (isset(Create::PROVINCIAS[$provincia])) {
             $this->nuevoCopro['provincia'] = $provincia;

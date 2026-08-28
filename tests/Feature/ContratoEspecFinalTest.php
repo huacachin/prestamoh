@@ -237,7 +237,7 @@ class ContratoEspecFinalTest extends TestCase
             'data' => [
                 'nombres' => 'JACK YELTSIN', 'apellido_paterno' => 'BLAS', 'apellido_materno' => 'SULLCA',
                 'direccion' => 'AV. SALAVERRY 2900', 'distrito' => 'MAGDALENA DEL MAR',
-                'provincia' => 'LIMA', 'departamento' => 'LIMA', 'sexo' => 'M',
+                'provincia' => 'LIMA', 'departamento' => 'LIMA', 'sexo' => 'M', 'estado_civil' => 'SOLTERO',
             ],
         ])]);
 
@@ -251,7 +251,9 @@ class ContratoEspecFinalTest extends TestCase
         $g = $comp->get('gerente');
         $this->assertSame('JACK YELTSIN BLAS SULLCA', $g['nombre']);
         $this->assertStringContainsString('PROVINCIA Y DEPARTAMENTO DE LIMA', $g['domicilio']);
+        $this->assertSame('SOLTERO', $g['estado_civil'], 'el estado civil de la API fluye al gerente');
         $this->assertContains('nombre', $comp->get('autoGerente'));
+        $this->assertContains('estado_civil', $comp->get('autoGerente'));
     }
 
     public function test_el_tercero_consulta_su_dni(): void

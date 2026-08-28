@@ -136,7 +136,7 @@ class PersonasRelacionadasTest extends TestCase
             'data' => [
                 'nombres' => 'MARIA ELENA', 'apellido_paterno' => 'LOPEZ', 'apellido_materno' => 'DIAZ',
                 'direccion' => 'AV. DOS 123', 'distrito' => 'LINCE', 'provincia' => 'LIMA',
-                'departamento' => 'LIMA', 'sexo' => 'F',
+                'departamento' => 'LIMA', 'sexo' => 'F', 'estado_civil' => 'CASADO',
             ],
         ])]);
 
@@ -151,12 +151,13 @@ class PersonasRelacionadasTest extends TestCase
 
         // La convención de la casa: lo traído por la API va EN ROJO.
         $auto = $comp->get('autoCopro');
-        foreach (['nombre', 'apellido_pat', 'direccion', 'distrito', 'sexo', 'provincia'] as $campo) {
+        foreach (['nombre', 'apellido_pat', 'direccion', 'distrito', 'sexo', 'provincia', 'estado_civil'] as $campo) {
             $this->assertContains($campo, $auto, "el campo {$campo} vino de la API y debe marcarse");
         }
         $comp->assertSeeHtml('campo-api');
         // Factiliza normaliza los nombres a Título (misma regla que el alta).
         $this->assertSame('Maria Elena', $comp->get('nuevoCopro')['nombre']);
+        $this->assertSame('casado', $comp->get('nuevoCopro')['estado_civil']);
     }
 
     // ── 2 · No ensucian listado ni export ─────────────────────────────────

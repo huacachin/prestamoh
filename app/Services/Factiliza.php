@@ -38,6 +38,9 @@ class Factiliza
             'departamento' => $this->limpiar($d['departamento'] ?? ''),
             'fecha_nacimiento' => $this->fecha($d['fecha_nacimiento'] ?? null),
             'sexo' => $this->sexo($d['sexo'] ?? null),
+            // El esquema del endpoint lo trae (vacío en el plan de prueba,
+            // verificado 28/08); cuando el plan lo devuelva, fluye solo.
+            'estado_civil' => mb_strtolower(trim((string) ($d['estado_civil'] ?? ''))),
         ]);
     }
 

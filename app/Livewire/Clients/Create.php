@@ -272,6 +272,10 @@ class Create extends Component
             $this->fecha_nacimiento = (string) $d['fecha_nacimiento'];
             $this->autoCliente[] = 'fecha_nacimiento';
         }
+        if (! empty($d['estado_civil']) && isset(self::ESTADOS_CIVILES[$d['estado_civil']])) {
+            $this->estado_civil = (string) $d['estado_civil'];
+            $this->autoCliente[] = 'estado_civil';
+        }
         if (! empty($d['sexo'])) {
             $this->sexo = (string) $d['sexo'];
             $this->autoCliente[] = 'sexo';
