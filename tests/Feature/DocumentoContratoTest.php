@@ -150,7 +150,7 @@ class DocumentoContratoTest extends TestCase
                 'sexo' => 'F',
                 'nombre' => mb_strtoupper($this->client->fullName()),
                 'dni' => $this->client->documento,
-                'nacionalidad' => 'PERUANO', // la vista flexiona: PERUANA
+                'nacionalidad' => 'PERUANO', // no flexiona: sale PERUANO aunque sea deudora
                 'ocupacion' => 'COMERCIANTE',
                 'estado_civil' => 'SOLTERA',
                 'domicilio' => 'MZ. B LOTE 12 AAHH LOS JARDINES, DISTRITO DE ATE, PROVINCIA Y DEPARTAMENTO DE LIMA',

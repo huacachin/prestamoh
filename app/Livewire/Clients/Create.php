@@ -6,6 +6,7 @@ use App\Models\Client;
 use App\Models\User;
 use App\Services\Factiliza;
 use App\Support\Audit;
+use App\Support\Documentos\Nacionalidades;
 use App\Support\TiposCredito;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
@@ -53,7 +54,7 @@ class Create extends Component
 
     public string $nombre = '';
 
-    public string $nacionalidad = 'PERUANO';
+    public string $nacionalidad = Nacionalidades::DEFECTO;
 
     public string $sexo = 'M';
 
@@ -268,6 +269,7 @@ class Create extends Component
     /** Paso 1 → 2: valida SOLO los campos del cliente. */
     public function siguientePaso(): void
     {
+        $this->nacionalidad = Nacionalidades::normalizar($this->nacionalidad);
         $this->validate($this->reglasCliente(), $this->messages());
         $this->paso = 2;
     }
@@ -348,7 +350,7 @@ class Create extends Component
         $this->tipo_documento = 'DNI';
         $this->ocupacion = 'transportista';
         $this->estado_civil = 'soltero';
-        $this->nacionalidad = 'PERUANO';
+        $this->nacionalidad = Nacionalidades::DEFECTO;
         $this->provincia = 'LIMA';
         $this->departamento = 'LIMA';
         $this->paso = 1;
@@ -378,7 +380,7 @@ class Create extends Component
             'expediente' => 'required|integer|min:1',
             // El domicilio legal es la cláusula PRIMERO del contrato: sin
             // dirección arranca en "DISTRITO DE" y sin ubigeo queda a medias.
-            'nacionalidad' => 'required|string|max:50',
+            'nacionalidad' => 'required|in:'.implode(',', Nacionalidades::OPCIONES),
             'direccion' => 'required|string|max:255',
             'distrito' => 'required|string|max:100',
             'provincia' => 'required|in:'.implode(',', array_keys(self::PROVINCIAS)),
@@ -473,7 +475,7 @@ class Create extends Component
                 'documento' => $this->documento,
                 'fecha_nacimiento' => $this->fecha_nacimiento,
                 'sexo' => $this->sexo,
-                'nacionalidad' => mb_strtoupper(trim($this->nacionalidad)) ?: 'PERUANO',
+                'nacionalidad' => Nacionalidades::normalizar($this->nacionalidad),
                 'email' => trim($this->email),
                 'ocupacion' => $this->ocupacion,
                 'estado_civil' => $this->estado_civil,

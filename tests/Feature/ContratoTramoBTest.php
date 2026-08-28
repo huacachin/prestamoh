@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\Vehiculo;
 use App\Services\Documentos\GeneradorContrato;
 use App\Support\Documentos\DomicilioLegal;
+use App\Support\Documentos\Nacionalidades;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -353,15 +354,33 @@ class ContratoTramoBTest extends TestCase
 
     // ── 4 · La nacionalidad va en masculino ───────────────────────────────
 
-    public function test_la_nacionalidad_se_guarda_en_masculino_y_el_contrato_la_flexiona(): void
+    /**
+     * La nacionalidad NO flexiona: el contrato dice PERUANO tanto para un
+     * deudor como para una deudora. Decisión del negocio (28/08), tomada
+     * porque las 32 maestras no tienen regla — 68 "PERUANO" contra 6
+     * "PERUANA" repartidas sin criterio entre modelos masculinos y
+     * femeninos. Lo que sí flexiona a su lado es IDENTIFICADO/A.
+     */
+    public function test_la_nacionalidad_no_flexiona_pero_el_resto_si(): void
     {
         [$client, $credit, $v] = $this->mundoCompleto(['documento' => '46781409', 'expediente' => '9409']);
 
-        $this->assertSame('PERUANO', $client->nacionalidad, 'la ficha guarda la base masculina');
+        $this->assertSame('PERUANO', $client->nacionalidad);
 
+        // El cliente es MUJER (sexo F en mundoCompleto).
         $html = GeneradorContrato::previsualizar($client, $credit, [$v->id], 'a1', $this->datos());
 
-        // El cliente es mujer: el partial flexiona la base masculina.
-        $this->assertStringContainsString('PERUANA', $html);
+        $this->assertStringContainsString('DE NACIONALIDAD PERUANO', $html);
+        $this->assertStringNotContainsString('PERUANA', $html);
+        // …pero el resto del párrafo sí va en femenino.
+        $this->assertStringContainsString('IDENTIFICADA', $html);
+        $this->assertStringContainsString('LA DEUDORA', $html);
+    }
+
+    public function test_el_catalogo_conserva_la_nacionalidad_historica_fuera_de_lista(): void
+    {
+        $this->assertSame(['PERUANO', 'VENEZOLANO'], Nacionalidades::paraValor('PERUANO'));
+        $this->assertSame(['PERUANO', 'VENEZOLANO', 'BOLIVIANO'], Nacionalidades::paraValor('boliviano'));
+        $this->assertSame(['PERUANO', 'VENEZOLANO'], Nacionalidades::paraValor(null));
     }
 }

@@ -6,6 +6,7 @@ use App\Models\Client;
 use App\Models\Credit;
 use App\Models\User;
 use App\Support\Audit;
+use App\Support\Documentos\Nacionalidades;
 use App\Support\TiposCredito;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
@@ -109,7 +110,8 @@ class Edit extends Component
             'distrito' => 'nullable|string|max:100',
             'provincia' => 'required|in:'.implode(',', array_keys(Create::PROVINCIAS)),
             'departamento' => 'nullable|string|max:100',
-            'nacionalidad' => 'nullable|string|max:50',
+            // Acepta las opciones vigentes y el valor histórico ya guardado
+            'nacionalidad' => 'nullable|string|in:'.implode(',', Nacionalidades::paraValor($this->nacionalidad)),
             'email' => 'nullable|email|max:150',
             'ocupacion' => 'required|in:'.implode(',', array_keys(Create::OCUPACIONES)),
             'estado_civil' => 'required|in:'.implode(',', array_keys(Create::ESTADOS_CIVILES)),
@@ -164,7 +166,7 @@ class Edit extends Component
         $this->distrito = $c->distrito;
         $this->provincia = isset(Create::PROVINCIAS[(string) $c->provincia]) ? (string) $c->provincia : 'LIMA';
         $this->departamento = $c->departamento;
-        $this->nacionalidad = $c->nacionalidad;
+        $this->nacionalidad = $c->nacionalidad ?: Nacionalidades::DEFECTO;
         $this->email = (string) ($c->email ?? '');
         $this->ocupacion = isset(Create::OCUPACIONES[(string) $c->ocupacion]) ? (string) $c->ocupacion : 'transportista';
         $this->estado_civil = isset(Create::ESTADOS_CIVILES[(string) $c->estado_civil]) ? (string) $c->estado_civil : 'soltero';
@@ -189,6 +191,13 @@ class Edit extends Component
             return;
         }
 
+        // El select manda el valor exacto, pero la ficha puede venir de una
+        // migración o de un import con otra caja: normalizar antes de validar
+        // evita rechazar 'peruano' por una diferencia de mayúsculas.
+        if (filled($this->nacionalidad)) {
+            $this->nacionalidad = Nacionalidades::normalizar($this->nacionalidad);
+        }
+
         $this->validate();
 
         $data = [
@@ -205,7 +214,7 @@ class Edit extends Component
             'distrito' => $this->distrito,
             'provincia' => $this->provincia,
             'departamento' => $this->departamento,
-            'nacionalidad' => filled($this->nacionalidad) ? mb_strtoupper(trim($this->nacionalidad)) : null,
+            'nacionalidad' => filled($this->nacionalidad) ? $this->nacionalidad : null,
             'email' => trim($this->email) ?: null,
             'ocupacion' => $this->ocupacion,
             'estado_civil' => $this->estado_civil,

@@ -171,8 +171,14 @@
                          PRIMERO y que antes solo se capturaban en el alta. --}}
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">Nacionalidad</label>
-                        <input type="text" class="form-control form-control-sm text-uppercase @error('nacionalidad') is-invalid @enderror"
-                               wire:model.defer="nacionalidad" placeholder="PERUANO">
+                        {{-- No flexiona: el contrato dice PERUANO / VENEZOLANO
+                             tanto para deudor como para deudora. --}}
+                        <select class="form-select form-select-sm @error('nacionalidad') is-invalid @enderror"
+                                wire:model.defer="nacionalidad">
+                            @foreach(\App\Support\Documentos\Nacionalidades::paraValor($nacionalidad) as $opcion)
+                                <option value="{{ $opcion }}">{{ $opcion }}</option>
+                            @endforeach
+                        </select>
                         @error('nacionalidad') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                     <div class="col-md-3">
