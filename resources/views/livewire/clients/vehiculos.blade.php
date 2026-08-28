@@ -194,13 +194,16 @@
                                     </div>
 
                                     @if($puedeEditar && $coproVehiculoId === $v->id)
-                                        <div class="position-relative mt-1" style="max-width: 420px;">
+                                        {{-- Resultados EN FLUJO NORMAL (la fila crece), nunca
+                                             position-absolute: el overflow del .table-responsive
+                                             recortaba el desplegable al escribir. --}}
+                                        <div class="mt-1" style="max-width: 420px;">
                                             <input type="text" class="form-control form-control-sm"
                                                    placeholder="Buscar cliente por nombre o DNI (mín. 2 caracteres)…"
                                                    wire:model.live.debounce.300ms="buscarCopro">
                                             @if($coproCandidatos->isNotEmpty())
-                                                <div class="list-group position-absolute w-100 shadow-sm"
-                                                     style="z-index:1080; max-height:200px; overflow:auto;">
+                                                <div class="list-group mt-1 shadow-sm"
+                                                     style="max-height:200px; overflow:auto;">
                                                     @foreach($coproCandidatos as $cand)
                                                         <button type="button" class="list-group-item list-group-item-action py-1 small"
                                                                 wire:key="copro-cand-{{ $v->id }}-{{ $cand->id }}"
@@ -209,6 +212,8 @@
                                                         </button>
                                                     @endforeach
                                                 </div>
+                                            @elseif(mb_strlen(trim($buscarCopro)) >= 2)
+                                                <div class="small text-muted mt-1">Sin resultados para "{{ $buscarCopro }}".</div>
                                             @endif
                                         </div>
                                     @endif
