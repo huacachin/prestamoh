@@ -59,7 +59,16 @@ final class Genero
         return $this->juridica;
     }
 
-    /** @param list<string> $generos géneros individuales, ej. ['M','F'] — plural masculino si hay al menos un 'M' */
+    /**
+     * @param  list<string>  $generos  géneros individuales, ej. ['M','F']
+     *
+     * El PLURAL es SIEMPRE masculino ("LOS DEUDORES"), también con dos
+     * mujeres — regla confirmada por el negocio (28/08) y por la Guía simple
+     * del área: "cambiar todo el contrato a plural: los deudores, los
+     * constituyentes...". No existe maestra de dos deudoras, así que no hay
+     * redacción "LAS DEUDORAS" que calcar. Las menciones INDIVIDUALES de
+     * cada deudora siguen flexionando (IDENTIFICADA).
+     */
     public static function conjunto(array $generos): self
     {
         $generos = array_map(fn ($g) => mb_strtoupper(trim((string) $g)), $generos);
@@ -68,7 +77,7 @@ final class Genero
             return self::de($generos[0] ?? 'M');
         }
 
-        return new self(! in_array('M', $generos, true), true);
+        return new self(femenino: false, plural: true);
     }
 
     public function esFemenino(): bool

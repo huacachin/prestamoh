@@ -71,11 +71,15 @@ class Documentos extends Component
     /** Motivo del depósito a tercero: texto fijo de la maestra a.1.1. */
     public const MOTIVO_TERCERO = 'EL DEUDOR PRESENTA PROBLEMAS ADMINISTRATIVOS CON SUS CUENTAS PERSONALES';
 
-    /** Opciones de estado civil del wizard (valor => etiqueta). */
+    /**
+     * Opciones de estado civil del wizard (valor => etiqueta). Catálogo
+     * CERRADO de 4, igual que la ficha del cliente: la Guía simple del área
+     * lo fija así ("soltero, casado, divorciado, o viudo") — CONVIVIENTE no
+     * existe en las maestras y la ficha nunca pudo guardarlo.
+     */
     public const ESTADOS_CIVILES = [
         'SOLTERO' => 'Soltero(a)',
         'CASADO' => 'Casado(a)',
-        'CONVIVIENTE' => 'Conviviente',
         'DIVORCIADO' => 'Divorciado(a)',
         'VIUDO' => 'Viudo(a)',
     ];
@@ -115,8 +119,9 @@ class Documentos extends Component
      * y toda gerenta salía IDENTIFICADO/SOLTERO/INSCRITO.
      */
     public array $gerente = [
-        'nombre' => '', 'dni' => '', 'sexo' => 'M', 'nacionalidad' => 'PERUANO',
-        'ocupacion' => '', 'estado_civil' => '', 'domicilio' => '',
+        'nombre' => '', 'tipo_documento' => 'DNI', 'dni' => '', 'sexo' => 'M',
+        'nacionalidad' => 'PERUANO', 'ocupacion' => '', 'estado_civil' => '',
+        'domicilio' => '', 'banco' => '', 'cuenta' => '',
     ];
 
     /**
@@ -125,7 +130,7 @@ class Documentos extends Component
      * es un dato variable), editable por si el caso es otro.
      */
     public array $tercero = [
-        'nombre' => '', 'dni' => '', 'cuenta' => '',
+        'nombre' => '', 'dni' => '', 'banco' => '', 'cuenta' => '',
         'motivo' => self::MOTIVO_TERCERO,
     ];
 
@@ -356,15 +361,19 @@ class Documentos extends Component
         ];
         $this->gerente = [
             'nombre' => (string) ($vigente->nombre ?? ''),
+            'tipo_documento' => (string) (($vigente->tipo_documento ?? null) ?: 'DNI'),
             'dni' => (string) ($vigente->documento ?? ''),
             'sexo' => ($vigente->sexo ?? 'M') === 'F' ? 'F' : 'M',
             'nacionalidad' => (string) (($vigente->nacionalidad ?? null) ?: Nacionalidades::DEFECTO),
             'ocupacion' => (string) ($vigente->ocupacion ?? ''),
             'estado_civil' => (string) ($vigente->estado_civil ?? ''),
             'domicilio' => (string) ($vigente->domicilio ?? ''),
+            // Banco y cuenta personal (solo a.4.1): por desembolso, no de la
+            // ficha — no se precargan ni se persisten.
+            'banco' => '', 'cuenta' => '',
         ];
         $this->tercero = [
-            'nombre' => '', 'dni' => '', 'cuenta' => '',
+            'nombre' => '', 'dni' => '', 'banco' => '', 'cuenta' => '',
             'motivo' => self::MOTIVO_TERCERO,
         ];
         $this->valorBien = '';
@@ -976,6 +985,7 @@ class Documentos extends Component
                 'fecha_acta' => (string) ($previo['fecha_acta'] ?? ''),
                 'kardex' => (string) ($previo['kardex'] ?? ''),
                 'notario' => (string) ($previo['notario'] ?? ''),
+                'estado_registral' => (string) ($previo['estado_registral'] ?? ''),
             ];
         }
         $this->valorBien = $this->sumaValorVehiculos();
@@ -1205,12 +1215,15 @@ class Documentos extends Component
                 'domicilio' => trim((string) $this->empresa['domicilio']) ?: null,
                 'gerente' => [
                     'nombre' => trim((string) $this->gerente['nombre']),
+                    'tipo_documento' => trim((string) ($this->gerente['tipo_documento'] ?? 'DNI')) ?: 'DNI',
                     'dni' => trim((string) $this->gerente['dni']),
                     'sexo' => ($this->gerente['sexo'] ?? 'M') === 'F' ? 'F' : 'M',
                     'nacionalidad' => Nacionalidades::normalizar($this->gerente['nacionalidad'] ?? null),
                     'ocupacion' => trim((string) $this->gerente['ocupacion']),
                     'estado_civil' => trim((string) $this->gerente['estado_civil']),
                     'domicilio' => trim((string) $this->gerente['domicilio']),
+                    'banco' => trim((string) ($this->gerente['banco'] ?? '')),
+                    'cuenta' => trim((string) ($this->gerente['cuenta'] ?? '')),
                 ],
             ];
         } else {
@@ -1244,6 +1257,7 @@ class Documentos extends Component
                 'fecha_acta' => trim((string) $slot['fecha_acta']) ?: null,
                 'kardex' => trim((string) $slot['kardex']) ?: null,
                 'notario' => trim((string) $slot['notario']) ?: null,
+                'estado_registral' => trim((string) $slot['estado_registral']) ?: null,
             ];
         }
 
@@ -1273,6 +1287,7 @@ class Documentos extends Component
             'contratoVehiculos.*.fecha_acta' => ['nullable', 'date'],
             'contratoVehiculos.*.kardex' => ['nullable', 'string', 'max:20'],
             'contratoVehiculos.*.notario' => ['nullable', 'string', 'max:120'],
+            'contratoVehiculos.*.estado_registral' => ['nullable', 'string', 'max:80'],
         ];
 
         if (! $preset) {
@@ -1290,6 +1305,7 @@ class Documentos extends Component
                 'gerente.nombre' => ['required', 'string', 'max:150'],
                 'gerente.dni' => ['required', 'string', 'max:15'],
                 'gerente.sexo' => ['required', Rule::in(['M', 'F'])],
+                'gerente.tipo_documento' => ['required', Rule::in(['DNI', 'CE'])],
                 'gerente.nacionalidad' => ['required', 'string', 'max:50'],
                 'gerente.ocupacion' => ['nullable', 'string', 'max:100'],
                 'gerente.estado_civil' => ['nullable', 'string', 'max:30'],
@@ -1312,6 +1328,7 @@ class Documentos extends Component
             $reglas += [
                 'tercero.nombre' => ['required', 'string', 'max:150'],
                 'tercero.dni' => ['required', 'string', 'max:15'],
+                'tercero.banco' => ['required', 'string', 'max:80'],
                 'tercero.cuenta' => ['nullable', 'string', 'max:40'],
                 'tercero.motivo' => ['nullable', 'string', 'max:300'],
             ];

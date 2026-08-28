@@ -39,7 +39,7 @@ final class ModelosContrato
         'a13' => ['nombre' => 'a.1.3 GPS. Deudor. 2 Bienes Futuros', 'personas' => 1, 'gps' => true, 'custodia' => false, 'bienes' => '2futuros', 'destino' => 'propio', 'sexo' => 'M'],
         'a14' => ['nombre' => 'a.1.4 GPS. Deudor. Bien futuro', 'personas' => 1, 'gps' => true, 'custodia' => false, 'bienes' => 'futuro', 'destino' => 'propio', 'sexo' => 'M'],
         'a15' => ['nombre' => 'a.1.5 GPS. Deudor. Bien futuro y bien presente', 'personas' => 1, 'gps' => true, 'custodia' => false, 'bienes' => 'futuro_presente', 'destino' => 'propio', 'sexo' => 'M'],
-        'a16' => ['nombre' => 'a.1.6 Custodia. Deudor - Contrato SIGM', 'personas' => 1, 'gps' => false, 'custodia' => true, 'bienes' => 'presente', 'destino' => 'propio', 'sexo' => 'M'],
+        'a16' => ['nombre' => 'c.1 Custodia. Deudor - Contrato SIGM', 'personas' => 1, 'gps' => false, 'custodia' => true, 'bienes' => 'presente', 'destino' => 'propio', 'sexo' => 'M'],
 
         // ─── Serie a.2 — GPS, una deudora ───
         'a2' => ['nombre' => 'a.2 GPS. Deudora - Contrato SIGM', 'personas' => 1, 'gps' => true, 'custodia' => false, 'bienes' => 'presente', 'destino' => 'propio', 'sexo' => 'F'],
@@ -48,7 +48,7 @@ final class ModelosContrato
         'a23' => ['nombre' => 'a.2.3 GPS. Deudora. 2 Bienes Futuros', 'personas' => 1, 'gps' => true, 'custodia' => false, 'bienes' => '2futuros', 'destino' => 'propio', 'sexo' => 'F'],
         'a24' => ['nombre' => 'a.2.4 GPS. Deudora. Bien futuro', 'personas' => 1, 'gps' => true, 'custodia' => false, 'bienes' => 'futuro', 'destino' => 'propio', 'sexo' => 'F'],
         'a25' => ['nombre' => 'a.2.5 GPS. Deudora. Bien futuro y bien presente', 'personas' => 1, 'gps' => true, 'custodia' => false, 'bienes' => 'futuro_presente', 'destino' => 'propio', 'sexo' => 'F'],
-        'a26' => ['nombre' => 'a.2.6 Custodia. Deudora - Contrato SIGM', 'personas' => 1, 'gps' => false, 'custodia' => true, 'bienes' => 'presente', 'destino' => 'propio', 'sexo' => 'F'],
+        'a26' => ['nombre' => 'c.2 Custodia. Deudora - Contrato SIGM', 'personas' => 1, 'gps' => false, 'custodia' => true, 'bienes' => 'presente', 'destino' => 'propio', 'sexo' => 'F'],
 
         // ─── Serie a.3 — GPS, dos deudores ───
         'a3' => ['nombre' => 'a.3 GPS. Deudores - Contrato SIGM', 'personas' => 2, 'gps' => true, 'custodia' => false, 'bienes' => 'presente', 'destino' => 'propio', 'sexo' => null],
@@ -57,7 +57,7 @@ final class ModelosContrato
         'a33' => ['nombre' => 'a.3.3 GPS. Deudores. 2 Bienes Futuros', 'personas' => 2, 'gps' => true, 'custodia' => false, 'bienes' => '2futuros', 'destino' => 'propio', 'sexo' => null],
         'a34' => ['nombre' => 'a.3.4 GPS. Deudores. Bien futuro', 'personas' => 2, 'gps' => true, 'custodia' => false, 'bienes' => 'futuro', 'destino' => 'propio', 'sexo' => null],
         'a35' => ['nombre' => 'a.3.5 GPS. Deudores. Bien futuro y bien presente', 'personas' => 2, 'gps' => true, 'custodia' => false, 'bienes' => 'futuro_presente', 'destino' => 'propio', 'sexo' => null],
-        'a36' => ['nombre' => 'a.3.6 Custodia. Deudores - Contrato SIGM', 'personas' => 2, 'gps' => false, 'custodia' => true, 'bienes' => 'presente', 'destino' => 'propio', 'sexo' => null],
+        'a36' => ['nombre' => 'c.3 Custodia. Deudores - Contrato SIGM', 'personas' => 2, 'gps' => false, 'custodia' => true, 'bienes' => 'presente', 'destino' => 'propio', 'sexo' => null],
 
         // ─── Serie a.4 — GPS, persona jurídica ───
         'a4' => ['nombre' => 'a.4 GPS. Deudor Empresa', 'personas' => 'empresa', 'gps' => true, 'custodia' => false, 'bienes' => 'presente', 'destino' => 'propio', 'sexo' => null],

@@ -119,16 +119,17 @@ class ContratoTramoETest extends TestCase
                 'gerente' => [
                     'nombre' => 'JACK BLAS SULLCA', 'dni' => '46964491', 'sexo' => 'M',
                     'nacionalidad' => 'PERUANO', 'ocupacion' => 'EMPRESARIO', 'estado_civil' => 'SOLTERO',
+                    'banco' => 'INTERBANK', 'cuenta' => '200-3006962163',
                     'domicilio' => 'AV. SALAVERRY 2900, DISTRITO DE MAGDALENA DEL MAR, PROVINCIA Y DEPARTAMENTO DE LIMA',
                 ],
             ],
             'tercero' => [
-                'nombre' => 'CARLOS HUAMAN FLORES', 'dni' => '74218017', 'cuenta' => '19172571532076',
+                'nombre' => 'CARLOS HUAMAN FLORES', 'dni' => '74218017', 'banco' => 'BCP', 'cuenta' => '19172571532076',
                 'motivo' => Documentos::MOTIVO_TERCERO,
             ],
             'bienes' => [
-                $this->v1->id => ['es_futuro' => true, 'fecha_acta' => '2026-05-04', 'kardex' => '0373-2026', 'notario' => 'JULIO BLAS'],
-                $this->v2->id => ['es_futuro' => false, 'fecha_acta' => '2026-05-04', 'kardex' => '0373-2026', 'notario' => 'JULIO BLAS'],
+                $this->v1->id => ['es_futuro' => true, 'fecha_acta' => '2026-05-04', 'kardex' => '0373-2026', 'notario' => 'JULIO BLAS', 'estado_registral' => 'EN TRÁMITE DE INSCRIPCIÓN'],
+                $this->v2->id => ['es_futuro' => false, 'fecha_acta' => '2026-05-04', 'kardex' => '0373-2026', 'notario' => 'JULIO BLAS', 'estado_registral' => 'EN TRÁMITE DE INSCRIPCIÓN'],
             ],
         ];
     }

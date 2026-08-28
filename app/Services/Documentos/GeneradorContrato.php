@@ -98,6 +98,7 @@ class GeneradorContrato
             'tercero' => $preset['destino'] === 'tercero' ? [
                 'nombre' => trim((string) ($datos['tercero']['nombre'] ?? '')),
                 'dni' => trim((string) ($datos['tercero']['dni'] ?? '')),
+                'banco' => mb_strtoupper(trim((string) ($datos['tercero']['banco'] ?? ''))),
                 'cuenta' => trim((string) ($datos['tercero']['cuenta'] ?? '')),
                 'motivo' => trim((string) ($datos['tercero']['motivo'] ?? '')),
             ] : null,
@@ -314,7 +315,7 @@ class GeneradorContrato
             }
             // Bien futuro: la declaración jurada cita la transferencia.
             if ($b['esFuturo'] ?? false) {
-                foreach (['fechaActa' => 'la fecha de transferencia', 'kardex' => 'el kárdex', 'notario' => 'el notario'] as $campo => $etiqueta) {
+                foreach (['fechaActa' => 'la fecha de transferencia', 'kardex' => 'el kárdex', 'notario' => 'el notario', 'estadoRegistral' => 'el estado registral'] as $campo => $etiqueta) {
                     if (blank($b[$campo] ?? null)) {
                         $errores[] = "Falta {$etiqueta} del vehículo {$n}, que es bien futuro.";
                     }
@@ -330,11 +331,22 @@ class GeneradorContrato
             $errores[] = 'Falta el banco del desembolso: la constancia de entrega lo menciona.';
         }
 
+        if ($snapshot['destino'] === 'gerente') {
+            $g = $snapshot['deudores'][0]['gerente'] ?? [];
+            if (blank($g['banco'] ?? null)) {
+                $errores[] = 'El depósito al gerente necesita el banco de su cuenta personal.';
+            }
+            if (blank($g['cuenta'] ?? null)) {
+                $errores[] = 'El depósito al gerente necesita su cuenta personal.';
+            }
+        }
+
         if ($snapshot['destino'] === 'tercero') {
             foreach ([
                 'nombre' => 'el nombre del tercero',
                 'dni' => 'el DNI del tercero',
-                'cuenta' => 'la cuenta del tercero',
+                'banco' => 'el banco del tercero',
+                'cuenta' => 'la cuenta o CCI del tercero',
                 'motivo' => 'el motivo de la autorización',
             ] as $campo => $etiqueta) {
                 if (blank($snapshot['tercero'][$campo] ?? null)) {
@@ -509,7 +521,13 @@ class GeneradorContrato
             'gerente' => [
                 'sexo' => mb_strtoupper(trim((string) (($gerente['sexo'] ?? null) ?: 'M'))),
                 'nombre' => mb_strtoupper(trim((string) ($gerente['nombre'] ?? ''))),
+                'documentoTipo' => self::etiquetaDocumento($gerente['tipo_documento'] ?? null),
                 'dni' => trim((string) ($gerente['dni'] ?? '')),
+                // Banco y cuenta personal del gerente (a.4.1): la Guía simple
+                // los exige como dato del sistema; la maestra no los imprime,
+                // quedan congelados en el snapshot.
+                'banco' => mb_strtoupper(trim((string) ($gerente['banco'] ?? ''))),
+                'cuenta' => trim((string) ($gerente['cuenta'] ?? '')),
                 'nacionalidad' => mb_strtoupper(trim((string) ($gerente['nacionalidad'] ?? ''))),
                 'ocupacion' => mb_strtoupper(trim((string) ($gerente['ocupacion'] ?? ''))),
                 'estadoCivil' => mb_strtoupper(trim((string) ($gerente['estado_civil'] ?? ''))),
@@ -592,6 +610,9 @@ class GeneradorContrato
                 'kardex' => filled($d['kardex'] ?? null) ? trim((string) $d['kardex']) : null,
                 'notario' => filled($d['notario'] ?? null) ? mb_strtoupper(trim((string) $d['notario'])) : null,
                 'fechaActa' => self::fechaActa($d['fecha_acta'] ?? null),
+                // La Guía simple lo pide junto con fecha/kárdex/notario; las
+                // maestras no lo imprimen — queda en el snapshot.
+                'estadoRegistral' => filled($d['estado_registral'] ?? null) ? mb_strtoupper(trim((string) $d['estado_registral'])) : null,
             ];
         }
 

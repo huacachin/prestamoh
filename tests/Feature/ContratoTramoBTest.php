@@ -276,11 +276,12 @@ class ContratoTramoBTest extends TestCase
         $this->assertStringContainsString('kárdex', $texto);
         $this->assertStringContainsString('notario', $texto);
 
-        // Con los tres datos, deja emitir.
+        // Con los cuatro datos (la Guía simple suma el estado registral), deja emitir.
         $ok = GeneradorContrato::validar($client, $credit, [$v->id], 'a24', $this->datos() + [
             'bienes' => [$v->id => [
                 'es_futuro' => true, 'fecha_acta' => '2026-05-04',
                 'kardex' => '0373-2026', 'notario' => 'JULIO BLAS',
+                'estado_registral' => 'EN TRÁMITE DE INSCRIPCIÓN',
             ]],
         ]);
         $this->assertSame([], $ok, implode(' | ', $ok));

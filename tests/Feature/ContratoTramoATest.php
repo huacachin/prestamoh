@@ -153,18 +153,20 @@ class ContratoTramoATest extends TestCase
                     'ocupacion' => 'EMPRESARIA',
                     'estado_civil' => 'CASADA',
                     'domicilio' => 'AV. SALAVERRY 2900, DISTRITO DE MAGDALENA DEL MAR, PROVINCIA Y DEPARTAMENTO DE LIMA',
+                    'banco' => 'INTERBANK',
+                    'cuenta' => '200-3006962163',
                 ],
             ],
             'tercero' => [
                 'nombre' => 'CARLOS HUAMAN FLORES',
                 'dni' => '74218017',
-                'cuenta' => '19172571532076',
+                'banco' => 'BCP', 'cuenta' => '19172571532076',
                 'motivo' => Documentos::MOTIVO_TERCERO,
             ],
             'banco' => 'bcp',
             'bienes' => [
-                $this->v1->id => ['es_futuro' => true, 'fecha_acta' => '2026-05-04', 'kardex' => '0373-2026', 'notario' => 'JULIO WILDER BLAS ALIPAZAGA'],
-                $this->v2->id => ['es_futuro' => false, 'fecha_acta' => '2026-05-04', 'kardex' => '0373-2026', 'notario' => 'JULIO WILDER BLAS ALIPAZAGA'],
+                $this->v1->id => ['es_futuro' => true, 'fecha_acta' => '2026-05-04', 'kardex' => '0373-2026', 'notario' => 'JULIO WILDER BLAS ALIPAZAGA', 'estado_registral' => 'EN TRÁMITE DE INSCRIPCIÓN'],
+                $this->v2->id => ['es_futuro' => false, 'fecha_acta' => '2026-05-04', 'kardex' => '0373-2026', 'notario' => 'JULIO WILDER BLAS ALIPAZAGA', 'estado_registral' => 'EN TRÁMITE DE INSCRIPCIÓN'],
             ],
         ];
     }

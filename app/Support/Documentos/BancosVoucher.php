@@ -35,10 +35,15 @@ final class BancosVoucher
 
     public const MODALIDADES = [
         'transferencia' => 'Transferencia',
+        'transferencia_datos' => 'Transferencia (datos de la operación)',
+        'transferencia_interbancaria' => 'Transferencia interbancaria',
         'deposito' => 'Depósito en ventanilla',
+        'deposito_descripcion' => 'Depósito (con descripción)',
         'yape' => 'Yape',
         'cajero' => 'Depósito en cajero/agente',
         'entre_cuentas' => 'Transferencia entre cuentas',
+        'detalle_movimiento' => 'Detalle de movimiento',
+        'constancia' => 'Constancia de transferencia',
     ];
 
     /**
@@ -88,6 +93,32 @@ final class BancosVoucher
                 'cuenta_destino' => ['CUENTA DE DESTINO', true],
                 'nro_operacion' => ['N° DE OPERACIÓN', true],
             ],
+            // Voucher 1.2 del set final: la app del BCP con el detalle
+            // "DATOS DE LA OPERACIÓN" desplegado.
+            'transferencia_datos' => [
+                'monto' => ['MONTO TRANSFERIDO', true],
+                'operacion_realizada' => ['OPERACIÓN REALIZADA', false],
+                'fecha_hora' => ['FECHA Y HORA', true],
+                'beneficiario' => ['ENVIADO A', true],
+                'cuenta_destino' => ['CUENTA DE DESTINO', true],
+                'cuenta_origen' => ['DESDE (CUENTA DE ORIGEN)', false],
+                'mensaje' => ['MENSAJE', false],
+                'canal' => ['CANAL', false],
+                'nro_operacion' => ['N° DE OPERACIÓN', true],
+            ],
+            // Voucher 1.3 del set final: transferencia interbancaria (BCP →
+            // otro banco), con comisión y total cobrado.
+            'transferencia_interbancaria' => [
+                'monto' => ['MONTO TRANSFERIDO', true],
+                'fecha_hora' => ['FECHA Y HORA', true],
+                'beneficiario' => ['ENVIADO A', true],
+                'cuenta_destino' => ['CUENTA DE DESTINO (BANCO)', true],
+                'comision' => ['COMISIÓN', false],
+                'total_cobrado' => ['TOTAL COBRADO', false],
+                'cuenta_origen' => ['DESDE (CUENTA DE ORIGEN)', false],
+                'nro_operacion' => ['NÚMERO DE OPERACIÓN', true],
+                'mensaje' => ['MENSAJE', false],
+            ],
         ],
         'bbva' => [
             'transferencia' => [
@@ -119,6 +150,15 @@ final class BancosVoucher
                 'nro_cajero' => ['N° DE CAJERO', false],
                 'nro_movimiento' => ['N° DE MOVIMIENTO', true],
             ],
+            // Voucher 2.2 del set final: pantalla "detalle movimiento" de la
+            // app (mínima: el IMPORTE sale en negativo — el cuadre usa la
+            // magnitud).
+            'detalle_movimiento' => [
+                'monto' => ['IMPORTE', true],
+                'fecha_hora' => ['FECHA Y HORA', true],
+                'concepto' => ['CONCEPTO', false],
+                'nro_operacion' => ['NÚMERO DE OPERACIÓN', true],
+            ],
         ],
         'interbank' => [
             'transferencia' => [
@@ -137,6 +177,16 @@ final class BancosVoucher
                 'cuenta_destino' => ['CUENTA DE DESTINO', true],
                 'agencia' => ['AGENCIA/TIENDA', false],
                 'nro_operacion' => ['N° DE OPERACIÓN', true],
+            ],
+            // Voucher 5.2 del set final: constancia formal de transferencia.
+            'constancia' => [
+                'monto' => ['MONEDA Y MONTO', true],
+                'fecha_hora' => ['FECHA Y HORA', true],
+                'titular_origen' => ['TITULAR', false],
+                'cuenta_origen' => ['CUENTA A CARGO', false],
+                'beneficiario' => ['DESTINATARIO', true],
+                'cuenta_destino' => ['CUENTA DE DESTINO', true],
+                'nro_operacion' => ['CÓDIGO DE OPERACIÓN', true],
             ],
         ],
         'caja_cusco' => [
@@ -162,6 +212,20 @@ final class BancosVoucher
                 'itf' => ['ITF', false],
                 'depositante' => ['DATOS DEL DEPOSITANTE', false],
                 'descripcion' => ['DESCRIPCIÓN', false],
+            ],
+            // Voucher 3.2 del set final: depósito con la descripción y el
+            // detalle de efectivo/ITF desplegado.
+            'deposito_descripcion' => [
+                'monto' => ['DEPÓSITO', true],
+                'fecha_hora' => ['FECHA Y HORA', true],
+                'beneficiario' => ['NOMBRE', true],
+                'cuenta_destino' => ['CTA.', true],
+                'cci' => ['NRO. CCI', false],
+                'total_efectivo' => ['TOT. EFECTIVO', false],
+                'itf' => ['IMP. (ITF)', false],
+                'comision' => ['COM (FUE-PLA)', false],
+                'descripcion' => ['DESCRIPCIÓN', false],
+                'nro_operacion' => ['DOC.', false],
             ],
         ],
     ];

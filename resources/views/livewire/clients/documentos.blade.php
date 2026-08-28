@@ -402,19 +402,24 @@
                                                          cita la cláusula de declaración jurada. La FECHA es la
                                                          "fecha de transferencia" que exige la guía del área. --}}
                                                     <div class="row g-1 mt-1">
-                                                        <div class="col-4">
+                                                        <div class="col-3">
                                                             <input type="date" class="form-control form-control-sm @error('contratoVehiculos.'.$i.'.fecha_acta') is-invalid @enderror"
                                                                    title="Fecha de la transferencia vehicular"
                                                                    wire:model.blur="contratoVehiculos.{{ $i }}.fecha_acta">
                                                             @error('contratoVehiculos.'.$i.'.fecha_acta') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                                         </div>
-                                                        <div class="col-4">
+                                                        <div class="col-3">
                                                             <input type="text" class="form-control form-control-sm" placeholder="Kardex (ej. 0373-2026)"
                                                                    wire:model.blur="contratoVehiculos.{{ $i }}.kardex">
                                                         </div>
-                                                        <div class="col-4">
+                                                        <div class="col-3">
                                                             <input type="text" class="form-control form-control-sm" placeholder="Notario"
                                                                    wire:model.blur="contratoVehiculos.{{ $i }}.notario">
+                                                        </div>
+                                                        <div class="col-3">
+                                                            <input type="text" class="form-control form-control-sm" placeholder="Estado registral"
+                                                                   title="Estado registral de la transferencia (ej. EN TRÁMITE DE INSCRIPCIÓN)"
+                                                                   wire:model.blur="contratoVehiculos.{{ $i }}.estado_registral">
                                                         </div>
                                                     </div>
                                                 @endif
@@ -473,10 +478,17 @@
                                             @error('gerente.nombre') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                         </div>
                                         <div class="col-md-3">
-                                            <label class="form-label small mb-1">DNI *</label>
-                                            <input type="text" class="form-control form-control-sm @error('gerente.dni') is-invalid @enderror"
-                                                   wire:model.blur="gerente.dni">
-                                            @error('gerente.dni') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                            <label class="form-label small mb-1">Documento *</label>
+                                            <div class="input-group input-group-sm">
+                                                <select class="form-select form-select-sm @error('gerente.tipo_documento') is-invalid @enderror"
+                                                        style="max-width: 5.5rem;" wire:model.live="gerente.tipo_documento">
+                                                    <option value="DNI">DNI</option>
+                                                    <option value="CE">CE</option>
+                                                </select>
+                                                <input type="text" class="form-control form-control-sm @error('gerente.dni') is-invalid @enderror"
+                                                       wire:model.blur="gerente.dni">
+                                            </div>
+                                            @error('gerente.dni') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                                         </div>
                                         <div class="col-md-3">
                                             <label class="form-label small mb-1">Género *</label>
@@ -712,7 +724,13 @@
                                                         @error('tercero.dni') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                                     </div>
                                                     <div class="col-md-3">
-                                                        <label class="form-label small mb-1">N° de cuenta</label>
+                                                        <label class="form-label small mb-1">Banco *</label>
+                                                        <input type="text" class="form-control form-control-sm @error('tercero.banco') is-invalid @enderror"
+                                                               wire:model.blur="tercero.banco" placeholder="BCP / Interbank / ...">
+                                                        @error('tercero.banco') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label small mb-1">N° de cuenta o CCI</label>
                                                         <input type="text" class="form-control form-control-sm" wire:model.blur="tercero.cuenta">
                                                     </div>
                                                     <div class="col-12">

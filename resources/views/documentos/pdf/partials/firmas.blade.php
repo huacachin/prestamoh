@@ -41,7 +41,7 @@
                                 {{ mb_strtoupper($celda['nombre']) }}<br>
                                 RUC N° {{ $celda['ruc'] }}<br>
                                 GERENTE GENERAL: {{ mb_strtoupper($celda['gerente']['nombre']) }}<br>
-                                DNI N° {{ $celda['gerente']['dni'] }}<br>
+                                {{ $celda['gerente']['documentoTipo'] ?? 'DNI' }} N° {{ $celda['gerente']['dni'] }}<br>
                                 {{ $vm->g->deudor() }}
                             @else
                                 {{ mb_strtoupper($celda['nombre']) }}<br>
