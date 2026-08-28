@@ -118,15 +118,17 @@
         <div class="table-responsive">
             <table class="table table-bordered table-striped table-hover table-autofit mb-0" style="font-size: 12px;">
                 <thead class="bg-primary">
+                    {{-- Motor y serie son códigos largos (hasta 30 car.): van sin
+                         cortar y con ancho propio; marca/modelo y color ceden espacio. --}}
                     <tr>
-                        <th class="text-center" width="90">Placa</th>
-                        <th>Marca / Modelo</th>
-                        <th class="text-center" width="110">N° Motor</th>
-                        <th class="text-center" width="140">N° Serie</th>
-                        <th class="text-center" width="70">Año</th>
-                        <th>Color</th>
-                        <th class="text-end" width="100">Valor (S/)</th>
-                        @if($puedeEditar)<th class="text-center" width="90">Op.</th>@endif
+                        <th class="text-center" width="80">Placa</th>
+                        <th width="190">Marca / Modelo</th>
+                        <th class="text-center" width="180">N° Motor</th>
+                        <th class="text-center" width="180">N° Serie</th>
+                        <th class="text-center" width="60">Año</th>
+                        <th width="120">Color</th>
+                        <th class="text-end" width="95">Valor (S/)</th>
+                        @if($puedeEditar)<th class="text-center" width="75">Op.</th>@endif
                     </tr>
                 </thead>
                 <tbody>
@@ -134,8 +136,8 @@
                         <tr wire:key="veh-{{ $v->id }}">
                             <td class="text-center fw-bold">{{ $v->placa }}</td>
                             <td>{{ trim($v->marca.' '.$v->modelo) ?: '—' }}</td>
-                            <td class="text-center">{{ $v->nro_motor ?: '—' }}</td>
-                            <td class="text-center">{{ $v->nro_serie ?: '—' }}</td>
+                            <td class="text-center" style="white-space:nowrap;">{{ $v->nro_motor ?: '—' }}</td>
+                            <td class="text-center" style="white-space:nowrap;">{{ $v->nro_serie ?: '—' }}</td>
                             <td class="text-center">{{ $v->anio_modelo ?: '—' }}</td>
                             <td>{{ $v->color ?: '—' }}</td>
                             <td class="text-end">{{ $v->valor !== null ? number_format((float) $v->valor, 2) : '—' }}</td>
