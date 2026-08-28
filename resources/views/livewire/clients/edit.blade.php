@@ -174,8 +174,12 @@
 
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">T.Credito</label>
-                        <input type="text" class="form-control form-control-sm"
-                               wire:model.defer="zona" name="zona" autocomplete="on" placeholder="Zona o ruta">
+                        <select class="form-select form-select-sm @error('zona') is-invalid @enderror" wire:model.defer="zona">
+                            <option value="">— Seleccione —</option>
+                            @foreach(\App\Support\TiposCredito::paraValor($zona) as $opcion)
+                                <option value="{{ $opcion }}">{{ $opcion }}</option>
+                            @endforeach
+                        </select>
                     </div>
 
                     {{-- Casa / Negocio: solo SuperUsuario y solo si la coord existe --}}

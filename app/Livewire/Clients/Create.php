@@ -6,6 +6,7 @@ use App\Models\Client;
 use App\Models\User;
 use App\Services\Factiliza;
 use App\Support\Audit;
+use App\Support\TiposCredito;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 
@@ -319,7 +320,7 @@ class Create extends Component
             'direccion' => 'nullable|string|max:255',
             'giro' => 'nullable|string|max:100',
             'capital' => 'nullable|numeric|min:0',
-            'zona' => 'nullable|string|max:100',
+            'zona' => 'nullable|string|in:'.implode(',', TiposCredito::OPCIONES),
             'celular1' => 'nullable|string|max:20',
             'celular2' => 'nullable|string|max:20',
             'asesor_id' => 'nullable|exists:users,id',

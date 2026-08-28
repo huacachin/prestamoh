@@ -6,6 +6,7 @@ use App\Models\Client;
 use App\Models\Credit;
 use App\Models\User;
 use App\Support\Audit;
+use App\Support\TiposCredito;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -87,7 +88,8 @@ class Edit extends Component
             'telefono_secundario' => 'nullable|string|max:20',
             'celular1' => 'nullable|string|max:20',
             'celular2' => 'nullable|string|max:20',
-            'zona' => 'nullable|string|max:100',
+            // Acepta las opciones vigentes y el valor histórico ya guardado
+            'zona' => 'nullable|string|in:'.implode(',', TiposCredito::paraValor($this->zona)),
             'asesor_id' => 'nullable|exists:users,id',
         ];
     }

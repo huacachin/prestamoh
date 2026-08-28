@@ -195,8 +195,12 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label mb-0 small fw-semibold">T. Crédito</label>
-                            <input type="text" class="form-control form-control-sm"
-                                   wire:model.defer="zona" name="zona" autocomplete="on" placeholder="Zona o ruta">
+                            <select class="form-select form-select-sm @error('zona') is-invalid @enderror" wire:model.defer="zona">
+                                <option value="">— Seleccione —</option>
+                                @foreach(\App\Support\TiposCredito::OPCIONES as $opcion)
+                                    <option value="{{ $opcion }}">{{ $opcion }}</option>
+                                @endforeach
+                            </select>
                         </div>
 
                         <div class="col-md-3">

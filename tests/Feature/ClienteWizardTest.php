@@ -6,6 +6,7 @@ use App\Livewire\Clients\Create;
 use App\Models\Client;
 use App\Models\User;
 use App\Models\Vehiculo;
+use App\Support\TiposCredito;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -236,6 +237,43 @@ class ClienteWizardTest extends TestCase
         $this->assertSame('8632404', $veh['nro_motor']);
         $this->assertSame('9BD25521A98854312', $veh['nro_serie']);
         $comp->assertSet('vehMsgType', 'ok');
+    }
+
+    // ─── T. Crédito (clients.zona → garantía legal) ─────────
+
+    public function test_t_credito_solo_acepta_las_opciones_del_catalogo(): void
+    {
+        $this->paso1()->set('zona', 'Cualquier Cosa')
+            ->call('siguientePaso')
+            ->assertHasErrors('zona')
+            ->assertSet('paso', 1);
+
+        $this->paso1()->set('zona', 'Gar. Hip.S')
+            ->call('siguientePaso')
+            ->assertHasNoErrors()
+            ->assertSet('paso', 2);
+    }
+
+    public function test_t_credito_puede_quedar_vacio(): void
+    {
+        $this->paso1()->set('zona', '')
+            ->call('siguientePaso')
+            ->assertHasNoErrors()
+            ->assertSet('paso', 2);
+    }
+
+    public function test_editar_conserva_el_t_credito_historico(): void
+    {
+        // Los clientes migrados tienen valores fuera del catálogo
+        // ("Demandado Casa", "SIGM.S-Rojo 14/07"): editarlos no debe borrarlos.
+        $opciones = TiposCredito::paraValor('SIGM.S-Rojo 14/07');
+        $this->assertSame('SIGM.S-Rojo 14/07', $opciones[0]);
+        $this->assertContains('SIGM.M', $opciones);
+        $this->assertCount(7, $opciones);
+
+        // Un valor del catálogo no se duplica
+        $this->assertCount(6, TiposCredito::paraValor('SIGM.M'));
+        $this->assertCount(6, TiposCredito::paraValor(null));
     }
 
     public function test_dni_con_largo_invalido_no_consulta(): void
