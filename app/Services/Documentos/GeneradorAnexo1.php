@@ -8,6 +8,7 @@ use App\Models\DocumentoCliente;
 use App\Models\Vehiculo;
 use App\Support\Audit;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -30,7 +31,17 @@ class GeneradorAnexo1
      *                            pisa la fecha del documento; 'valor_vehiculo'
      *                            pisa vehiculo.valor en el snapshot.
      */
-    public static function construirSnapshot(Client $client, Credit $credit, ?Vehiculo $vehiculo, array $overrides = []): array
+    /** Acepta un Vehiculo suelto, una colección/array o null → siempre colección. */
+    private static function comoColeccion(Vehiculo|iterable|null $vehiculo): Collection
+    {
+        if ($vehiculo === null) {
+            return collect();
+        }
+
+        return $vehiculo instanceof Vehiculo ? collect([$vehiculo]) : collect($vehiculo)->filter();
+    }
+
+    public static function construirSnapshot(Client $client, Credit $credit, Vehiculo|iterable|null $vehiculo, array $overrides = []): array
     {
         // Cronograma ÍNTEGRO desde credit_installments (la relación no ordena).
         $filas = $credit->installments()
@@ -51,20 +62,20 @@ class GeneradorAnexo1
             ->keys()
             ->first();
 
-        $vehiculoDatos = null;
-        if ($vehiculo) {
-            $valor = array_key_exists('valor_vehiculo', $overrides)
-                ? $overrides['valor_vehiculo']
-                : $vehiculo->valor;
+        // Varios vehículos por anexo (28/08). Los valores llegan en
+        // $overrides['valores_vehiculo'] indexados por id del vehículo.
+        $valores = $overrides['valores_vehiculo'] ?? [];
+        $vehiculosDatos = self::comoColeccion($vehiculo)->map(function (Vehiculo $v) use ($valores) {
+            $valor = array_key_exists($v->id, $valores) ? $valores[$v->id] : $v->valor;
 
-            $vehiculoDatos = [
-                'placa' => mb_strtoupper(trim((string) $vehiculo->placa)),
-                'marca' => mb_strtoupper(trim((string) $vehiculo->marca)),
-                'modelo' => mb_strtoupper(trim((string) $vehiculo->modelo)),
-                'nro_serie' => mb_strtoupper(trim((string) $vehiculo->nro_serie)),
+            return [
+                'placa' => mb_strtoupper(trim((string) $v->placa)),
+                'marca' => mb_strtoupper(trim((string) $v->marca)),
+                'modelo' => mb_strtoupper(trim((string) $v->modelo)),
+                'nro_serie' => mb_strtoupper(trim((string) $v->nro_serie)),
                 'valor' => ($valor !== null && $valor !== '') ? (float) $valor : null,
             ];
-        }
+        })->values()->all();
 
         return [
             'marca' => config('documentos.marca'),
@@ -77,7 +88,10 @@ class GeneradorAnexo1
                 'celular' => trim((string) $client->celular1),
                 'correo' => trim((string) $client->email),
             ],
-            'vehiculo' => $vehiculoDatos,
+            // 'vehiculo' (singular) se conserva para que los documentos ya
+            // emitidos y las vistas antiguas sigan resolviendo igual.
+            'vehiculo' => $vehiculosDatos[0] ?? null,
+            'vehiculos' => $vehiculosDatos,
             'credito' => [
                 'numero' => $credit->id,
                 'moneda' => 'SOLES',
@@ -99,12 +113,17 @@ class GeneradorAnexo1
      * $overrides trae 'valor_vehiculo' y hay vehículo, además persiste ese
      * valor en el Vehiculo (el dato sirve para el contrato después).
      */
-    public static function generar(Client $client, Credit $credit, ?Vehiculo $vehiculo, array $overrides = []): DocumentoCliente
+    public static function generar(Client $client, Credit $credit, Vehiculo|iterable|null $vehiculo, array $overrides = []): DocumentoCliente
     {
         return DB::transaction(function () use ($client, $credit, $vehiculo, $overrides) {
-            if ($vehiculo && array_key_exists('valor_vehiculo', $overrides)) {
-                $valor = $overrides['valor_vehiculo'];
-                $vehiculo->update(['valor' => ($valor !== null && $valor !== '') ? (float) $valor : null]);
+            // El valor tipeado se persiste en la ficha de CADA vehículo (el
+            // contrato lo reutiliza después).
+            $valores = $overrides['valores_vehiculo'] ?? [];
+            foreach (self::comoColeccion($vehiculo) as $v) {
+                if (array_key_exists($v->id, $valores)) {
+                    $valor = $valores[$v->id];
+                    $v->update(['valor' => ($valor !== null && $valor !== '') ? (float) $valor : null]);
+                }
             }
 
             $snapshot = self::construirSnapshot($client, $credit, $vehiculo, $overrides);
@@ -146,7 +165,7 @@ class GeneradorAnexo1
      * HTML del documento con medio 'previa' (iframe del modal), sin persistir
      * nada — mismo snapshot y misma vista que el PDF emitido.
      */
-    public static function previsualizar(Client $client, Credit $credit, ?Vehiculo $vehiculo, array $overrides = []): string
+    public static function previsualizar(Client $client, Credit $credit, Vehiculo|iterable|null $vehiculo, array $overrides = []): string
     {
         $snapshot = self::construirSnapshot($client, $credit, $vehiculo, $overrides);
 

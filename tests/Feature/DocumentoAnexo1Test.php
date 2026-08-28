@@ -124,7 +124,7 @@ class DocumentoAnexo1Test extends TestCase
 
         // Claves exactas del contrato, en cada nivel.
         $this->assertEqualsCanonicalizing(
-            ['marca', 'fecha', 'cliente', 'vehiculo', 'credito', 'cronograma'],
+            ['marca', 'fecha', 'cliente', 'vehiculo', 'vehiculos', 'credito', 'cronograma'],
             array_keys($d)
         );
         $this->assertEqualsCanonicalizing(
@@ -191,7 +191,7 @@ class DocumentoAnexo1Test extends TestCase
         // Snapshot congelado con el contrato
         $d = $doc->snapshot;
         $this->assertEqualsCanonicalizing(
-            ['marca', 'fecha', 'cliente', 'vehiculo', 'credito', 'cronograma'],
+            ['marca', 'fecha', 'cliente', 'vehiculo', 'vehiculos', 'credito', 'cronograma'],
             array_keys($d)
         );
         $this->assertEquals($this->credit->id, $d['credito']['numero']);
@@ -211,14 +211,54 @@ class DocumentoAnexo1Test extends TestCase
         $this->assertSame(2, DocumentoCliente::count());
     }
 
+    public function test_anexo_con_varios_vehiculos(): void
+    {
+        $this->mundo();
+        Storage::fake('public');
+
+        $segundo = Vehiculo::create([
+            'client_id' => $this->client->id, 'placa' => 'SEG-222',
+            'marca' => 'Hyundai', 'modelo' => 'H1', 'nro_serie' => 'SERIE222',
+        ]);
+
+        $doc = $this->generador()->generar(
+            $this->client, $this->credit,
+            collect([$this->vehiculo, $segundo]),
+            ['valores_vehiculo' => [$this->vehiculo->id => 15000, $segundo->id => 22000]]
+        );
+
+        $vehiculos = $doc->snapshot['vehiculos'];
+        $this->assertCount(2, $vehiculos);
+        $this->assertSame('SEG-222', $vehiculos[1]['placa']);
+        $this->assertEqualsWithDelta(22000.0, $vehiculos[1]['valor'], 0.001);
+        // 'vehiculo' (singular) sigue apuntando al primero: compatibilidad
+        $this->assertSame($vehiculos[0]['placa'], $doc->snapshot['vehiculo']['placa']);
+        // Cada valor se persiste en su ficha
+        $this->assertSame('15000.00', $this->vehiculo->fresh()->valor);
+        $this->assertSame('22000.00', $segundo->fresh()->valor);
+    }
+
+    public function test_anexo_sin_vehiculos_sigue_siendo_valido(): void
+    {
+        $this->mundo();
+        Storage::fake('public');
+
+        $doc = $this->generador()->generar($this->client, $this->credit, null);
+
+        $this->assertSame([], $doc->snapshot['vehiculos']);
+        $this->assertNull($doc->snapshot['vehiculo']);
+    }
+
     public function test_override_de_valor_persiste_en_el_vehiculo(): void
     {
         $this->mundo();
         Storage::fake('public');
 
-        $doc = $this->generador()->generar($this->client, $this->credit, $this->vehiculo, ['valor_vehiculo' => 12000]);
+        $doc = $this->generador()->generar($this->client, $this->credit, $this->vehiculo,
+            ['valores_vehiculo' => [$this->vehiculo->id => 12000]]);
 
         $this->assertEqualsWithDelta(12000.0, $doc->snapshot['vehiculo']['valor'], 0.001);
+        $this->assertEqualsWithDelta(12000.0, $doc->snapshot['vehiculos'][0]['valor'], 0.001);
         // El valor capturado al generar se guarda en el vehículo (decimal:2)
         $this->assertSame('12000.00', $this->vehiculo->fresh()->valor);
     }

@@ -43,7 +43,13 @@ class Documentos extends Component
     // ── Estado del modal "Generar Anexo 1" ──
     public ?int $creditoId = null;
 
-    public ?int $vehiculoId = null;
+    /** Anexo 1: varios vehículos (28/08). @var array<int, int> */
+    public array $anexoVehiculos = [];
+
+    /** Valor tipeado por vehículo: [id => '12345.00']. @var array<int, string> */
+    public array $anexoValores = [];
+
+    public ?int $vehiculoId = null;   // contrato (selección por slot), no tocar
 
     /** Valor del vehículo (S/) editable; se guarda en la ficha del vehículo. */
     public string $valorVehiculo = '';
@@ -156,6 +162,9 @@ class Documentos extends Component
             'creditoId' => 'required|integer',
             'vehiculoId' => 'nullable|integer',
             'valorVehiculo' => 'nullable|numeric|min:0',
+            'anexoVehiculos' => 'array',
+            'anexoVehiculos.*' => 'integer',
+            'anexoValores.*' => 'nullable|numeric|min:0',
             'fechaDoc' => 'required|date|before_or_equal:today',
         ];
     }
@@ -197,8 +206,12 @@ class Documentos extends Component
         $vehiculos = $this->vehiculosCliente();
 
         $this->creditoId = $creditos->count() === 1 ? $creditos->first()->id : null;
-        $this->vehiculoId = $vehiculos->count() === 1 ? $vehiculos->first()->id : null;
-        $this->valorVehiculo = $this->valorDe($this->vehiculoId);
+        // Se preseleccionan todos: lo habitual es anexar la garantía completa;
+        // desmarcar es más rápido que buscar y marcar uno por uno.
+        $this->anexoVehiculos = $vehiculos->pluck('id')->all();
+        $this->anexoValores = $vehiculos
+            ->mapWithKeys(fn ($v) => [$v->id => $v->valor !== null ? number_format((float) $v->valor, 2, '.', '') : ''])
+            ->all();
         $this->fechaDoc = now()->format('Y-m-d');
         $this->htmlPreview = '';
         $this->resetErrorBag();
@@ -210,6 +223,16 @@ class Documentos extends Component
     public function updatedVehiculoId(): void
     {
         $this->valorVehiculo = $this->valorDe($this->vehiculoId);
+        $this->htmlPreview = '';
+    }
+
+    public function updatedAnexoVehiculos(): void
+    {
+        $this->htmlPreview = '';
+    }
+
+    public function updatedAnexoValores(): void
+    {
         $this->htmlPreview = '';
     }
 
@@ -691,11 +714,14 @@ class Documentos extends Component
             return [$client, null, null];
         }
 
-        $vehiculo = $this->vehiculoId
-            ? Vehiculo::where('client_id', $this->clientId)->find($this->vehiculoId)
-            : null;
-        if ($this->vehiculoId && ! $vehiculo) {
-            $this->dispatch('errorAlert', ['message' => 'El vehículo seleccionado no pertenece al cliente.']);
+        // Anexo 1: 0..N vehículos, todos deben ser del cliente
+        $ids = array_values(array_filter(array_map('intval', $this->anexoVehiculos)));
+        $vehiculo = $ids === []
+            ? collect()
+            : Vehiculo::where('client_id', $this->clientId)->whereIn('id', $ids)->orderBy('id')->get();
+
+        if ($ids !== [] && $vehiculo->count() !== count($ids)) {
+            $this->dispatch('errorAlert', ['message' => 'Alguno de los vehículos seleccionados no pertenece al cliente.']);
 
             return [$client, null, null];
         }
@@ -704,14 +730,28 @@ class Documentos extends Component
     }
 
     /** Overrides del generador: 'fecha' en d/m/Y y 'valor_vehiculo' float|null. */
-    private function overrides(?Vehiculo $vehiculo): array
+    private function overrides($vehiculo): array
     {
+        $valores = [];
+        foreach ($this->comoLista($vehiculo) as $v) {
+            $tecleado = $this->anexoValores[$v->id] ?? '';
+            $valores[$v->id] = $tecleado !== '' ? round((float) $tecleado, 2) : null;
+        }
+
         return [
             'fecha' => Carbon::parse($this->fechaDoc)->format('d/m/Y'),
-            'valor_vehiculo' => ($vehiculo && $this->valorVehiculo !== '')
-                ? round((float) $this->valorVehiculo, 2)
-                : null,
+            'valores_vehiculo' => $valores,
         ];
+    }
+
+    /** @return iterable<Vehiculo> */
+    private function comoLista($vehiculo): iterable
+    {
+        if ($vehiculo === null) {
+            return [];
+        }
+
+        return $vehiculo instanceof Vehiculo ? [$vehiculo] : $vehiculo;
     }
 
     private function creditosActivos()

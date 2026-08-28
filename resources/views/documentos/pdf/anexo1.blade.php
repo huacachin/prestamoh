@@ -49,33 +49,43 @@
         @endif
     </table>
 
-    @if ($d['vehiculo'])
+    @php
+        // Snapshots nuevos traen 'vehiculos' (varios); los emitidos antes del
+        // 28/08 traen 'vehiculo' (uno) y deben seguir imprimiéndose igual.
+        $vehiculos = $d['vehiculos'] ?? (($d['vehiculo'] ?? null) ? [$d['vehiculo']] : []);
+        $varios = count($vehiculos) > 1;
+    @endphp
+    @foreach ($vehiculos as $i => $veh)
         <table class="datos">
-            <tr><th colspan="2">DATOS DEL VEHÍCULO</th></tr>
+            <tr>
+                <th colspan="2">
+                    DATOS DEL VEHÍCULO{{ $varios ? ' '.($i + 1) : '' }}
+                </th>
+            </tr>
             <tr>
                 <th style="width: 35%;">PLACA DE RODAJE</th>
-                <td>{{ $d['vehiculo']['placa'] ?: '—' }}</td>
+                <td>{{ $veh['placa'] ?: '—' }}</td>
             </tr>
             <tr>
                 <th>MARCA</th>
-                <td>{{ $d['vehiculo']['marca'] ?: '—' }}</td>
+                <td>{{ $veh['marca'] ?: '—' }}</td>
             </tr>
             <tr>
                 <th>MODELO</th>
-                <td>{{ $d['vehiculo']['modelo'] ?: '—' }}</td>
+                <td>{{ $veh['modelo'] ?: '—' }}</td>
             </tr>
             <tr>
                 <th>N° SERIE</th>
-                <td>{{ $d['vehiculo']['nro_serie'] ?: '—' }}</td>
+                <td>{{ $veh['nro_serie'] ?: '—' }}</td>
             </tr>
-            @if ($d['vehiculo']['valor'] !== null)
+            @if ($veh['valor'] !== null)
                 <tr>
                     <th>VALOR DEL VEHÍCULO</th>
-                    <td>S/ {{ number_format((float) $d['vehiculo']['valor'], 2) }}</td>
+                    <td>S/ {{ number_format((float) $veh['valor'], 2) }}</td>
                 </tr>
             @endif
         </table>
-    @endif
+    @endforeach
 
     <table class="datos">
         <tr><th colspan="2">DATOS DEL CRÉDITO</th></tr>

@@ -194,23 +194,50 @@
                                        wire:model.live="fechaDoc" max="{{ now()->format('Y-m-d') }}">
                                 @error('fechaDoc') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label small fw-semibold mb-1">Vehículo (garantía)</label>
-                                <select class="form-select form-select-sm" wire:model.live="vehiculoId">
-                                    <option value="">Sin vehículo</option>
-                                    @foreach($vehiculos as $v)
-                                        <option value="{{ $v->id }}">{{ $v->descripcion() }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label small fw-semibold mb-1">Valor del vehículo (S/)</label>
-                                <input type="number" step="0.01" min="0"
-                                       class="form-control form-control-sm @error('valorVehiculo') is-invalid @enderror"
-                                       wire:model.live="valorVehiculo"
-                                       @disabled(! $vehiculoId) placeholder="0.00">
-                                @error('valorVehiculo') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                                <div class="form-text" style="font-size:10px;">Opcional — se guardará en la ficha del vehículo.</div>
+                            {{-- Varios vehículos por anexo (28/08): uno por fila, con su
+                                 valor. Sin marcar ninguno el anexo sale sin vehículos. --}}
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold mb-1">
+                                    Vehículos (garantía)
+                                    <span class="text-muted fw-normal">— marca los que van en el anexo</span>
+                                </label>
+                                @if($vehiculos->isEmpty())
+                                    <div class="alert alert-light border py-2 small mb-0">
+                                        El cliente no tiene vehículos registrados. El anexo se emitirá sin ellos.
+                                    </div>
+                                @else
+                                    <div class="border rounded p-2" style="background:#fcfcfa;">
+                                        @foreach($vehiculos as $v)
+                                            <div class="row g-2 align-items-center {{ ! $loop->last ? 'mb-2 pb-2 border-bottom' : '' }}"
+                                                 wire:key="anx-veh-{{ $v->id }}">
+                                                <div class="col-12 col-sm-7">
+                                                    <div class="form-check mb-0">
+                                                        <input class="form-check-input" type="checkbox"
+                                                               id="anx-veh-{{ $v->id }}"
+                                                               value="{{ $v->id }}"
+                                                               wire:model.live="anexoVehiculos">
+                                                        <label class="form-check-label small" for="anx-veh-{{ $v->id }}">
+                                                            {{ $v->descripcion() }}
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-12 col-sm-5">
+                                                    <div class="input-group input-group-sm">
+                                                        <span class="input-group-text" style="font-size:11px;">Valor S/</span>
+                                                        <input type="number" step="0.01" min="0"
+                                                               class="form-control form-control-sm @error('anexoValores.'.$v->id) is-invalid @enderror"
+                                                               wire:model.live="anexoValores.{{ $v->id }}"
+                                                               @disabled(! in_array($v->id, $anexoVehiculos))
+                                                               placeholder="0.00">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                    <div class="form-text" style="font-size:10px;">
+                                        El valor es opcional y se guarda en la ficha de cada vehículo.
+                                    </div>
+                                @endif
                             </div>
                         </div>
 
