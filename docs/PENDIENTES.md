@@ -1,5 +1,40 @@
 # Tareas pendientes
 
+## Contratos — el default falso de `ocupacion` / `estado_civil` (decisión de negocio, 2026-08-28)
+
+**Estado:** el guard de emisión (tramo B) NO cubre este caso, y es a propósito.
+
+`clients.ocupacion` y `clients.estado_civil` se crearon en
+`2026_08_28_000001` como **NOT NULL con default** `'transportista'` y
+`'soltero'`. Todos los clientes migrados del legacy quedaron declarados
+como transportistas solteros sin que nadie lo afirmara: en un contrato
+firmado eso no es un dato faltante, es un **dato falso indistinguible de
+uno real**.
+
+El guard de `GeneradorContrato::validar()` detecta lo AUSENTE, no lo
+FALSO, así que un cliente migrado pasa el guard y emite el contrato con
+esos valores. Está cubierto por
+`ContratoTramoBTest::test_limite_conocido_el_default_falso_del_legacy_pasa_el_guard`,
+que documenta el hueco en vez de taparlo.
+
+**Por qué se dejó así:** el módulo de contratos se usa solo con clientes
+nuevos, y el alta ya exige ambos campos de verdad. Tocar el dato
+histórico (≈170k filas) se descartó explícitamente.
+
+### Qué haría falta para cerrarlo
+
+1. `ALTER` de las dos columnas a `nullable()` (como ya las declara
+   `feat/area-legal` en `2026_08_24_000001`, que es lo correcto).
+2. Un `UPDATE` que ponga `NULL` en las filas que nunca declararon el
+   dato. El problema es distinguirlas: hoy un transportista soltero real
+   y uno por default son idénticos. La heurística posible es
+   `created_at < fecha del despliegue del tramo B`.
+3. Recién entonces el guard bloquea al cliente viejo y obliga a
+   completarlo desde la pestaña de editar cliente (que desde el tramo B
+   ya guarda ambos campos).
+
+---
+
 ## GPS de cliente — reestructuración pendiente (deuda técnica, 2026-08-28)
 
 **Estado:** funcional en la pestaña GPS de editar cliente; pendiente rediseño.

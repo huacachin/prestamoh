@@ -14,7 +14,7 @@ class Client extends Model
     protected $fillable = [
         'expediente', 'nombre', 'apellido_pat', 'apellido_mat',
         'tipo_documento', 'documento', 'fecha_registro', 'usuario', 'fecha_nacimiento', 'sexo',
-        'email', 'giro', 'ocupacion', 'estado_civil',
+        'nacionalidad', 'email', 'giro', 'ocupacion', 'estado_civil',
         'capital', 'celular1', 'celular2',
         'direccion', 'referencia', 'distrito', 'provincia', 'departamento',
         'zona', 'contacto_emergencia', 'telefono_contacto',

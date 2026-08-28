@@ -36,6 +36,25 @@ class Edit extends Component
 
     public ?string $direccion = null;
 
+    /**
+     * Datos que el contrato exige y que hasta ahora solo se capturaban en el
+     * alta: si el asesor se equivocaba, el guard de emisión bloqueaba el
+     * contrato sin darle forma de corregirlo desde la UI.
+     */
+    public ?string $distrito = null;
+
+    public string $provincia = 'LIMA';
+
+    public ?string $departamento = null;
+
+    public ?string $nacionalidad = null;
+
+    public string $email = '';
+
+    public string $ocupacion = 'transportista';
+
+    public string $estado_civil = 'soltero';
+
     public ?string $referencia = null;
 
     public ?string $giro = null;            // Legacy: telefono1 → giro
@@ -87,6 +106,13 @@ class Edit extends Component
             'sexo' => 'required|in:M,F',
             'status' => 'required|in:active,inactive',
             'direccion' => 'nullable|string|max:255',
+            'distrito' => 'nullable|string|max:100',
+            'provincia' => 'required|in:'.implode(',', array_keys(Create::PROVINCIAS)),
+            'departamento' => 'nullable|string|max:100',
+            'nacionalidad' => 'nullable|string|max:50',
+            'email' => 'nullable|email|max:150',
+            'ocupacion' => 'required|in:'.implode(',', array_keys(Create::OCUPACIONES)),
+            'estado_civil' => 'required|in:'.implode(',', array_keys(Create::ESTADOS_CIVILES)),
             'referencia' => 'nullable|string|max:255',
             'giro' => 'nullable|string|max:100',
             'capital' => 'nullable|numeric|min:0',
@@ -135,6 +161,13 @@ class Edit extends Component
         $this->sexo = $c->sexo ?? 'M';
         $this->status = $c->status ?? 'active';
         $this->direccion = $c->direccion;
+        $this->distrito = $c->distrito;
+        $this->provincia = isset(Create::PROVINCIAS[(string) $c->provincia]) ? (string) $c->provincia : 'LIMA';
+        $this->departamento = $c->departamento;
+        $this->nacionalidad = $c->nacionalidad;
+        $this->email = (string) ($c->email ?? '');
+        $this->ocupacion = isset(Create::OCUPACIONES[(string) $c->ocupacion]) ? (string) $c->ocupacion : 'transportista';
+        $this->estado_civil = isset(Create::ESTADOS_CIVILES[(string) $c->estado_civil]) ? (string) $c->estado_civil : 'soltero';
         $this->referencia = $c->referencia;
         $this->giro = $c->giro;
         $this->capital = $c->capital;
@@ -169,6 +202,13 @@ class Edit extends Component
             'fecha_nacimiento' => $this->fecha_nacimiento,
             'sexo' => $this->sexo,
             'direccion' => $this->direccion,
+            'distrito' => $this->distrito,
+            'provincia' => $this->provincia,
+            'departamento' => $this->departamento,
+            'nacionalidad' => filled($this->nacionalidad) ? mb_strtoupper(trim($this->nacionalidad)) : null,
+            'email' => trim($this->email) ?: null,
+            'ocupacion' => $this->ocupacion,
+            'estado_civil' => $this->estado_civil,
             'referencia' => $this->referencia,
             'giro' => $this->giro,
             'capital' => $this->capital !== null && $this->capital !== '' ? $this->capital : null,

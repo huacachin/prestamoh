@@ -28,6 +28,14 @@ class Create extends Component
 
     public const TIPOS_DOCUMENTO = ['DNI' => 'DNI', 'RUC' => 'RUC', 'CE' => 'Carné de extranjería'];
 
+    /**
+     * Provincias que opera la financiera. El área legal las trata como un
+     * dropdown porque la frase del contrato cambia: Lima colapsa a
+     * "PROVINCIA Y DEPARTAMENTO DE LIMA" y Callao a "PROVINCIA
+     * CONSTITUCIONAL DEL CALLAO" (ver DomicilioLegal).
+     */
+    public const PROVINCIAS = ['LIMA' => 'Lima', 'CALLAO' => 'Callao'];
+
     // ── Wizard ─────────────────────────────────────────────
     public int $paso = 1;
 
@@ -64,6 +72,18 @@ class Create extends Component
     public ?int $expediente = null;
 
     public ?string $direccion = null;
+
+    /**
+     * Ubigeo del domicilio legal. La API los devuelve y hasta ahora se
+     * descartaban: el mapeo solo listaba direccion y distrito, así que el
+     * asesor tenía que retipear el domicilio entero en cada contrato.
+     * `provincia` gobierna además el giro registral (Lima vs Callao).
+     */
+    public ?string $distrito = null;
+
+    public string $provincia = 'LIMA';
+
+    public ?string $departamento = 'LIMA';
 
     public ?string $giro = null;     // Legacy: input "Giro"
 
@@ -206,11 +226,20 @@ class Create extends Component
                 : 'Datos cargados desde RENIEC. Verifica apellidos y nombres.';
         }
 
-        foreach (['direccion' => 'direccion', 'distrito' => 'distrito'] as $origen => $destino) {
-            if (! empty($d[$origen]) && property_exists($this, $destino)) {
-                $this->{$destino} = (string) $d[$origen];
-                $this->autoCliente[] = $destino;
+        foreach (['direccion', 'distrito', 'departamento'] as $campo) {
+            if (! empty($d[$campo])) {
+                $this->{$campo} = (string) $d[$campo];
+                $this->autoCliente[] = $campo;
             }
+        }
+
+        // La provincia es un combo cerrado (gobierna el giro registral del
+        // contrato): solo se autocompleta si la API devuelve una de las que
+        // opera la financiera. Si trae otra, queda la elegida a mano.
+        $provincia = mb_strtoupper(trim((string) ($d['provincia'] ?? '')));
+        if (isset(self::PROVINCIAS[$provincia])) {
+            $this->provincia = $provincia;
+            $this->autoCliente[] = 'provincia';
         }
         if (! empty($d['fecha_nacimiento'])) {
             $this->fecha_nacimiento = (string) $d['fecha_nacimiento'];
@@ -311,13 +340,17 @@ class Create extends Component
             'docBuscar', 'docMsg', 'docMsgType',
             'apellido_pat', 'apellido_mat', 'nombre', 'sexo', 'fecha_nacimiento',
             'documento', 'tipo_documento', 'email', 'ocupacion', 'estado_civil',
-            'direccion', 'giro', 'zona', 'celular1', 'celular2',
+            'nacionalidad', 'direccion', 'distrito', 'provincia', 'departamento',
+            'giro', 'zona', 'celular1', 'celular2',
             'vehiculos', 'vehMsg', 'vehMsgType', 'autoCliente', 'autoVehiculo',
         ]);
         $this->sexo = 'M';
         $this->tipo_documento = 'DNI';
         $this->ocupacion = 'transportista';
         $this->estado_civil = 'soltero';
+        $this->nacionalidad = 'PERUANO';
+        $this->provincia = 'LIMA';
+        $this->departamento = 'LIMA';
         $this->paso = 1;
         $this->resetErrorBag();
     }
@@ -343,7 +376,13 @@ class Create extends Component
             'ocupacion' => 'required|in:'.implode(',', array_keys(self::OCUPACIONES)),
             'estado_civil' => 'required|in:'.implode(',', array_keys(self::ESTADOS_CIVILES)),
             'expediente' => 'required|integer|min:1',
-            'direccion' => 'nullable|string|max:255',
+            // El domicilio legal es la cláusula PRIMERO del contrato: sin
+            // dirección arranca en "DISTRITO DE" y sin ubigeo queda a medias.
+            'nacionalidad' => 'required|string|max:50',
+            'direccion' => 'required|string|max:255',
+            'distrito' => 'required|string|max:100',
+            'provincia' => 'required|in:'.implode(',', array_keys(self::PROVINCIAS)),
+            'departamento' => 'required|string|max:100',
             'giro' => 'nullable|string|max:100',
             'capital' => 'nullable|numeric|min:0',
             'zona' => 'nullable|string|in:'.implode(',', TiposCredito::OPCIONES),
@@ -434,10 +473,14 @@ class Create extends Component
                 'documento' => $this->documento,
                 'fecha_nacimiento' => $this->fecha_nacimiento,
                 'sexo' => $this->sexo,
+                'nacionalidad' => mb_strtoupper(trim($this->nacionalidad)) ?: 'PERUANO',
                 'email' => trim($this->email),
                 'ocupacion' => $this->ocupacion,
                 'estado_civil' => $this->estado_civil,
                 'direccion' => $this->direccion,
+                'distrito' => $this->distrito,
+                'provincia' => $this->provincia,
+                'departamento' => $this->departamento,
                 'giro' => $this->giro,
                 'capital' => $this->capital !== null && $this->capital !== '' ? $this->capital : null,
                 'zona' => $this->zona,

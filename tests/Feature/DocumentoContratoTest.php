@@ -118,6 +118,7 @@ class DocumentoContratoTest extends TestCase
             'marca' => 'TOYOTA',
             'modelo' => 'HILUX',
             'nro_serie' => 'SER-778899',
+            'nro_motor' => 'MOT-778899',
             'valor' => 15000,
         ]);
     }
@@ -143,6 +144,8 @@ class DocumentoContratoTest extends TestCase
     private function datosWizard(string $modelo): array
     {
         return [
+            // El guard de emisión (tramo B) exige el banco de la constancia.
+            'banco' => 'bcp',
             'deudores' => [[
                 'sexo' => 'F',
                 'nombre' => mb_strtoupper($this->client->fullName()),

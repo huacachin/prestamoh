@@ -133,7 +133,11 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label mb-0 small fw-semibold">Nacionalidad</label>
-                            <input type="text" class="form-control form-control-sm bg-light" value="{{ $nacionalidad }}" readonly>
+                            {{-- En MASCULINO siempre: la cláusula del contrato la
+                                 flexiona según el sexo (PERUANO → PERUANA). --}}
+                            <input type="text" class="form-control form-control-sm text-uppercase @error('nacionalidad') is-invalid @enderror"
+                                   wire:model.defer="nacionalidad" name="nacionalidad" placeholder="PERUANO">
+                            @error('nacionalidad') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
 
                         <div class="col-md-2">
@@ -195,8 +199,34 @@
                     <div class="row g-2">
                         <div class="col-md-6">
                             <label class="form-label mb-0 small fw-semibold">Dirección</label>
-                            <input type="text" class="form-control form-control-sm @if(in_array('direccion', $autoCliente)) campo-api @endif"
+                            <input type="text" class="form-control form-control-sm @error('direccion') is-invalid @enderror @if(in_array('direccion', $autoCliente)) campo-api @endif"
                                    wire:model.defer="direccion" name="direccion" autocomplete="street-address" placeholder="Av. Arequipa Nro. 3400">
+                            @error('direccion') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+                        {{-- Ubigeo: arma el domicilio legal de la cláusula PRIMERO.
+                             La provincia es combo porque cambia la frase registral
+                             (Lima colapsa, Callao es "PROVINCIA CONSTITUCIONAL"). --}}
+                        <div class="col-md-3">
+                            <label class="form-label mb-0 small fw-semibold">Distrito</label>
+                            <input type="text" class="form-control form-control-sm text-uppercase @error('distrito') is-invalid @enderror @if(in_array('distrito', $autoCliente)) campo-api @endif"
+                                   wire:model.defer="distrito" name="distrito" placeholder="Ate">
+                            @error('distrito') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label mb-0 small fw-semibold">Provincia</label>
+                            <select class="form-select form-select-sm @error('provincia') is-invalid @enderror @if(in_array('provincia', $autoCliente)) campo-api @endif"
+                                    wire:model.live="provincia">
+                                @foreach(\App\Livewire\Clients\Create::PROVINCIAS as $valor => $etiqueta)
+                                    <option value="{{ $valor }}">{{ $etiqueta }}</option>
+                                @endforeach
+                            </select>
+                            @error('provincia') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label mb-0 small fw-semibold">Departamento</label>
+                            <input type="text" class="form-control form-control-sm text-uppercase @error('departamento') is-invalid @enderror @if(in_array('departamento', $autoCliente)) campo-api @endif"
+                                   wire:model.defer="departamento" name="departamento" placeholder="Lima">
+                            @error('departamento') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                         <div class="col-md-3">
                             <label class="form-label mb-0 small fw-semibold">Giro</label>

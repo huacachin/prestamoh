@@ -8,6 +8,7 @@ use App\Models\DocumentoCliente;
 use App\Models\Vehiculo;
 use App\Support\Audit;
 use App\Support\Documentos\BancosVoucher;
+use App\Support\Documentos\DomicilioLegal;
 use App\Support\Documentos\FechaEnLetras;
 use App\Support\Documentos\Genero;
 use App\Support\Documentos\ModelosContrato;
@@ -189,9 +190,24 @@ class GeneradorContrato
     }
 
     /**
-     * Validación SUAVE: solo lo IMPOSIBLE de redactar bloquea. Todo lo demás
-     * (ocupación, estado civil, correo, montos...) es editable y sale tal como
-     * el usuario lo deje. @return list<string> errores bloqueantes
+     * GUARD DE EMISIÓN: exige TODO lo que la guía del área pide para el modelo
+     * elegido, para que ningún contrato salga con un hueco.
+     *
+     * Reemplaza a la "validación suave" anterior, que solo bloqueaba lo
+     * imposible de redactar y dejaba que nacionalidad, ocupación, estado
+     * civil, domicilio, correo, partida registral y los datos del bien futuro
+     * se imprimieran en blanco.
+     *
+     * Es lo que hace innecesario corregir el dato histórico: si un cliente
+     * viejo nunca declaró su ocupación, el contrato no se emite y el mensaje
+     * dice dónde arreglarlo. Todo condicionado al preset — pedirle partida
+     * registral a una persona natural bloquearía modelos que no la necesitan.
+     *
+     * Se invoca desde previsualizar() y generar(), así que cubre preview,
+     * emisión y reemisión. NO toca vmDesdeSnapshot(): un documento ya emitido
+     * se vuelve a renderizar tal como se firmó.
+     *
+     * @return list<string> errores bloqueantes, con la pestaña que los corrige
      */
     public static function validar(Client $client, Credit $credit, array $vehiculoIds, string $modelo, array $datos = []): array
     {
@@ -199,32 +215,99 @@ class GeneradorContrato
             return ["El modelo de contrato '{$modelo}' no existe."];
         }
 
+        $preset = ModelosContrato::get($modelo);
         $snapshot = self::construirSnapshot($client, $credit, $vehiculoIds, $modelo, $datos);
         $errores = [];
 
         foreach ($snapshot['deudores'] as $i => $d) {
             $rol = $d['esJuridica'] ? 'la empresa deudora' : ($i === 0 ? 'el deudor' : 'el codeudor');
+
             if (blank($d['nombre'])) {
                 $errores[] = 'Falta el nombre de '.$rol.'.';
             }
+            if (blank($d['domicilio'])) {
+                $errores[] = 'Falta el domicilio de '.$rol.' (ficha del cliente → Dirección y ubigeo).';
+            }
+            if (blank($d['correo'])) {
+                $errores[] = 'Falta el correo de '.$rol.': la cláusula de notificaciones lo declara.';
+            }
+
             if ($d['esJuridica']) {
                 if (blank($d['ruc'])) {
                     $errores[] = 'Falta el RUC de la empresa deudora.';
+                } elseif (! preg_match('/^\d{11}$/', (string) $d['ruc'])) {
+                    $errores[] = 'El RUC de la empresa deudora debe tener 11 dígitos.';
                 }
-                if (blank($d['gerente']['nombre'] ?? null) || blank($d['gerente']['dni'] ?? null)) {
-                    $errores[] = 'Faltan el nombre o el DNI del gerente general.';
+                if (blank($d['partida'])) {
+                    $errores[] = 'Falta la partida registral de la empresa deudora.';
                 }
-            } elseif (blank($d['dni'])) {
-                $errores[] = 'Falta el DNI de '.$rol.'.';
+                if (blank($d['oficinaRegistral'])) {
+                    $errores[] = 'Falta la oficina registral de la empresa deudora.';
+                }
+
+                $g = $d['gerente'] ?? [];
+                foreach ([
+                    'nombre' => 'el nombre',
+                    'dni' => 'el DNI',
+                    'ocupacion' => 'la ocupación',
+                    'estadoCivil' => 'el estado civil',
+                    'domicilio' => 'el domicilio',
+                ] as $campo => $etiqueta) {
+                    if (blank($g[$campo] ?? null)) {
+                        $errores[] = 'Falta '.$etiqueta.' del gerente general.';
+                    }
+                }
+
+                continue;
+            }
+
+            if (blank($d['dni'])) {
+                $errores[] = 'Falta el documento de '.$rol.'.';
+            }
+            if (blank($d['sexo'])) {
+                $errores[] = 'Falta el sexo de '.$rol.': de él depende si el contrato dice DEUDOR o DEUDORA.';
+            }
+            if (blank($d['nacionalidad'])) {
+                $errores[] = 'Falta la nacionalidad de '.$rol.'.';
+            }
+            if (blank($d['ocupacion'])) {
+                $errores[] = 'Falta la ocupación de '.$rol.' (ficha del cliente → Ocupación).';
+            }
+            if (blank($d['estadoCivil'])) {
+                $errores[] = 'Falta el estado civil de '.$rol.' (ficha del cliente → Estado civil).';
             }
         }
 
         if ($snapshot['bienes'] === []) {
             $errores[] = 'El contrato necesita al menos un vehículo en garantía.';
         }
+        if (count($snapshot['bienes']) !== count(ModelosContrato::slots($preset['bienes']))) {
+            $errores[] = 'El modelo "'.$preset['nombre'].'" exige '
+                .count(ModelosContrato::slots($preset['bienes'])).' vehículo(s) y llegaron '
+                .count($snapshot['bienes']).'.';
+        }
+
         foreach ($snapshot['bienes'] as $i => $b) {
+            $n = $i + 1;
             if (blank($b['placa'])) {
-                $errores[] = 'El vehículo '.($i + 1).' no tiene placa.';
+                $errores[] = "El vehículo {$n} no tiene placa.";
+            }
+            // Los datos de la ficha que el contrato describe en la cláusula del bien.
+            foreach (['marca' => 'la marca', 'modelo' => 'el modelo', 'serie' => 'el N° de serie', 'motor' => 'el N° de motor'] as $campo => $etiqueta) {
+                if (blank($b[$campo] ?? null)) {
+                    $errores[] = "Falta {$etiqueta} del vehículo {$n} (pestaña Vehículos).";
+                }
+            }
+            if ((float) ($b['valor'] ?? 0) <= 0) {
+                $errores[] = "Falta el valor del vehículo {$n}: la cláusula de ejecución se remite a él.";
+            }
+            // Bien futuro: la declaración jurada cita la transferencia.
+            if ($b['esFuturo'] ?? false) {
+                foreach (['fechaActa' => 'la fecha de transferencia', 'kardex' => 'el kárdex', 'notario' => 'el notario'] as $campo => $etiqueta) {
+                    if (blank($b[$campo] ?? null)) {
+                        $errores[] = "Falta {$etiqueta} del vehículo {$n}, que es bien futuro.";
+                    }
+                }
             }
         }
 
@@ -232,9 +315,21 @@ class GeneradorContrato
             $errores[] = "El crédito #{$credit->id} no tiene cronograma (credit_installments).";
         }
 
-        if ($snapshot['destino'] === 'tercero'
-            && (blank($snapshot['tercero']['nombre'] ?? null) || blank($snapshot['tercero']['cuenta'] ?? null))) {
-            $errores[] = 'El depósito a tercero necesita el nombre y la cuenta del tercero.';
+        if (blank($snapshot['banco'])) {
+            $errores[] = 'Falta el banco del desembolso: la constancia de entrega lo menciona.';
+        }
+
+        if ($snapshot['destino'] === 'tercero') {
+            foreach ([
+                'nombre' => 'el nombre del tercero',
+                'dni' => 'el DNI del tercero',
+                'cuenta' => 'la cuenta del tercero',
+                'motivo' => 'el motivo de la autorización',
+            ] as $campo => $etiqueta) {
+                if (blank($snapshot['tercero'][$campo] ?? null)) {
+                    $errores[] = 'El depósito a tercero necesita '.$etiqueta.'.';
+                }
+            }
         }
 
         return $errores;
@@ -360,9 +455,11 @@ class GeneradorContrato
                 'partida' => null,
                 'oficinaRegistral' => null,
                 // Base masculina ('PERUANO'): el partial la flexiona con el Genero del deudor.
-                'nacionalidad' => mb_strtoupper(trim((string) (($o['nacionalidad'] ?? null) ?: 'PERUANO'))),
-                'ocupacion' => mb_strtoupper(trim((string) (($o['ocupacion'] ?? null) ?: $ficha?->giro ?: ''))),
-                'estadoCivil' => mb_strtoupper(trim((string) ($o['estado_civil'] ?? ''))),
+                'nacionalidad' => mb_strtoupper(trim((string) (($o['nacionalidad'] ?? null) ?: $ficha?->nacionalidad ?: 'PERUANO'))),
+                // La ficha tiene `ocupacion` desde el 28/08; `giro` es el rubro
+                // del negocio y solo sirve de último recurso.
+                'ocupacion' => mb_strtoupper(trim((string) (($o['ocupacion'] ?? null) ?: $ficha?->ocupacion ?: $ficha?->giro ?: ''))),
+                'estadoCivil' => mb_strtoupper(trim((string) (($o['estado_civil'] ?? null) ?: $ficha?->estado_civil ?: ''))),
                 'domicilio' => filled($o['domicilio'] ?? null)
                     ? mb_strtoupper(trim($o['domicilio']))
                     : ($ficha ? self::domicilio($ficha) : ''),
@@ -480,36 +577,9 @@ class GeneradorContrato
         return ($valor !== null && $valor !== '') ? round((float) $valor, 2) : $default;
     }
 
-    /**
-     * Domicilio legal: direccion + tramos ubigeo presentes, en mayúsculas.
-     * Cuando provincia y departamento coinciden se colapsa al giro registral
-     * "PROVINCIA Y DEPARTAMENTO DE X" — mismo criterio que GeneradorAnexo1.
-     */
+    /** Domicilio legal en el formato de las maestras (ver DomicilioLegal). */
     private static function domicilio(Client $client): string
     {
-        $tramos = [];
-
-        if (filled($client->direccion)) {
-            $tramos[] = mb_strtoupper(trim($client->direccion));
-        }
-        if (filled($client->distrito)) {
-            $tramos[] = 'DISTRITO DE '.mb_strtoupper(trim($client->distrito));
-        }
-
-        $provincia = filled($client->provincia) ? mb_strtoupper(trim($client->provincia)) : null;
-        $departamento = filled($client->departamento) ? mb_strtoupper(trim($client->departamento)) : null;
-
-        if ($provincia && $departamento && $provincia === $departamento) {
-            $tramos[] = 'PROVINCIA Y DEPARTAMENTO DE '.$provincia;
-        } else {
-            if ($provincia) {
-                $tramos[] = 'PROVINCIA DE '.$provincia;
-            }
-            if ($departamento) {
-                $tramos[] = 'DEPARTAMENTO DE '.$departamento;
-            }
-        }
-
-        return implode(', ', $tramos);
+        return DomicilioLegal::deCliente($client);
     }
 }

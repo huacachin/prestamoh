@@ -101,11 +101,11 @@ class ContratoTramoATest extends TestCase
 
         $this->v1 = Vehiculo::create([
             'client_id' => $this->client->id, 'placa' => 'TRA111', 'marca' => 'TOYOTA',
-            'modelo' => 'HIACE', 'nro_serie' => 'SER-111', 'valor' => 15000,
+            'modelo' => 'HIACE', 'nro_serie' => 'SER-111', 'nro_motor' => 'MOT-111', 'valor' => 15000,
         ]);
         $this->v2 = Vehiculo::create([
             'client_id' => $this->client->id, 'placa' => 'TRA222', 'marca' => 'NISSAN',
-            'modelo' => 'URVAN', 'nro_serie' => 'SER-222', 'valor' => 12000,
+            'modelo' => 'URVAN', 'nro_serie' => 'SER-222', 'nro_motor' => 'MOT-222', 'valor' => 12000,
         ]);
     }
 

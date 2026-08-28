@@ -44,6 +44,11 @@ class ClienteVehiculoTest extends TestCase
             'documento' => '87654321',
             'sexo' => 'M',
             'email' => 'vehicular@correo.com',
+            // Domicilio legal: obligatorio desde el tramo B.
+            'direccion' => 'AV. AREQUIPA 3400',
+            'distrito' => 'LINCE',
+            'provincia' => 'LIMA',
+            'departamento' => 'LIMA',
         ];
     }
 

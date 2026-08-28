@@ -11,6 +11,7 @@ use App\Services\Documentos\GeneradorAnexo2;
 use App\Services\Documentos\GeneradorContrato;
 use App\Support\Audit;
 use App\Support\Documentos\BancosVoucher;
+use App\Support\Documentos\DomicilioLegal;
 use App\Support\Documentos\ModelosContrato;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
@@ -980,7 +981,10 @@ class Documentos extends Component
         return [
             'nombre' => mb_strtoupper($client->fullName()),
             'dni' => trim((string) $client->documento),
-            'nacionalidad' => $sexo === 'F' ? 'PERUANA' : 'PERUANO',
+            // SIEMPRE en masculino: el partial la flexiona con el Genero del
+            // deudor. Guardarla ya flexionada rompía la concordancia en cuanto
+            // alguien corregía el sexo de la ficha.
+            'nacionalidad' => mb_strtoupper(trim((string) ($client->nacionalidad ?: 'PERUANO'))),
             'ocupacion' => mb_strtoupper(trim((string) ($client->ocupacion ?? ''))),
             'estado_civil' => $this->estadoCivilNormalizado($client->estado_civil ?? null),
             'domicilio' => $this->domicilioDe($client),
@@ -1022,32 +1026,10 @@ class Documentos extends Component
     }
 
     /** Domicilio legal armado de la ficha (mismo formato que el Anexo 1). */
+    /** Domicilio legal en el formato de las maestras (ver DomicilioLegal). */
     private function domicilioDe(Client $client): string
     {
-        $tramos = [];
-
-        if (filled($client->direccion)) {
-            $tramos[] = mb_strtoupper(trim($client->direccion));
-        }
-        if (filled($client->distrito)) {
-            $tramos[] = 'DISTRITO DE '.mb_strtoupper(trim($client->distrito));
-        }
-
-        $provincia = filled($client->provincia) ? mb_strtoupper(trim($client->provincia)) : null;
-        $departamento = filled($client->departamento) ? mb_strtoupper(trim($client->departamento)) : null;
-
-        if ($provincia && $departamento && $provincia === $departamento) {
-            $tramos[] = 'PROVINCIA Y DEPARTAMENTO DE '.$provincia;
-        } else {
-            if ($provincia) {
-                $tramos[] = 'PROVINCIA DE '.$provincia;
-            }
-            if ($departamento) {
-                $tramos[] = 'DEPARTAMENTO DE '.$departamento;
-            }
-        }
-
-        return implode(', ', $tramos);
+        return DomicilioLegal::deCliente($client);
     }
 
     /** Client + Credit activo + ids de vehículos del cliente, validados. */

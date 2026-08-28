@@ -7,6 +7,7 @@ use App\Models\Credit;
 use App\Models\DocumentoCliente;
 use App\Models\Vehiculo;
 use App\Support\Audit;
+use App\Support\Documentos\DomicilioLegal;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -175,36 +176,9 @@ class GeneradorAnexo1
         )->render();
     }
 
-    /**
-     * Domicilio legal: direccion + tramos ubigeo presentes, en mayúsculas.
-     * Cuando provincia y departamento coinciden se colapsa al giro registral
-     * "PROVINCIA Y DEPARTAMENTO DE X" (mismo formato que config/documentos).
-     */
+    /** Domicilio legal en el formato de las maestras (ver DomicilioLegal). */
     private static function domicilio(Client $client): string
     {
-        $tramos = [];
-
-        if (filled($client->direccion)) {
-            $tramos[] = mb_strtoupper(trim($client->direccion));
-        }
-        if (filled($client->distrito)) {
-            $tramos[] = 'DISTRITO DE '.mb_strtoupper(trim($client->distrito));
-        }
-
-        $provincia = filled($client->provincia) ? mb_strtoupper(trim($client->provincia)) : null;
-        $departamento = filled($client->departamento) ? mb_strtoupper(trim($client->departamento)) : null;
-
-        if ($provincia && $departamento && $provincia === $departamento) {
-            $tramos[] = 'PROVINCIA Y DEPARTAMENTO DE '.$provincia;
-        } else {
-            if ($provincia) {
-                $tramos[] = 'PROVINCIA DE '.$provincia;
-            }
-            if ($departamento) {
-                $tramos[] = 'DEPARTAMENTO DE '.$departamento;
-            }
-        }
-
-        return implode(', ', $tramos);
+        return DomicilioLegal::deCliente($client);
     }
 }

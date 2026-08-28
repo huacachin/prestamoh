@@ -166,6 +166,39 @@
                         <input type="text" class="form-control form-control-sm bg-light"
                                value="{{ $client->expediente }}" readonly>
                     </div>
+
+                    {{-- Datos que el contrato de garantía exige en la cláusula
+                         PRIMERO y que antes solo se capturaban en el alta. --}}
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">Nacionalidad</label>
+                        <input type="text" class="form-control form-control-sm text-uppercase @error('nacionalidad') is-invalid @enderror"
+                               wire:model.defer="nacionalidad" placeholder="PERUANO">
+                        @error('nacionalidad') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">Ocupación</label>
+                        <select class="form-select form-select-sm @error('ocupacion') is-invalid @enderror" wire:model.defer="ocupacion">
+                            @foreach(\App\Livewire\Clients\Create::OCUPACIONES as $valor => $etiqueta)
+                                <option value="{{ $valor }}">{{ $etiqueta }}</option>
+                            @endforeach
+                        </select>
+                        @error('ocupacion') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">Estado civil</label>
+                        <select class="form-select form-select-sm @error('estado_civil') is-invalid @enderror" wire:model.defer="estado_civil">
+                            @foreach(\App\Livewire\Clients\Create::ESTADOS_CIVILES as $valor => $etiqueta)
+                                <option value="{{ $valor }}">{{ $etiqueta }}</option>
+                            @endforeach
+                        </select>
+                        @error('estado_civil') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">Correo</label>
+                        <input type="email" class="form-control form-control-sm @error('email') is-invalid @enderror"
+                               wire:model.defer="email" placeholder="cliente@correo.com">
+                        @error('email') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
                 </div>
 
                 <hr class="my-2" style="border-color:#e8e2d5;">
@@ -182,6 +215,29 @@
                         <label class="form-label mb-0 small fw-semibold">Referencia</label>
                         <input type="text" class="form-control form-control-sm"
                                wire:model.defer="referencia" name="referencia" autocomplete="off" placeholder="Cerca de…">
+                    </div>
+                    {{-- Ubigeo: arma el domicilio legal del contrato. Provincia
+                         es combo porque cambia la frase registral. --}}
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">Distrito</label>
+                        <input type="text" class="form-control form-control-sm text-uppercase @error('distrito') is-invalid @enderror"
+                               wire:model.defer="distrito" placeholder="Ate">
+                        @error('distrito') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">Provincia</label>
+                        <select class="form-select form-select-sm @error('provincia') is-invalid @enderror" wire:model.defer="provincia">
+                            @foreach(\App\Livewire\Clients\Create::PROVINCIAS as $valor => $etiqueta)
+                                <option value="{{ $valor }}">{{ $etiqueta }}</option>
+                            @endforeach
+                        </select>
+                        @error('provincia') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">Departamento</label>
+                        <input type="text" class="form-control form-control-sm text-uppercase @error('departamento') is-invalid @enderror"
+                               wire:model.defer="departamento" placeholder="Lima">
+                        @error('departamento') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">Giro</label>

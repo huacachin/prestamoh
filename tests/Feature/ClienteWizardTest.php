@@ -46,7 +46,13 @@ class ClienteWizardTest extends TestCase
             ->set('apellido_pat', 'De La Cruz')
             ->set('apellido_mat', 'Rojas')
             ->set('documento', '45678912')
-            ->set('email', 'juan@correo.com');
+            ->set('email', 'juan@correo.com')
+            // Domicilio legal: obligatorio desde el tramo B (arma la cláusula
+            // PRIMERO del contrato sin que nadie lo retipee).
+            ->set('direccion', 'AV. AREQUIPA 3400')
+            ->set('distrito', 'LINCE')
+            ->set('provincia', 'LIMA')
+            ->set('departamento', 'LIMA');
     }
 
     public function test_el_paso_1_exige_correo_ocupacion_y_estado_civil(): void
