@@ -117,16 +117,22 @@ class ContratoTramoCTest extends TestCase
         $this->assertSame(['a4', 'a41'], array_keys(ModelosContrato::aplicables(null, juridica: true)));
     }
 
-    public function test_el_selector_del_wizard_solo_ofrece_lo_aplicable(): void
+    /**
+     * Desde el 28/08 el wizard ya NO tiene selector de 32 modelos: el modelo
+     * se RESUELVE desde las decisiones (Guía §5) y el sexo de la ficha. Un
+     * hombre con un vehículo presente y depósito propio arranca en a.1 sin
+     * elegir nada.
+     */
+    public function test_el_wizard_resuelve_el_modelo_desde_la_ficha(): void
     {
-        // Necesita crédito activo: el modal del contrato solo se arma si el
-        // cliente tiene uno.
         [$hombre] = $this->mundo('M');
 
-        $html = Livewire::test(Documentos::class, ['id' => $hombre->id])->html();
+        $comp = Livewire::test(Documentos::class, ['id' => $hombre->id])
+            ->call('abrirModalContrato');
 
-        $this->assertStringContainsString('a.1 GPS. Deudor', $html);
-        $this->assertStringNotContainsString('a.2 GPS. Deudora', $html);
+        $this->assertSame('a1', $comp->get('modeloContrato'));
+        $this->assertStringContainsString('a.1 GPS. Deudor', $comp->html());
+        $this->assertStringNotContainsString('a.2 GPS. Deudora', $comp->html());
     }
 
     // ── 2 · Los dos ejes de género de la persona jurídica ─────────────────

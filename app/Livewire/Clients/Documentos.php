@@ -85,7 +85,18 @@ class Documentos extends Component
         'VIUDO' => 'Viudo(a)',
     ];
 
-    /** Clave del modelo elegido (catálogo ModelosContrato). */
+    /**
+     * DECISIONES del contrato (la Guía simple §5): el asesor ya no elige
+     * entre 32 nombres — responde garantía, n° de vehículos, presente/futuro
+     * por vehículo y destino del depósito, y el modelo se RESUELVE solo
+     * (ModelosContrato::resolver). El sexo sale de la ficha y las personas
+     * del codeudor/empresa.
+     */
+    public string $garantiaContrato = 'gps';   // gps | sin_gps | custodia
+
+    public string $destinoContrato = 'propio'; // propio | tercero | gerente
+
+    /** Clave del modelo RESUELTO ('' = la combinación no existe en el área). */
     public string $modeloContrato = '';
 
     public ?int $contratoCreditoId = null;
@@ -339,6 +350,8 @@ class Documentos extends Component
         $creditos = $this->creditosActivos();
 
         $this->modeloContrato = '';
+        $this->garantiaContrato = 'gps';
+        $this->destinoContrato = 'propio';
         $this->contratoCreditoId = $creditos->count() === 1 ? $creditos->first()->id : null;
         $this->contratoVehiculos = [];
         $this->deudores = [$this->deudorDesdeFicha($client)];
@@ -398,6 +411,14 @@ class Documentos extends Component
         $this->autoTercero = [];
         $this->resetErrorBag();
 
+        // Arranca con UN vehículo (autoseleccionado si el cliente tiene uno
+        // solo) y el modelo se resuelve desde las decisiones.
+        $vehiculos = $this->vehiculosCliente();
+        $slot = $this->slotVacio();
+        $slot['vehiculo_id'] = $vehiculos->count() === 1 ? $vehiculos->first()->id : null;
+        $this->contratoVehiculos = [$slot];
+        $this->resolverModeloContrato();
+
         $this->recalcularMontosContrato();
 
         $this->dispatch('contrato-modal-open');
@@ -420,6 +441,118 @@ class Documentos extends Component
         if (str_ends_with((string) $clave, 'vehiculo_id')) {
             $this->valorBien = $this->sumaValorVehiculos();
         }
+        // El toggle presente/futuro cambia la combinación → se re-resuelve el
+        // modelo (y se normaliza el orden: en el mixto el vehículo 1 es el futuro).
+        if (str_ends_with((string) $clave, 'es_futuro')) {
+            $this->resolverModeloContrato();
+        }
+    }
+
+    public function updatedGarantiaContrato(): void
+    {
+        $this->resolverModeloContrato();
+    }
+
+    public function updatedDestinoContrato(): void
+    {
+        $this->resolverModeloContrato();
+    }
+
+    /** Segundo vehículo en garantía (las maestras admiten máximo dos). */
+    public function agregarVehiculoContrato(): void
+    {
+        if (count($this->contratoVehiculos) >= 2) {
+            return;
+        }
+        $this->contratoVehiculos[] = $this->slotVacio();
+        $this->resolverModeloContrato();
+    }
+
+    public function quitarVehiculoContrato(int $i): void
+    {
+        if (count($this->contratoVehiculos) <= 1) {
+            return;
+        }
+        unset($this->contratoVehiculos[$i]);
+        $this->contratoVehiculos = array_values($this->contratoVehiculos);
+        $this->resolverModeloContrato();
+    }
+
+    /** @return array<string, mixed> */
+    private function slotVacio(): array
+    {
+        return [
+            'vehiculo_id' => null, 'es_futuro' => false, 'fecha_acta' => '',
+            'kardex' => '', 'notario' => '', 'estado_registral' => '',
+        ];
+    }
+
+    /**
+     * Deduce el modelo desde las decisiones y aplica las restricciones del
+     * catálogo (las combinaciones que NO existen en las maestras se corrigen
+     * a la más cercana en vez de dejar al asesor en un callejón):
+     *  - empresa: solo GPS, un bien presente, destino propio|gerente;
+     *  - custodia: un bien presente y depósito propio;
+     *  - sin GPS: no existen bienes futuros;
+     *  - tercero: solo con UN bien presente;
+     *  - mixto: el vehículo 1 es SIEMPRE el futuro (maestra a.x.5).
+     */
+    private function resolverModeloContrato(): void
+    {
+        $client = Client::find($this->clientId);
+        $esEmpresa = mb_strtoupper(trim((string) $client?->tipo_documento)) === 'RUC';
+
+        if ($esEmpresa) {
+            $this->garantiaContrato = 'gps';
+            $this->contratoVehiculos = array_slice(array_values($this->contratoVehiculos), 0, 1);
+            if (! in_array($this->destinoContrato, ['propio', 'gerente'], true)) {
+                $this->destinoContrato = 'propio';
+            }
+        }
+
+        if ($this->garantiaContrato === 'custodia') {
+            $this->contratoVehiculos = array_slice(array_values($this->contratoVehiculos), 0, 1);
+            $this->destinoContrato = 'propio';
+        }
+
+        if ($this->garantiaContrato !== 'gps' || $esEmpresa) {
+            foreach ($this->contratoVehiculos as $i => $slot) {
+                $this->contratoVehiculos[$i]['es_futuro'] = false;
+            }
+        }
+
+        if ($this->contratoVehiculos === []) {
+            $this->contratoVehiculos = [$this->slotVacio()];
+        }
+
+        // Mixto: reordenar para que el futuro sea el vehículo 1.
+        if (count($this->contratoVehiculos) === 2) {
+            [$a, $b] = array_values($this->contratoVehiculos);
+            if (! $a['es_futuro'] && $b['es_futuro']) {
+                $this->contratoVehiculos = [$b, $a];
+            }
+        }
+
+        $futuros = count(array_filter($this->contratoVehiculos, fn ($s) => ! empty($s['es_futuro'])));
+        $dos = count($this->contratoVehiculos) === 2;
+
+        // El depósito a tercero solo existe con UN bien presente.
+        if ($this->destinoContrato === 'tercero' && ($dos || $futuros > 0)) {
+            $this->destinoContrato = 'propio';
+        }
+
+        $bienes = $dos
+            ? ($futuros === 2 ? '2futuros' : ($futuros === 1 ? 'futuro_presente' : '2presentes'))
+            : ($futuros === 1 ? 'futuro' : 'presente');
+
+        $personas = $esEmpresa ? 'empresa' : ($this->codeudorClientId !== null ? 2 : 1);
+
+        $this->modeloContrato = ModelosContrato::resolver(
+            $personas, $client?->sexo, $this->garantiaContrato, $bienes, $this->destinoContrato
+        ) ?? '';
+
+        $this->valorBien = $this->sumaValorVehiculos();
+        $this->resetErrorBag();
     }
 
     /** Cualquier cambio de datos del contrato invalida su vista previa. */
@@ -575,6 +708,7 @@ class Documentos extends Component
         $this->codeudorNombre = $codeudor->fullName();
         $this->deudores[1] = $this->deudorDesdeFicha($codeudor);
         $this->buscarCodeudor = '';
+        $this->resolverModeloContrato();
         $this->htmlPreviewContrato = '';
         $this->resetErrorBag();
     }
@@ -584,10 +718,10 @@ class Documentos extends Component
         $this->codeudorClientId = null;
         $this->codeudorNombre = '';
         $this->buscarCodeudor = '';
-        if (isset($this->deudores[1])) {
-            $this->deudores[1] = $this->deudorVacio();
-        }
+        unset($this->deudores[1]);
         $this->htmlPreviewContrato = '';
+        // Sin codeudor cambia 'personas' → el modelo se re-resuelve.
+        $this->resolverModeloContrato();
     }
 
     public function previsualizarContrato(): void
@@ -1099,6 +1233,11 @@ class Documentos extends Component
             return;
         }
 
+        // Modelo fijado directamente (tests / compatibilidad): las decisiones
+        // se sincronizan hacia atrás para que la UI quede coherente.
+        $this->garantiaContrato = $preset['custodia'] ? 'custodia' : ($preset['gps'] ? 'gps' : 'sin_gps');
+        $this->destinoContrato = $preset['destino'];
+
         // Vehículos: conserva lo ya elegido; autoselecciona si el cliente
         // tiene exactamente los vehículos que pide el modelo.
         $previos = array_values($this->contratoVehiculos);
@@ -1595,6 +1734,11 @@ class Documentos extends Component
             'vehiculos' => $this->vehiculosCliente(),
             'modelosAgrupados' => $this->modelosAgrupados(),
             'presetContrato' => $presetContrato,
+            'esEmpresaContrato' => mb_strtoupper(trim((string) $client->tipo_documento)) === 'RUC',
+            // El depósito a tercero solo existe con UN bien presente.
+            'puedeTerceroContrato' => count($this->contratoVehiculos) === 1
+                && $this->garantiaContrato !== 'custodia'
+                && array_filter($this->contratoVehiculos, fn ($s) => ! empty($s['es_futuro'])) === [],
             'codeudoresEncontrados' => $codeudoresEncontrados,
             'bancosDesembolso' => BancosVoucher::NOMBRES_LEGALES,
             'estadosCiviles' => self::ESTADOS_CIVILES,

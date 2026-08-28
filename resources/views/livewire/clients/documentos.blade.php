@@ -314,26 +314,54 @@
                         </div>
                     @else
 
-                        {{-- ── 1 · Modelo ── --}}
+                        {{-- ── 1 · Modelo (RESUELTO desde las decisiones — Guía §5) ──
+                             El asesor ya no elige entre 32 nombres: responde
+                             garantía y destino, agrega vehículos y marca cuál es
+                             bien futuro; el modelo se deduce solo. Sexo de la
+                             ficha; personas del codeudor/empresa. --}}
                         <div class="mb-3">
                             <div class="fw-bold small text-uppercase border-bottom pb-1 mb-2">1 · Modelo de contrato</div>
                             <div class="row g-2 align-items-end">
-                                <div class="col-md-7">
-                                    <label class="form-label small fw-semibold mb-1">Modelo *</label>
-                                    <select class="form-select form-select-sm @error('modeloContrato') is-invalid @enderror"
-                                            wire:model.live="modeloContrato">
-                                        <option value="">— Selecciona el modelo del área —</option>
-                                        @foreach($modelosAgrupados as $grupo => $opciones)
-                                            <optgroup label="{{ $grupo }}">
-                                                @foreach($opciones as $clave => $nombre)
-                                                    <option value="{{ $clave }}">{{ $clave }} — {{ $nombre }}</option>
-                                                @endforeach
-                                            </optgroup>
-                                        @endforeach
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-semibold mb-1">Garantía *</label>
+                                    <select class="form-select form-select-sm" wire:model.live="garantiaContrato"
+                                            @if($esEmpresaContrato) disabled title="La empresa solo tiene modelos con GPS" @endif>
+                                        <option value="gps">Con GPS</option>
+                                        <option value="sin_gps">Sin GPS</option>
+                                        <option value="custodia">Custodia</option>
                                     </select>
-                                    @error('modeloContrato') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-semibold mb-1">Destino del depósito *</label>
+                                    <select class="form-select form-select-sm" wire:model.live="destinoContrato"
+                                            @if($garantiaContrato === 'custodia') disabled title="La custodia solo existe con depósito al deudor" @endif>
+                                        @if($esEmpresaContrato)
+                                            <option value="propio">Cuenta de la empresa</option>
+                                            <option value="gerente">Cuenta personal del gerente</option>
+                                        @else
+                                            <option value="propio">Cuenta {{ ($deudores[0]['sexo'] ?? 'M') === 'F' ? 'de la deudora' : 'del deudor' }}</option>
+                                            @if($puedeTerceroContrato)
+                                                <option value="tercero">Cuenta de un tercero</option>
+                                            @endif
+                                        @endif
+                                    </select>
                                 </div>
                                 <div class="col-md-5">
+                                    @if($modeloContrato !== '')
+                                        <div class="small pb-1">
+                                            <span class="badge bg-dark" style="font-size:10px;">{{ $modeloContrato }}</span>
+                                            <span class="fw-semibold">{{ $this->nombreModelo($modeloContrato) }}</span>
+                                        </div>
+                                    @else
+                                        <div class="alert alert-warning py-1 px-2 mb-1 small">
+                                            <i class="ti ti-alert-triangle"></i>
+                                            Esta combinación no corresponde a ningún modelo del área
+                                            @if(($deudores[0]['sexo'] ?? null) === null) (¿la ficha tiene sexo?)@endif.
+                                        </div>
+                                    @endif
+                                    @error('modeloContrato') <div class="text-danger small">{{ $message }}</div> @enderror
+                                </div>
+                                <div class="col-12">
                                     @if($presetContrato)
                                         <div class="d-flex gap-1 flex-wrap pb-1">
                                             @if($presetContrato['custodia'])
@@ -356,7 +384,7 @@
                                             @endif
                                         </div>
                                     @else
-                                        <div class="text-muted small pb-1">Elige el modelo para completar las demás secciones.</div>
+                                        <div class="text-muted small pb-1">Completa las decisiones para armar el contrato.</div>
                                     @endif
                                 </div>
                             </div>
@@ -391,12 +419,31 @@
                                     <div class="row g-2 mt-0">
                                         @foreach($contratoVehiculos as $i => $slot)
                                             <div class="col-md-6" wire:key="contrato-slot-{{ $i }}">
+                                                <div class="d-flex justify-content-between align-items-center">
                                                 <label class="form-label small fw-semibold mb-1">
                                                     Vehículo {{ $i + 1 }} (garantía) *
                                                     @if($slot['es_futuro'])
                                                         <span class="badge bg-warning text-dark" style="font-size:9px;">Bien futuro</span>
                                                     @endif
                                                 </label>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    @if($garantiaContrato === 'gps' && ! $esEmpresaContrato)
+                                                        {{-- ¿Ya está inscrito a nombre del deudor? (Guía §5, decisión 4).
+                                                             En el mixto el vehículo 1 pasa a ser el futuro solo. --}}
+                                                        <div class="form-check form-switch mb-0">
+                                                            <input class="form-check-input" type="checkbox" role="switch"
+                                                                   id="futuro-{{ $i }}" wire:model.live="contratoVehiculos.{{ $i }}.es_futuro">
+                                                            <label class="form-check-label small text-muted" for="futuro-{{ $i }}">Bien futuro</label>
+                                                        </div>
+                                                    @endif
+                                                    @if(count($contratoVehiculos) > 1)
+                                                        <button type="button" class="btn btn-xs btn-outline-danger py-0 px-1"
+                                                                wire:click="quitarVehiculoContrato({{ $i }})" title="Quitar este vehículo">
+                                                            <i class="ti ti-x"></i>
+                                                        </button>
+                                                    @endif
+                                                </div>
+                                                </div>
                                                 <select class="form-select form-select-sm @error('contratoVehiculos.'.$i.'.vehiculo_id') is-invalid @enderror"
                                                         wire:model.live="contratoVehiculos.{{ $i }}.vehiculo_id">
                                                     <option value="">— Selecciona el vehículo —</option>
@@ -435,6 +482,13 @@
                                             </div>
                                         @endforeach
                                     </div>
+
+                                    @if(count($contratoVehiculos) < 2 && $garantiaContrato !== 'custodia' && ! $esEmpresaContrato)
+                                        <button type="button" class="btn btn-sm btn-outline-success mt-2"
+                                                wire:click="agregarVehiculoContrato">
+                                            <i class="ti ti-plus"></i> Agregar segundo vehículo
+                                        </button>
+                                    @endif
                                 @endif
                             </div>
 
