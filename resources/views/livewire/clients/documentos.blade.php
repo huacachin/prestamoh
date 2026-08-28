@@ -1,4 +1,7 @@
-<div class="container-fluid">
+{{-- $embebido: dentro de la pestaña de /clients/{id}/edit se omiten cabecera,
+     breadcrumb y card (los pone la página padre). --}}
+<div @class(['container-fluid' => ! $embebido])>
+    @unless($embebido)
     <div class="row">
         <div class="col-sm-6">
             <h4 class="main-title title-modules">DOCUMENTOS DEL CLIENTE</h4>
@@ -17,17 +20,22 @@
             </ul>
         </div>
     </div>
+    @endunless
 
-    <div class="card shadow-sm">
-        <div class="card-body">
+    <div @class(['card shadow-sm' => ! $embebido])>
+        <div @class(['card-body' => ! $embebido])>
 
             {{-- Cabecera: cliente + acciones de generación --}}
             <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                 <div>
-                    <h5 class="mb-0" style="color:red;">{{ $client->fullName() }}</h5>
-                    <small class="text-muted">
-                        Exp. {{ $client->expediente }} · DNI/RUC {{ $client->documento }}
-                    </small>
+                    @unless($embebido)
+                        <h5 class="mb-0" style="color:red;">{{ $client->fullName() }}</h5>
+                        <small class="text-muted">
+                            Exp. {{ $client->expediente }} · DNI/RUC {{ $client->documento }}
+                        </small>
+                    @else
+                        <h6 class="mb-0" style="color:red;">Documentos</h6>
+                    @endunless
                 </div>
                 <div class="d-flex gap-2 flex-wrap">
                     <button type="button" class="btn btn-sm btn-success" wire:click="abrirModalAnexo1">
@@ -39,9 +47,11 @@
                     <button type="button" class="btn btn-sm btn-info" wire:click="abrirModalAnexo2">
                         <i class="ti ti-file-plus"></i> Generar Anexo 2
                     </button>
-                    <a href="{{ route('clients.show', $client->id) }}" class="btn btn-sm btn-secondary">
-                        <i class="ti ti-arrow-back"></i> Regresar al cliente
-                    </a>
+                    @unless($embebido)
+                        <a href="{{ route('clients.show', $client->id) }}" class="btn btn-sm btn-secondary">
+                            <i class="ti ti-arrow-back"></i> Regresar al cliente
+                        </a>
+                    @endunless
                 </div>
             </div>
 

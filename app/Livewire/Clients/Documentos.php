@@ -172,8 +172,12 @@ class Documentos extends Component
         ];
     }
 
-    public function mount(int $id): void
+    /** true cuando se renderiza dentro de una pestaña (sin cabecera ni card propios). */
+    public bool $embebido = false;
+
+    public function mount(int $id, bool $embebido = false): void
     {
+        $this->embebido = $embebido;
         $client = Client::findOrFail($id);
 
         // Analista (scope-propio): solo SUS clientes

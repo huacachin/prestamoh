@@ -19,28 +19,34 @@
     <div class="card shadow-sm">
         <div class="card-body">
 
-            {{-- ════════ Pestañas ════════ --}}
+            {{-- ════════ Pestañas (compactas: píldoras pequeñas) ════════ --}}
             @php
                 $tabs = [
-                    'datos' => ['Datos del cliente', 'ti-user'],
+                    'datos' => ['Datos', 'ti-user'],
                     'vehiculos' => ['Vehículos', 'ti-car'],
+                    'documentos' => ['Documentos', 'ti-file-text'],
                     'adjuntos' => ['Adjuntos', 'ti-photo'],
                 ];
             @endphp
-            <ul class="nav nav-tabs mb-3">
+            <div class="d-flex flex-wrap gap-1 mb-3 pb-2" style="border-bottom:1px solid #e9ecef;">
                 @foreach($tabs as $clave => [$titulo, $icono])
-                    <li class="nav-item">
-                        <button type="button" class="nav-link {{ $tab === $clave ? 'active' : '' }}"
-                                wire:click="$set('tab', '{{ $clave }}')">
-                            <i class="ti {{ $icono }}"></i> {{ $titulo }}
-                        </button>
-                    </li>
+                    <button type="button"
+                            class="btn btn-sm py-1 px-2 {{ $tab === $clave ? 'btn-dark' : 'btn-link text-muted text-decoration-none' }}"
+                            style="font-size:12px; line-height:1.2;"
+                            wire:click="$set('tab', '{{ $clave }}')">
+                        <i class="ti {{ $icono }} f-s-14"></i> {{ $titulo }}
+                    </button>
                 @endforeach
-            </ul>
+            </div>
 
             {{-- ════════ Vehículos ════════ --}}
             @if($tab === 'vehiculos')
                 <livewire:clients.vehiculos :id="$clientId" :key="'veh-'.$clientId" />
+            @endif
+
+            {{-- ════════ Documentos ════════ --}}
+            @if($tab === 'documentos')
+                <livewire:clients.documentos :id="$clientId" :embebido="true" :key="'doc-'.$clientId" />
             @endif
 
             {{-- ════════ Adjuntos ════════ --}}
