@@ -3,9 +3,11 @@
 namespace App\Livewire\Clients;
 
 use App\Models\Client;
+use App\Models\ClientEmpresa;
 use App\Models\User;
 use App\Services\Factiliza;
 use App\Support\Audit;
+use App\Support\Documentos\DomicilioLegal;
 use App\Support\Documentos\Nacionalidades;
 use App\Support\TiposCredito;
 use Illuminate\Support\Facades\DB;
@@ -98,6 +100,22 @@ class Create extends Component
     public ?string $celular2 = null;
 
     public ?int $asesor_id = null;
+
+    /**
+     * REPRESENTANTE LEGAL (solo alta con RUC). La empresa no tiene sexo,
+     * ocupación, estado civil ni nacionalidad: esos datos son de la persona
+     * que la representa, y el contrato a.4 los exige del GERENTE. Se guardan
+     * en client_empresas + empresa_representantes (vigente=1) y el wizard de
+     * contrato los precarga solo.
+     */
+    public array $representante = [
+        'nombre' => '', 'tipo_documento' => 'DNI', 'dni' => '', 'sexo' => 'M',
+        'nacionalidad' => 'PERUANO', 'ocupacion' => 'independiente',
+        'estado_civil' => 'soltero', 'domicilio' => '',
+    ];
+
+    /** Campos del representante llenados por consulta/herencia (van en rojo). @var array<int, string> */
+    public array $autoRep = [];
 
     /**
      * ── Paso 2: vehículos (0..N) ───────────────────────────
@@ -366,6 +384,68 @@ class Create extends Component
         $this->vehMsg = "Datos de la placa {$placa} cargados. Verifica antes de guardar.";
     }
 
+    /**
+     * Consulta el documento del REPRESENTANTE (alta RUC): ficha local primero
+     * (hereda sexo, nacionalidad, ocupación y estado civil del cliente si ya
+     * está registrado), endpoint de DNI/CE después. Lo llenado va en rojo.
+     */
+    public function consultarDocRepresentante(Factiliza $api): void
+    {
+        $doc = trim((string) $this->representante['dni']);
+        if ($doc === '') {
+            $this->docMsgType = 'err';
+            $this->docMsg = 'Escribe el documento del representante antes de consultar.';
+
+            return;
+        }
+
+        $this->autoRep = [];
+
+        $ficha = Client::where('documento', $doc)->first();
+        if ($ficha !== null) {
+            $this->representante['nombre'] = mb_strtoupper($ficha->fullName());
+            $this->representante['sexo'] = $ficha->sexo === 'F' ? 'F' : 'M';
+            $this->representante['nacionalidad'] = $ficha->nacionalidad ?: Nacionalidades::DEFECTO;
+            if (isset(self::OCUPACIONES[(string) $ficha->ocupacion])) {
+                $this->representante['ocupacion'] = (string) $ficha->ocupacion;
+            }
+            if (isset(self::ESTADOS_CIVILES[(string) $ficha->estado_civil])) {
+                $this->representante['estado_civil'] = (string) $ficha->estado_civil;
+            }
+            $this->autoRep = ['nombre', 'sexo', 'nacionalidad', 'ocupacion', 'estado_civil'];
+            $this->docMsgType = 'ok';
+            $this->docMsg = "Representante heredado de la ficha de {$ficha->fullName()}.";
+
+            return;
+        }
+
+        $r = $this->representante['tipo_documento'] === 'CE' ? $api->cee($doc) : $api->dni($doc);
+        if (! $r['ok']) {
+            $this->docMsgType = 'err';
+            $this->docMsg = $r['error'].' Puedes completar los datos del representante a mano.';
+
+            return;
+        }
+
+        $nombre = trim(implode(' ', array_filter([
+            $r['data']['nombre'] ?? '', $r['data']['apellido_pat'] ?? '', $r['data']['apellido_mat'] ?? '',
+        ])));
+        if ($nombre !== '') {
+            $this->representante['nombre'] = mb_strtoupper($nombre);
+            $this->autoRep[] = 'nombre';
+        }
+        if (in_array($r['data']['sexo'] ?? null, ['M', 'F'], true)) {
+            $this->representante['sexo'] = $r['data']['sexo'];
+            $this->autoRep[] = 'sexo';
+        }
+        if (! empty($r['data']['estado_civil']) && isset(self::ESTADOS_CIVILES[$r['data']['estado_civil']])) {
+            $this->representante['estado_civil'] = $r['data']['estado_civil'];
+            $this->autoRep[] = 'estado_civil';
+        }
+        $this->docMsgType = 'ok';
+        $this->docMsg = 'Datos del representante cargados. Verifica y completa lo que falte.';
+    }
+
     public function clean(): void
     {
         $this->reset([
@@ -381,6 +461,7 @@ class Create extends Component
         $this->ocupacion = 'transportista';
         $this->estado_civil = 'soltero';
         $this->nacionalidad = Nacionalidades::DEFECTO;
+        $this->reset('representante', 'autoRep');
         $this->provincia = 'LIMA';
         $this->departamento = 'LIMA';
         $this->paso = 1;
@@ -396,11 +477,12 @@ class Create extends Component
     {
         $isRuc = $this->tipo_documento === 'RUC';
 
-        return [
+        $reglas = [
             'nombre' => 'required|string|max:200',
             'apellido_pat' => $isRuc ? 'nullable|string|max:100' : 'required|string|max:100',
             'apellido_mat' => 'nullable|string|max:100',
-            'sexo' => 'required|in:M,F',
+            // La EMPRESA no tiene datos personales: son del representante.
+            'sexo' => $isRuc ? 'nullable' : 'required|in:M,F',
             'fecha_nacimiento' => 'nullable|date',
             'tipo_documento' => 'required|in:'.implode(',', array_keys(self::TIPOS_DOCUMENTO)),
             // unique SOLO contra clientes de verdad: si el documento existe
@@ -409,12 +491,12 @@ class Create extends Component
             'documento' => ['required', 'string', 'min:8', 'max:12',
                 Rule::unique('clients', 'documento')->where(fn ($q) => $q->where('es_relacionado', false))],
             'email' => 'required|email|max:150',
-            'ocupacion' => 'required|in:'.implode(',', array_keys(self::OCUPACIONES)),
-            'estado_civil' => 'required|in:'.implode(',', array_keys(self::ESTADOS_CIVILES)),
+            'ocupacion' => $isRuc ? 'nullable' : 'required|in:'.implode(',', array_keys(self::OCUPACIONES)),
+            'estado_civil' => $isRuc ? 'nullable' : 'required|in:'.implode(',', array_keys(self::ESTADOS_CIVILES)),
             'expediente' => 'required|integer|min:1',
             // El domicilio legal es la cláusula PRIMERO del contrato: sin
             // dirección arranca en "DISTRITO DE" y sin ubigeo queda a medias.
-            'nacionalidad' => 'required|in:'.implode(',', Nacionalidades::OPCIONES),
+            'nacionalidad' => $isRuc ? 'nullable' : 'required|in:'.implode(',', Nacionalidades::OPCIONES),
             'direccion' => 'required|string|max:255',
             'distrito' => 'required|string|max:100',
             'provincia' => 'required|in:'.implode(',', array_keys(self::PROVINCIAS)),
@@ -426,6 +508,21 @@ class Create extends Component
             'celular2' => 'nullable|string|max:20',
             'asesor_id' => 'nullable|exists:users,id',
         ];
+
+        if ($isRuc) {
+            $reglas += [
+                'representante.nombre' => 'required|string|max:150',
+                'representante.tipo_documento' => 'required|in:DNI,CE',
+                'representante.dni' => 'required|string|min:8|max:12',
+                'representante.sexo' => 'required|in:M,F',
+                'representante.nacionalidad' => 'required|in:'.implode(',', Nacionalidades::OPCIONES),
+                'representante.ocupacion' => 'required|in:'.implode(',', array_keys(self::OCUPACIONES)),
+                'representante.estado_civil' => 'required|in:'.implode(',', array_keys(self::ESTADOS_CIVILES)),
+                'representante.domicilio' => 'nullable|string|max:300',
+            ];
+        }
+
+        return $reglas;
     }
 
     /**
@@ -501,6 +598,7 @@ class Create extends Component
         $expediente = (int) $this->expediente;
 
         DB::transaction(function () use ($expediente) {
+            $isRuc = $this->tipo_documento === 'RUC';
             $datosCliente = [
                 'expediente' => (string) $expediente,
                 'nombre' => $this->nombre,
@@ -508,12 +606,14 @@ class Create extends Component
                 'apellido_mat' => $this->apellido_mat,
                 'tipo_documento' => $this->tipo_documento,
                 'documento' => $this->documento,
-                'fecha_nacimiento' => $this->fecha_nacimiento,
-                'sexo' => $this->sexo,
-                'nacionalidad' => Nacionalidades::normalizar($this->nacionalidad),
+                // La EMPRESA no tiene datos personales: quedan NULL y los del
+                // representante van a empresa_representantes.
+                'fecha_nacimiento' => $isRuc ? null : $this->fecha_nacimiento,
+                'sexo' => $isRuc ? null : $this->sexo,
+                'nacionalidad' => $isRuc ? null : Nacionalidades::normalizar($this->nacionalidad),
                 'email' => trim($this->email),
-                'ocupacion' => $this->ocupacion,
-                'estado_civil' => $this->estado_civil,
+                'ocupacion' => $isRuc ? null : $this->ocupacion,
+                'estado_civil' => $isRuc ? null : $this->estado_civil,
                 'direccion' => $this->direccion,
                 'distrito' => $this->distrito,
                 'provincia' => $this->provincia,
@@ -544,6 +644,35 @@ class Create extends Component
                 $clientId = $relacionado->id;
             } else {
                 $clientId = DB::table('clients')->insertGetId($datosCliente + ['created_at' => now()]);
+            }
+
+            // Empresa: ficha registral + representante legal VIGENTE. El
+            // wizard de contrato los precarga (representanteVigente), así que
+            // el a.4 sale sin retipear al gerente.
+            if ($isRuc) {
+                $empresa = ClientEmpresa::updateOrCreate(
+                    ['client_id' => $clientId],
+                    [
+                        'domicilio' => DomicilioLegal::armar(
+                            $this->direccion, $this->distrito, $this->provincia, $this->departamento
+                        ) ?: null,
+                        'correo' => trim($this->email) ?: null,
+                    ],
+                );
+                $empresa->representantes()->create([
+                    'nombre' => mb_strtoupper(trim($this->representante['nombre'])),
+                    'tipo_documento' => $this->representante['tipo_documento'],
+                    'documento' => trim($this->representante['dni']),
+                    'sexo' => $this->representante['sexo'] === 'F' ? 'F' : 'M',
+                    'nacionalidad' => Nacionalidades::normalizar($this->representante['nacionalidad']),
+                    'ocupacion' => $this->representante['ocupacion'],
+                    'estado_civil' => $this->representante['estado_civil'],
+                    'domicilio' => trim((string) $this->representante['domicilio'])
+                        ?: (DomicilioLegal::armar(
+                            $this->direccion, $this->distrito, $this->provincia, $this->departamento
+                        ) ?: null),
+                    'vigente' => true,
+                ]);
             }
 
             foreach ($this->vehiculos as $v) {

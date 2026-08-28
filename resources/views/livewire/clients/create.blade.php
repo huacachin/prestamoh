@@ -131,6 +131,9 @@
                                    wire:model.defer="nombre" name="nombre" autocomplete="given-name"
                                    placeholder="{{ $tipo_documento === 'RUC' ? 'Razón social' : 'Nombres' }}">
                         </div>
+                        {{-- La EMPRESA no tiene datos personales: con RUC estos
+                             campos se ocultan y pasan al REPRESENTANTE LEGAL. --}}
+                        @unless($tipo_documento === 'RUC')
                         <div class="col-md-3">
                             <label class="form-label mb-0 small fw-semibold">Nacionalidad</label>
                             {{-- No flexiona: el contrato dice PERUANO / VENEZOLANO
@@ -155,6 +158,7 @@
                             <label class="form-label mb-0 small fw-semibold">Nacimiento</label>
                             <input type="text" autocomplete="off" name="fecha_nacimiento" class="form-control form-control-sm dates @if(in_array('fecha_nacimiento', $autoCliente)) campo-api @endif" wire:model.defer="fecha_nacimiento">
                         </div>
+                        @endunless
                         <div class="col-md-3">
                             <label class="form-label mb-0 small fw-semibold">N° de documento</label>
                             <input type="text" class="form-control form-control-sm @error('documento') is-invalid @enderror @if(in_array('documento', $autoCliente)) campo-api @endif"
@@ -178,6 +182,7 @@
                                    wire:model.defer="email" name="email" autocomplete="email" placeholder="cliente@correo.com">
                             @error('email') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
+                        @unless($tipo_documento === 'RUC')
                         <div class="col-md-4">
                             <label class="form-label mb-0 small fw-semibold">Ocupación</label>
                             <select class="form-select form-select-sm @error('ocupacion') is-invalid @enderror" wire:model.defer="ocupacion">
@@ -194,7 +199,80 @@
                                 @endforeach
                             </select>
                         </div>
+                        @endunless
                     </div>
+
+                    {{-- ════════ Representante legal (solo empresa RUC) ════════
+                         Sus datos personales son los que el contrato a.4 exige
+                         del GERENTE: van a empresa_representantes (vigente) y
+                         el wizard de contrato los precarga solo. --}}
+                    @if($tipo_documento === 'RUC')
+                        <hr class="my-2" style="border-color:#e8e2d5;">
+                        <h6 class="mb-1" style="color:red;">Representante legal (Gerente General)</h6>
+                        <div class="row g-2">
+                            <div class="col-md-3">
+                                <label class="form-label mb-0 small fw-semibold">Documento *</label>
+                                <div class="input-group input-group-sm">
+                                    <select class="form-select form-select-sm" style="max-width:4.8rem;"
+                                            wire:model.live="representante.tipo_documento">
+                                        <option value="DNI">DNI</option>
+                                        <option value="CE">CE</option>
+                                    </select>
+                                    <input type="text" class="form-control form-control-sm @error('representante.dni') is-invalid @enderror"
+                                           wire:model.blur="representante.dni">
+                                    <button type="button" class="btn btn-danger" wire:click="consultarDocRepresentante"
+                                            wire:loading.attr="disabled" wire:target="consultarDocRepresentante"
+                                            title="Consultar: hereda de la ficha si está registrado; si no, RENIEC/Migraciones">
+                                        <span wire:loading.remove wire:target="consultarDocRepresentante"><i class="ti ti-search"></i></span>
+                                        <span wire:loading wire:target="consultarDocRepresentante" class="small">…</span>
+                                    </button>
+                                </div>
+                                @error('representante.dni') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label mb-0 small fw-semibold">Nombre completo *</label>
+                                <input type="text" class="form-control form-control-sm @error('representante.nombre') is-invalid @enderror @if(in_array('nombre', $autoRep)) campo-api @endif"
+                                       wire:model.blur="representante.nombre">
+                                @error('representante.nombre') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label mb-0 small fw-semibold">Sexo *</label>
+                                <select class="form-select form-select-sm @if(in_array('sexo', $autoRep)) campo-api @endif" wire:model.defer="representante.sexo">
+                                    <option value="M">Masculino</option>
+                                    <option value="F">Femenino</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label mb-0 small fw-semibold">Nacionalidad *</label>
+                                <select class="form-select form-select-sm @if(in_array('nacionalidad', $autoRep)) campo-api @endif" wire:model.defer="representante.nacionalidad">
+                                    @foreach(\App\Support\Documentos\Nacionalidades::OPCIONES as $opcion)
+                                        <option value="{{ $opcion }}">{{ $opcion }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label mb-0 small fw-semibold">Ocupación *</label>
+                                <select class="form-select form-select-sm @if(in_array('ocupacion', $autoRep)) campo-api @endif" wire:model.defer="representante.ocupacion">
+                                    @foreach(\App\Livewire\Clients\Create::OCUPACIONES as $valor => $etiqueta)
+                                        <option value="{{ $valor }}">{{ $etiqueta }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label mb-0 small fw-semibold">Estado civil *</label>
+                                <select class="form-select form-select-sm @if(in_array('estado_civil', $autoRep)) campo-api @endif" wire:model.defer="representante.estado_civil">
+                                    @foreach(\App\Livewire\Clients\Create::ESTADOS_CIVILES as $valor => $etiqueta)
+                                        <option value="{{ $valor }}">{{ $etiqueta }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label mb-0 small fw-semibold">Domicilio <span class="text-muted">(si difiere del de la empresa)</span></label>
+                                <input type="text" class="form-control form-control-sm" wire:model.defer="representante.domicilio"
+                                       placeholder="Se usa el de la empresa si queda vacío">
+                            </div>
+                        </div>
+                    @endif
 
                     <hr class="my-2" style="border-color:#e8e2d5;">
 
