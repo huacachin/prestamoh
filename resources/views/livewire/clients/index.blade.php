@@ -211,7 +211,7 @@
                                     <td class="text-center">{{ $client->giro }}</td>
                                     <td class="text-center">{{ $client->asesor?->username ?? $client->asesor?->name }}</td>
                                     <td class="text-center text-nowrap">
-                                        <a href="{{ route('clients.show', $client->id) }}"
+                                        <a href="{{ route('clients.show', $client->id) }}" target="_blank"
                                            class="btn btn-xs btn-primary" style="padding: 2px 8px; font-size: 10px;">
                                             Prestamo
                                         </a>
@@ -292,7 +292,7 @@
                                         <div class="col-6"><b>Usuario:</b> {{ $client->usuario }}</div>
                                     </div>
                                     <div class="d-flex gap-1 mt-2">
-                                        <a href="{{ route('clients.show', $client->id) }}" class="btn btn-xs btn-primary" style="padding: 2px 8px; font-size: 10px;">Prestamo</a>
+                                        <a href="{{ route('clients.show', $client->id) }}" target="_blank" class="btn btn-xs btn-primary" style="padding: 2px 8px; font-size: 10px;">Prestamo</a>
                                         {{-- OCULTO 28/08 (ver docs/PENDIENTES.md § Avales) --}}
                                         @if(false)
                                         <a href="{{ route('clients.aval', $client->id) }}" class="btn btn-xs {{ ($client->avales_count ?? 0) > 0 ? 'btn-primary' : 'btn-danger' }}" style="padding: 2px 8px; font-size: 10px;">Aval</a>
