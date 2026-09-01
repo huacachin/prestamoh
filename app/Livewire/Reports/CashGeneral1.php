@@ -24,6 +24,14 @@ class CashGeneral1 extends Component
     #[Url(as: 'vista', except: 'detalle')]
     public $vista = 'detalle';
 
+    /**
+     * Día (Y-m-d) al que desplazarse al cargar. Es el homólogo del ancla
+     * `reporte1a.php#fecha` del legacy: la estadística de caja linkea el
+     * capital de cada día directo a su detalle.
+     */
+    #[Url(as: 'dia', except: '')]
+    public $dia = '';
+
     public function mount()
     {
         if (! request()->has('mes')) {
@@ -31,6 +39,10 @@ class CashGeneral1 extends Component
         }
         if (! request()->has('anio')) {
             $this->selecano = date('Y');
+        }
+        if ($this->dia !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $this->dia)) {
+            $this->vista = 'detalle';
+            $this->dispatch('scroll-to-day', date: $this->dia);
         }
     }
 

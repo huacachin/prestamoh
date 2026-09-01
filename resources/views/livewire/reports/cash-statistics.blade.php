@@ -101,7 +101,12 @@
                                         onmouseout="this.style.backgroundColor='{{ $r['is_sunday'] ? '#ffe5e5' : '' }}'">
                                         <td class="text-center">{{ $r['day'] }}/{{ str_pad($month,2,'0',STR_PAD_LEFT) }}/{{ $year }}</td>
                                         <td class="text-end">{{ number_format($r['capital_t'], 2) }}</td>
-                                        <td class="text-end">{{ number_format($r['capital_cobrado'], 2) }}</td>
+                                        <td class="text-end">
+                                            {{-- Homólogo del legacy: Capital2 del día linkea al detalle
+                                                 de caja 1 anclado en esa fecha (reporte1a.php#fecha). --}}
+                                            <a href="{{ route('reports.cash-general-1', ['mes' => str_pad($month, 2, '0', STR_PAD_LEFT), 'anio' => $year, 'dia' => sprintf('%04d-%02d-%02d', $year, $month, $r['day'])]) }}"
+                                               target="_blank">{{ number_format($r['capital_cobrado'], 2) }}</a>
+                                        </td>
                                         <td class="text-center">{{ $r['mensual_n'] ?: '' }}</td>
                                         <td class="text-end">{{ number_format($r['mensual_s'], 2) }}</td>
                                         <td class="text-end">{{ number_format($r['mensual_mora'], 2) }}</td>
@@ -282,7 +287,10 @@
                                     <tr>
                                         <td><b>{{ $r['mes_nombre'] }}</b></td>
                                         <td class="text-end">{{ number_format($r['capineto'], 2) }}</td>
-                                        <td class="text-end">{{ number_format($r['capital'], 2) }}</td>
+                                        <td class="text-end">
+                                            <a href="{{ route('reports.cash-general-1', ['mes' => str_pad($r['idmes'], 2, '0', STR_PAD_LEFT), 'anio' => $year]) }}"
+                                               target="_blank">{{ number_format($r['capital'], 2) }}</a>
+                                        </td>
                                         <td class="text-center">{{ $r['n1'] ?: '' }}</td>
                                         <td class="text-end">{{ number_format($r['mensual'], 2) }}</td>
                                         <td class="text-end">{{ number_format($r['mora3'], 2) }}</td>
@@ -295,7 +303,12 @@
                                         <td class="text-end" style="color:red;">{{ number_format($r['total'], 2) }}</td>
                                         <td class="text-end">{{ number_format($r['otros2'], 2) }}</td>
                                         <td class="text-end">{{ number_format($r['egresov'], 2) }}</td>
-                                        <td class="text-end" style="color:red;">{{ number_format($r['utilidad2'], 2) }}</td>
+                                        <td class="text-end" style="color:red;">
+                                            {{-- Homólogo del legacy: Utilidad2 linkea al Reporte General
+                                                 Caja 3 del mes (reporte2a3.php). --}}
+                                            <a href="{{ route('reports.cash-general-3', ['mes' => str_pad($r['idmes'], 2, '0', STR_PAD_LEFT), 'anio' => $year]) }}"
+                                               target="_blank" style="color:red;">{{ number_format($r['utilidad2'], 2) }}</a>
+                                        </td>
                                         <td class="text-end">{{ number_format($r['fijoi'], 2) }}</td>
                                         <td class="text-end">{{ number_format($r['otrosi'], 2) }}</td>
                                         <td class="text-end">{{ number_format($r['ingT'], 2) }}</td>
