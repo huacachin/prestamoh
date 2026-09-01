@@ -350,6 +350,9 @@ class MigrateLegacyData extends Command
                     'situacion' => $newSituacion,
                     'estado' => $lc->estado ?? 1,
                     'refinanciado' => ($lc->refi == 1 || $lc->cod_rem === 'REF') ? 1 : 0,
+                    // El flag refi del legacy TAL CUAL (cancelado POR refi):
+                    // el reporte de caja 1 ramifica con él, no con la fusión.
+                    'cancelado_por_refi' => $lc->refi == 1 ? 1 : 0,
                     'cod_rem' => $lc->cod_rem ?: null,
                     'gat' => $lc->gat ?? 0,
                     'idcan' => $lc->idcan ?: null,
