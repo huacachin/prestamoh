@@ -18,6 +18,7 @@ class TiposCredito
         'Gar. Hip.M',
         'Gar. Hip.S',
         'Alq.Ven.D.',
+        'Alquiler V.S', // pedido 02/09; Garantias lo clasifica "otra", igual que Alq.Ven.D.
         'Cred. Vehicular',
     ];
 

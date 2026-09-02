@@ -321,11 +321,11 @@ class ClienteWizardTest extends TestCase
         $opciones = TiposCredito::paraValor('SIGM.S-Rojo 14/07');
         $this->assertSame('SIGM.S-Rojo 14/07', $opciones[0]);
         $this->assertContains('SIGM.M', $opciones);
-        $this->assertCount(7, $opciones);
+        $this->assertCount(8, $opciones);
 
         // Un valor del catálogo no se duplica
-        $this->assertCount(6, TiposCredito::paraValor('SIGM.M'));
-        $this->assertCount(6, TiposCredito::paraValor(null));
+        $this->assertCount(7, TiposCredito::paraValor('SIGM.M'));
+        $this->assertCount(7, TiposCredito::paraValor(null));
     }
 
     public function test_dni_con_largo_invalido_no_consulta(): void
