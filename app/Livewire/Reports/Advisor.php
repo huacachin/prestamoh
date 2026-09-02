@@ -103,7 +103,7 @@ class Advisor extends Component
         }
         $insExpected = $insExpected
             ->selectRaw('DAY(credit_installments.fecha_vencimiento) as d, SUM(credit_installments.importe_cuota + credit_installments.importe_interes) as imp')
-            ->groupBy(DB::raw('DAY(credit_installments.fecha_pago)'))
+            ->groupBy(DB::raw('DAY(credit_installments.fecha_vencimiento)'))
             ->pluck('imp', 'd')
             ->toArray();
 
