@@ -72,7 +72,6 @@ class Schedule extends Component
         $alloc = [];      // idx cuota => ['monto', 'fecha', 'hora'] (fecha/hora del último pago que la tocó)
         $moraCuota = [];  // idx cuota => fechas de pago asociadas (para colgar la mora del día)
         $restos = [];     // [Y-m-d] => ['monto', 'hora'] sobras fuera del cronograma
-        $tipoPlanilla = (int) $this->credit->tipo_planilla;
         $n = $installments->count();
         $idx = 0;
         $capacidad = $n > 0
@@ -150,10 +149,10 @@ class Schedule extends Component
             $int = (float) $ins->importe_interes;
             $exc = (float) $ins->importe_excedente;
 
-            // Mora exonerada teórica POR CUOTA: días de atraso entre su
-            // vencimiento y su fecha de pago real (calendario para mensual,
-            // hábiles sin sáb/dom para el resto) × tarifa, menos la mora que
-            // sí se cobró en la cuota. Informativa: no afecta los totales.
+            // Mora exonerada teórica POR CUOTA: días calendario de atraso
+            // entre su vencimiento y su fecha de pago real (todos los tipos,
+            // regla única desde 02/09) × tarifa, menos la mora que sí se
+            // cobró en la cuota. Informativa: no afecta los totales.
             $moraExon = 0.0;
             $moraExonDias = 0;
             $moraRate = $this->credit->moraDiaria((float) $ins->importe_cuota + (float) $ins->importe_interes + (float) $ins->importe_excedente);
@@ -161,17 +160,7 @@ class Schedule extends Component
                 $vencC = Carbon::parse($ins->fecha_vencimiento);
                 $diff = (int) floor($vencC->diffInDays(Carbon::parse($fechaPago), false));
                 if ($diff > 0) {
-                    if ($tipoPlanilla === 3) {
-                        $moraExonDias = $diff;
-                    } else {
-                        $cur = $vencC->copy();
-                        for ($i = 1; $i <= $diff; $i++) {
-                            $cur->addDay();
-                            if (! in_array($cur->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])) {
-                                $moraExonDias++;
-                            }
-                        }
-                    }
+                    $moraExonDias = $diff;
                     $moraExon = round(max(0, $moraExonDias * $moraRate - $mora), 2);
                     if ($moraExon <= 0) {
                         $moraExonDias = 0;

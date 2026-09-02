@@ -52,9 +52,6 @@ class MoraPagada
             ->get(['d.mass_deletion_id', 'ci.num_cuota', 'ci.fecha_vencimiento'])
             ->groupBy('mass_deletion_id');
 
-        // Mensual cuenta días corridos; semanal/diario salta sáb/dom
-        $esMensual = (int) $credit->tipo_planilla === 3;
-
         $map = [];
         foreach ($ops as $o) {
             $fpago = Carbon::parse($o->fecha);
@@ -67,7 +64,7 @@ class MoraPagada
             $items = [];
             foreach ($vencidas as $i => $c) {
                 $hasta = $vencidas[$i + 1]['venc'] ?? $fpago;
-                $items[] = ['num' => $c['num'], 'dias' => self::diasMoraEntre($c['venc'], $hasta, $esMensual)];
+                $items[] = ['num' => $c['num'], 'dias' => self::diasMoraEntre($c['venc'], $hasta)];
             }
             $totDias = array_sum(array_column($items, 'dias'));
 
@@ -101,25 +98,12 @@ class MoraPagada
         return $map;
     }
 
-    /** Días de mora entre dos fechas con el mismo reloj del cálculo de mora. */
-    private static function diasMoraEntre(Carbon $desde, Carbon $hasta, bool $diasCorridos): int
+    /**
+     * Días de mora entre dos fechas con el mismo reloj del cálculo de mora:
+     * calendario corrido para todos los tipos (regla única desde 02/09).
+     */
+    private static function diasMoraEntre(Carbon $desde, Carbon $hasta): int
     {
-        $diff = (int) floor($desde->diffInDays($hasta, false));
-        if ($diff <= 0) {
-            return 0;
-        }
-        if ($diasCorridos) {
-            return $diff;
-        }
-        $d = 0;
-        $cur = $desde->copy();
-        for ($i = 1; $i <= $diff; $i++) {
-            $cur->addDay();
-            if (! in_array($cur->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])) {
-                $d++;
-            }
-        }
-
-        return $d;
+        return max(0, (int) floor($desde->diffInDays($hasta, false)));
     }
 }

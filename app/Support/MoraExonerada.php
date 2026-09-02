@@ -7,8 +7,9 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Mora exonerada teórica por cuota: días de atraso entre el vencimiento y la
- * fecha de pago real × mora diaria (5% de la cuota ÷7 semanal / ÷30 mensual;
+ * Mora exonerada teórica por cuota: días CALENDARIO de atraso entre el
+ * vencimiento y la fecha de pago real (todos los tipos, regla única desde
+ * 02/09) × mora diaria (5% de la cuota ÷7 semanal / ÷30 mensual;
  * diarios con su mora1 histórico — ver Credit::moraDiaria()), menos la mora
  * cobrada en la cuota. La fecha de pago real se reconstruye con FIFO porque
  * installments.fecha_pago guarda el vencimiento, no el día del pago.
@@ -21,8 +22,6 @@ class MoraExonerada
     /** @return array<int, array{monto: float, dias: int}> keyed por num_cuota (solo cuotas con exoneración) */
     public static function porCuota(Credit $credit): array
     {
-        $tipoPlanilla = (int) $credit->tipo_planilla;
-
         $installments = DB::table('credit_installments')
             ->where('credit_id', $credit->id)
             ->orderBy('num_cuota')
@@ -116,18 +115,7 @@ class MoraExonerada
                 continue;
             }
 
-            $dias = 0;
-            if ($tipoPlanilla === 3) {
-                $dias = $diff;
-            } else {
-                $cur = $venc->copy();
-                for ($i = 1; $i <= $diff; $i++) {
-                    $cur->addDay();
-                    if (! in_array($cur->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])) {
-                        $dias++;
-                    }
-                }
-            }
+            $dias = $diff;
 
             $rate = $credit->moraDiaria((float) $ins->importe_cuota + (float) $ins->importe_interes);
             $monto = round(max(0, $dias * $rate - $mora), 2);

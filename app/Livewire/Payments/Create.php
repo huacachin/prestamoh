@@ -383,13 +383,15 @@ class Create extends Component
     }
 
     /**
-     * Mora calculada a una fecha dada: días desde el vencimiento impago más
-     * antiguo hasta $al (mensual: días calendario; semanal/diario: excluye
-     * sábados y domingos) × mora diaria. Mora diaria = 5% de la cuota vencida
-     * ÷7 (semanal) / ÷30 (mensual); los diarios mantienen su mora1 histórico.
-     * dias_atraso puede ser negativo si aún no vence (solo display; la mora
-     * queda en 0 por el max). El descuento de días se eliminó (2026-07-03);
-     * la única rebaja posible es el override gerencial de Total Mora.
+     * Mora calculada a una fecha dada: días CALENDARIO corridos desde el
+     * vencimiento impago más antiguo hasta $al × mora diaria, para todos los
+     * tipos (02/09: semanal y diario dejaron de saltar sáb/dom — regla única
+     * igual que mensual, decisión de Antony). Mora diaria = 5% de la cuota
+     * vencida ÷7 (semanal) / ÷30 (mensual); los diarios mantienen su mora1
+     * histórico. dias_atraso puede ser negativo si aún no vence (solo display;
+     * la mora queda en 0 por el max). El descuento de días se eliminó
+     * (2026-07-03); la única rebaja posible es el override gerencial de
+     * Total Mora.
      */
     private function moraCalcAt(Carbon $al): array
     {
@@ -401,22 +403,7 @@ class Create extends Component
 
         $diasddd = 0;
         if ($minFechaStr) {
-            $diff = (int) floor(Carbon::parse($minFechaStr)->diffInDays($al, false));
-            if ($diff > 0) {
-                if ((int) $this->credit->tipo_planilla === 3) {
-                    $diasddd = $diff;
-                } else {
-                    $cur = Carbon::parse($minFechaStr);
-                    for ($i = 1; $i <= $diff; $i++) {
-                        $cur->addDay();
-                        if (! in_array($cur->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])) {
-                            $diasddd++;
-                        }
-                    }
-                }
-            } elseif ($diff < 0) {
-                $diasddd = $diff;
-            }
+            $diasddd = (int) floor(Carbon::parse($minFechaStr)->diffInDays($al, false));
         }
         $diasFinal = max(0, (int) $diasddd);
 
