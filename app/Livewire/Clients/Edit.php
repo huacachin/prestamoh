@@ -48,6 +48,19 @@ class Edit extends Component
 
     public ?string $departamento = null;
 
+    /** Mismo par sincronizado que en Create (ver el comentario de allá). */
+    public function updatedDepartamento(): void
+    {
+        if (isset(Create::PROVINCIAS[(string) $this->departamento])) {
+            $this->provincia = (string) $this->departamento;
+        }
+    }
+
+    public function updatedProvincia(): void
+    {
+        $this->departamento = $this->provincia;
+    }
+
     public ?string $nacionalidad = null;
 
     public string $email = '';
@@ -165,7 +178,9 @@ class Edit extends Component
         $this->direccion = $c->direccion;
         $this->distrito = $c->distrito;
         $this->provincia = isset(Create::PROVINCIAS[(string) $c->provincia]) ? (string) $c->provincia : 'LIMA';
-        $this->departamento = $c->departamento;
+        // Sin departamento guardado (la migración lo deja NULL) hereda la
+        // provincia: lo que muestra el select es lo que se guardará.
+        $this->departamento = $c->departamento ?: $this->provincia;
         $this->nacionalidad = $c->nacionalidad ?: Nacionalidades::DEFECTO;
         $this->email = (string) ($c->email ?? '');
         $this->ocupacion = isset(Create::OCUPACIONES[(string) $c->ocupacion]) ? (string) $c->ocupacion : 'transportista';

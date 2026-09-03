@@ -89,6 +89,24 @@ class Create extends Component
 
     public ?string $departamento = 'LIMA';
 
+    /**
+     * Departamento y provincia van de la mano (la financiera solo opera
+     * LIMA/CALLAO y el par gobierna la frase registral del contrato):
+     * cambiar uno sincroniza el otro. El distrito NO se pisa — el datalist
+     * de sugerencias cambia solo y lo escrito puede seguir valiendo.
+     */
+    public function updatedDepartamento(): void
+    {
+        if (isset(self::PROVINCIAS[(string) $this->departamento])) {
+            $this->provincia = (string) $this->departamento;
+        }
+    }
+
+    public function updatedProvincia(): void
+    {
+        $this->departamento = $this->provincia;
+    }
+
     public ?string $giro = null;     // Legacy: input "Giro"
 
     public $capital = null;          // Capital declarado (línea de crédito = 25%)

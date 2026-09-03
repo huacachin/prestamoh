@@ -290,8 +290,15 @@
                              (Lima colapsa, Callao es "PROVINCIA CONSTITUCIONAL"). --}}
                         <div class="col-md-3">
                             <label class="form-label mb-0 small fw-semibold">Distrito</label>
-                            <input type="text" class="form-control form-control-sm text-uppercase @error('distrito') is-invalid @enderror @if(in_array('distrito', $autoCliente)) campo-api @endif"
+                            {{-- datalist: desplegable con búsqueda al escribir, sin bloquear texto libre --}}
+                            <input type="text" list="distritos-cliente" autocomplete="off"
+                                   class="form-control form-control-sm text-uppercase @error('distrito') is-invalid @enderror @if(in_array('distrito', $autoCliente)) campo-api @endif"
                                    wire:model.defer="distrito" name="distrito" placeholder="Ate">
+                            <datalist id="distritos-cliente">
+                                @foreach(\App\Support\Ubigeo::distritosDe($departamento) as $d)
+                                    <option value="{{ $d }}"></option>
+                                @endforeach
+                            </datalist>
                             @error('distrito') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                         <div class="col-md-3">
@@ -306,8 +313,12 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label mb-0 small fw-semibold">Departamento</label>
-                            <input type="text" class="form-control form-control-sm text-uppercase @error('departamento') is-invalid @enderror @if(in_array('departamento', $autoCliente)) campo-api @endif"
-                                   wire:model.defer="departamento" name="departamento" placeholder="Lima">
+                            <select class="form-select form-select-sm @error('departamento') is-invalid @enderror @if(in_array('departamento', $autoCliente)) campo-api @endif"
+                                    wire:model.live="departamento" name="departamento">
+                                @foreach(\App\Support\Ubigeo::departamentosPara($departamento) as $dep)
+                                    <option value="{{ $dep }}">{{ $dep }}</option>
+                                @endforeach
+                            </select>
                             @error('departamento') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                         <div class="col-md-3">
