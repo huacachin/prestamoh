@@ -222,39 +222,42 @@
                         <input type="text" class="form-control form-control-sm"
                                wire:model.defer="referencia" name="referencia" autocomplete="off" placeholder="Cerca de…">
                     </div>
-                    {{-- Ubigeo: arma el domicilio legal del contrato. Provincia
-                         es combo porque cambia la frase registral. --}}
-                    <div class="col-md-3">
-                        <label class="form-label mb-0 small fw-semibold">Distrito</label>
-                        {{-- datalist: desplegable con búsqueda al escribir, sin bloquear texto libre --}}
-                        <input type="text" list="distritos-cliente-edit" autocomplete="off"
-                               class="form-control form-control-sm text-uppercase @error('distrito') is-invalid @enderror"
-                               wire:model.defer="distrito" placeholder="Ate">
-                        <datalist id="distritos-cliente-edit">
-                            @foreach(\App\Support\Ubigeo::distritosDe($departamento) as $d)
-                                <option value="{{ $d }}"></option>
-                            @endforeach
-                        </datalist>
-                        @error('distrito') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label mb-0 small fw-semibold">Provincia</label>
-                        <select class="form-select form-select-sm @error('provincia') is-invalid @enderror" wire:model.live="provincia">
-                            @foreach(\App\Livewire\Clients\Create::PROVINCIAS as $valor => $etiqueta)
-                                <option value="{{ $valor }}">{{ $etiqueta }}</option>
-                            @endforeach
-                        </select>
-                        @error('provincia') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                    </div>
-                    <div class="col-md-3">
+                    {{-- Ubigeo: arma el domicilio legal del contrato (la provincia
+                         gobierna la frase registral, ver DomicilioLegal). Los tres
+                         son select2 con búsqueda; el wire:key fuerza nodo nuevo
+                         cuando cambia la cascada para que select2 se reinicie
+                         limpio tras el morph de Livewire. --}}
+                    <div class="col-md-3" wire:key="ubigeo-dep">
                         <label class="form-label mb-0 small fw-semibold">Departamento</label>
-                        <select class="form-select form-select-sm @error('departamento') is-invalid @enderror"
+                        <select class="form-select form-select-sm select2-simple @error('departamento') is-invalid @enderror"
                                 wire:model.live="departamento">
-                            @foreach(\App\Support\Ubigeo::departamentosPara($departamento) as $dep)
+                            @foreach(\App\Support\Ubigeo::conHistorico(\App\Support\Ubigeo::departamentos(), $departamento) as $dep)
                                 <option value="{{ $dep }}">{{ $dep }}</option>
                             @endforeach
                         </select>
                         @error('departamento') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+                    <div class="col-md-3" wire:key="ubigeo-prov-{{ md5((string) $departamento) }}">
+                        <label class="form-label mb-0 small fw-semibold">Provincia</label>
+                        <select class="form-select form-select-sm select2-simple @error('provincia') is-invalid @enderror"
+                                wire:model.live="provincia">
+                            @foreach(\App\Support\Ubigeo::conHistorico(\App\Support\Ubigeo::provinciasDe($departamento), $provincia) as $prov)
+                                <option value="{{ $prov }}">{{ $prov }}</option>
+                            @endforeach
+                        </select>
+                        @error('provincia') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+                    <div class="col-md-3" wire:key="ubigeo-dist-{{ md5($departamento.'|'.$provincia) }}">
+                        <label class="form-label mb-0 small fw-semibold">Distrito</label>
+                        {{-- tags: permite texto libre (historial migrado / casos borde) --}}
+                        <select class="form-select form-select-sm select2-tags @error('distrito') is-invalid @enderror"
+                                wire:model="distrito" data-placeholder="Busca o escribe...">
+                            <option value=""></option>
+                            @foreach(\App\Support\Ubigeo::conHistorico(\App\Support\Ubigeo::distritosDe($departamento, $provincia), $distrito) as $d)
+                                <option value="{{ $d }}">{{ $d }}</option>
+                            @endforeach
+                        </select>
+                        @error('distrito') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">Giro</label>

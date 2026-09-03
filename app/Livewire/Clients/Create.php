@@ -10,6 +10,7 @@ use App\Support\Audit;
 use App\Support\Documentos\DomicilioLegal;
 use App\Support\Documentos\Nacionalidades;
 use App\Support\TiposCredito;
+use App\Support\Ubigeo;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
@@ -85,26 +86,49 @@ class Create extends Component
      */
     public ?string $distrito = null;
 
-    public string $provincia = 'LIMA';
+    public string $provincia = 'Lima';
 
-    public ?string $departamento = 'LIMA';
+    public ?string $departamento = 'Lima';
 
     /**
-     * Departamento y provincia van de la mano (la financiera solo opera
-     * LIMA/CALLAO y el par gobierna la frase registral del contrato):
-     * cambiar uno sincroniza el otro. El distrito NO se pisa — el datalist
-     * de sugerencias cambia solo y lo escrito puede seguir valiendo.
+     * Cascada de ubigeo (catálogo App\Support\Ubigeo): al cambiar el
+     * departamento, si la provincia elegida no le pertenece se resetea a la
+     * capital (primera del catálogo); al cambiar provincia, el distrito se
+     * conserva solo si pertenece a la nueva (si no, se limpia para que el
+     * select2 no muestre un distrito de otra provincia).
      */
     public function updatedDepartamento(): void
     {
-        if (isset(self::PROVINCIAS[(string) $this->departamento])) {
-            $this->provincia = (string) $this->departamento;
+        $this->departamento = Ubigeo::resolverDepartamento($this->departamento) ?? $this->departamento;
+        if (Ubigeo::resolverProvincia($this->departamento, $this->provincia) === null) {
+            $this->provincia = Ubigeo::provinciasDe($this->departamento)[0] ?? $this->provincia;
+            $this->updatedProvincia();
         }
     }
 
     public function updatedProvincia(): void
     {
-        $this->departamento = $this->provincia;
+        // Provincia de OTRO departamento (la API o un set directo la mandan
+        // antes que el departamento): arrastra a su departamento y normaliza.
+        if (Ubigeo::resolverProvincia($this->departamento, $this->provincia) === null) {
+            $ubicada = Ubigeo::buscarProvincia($this->provincia);
+            if ($ubicada !== null) {
+                [$this->departamento, $this->provincia] = $ubicada;
+            }
+        } else {
+            $this->provincia = Ubigeo::resolverProvincia($this->departamento, $this->provincia);
+        }
+
+        // El distrito se conserva si pertenece a la nueva provincia; si la
+        // provincia quedo fuera del catalogo (historico) no se toca nada.
+        $distritos = Ubigeo::distritosDe($this->departamento, $this->provincia);
+        if (filled($this->distrito) && $distritos !== []) {
+            $enCatalogo = collect($distritos)
+                ->contains(fn ($d) => mb_strtoupper($d) === mb_strtoupper(trim((string) $this->distrito)));
+            if (! $enCatalogo) {
+                $this->distrito = null;
+            }
+        }
     }
 
     public ?string $giro = null;     // Legacy: input "Giro"
@@ -222,9 +246,9 @@ class Create extends Component
             $this->email = (string) ($existe->email ?? '');
             $this->ocupacion = $existe->ocupacion ?: $this->ocupacion;
             $this->estado_civil = $existe->estado_civil ?: $this->estado_civil;
-            if (isset(self::PROVINCIAS[(string) $existe->provincia])) {
-                $this->provincia = (string) $existe->provincia;
-            }
+            $this->departamento = Ubigeo::resolverDepartamento($existe->departamento) ?? ($existe->departamento ?: $this->departamento);
+            $this->provincia = Ubigeo::resolverProvincia($this->departamento, $existe->provincia)
+                ?? ($existe->provincia ?: $this->provincia);
             $this->fecha_nacimiento = $existe->fecha_nacimiento?->format('Y-m-d');
             $this->docMsgType = 'ok';
             $this->docMsg = "{$existe->fullName()} ya existe como PERSONA RELACIONADA: al guardar se completará su ficha como cliente (mismo registro, conserva sus vínculos).";
@@ -296,13 +320,14 @@ class Create extends Component
             }
         }
 
-        // La provincia es un combo cerrado (gobierna el giro registral del
-        // contrato): solo se autocompleta si la API devuelve una de las que
-        // opera la financiera. Si trae otra, queda la elegida a mano.
-        $provincia = mb_strtoupper(trim((string) ($d['provincia'] ?? '')));
-        if (isset(self::PROVINCIAS[$provincia])) {
-            $this->provincia = $provincia;
+        // La provincia se autocompleta si existe en el catálogo (Lima con sus
+        // 10 provincias o Callao) y arrastra el departamento correcto. Si la
+        // API trae una de otro departamento no operado, queda la elegida a mano.
+        $ubicada = Ubigeo::buscarProvincia((string) ($d['provincia'] ?? ''));
+        if ($ubicada !== null) {
+            [$this->departamento, $this->provincia] = $ubicada;
             $this->autoCliente[] = 'provincia';
+            $this->autoCliente[] = 'departamento';
         }
         if (! empty($d['fecha_nacimiento'])) {
             $this->fecha_nacimiento = (string) $d['fecha_nacimiento'];
@@ -517,7 +542,7 @@ class Create extends Component
             'nacionalidad' => $isRuc ? 'nullable' : 'required|in:'.implode(',', Nacionalidades::OPCIONES),
             'direccion' => 'required|string|max:255',
             'distrito' => 'required|string|max:100',
-            'provincia' => 'required|in:'.implode(',', array_keys(self::PROVINCIAS)),
+            'provincia' => 'required|string|max:100',
             'departamento' => 'required|string|max:100',
             'giro' => 'nullable|string|max:100',
             'capital' => 'nullable|numeric|min:0',

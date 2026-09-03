@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Support\Audit;
 use App\Support\Documentos\Nacionalidades;
 use App\Support\TiposCredito;
+use App\Support\Ubigeo;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -44,21 +45,43 @@ class Edit extends Component
      */
     public ?string $distrito = null;
 
-    public string $provincia = 'LIMA';
+    public string $provincia = 'Lima';
 
     public ?string $departamento = null;
 
-    /** Mismo par sincronizado que en Create (ver el comentario de allá). */
+    /** Misma cascada de ubigeo que en Create (ver el comentario de allá). */
     public function updatedDepartamento(): void
     {
-        if (isset(Create::PROVINCIAS[(string) $this->departamento])) {
-            $this->provincia = (string) $this->departamento;
+        $this->departamento = Ubigeo::resolverDepartamento($this->departamento) ?? $this->departamento;
+        if (Ubigeo::resolverProvincia($this->departamento, $this->provincia) === null) {
+            $this->provincia = Ubigeo::provinciasDe($this->departamento)[0] ?? $this->provincia;
+            $this->updatedProvincia();
         }
     }
 
     public function updatedProvincia(): void
     {
-        $this->departamento = $this->provincia;
+        // Provincia de OTRO departamento (la API o un set directo la mandan
+        // antes que el departamento): arrastra a su departamento y normaliza.
+        if (Ubigeo::resolverProvincia($this->departamento, $this->provincia) === null) {
+            $ubicada = Ubigeo::buscarProvincia($this->provincia);
+            if ($ubicada !== null) {
+                [$this->departamento, $this->provincia] = $ubicada;
+            }
+        } else {
+            $this->provincia = Ubigeo::resolverProvincia($this->departamento, $this->provincia);
+        }
+
+        // El distrito se conserva si pertenece a la nueva provincia; si la
+        // provincia quedo fuera del catalogo (historico) no se toca nada.
+        $distritos = Ubigeo::distritosDe($this->departamento, $this->provincia);
+        if (filled($this->distrito) && $distritos !== []) {
+            $enCatalogo = collect($distritos)
+                ->contains(fn ($d) => mb_strtoupper($d) === mb_strtoupper(trim((string) $this->distrito)));
+            if (! $enCatalogo) {
+                $this->distrito = null;
+            }
+        }
     }
 
     public ?string $nacionalidad = null;
@@ -121,7 +144,7 @@ class Edit extends Component
             'status' => 'required|in:active,inactive',
             'direccion' => 'nullable|string|max:255',
             'distrito' => 'nullable|string|max:100',
-            'provincia' => 'required|in:'.implode(',', array_keys(Create::PROVINCIAS)),
+            'provincia' => 'required|string|max:100',
             'departamento' => 'nullable|string|max:100',
             // Acepta las opciones vigentes y el valor histórico ya guardado
             'nacionalidad' => 'nullable|string|in:'.implode(',', Nacionalidades::paraValor($this->nacionalidad)),
@@ -177,10 +200,15 @@ class Edit extends Component
         $this->status = $c->status ?? 'active';
         $this->direccion = $c->direccion;
         $this->distrito = $c->distrito;
-        $this->provincia = isset(Create::PROVINCIAS[(string) $c->provincia]) ? (string) $c->provincia : 'LIMA';
-        // Sin departamento guardado (la migración lo deja NULL) hereda la
+        // Resolución case-insensitive al catálogo ("LIMA" migrado → "Lima");
+        // un valor histórico fuera del catálogo se conserva tal cual. Sin
+        // departamento guardado (la migración lo deja NULL) hereda el de la
         // provincia: lo que muestra el select es lo que se guardará.
-        $this->departamento = $c->departamento ?: $this->provincia;
+        $depGuardado = Ubigeo::resolverDepartamento($c->departamento) ?? $c->departamento;
+        $ubicada = Ubigeo::buscarProvincia($c->provincia);
+        $this->departamento = $depGuardado ?: ($ubicada[0] ?? 'Lima');
+        $this->provincia = Ubigeo::resolverProvincia($this->departamento, $c->provincia)
+            ?? ($c->provincia ?: 'Lima');
         $this->nacionalidad = $c->nacionalidad ?: Nacionalidades::DEFECTO;
         $this->email = (string) ($c->email ?? '');
         $this->ocupacion = isset(Create::OCUPACIONES[(string) $c->ocupacion]) ? (string) $c->ocupacion : 'transportista';

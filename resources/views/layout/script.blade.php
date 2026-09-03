@@ -8,6 +8,9 @@
 <!-- jQuery UI (datepicker, igual al legacy) -->
 <script src="{{ asset('assets/vendor/jquery-ui/jquery-ui.js') }}"></script>
 
+<!-- select2 (desplegables con búsqueda: ubigeo de clientes) -->
+<script src="{{ asset('assets/vendor/select/select2.min.js') }}"></script>
+
 <!-- Bootstrap js-->
 <script src="{{asset('assets/vendor/bootstrap/bootstrap.bundle.min.js')}}"></script>
 
@@ -202,6 +205,50 @@ document.addEventListener('click', function (e) {
             window.Livewire.hook('commit', function (payload) {
                 if (payload && payload.respond) payload.respond(initDatepickers);
             });
+        }
+    });
+})();
+</script>
+
+{{-- ── select2 en selects .select2-simple / .select2-tags (ubigeo) ──
+     Mismo esquema de re-init que el datepicker. Los wrappers llevan
+     wire:key con la cascada, así el morph reemplaza el nodo entero y el
+     widget viejo se va con él; aquí solo barremos contenedores huérfanos
+     e inicializamos los selects nuevos. El change de select2 es jQuery,
+     no nativo: se re-dispara como evento nativo para que wire:model lo
+     escuche. --}}
+<script>
+(function () {
+    if (typeof jQuery === 'undefined' || !jQuery.fn.select2) return;
+
+    function initSelect2() {
+        // contenedores huérfanos (su select original ya no está en el DOM)
+        jQuery('.select2-container').each(function () {
+            var prev = this.previousElementSibling;
+            if (!prev || !jQuery(prev).hasClass('select2-hidden-accessible')) jQuery(this).remove();
+        });
+
+        jQuery('select.select2-simple, select.select2-tags').each(function () {
+            if (jQuery(this).hasClass('select2-hidden-accessible')) return; // ya montado
+            var conTexto = jQuery(this).hasClass('select2-tags');
+            jQuery(this).select2({
+                width: '100%',
+                language: { noResults: function () { return 'Sin resultados'; } },
+                tags: conTexto,                       // texto libre (historial / casos borde)
+                placeholder: jQuery(this).data('placeholder') || '',
+                allowClear: conTexto
+            }).on('select2:select select2:unselect select2:clear', function () {
+                this.dispatchEvent(new Event('input',  { bubbles: true }));
+                this.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', initSelect2);
+    document.addEventListener('livewire:navigated', initSelect2);
+    document.addEventListener('livewire:init', function () {
+        if (window.Livewire && window.Livewire.hook) {
+            window.Livewire.hook('morph.updated', function () { queueMicrotask(initSelect2); });
         }
     });
 })();
