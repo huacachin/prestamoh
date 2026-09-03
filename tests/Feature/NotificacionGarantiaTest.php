@@ -165,6 +165,39 @@ class NotificacionGarantiaTest extends TestCase
         $this->assertStringNotContainsString('EJECUCIÓN EXTRAJUDICIAL - GARANTIA', $texto);
     }
 
+    /**
+     * Regresión (02/09): dentro del mismo nivel, un envío previo NO debe
+     * pegar el texto viejo. Antes se reutilizaba el último mensaje del nivel
+     * y las cuotas/montos quedaban congelados al día del primer envío.
+     */
+    public function test_nuevo_editor_trae_datos_frescos_aunque_haya_envio_previo_del_mismo_nivel(): void
+    {
+        $this->actingAs(User::factory()->create(['username' => 'tester']));
+        [$client, $credit] = $this->clienteConCredito('SIGM.S');
+
+        // 4 vencidas → comunicado de ejecución; se envía (queda en historial).
+        CreditInstallment::where('credit_id', $credit->id)->where('num_cuota', 4)
+            ->update(['fecha_vencimiento' => now()->subDay()->format('Y-m-d')]);
+
+        $c = Livewire::test(NotificationsModal::class)
+            ->call('abrir', $client->id)
+            ->call('nuevaNotif');
+        $this->assertStringContainsString('4(CUATRO) CUOTAS', $c->get('texto'));
+        $c->call('enviarNotif');
+
+        // Cae la 5ta cuota: mismo nivel (4+), pero el editor debe traer CINCO.
+        CreditInstallment::where('credit_id', $credit->id)->where('num_cuota', 5)
+            ->update(['fecha_vencimiento' => now()->subDay()->format('Y-m-d')]);
+
+        $texto = Livewire::test(NotificationsModal::class)
+            ->call('abrir', $client->id)
+            ->call('nuevaNotif')
+            ->get('texto');
+
+        $this->assertStringContainsString('5(CINCO) CUOTAS', $texto);
+        $this->assertStringNotContainsString('4(CUATRO) CUOTAS', $texto);
+    }
+
     public function test_sin_garantia_conserva_el_comunicado_generico(): void
     {
         $this->actingAs(User::factory()->create(['username' => 'tester']));

@@ -174,10 +174,12 @@ class NotificationsModal extends Component
     }
 
     /**
-     * Abre el editor precargado según el NIVEL de morosidad actual:
-     * el último mensaje enviado del mismo nivel (2 vencidas vs 3+), o la
-     * plantilla base de ese nivel si nunca se envió una. Así, si el cliente
-     * se puso al día y recae, vuelve a salir el mensaje del nivel que toca.
+     * Abre el editor con la plantilla FRESCA del nivel de morosidad actual,
+     * siempre con los datos del día (cuotas vencidas, monto en número y en
+     * letras). Antes (21/08–02/09) reutilizaba el último mensaje enviado del
+     * mismo nivel y dentro de un nivel las cuotas/montos quedaban pegados al
+     * día del primer envío; quien quiera repetir un texto anterior lo tiene
+     * a la vista en el historial del propio modal.
      */
     public function nuevaNotif(): void
     {
@@ -192,23 +194,9 @@ class NotificationsModal extends Component
         // Escalado (21/08): 2 = aviso preventivo; 3 EXACTAS = requerimiento
         // final; 4+ = comunicado de ejecución (extrajudicial vehicular /
         // pre-aviso judicial hipotecario).
-        $bucket = $this->vencidas >= 4 ? 'ejecucion' : ($this->vencidas >= 3 ? 'final' : 'dos');
-
-        // Reutiliza el último mensaje del MISMO NIVEL de este crédito (así el
-        // texto recuperado ya trae el número de crédito correcto).
-        $q = DB::table('client_notifications')
-            ->where('client_id', $this->clientId)
-            ->where('credit_id', $this->creditId);
-        match ($bucket) {
-            'ejecucion' => $q->where('cuotas_vencidas', '>=', 4),
-            'final' => $q->where('cuotas_vencidas', 3),
-            default => $q->where('cuotas_vencidas', 2),
-        };
-        $ultima = $q->orderByDesc('numero')->value('mensaje');
-
-        $this->texto = $ultima ?? match ($bucket) {
-            'ejecucion' => $this->plantillaEjecucion(),
-            'final' => $this->plantillaRequerimientoFinal(),
+        $this->texto = match (true) {
+            $this->vencidas >= 4 => $this->plantillaEjecucion(),
+            $this->vencidas >= 3 => $this->plantillaRequerimientoFinal(),
             default => $this->plantillaDosCuotas(),
         };
         $this->editor = true;
