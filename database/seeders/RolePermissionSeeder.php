@@ -72,7 +72,9 @@ class RolePermissionSeeder extends Seeder
                 // Usuarios, permisos y sucursales: solo director (permisos-nuevos 21/08)
                 'configuracion.conceptos', 'configuracion.tipo-cambio',
                 'registro.activar', 'registro.estado', 'registro.cesados',
-                'registro.eliminar-masivo',
+                // revertir = anular cobros; el código lo limita a operaciones
+                // del DÍA para quien no tiene caja.editar-historico (26/08)
+                'registro.eliminar-masivo', 'registro.eliminar-masivo.revertir',
                 'transacciones.autorizar',
                 'acceso.cross-headquarter',
             ],
@@ -87,13 +89,16 @@ class RolePermissionSeeder extends Seeder
                 'reportes.credito-estadistica',
             ],
 
-            // ─── AREA LEGAL (consulta + cambia estado para casos legales) ───
+            // ─── AREA LEGAL (consulta + cambia estado + módulo legal completo) ───
             'area-legal' => [
                 'dashboard',
                 'clientes', 'creditos',
                 'reportes.cartera', 'reportes.morosidad', 'reportes.cancelados',
                 'reportes.credito-estadistica',
                 'registro.estado', 'registro.cesados',
+                'legal.garantias', 'legal.contratos', 'legal.notaria',
+                'legal.judicial', 'legal.papeletas', 'legal.caja',
+                'legal.configuracion',
             ],
 
             // ─── COBRANZAS (recibe pagos, ve cartera por cobrar) ───

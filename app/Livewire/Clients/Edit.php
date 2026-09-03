@@ -6,7 +6,10 @@ use App\Models\Client;
 use App\Models\Credit;
 use App\Models\User;
 use App\Support\Audit;
+use App\Support\Documentos\Nacionalidades;
+use App\Support\TiposCredito;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class Edit extends Component
@@ -34,6 +37,25 @@ class Edit extends Component
 
     public ?string $direccion = null;
 
+    /**
+     * Datos que el contrato exige y que hasta ahora solo se capturaban en el
+     * alta: si el asesor se equivocaba, el guard de emisión bloqueaba el
+     * contrato sin darle forma de corregirlo desde la UI.
+     */
+    public ?string $distrito = null;
+
+    public string $provincia = 'LIMA';
+
+    public ?string $departamento = null;
+
+    public ?string $nacionalidad = null;
+
+    public string $email = '';
+
+    public string $ocupacion = 'transportista';
+
+    public string $estado_civil = 'soltero';
+
     public ?string $referencia = null;
 
     public ?string $giro = null;            // Legacy: telefono1 → giro
@@ -47,6 +69,10 @@ class Edit extends Component
     public ?string $celular2 = null;
 
     public ?string $zona = null;            // Legacy: T.Crédito
+
+    /** Pestaña activa del card: 'datos' | 'vehiculos' | 'adjuntos' (28/08). */
+    #[Url(as: 'tab', except: 'datos')]
+    public string $tab = 'datos';
 
     public ?int $asesor_id = null;
 
@@ -81,13 +107,22 @@ class Edit extends Component
             'sexo' => 'required|in:M,F',
             'status' => 'required|in:active,inactive',
             'direccion' => 'nullable|string|max:255',
+            'distrito' => 'nullable|string|max:100',
+            'provincia' => 'required|in:'.implode(',', array_keys(Create::PROVINCIAS)),
+            'departamento' => 'nullable|string|max:100',
+            // Acepta las opciones vigentes y el valor histórico ya guardado
+            'nacionalidad' => 'nullable|string|in:'.implode(',', Nacionalidades::paraValor($this->nacionalidad)),
+            'email' => 'nullable|email|max:150',
+            'ocupacion' => 'required|in:'.implode(',', array_keys(Create::OCUPACIONES)),
+            'estado_civil' => 'required|in:'.implode(',', array_keys(Create::ESTADOS_CIVILES)),
             'referencia' => 'nullable|string|max:255',
             'giro' => 'nullable|string|max:100',
             'capital' => 'nullable|numeric|min:0',
             'telefono_secundario' => 'nullable|string|max:20',
             'celular1' => 'nullable|string|max:20',
             'celular2' => 'nullable|string|max:20',
-            'zona' => 'nullable|string|max:100',
+            // Acepta las opciones vigentes y el valor histórico ya guardado
+            'zona' => 'nullable|string|in:'.implode(',', TiposCredito::paraValor($this->zona)),
             'asesor_id' => 'nullable|exists:users,id',
         ];
     }
@@ -128,6 +163,13 @@ class Edit extends Component
         $this->sexo = $c->sexo ?? 'M';
         $this->status = $c->status ?? 'active';
         $this->direccion = $c->direccion;
+        $this->distrito = $c->distrito;
+        $this->provincia = isset(Create::PROVINCIAS[(string) $c->provincia]) ? (string) $c->provincia : 'LIMA';
+        $this->departamento = $c->departamento;
+        $this->nacionalidad = $c->nacionalidad ?: Nacionalidades::DEFECTO;
+        $this->email = (string) ($c->email ?? '');
+        $this->ocupacion = isset(Create::OCUPACIONES[(string) $c->ocupacion]) ? (string) $c->ocupacion : 'transportista';
+        $this->estado_civil = isset(Create::ESTADOS_CIVILES[(string) $c->estado_civil]) ? (string) $c->estado_civil : 'soltero';
         $this->referencia = $c->referencia;
         $this->giro = $c->giro;
         $this->capital = $c->capital;
@@ -149,6 +191,13 @@ class Edit extends Component
             return;
         }
 
+        // El select manda el valor exacto, pero la ficha puede venir de una
+        // migración o de un import con otra caja: normalizar antes de validar
+        // evita rechazar 'peruano' por una diferencia de mayúsculas.
+        if (filled($this->nacionalidad)) {
+            $this->nacionalidad = Nacionalidades::normalizar($this->nacionalidad);
+        }
+
         $this->validate();
 
         $data = [
@@ -162,6 +211,13 @@ class Edit extends Component
             'fecha_nacimiento' => $this->fecha_nacimiento,
             'sexo' => $this->sexo,
             'direccion' => $this->direccion,
+            'distrito' => $this->distrito,
+            'provincia' => $this->provincia,
+            'departamento' => $this->departamento,
+            'nacionalidad' => filled($this->nacionalidad) ? $this->nacionalidad : null,
+            'email' => trim($this->email) ?: null,
+            'ocupacion' => $this->ocupacion,
+            'estado_civil' => $this->estado_civil,
             'referencia' => $this->referencia,
             'giro' => $this->giro,
             'capital' => $this->capital !== null && $this->capital !== '' ? $this->capital : null,

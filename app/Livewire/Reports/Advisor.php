@@ -95,15 +95,15 @@ class Advisor extends Component
         // ─── 3) Cuotas esperadas en el mes (IMP. A COBRAR) ────────────────
         $insExpected = DB::table('credit_installments')
             ->join('credits', 'credits.id', '=', 'credit_installments.credit_id')
-            ->whereBetween('credit_installments.fecha_pago', [$startDate, $endDate])
+            ->whereBetween('credit_installments.fecha_vencimiento', [$startDate, $endDate])
             ->where('credits.situacion', 'Activo');
         if ($this->ejecutivo !== 'Todos' && $this->ejecutivo !== '') {
             $insExpected->join('clients', 'clients.id', '=', 'credits.client_id')
                 ->where('clients.asesor_id', $this->ejecutivo);
         }
         $insExpected = $insExpected
-            ->selectRaw('DAY(credit_installments.fecha_pago) as d, SUM(credit_installments.importe_cuota + credit_installments.importe_interes) as imp')
-            ->groupBy(DB::raw('DAY(credit_installments.fecha_pago)'))
+            ->selectRaw('DAY(credit_installments.fecha_vencimiento) as d, SUM(credit_installments.importe_cuota + credit_installments.importe_interes) as imp')
+            ->groupBy(DB::raw('DAY(credit_installments.fecha_vencimiento)'))
             ->pluck('imp', 'd')
             ->toArray();
 

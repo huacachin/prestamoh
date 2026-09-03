@@ -202,7 +202,13 @@
                                        title="{{ ((float)$monto) > 0 ? 'Editable (override gerencial)' : 'Escribe el Monto a Pagar para habilitar' }}"></i>
                                 @endif
                             </label>
-                            @if($puedeMora)
+                            @if($cancel && $quitarMora)
+                                {{-- Condonada por el switch: manda sobre el campo (editable o no) --}}
+                                <input type="text" class="form-control form-control-sm input-rojo"
+                                       style="text-decoration: line-through;"
+                                       value="0.00 — exonerada" readonly
+                                       title="Mora exonerada al cancelar (switch Exonerar mora)">
+                            @elseif($puedeMora)
                                 <input type="number" name="moraManual" autocomplete="off" step="0.01" min="0"
                                        class="form-control form-control-sm input-rojo"
                                        wire:model.live.debounce.400ms="moraManual"
@@ -570,7 +576,23 @@
                                     <i class="ti ti-alert-triangle"></i> Este cobro <strong>cancela</strong> el crédito.
                                 </div>
                             @endif
-                            @if($preview['reserva_mora'])
+                            @if(($preview['condonada_vigente'] ?? 0) > 0.001 || ($preview['condonada_acum'] ?? 0) > 0.001)
+                        <div class="alert alert-info d-flex align-items-start gap-2 py-2 mx-3 mt-2 mb-0" style="font-size: 12px;">
+                            <i class="ti ti-eraser f-s-16 mt-1"></i>
+                            <div>
+                                <b>Exoneración al cancelar:</b>
+                                @if(($preview['condonada_vigente'] ?? 0) > 0.001)
+                                    Mora S/ {{ number_format($preview['condonada_vigente'], 2) }}@if(($preview['condonada_acum'] ?? 0) > 0.001) ·@endif
+                                @endif
+                                @if(($preview['condonada_acum'] ?? 0) > 0.001)
+                                    Mora acumulada S/ {{ number_format($preview['condonada_acum'], 2) }}
+                                @endif
+                                <br>Motivo: <em>{{ $preview['condonar_motivo'] }}</em>
+                            </div>
+                        </div>
+                    @endif
+
+                    @if($preview['reserva_mora'])
                                 <div class="alert alert-info py-1 px-2 mt-2 mb-0 small text-center">
                                     Mora reservada: no se cobra ahora, queda acumulada.
                                 </div>
@@ -611,12 +633,39 @@
                             <div class="fw-bold mb-1" style="color:#b26a00;">
                                 <i class="ti ti-alert-triangle"></i> Este pago cubre el TOTAL del crédito
                             </div>
-                            <div class="d-flex gap-3 flex-wrap small mb-2">
+                            @php
+                                // Veredicto por mora: se actualiza en vivo (el preview se
+                                // reconstruye al elegir Sí/No) y dice el DESTINO real, no
+                                // un "pendiente" ambiguo.
+                                $vVig = (float) ($preview['mora_pendiente'] ?? 0);
+                                $vCobra = (float) ($preview['mora_cobrar'] ?? 0);
+                                $vCondVig = (float) ($preview['condonada_vigente'] ?? 0);
+                                $vAcumCobra = (float) ($preview['mora_acum_cobrar'] ?? 0);
+                                $vCondAcum = (float) ($preview['condonada_acum'] ?? 0);
+                            @endphp
+                            <div class="d-flex gap-3 flex-wrap small mb-1">
                                 <span>Capital + interés: <b>S/ {{ number_format($preview['cancelar_cap_int'], 2) }}</b></span>
-                                @if(($preview['mora_pendiente'] ?? 0) > 0.001)
-                                    <span style="color:#c0392b;">Mora pendiente: <b>S/ {{ number_format($preview['mora_pendiente'], 2) }}</b></span>
-                                @endif
                             </div>
+                            @if($vCobra > 0.001 || $vVig > 0.001 || $vCondVig > 0.001)
+                                <div class="small mb-1">
+                                    @if($vCobra > 0.001)
+                                        <span style="color:#c0392b;">Mora: se cobra <b>S/ {{ number_format($vCobra, 2) }}</b>{{ ($preview['mora_ajustada'] ?? false) ? ' (ajustada a mano)' : '' }}</span>
+                                    @elseif($preview['reserva_mora'] ?? false)
+                                        <span style="color:#b8860b;">Mora: reservada — queda como deuda <b>S/ {{ number_format($vVig, 2) }}</b></span>
+                                    @else
+                                        <span style="color:#6b7280;">Mora: se exonera al cancelar <b style="text-decoration: line-through;">S/ {{ number_format($vCondVig > 0.001 ? $vCondVig : $vVig, 2) }}</b></span>
+                                    @endif
+                                </div>
+                            @endif
+                            @if($vAcumCobra > 0.001 || $vCondAcum > 0.001)
+                                <div class="small mb-2">
+                                    @if($vCondAcum > 0.001)
+                                        <span style="color:#6b7280;">Mora acumulada: se exonera al cancelar <b style="text-decoration: line-through;">S/ {{ number_format($vCondAcum, 2) }}</b></span>
+                                    @else
+                                        <span style="color:#c0392b;">Mora acumulada: se cobra <b>S/ {{ number_format($vAcumCobra, 2) }}</b></span>
+                                    @endif
+                                </div>
+                            @endif
                             <div class="fw-semibold small mb-1">¿Cancelar el crédito?</div>
                             <div class="d-flex gap-3 flex-wrap">
                                 <div class="form-check">
@@ -848,7 +897,7 @@
                                 $intCancelar = $cancelUltimaCuota
                                     ? round($sim['saldo_credito'] - $sim['cap_pendiente_total'], 2)
                                     : $sim['int_cancelar'];
-                                $morasCancelar = $cancelSinMora ? 0.0 : round($sim['mora'] + $moraAcumTotal, 2);
+                                $morasCancelar = round(($quitarMora ? 0 : $sim['mora']) + ($quitarMoraAcum ? 0 : $moraAcumTotal), 2);
                                 // Excedente (cuota uniforme): solo el de cuotas vencidas;
                                 // el de cuotas futuras se condona al cancelar.
                                 $capIntCancelar = round($sim['cap_pendiente_total'] + $intCancelar + $sim['exc_hoy'], 2);
@@ -869,11 +918,11 @@
                             @endif
                             <div class="d-flex justify-content-between small">
                                 <span>Mora @if($sim['mora_dias'] > 0)({{ $sim['mora_dias'] }} {{ $sim['mora_dias'] === 1 ? 'día' : 'días' }} × {{ number_format($sim['mora_rate'], 2) }})@endif</span>
-                                <span style="{{ $cancelSinMora ? $tachado : 'color:red;' }}">{{ number_format($sim['mora'], 2) }}</span>
+                                <span style="{{ $quitarMora ? $tachado : 'color:red;' }}">{{ number_format($sim['mora'], 2) }}</span>
                             </div>
                             <div class="d-flex justify-content-between small">
                                 <span>Mora acumulada @if($moraAcumDias > 0)({{ $moraAcumDias }} {{ $moraAcumDias === 1 ? 'día' : 'días' }})@endif</span>
-                                <span style="{{ $cancelSinMora ? $tachado : 'color:#b8860b;' }}">{{ number_format($moraAcumTotal, 2) }}</span>
+                                <span style="{{ $quitarMoraAcum ? $tachado : 'color:#b8860b;' }}">{{ number_format($moraAcumTotal, 2) }}</span>
                             </div>
                             <div class="d-flex justify-content-between fw-bold border-top mt-1 pt-1"><span>Total</span><span>{{ number_format($totalCancelarCard, 2) }}</span></div>
 
@@ -892,13 +941,32 @@
 
                             {{-- Opciones de la cotización --}}
                             <div class="rounded p-2 mt-2 mb-2" style="background:#f2f4f7;">
-                                <div class="form-check form-switch mb-1">
-                                    <input class="form-check-input" type="checkbox" role="switch"
-                                           id="cancelSinMora" wire:model.live="cancelSinMora">
-                                    <label class="form-check-label small fw-semibold" for="cancelSinMora">
-                                        Quitar mora y mora acumulada
-                                    </label>
-                                </div>
+                                {{-- Exoneración desglosada (26/08): cada mora con su switch (default ON),
+                                     con el monto en la etiqueta y motivo obligatorio. --}}
+                                @if($sim['mora'] > 0.005)
+                                    <div class="form-check form-switch mb-1">
+                                        <input class="form-check-input" type="checkbox" role="switch"
+                                               id="quitarMora" wire:model.live="quitarMora">
+                                        <label class="form-check-label small fw-semibold" for="quitarMora">
+                                            Exonerar mora (S/ {{ number_format($sim['mora'], 2) }})
+                                        </label>
+                                    </div>
+                                @endif
+                                @if($moraAcumTotal > 0.005)
+                                    <div class="form-check form-switch mb-1">
+                                        <input class="form-check-input" type="checkbox" role="switch"
+                                               id="quitarMoraAcum" wire:model.live="quitarMoraAcum">
+                                        <label class="form-check-label small fw-semibold" for="quitarMoraAcum">
+                                            Exonerar mora acumulada (S/ {{ number_format($moraAcumTotal, 2) }})
+                                        </label>
+                                    </div>
+                                @endif
+                                @if($quitarMora || $quitarMoraAcum)
+                                    <input type="text" autocomplete="off" maxlength="255"
+                                           class="form-control form-control-sm mb-1"
+                                           wire:model.live.debounce.500ms="condonarMotivo"
+                                           placeholder="Motivo de la exoneración (obligatorio)">
+                                @endif
                                 <div class="form-check form-switch mb-0">
                                     <input class="form-check-input" type="checkbox" role="switch"
                                            id="cancelUltimaCuota" wire:model.live="cancelUltimaCuota">
@@ -1023,7 +1091,7 @@
                                         <span class="badge bg-warning">Pendiente</span>
                                     @endif
                                 </td>
-                                <td>{{ $inst->fecha_pago?->format('d/m/Y') }}</td>
+                                <td>{{ $inst->pagado ? $inst->fecha_pago?->format('d/m/Y') : '' }}</td>
                                 <td class="text-center" style="white-space:nowrap;">
                                     @php $rec = $recibos[$inst->id] ?? null; @endphp
                                     @if($rec)

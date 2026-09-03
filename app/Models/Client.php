@@ -4,7 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Client extends Model
 {
@@ -14,18 +16,30 @@ class Client extends Model
     protected $fillable = [
         'expediente', 'nombre', 'apellido_pat', 'apellido_mat',
         'tipo_documento', 'documento', 'fecha_registro', 'usuario', 'fecha_nacimiento', 'sexo',
-        'email', 'giro', 'capital', 'celular1', 'celular2',
+        'nacionalidad', 'email', 'giro', 'ocupacion', 'estado_civil',
+        'capital', 'celular1', 'celular2',
         'direccion', 'referencia', 'distrito', 'provincia', 'departamento',
         'zona', 'contacto_emergencia', 'telefono_contacto',
         'banco_haberes', 'cuenta_haberes', 'banco_cts', 'cuenta_cts',
         'afp', 'cussp', 'latitud', 'longitud', 'latitud2', 'longitud2', 'imagen',
-        'observaciones', 'asesor_id', 'headquarter_id', 'status',
+        'observaciones', 'asesor_id', 'headquarter_id', 'status', 'es_relacionado',
     ];
 
     protected $casts = [
         'fecha_registro' => 'date',
         'fecha_nacimiento' => 'date',
+        'es_relacionado' => 'boolean',
     ];
+
+    /**
+     * Solo clientes DE VERDAD (excluye a las personas relacionadas —
+     * copropietarios/codeudores creados desde el alta rápida, que no tienen
+     * crédito, asesor ni expediente y no deben inflar listas ni reportes).
+     */
+    public function scopeTitulares($q)
+    {
+        return $q->where('es_relacionado', false);
+    }
 
     public function fullName(): string
     {
@@ -63,6 +77,35 @@ class Client extends Model
     public function avales(): HasMany
     {
         return $this->hasMany(ClientAval::class);
+    }
+
+    public function garantias(): HasMany
+    {
+        return $this->hasMany(Garantia::class);
+    }
+
+    public function vehiculos(): HasMany
+    {
+        return $this->hasMany(Vehiculo::class);
+    }
+
+    /** Datos de persona jurídica (solo clientes con tipo_documento RUC). */
+    public function empresa(): HasOne
+    {
+        return $this->hasOne(ClientEmpresa::class);
+    }
+
+    /** Vehículos donde este cliente es COPROPIETARIO (no titular). */
+    public function vehiculosCompartidos(): BelongsToMany
+    {
+        return $this->belongsToMany(Vehiculo::class, 'cliente_vehiculo')
+            ->withPivot('rol')
+            ->withTimestamps();
+    }
+
+    public function expedientesJudiciales(): HasMany
+    {
+        return $this->hasMany(ExpedienteJudicial::class);
     }
 
     public function scopeActive($q)

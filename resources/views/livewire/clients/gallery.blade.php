@@ -1,4 +1,7 @@
-<div class="container-fluid">
+{{-- $embebido: se renderiza dentro de la pestaña de /clients/{id}/edit, así que
+     se omiten la cabecera, el breadcrumb y el card (ya los pone la página padre). --}}
+<div @class(['container-fluid' => ! $embebido])>
+    @unless($embebido)
     <div class="row">
         <div class="col-sm-6">
             <h4 class="main-title title-modules">ADJUNTOS DEL CLIENTE</h4>
@@ -17,10 +20,12 @@
             </ul>
         </div>
     </div>
+    @endunless
 
-    <div class="card shadow-sm">
-        <div class="card-body">
+    <div @class(['card shadow-sm' => ! $embebido])>
+        <div @class(['card-body' => ! $embebido])>
 
+            @unless($embebido)
             {{-- Header con nombre del cliente --}}
             <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                 <div>
@@ -33,6 +38,7 @@
                     <i class="ti ti-arrow-back"></i> Regresar al cliente
                 </a>
             </div>
+            @endunless
 
             {{-- Form de upload con drag & drop (múltiples archivos) --}}
             <form wire:submit.prevent="save" class="mb-3">

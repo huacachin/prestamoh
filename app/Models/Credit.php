@@ -28,7 +28,7 @@ class Credit extends Model
         'client_id', 'fecha_prestamo', 'fecha_actualizacion', 'importe', 'cuotas',
         'tipo_planilla', 'interes', 'interes_total', 'mora', 'mora1', 'mora2',
         'moneda', 'documento', 'glosa', 'situacion', 'estado',
-        'refinanciado', 'cod_rem', 'gat', 'idcan', 'fecha_vencimiento', 'fecha_cancelacion',
+        'refinanciado', 'cancelado_por_refi', 'cod_rem', 'gat', 'idcan', 'fecha_vencimiento', 'fecha_cancelacion',
         'asesor', 'user_id', 'usuario', 'headquarter_id',
     ];
 
@@ -42,6 +42,7 @@ class Credit extends Model
         'interes_total' => 'decimal:2',
         'mora' => 'decimal:2',
         'refinanciado' => 'boolean',
+        'cancelado_por_refi' => 'boolean',
     ];
 
     public function client(): BelongsTo
@@ -81,6 +82,11 @@ class Credit extends Model
     public function lateFees(): HasMany
     {
         return $this->hasMany(LateFee::class);
+    }
+
+    public function garantias(): HasMany
+    {
+        return $this->hasMany(Garantia::class);
     }
 
     public function user(): BelongsTo

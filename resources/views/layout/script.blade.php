@@ -69,8 +69,11 @@ document.addEventListener('click', function (e) {
     }
 });
 
-/* ── Drag-to-scroll: arrastrar tablas con el mouse apretado ──
-   Aplica a cualquier .table-responsive con scroll horizontal.
+/* ── Drag-to-scroll: arrastrar tablas desde la CABECERA ──
+   Solo el thead arrastra: en el cuerpo el click-drag es el mismo gesto
+   que seleccionar texto, y ahí gana la selección nativa (no se puede
+   copiar si la tabla se corre). El scroll horizontal también queda
+   cubierto por la scrollbar engrosada (CSS abajo) y Shift+rueda.
    Delegado en document → funciona también con tablas que Livewire
    re-renderiza. Cancela el click si hubo arrastre real (umbral 4px)
    para no abrir links sin querer. */
@@ -79,6 +82,7 @@ document.addEventListener('click', function (e) {
 
     document.addEventListener('mousedown', function (e) {
         if (e.button !== 0) return; // solo botón izquierdo
+        if (!e.target.closest('thead')) return; // el cuerpo selecciona texto, no arrastra
         var el = e.target.closest('.table-responsive');
         if (!el) return;
         if (el.scrollWidth <= el.clientWidth) return; // sin scroll horizontal, nada que arrastrar
@@ -122,8 +126,17 @@ document.addEventListener('click', function (e) {
 })();
 </script>
 <style>
-    .table-responsive.can-drag { cursor: grab; }
-    .table-responsive.is-dragging { cursor: grabbing; }
+    .table-responsive.can-drag thead { cursor: grab; }
+    .table-responsive.is-dragging thead { cursor: grabbing; }
+    /* Scrollbar siempre agarrable: el scroll horizontal no depende solo
+       del arrastre desde la cabecera. */
+    .table-responsive::-webkit-scrollbar { height: 10px; width: 10px; }
+    .table-responsive::-webkit-scrollbar-track { background: #f1f1f4; }
+    .table-responsive::-webkit-scrollbar-thumb { background: #b5b5c3; border-radius: 5px; }
+    .table-responsive::-webkit-scrollbar-thumb:hover { background: #8f8fa3; }
+    @supports not selector(::-webkit-scrollbar) {
+        .table-responsive { scrollbar-width: auto; scrollbar-color: #b5b5c3 #f1f1f4; }
+    }
 </style>
 
 {{-- ── Datepicker jQuery UI en español (réplica del legacy pie.php) ── --}}
@@ -135,15 +148,18 @@ document.addEventListener('click', function (e) {
     // Locale español (copiado literal del legacy)
     jQuery.datepicker.regional['es'] = {
         closeText: 'Cerrar', prevText: '< Ant', nextText: 'Sig >', currentText: 'Hoy',
-        monthNames: ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'],
-        monthNamesShort: ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'],
-        dayNames: ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'],
-        dayNamesShort: ['dom','lun','mar','mié','jue','vie','sáb'],
+        monthNames: ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'],
+        monthNamesShort: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
+        dayNames: ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'],
+        dayNamesShort: ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'],
         dayNamesMin: ['D','L','M','X','J','V','S'],
         weekHeader: 'Sm', dateFormat: 'yy-mm-dd', firstDay: 1,
         isRTL: false, showMonthAfterYear: false, yearSuffix: ''
     };
     jQuery.datepicker.setDefaults(jQuery.datepicker.regional['es']);
+    // El rango por defecto de jQuery UI es ±10 años (el selector de año se
+    // quedaba en 2016 hacia atrás y no dejaba elegir una fecha de nacimiento).
+    jQuery.datepicker.setDefaults({ yearRange: '1930:c+10' });
 
     // onSelect: dispara el evento input nativo para que Livewire capture el valor.
     function syncLivewire(input) {

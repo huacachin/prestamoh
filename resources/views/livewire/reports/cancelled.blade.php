@@ -108,11 +108,11 @@
 
                     {{-- Tabla principal --}}
                     <div id="tabla-cancelados" class="table-responsive" style="max-height: 650px; overflow:auto;">
-                        {{-- Sin zebra (homologa legacy): un crédito cancelado limpio va con
-                             fondo BLANCO; solo colorean las filas con estado (verde refinanciado /
-                             amarillo pendiente / rojo capital pendiente), cuyo background-color
-                             inline gana gracias al CSS de más abajo. --}}
-                        <table class="table table-bordered table-hover table-nowrap">
+                        {{-- Zebra en las filas limpias; las filas con estado (verde
+                             refinanciado / amarillo pendiente / rojo capital pendiente) y los
+                             totales imponen su background-color inline gracias al CSS de más
+                             abajo, que anula el acento de zebra/hover en ellas. --}}
+                        <table class="table table-striped table-bordered table-hover table-nowrap">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
                                     <th rowspan="2" colspan="2" class="text-center">N°</th>
@@ -250,11 +250,15 @@
 
 {{-- Las filas con color de estado (las únicas que llevan background-color inline)
      imponen su color sobre el fondo por-celda de Bootstrap (var(--bs-table-bg)),
-     que de otro modo lo taparía. Las filas sin color quedan blancas. --}}
+     que de otro modo lo taparía. El theme pinta zebra y hover con un box-shadow
+     inset por celda (var(--bs-table-accent-bg)) que se dibuja ENCIMA del
+     background, así que además se anula esa variable: ni la franja ni el hover
+     tiñen las filas con color propio. La zebra corre solo por las filas limpias. --}}
 <style>
     #tabla-cancelados tbody tr[style*="background-color"] > * {
         background-color: inherit !important;
         color: inherit !important;
+        --bs-table-accent-bg: transparent;
     }
 </style>
 </div>

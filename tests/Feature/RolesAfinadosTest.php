@@ -39,10 +39,12 @@ class RolesAfinadosTest extends TestCase
         $admin = Role::findByName('administrador');
         $director = Role::findByName('director');
 
-        foreach (['caja.bypass-fecha-anterior', 'caja.editar-historico', 'registro.eliminar-masivo.revertir'] as $p) {
+        foreach (['caja.bypass-fecha-anterior', 'caja.editar-historico'] as $p) {
             $this->assertFalse($admin->hasPermissionTo($p), "administrador NO debe tener $p");
             $this->assertTrue($director->hasPermissionTo($p), "director SÍ debe tener $p");
         }
+        // revertir (anular cobros) lo tiene, pero el código lo limita al día (26/08)
+        $this->assertTrue($admin->hasPermissionTo('registro.eliminar-masivo.revertir'));
         // Exclusivos del director (permisos-nuevos 21/08): eliminar registros,
         // identidad, usuarios/permisos y sucursales
         foreach ([

@@ -37,6 +37,9 @@ class ClientsExport implements FromCollection, WithColumnFormatting, WithCustomS
     {
         $query = Client::query()
             ->where('status', $this->status)
+            // El export está homologado con el legacy: las personas
+            // relacionadas (alta rápida de copropietarios) no van.
+            ->titulares()
             ->with(['asesor:id,name,username', 'headquarter:id,name']);
 
         if ($this->scopePropio && $this->userId) {

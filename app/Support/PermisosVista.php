@@ -27,6 +27,8 @@ class PermisosVista
         'reportes.credito-estadistica', 'reportes.caja-general-1', 'reportes.caja-general-2',
         'reportes.caja-general-3', 'reportes.cartera', 'reportes.morosidad',
         'reportes.cancelados', 'reportes.simulador',
+        'legal.garantias', 'legal.contratos', 'legal.notaria',
+        'legal.judicial', 'legal.papeletas', 'legal.caja', 'legal.configuracion',
     ];
 
     /**

@@ -25,7 +25,7 @@ class CajaDailyService
         $payQuery = Payment::query()
             ->where('fecha', '>=', $startMonth)
             ->where('fecha', '<=', $endLimit)
-            ->with(['credit:id,client_id,tipo_planilla,refinanciado,fecha_cancelacion,importe,interes,cuotas,cod_rem',
+            ->with(['credit:id,client_id,tipo_planilla,refinanciado,cancelado_por_refi,fecha_cancelacion,importe,interes,cuotas,cod_rem',
                 'credit.client:id,nombre,apellido_pat,apellido_mat,asesor_id',
                 'credit.client.asesor:id,name,username']);
 
@@ -38,7 +38,7 @@ class CajaDailyService
 
         // Pagos previos para refis cancelados dentro del mes (settlement).
         $refiCancelIds = $allPayments->pluck('credit')
-            ->filter(fn ($c) => $c && $c->refinanciado &&
+            ->filter(fn ($c) => $c && $c->cancelado_por_refi &&
                 $c->fecha_cancelacion?->format('Y-m-d') >= $startMonth &&
                 $c->fecha_cancelacion?->format('Y-m-d') <= $endLimit)
             ->pluck('id')->unique()->values();
@@ -69,7 +69,12 @@ class CajaDailyService
                 }
 
                 $tipoplani = (int) $credit->tipo_planilla;
-                $isRefi = (bool) $credit->refinanciado;
+                // Rama de settlement SOLO con el flag refi del legacy
+                // (cancelado POR refinanciación). `refinanciado` fusiona
+                // además cod_rem='REF' (nació de refi) y disparaba la rama
+                // en renovaciones pagadas de verdad: en agosto/2026 borró
+                // S/ 178,102.40 de capital del reporte vs el legacy.
+                $isRefi = (bool) $credit->cancelado_por_refi;
                 $fechaCan = $credit->fecha_cancelacion?->format('Y-m-d');
 
                 $totalSinMora = (float) $pays->whereIn('tipo', ['CAPITAL', 'INTERES'])->sum('monto');

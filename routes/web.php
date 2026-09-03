@@ -6,8 +6,10 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\ConceptController;
 use App\Http\Controllers\CreditController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DocumentoClienteController;
 use App\Http\Controllers\ExchangeRateController;
 use App\Http\Controllers\HeadquarterController;
+use App\Http\Controllers\LegalController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ShortLinkController;
@@ -54,6 +56,9 @@ Route::middleware('auth')->group(function () {
         Route::get('clients/{id}/edit', [ClientController::class, 'edit'])->name('clients.edit');
         Route::get('clients/{id}/gallery', [ClientController::class, 'gallery'])->name('clients.gallery');
         Route::get('clients/{id}/aval', [ClientController::class, 'aval'])->name('clients.aval');
+        Route::get('clients/{id}/documentos', [ClientController::class, 'documentos'])->name('clients.documentos');
+        Route::get('clients/documentos/{id}/pdf', [DocumentoClienteController::class, 'pdf'])->name('clients.documentos.pdf');
+        Route::get('clients/documentos/{id}/word', [DocumentoClienteController::class, 'word'])->name('clients.documentos.word');
         Route::get('clients/{id}', [ClientController::class, 'show'])->name('clients.show');
     });
 
@@ -109,6 +114,27 @@ Route::middleware('auth')->group(function () {
     Route::get('reports/cash-general-3', [ReportController::class, 'cashGeneral3'])->name('reports.cash-general-3')->middleware('permission:reportes.caja-general-3');
     Route::get('reports/cancelled', [ReportController::class, 'cancelled'])->name('reports.cancelled')->middleware('permission:reportes.cancelados');
     Route::get('reports/simulator', [ReportController::class, 'simulator'])->name('reports.simulator')->middleware('permission:reportes.simulador');
+
+    // Área Legal
+    Route::middleware('permission:legal.garantias')->group(function () {
+        Route::get('legal/vehiculos', [LegalController::class, 'vehiculos'])->name('legal.vehiculos');
+        Route::get('legal/garantias', [LegalController::class, 'garantias'])->name('legal.garantias.index');
+        Route::get('legal/garantias/create/{creditId?}', [LegalController::class, 'garantiaCreate'])->name('legal.garantias.create');
+        Route::get('legal/garantias/{id}', [LegalController::class, 'garantiaShow'])->name('legal.garantias.show');
+    });
+    Route::get('legal/settings', [LegalController::class, 'settings'])->name('legal.settings')->middleware('permission:legal.configuracion');
+    Route::middleware('permission:legal.contratos')->group(function () {
+        Route::get('legal/garantias/{id}/contrato', [LegalController::class, 'contratoForm'])->name('legal.contratos.form');
+        Route::get('legal/contratos/{id}/pdf', [LegalController::class, 'contratoPdf'])->name('legal.contratos.pdf');
+    });
+    Route::get('legal/notaria', [LegalController::class, 'notaria'])->name('legal.notaria')->middleware('permission:legal.notaria');
+    Route::get('legal/papeletas', [LegalController::class, 'papeletas'])->name('legal.papeletas')->middleware('permission:legal.papeletas');
+    Route::get('legal/caja', [LegalController::class, 'caja'])->name('legal.caja')->middleware('permission:legal.caja');
+    Route::middleware('permission:legal.judicial')->group(function () {
+        Route::get('legal/expedientes', [LegalController::class, 'expedientes'])->name('legal.expedientes.index');
+        Route::get('legal/expedientes/create', [LegalController::class, 'expedienteCreate'])->name('legal.expedientes.create');
+        Route::get('legal/expedientes/{id}', [LegalController::class, 'expedienteShow'])->name('legal.expedientes.show');
+    });
 
     // Configuración - Usuarios
     Route::middleware('permission:configuracion.usuarios')->group(function () {

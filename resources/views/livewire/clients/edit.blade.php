@@ -16,9 +16,63 @@
         </div>
     </div>
 
-    <form wire:submit.prevent="update">
-        <div class="card shadow-sm">
-            <div class="card-body">
+    <div class="card shadow-sm">
+        <div class="card-body">
+
+            {{-- ════════ Pestañas (compactas: píldoras pequeñas) ════════ --}}
+            @php
+                $tabs = [
+                    'datos' => ['Datos', 'ti-user'],
+                    'vehiculos' => ['Vehículos', 'ti-car'],
+                    'documentos' => ['Documentos', 'ti-file-text'],
+                    'adjuntos' => ['Adjuntos', 'ti-photo'],
+                    'gps' => ['GPS', 'ti-map-pin'],
+                ];
+            @endphp
+            {{-- En móvil las pestañas no se apilan: se deslizan en una tira
+                 horizontal (patrón habitual y no roba alto de pantalla). --}}
+            <style>
+                .tabs-cliente { display:flex; gap:4px; overflow-x:auto; -webkit-overflow-scrolling:touch;
+                                border-bottom:1px solid #e9ecef; padding-bottom:8px; margin-bottom:16px; }
+                .tabs-cliente::-webkit-scrollbar { height:0; }
+                .tabs-cliente .btn { white-space:nowrap; flex:0 0 auto; font-size:12px; line-height:1.2; }
+                @media (max-width: 575.98px) {
+                    .tabs-cliente .btn { font-size:13px; padding:6px 10px; }
+                }
+            </style>
+            <div class="tabs-cliente">
+                @foreach($tabs as $clave => [$titulo, $icono])
+                    <button type="button"
+                            class="btn btn-sm py-1 px-2 {{ $tab === $clave ? 'btn-dark' : 'btn-link text-muted text-decoration-none' }}"
+                            wire:click="$set('tab', '{{ $clave }}')">
+                        <i class="ti {{ $icono }} f-s-14"></i> {{ $titulo }}
+                    </button>
+                @endforeach
+            </div>
+
+            {{-- ════════ Vehículos ════════ --}}
+            @if($tab === 'vehiculos')
+                <livewire:clients.vehiculos :id="$clientId" :key="'veh-'.$clientId" />
+            @endif
+
+            {{-- ════════ Documentos ════════ --}}
+            @if($tab === 'documentos')
+                <livewire:clients.documentos :id="$clientId" :embebido="true" :key="'doc-'.$clientId" />
+            @endif
+
+            {{-- ════════ Adjuntos ════════ --}}
+            @if($tab === 'adjuntos')
+                <livewire:clients.gallery :id="$clientId" :embebido="true" :key="'gal-'.$clientId" />
+            @endif
+
+            {{-- ════════ GPS (antes columnas C. y N. del listado) ════════ --}}
+            @if($tab === 'gps')
+                <livewire:clients.gps :id="$clientId" :key="'gps-'.$clientId" />
+            @endif
+
+            {{-- ════════ Datos del cliente ════════ --}}
+            <div @if($tab !== 'datos') style="display:none;" @endif>
+            <form wire:submit.prevent="update">
 
                 @if ($errors->any())
                     <div class="alert alert-danger py-2 px-3 mb-2" style="font-size:12px;">
@@ -112,6 +166,45 @@
                         <input type="text" class="form-control form-control-sm bg-light"
                                value="{{ $client->expediente }}" readonly>
                     </div>
+
+                    {{-- Datos que el contrato de garantía exige en la cláusula
+                         PRIMERO y que antes solo se capturaban en el alta. --}}
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">Nacionalidad</label>
+                        {{-- No flexiona: el contrato dice PERUANO / VENEZOLANO
+                             tanto para deudor como para deudora. --}}
+                        <select class="form-select form-select-sm @error('nacionalidad') is-invalid @enderror"
+                                wire:model.defer="nacionalidad">
+                            @foreach(\App\Support\Documentos\Nacionalidades::paraValor($nacionalidad) as $opcion)
+                                <option value="{{ $opcion }}">{{ $opcion }}</option>
+                            @endforeach
+                        </select>
+                        @error('nacionalidad') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">Ocupación</label>
+                        <select class="form-select form-select-sm @error('ocupacion') is-invalid @enderror" wire:model.defer="ocupacion">
+                            @foreach(\App\Livewire\Clients\Create::OCUPACIONES as $valor => $etiqueta)
+                                <option value="{{ $valor }}">{{ $etiqueta }}</option>
+                            @endforeach
+                        </select>
+                        @error('ocupacion') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">Estado civil</label>
+                        <select class="form-select form-select-sm @error('estado_civil') is-invalid @enderror" wire:model.defer="estado_civil">
+                            @foreach(\App\Livewire\Clients\Create::ESTADOS_CIVILES as $valor => $etiqueta)
+                                <option value="{{ $valor }}">{{ $etiqueta }}</option>
+                            @endforeach
+                        </select>
+                        @error('estado_civil') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">Correo</label>
+                        <input type="email" class="form-control form-control-sm @error('email') is-invalid @enderror"
+                               wire:model.defer="email" placeholder="cliente@correo.com">
+                        @error('email') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
                 </div>
 
                 <hr class="my-2" style="border-color:#e8e2d5;">
@@ -128,6 +221,29 @@
                         <label class="form-label mb-0 small fw-semibold">Referencia</label>
                         <input type="text" class="form-control form-control-sm"
                                wire:model.defer="referencia" name="referencia" autocomplete="off" placeholder="Cerca de…">
+                    </div>
+                    {{-- Ubigeo: arma el domicilio legal del contrato. Provincia
+                         es combo porque cambia la frase registral. --}}
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">Distrito</label>
+                        <input type="text" class="form-control form-control-sm text-uppercase @error('distrito') is-invalid @enderror"
+                               wire:model.defer="distrito" placeholder="Ate">
+                        @error('distrito') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">Provincia</label>
+                        <select class="form-select form-select-sm @error('provincia') is-invalid @enderror" wire:model.defer="provincia">
+                            @foreach(\App\Livewire\Clients\Create::PROVINCIAS as $valor => $etiqueta)
+                                <option value="{{ $valor }}">{{ $etiqueta }}</option>
+                            @endforeach
+                        </select>
+                        @error('provincia') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">Departamento</label>
+                        <input type="text" class="form-control form-control-sm text-uppercase @error('departamento') is-invalid @enderror"
+                               wire:model.defer="departamento" placeholder="Lima">
+                        @error('departamento') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">Giro</label>
@@ -174,8 +290,12 @@
 
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">T.Credito</label>
-                        <input type="text" class="form-control form-control-sm"
-                               wire:model.defer="zona" name="zona" autocomplete="on" placeholder="Zona o ruta">
+                        <select class="form-select form-select-sm @error('zona') is-invalid @enderror" wire:model.defer="zona">
+                            <option value="">— Seleccione —</option>
+                            @foreach(\App\Support\TiposCredito::paraValor($zona) as $opcion)
+                                <option value="{{ $opcion }}">{{ $opcion }}</option>
+                            @endforeach
+                        </select>
                     </div>
 
                     {{-- Casa / Negocio: solo SuperUsuario y solo si la coord existe --}}
@@ -219,7 +339,9 @@
                         <i class="ti ti-arrow-back"></i> Regresar
                     </a>
                 </div>
+            </form>
             </div>
+
         </div>
-    </form>
+    </div>
 </div>

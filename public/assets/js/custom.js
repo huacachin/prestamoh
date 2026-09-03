@@ -13,13 +13,13 @@ $(function () {
             nextText: 'Siguiente',
             currentText: 'Hoy',
             monthNames: [
-                'enero','febrero','marzo','abril','mayo','junio',
-                'julio','agosto','septiembre','octubre','noviembre','diciembre'
+                'Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'
             ],
-            monthNamesShort: ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'],
-            dayNames: ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'],
-            dayNamesShort: ['dom','lun','mar','mié','jue','vie','sáb'],
-            dayNamesMin: ['Do','Lu','Ma','Mi','Ju','Vi','Sa'],
+            monthNamesShort: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
+            dayNames: ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'],
+            dayNamesShort: ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'],
+            dayNamesMin: ['Do','Lu','Ma','Mi','Ju','Vi','Sá'],
             weekHeader: 'Sm',
             dateFormat: 'yy-mm-dd',
             firstDay: 1,
@@ -30,6 +30,8 @@ $(function () {
     }
 
     $.datepicker.setDefaults($.datepicker.regional['es']);
+    // Rango de años amplio: el ±10 por defecto no alcanza para fechas de nacimiento
+    $.datepicker.setDefaults({ yearRange: '1930:c+10' });
 });
 
 // =========================================================
@@ -51,6 +53,7 @@ function _applyDatepickers(pairs, wire) {
         $el.datepicker({
             changeMonth: true,
             changeYear: true,
+            yearRange: '1930:c+10',
             dateFormat: 'yy-mm-dd',
             onSelect: function (dateText) {
                 wire.set(pair[1], dateText);

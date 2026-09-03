@@ -28,6 +28,15 @@ class MassDeleteEdit extends Component
             return;
         }
 
+        // Sin caja.editar-historico solo se anulan cobros del DÍA: el
+        // administrador revierte lo de hoy; lo histórico es del director.
+        if (! auth()->user()->can('caja.editar-historico')
+            && $this->record->getRawOriginal('date') !== now()->format('Y-m-d')) {
+            $this->dispatch('errorAlert', ['message' => 'Solo se pueden revertir cobros del día.']);
+
+            return;
+        }
+
         DB::transaction(function () {
             foreach ($this->record->details as $det) {
                 if ($det->payment_id) {

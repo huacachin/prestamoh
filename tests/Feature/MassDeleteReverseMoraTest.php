@@ -28,8 +28,9 @@ class MassDeleteReverseMoraTest extends TestCase
     private function actorConPermiso(): User
     {
         $perm = Permission::findOrCreate('registro.eliminar-masivo.revertir', 'web');
+        $permHist = Permission::findOrCreate('caja.editar-historico', 'web');
         $user = User::factory()->create(['username' => 'tester']);
-        $user->givePermissionTo($perm);
+        $user->givePermissionTo([$perm, $permHist]); // histórico: la operación del test no es de hoy
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         return $user;

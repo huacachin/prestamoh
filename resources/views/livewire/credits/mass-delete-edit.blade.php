@@ -68,14 +68,18 @@
 
                     {{-- Acciones --}}
                     <div class="d-flex gap-2 mt-3">
-                        @can('registro.eliminar-masivo.revertir')
+                        @php
+                            $esDeHoy = $record->date && $record->date->format('Y-m-d') === now()->format('Y-m-d');
+                        @endphp
+                        @if(auth()->user()->can('registro.eliminar-masivo.revertir')
+                            && (auth()->user()->can('caja.editar-historico') || $esDeHoy))
                             <button type="button"
                                     wire:click="reverse"
                                     wire:confirm="¿Está seguro de revertir esta eliminación masiva? Se restaurarán las cuotas y el crédito."
                                     class="btn btn-sm btn-danger">
                                 <i class="ti ti-trash"></i> Eliminar (revertir)
                             </button>
-                        @endcan
+                        @endif
                         <a href="{{ route('credits.mass-delete') }}" class="btn btn-sm btn-secondary">
                             <i class="ti ti-arrow-back"></i> Regresar
                         </a>

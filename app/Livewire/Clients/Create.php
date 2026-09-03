@@ -3,14 +3,46 @@
 namespace App\Livewire\Clients;
 
 use App\Models\Client;
+use App\Models\ClientEmpresa;
 use App\Models\User;
+use App\Services\Factiliza;
 use App\Support\Audit;
+use App\Support\Documentos\DomicilioLegal;
+use App\Support\Documentos\Nacionalidades;
+use App\Support\TiposCredito;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 
+/**
+ * Alta de cliente en DOS PASOS (28/08):
+ *   1. Datos del cliente (correo, ocupación y estado civil obligatorios).
+ *   2. Vehículos — VARIOS por cliente y totalmente opcional: se puede
+ *      terminar el alta sin registrar ninguno.
+ *
+ * Las consultas de DNI / RUC / carné de extranjería y de placa van contra
+ * Factiliza (App\Services\Factiliza), que entrega los nombres ya separados:
+ * se acabó el split posicional que rompía con apellidos compuestos.
+ */
 class Create extends Component
 {
+    public const OCUPACIONES = ['dependiente' => 'Dependiente', 'independiente' => 'Independiente', 'transportista' => 'Transportista'];
+
+    public const ESTADOS_CIVILES = ['soltero' => 'Soltero(a)', 'casado' => 'Casado(a)', 'viudo' => 'Viudo(a)', 'divorciado' => 'Divorciado(a)'];
+
+    public const TIPOS_DOCUMENTO = ['DNI' => 'DNI', 'RUC' => 'RUC', 'CE' => 'Carné de extranjería'];
+
+    /**
+     * Provincias que opera la financiera. El área legal las trata como un
+     * dropdown porque la frase del contrato cambia: Lima colapsa a
+     * "PROVINCIA Y DEPARTAMENTO DE LIMA" y Callao a "PROVINCIA
+     * CONSTITUCIONAL DEL CALLAO" (ver DomicilioLegal).
+     */
+    public const PROVINCIAS = ['LIMA' => 'Lima', 'CALLAO' => 'Callao'];
+
+    // ── Wizard ─────────────────────────────────────────────
+    public int $paso = 1;
+
     // ── Búsqueda de documento ──────────────────────────────
     public string $docBuscar = '';
 
@@ -18,14 +50,14 @@ class Create extends Component
 
     public ?string $docMsgType = null; // 'ok' | 'warn' | 'err'
 
-    // ── Campos del formulario (homologado a clientenew.php) ──
+    // ── Paso 1: cliente ────────────────────────────────────
     public string $apellido_pat = '';
 
     public string $apellido_mat = '';
 
     public string $nombre = '';
 
-    public string $nacionalidad = 'PERUANO';
+    public string $nacionalidad = Nacionalidades::DEFECTO;
 
     public string $sexo = 'M';
 
@@ -33,11 +65,29 @@ class Create extends Component
 
     public string $documento = '';
 
-    public string $tipo_documento = 'DNI'; // interno, no visible
+    public string $tipo_documento = 'DNI';
+
+    public string $email = '';
+
+    public string $ocupacion = 'transportista';
+
+    public string $estado_civil = 'soltero';
 
     public ?int $expediente = null;
 
     public ?string $direccion = null;
+
+    /**
+     * Ubigeo del domicilio legal. La API los devuelve y hasta ahora se
+     * descartaban: el mapeo solo listaba direccion y distrito, así que el
+     * asesor tenía que retipear el domicilio entero en cada contrato.
+     * `provincia` gobierna además el giro registral (Lima vs Callao).
+     */
+    public ?string $distrito = null;
+
+    public string $provincia = 'LIMA';
+
+    public ?string $departamento = 'LIMA';
 
     public ?string $giro = null;     // Legacy: input "Giro"
 
@@ -51,7 +101,47 @@ class Create extends Component
 
     public ?int $asesor_id = null;
 
+    /**
+     * REPRESENTANTE LEGAL (solo alta con RUC). La empresa no tiene sexo,
+     * ocupación, estado civil ni nacionalidad: esos datos son de la persona
+     * que la representa, y el contrato a.4 los exige del GERENTE. Se guardan
+     * en client_empresas + empresa_representantes (vigente=1) y el wizard de
+     * contrato los precarga solo.
+     */
+    public array $representante = [
+        'nombre' => '', 'tipo_documento' => 'DNI', 'dni' => '', 'sexo' => 'M',
+        'nacionalidad' => 'PERUANO', 'ocupacion' => 'independiente',
+        'estado_civil' => 'soltero', 'domicilio' => '',
+    ];
+
+    /** Campos del representante llenados por consulta/herencia (van en rojo). @var array<int, string> */
+    public array $autoRep = [];
+
+    /**
+     * ── Paso 2: vehículos (0..N) ───────────────────────────
+     *
+     * @var array<int, array<string, string|null>>
+     */
+    public array $vehiculos = [];
+
+    public ?string $vehMsg = null;
+
+    public ?string $vehMsgType = null;
+
+    /**
+     * Campos que llenó la consulta a la API (se pintan en rojo para que el
+     * operador distinga lo traído de RENIEC/SUNAT/placa de lo que tecleó él).
+     *
+     * @var array<int, string>
+     */
+    public array $autoCliente = [];
+
+    /** @var array<int, array<int, string>> por índice de vehículo */
+    public array $autoVehiculo = [];
+
     public $asesores;
+
+    public ?int $newClientId = null;
 
     public function mount(): void
     {
@@ -67,141 +157,293 @@ class Create extends Component
         $this->expediente = $correl + 1;
     }
 
-    /**
-     * Consulta DNI o RUC contra api.migo.pe — desambigua por longitud.
-     */
-    public function consultarDocumento(): void
+    // ─────────────────────────────────────────────────────────
+    //  Consulta de documento (Factiliza)
+    // ─────────────────────────────────────────────────────────
+
+    /** El tipo de documento elegido decide el endpoint: DNI / RUC / CE. */
+    public function consultarDocumento(Factiliza $api): void
     {
         $this->docMsg = null;
         $this->docMsgType = null;
 
-        $doc = preg_replace('/\D+/', '', (string) $this->docBuscar);
-        $len = strlen($doc);
+        $doc = trim((string) $this->docBuscar);
+        // DNI y RUC son numéricos; el carné de extranjería es alfanumérico.
+        if ($this->tipo_documento !== 'CE') {
+            $doc = preg_replace('/\D+/', '', $doc);
+        }
 
-        if ($len !== 8 && $len !== 11) {
+        if ($error = $this->validarLargoDocumento($doc)) {
             $this->docMsgType = 'err';
-            $this->docMsg = 'Ingrese DNI (8 dígitos) o RUC (11 dígitos).';
+            $this->docMsg = $error;
 
             return;
         }
 
-        // Bloqueo de duplicados
-        $exists = Client::where('documento', $doc)->first(['id', 'expediente', 'nombre', 'apellido_pat', 'apellido_mat']);
-        if ($exists) {
+        // Bloqueo de duplicados antes de gastar una consulta
+        $existe = Client::where('documento', $doc)->first();
+        if ($existe && ! $existe->es_relacionado) {
             $this->docMsgType = 'warn';
-            $this->docMsg = "Documento ya registrado: #{$exists->id} · {$exists->fullName()} (exp. {$exists->expediente}).";
+            $this->docMsg = "Documento ya registrado: #{$existe->id} · {$existe->fullName()} (exp. {$existe->expediente}).";
 
             return;
         }
 
-        $token = config('services.migo.token');
-        $base = rtrim((string) config('services.migo.base'), '/');
-
-        if (! $token) {
-            $this->docMsgType = 'err';
-            $this->docMsg = 'Falta token MIGO_PE_TOKEN en .env';
-
-            return;
-        }
-
-        try {
-            if ($len === 8) {
-                $this->buscarDni($doc, $base, $token);
-            } else {
-                $this->buscarRuc($doc, $base, $token);
+        // PROMOCIÓN: existe como persona relacionada (copropietario del alta
+        // rápida). Se precarga su ficha y al guardar se COMPLETA esa misma
+        // fila — mismo id, sus vehículos y vínculos intactos — en vez de
+        // duplicar a la persona.
+        if ($existe) {
+            $this->documento = $doc;
+            $this->tipo_documento = $existe->tipo_documento ?: $this->tipo_documento;
+            foreach (['nombre', 'apellido_pat', 'apellido_mat', 'direccion', 'distrito', 'departamento'] as $campo) {
+                $this->{$campo} = (string) ($existe->{$campo} ?? '');
             }
-        } catch (\Throwable $e) {
-            $this->docMsgType = 'err';
-            $this->docMsg = 'Error consultando: '.$e->getMessage();
+            $this->sexo = $existe->sexo ?: 'M';
+            $this->nacionalidad = $existe->nacionalidad ?: $this->nacionalidad;
+            $this->email = (string) ($existe->email ?? '');
+            $this->ocupacion = $existe->ocupacion ?: $this->ocupacion;
+            $this->estado_civil = $existe->estado_civil ?: $this->estado_civil;
+            if (isset(self::PROVINCIAS[(string) $existe->provincia])) {
+                $this->provincia = (string) $existe->provincia;
+            }
+            $this->fecha_nacimiento = $existe->fecha_nacimiento?->format('Y-m-d');
+            $this->docMsgType = 'ok';
+            $this->docMsg = "{$existe->fullName()} ya existe como PERSONA RELACIONADA: al guardar se completará su ficha como cliente (mismo registro, conserva sus vínculos).";
+
+            return;
         }
+
+        // El documento se propaga SIEMPRE, aunque la consulta falle: así el
+        // operador no tiene que volver a tipearlo para cargarlo a mano.
+        $this->documento = $doc;
+
+        $resultado = match ($this->tipo_documento) {
+            'RUC' => $api->ruc($doc),
+            'CE' => $api->cee($doc),
+            default => $api->dni($doc),
+        };
+
+        if (! $resultado['ok']) {
+            $this->docMsgType = 'err';
+            $this->docMsg = $resultado['error'].' Puedes completar los datos a mano.';
+
+            return;
+        }
+
+        $this->aplicarDatosDocumento($resultado['data']);
     }
 
-    private function buscarDni(string $dni, string $base, string $token): void
+    private function validarLargoDocumento(string $doc): ?string
     {
-        $resp = Http::timeout(8)
-            ->acceptJson()
-            ->asJson()
-            ->post("$base/dni", ['token' => $token, 'dni' => $dni]);
-
-        if (! $resp->ok()) {
-            $this->docMsgType = 'err';
-            $this->docMsg = "API respondió HTTP {$resp->status()}.";
-
-            return;
-        }
-
-        $j = $resp->json();
-        if (empty($j) || (isset($j['success']) && $j['success'] === false)) {
-            $this->docMsgType = 'err';
-            $this->docMsg = $j['message'] ?? 'No se encontraron datos para ese DNI.';
-
-            return;
-        }
-
-        // migo.pe devuelve un único campo "nombre" con formato "APELLIDOPAT APELLIDOMAT NOMBRES".
-        // Compatibilidad: si la API algún día devolviera campos separados, los respetamos.
-        $pat = $j['apellido_paterno'] ?? $j['apellidoPaterno'] ?? null;
-        $mat = $j['apellido_materno'] ?? $j['apellidoMaterno'] ?? null;
-        $nom = $j['nombres'] ?? null;
-        $full = trim((string) ($j['nombre'] ?? ''));
-
-        if ($pat === null && $mat === null && $nom === null && $full !== '') {
-            // Split: 1ª palabra = pat, 2ª = mat, resto = nombres
-            $partes = preg_split('/\s+/', $full, 3);
-            $pat = $partes[0] ?? '';
-            $mat = $partes[1] ?? '';
-            $nom = $partes[2] ?? '';
-        }
-
-        $this->apellido_pat = mb_convert_case(trim((string) $pat), MB_CASE_TITLE, 'UTF-8');
-        $this->apellido_mat = mb_convert_case(trim((string) $mat), MB_CASE_TITLE, 'UTF-8');
-        $this->nombre = mb_convert_case(trim((string) $nom), MB_CASE_TITLE, 'UTF-8');
-        $this->documento = $dni;
-        $this->tipo_documento = 'DNI';
-
-        $this->docMsgType = 'ok';
-        $this->docMsg = 'Datos cargados desde RENIEC. Verifique apellidos y nombres.';
+        return match ($this->tipo_documento) {
+            'DNI' => strlen($doc) === 8 ? null : 'El DNI debe tener 8 dígitos.',
+            'RUC' => strlen($doc) === 11 ? null : 'El RUC debe tener 11 dígitos.',
+            'CE' => (strlen($doc) >= 8 && strlen($doc) <= 12) ? null : 'El carné de extranjería debe tener entre 8 y 12 caracteres.',
+            default => 'Selecciona el tipo de documento.',
+        };
     }
 
-    private function buscarRuc(string $ruc, string $base, string $token): void
+    /** @param array<string, mixed> $d */
+    private function aplicarDatosDocumento(array $d): void
     {
-        $resp = Http::timeout(8)
-            ->acceptJson()
-            ->asJson()
-            ->post("$base/ruc", ['token' => $token, 'ruc' => $ruc]);
+        $this->autoCliente = [];
 
-        if (! $resp->ok()) {
-            $this->docMsgType = 'err';
-            $this->docMsg = "API respondió HTTP {$resp->status()}.";
-
-            return;
+        if ($this->tipo_documento === 'RUC') {
+            // La razón social entera va al campo Nombres; los apellidos no aplican.
+            $this->nombre = (string) ($d['nombre'] ?? '');
+            $this->apellido_pat = '';
+            $this->apellido_mat = '';
+            $this->autoCliente[] = 'nombre';
+            $this->docMsg = 'Razón social cargada en "Nombres". Apellidos no aplican para RUC.';
+        } else {
+            // DNI y CE: la API ya entrega los nombres separados.
+            $this->nombre = (string) ($d['nombre'] ?? '');
+            $this->apellido_pat = (string) ($d['apellido_pat'] ?? '');
+            $this->apellido_mat = (string) ($d['apellido_mat'] ?? '');
+            foreach (['nombre', 'apellido_pat', 'apellido_mat'] as $campo) {
+                if ($this->{$campo} !== '') {
+                    $this->autoCliente[] = $campo;
+                }
+            }
+            $this->docMsg = $this->tipo_documento === 'CE'
+                ? 'Datos cargados desde Migraciones. Verifica apellidos y nombres.'
+                : 'Datos cargados desde RENIEC. Verifica apellidos y nombres.';
         }
 
-        $j = $resp->json();
-        if (empty($j) || (isset($j['success']) && $j['success'] === false)) {
-            $this->docMsgType = 'err';
-            $this->docMsg = $j['message'] ?? 'No se encontraron datos para ese RUC.';
-
-            return;
+        foreach (['direccion', 'distrito', 'departamento'] as $campo) {
+            if (! empty($d[$campo])) {
+                $this->{$campo} = (string) $d[$campo];
+                $this->autoCliente[] = $campo;
+            }
         }
 
-        $razon = trim((string) ($j['nombre_o_razon_social'] ?? ''));
-        $direc = trim((string) ($j['direccion_simple'] ?? $j['direccion'] ?? ''));
-
-        // Para cualquier RUC, la razón social entera va al campo Nombres.
-        // Los apellidos quedan vacíos (no aplican).
-        $this->apellido_pat = '';
-        $this->apellido_mat = '';
-        $this->nombre = $razon;
-        $this->documento = $ruc;
-        $this->tipo_documento = 'RUC';
-
-        if ($direc !== '') {
-            $this->direccion = mb_convert_case($direc, MB_CASE_TITLE, 'UTF-8');
+        // La provincia es un combo cerrado (gobierna el giro registral del
+        // contrato): solo se autocompleta si la API devuelve una de las que
+        // opera la financiera. Si trae otra, queda la elegida a mano.
+        $provincia = mb_strtoupper(trim((string) ($d['provincia'] ?? '')));
+        if (isset(self::PROVINCIAS[$provincia])) {
+            $this->provincia = $provincia;
+            $this->autoCliente[] = 'provincia';
         }
+        if (! empty($d['fecha_nacimiento'])) {
+            $this->fecha_nacimiento = (string) $d['fecha_nacimiento'];
+            $this->autoCliente[] = 'fecha_nacimiento';
+        }
+        if (! empty($d['estado_civil']) && isset(self::ESTADOS_CIVILES[$d['estado_civil']])) {
+            $this->estado_civil = (string) $d['estado_civil'];
+            $this->autoCliente[] = 'estado_civil';
+        }
+        if (! empty($d['sexo'])) {
+            $this->sexo = (string) $d['sexo'];
+            $this->autoCliente[] = 'sexo';
+        }
+        $this->autoCliente[] = 'documento';
 
         $this->docMsgType = 'ok';
-        $this->docMsg = 'Razón social cargada en "Nombres". Apellidos no aplican para RUC.';
+    }
+
+    /** Cambiar el tipo de documento limpia el mensaje anterior (endpoint distinto). */
+    public function updatedTipoDocumento(): void
+    {
+        $this->docMsg = null;
+        $this->docMsgType = null;
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  Wizard
+    // ─────────────────────────────────────────────────────────
+
+    /** Paso 1 → 2: valida SOLO los campos del cliente. */
+    public function siguientePaso(): void
+    {
+        $this->nacionalidad = Nacionalidades::normalizar($this->nacionalidad);
+        $this->validate($this->reglasCliente(), $this->messages());
+        $this->paso = 2;
+    }
+
+    public function pasoAnterior(): void
+    {
+        $this->paso = 1;
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  Paso 2: vehículos (varios, opcional)
+    // ─────────────────────────────────────────────────────────
+
+    public function agregarVehiculo(): void
+    {
+        $this->vehiculos[] = [
+            'placa' => '', 'marca' => '', 'modelo' => '', 'nro_motor' => '',
+            'nro_serie' => '', 'categoria' => '', 'anio_modelo' => '', 'carroceria' => '',
+            'color' => '', 'combustible' => '', 'valor' => '',
+        ];
+        $this->vehMsg = null;
+    }
+
+    public function quitarVehiculo(int $i): void
+    {
+        unset($this->vehiculos[$i], $this->autoVehiculo[$i]);
+        $this->vehiculos = array_values($this->vehiculos);
+        $this->autoVehiculo = array_values($this->autoVehiculo);
+        $this->resetErrorBag();
+        $this->vehMsg = null;
+    }
+
+    /** Autocompleta una fila de vehículo con los datos de la placa (Factiliza). */
+    public function consultarPlaca(int $i, Factiliza $api): void
+    {
+        $this->vehMsg = null;
+        $this->vehMsgType = null;
+
+        $placa = strtoupper(trim((string) ($this->vehiculos[$i]['placa'] ?? '')));
+        if ($placa === '') {
+            $this->vehMsgType = 'err';
+            $this->vehMsg = 'Escribe la placa que quieres consultar.';
+
+            return;
+        }
+
+        $resultado = $api->placa($placa);
+        if (! $resultado['ok']) {
+            $this->vehMsgType = 'err';
+            $this->vehMsg = $resultado['error'].' Puedes completar los datos a mano.';
+
+            return;
+        }
+
+        $this->autoVehiculo[$i] = [];
+        foreach ($resultado['data'] as $campo => $valor) {
+            if ($valor !== '' && array_key_exists($campo, $this->vehiculos[$i])) {
+                $this->vehiculos[$i][$campo] = $valor;
+                $this->autoVehiculo[$i][] = $campo;
+            }
+        }
+
+        $this->vehMsgType = 'ok';
+        $this->vehMsg = "Datos de la placa {$placa} cargados. Verifica antes de guardar.";
+    }
+
+    /**
+     * Consulta el documento del REPRESENTANTE (alta RUC): ficha local primero
+     * (hereda sexo, nacionalidad, ocupación y estado civil del cliente si ya
+     * está registrado), endpoint de DNI/CE después. Lo llenado va en rojo.
+     */
+    public function consultarDocRepresentante(Factiliza $api): void
+    {
+        $doc = trim((string) $this->representante['dni']);
+        if ($doc === '') {
+            $this->docMsgType = 'err';
+            $this->docMsg = 'Escribe el documento del representante antes de consultar.';
+
+            return;
+        }
+
+        $this->autoRep = [];
+
+        $ficha = Client::where('documento', $doc)->first();
+        if ($ficha !== null) {
+            $this->representante['nombre'] = mb_strtoupper($ficha->fullName());
+            $this->representante['sexo'] = $ficha->sexo === 'F' ? 'F' : 'M';
+            $this->representante['nacionalidad'] = $ficha->nacionalidad ?: Nacionalidades::DEFECTO;
+            if (isset(self::OCUPACIONES[(string) $ficha->ocupacion])) {
+                $this->representante['ocupacion'] = (string) $ficha->ocupacion;
+            }
+            if (isset(self::ESTADOS_CIVILES[(string) $ficha->estado_civil])) {
+                $this->representante['estado_civil'] = (string) $ficha->estado_civil;
+            }
+            $this->autoRep = ['nombre', 'sexo', 'nacionalidad', 'ocupacion', 'estado_civil'];
+            $this->docMsgType = 'ok';
+            $this->docMsg = "Representante heredado de la ficha de {$ficha->fullName()}.";
+
+            return;
+        }
+
+        $r = $this->representante['tipo_documento'] === 'CE' ? $api->cee($doc) : $api->dni($doc);
+        if (! $r['ok']) {
+            $this->docMsgType = 'err';
+            $this->docMsg = $r['error'].' Puedes completar los datos del representante a mano.';
+
+            return;
+        }
+
+        $nombre = trim(implode(' ', array_filter([
+            $r['data']['nombre'] ?? '', $r['data']['apellido_pat'] ?? '', $r['data']['apellido_mat'] ?? '',
+        ])));
+        if ($nombre !== '') {
+            $this->representante['nombre'] = mb_strtoupper($nombre);
+            $this->autoRep[] = 'nombre';
+        }
+        if (in_array($r['data']['sexo'] ?? null, ['M', 'F'], true)) {
+            $this->representante['sexo'] = $r['data']['sexo'];
+            $this->autoRep[] = 'sexo';
+        }
+        if (! empty($r['data']['estado_civil']) && isset(self::ESTADOS_CIVILES[$r['data']['estado_civil']])) {
+            $this->representante['estado_civil'] = $r['data']['estado_civil'];
+            $this->autoRep[] = 'estado_civil';
+        }
+        $this->docMsgType = 'ok';
+        $this->docMsg = 'Datos del representante cargados. Verifica y completa lo que falte.';
     }
 
     public function clean(): void
@@ -209,44 +451,145 @@ class Create extends Component
         $this->reset([
             'docBuscar', 'docMsg', 'docMsgType',
             'apellido_pat', 'apellido_mat', 'nombre', 'sexo', 'fecha_nacimiento',
-            'documento', 'tipo_documento',
-            'direccion', 'giro', 'zona', 'celular1', 'celular2',
+            'documento', 'tipo_documento', 'email', 'ocupacion', 'estado_civil',
+            'nacionalidad', 'direccion', 'distrito', 'provincia', 'departamento',
+            'giro', 'zona', 'celular1', 'celular2',
+            'vehiculos', 'vehMsg', 'vehMsgType', 'autoCliente', 'autoVehiculo',
         ]);
         $this->sexo = 'M';
         $this->tipo_documento = 'DNI';
+        $this->ocupacion = 'transportista';
+        $this->estado_civil = 'soltero';
+        $this->nacionalidad = Nacionalidades::DEFECTO;
+        $this->reset('representante', 'autoRep');
+        $this->provincia = 'LIMA';
+        $this->departamento = 'LIMA';
+        $this->paso = 1;
         $this->resetErrorBag();
     }
 
-    protected function rules(): array
+    // ─────────────────────────────────────────────────────────
+    //  Validación
+    // ─────────────────────────────────────────────────────────
+
+    /** @return array<string, mixed> */
+    private function reglasCliente(): array
     {
         $isRuc = $this->tipo_documento === 'RUC';
 
-        return [
+        $reglas = [
             'nombre' => 'required|string|max:200',
             'apellido_pat' => $isRuc ? 'nullable|string|max:100' : 'required|string|max:100',
             'apellido_mat' => 'nullable|string|max:100',
-            'sexo' => 'required|in:M,F',
+            // La EMPRESA no tiene datos personales: son del representante.
+            'sexo' => $isRuc ? 'nullable' : 'required|in:M,F',
             'fecha_nacimiento' => 'nullable|date',
-            'documento' => 'required|string|min:8|max:11|unique:clients,documento',
+            'tipo_documento' => 'required|in:'.implode(',', array_keys(self::TIPOS_DOCUMENTO)),
+            // unique SOLO contra clientes de verdad: si el documento existe
+            // como persona relacionada, guardar PROMUEVE esa ficha (misma
+            // fila) en vez de duplicarla.
+            'documento' => ['required', 'string', 'min:8', 'max:12',
+                Rule::unique('clients', 'documento')->where(fn ($q) => $q->where('es_relacionado', false))],
+            'email' => 'required|email|max:150',
+            'ocupacion' => $isRuc ? 'nullable' : 'required|in:'.implode(',', array_keys(self::OCUPACIONES)),
+            'estado_civil' => $isRuc ? 'nullable' : 'required|in:'.implode(',', array_keys(self::ESTADOS_CIVILES)),
             'expediente' => 'required|integer|min:1',
-            'direccion' => 'nullable|string|max:255',
+            // El domicilio legal es la cláusula PRIMERO del contrato: sin
+            // dirección arranca en "DISTRITO DE" y sin ubigeo queda a medias.
+            'nacionalidad' => $isRuc ? 'nullable' : 'required|in:'.implode(',', Nacionalidades::OPCIONES),
+            'direccion' => 'required|string|max:255',
+            'distrito' => 'required|string|max:100',
+            'provincia' => 'required|in:'.implode(',', array_keys(self::PROVINCIAS)),
+            'departamento' => 'required|string|max:100',
             'giro' => 'nullable|string|max:100',
             'capital' => 'nullable|numeric|min:0',
-            'zona' => 'nullable|string|max:100',
+            'zona' => 'nullable|string|in:'.implode(',', TiposCredito::OPCIONES),
             'celular1' => 'nullable|string|max:20',
             'celular2' => 'nullable|string|max:20',
             'asesor_id' => 'nullable|exists:users,id',
         ];
+
+        if ($isRuc) {
+            $reglas += [
+                'representante.nombre' => 'required|string|max:150',
+                'representante.tipo_documento' => 'required|in:DNI,CE',
+                'representante.dni' => 'required|string|min:8|max:12',
+                'representante.sexo' => 'required|in:M,F',
+                'representante.nacionalidad' => 'required|in:'.implode(',', Nacionalidades::OPCIONES),
+                'representante.ocupacion' => 'required|in:'.implode(',', array_keys(self::OCUPACIONES)),
+                'representante.estado_civil' => 'required|in:'.implode(',', array_keys(self::ESTADOS_CIVILES)),
+                'representante.domicilio' => 'nullable|string|max:300',
+            ];
+        }
+
+        return $reglas;
     }
+
+    /**
+     * Vehículos: la lista puede ir VACÍA (paso opcional). De cada fila
+     * agregada solo se exige la placa — es la clave del registro.
+     *
+     * @return array<string, mixed>
+     */
+    private function reglasVehiculos(): array
+    {
+        return [
+            'vehiculos' => 'array',
+            'vehiculos.*.placa' => 'required|string|max:10|distinct|unique:vehiculos,placa',
+            'vehiculos.*.marca' => 'nullable|string|max:50',
+            'vehiculos.*.modelo' => 'nullable|string|max:50',
+            'vehiculos.*.nro_motor' => 'nullable|string|max:30',
+            'vehiculos.*.nro_serie' => 'nullable|string|max:30',
+            'vehiculos.*.categoria' => 'nullable|string|max:30',
+            'vehiculos.*.anio_modelo' => 'nullable|string|max:10',
+            'vehiculos.*.carroceria' => 'nullable|string|max:50',
+            'vehiculos.*.color' => 'nullable|string|max:50',
+            'vehiculos.*.combustible' => 'nullable|string|max:30',
+            'vehiculos.*.valor' => 'nullable|numeric|min:0',
+        ];
+    }
+
+    protected function rules(): array
+    {
+        return array_merge($this->reglasCliente(), $this->reglasVehiculos());
+    }
+
+    protected function messages(): array
+    {
+        return [
+            'vehiculos.*.placa.required' => 'Ingresa la placa (o quita el vehículo de la lista).',
+            'vehiculos.*.placa.unique' => 'Esa placa ya está registrada en otro cliente.',
+            'vehiculos.*.placa.distinct' => 'La placa está repetida en la lista.',
+            'email.required' => 'El correo electrónico es obligatorio.',
+            'email.email' => 'Escribe un correo electrónico válido.',
+            'ocupacion.required' => 'Selecciona la ocupación.',
+            'estado_civil.required' => 'Selecciona el estado civil.',
+        ];
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  Guardado
+    // ─────────────────────────────────────────────────────────
 
     public function save()
     {
         abort_if(auth()->user()?->can('clientes.scope-propio') ?? false, 403,
             'Tu rol no permite esta acción.');
+
+        // Normalizar ANTES de validar, para que el unique de placa compare
+        // contra lo que realmente se guardará.
+        foreach ($this->vehiculos as $i => $v) {
+            foreach (['placa', 'nro_motor', 'nro_serie'] as $campo) {
+                $this->vehiculos[$i][$campo] = strtoupper(trim((string) ($v[$campo] ?? ''))) ?: null;
+            }
+        }
+
         $this->validate();
 
-        // Re-confirmar duplicado al guardar (race condition)
-        if (Client::where('documento', $this->documento)->exists()) {
+        // Re-confirmar duplicado al guardar (race condition) — los
+        // relacionados no cuentan: a esos se los promueve.
+        if (Client::titulares()->where('documento', $this->documento)->exists()) {
+            $this->paso = 1;
             $this->addError('documento', 'El documento ya está registrado.');
 
             return;
@@ -255,17 +598,26 @@ class Create extends Component
         $expediente = (int) $this->expediente;
 
         DB::transaction(function () use ($expediente) {
-            $clientId = DB::table('clients')->insertGetId([
+            $isRuc = $this->tipo_documento === 'RUC';
+            $datosCliente = [
                 'expediente' => (string) $expediente,
                 'nombre' => $this->nombre,
                 'apellido_pat' => $this->apellido_pat,
                 'apellido_mat' => $this->apellido_mat,
                 'tipo_documento' => $this->tipo_documento,
                 'documento' => $this->documento,
-                'fecha_nacimiento' => $this->fecha_nacimiento,
-                'sexo' => $this->sexo,
-                'email' => 'g@huacachin.com',
+                // La EMPRESA no tiene datos personales: quedan NULL y los del
+                // representante van a empresa_representantes.
+                'fecha_nacimiento' => $isRuc ? null : $this->fecha_nacimiento,
+                'sexo' => $isRuc ? null : $this->sexo,
+                'nacionalidad' => $isRuc ? null : Nacionalidades::normalizar($this->nacionalidad),
+                'email' => trim($this->email),
+                'ocupacion' => $isRuc ? null : $this->ocupacion,
+                'estado_civil' => $isRuc ? null : $this->estado_civil,
                 'direccion' => $this->direccion,
+                'distrito' => $this->distrito,
+                'provincia' => $this->provincia,
+                'departamento' => $this->departamento,
                 'giro' => $this->giro,
                 'capital' => $this->capital !== null && $this->capital !== '' ? $this->capital : null,
                 'zona' => $this->zona,
@@ -276,26 +628,94 @@ class Create extends Component
                 'usuario' => auth()->user()->username ?? auth()->user()->name ?? null,
                 'fecha_registro' => now()->toDateString(),
                 'status' => 'active',
-                'created_at' => now(),
                 'updated_at' => now(),
-            ]);
+            ];
+
+            // PROMOCIÓN: si la persona ya existe como relacionada (alta
+            // rápida de copropietario), se completa ESA fila y se apaga la
+            // marca — mismo id, sus vehículos y vínculos quedan intactos.
+            $relacionado = Client::where('es_relacionado', true)
+                ->where('documento', $this->documento)
+                ->lockForUpdate()
+                ->first();
+
+            if ($relacionado !== null) {
+                $relacionado->update($datosCliente + ['es_relacionado' => false]);
+                $clientId = $relacionado->id;
+            } else {
+                $clientId = DB::table('clients')->insertGetId($datosCliente + ['created_at' => now()]);
+            }
+
+            // Empresa: ficha registral + representante legal VIGENTE. El
+            // wizard de contrato los precarga (representanteVigente), así que
+            // el a.4 sale sin retipear al gerente.
+            if ($isRuc) {
+                $empresa = ClientEmpresa::updateOrCreate(
+                    ['client_id' => $clientId],
+                    [
+                        'domicilio' => DomicilioLegal::armar(
+                            $this->direccion, $this->distrito, $this->provincia, $this->departamento
+                        ) ?: null,
+                        'correo' => trim($this->email) ?: null,
+                    ],
+                );
+                $empresa->representantes()->create([
+                    'nombre' => mb_strtoupper(trim($this->representante['nombre'])),
+                    'tipo_documento' => $this->representante['tipo_documento'],
+                    'documento' => trim($this->representante['dni']),
+                    'sexo' => $this->representante['sexo'] === 'F' ? 'F' : 'M',
+                    'nacionalidad' => Nacionalidades::normalizar($this->representante['nacionalidad']),
+                    'ocupacion' => $this->representante['ocupacion'],
+                    'estado_civil' => $this->representante['estado_civil'],
+                    'domicilio' => trim((string) $this->representante['domicilio'])
+                        ?: (DomicilioLegal::armar(
+                            $this->direccion, $this->distrito, $this->provincia, $this->departamento
+                        ) ?: null),
+                    'vigente' => true,
+                ]);
+            }
+
+            foreach ($this->vehiculos as $v) {
+                if (empty($v['placa'])) {
+                    continue;
+                }
+                DB::table('vehiculos')->insert([
+                    'client_id' => $clientId,
+                    'placa' => $v['placa'],
+                    'marca' => $v['marca'] ?: null,
+                    'modelo' => $v['modelo'] ?: null,
+                    'nro_motor' => $v['nro_motor'] ?: null,
+                    'nro_serie' => $v['nro_serie'] ?: null,
+                    'categoria' => $v['categoria'] ?: null,
+                    'anio_modelo' => $v['anio_modelo'] ?: null,
+                    'carroceria' => $v['carroceria'] ?: null,
+                    'color' => $v['color'] ?: null,
+                    'combustible' => $v['combustible'] ?: null,
+                    'valor' => ($v['valor'] ?? '') !== '' ? $v['valor'] : null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
 
             // Avanzar correlativo al expediente que terminó usando el usuario
             DB::table('correlativos')
                 ->where('tipo', 'Cliente')
                 ->update(['correl' => $expediente, 'updated_at' => now()]);
 
-            session()->flash('client_success', "Cliente registrado · expediente {$expediente}.");
+            $placas = collect($this->vehiculos)->pluck('placa')->filter()->implode(', ');
+            $msg = "Cliente registrado · expediente {$expediente}."
+                .($placas !== '' ? " Vehículos: {$placas}." : '');
+            session()->flash('client_success', $msg);
             $this->newClientId = $clientId;
         });
 
         $createdClient = Client::find($this->newClientId);
-        Audit::log('Creó el cliente '.($createdClient?->fullName() ?? $this->documento), $createdClient);
+        $placas = collect($this->vehiculos)->pluck('placa')->filter()->values()->all();
+        Audit::log('Creó el cliente '.($createdClient?->fullName() ?? $this->documento), $createdClient,
+            $placas !== [] ? ['vehiculos' => $placas] : []);
 
         return redirect()->route('clients.gallery', $this->newClientId);
     }
-
-    public ?int $newClientId = null;
 
     public function render()
     {

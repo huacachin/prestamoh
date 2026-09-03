@@ -1,0 +1,104 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+
+/**
+ * Vehículo del cliente — modelo UNIFICADO en la fusión con feat/area-legal
+ * (28/08). Las dos ramas habían creado la misma tabla con esquemas distintos;
+ * quedó el esquema de feat/documentos-cliente (el que vive en prod) más las
+ * columnas de flota de área legal vía ALTER aditivo (2026_08_28_000003).
+ *
+ * Diferencia deliberada con el modelo original de área legal: el año es
+ * `anio_modelo` STRING (admite el caso dual '2017/2018' que piden las
+ * maestras SIGM), no `anio` smallint.
+ */
+class Vehiculo extends Model
+{
+    protected $table = 'vehiculos';
+
+    public const ESTADOS = [
+        'activo' => 'Activo',
+        'vendido' => 'Vendido',
+        'adjudicado' => 'Adjudicado',
+        'baja' => 'Baja',
+    ];
+
+    public const PROPIETARIO_TIPOS = [
+        'cliente' => 'Cliente',
+        'empresa' => 'Empresa (flota propia)',
+        'tercero' => 'Tercero',
+    ];
+
+    /** Defaults espejo de la migración: el modelo recién creado los ve sin refresh() */
+    protected $attributes = [
+        'propietario_tipo' => 'cliente',
+        'estado' => 'activo',
+    ];
+
+    protected $fillable = [
+        'client_id', 'propietario_tipo', 'propietario_nombre', 'propietario_documento',
+        'placa', 'marca', 'modelo', 'nro_motor', 'nro_serie', 'categoria', 'anio_modelo',
+        'carroceria', 'color', 'combustible', 'partida_registral', 'valor',
+        'soat_vence', 'revision_tecnica_vence', 'habilitacion_atu_vence',
+        'estado', 'observaciones',
+    ];
+
+    protected $casts = [
+        'valor' => 'decimal:2',
+        'soat_vence' => 'date',
+        'revision_tecnica_vence' => 'date',
+        'habilitacion_atu_vence' => 'date',
+    ];
+
+    /** Etiquetas de los vencimientos documentarios (campana y pantallas) */
+    public const VENCIMIENTOS = [
+        'soat_vence' => 'SOAT',
+        'revision_tecnica_vence' => 'Revisión técnica',
+        'habilitacion_atu_vence' => 'Habilitación ATU',
+    ];
+
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(Client::class);
+    }
+
+    /**
+     * Copropietarios (pivote cliente_vehiculo). `client_id` sigue siendo el
+     * propietario principal; sin filas en el pivote, es el único dueño.
+     */
+    public function copropietarios(): BelongsToMany
+    {
+        return $this->belongsToMany(Client::class, 'cliente_vehiculo')
+            ->withPivot('rol')
+            ->withTimestamps();
+    }
+
+    /** ¿$clientId es dueño (titular o copropietario) de este vehículo? */
+    public function perteneceA(int $clientId): bool
+    {
+        return (int) $this->client_id === $clientId
+            || $this->copropietarios()->whereKey($clientId)->exists();
+    }
+
+    public function garantias(): BelongsToMany
+    {
+        return $this->belongsToMany(Garantia::class, 'garantia_vehiculo')
+            ->withPivot(['es_bien_futuro', 'acta_notarial', 'kardex', 'notario', 'fecha_acta', 'orden'])
+            ->withTimestamps();
+    }
+
+    public function papeletas()
+    {
+        return $this->hasMany(Papeleta::class);
+    }
+
+    /** "PLACA — MARCA MODELO" para listas y buscadores */
+    public function descripcion(): string
+    {
+        return trim("{$this->placa} — {$this->marca} {$this->modelo}");
+    }
+}

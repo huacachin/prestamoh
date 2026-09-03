@@ -350,6 +350,9 @@ class MigrateLegacyData extends Command
                     'situacion' => $newSituacion,
                     'estado' => $lc->estado ?? 1,
                     'refinanciado' => ($lc->refi == 1 || $lc->cod_rem === 'REF') ? 1 : 0,
+                    // El flag refi del legacy TAL CUAL (cancelado POR refi):
+                    // el reporte de caja 1 ramifica con él, no con la fusión.
+                    'cancelado_por_refi' => $lc->refi == 1 ? 1 : 0,
                     'cod_rem' => $lc->cod_rem ?: null,
                     'gat' => $lc->gat ?? 0,
                     'idcan' => $lc->idcan ?: null,
@@ -414,7 +417,12 @@ class MigrateLegacyData extends Command
                     // fecha_pago: NULL hasta que esté pagada. El legacy no guarda la fecha
                     // real del pago a nivel cuota; cuando flpago=1 usamos la fecha del
                     // cronograma como aproximación (igual que hacía el legacy).
-                    $fechaPago = ($li->flpago == 1 && $fechaVenc) ? $fechaVenc : null;
+                    // Fecha REAL del pago: fechamov (último movimiento que la dejó
+                    // pagada) — es lo que el legacy muestra en su columna "Fecha Pago".
+                    // fechapago (=$fechaVenc) es el VENCIMIENTO, no el día del pago.
+                    $fechaMov = ($li->fechamov && strlen((string) $li->fechamov) >= 10)
+                        ? substr((string) $li->fechamov, 0, 10) : null;
+                    $fechaPago = ($li->flpago == 1) ? ($fechaMov ?: $fechaVenc) : null;
 
                     $batch[] = [
                         'id' => $li->id,
