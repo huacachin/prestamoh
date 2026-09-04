@@ -101,7 +101,13 @@
                 </div>
                 <div class="col-md-3">
                     <label class="form-label mb-0 small fw-semibold">Combustible</label>
-                    <input type="text" class="form-control form-control-sm" wire:model.defer="combustible" placeholder="GNV / Gasolina">
+                    <select class="form-select form-select-sm select2-tags" wire:model.defer="combustible"
+                            data-placeholder="— Seleccione —">
+                        <option value=""></option>
+                        @foreach(\App\Support\Combustibles::paraValor($combustible) as $comb)
+                            <option value="{{ $comb }}">{{ $comb }}</option>
+                        @endforeach
+                    </select>
                 </div>
             </div>
 
