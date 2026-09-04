@@ -129,8 +129,11 @@
                                     // ($contador % 2): 1ª fila (contador=1) => #F2F2EC, 2ª => #ffffff
                                     $rowBg = ($loop->iteration % 2 === 0) ? '#ffffff' : '#F2F2EC';
                                     $rowColor = ($expense->modo === 'Otros') ? 'color: red;' : '';
+                                    // Regla 04/09: solo el director edita lo de todos; el resto,
+                                    // SOLO sus propios movimientos del día.
                                     $canEdit = $puedeEditarHistorico || (
                                         $expense->date?->format('Y-m-d') === $hoy
+                                        && (int) $expense->user_id === (int) auth()->id()
                                     );
                                 @endphp
                                 <tr style="background-color: {{ $rowBg }}; {{ $rowColor }}"
@@ -307,6 +310,7 @@
                                 $isOtros = $expense->modo === 'Otros';
                                 $canEdit = $puedeEditarHistorico || (
                                     $expense->date?->format('Y-m-d') === $hoy
+                                    && (int) $expense->user_id === (int) auth()->id()
                                 );
                             @endphp
                             <div class="card mb-2 shadow-sm {{ $isOtros ? 'border-danger' : '' }}">
