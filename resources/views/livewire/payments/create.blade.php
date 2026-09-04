@@ -264,7 +264,13 @@
                                    value="{{ number_format($c['saldo_mora_restante'], 2) }}" readonly>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label mb-0 small fw-semibold">Monto a Pagar</label>
+                            <label class="form-label mb-0 small fw-semibold d-flex justify-content-between align-items-center">
+                                <span>Monto a Pagar</span>
+                                <a href="#" wire:click.prevent="abrirMoraCuotas" class="text-primary text-decoration-underline fw-normal"
+                                   title="Elegir qué cuotas pagar, cada una con su mora por días">
+                                    <i class="ti ti-list-check f-s-12"></i> elegir cuotas
+                                </a>
+                            </label>
                             <input type="number" name="monto" autocomplete="off" class="form-control form-control-sm"
                                    wire:model.live.debounce.400ms="monto"
                                    min="0.00" max="{{ $c['saldo_pendiente'] }}" step="0.01"
@@ -496,6 +502,112 @@
                         <button type="button" class="btn btn-sm btn-danger" id="btn-confirmar-cancelado">
                             <i class="ti ti-circle-check"></i> Sí, marcar Cancelado
                         </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- ═══ Modal: pagar por cuotas (selección FIFO + mora editable por fila) ═══ --}}
+        <div class="modal fade" id="moraCuotasModal" tabindex="-1" aria-hidden="true" wire:ignore.self
+             x-data="{ modal: null }"
+             x-init="modal = bootstrap.Modal.getOrCreateInstance($el)"
+             x-on:mora-cuotas-open.window="modal.show()"
+             x-on:mora-cuotas-close.window="modal.hide()">
+            <div class="modal-dialog modal-dialog-centered" style="max-width:660px;">
+                <div class="modal-content">
+                    <div class="modal-header py-2">
+                        <h6 class="modal-title mb-0">
+                            <i class="ti ti-list-check f-s-14"></i>
+                            Pagar por cuotas
+                        </h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body py-2">
+                        @if(count($moraCuotas) === 0)
+                            <p class="text-muted mb-0 py-2 text-center">No hay cuotas pendientes.</p>
+                        @else
+                            <div style="max-height: 320px; overflow:auto;">
+                                <table class="table table-sm table-striped mb-0 align-middle">
+                                    <thead style="position: sticky; top: 0; background: var(--bs-body-bg); z-index: 1;">
+                                        <tr>
+                                            <th style="width:34px;"></th>
+                                            <th class="text-center">Cuota</th>
+                                            <th>Vencimiento</th>
+                                            <th class="text-end">Saldo</th>
+                                            <th class="text-center">Días</th>
+                                            <th class="text-end">Mora calc.</th>
+                                            <th class="text-end" style="width:110px;">Mora</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($moraCuotas as $i => $fila)
+                                            <tr class="{{ $fila['sel'] ? '' : 'opacity-50' }}" style="cursor:pointer;"
+                                                wire:key="mora-cuota-{{ $fila['num'] }}">
+                                                <td class="text-center">
+                                                    {{-- wire:model (no wire:click): el checkbox debe ser CONTROLADO
+                                                         por Livewire — con wire:click el navegador lo marca por su
+                                                         cuenta y queda desfasado del estado real cuando el servidor
+                                                         corrige la selección (regla del prefijo). --}}
+                                                    <input type="checkbox" class="form-check-input"
+                                                           wire:model.live="moraCuotas.{{ $i }}.sel"
+                                                           title="La selección no puede saltarse cuotas: el pago se imputa a la más antigua primero">
+                                                </td>
+                                                <td class="text-center" wire:click="toggleCuota({{ $i }})">{{ $fila['num'] }}</td>
+                                                <td wire:click="toggleCuota({{ $i }})">{{ $fila['venc'] }}</td>
+                                                <td class="text-end" wire:click="toggleCuota({{ $i }})">{{ number_format($fila['saldo'], 2) }}</td>
+                                                <td class="text-center {{ $fila['dias'] > 0 ? 'text-danger fw-semibold' : '' }}" wire:click="toggleCuota({{ $i }})">
+                                                    {{ $fila['dias'] > 0 ? $fila['dias'] : '—' }}
+                                                </td>
+                                                <td class="text-end" wire:click="toggleCuota({{ $i }})">{{ number_format($fila['calc'], 2) }}</td>
+                                                <td>
+                                                    @if($this->canEditMora())
+                                                        <input type="number" step="0.01" min="0"
+                                                               class="form-control form-control-sm text-end input-rojo"
+                                                               wire:model.live.debounce.400ms="moraCuotas.{{ $i }}.valor"
+                                                               @disabled(! $fila['sel'])>
+                                                    @else
+                                                        <span class="d-block text-end">{{ number_format(is_numeric($fila['valor']) ? (float) $fila['valor'] : 0, 2) }}</span>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                    <tfoot>
+                                        @php
+                                            $selRows = collect($moraCuotas)->where('sel', true);
+                                            $selMonto = $selRows->sum('saldo');
+                                            $selMora = $selRows->sum(fn ($f) => is_numeric($f['valor'] ?? null) ? max(0, (float) $f['valor']) : 0);
+                                        @endphp
+                                        <tr class="fw-semibold">
+                                            <td colspan="3" class="text-end">Seleccionado ({{ $selRows->count() }})</td>
+                                            <td class="text-end">{{ number_format($selMonto, 2) }}</td>
+                                            <td colspan="2" class="text-end">Mora</td>
+                                            <td class="text-end text-danger">{{ number_format($selMora, 2) }}</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                            <p class="text-muted small mb-0 mt-2">
+                                Marca las cuotas a pagar: la suma de sus saldos arma el Monto a Pagar.
+                                El pago se imputa a la cuota más antigua primero, así que no se puede
+                                saltar cuotas.
+                                @if($this->canEditMora())
+                                    La mora editada por fila suma al Total Mora (si difiere de la
+                                    calculada, pedirá motivo).
+                                @else
+                                    La mora del cobro será la calculada por el sistema.
+                                @endif
+                            </p>
+                        @endif
+                    </div>
+                    <div class="modal-footer justify-content-between py-2">
+                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                        @if(count($moraCuotas) > 0)
+                            <button type="button" class="btn btn-sm btn-primary" wire:click="aplicarCuotas">
+                                <i class="ti ti-check f-s-14"></i>
+                                Aplicar al cobro
+                            </button>
+                        @endif
                     </div>
                 </div>
             </div>

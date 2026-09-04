@@ -272,6 +272,130 @@ class Create extends Component
         return auth()->user()?->can('pagos.mora-manual') ?? false;
     }
 
+    /* ═══ Modal "Pagar por cuotas" ═══
+       Lista las cuotas pendientes con su saldo, días de atraso y mora
+       individual (días calendario × tarifa de la cuota). El cajero SELECCIONA
+       qué cuotas va a pagar: la suma de sus saldos arma el Monto a Pagar, y
+       la mora por fila (editable con pagos.mora-manual) suma al Total Mora
+       por el MISMO circuito del override gerencial — si difiere de la
+       calculada exige motivo y deja rastro en mora_overrides.
+
+       La selección es PREFIJO estricto (marcar una cuota marca todas las
+       anteriores; desmarcarla desmarca las posteriores): el motor de pagos
+       imputa FIFO a la cuota más antigua primero, así que "saltarse" una
+       cuota es imposible — el preview debe ser el cobro real.
+
+       Ojo: la mora CALCULADA del cobro corre solo desde la cuota vencida
+       más antigua (homólogo legacy); el desglose del modal acumula cada
+       cuota vencida por separado, así que su total puede ser mayor. */
+
+    /** @var array<int, array{num:int, venc:string, saldo:float, dias:int, rate:float, calc:float, valor:string, sel:bool}> */
+    public array $moraCuotas = [];
+
+    public function abrirMoraCuotas(): void
+    {
+        $this->moraCuotas = [];
+        if (! $this->credit) {
+            return;
+        }
+
+        $hoy = now()->startOfDay();
+        $pendientes = DB::table('credit_installments')
+            ->where('credit_id', $this->credit->id)
+            ->where('pagado', 0)->where('importe_cuota', '>', 0)
+            ->orderBy('fecha_vencimiento')
+            ->get(['num_cuota', 'fecha_vencimiento', 'importe_cuota', 'importe_interes', 'importe_excedente',
+                'importe_aplicado', 'interes_aplicado', 'excedente_aplicado']);
+
+        foreach ($pendientes as $ins) {
+            $venc = Carbon::parse($ins->fecha_vencimiento)->startOfDay();
+            $dias = max(0, (int) floor($venc->diffInDays($hoy, false)));
+            $cuotaTotal = (float) $ins->importe_cuota + (float) $ins->importe_interes + (float) $ins->importe_excedente;
+            $saldo = round($cuotaTotal - (float) $ins->importe_aplicado - (float) $ins->interes_aplicado - (float) $ins->excedente_aplicado, 2);
+            $rate = $this->credit->moraDiaria($cuotaTotal);
+            $calc = round($dias * $rate, 2);
+            $this->moraCuotas[] = [
+                'num' => (int) $ins->num_cuota,
+                'venc' => $venc->format('Y-m-d'),
+                'saldo' => $saldo,
+                'dias' => $dias,
+                'rate' => $rate,
+                'calc' => $calc,
+                'valor' => number_format($calc, 2, '.', ''),
+                'sel' => $dias > 0, // preselección: lo vencido (siempre es el prefijo más antiguo)
+            ];
+        }
+
+        $this->dispatch('mora-cuotas-open');
+    }
+
+    /** Marca/desmarca manteniendo el prefijo FIFO (sin huecos en la selección). */
+    public function toggleCuota(int $i): void
+    {
+        if (! isset($this->moraCuotas[$i])) {
+            return;
+        }
+
+        $this->imponerPrefijo($i, ! $this->moraCuotas[$i]['sel']);
+    }
+
+    /**
+     * Hook de wire:model del checkbox: cualquier cambio de `sel` pasa por la
+     * regla del prefijo, así que un checkbox marcado "a la mala" (o un update
+     * manipulado) se corrige en el servidor y el morph lo revierte en el DOM.
+     */
+    public function updatedMoraCuotas($value, string $key): void
+    {
+        if (! str_ends_with($key, '.sel')) {
+            return;
+        }
+
+        $i = (int) explode('.', $key)[0];
+        if (isset($this->moraCuotas[$i])) {
+            $this->imponerPrefijo($i, (bool) $this->moraCuotas[$i]['sel']);
+        }
+    }
+
+    private function imponerPrefijo(int $i, bool $marcar): void
+    {
+        foreach ($this->moraCuotas as $j => $fila) {
+            if ($marcar && $j <= $i) {
+                $this->moraCuotas[$j]['sel'] = true;
+            } elseif (! $marcar && $j >= $i) {
+                $this->moraCuotas[$j]['sel'] = false;
+            }
+        }
+    }
+
+    /**
+     * Selección → cobro: Monto a Pagar = suma de saldos de las cuotas
+     * marcadas; Total Mora = suma de sus moras editadas (solo con permiso;
+     * sin él, la mora del cobro sigue siendo la calculada global).
+     */
+    public function aplicarCuotas(): void
+    {
+        $monto = 0.0;
+        $mora = 0.0;
+        $haySeleccion = false;
+        foreach ($this->moraCuotas as $fila) {
+            if (! $fila['sel']) {
+                break; // prefijo estricto: en la primera desmarcada se corta (el motor FIFO no salta cuotas)
+            }
+            $haySeleccion = true;
+            $monto += (float) $fila['saldo'];
+            if (is_numeric($fila['valor'] ?? null)) {
+                $mora += max(0, (float) $fila['valor']);
+            }
+        }
+
+        $this->monto = $haySeleccion ? number_format(round($monto, 2), 2, '.', '') : null;
+        if ($this->canEditMora()) {
+            $this->moraManual = $haySeleccion ? number_format(round($mora, 2), 2, '.', '') : null;
+        }
+        $this->refrescarPreview();
+        $this->dispatch('mora-cuotas-close');
+    }
+
     /**
      * Al escribir el Monto a Pagar (>0) se desbloquea el Total Mora para los
      * roles autorizados, precargado con la mora calculada para que puedan
