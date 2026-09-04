@@ -240,6 +240,12 @@ document.addEventListener('click', function (e) {
             }).on('select2:select select2:unselect select2:clear', function () {
                 this.dispatchEvent(new Event('input',  { bubbles: true }));
                 this.dispatchEvent(new Event('change', { bubbles: true }));
+            }).on('select2:open', function () {
+                // Hint en el cajón de búsqueda del dropdown; .select2-sin-hint
+                // (p. ej. tipo de documento) queda fuera a pedido.
+                if (jQuery(this).hasClass('select2-sin-hint')) return;
+                var campo = document.querySelector('.select2-container--open .select2-search__field');
+                if (campo) campo.setAttribute('placeholder', 'Busca o escribe...');
             });
         });
     }

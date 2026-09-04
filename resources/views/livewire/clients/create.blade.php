@@ -66,7 +66,7 @@
                     <div class="row g-2 align-items-end mb-2">
                         <div class="col-md-2">
                             <label class="form-label mb-0 small fw-semibold" style="color:red;">TIPO DE DOCUMENTO</label>
-                            <select class="form-select form-select-sm select2-simple" wire:model.live="tipo_documento">
+                            <select class="form-select form-select-sm select2-simple select2-sin-hint" wire:model.live="tipo_documento">
                                 @foreach(\App\Livewire\Clients\Create::TIPOS_DOCUMENTO as $valor => $etiqueta)
                                     <option value="{{ $valor }}">{{ $etiqueta }}</option>
                                 @endforeach
