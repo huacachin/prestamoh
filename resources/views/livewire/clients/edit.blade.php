@@ -304,7 +304,7 @@
 
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">T.Credito</label>
-                        <select class="form-select form-select-sm @error('zona') is-invalid @enderror" wire:model.defer="zona">
+                        <select class="form-select form-select-sm select2-simple @error('zona') is-invalid @enderror" wire:model.defer="zona">
                             <option value="">— Seleccione —</option>
                             @foreach(\App\Support\TiposCredito::paraValor($zona) as $opcion)
                                 <option value="{{ $opcion }}">{{ $opcion }}</option>
