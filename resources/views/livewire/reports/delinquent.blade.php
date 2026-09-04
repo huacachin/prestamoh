@@ -59,23 +59,33 @@
                             </div>
                             <div class="col-md-1">
                                 <label class="form-label mb-0 small">Exp</label>
-                                <input type="text" name="exp" autocomplete="off" class="form-control form-control-sm" wire:model="exp">
+                                <input type="text" name="exp" autocomplete="off" class="form-control form-control-sm" wire:model="exp"
+       list="hist_delinquent_exp" data-search-history="delinquent_exp">
+<datalist id="hist_delinquent_exp" wire:ignore></datalist>
                             </div>
                             <div class="col-md-1">
                                 <label class="form-label mb-0 small">Código</label>
-                                <input type="text" name="codigo" autocomplete="off" class="form-control form-control-sm" wire:model="codigo">
+                                <input type="text" name="codigo" autocomplete="off" class="form-control form-control-sm" wire:model="codigo"
+       list="hist_delinquent_codigo" data-search-history="delinquent_codigo">
+<datalist id="hist_delinquent_codigo" wire:ignore></datalist>
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small">DNI</label>
-                                <input type="text" name="cdni" autocomplete="off" class="form-control form-control-sm" wire:model="cdni">
+                                <input type="text" name="cdni" autocomplete="off" class="form-control form-control-sm" wire:model="cdni"
+       list="hist_delinquent_cdni" data-search-history="delinquent_cdni">
+<datalist id="hist_delinquent_cdni" wire:ignore></datalist>
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small">Nombre</label>
-                                <input type="text" name="cnombre" autocomplete="off" class="form-control form-control-sm" wire:model="cnombre">
+                                <input type="text" name="cnombre" autocomplete="off" class="form-control form-control-sm" wire:model="cnombre"
+       list="hist_delinquent_cnombre" data-search-history="delinquent_cnombre">
+<datalist id="hist_delinquent_cnombre" wire:ignore></datalist>
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small">Asesor</label>
-                                <input type="text" name="casesor" autocomplete="off" class="form-control form-control-sm" wire:model="casesor">
+                                <input type="text" name="casesor" autocomplete="off" class="form-control form-control-sm" wire:model="casesor"
+       list="hist_delinquent_casesor" data-search-history="delinquent_casesor">
+<datalist id="hist_delinquent_casesor" wire:ignore></datalist>
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small">Fecha I</label>

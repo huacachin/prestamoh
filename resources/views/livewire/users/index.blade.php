@@ -30,7 +30,9 @@
                             <div class="d-flex flex-nowrap align-items-end gap-2 overflow-auto py-1">
                                 <div class="flex-shrink-0" style="width: 260px;">
                                     <input type="search" class="form-control form-control-sm"
-                                           placeholder="Buscar..." wire:model="search" name="search" autocomplete="off">
+                                           placeholder="Buscar..." wire:model="search" name="search" autocomplete="off"
+       list="hist_users" data-search-history="users">
+<datalist id="hist_users" wire:ignore></datalist>
                                 </div>
 
                                 <div class="flex-shrink-0" style="width: 140px;">

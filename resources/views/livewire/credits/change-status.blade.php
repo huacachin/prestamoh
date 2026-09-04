@@ -39,7 +39,9 @@
                             <input type="text" name="search" class="form-control"
                                    wire:model.live.debounce.300ms="search"
                                    placeholder="Escriba ID, nombre o DNI para buscar..."
-                                   autocomplete="off">
+                                   autocomplete="off"
+       list="hist_credits_estado" data-search-history="credits_estado">
+<datalist id="hist_credits_estado" wire:ignore></datalist>
 
                             {{-- Dropdown de resultados --}}
                             @if($showDropdown && count($results) > 0)

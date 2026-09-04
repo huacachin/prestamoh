@@ -55,7 +55,9 @@
                                     <label class="form-label mb-0 small">Texto</label>
                                     <input type="text" name="compra" autocomplete="off" class="form-control form-control-sm"
                                            wire:model.live.debounce.500ms="compra"
-                                           placeholder="Ingrese el texto a buscar">
+                                           placeholder="Ingrese el texto a buscar"
+       list="hist_reporte_pagos" data-search-history="reporte_pagos">
+<datalist id="hist_reporte_pagos" wire:ignore></datalist>
                                 </div>
                                 <div class="flex-shrink-0" style="width: 150px;">
                                     <label class="form-label mb-0 small">Fecha Inicio</label>
