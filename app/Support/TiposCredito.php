@@ -9,6 +9,13 @@ namespace App\Support;
  * escribirlo a mano con un typo rompía la notificación. Lista pedida el
  * 28/08; los clientes migrados del legacy tienen otros valores históricos
  * ("Demandado Casa", "SIGM.S-Rojo 14/07", …) que se conservan al editar.
+ *
+ * Los estados "en ejecución" van con la garantía DELANTE
+ * ("SIGM.S-Ejecución") y no como "Ejecución" a secas: Garantias clasifica
+ * por PREFIJO, así que un valor sin garantía caería en "otra" y la
+ * notificación legal de ese cliente pasaría al comunicado genérico —
+ * perdería justo el requerimiento SIGM/hipotecario que su situación exige.
+ * Mismo patrón que traen los valores del legacy ("SIGM.S-Ejecucion 14/01").
  */
 class TiposCredito
 {
@@ -20,6 +27,14 @@ class TiposCredito
         'Alq.Ven.D.',
         'Alquiler V.S', // pedido 02/09; Garantias lo clasifica "otra", igual que Alq.Ven.D.
         'Cred. Vehicular',
+        // En ejecución (05/09). Llevan la garantía DELANTE a propósito: así
+        // Garantias (que clasifica por prefijo) les sigue dando el
+        // requerimiento SIGM / hipotecario, igual que los valores del legacy
+        // ("SIGM.S-Ejecucion 14/01").
+        'SIGM.M-Ejecución',
+        'SIGM.S-Ejecución',
+        'Gar. Hip.M-Ejecución',
+        'Gar. Hip.S-Ejecución',
     ];
 
     /** Opciones del select para un valor ya guardado: agrega el histórico si no está en la lista. */

@@ -6,6 +6,7 @@ use App\Livewire\Clients\Create;
 use App\Models\Client;
 use App\Models\User;
 use App\Models\Vehiculo;
+use App\Support\Garantias;
 use App\Support\TiposCredito;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -332,6 +333,34 @@ class ClienteWizardTest extends TestCase
         $this->assertArrayHasKey('conviviente', Create::estadosCivilesPara('conviviente'));
     }
 
+    /**
+     * Cada opción del catálogo cae en la garantía que le toca (05/09): un
+     * typo o un valor sin prefijo mandaría la notificación legal al
+     * comunicado genérico sin que nadie se entere.
+     */
+    public function test_cada_opcion_del_catalogo_clasifica_su_garantia(): void
+    {
+        $esperado = [
+            'SIGM.M' => Garantias::VEHICULAR,
+            'SIGM.S' => Garantias::VEHICULAR,
+            'Cred. Vehicular' => Garantias::VEHICULAR,
+            'SIGM.M-Ejecución' => Garantias::VEHICULAR,
+            'SIGM.S-Ejecución' => Garantias::VEHICULAR,
+            'Gar. Hip.M' => Garantias::HIPOTECARIA,
+            'Gar. Hip.S' => Garantias::HIPOTECARIA,
+            'Gar. Hip.M-Ejecución' => Garantias::HIPOTECARIA,
+            'Gar. Hip.S-Ejecución' => Garantias::HIPOTECARIA,
+            'Alq.Ven.D.' => Garantias::OTRA,
+            'Alquiler V.S' => Garantias::OTRA,
+        ];
+
+        foreach (TiposCredito::OPCIONES as $opcion) {
+            $this->assertArrayHasKey($opcion, $esperado, "sin garantía esperada para '{$opcion}'");
+            $this->assertSame($esperado[$opcion], Garantias::de($opcion), "garantía de '{$opcion}'");
+        }
+        $this->assertCount(count($esperado), TiposCredito::OPCIONES);
+    }
+
     public function test_t_credito_puede_quedar_vacio(): void
     {
         $this->paso1()->set('zona', '')
@@ -347,11 +376,11 @@ class ClienteWizardTest extends TestCase
         $opciones = TiposCredito::paraValor('SIGM.S-Rojo 14/07');
         $this->assertSame('SIGM.S-Rojo 14/07', $opciones[0]);
         $this->assertContains('SIGM.M', $opciones);
-        $this->assertCount(8, $opciones);
+        $this->assertCount(12, $opciones);
 
         // Un valor del catálogo no se duplica
-        $this->assertCount(7, TiposCredito::paraValor('SIGM.M'));
-        $this->assertCount(7, TiposCredito::paraValor(null));
+        $this->assertCount(11, TiposCredito::paraValor('SIGM.M'));
+        $this->assertCount(11, TiposCredito::paraValor(null));
     }
 
     public function test_dni_con_largo_invalido_no_consulta(): void

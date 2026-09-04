@@ -39,6 +39,14 @@ class NotificacionGarantiaTest extends TestCase
         $this->assertSame(Garantias::VEHICULAR, Garantias::de('Cred. Vehicular-Rojo 13/04'));
         $this->assertSame(Garantias::HIPOTECARIA, Garantias::de('Gar. Hip.S'));
         $this->assertSame(Garantias::HIPOTECARIA, Garantias::de(' Gar. Hip.M-Rojo 05/12/2025'));
+        // 05/09: los estados "en ejecución" del catálogo llevan la garantía
+        // delante justo para no perder su plantilla legal.
+        $this->assertSame(Garantias::VEHICULAR, Garantias::de('SIGM.S-Ejecución'));
+        $this->assertSame(Garantias::VEHICULAR, Garantias::de('SIGM.M-Ejecución'));
+        $this->assertSame(Garantias::HIPOTECARIA, Garantias::de('Gar. Hip.S-Ejecución'));
+        $this->assertSame(Garantias::HIPOTECARIA, Garantias::de('Gar. Hip.M-Ejecución'));
+        // Y el valor histórico del legacy, que sigue igual.
+        $this->assertSame(Garantias::VEHICULAR, Garantias::de('SIGM.S-Ejecucion 14/01'));
         $this->assertSame(Garantias::OTRA, Garantias::de('Sin Garantia'));
         $this->assertSame(Garantias::OTRA, Garantias::de('Demandado Veh. Cap.-Moto B03163'));
         $this->assertSame(Garantias::OTRA, Garantias::de(null));
