@@ -279,52 +279,68 @@ window.addEventListener('go-back', function (e) {
 // "search box" y NO guarda su historial de autofill aunque el input tenga
 // name + autocomplete="on" — por eso el historial se maneja aqui.
 // Uso: al input agregarle data-search-history="clave" y list="<id>", y poner
-// un <datalist id="<id>" wire:ignore> al lado. Registra al enviar el form
-// (aunque Livewire haga .prevent, el evento submit igual dispara) y al
-// perder el foco con valor; guarda los ultimos 10 en localStorage.
+// un <datalist id="<id>" wire:ignore> al lado. Guarda las ultimas 10 en
+// localStorage al cambiar el valor (blur) o enviar el form.
+//
+// TODO delegado en document (05/09): los listeners por-input morian cuando
+// Livewire reemplazaba el nodo en re-renders .live (reporte de pagos, filtros
+// de cartera...) y el historial dejaba de grabar. La delegacion sobrevive
+// cualquier morph; el datalist se repuebla al enfocar por si un render lo vacio.
 (function () {
     function readHistory(key) {
         try { return JSON.parse(localStorage.getItem(key)) || []; } catch (e) { return []; }
     }
 
-    function initSearchHistory() {
-        document.querySelectorAll('input[data-search-history]').forEach(function (input) {
-            if (input.dataset.searchHistoryInit) return;
-            input.dataset.searchHistoryInit = '1';
+    function keyOf(input) { return 'searchHist:' + input.dataset.searchHistory; }
 
-            var key = 'searchHist:' + input.dataset.searchHistory;
-            var datalist = input.getAttribute('list') ? document.getElementById(input.getAttribute('list')) : null;
-            if (!datalist) return;
-
-            var render = function () {
-                datalist.innerHTML = '';
-                readHistory(key).forEach(function (v) {
-                    var opt = document.createElement('option');
-                    opt.value = v;
-                    datalist.appendChild(opt);
-                });
-            };
-
-            var record = function () {
-                var v = (input.value || '').trim();
-                if (v.length < 2) return;
-                var items = readHistory(key).filter(function (x) {
-                    return x.toLowerCase() !== v.toLowerCase();
-                });
-                items.unshift(v);
-                localStorage.setItem(key, JSON.stringify(items.slice(0, 10)));
-                render();
-            };
-
-            if (input.form) input.form.addEventListener('submit', record);
-            input.addEventListener('change', record);
-
-            render();
+    function render(input) {
+        var id = input.getAttribute('list');
+        var datalist = id ? document.getElementById(id) : null;
+        if (!datalist) return;
+        datalist.innerHTML = '';
+        readHistory(keyOf(input)).forEach(function (v) {
+            var opt = document.createElement('option');
+            opt.value = v;
+            datalist.appendChild(opt);
         });
     }
 
-    document.addEventListener('DOMContentLoaded', initSearchHistory);
-    document.addEventListener('livewire:navigated', initSearchHistory);
+    function record(input) {
+        var v = (input.value || '').trim();
+        if (v.length < 2) return;
+        var key = keyOf(input);
+        var items = readHistory(key).filter(function (x) {
+            return x.toLowerCase() !== v.toLowerCase();
+        });
+        items.unshift(v);
+        localStorage.setItem(key, JSON.stringify(items.slice(0, 10)));
+        render(input);
+    }
+
+    function esHist(el) { return el && el.matches && el.matches('input[data-search-history]'); }
+
+    // focusout y no 'change': en inputs .live, Livewire re-asigna el value
+    // programaticamente tras cada render y eso resetea el dirty-flag del
+    // navegador — el change de blur nunca llega. Grabar al salir del campo
+    // funciona siempre (y el dedup hace inofensivo grabar de mas).
+    document.addEventListener('focusout', function (e) {
+        if (esHist(e.target)) record(e.target);
+    });
+    // capture: el submit se registra aunque Livewire haga .prevent
+    document.addEventListener('submit', function (e) {
+        if (e.target && e.target.querySelectorAll) {
+            e.target.querySelectorAll('input[data-search-history]').forEach(record);
+        }
+    }, true);
+    document.addEventListener('focusin', function (e) {
+        if (esHist(e.target)) render(e.target);
+    });
+
+    function renderAll() {
+        document.querySelectorAll('input[data-search-history]').forEach(render);
+    }
+    document.addEventListener('DOMContentLoaded', renderAll);
+    document.addEventListener('livewire:navigated', renderAll);
 })();
 
 // Tooltips Bootstrap con delegación en body: los elementos con
