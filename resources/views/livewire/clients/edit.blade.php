@@ -201,8 +201,8 @@
                     </div>
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">Correo</label>
-                        <input type="email" class="form-control form-control-sm @error('email') is-invalid @enderror"
-                               wire:model.defer="email" placeholder="cliente@correo.com">
+                        <input type="email" class="form-control form-control-sm correo-sugerencias @error('email') is-invalid @enderror"
+                               wire:model.defer="email" autocomplete="off" placeholder="cliente@correo.com">
                         @error('email') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                 </div>

@@ -178,8 +178,8 @@
                         {{-- Campos obligatorios agregados el 28/08 --}}
                         <div class="col-md-4">
                             <label class="form-label mb-0 small fw-semibold">Correo electrónico</label>
-                            <input type="email" class="form-control form-control-sm @error('email') is-invalid @enderror"
-                                   wire:model.defer="email" name="email" autocomplete="email" placeholder="cliente@correo.com">
+                            <input type="email" class="form-control form-control-sm correo-sugerencias @error('email') is-invalid @enderror"
+                                   wire:model.defer="email" name="email" autocomplete="off" placeholder="cliente@correo.com">
                             @error('email') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                         @unless($tipo_documento === 'RUC')
