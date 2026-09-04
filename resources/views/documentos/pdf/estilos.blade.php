@@ -87,6 +87,19 @@
     ol.numerada { margin: 0 0 8px 18px; padding: 0; list-style-type: decimal; }
     ol.numerada li { text-align: justify; margin: 0 0 6px 0; }
 
+    /* Numerales COMPUESTOS (05/09): OCTAVO, NOVENO y DÉCIMO QUINTO numeran
+       8.1, 8.2… con el ordinal de su cláusula delante — el mismo formato que
+       ya usaba DÉCIMO SÉPTIMO. Van en divs y no en <ol> porque el número lo
+       arma Blade; la sangría francesa (text-indent negativo) alinea el texto
+       corrido bajo la primera línea, como en las maestras. */
+    .numerales { margin: 0 0 8px 18px; }
+    .numerales .numeral {
+        text-align: justify;
+        margin: 0 0 6px 0;
+        padding-left: 26px;
+        text-indent: -26px;
+    }
+
     table.datos {
         width: 100%;
         border-collapse: collapse;
