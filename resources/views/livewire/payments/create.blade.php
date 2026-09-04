@@ -257,7 +257,7 @@
                              mismo patrón de /reports/portfolio y el dashboard. Antes
                              eran inputs readonly con texto blanco sobre gris: bajo
                              contraste y parecían campos deshabilitados. --}}
-                        <div class="col-md-4">
+                        <div class="col-12">
                             <div class="saldo-band">
                                 <div class="saldo-kpi" style="--kpi: #0d6efd;">
                                     <div class="saldo-top"><i class="ti ti-wallet"></i> Saldo Pendiente</div>
@@ -275,25 +275,33 @@
                                         @endif
                                     </div>
                                 </div>
+                                {{-- Monto a Pagar: la MISMA tarjeta, pero es el campo de
+                                     acción de la pantalla — borde ámbar, fondo cálido y el
+                                     número tan grande como los saldos. El input pierde su
+                                     marco: la tarjeta es el marco. --}}
+                                <div class="saldo-kpi saldo-editable" style="--kpi: #f0ad4e;">
+                                    <div class="saldo-top d-flex justify-content-between align-items-center">
+                                        <span><i class="ti ti-coin"></i> Monto a Pagar</span>
+                                        <a href="#" wire:click.prevent="abrirMoraCuotas"
+                                           class="saldo-link text-decoration-underline"
+                                           title="Elegir qué cuotas pagar, cada una con su mora por días">
+                                            <i class="ti ti-list-check f-s-12"></i> elegir cuotas
+                                        </a>
+                                    </div>
+                                    <input type="number" name="monto" autocomplete="off" class="saldo-input"
+                                           wire:model.live.debounce.400ms="monto"
+                                           min="0.00" max="{{ $c['saldo_pendiente'] }}" step="0.01"
+                                           placeholder="0.00">
+                                    <div class="saldo-pie">máx. {{ number_format($c['saldo_pendiente'], 2) }}</div>
+                                </div>
+                                <div class="saldo-kpi" style="--kpi: #adb5bd;">
+                                    <div class="saldo-top"><i class="ti ti-calendar"></i> Fecha de Pago</div>
+                                    <input type="text" name="fecpag" autocomplete="off"
+                                           class="saldo-input saldo-fecha dates3"
+                                           wire:model="fecpag" readonly>
+                                    <div class="saldo-pie">{{ \Carbon\Carbon::parse($fecpag)->translatedFormat('l d \\d\\e F') }}</div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label mb-0 small fw-semibold d-flex justify-content-between align-items-center">
-                                <span>Monto a Pagar</span>
-                                <a href="#" wire:click.prevent="abrirMoraCuotas" class="text-primary text-decoration-underline fw-normal"
-                                   title="Elegir qué cuotas pagar, cada una con su mora por días">
-                                    <i class="ti ti-list-check f-s-12"></i> elegir cuotas
-                                </a>
-                            </label>
-                            <input type="number" name="monto" autocomplete="off" class="form-control form-control-sm"
-                                   wire:model.live.debounce.400ms="monto"
-                                   min="0.00" max="{{ $c['saldo_pendiente'] }}" step="0.01"
-                                   style="background:#fff9c4;">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label mb-0 small fw-semibold">Fecha de Pago</label>
-                            <input type="text" name="fecpag" autocomplete="off" class="form-control form-control-sm bg-light dates3"
-                                   wire:model="fecpag" readonly>
                         </div>
                     </div>
 
@@ -523,7 +531,10 @@
 
         <style>
             /* Tarjetas de saldo: mismo lenguaje que los KPI de Cartera. */
-            .saldo-band { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+            /* Las cuatro tarjetas ocupan la fila completa y reparten el ancho
+               por igual; a 2 columnas en tablet y a 1 en móvil. */
+            .saldo-band { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+            @media (max-width: 991.98px) { .saldo-band { grid-template-columns: 1fr 1fr; } }
             .saldo-kpi {
                 border: 1px solid #e9ecef;
                 border-left: 4px solid var(--kpi, #adb5bd);
@@ -542,6 +553,28 @@
                 font-variant-numeric: tabular-nums;
             }
             .saldo-pie { font-size: 10.5px; color: #868e96; }
+            /* El input vive DENTRO de la tarjeta: sin marco propio, con la
+               misma tipografía de las cifras para que la banda se lea pareja. */
+            .saldo-editable { background: #fffdf5; }
+            /* !important a propósito: el theme trae
+               `.btn, input, select { font-size: 10px !important }`, que si no
+               deja la cifra editable en 10px al lado de saldos de 21.6px. */
+            .saldo-kpi input.saldo-input {
+                width: 100%; border: 0; padding: 0; background: transparent;
+                font-size: 1.35rem !important; font-weight: 700; line-height: 1.2;
+                color: var(--kpi, #212529);
+                font-variant-numeric: tabular-nums;
+                height: auto; box-shadow: none;
+            }
+            .saldo-kpi input.saldo-input:focus { outline: 0; box-shadow: none; background: transparent; }
+            .saldo-kpi input.saldo-input::placeholder { color: #e0c48a; font-weight: 600; }
+            /* El datepicker del legacy pinta su icono de fondo a la derecha:
+               se le deja aire para que no pise la fecha. */
+            .saldo-kpi input.saldo-fecha {
+                color: #495057; cursor: pointer;
+                padding-right: 22px; background-position: right center;
+            }
+            .saldo-link { font-size: 10.5px; font-weight: 400; color: #0d6efd; text-transform: none; letter-spacing: 0; }
             /* En móvil una debajo de la otra, sin apretar las cifras. */
             @media (max-width: 575.98px) { .saldo-band { grid-template-columns: 1fr; } }
         </style>
