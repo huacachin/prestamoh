@@ -158,59 +158,6 @@
                             </table>
                         </div>
 
-                        {{-- DETALLES INGRESO/EGRESO/TOTAL/% --}}
-                        <div class="mt-4">
-                            <table class="table table-bordered table-sm" style="font-size: 12px;">
-                                <thead class="bg-primary text-center">
-                                    <tr>
-                                        <th colspan="3">DETALLES</th>
-                                        <th colspan="6">Mensual / Semanal</th>
-                                        <th colspan="3">Diario</th>
-                                        <th colspan="2">Otros</th>
-                                        <th>Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td colspan="3"><b>INGRESO</b></td>
-                                        <td colspan="5" class="text-end" style="color:red;"><b>{{ number_format($detalleSummary['ing_ms'], 2) }}</b></td>
-                                        <td></td>
-                                        <td colspan="2" class="text-end" style="color:red;"><b>{{ number_format($detalleSummary['ing_d'], 2) }}</b></td>
-                                        <td></td>
-                                        <td colspan="2"></td>
-                                        <td class="text-end">{{ number_format($detalleSummary['ing_total'], 2) }}</td>
-                                    </tr>
-                                    <tr>
-                                        <td colspan="3"><b>EGRESO</b></td>
-                                        <td colspan="5" class="text-end">{{ number_format($detalleSummary['egr_ms'], 2) }}</td>
-                                        <td></td>
-                                        <td colspan="2" class="text-end">{{ number_format($detalleSummary['egr_d'], 2) }}</td>
-                                        <td></td>
-                                        <td colspan="2"></td>
-                                        <td class="text-end">{{ number_format($detalleSummary['egr_total'], 2) }}</td>
-                                    </tr>
-                                    <tr>
-                                        <td colspan="3"><b>TOTAL</b></td>
-                                        <td colspan="5" class="text-end">{{ number_format($detalleSummary['tot_ms'], 2) }}</td>
-                                        <td></td>
-                                        <td colspan="2" class="text-end">{{ number_format($detalleSummary['tot_d'], 2) }}</td>
-                                        <td></td>
-                                        <td colspan="2" class="text-end">{{ number_format($detalleSummary['tot_otros'], 2) }}</td>
-                                        <td class="text-end" style="color:red;"><b>{{ number_format($detalleSummary['tot_total'], 2) }}</b></td>
-                                    </tr>
-                                    <tr>
-                                        <td colspan="3"><b>%</b></td>
-                                        <td colspan="5" class="text-end" style="color:red;"><b>{{ number_format($detalleSummary['pct_ms'], 2) }}%</b></td>
-                                        <td></td>
-                                        <td colspan="2" class="text-end" style="color:red;"><b>{{ number_format($detalleSummary['pct_d'], 2) }}%</b></td>
-                                        <td></td>
-                                        <td colspan="2"></td>
-                                        <td class="text-end" style="color:red;"><b>{{ number_format($detalleSummary['pct_total'], 2) }}%</b></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
                         {{-- TABLA 4: RESUMEN MENSUAL (Enero..mes seleccionado) --}}
                         <h6 class="mt-4 mb-2 fw-bold" style="color:red;">RESUMEN MENSUAL ({{ $year }})</h6>
                         <div class="table-responsive">
@@ -338,59 +285,6 @@
                                         <td class="text-end">{{ number_format(($monthTotals['fijoe'] + $monthTotals['otrose']) / $monthsCount, 2) }}</td>
                                     </tr>
                                 </tfoot>
-                            </table>
-                        </div>
-
-                        {{-- DETALLES (acumulado mensual Ene-Mar) --}}
-                        <div class="mt-4">
-                            <table class="table table-bordered table-sm" style="font-size: 12px;">
-                                <thead class="bg-primary text-center">
-                                    <tr>
-                                        <th colspan="3">DETALLES</th>
-                                        <th colspan="6">Mensual / Semanal</th>
-                                        <th colspan="3">Diario</th>
-                                        <th colspan="2">Otros</th>
-                                        <th>Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td colspan="3"><b>INGRESO</b></td>
-                                        <td colspan="5" class="text-end" style="color:red;"><b>{{ number_format($detalleSummaryMonth['ing_ms'], 2) }}</b></td>
-                                        <td></td>
-                                        <td colspan="2" class="text-end" style="color:red;"><b>{{ number_format($detalleSummaryMonth['ing_d'], 2) }}</b></td>
-                                        <td></td>
-                                        <td colspan="2"></td>
-                                        <td class="text-end">{{ number_format($detalleSummaryMonth['ing_total'], 2) }}</td>
-                                    </tr>
-                                    <tr>
-                                        <td colspan="3"><b>EGRESO</b></td>
-                                        <td colspan="5" class="text-end">{{ number_format($detalleSummaryMonth['egr_ms'], 2) }}</td>
-                                        <td></td>
-                                        <td colspan="2" class="text-end">{{ number_format($detalleSummaryMonth['egr_d'], 2) }}</td>
-                                        <td></td>
-                                        <td colspan="2"></td>
-                                        <td class="text-end">{{ number_format($detalleSummaryMonth['egr_total'], 2) }}</td>
-                                    </tr>
-                                    <tr>
-                                        <td colspan="3"><b>TOTAL</b></td>
-                                        <td colspan="5" class="text-end">{{ number_format($detalleSummaryMonth['tot_ms'], 2) }}</td>
-                                        <td></td>
-                                        <td colspan="2" class="text-end">{{ number_format($detalleSummaryMonth['tot_d'], 2) }}</td>
-                                        <td></td>
-                                        <td colspan="2" class="text-end">{{ number_format($detalleSummaryMonth['tot_otros'], 2) }}</td>
-                                        <td class="text-end" style="color:red;"><b>{{ number_format($detalleSummaryMonth['tot_total'], 2) }}</b></td>
-                                    </tr>
-                                    <tr>
-                                        <td colspan="3"><b>%</b></td>
-                                        <td colspan="5" class="text-end" style="color:red;"><b>{{ number_format($detalleSummaryMonth['pct_ms'], 2) }}%</b></td>
-                                        <td></td>
-                                        <td colspan="2" class="text-end" style="color:red;"><b>{{ number_format($detalleSummaryMonth['pct_d'], 2) }}%</b></td>
-                                        <td></td>
-                                        <td colspan="2"></td>
-                                        <td class="text-end" style="color:red;"><b>{{ number_format($detalleSummaryMonth['pct_total'], 2) }}%</b></td>
-                                    </tr>
-                                </tbody>
                             </table>
                         </div>
 
