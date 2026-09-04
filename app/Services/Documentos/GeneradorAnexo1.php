@@ -100,6 +100,16 @@ class GeneradorAnexo1
                 'frecuencia' => mb_strtoupper($credit->tipoPlanillaLabel()),
                 'cuotas' => $filas->count(),
                 'cuota' => $cuota,
+                // Maestro del área legal (04/09): plazo en unidades del tipo,
+                // fecha de inicio y TIM (5% semanal/mensual; el diario mantiene
+                // su mora1 histórico en soles por día).
+                'plazo' => $filas->count().' '.match ((int) $credit->tipo_planilla) {
+                    1 => 'semanas', 3 => 'meses', 4 => 'días', default => 'cuotas',
+                },
+                'fecha_inicio' => $credit->fecha_prestamo?->format('d/m/Y') ?? '',
+                'tim' => (int) $credit->tipo_planilla === 4
+                    ? 'S/ '.number_format((float) $credit->mora1, 2, ',', '.').' por día'
+                    : Credit::TASA_MORA_PCT.'%',
             ],
             'cronograma' => [
                 'filas' => $filas->all(),

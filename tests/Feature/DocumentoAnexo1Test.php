@@ -132,7 +132,7 @@ class DocumentoAnexo1Test extends TestCase
             array_keys($d['cliente'])
         );
         $this->assertEqualsCanonicalizing(
-            ['numero', 'moneda', 'monto', 'frecuencia', 'cuotas', 'cuota'],
+            ['numero', 'moneda', 'monto', 'frecuencia', 'cuotas', 'cuota', 'plazo', 'fecha_inicio', 'tim'],
             array_keys($d['credito'])
         );
         $this->assertEqualsCanonicalizing(['filas', 'total'], array_keys($d['cronograma']));

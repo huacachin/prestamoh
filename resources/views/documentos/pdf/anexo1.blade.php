@@ -3,203 +3,206 @@
      'pdf' | 'previa' | 'word'). El cronograma sale ÍNTEGRO de
      $d['cronograma'] (credit_installments) — nada se recalcula.
 
-     Maquetado a UNA HOJA (28/08): cliente y crédito van uno al costado del
-     otro, los vehículos de a dos por fila, y el cronograma se reparte en
-     columnas según cuántas cuotas tenga. dompdf no soporta flex/grid, así
-     que las columnas se arman con tablas contenedoras sin bordes. --}}
+     Diseño homologado al maestro Excel del área legal (04/09, Desktop/
+     anexo1.jpeg): banner gris, tablas azules con bordes negros, cronograma
+     N°/FECHAS/CUOTAS con fila Total azul, números con coma decimal
+     (15.000,00) y el pie fijo de Huaycán. Cronogramas largos (>30 cuotas)
+     se reparten en columnas con el mismo estilo para no desbordar la hoja.
+     dompdf no soporta flex/grid: todo va con tablas. --}}
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="utf-8">
     <title>Anexo 1 — Crédito #{{ $d['credito']['numero'] }}</title>
     @include('documentos.pdf.estilos')
+    <style>
+        /* Estilos SOLO del Anexo 1 (el maestro Excel); no tocan contratos. */
+        .ax-banner { background: #7f7f7f; color: #fff; text-align: center; font-weight: bold;
+                     font-size: 12pt; padding: 3px; border: 1px solid #000; }
+        .ax-titulo { text-align: center; font-weight: bold; font-size: 10.5pt; margin: 2px 0; }
+        table.ax { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+        table.ax th, table.ax td { border: 1px solid #000; padding: 1.5px 5px; font-size: 8.5pt; line-height: 1.2; }
+        /* "S/" pegado a la izquierda y monto a la derecha SIN floats (dompdf
+           los rompe dentro de celdas): dos celdas con el borde interior fundido. */
+        table.ax td.sim { border-right: 0; width: 5%; font-weight: bold; }
+        table.ax td.montod { border-left: 0; text-align: right; font-weight: bold; }
+        table.ax th.azul { background: #1f70c1; color: #fff; text-align: center; font-weight: bold; }
+        table.ax td.etiqueta { font-weight: bold; }
+        table.ax td.valor-cent { text-align: center; font-weight: bold; }
+        table.ax td.valor-der { text-align: right; font-weight: bold; }
+        .ax-correo { color: #0563c1; text-decoration: underline; }
+        .ax-moneda { width: 12%; }
+        table.ax-cron td.num { text-align: center; }
+        table.ax-cron td, table.ax-cron th { white-space: nowrap; line-height: 1.2; }
+        /* Tramos de compactado segun filas por columna (una hoja siempre) */
+        table.ax-cron.apretado td, table.ax-cron.apretado th { font-size: 7.8pt; padding: 1px 4px; line-height: 1.1; }
+        table.ax-cron.apretado2 td, table.ax-cron.apretado2 th { font-size: 7.2pt; padding: 0.5px 3px; line-height: 1; }
+        table.ax.adicionales td, table.ax.adicionales th { font-size: 7.5pt; padding: 1px 4px; white-space: nowrap; }
+        table.ax-cron tr.total td { background: #1f70c1; color: #fff; font-weight: bold; border-color: #000; }
+        /* Pie del maestro. SOLO en el PDF va anclado abajo (no consume alto
+           del flujo y se repite por hoja); en la previa del navegador y en
+           Word el position:fixed ancla al viewport y CORTA la linea del
+           celular — ahi va en el flujo normal. */
+        @if(($medio ?? 'pdf') === 'pdf')
+        .ax-pie { position: fixed; bottom: -0.4cm; left: 0; right: 0;
+                  text-align: center; font-weight: bold; font-size: 9pt; }
+        @else
+        /* Previa: el pie va al fondo de la HOJA (body con alto minimo A4 y
+           pie absoluto) — sin fixed, que ancla al viewport y corta lineas.
+           Word ignora el absolute y lo deja al final del flujo, que esta bien. */
+        body { position: relative; min-height: 24.5cm; }
+        .ax-pie { position: absolute; bottom: 0; left: 0; right: 0;
+                  text-align: center; font-weight: bold; font-size: 9pt; }
+        @endif
+        table.ax-split { width: 100%; border-collapse: collapse; }
+        table.ax-split > tbody > tr > td.col { vertical-align: top; padding: 0 4px; border: 0; }
+    </style>
 </head>
 <body>
     <div class="pie-pagina">Anexo 1 — Crédito #{{ $d['credito']['numero'] }} — Página <span class="num"></span></div>
 
-    <div class="membrete">{{ $d['marca'] }}</div>
-    <div class="anexo-titulo">ANEXO 1</div>
-    <div class="anexo-subtitulo">CRONOGRAMA DE PAGOS</div>
+    <div class="ax-banner">{{ $d['marca'] }}</div>
+    <div class="ax-titulo">ANEXO 1</div>
 
-    {{-- ── Cliente | Crédito ───────────────────────────────────────────── --}}
-    <table class="grid2">
-        <tr>
-            <td class="celda izq">
-                <table class="datos compacta">
-                    <tr><th colspan="2">DATOS DEL CLIENTE</th></tr>
-                    <tr>
-                        <th style="width: 38%;">CLIENTE</th>
-                        <td>{{ $d['cliente']['nombre'] }}</td>
-                    </tr>
-                    @if (filled($d['cliente']['documento']))
-                        <tr>
-                            <th>{{ $d['cliente']['documento_tipo'] }}</th>
-                            <td>{{ $d['cliente']['documento'] }}</td>
-                        </tr>
-                    @endif
-                    @if (filled($d['cliente']['domicilio']))
-                        <tr>
-                            <th>DOMICILIO</th>
-                            <td>{{ $d['cliente']['domicilio'] }}</td>
-                        </tr>
-                    @endif
-                    @if (filled($d['cliente']['celular']))
-                        <tr>
-                            <th>CELULAR</th>
-                            <td>{{ $d['cliente']['celular'] }}</td>
-                        </tr>
-                    @endif
-                    @if (filled($d['cliente']['correo']))
-                        <tr>
-                            <th>CORREO</th>
-                            <td>{{ $d['cliente']['correo'] }}</td>
-                        </tr>
-                    @endif
-                </table>
-            </td>
-            <td class="celda der">
-                <table class="datos compacta">
-                    <tr><th colspan="2">DATOS DEL CRÉDITO</th></tr>
-                    <tr>
-                        <th style="width: 45%;">N° DE CRÉDITO</th>
-                        <td>{{ $d['credito']['numero'] }}</td>
-                    </tr>
-                    <tr>
-                        <th>MONTO ({{ $d['credito']['moneda'] }})</th>
-                        <td>S/ {{ number_format((float) $d['credito']['monto'], 2) }}</td>
-                    </tr>
-                    <tr>
-                        <th>FRECUENCIA</th>
-                        <td>{{ $d['credito']['frecuencia'] }}</td>
-                    </tr>
-                    <tr>
-                        <th>N° DE CUOTAS</th>
-                        <td>{{ $d['credito']['cuotas'] }}</td>
-                    </tr>
-                    <tr>
-                        <th>CUOTA</th>
-                        <td>S/ {{ number_format((float) $d['credito']['cuota'], 2) }}</td>
-                    </tr>
-                    <tr>
-                        <th>FECHA</th>
-                        <td>{{ $d['fecha'] }}</td>
-                    </tr>
-                </table>
-            </td>
-        </tr>
-    </table>
-
-    {{-- ── Vehículos: de a dos por fila ─────────────────────────────────── --}}
+    {{-- ── Cliente | Vehículo (como el maestro) ─────────────────────────── --}}
     @php
+        $fmt = fn ($v) => number_format((float) $v, 2, ',', '.');
         // Snapshots nuevos traen 'vehiculos' (varios); los emitidos antes del
         // 28/08 traen 'vehiculo' (uno) y deben seguir imprimiéndose igual.
         $vehiculos = $d['vehiculos'] ?? (($d['vehiculo'] ?? null) ? [$d['vehiculo']] : []);
-        $varios = count($vehiculos) > 1;
+        $v1 = $vehiculos[0] ?? null;
+        $cred = $d['credito'];
+        // Documentos emitidos antes del rediseño: campos nuevos con fallback.
+        $plazo = $cred['plazo'] ?? ($cred['cuotas'].' cuotas');
+        $tim = $cred['tim'] ?? '5%';
+        $fechaInicio = $cred['fecha_inicio'] ?? $d['fecha'];
     @endphp
-    {{-- 1-2 vehículos: bloques al costado (formato clásico del anexo).
-         3 o más: una fila por vehículo, que ocupa mucho menos alto. --}}
-    @if (count($vehiculos) >= 3)
-        <table class="datos compacta">
-            <tr><th colspan="4">DATOS DE LOS VEHÍCULOS</th></tr>
-            <tr>
-                <th style="width: 18%;">PLACA</th>
-                <th style="width: 32%;">MARCA / MODELO</th>
-                <th style="width: 30%;">N° SERIE</th>
-                <th style="width: 20%;">VALOR</th>
-            </tr>
-            @foreach ($vehiculos as $veh)
-                <tr>
-                    <td>{{ $veh['placa'] ?: '—' }}</td>
-                    <td>{{ trim(($veh['marca'] ?: '').' '.($veh['modelo'] ?: '')) ?: '—' }}</td>
-                    <td>{{ $veh['nro_serie'] ?: '—' }}</td>
-                    <td>{{ $veh['valor'] !== null ? 'S/ '.number_format((float) $veh['valor'], 2) : '—' }}</td>
-                </tr>
-            @endforeach
-        </table>
-    @elseif (count($vehiculos) > 0)
-        <table class="grid2">
-            <tr>
-                @foreach ($vehiculos as $i => $veh)
-                    <td class="celda {{ $loop->first ? 'izq' : 'der' }}">
-                        <table class="datos compacta">
-                            <tr>
-                                <th colspan="2">DATOS DEL VEHÍCULO{{ $varios ? ' '.($i + 1) : '' }}</th>
-                            </tr>
-                            <tr>
-                                <th style="width: 38%;">PLACA</th>
-                                <td>{{ $veh['placa'] ?: '—' }}</td>
-                            </tr>
-                            <tr>
-                                <th>MARCA / MODELO</th>
-                                <td>{{ trim(($veh['marca'] ?: '').' '.($veh['modelo'] ?: '')) ?: '—' }}</td>
-                            </tr>
-                            <tr>
-                                <th>N° SERIE</th>
-                                <td>{{ $veh['nro_serie'] ?: '—' }}</td>
-                            </tr>
-                            @if ($veh['valor'] !== null)
-                                <tr>
-                                    <th>VALOR</th>
-                                    <td>S/ {{ number_format((float) $veh['valor'], 2) }}</td>
-                                </tr>
-                            @endif
-                        </table>
-                    </td>
-                @endforeach
-                @if (count($vehiculos) === 1)
-                    <td class="celda der"></td>
-                @endif
-            </tr>
-        </table>
-    @endif
-
-    {{-- ── Cronograma en columnas ───────────────────────────────────────── --}}
-    @php
-        $filas = $d['cronograma']['filas'];
-        $n = count($filas);
-        // Columnas según el largo del cronograma, para que entre en la hoja.
-        $cols = $n <= 12 ? 1 : ($n <= 26 ? 2 : ($n <= 60 ? 3 : 4));
-        $porColumna = (int) ceil($n / $cols);
-        $grupos = array_chunk($filas, max(1, $porColumna));
-        // Con una sola columna la tabla no debe estirarse a todo el ancho
-        $anchoCol = count($grupos) === 1 ? 45 : round(100 / count($grupos), 4);
-    @endphp
-
-    <div class="cron-titulo">Cronograma de pagos</div>
-    <table class="cron-cols">
+    <table class="ax">
         <tr>
-            @foreach ($grupos as $grupo)
-                <td class="col" style="width: {{ $anchoCol }}%;">
-                    <table class="cron-mini">
-                        <thead>
-                            <tr>
-                                <th>N°</th>
-                                <th>FECHA</th>
-                                <th>CUOTA S/</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($grupo as $fila)
-                                <tr>
-                                    <td class="num">{{ $fila['n'] }}</td>
-                                    <td class="fecha">{{ $fila['fecha'] }}</td>
-                                    <td class="monto">{{ number_format((float) $fila['monto'], 2) }}</td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </td>
-            @endforeach
-            {{-- Con una sola columna hace falta una celda de relleno: si no,
-                 la única celda se estira a todo el ancho de la tabla. --}}
-            @if (count($grupos) === 1)
-                <td></td>
+            <th class="azul" colspan="2" style="width: 50%;">DATOS DEL CLIENTE</th>
+            <th class="azul" colspan="3" style="width: 50%;">DATOS DEL VEHÍCULO</th>
+        </tr>
+        <tr>
+            <td class="etiqueta" style="width: 12%;">Cliente</td>
+            <td style="width: 38%;">{{ $d['cliente']['nombre'] }}</td>
+            <td class="etiqueta" style="width: 20%; white-space: nowrap;">PLACA DE RODAJE</td>
+            <td class="valor-cent" colspan="2" style="width: 30%;">{{ $v1['placa'] ?? '—' }}</td>
+        </tr>
+        <tr>
+            <td class="etiqueta">{{ $d['cliente']['documento_tipo'] ?: 'DNI' }}</td>
+            <td>{{ $d['cliente']['documento'] }}</td>
+            <td class="etiqueta">Marca</td>
+            <td class="valor-cent" colspan="2">{{ ($v1['marca'] ?? '') ?: '—' }}</td>
+        </tr>
+        <tr>
+            <td class="etiqueta">Dirección</td>
+            <td>{{ $d['cliente']['domicilio'] }}</td>
+            <td class="etiqueta">Modelo</td>
+            <td class="valor-cent" colspan="2">{{ ($v1['modelo'] ?? '') ?: '—' }}</td>
+        </tr>
+        <tr>
+            <td class="etiqueta">Celular</td>
+            <td>{{ $d['cliente']['celular'] }}</td>
+            <td class="etiqueta">N° Serie</td>
+            <td class="valor-cent" colspan="2">{{ ($v1['nro_serie'] ?? '') ?: '—' }}</td>
+        </tr>
+        <tr>
+            <td class="etiqueta">Correo</td>
+            <td><span class="ax-correo">{{ $d['cliente']['correo'] }}</span></td>
+            <td class="etiqueta">Valor Vehículo</td>
+            @if (($v1['valor'] ?? null) !== null)
+                <td class="sim">S/</td>
+                <td class="montod">{{ $fmt($v1['valor']) }}</td>
+            @else
+                <td class="valor-cent" colspan="2">—</td>
             @endif
         </tr>
     </table>
 
-    <div class="cron-total">
-        TOTAL: S/ {{ number_format((float) $d['cronograma']['total'], 2) }}
+    {{-- ── Vehículos adicionales (2° en adelante), mismo estilo ─────────── --}}
+    @if (count($vehiculos) > 1)
+        <table class="ax adicionales">
+            <tr><th class="azul" colspan="5">DATOS DE LOS VEHÍCULOS ADICIONALES</th></tr>
+            <tr>
+                <th class="azul" style="width: 16%;">PLACA</th>
+                <th class="azul" style="width: 22%;">MARCA</th>
+                <th class="azul" style="width: 22%;">MODELO</th>
+                <th class="azul" style="width: 24%;">N° SERIE</th>
+                <th class="azul" style="width: 16%;">VALOR</th>
+            </tr>
+            @foreach (array_slice($vehiculos, 1) as $veh)
+                <tr>
+                    <td class="valor-cent">{{ $veh['placa'] ?: '—' }}</td>
+                    <td class="valor-cent">{{ $veh['marca'] ?: '—' }}</td>
+                    <td class="valor-cent">{{ $veh['modelo'] ?: '—' }}</td>
+                    <td class="valor-cent">{{ $veh['nro_serie'] ?: '—' }}</td>
+                    <td class="valor-der">{{ $veh['valor'] !== null ? 'S/ '.$fmt($veh['valor']) : '—' }}</td>
+                </tr>
+            @endforeach
+        </table>
+    @endif
+
+    {{-- ── Datos del crédito ────────────────────────────────────────────── --}}
+    <table class="ax">
+        <tr><th class="azul" colspan="5">DATOS DEL CRÉDITO</th></tr>
+        <tr>
+            <td class="etiqueta" style="width: 18%; text-align: center;">Nro.</td>
+            <td class="valor-cent" colspan="2" style="width: 32%;">{{ $cred['numero'] }}</td>
+            <td class="etiqueta" style="width: 24%;">Moneda</td>
+            <td class="valor-der" style="width: 26%;">{{ ucfirst(mb_strtolower($cred['moneda'])) }}</td>
+        </tr>
+        <tr>
+            <td class="etiqueta" style="text-align: center;">Monto Crédito</td>
+            <td class="sim">S/</td>
+            <td class="montod">{{ $fmt($cred['monto']) }}</td>
+            <td class="etiqueta">Plazo</td>
+            <td class="valor-der">{{ $plazo }}</td>
+        </tr>
+        <tr>
+            <td class="etiqueta" style="text-align: center;">Fecha Inicio</td>
+            <td class="valor-cent" colspan="2">{{ $fechaInicio }}</td>
+            <td class="etiqueta">TIM (Tasa interés moratorio)</td>
+            <td class="valor-der">{{ $tim }}</td>
+        </tr>
+    </table>
+
+    {{-- ── Cronograma ───────────────────────────────────────────────────── --}}
+    @php
+        $filas = $d['cronograma']['filas'];
+        $n = count($filas);
+        // Hasta 36 cuotas: una sola columna a lo ancho, como el maestro;
+        // hasta 72 en dos (pedido 04/09). El anexo debe caber en UNA hoja
+        // (regla del 28/08, blindada por Anexo1UnaHojaTest): la letra y los
+        // paddings del cronograma se reducen por tramos según cuántas filas
+        // cargue cada columna.
+        $cols = $n <= 36 ? 1 : ($n <= 72 ? 2 : ($n <= 108 ? 3 : 4));
+        $porColumna = max(1, (int) ceil($n / $cols));
+        $grupos = array_chunk($filas, $porColumna);
+        $claseCron = $porColumna >= 30 ? 'apretado2' : ($porColumna >= 20 ? 'apretado' : '');
+    @endphp
+
+    <div class="ax-titulo">CRONOGRAMA DE PAGO</div>
+    @if (count($grupos) === 1)
+        {{-- Columna única SIN envoltorio: dompdf no parte tablas anidadas y
+             empujaba el cronograma entero a la página 2. --}}
+        @php $grupo = $grupos[0]; $esUltimo = true; @endphp
+        @include('documentos.pdf.anexo1-cron', ['grupo' => $grupo, 'esUltimo' => true, 'claseCron' => $claseCron, 'fmt' => $fmt, 'total' => $d['cronograma']['total']])
+    @else
+    <table class="ax-split">
+        <tr>
+            @foreach ($grupos as $grupo)
+                <td class="col" style="width: {{ round(100 / count($grupos), 4) }}%;">
+                    @include('documentos.pdf.anexo1-cron', ['grupo' => $grupo, 'esUltimo' => $loop->last, 'claseCron' => $claseCron, 'fmt' => $fmt, 'total' => $d['cronograma']['total']])
+                </td>
+            @endforeach
+        </tr>
+    </table>
+    @endif
+
+    {{-- Pie fijo del maestro del área legal --}}
+    <div class="ax-pie">
+        DPTO. SEC. B UCV 72 LOTE 51 ZONA E AAHH HUAYCAN, DISTRITO DE ATE<br>
+        CELULAR: 982333689/981352577
     </div>
 </body>
 </html>

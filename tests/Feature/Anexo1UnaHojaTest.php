@@ -61,7 +61,7 @@ class Anexo1UnaHojaTest extends TestCase
     {
         Storage::fake('public');
 
-        foreach ([4, 12, 24, 48] as $cuotas) {
+        foreach ([4, 12, 24, 36, 48, 72, 96] as $cuotas) {
             [$client, $credit, $vehiculos] = $this->mundo($cuotas);
             $doc = app(GeneradorAnexo1::class)->generar($client, $credit, $vehiculos);
             $pdf = Storage::disk('public')->get($doc->pdf_path);
