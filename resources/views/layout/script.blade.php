@@ -129,6 +129,10 @@ document.addEventListener('click', function (e) {
 })();
 </script>
 <style>
+    /* El placeholder de select2 cuando representa una opcion REAL
+       ("Todo el mes", "— Seleccione —") se lee como texto normal, no como
+       hint apagado. */
+    .select2-selection__placeholder { color: #495057 !important; }
     .table-responsive.can-drag thead { cursor: grab; }
     .table-responsive.is-dragging thead { cursor: grabbing; }
     /* Scrollbar siempre agarrable: el scroll horizontal no depende solo
@@ -340,11 +344,19 @@ document.addEventListener('click', function (e) {
         jQuery('select.select2-simple, select.select2-tags').each(function () {
             if (jQuery(this).hasClass('select2-hidden-accessible')) return; // ya montado
             var conTexto = jQuery(this).hasClass('select2-tags');
+            // select2 trata la opcion con value="" como su slot de placeholder:
+            // sin uno definido la deja EN BLANCO aunque este seleccionada (el
+            // "Todo el mes" del dashboard salia vacio). Si el select trae esa
+            // opcion con texto, ese texto es el placeholder.
+            var vacia = this.querySelector('option[value=""]');
+            var hint = jQuery(this).data('placeholder')
+                || (vacia && vacia.textContent.trim())
+                || '';
             jQuery(this).select2({
                 width: '100%',
                 language: { noResults: function () { return 'Sin resultados'; } },
                 tags: conTexto,                       // texto libre (historial / casos borde)
-                placeholder: jQuery(this).data('placeholder') || '',
+                placeholder: hint,
                 // El botón de limpiar solo donde existe la opción vacía
                 // (distrito); en requeridos como provincia no tiene sentido.
                 allowClear: conTexto && !!this.querySelector('option[value=""]')
