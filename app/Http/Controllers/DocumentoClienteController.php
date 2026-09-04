@@ -30,9 +30,8 @@ class DocumentoClienteController extends Controller
         $doc = DocumentoCliente::findOrFail($id);
         $this->autorizarCartera($doc);
 
-        return DocResponse::make(
-            RenderDocumento::vista($doc->tipo),
-            RenderDocumento::datos($doc, paraPdf: false),
+        return DocResponse::desdeHtml(
+            RenderDocumento::html($doc->snapshot, $doc->tipo, 'word'),
             $doc->nombreArchivo().'.doc'
         );
     }

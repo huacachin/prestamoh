@@ -377,10 +377,7 @@ class GeneradorContrato
 
         $snapshot = self::construirSnapshot($client, $credit, $vehiculoIds, $modelo, $datos);
 
-        return view(
-            RenderDocumento::vista('contrato'),
-            RenderDocumento::datosDesdeSnapshot($snapshot, 'contrato', 'previa')
-        )->render();
+        return RenderDocumento::html($snapshot, 'contrato', 'previa');
     }
 
     /**
@@ -401,9 +398,8 @@ class GeneradorContrato
                 ->lockForUpdate()
                 ->max('version') + 1;
 
-            $contenido = Pdf::loadView(
-                RenderDocumento::vista('contrato'),
-                RenderDocumento::datosDesdeSnapshot($snapshot, 'contrato', 'pdf')
+            $contenido = Pdf::loadHTML(
+                RenderDocumento::html($snapshot, 'contrato', 'pdf')
             )->setPaper('a4')->output();
 
             $path = "documentos/cliente-{$client->id}/contrato-credito-{$credit->id}-v{$version}.pdf";

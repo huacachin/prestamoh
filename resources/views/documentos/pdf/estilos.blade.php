@@ -61,9 +61,11 @@
         background: #fff;
         @endif
     }
+    /* Como en las maestras: negrita Y subrayado. */
     .titulo-contrato {
         font-size: 8pt;
         font-weight: bold;
+        text-decoration: underline;
         text-align: center;
         text-transform: uppercase;
         margin: 0 0 14px 0;
