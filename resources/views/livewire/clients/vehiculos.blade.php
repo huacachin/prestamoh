@@ -84,7 +84,13 @@
                 </div>
                 <div class="col-md-3">
                     <label class="form-label mb-0 small fw-semibold">Categoría</label>
-                    <input type="text" class="form-control form-control-sm" wire:model.defer="categoria" placeholder="M2-C3">
+                    <select class="form-select form-select-sm select2-tags" wire:model.defer="categoria"
+                            data-placeholder="— Seleccione —">
+                        <option value=""></option>
+                        @foreach(\App\Support\VehiculoCatalogos::paraValor(\App\Support\VehiculoCatalogos::CATEGORIAS, $categoria) as $opcion)
+                            <option value="{{ $opcion }}">{{ $opcion }}</option>
+                        @endforeach
+                    </select>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label mb-0 small fw-semibold">Año de Modelo</label>
@@ -93,11 +99,23 @@
 
                 <div class="col-md-3">
                     <label class="form-label mb-0 small fw-semibold">Carrocería</label>
-                    <input type="text" class="form-control form-control-sm" wire:model.defer="carroceria" placeholder="Microbús">
+                    <select class="form-select form-select-sm select2-tags" wire:model.defer="carroceria"
+                            data-placeholder="— Seleccione —">
+                        <option value=""></option>
+                        @foreach(\App\Support\VehiculoCatalogos::paraValor(\App\Support\VehiculoCatalogos::CARROCERIAS, $carroceria) as $opcion)
+                            <option value="{{ $opcion }}">{{ $opcion }}</option>
+                        @endforeach
+                    </select>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label mb-0 small fw-semibold">Color</label>
-                    <input type="text" class="form-control form-control-sm @if(in_array('color', $autoCampos)) campo-api @endif" wire:model.defer="color" placeholder="Blanco">
+                    <select class="form-select form-select-sm select2-tags @if(in_array('color', $autoCampos)) campo-api @endif" wire:model.defer="color"
+                            data-placeholder="— Seleccione —">
+                        <option value=""></option>
+                        @foreach(\App\Support\VehiculoCatalogos::paraValor(\App\Support\VehiculoCatalogos::COLORES, $color) as $opcion)
+                            <option value="{{ $opcion }}">{{ $opcion }}</option>
+                        @endforeach
+                    </select>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label mb-0 small fw-semibold">Combustible</label>
