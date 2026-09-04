@@ -299,7 +299,13 @@ class Edit extends Component
 
     public function questionDelete(int $id): void
     {
-        $this->dispatch('questionDelete', ['id' => $id]);
+        $this->dispatch('questionDelete', [
+            'id' => $id,
+            'role' => 'cliente',
+            'name' => trim($this->client->fullName().' (exp. '.$this->client->expediente.')'),
+            'accion' => 'desactivar',
+            'nota' => 'La ficha y su historial se conservan.',
+        ]);
     }
 
     #[On('register_destroy')]

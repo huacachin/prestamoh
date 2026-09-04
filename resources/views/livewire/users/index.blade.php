@@ -104,7 +104,7 @@
                                         @if($user->status === 'active')
                                             @if(!$user->hasRole('director'))
                                             <button class="btn btn-sm btn-outline-danger ms-1" title="Desactivar"
-                                                    wire:click="questionDelete({{ $user->id }}, '{{ $user->name }}')">
+                                                    wire:click="questionDelete({{ $user->id }})">
                                                 <i class="ti ti-trash"></i>
                                             </button>
                                             @endif

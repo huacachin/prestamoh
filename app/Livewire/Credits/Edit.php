@@ -136,7 +136,11 @@ class Edit extends Component
 
     public function questionDelete(int $id): void
     {
-        $this->dispatch('questionDelete', ['id' => $id]);
+        $this->dispatch('questionDelete', [
+            'id' => $id,
+            'role' => 'crédito',
+            'name' => '#'.$this->credit->id.' — '.$this->credit->client?->fullName(),
+        ]);
     }
 
     #[On('register_destroy')]

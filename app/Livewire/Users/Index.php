@@ -46,9 +46,24 @@ class Index extends Component
         $this->dispatch('successAlert', ['message' => 'Usuario reactivado correctamente']);
     }
 
-    public function questionDelete(int $id, string $name = ''): void
+    /**
+     * El nombre lo resuelve el COMPONENTE, no el blade: pasarlo por el
+     * atributo rompía con apellidos que llevan comilla (O'Brien) y metía
+     * dato de la base en el HTML.
+     */
+    public function questionDelete(int $id): void
     {
-        $this->dispatch('questionDelete', ['id' => $id, 'name' => $name]);
+        $user = User::find($id);
+
+        $this->dispatch('questionDelete', [
+            'id' => $id,
+            'role' => 'usuario',
+            'name' => $user ? trim($user->name.' ('.$user->username.')') : '',
+            // La acción DESACTIVA (status inactive), no borra: que el modal
+            // diga la verdad y que se sepa que es reversible.
+            'accion' => 'desactivar',
+            'nota' => 'Podrá reactivarlo después desde esta misma pantalla.',
+        ]);
     }
 
     public function render()

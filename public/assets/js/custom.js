@@ -193,18 +193,44 @@ function alertError() {
 // `event` (opcional) permite un canal propio de confirmación (p. ej.
 // 'attachment_destroy' en galerías anidadas), para que el register_destroy
 // global no llegue a otros componentes de la misma pantalla que también lo escuchan.
-function questionDelete(id, role, name, event) {
-    var msg = (role && name)
-        ? '¿Está seguro de eliminar al ' + role + ' <span style="color:red;font-weight:bold">' + name + '</span>?'
-        : "¿Está seguro que desea eliminar el registro?";
+function questionDelete(id, role, name, event, accion, nota) {
+    // El nombre viene de la base: se ESCAPA antes de inyectarlo como html
+    // (un apellido con < o & rompia el modal; y no se confia en el dato).
+    var escapar = function (t) {
+        var d = document.createElement('div');
+        d.textContent = t;
+        return d.innerHTML;
+    };
+    // El VERBO lo manda quien abre el modal: varias pantallas DESACTIVAN y el
+    // texto generico decia "eliminar el registro" — ni que ni a quien.
+    accion = accion || 'eliminar';
+    var articulo = role ? (role === 'usuario' || role === 'crédito' ? 'el ' : 'la ') : '';
+    var titulo = role
+        ? 'Se va a ' + accion + ' ' + articulo + escapar(role)
+        : 'Se va a ' + accion + ' el registro';
+
+    var msg;
+    if (name) {
+        var quien = '<span style="color:red;font-weight:bold">' + escapar(name) + '</span>';
+        msg = role
+            ? '¿Está seguro de ' + accion + ' ' + articulo + escapar(role) + ' ' + quien + '?'
+            : '¿Está seguro de ' + accion + ' a ' + quien + '?';
+    } else {
+        msg = '¿Está seguro que desea ' + accion + ' el registro?';
+    }
+    if (nota) {
+        msg += '<br><small style="color:#6c757d">' + escapar(nota) + '</small>';
+    }
+
     Swal.fire({
-        title: "Se va a eliminar el registro",
+        title: titulo,
         html: msg,
         icon: "warning",
         showCancelButton: true,
         confirmButtonColor: "#3085d6",
         cancelButtonColor: "#d33",
-        confirmButtonText: "Eliminar"
+        confirmButtonText: accion.charAt(0).toUpperCase() + accion.slice(1),
+        cancelButtonText: "Cancelar"
     }).then(function (result) {
         if (result.isConfirmed) {
             // Sin Swal de exito aqui: lo canta el SERVIDOR con successAlert /
@@ -269,7 +295,8 @@ window.addEventListener('successAlert', function (event) {
 
 window.addEventListener('questionDelete', function (event) {
     var data = event.detail[0];
-    questionDelete(data['id'], data['role'] || '', data['name'] || '', data['event'] || '');
+    questionDelete(data['id'], data['role'] || '', data['name'] || '', data['event'] || '',
+                   data['accion'] || '', data['nota'] || '');
 });
 
 window.addEventListener('questionGenerate', function (event) {
