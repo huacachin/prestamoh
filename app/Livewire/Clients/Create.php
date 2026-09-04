@@ -31,7 +31,7 @@ class Create extends Component
 
     public const ESTADOS_CIVILES = ['soltero' => 'Soltero(a)', 'casado' => 'Casado(a)', 'viudo' => 'Viudo(a)', 'divorciado' => 'Divorciado(a)'];
 
-    public const TIPOS_DOCUMENTO = ['DNI' => 'DNI', 'RUC' => 'RUC', 'CE' => 'Carné de extranjería'];
+    public const TIPOS_DOCUMENTO = ['DNI' => 'DNI', 'CE' => 'CE — Carné de extranjería', 'RUC' => 'RUC'];
 
     /**
      * Provincias que opera la financiera. El área legal las trata como un
