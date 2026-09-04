@@ -104,6 +104,13 @@ class Edit extends Component
             }
             if ($this->situacion === 'Eliminado') {
                 abort_unless($user?->can('creditos.eliminar') ?? false, 403, 'Sin permiso para eliminar créditos.');
+                // MISMA regla que el borrado directo (05/09): marcar "Eliminado"
+                // desde aquí era la puerta de atrás para saltarse el día.
+                abort_unless(
+                    ($user?->can('caja.editar-historico') ?? false)
+                    || $this->credit->fecha_prestamo?->format('Y-m-d') === now()->format('Y-m-d'),
+                    403, 'Solo se pueden eliminar créditos registrados hoy.'
+                );
             }
         }
 

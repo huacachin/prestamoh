@@ -61,8 +61,13 @@ class RolePermissionSeeder extends Seeder
                 // administrador opera SOLO el día en curso; lo histórico es
                 // exclusivo del director.
                 'caja.eliminar',
-                // Eliminar clientes/créditos y editar identidad (DNI, nombres):
-                // exclusivos del director (mapa confirmado 21/08).
+                // 05/09: puede eliminar créditos, pero SOLO los del día — sin
+                // pagos aplicados y no refinanciados. La restricción la imponen
+                // los gates (Credits\Index::delete y Credits\Edit), que se
+                // saltan únicamente con caja.editar-historico (director).
+                'creditos.eliminar',
+                // Eliminar clientes y editar identidad (DNI, nombres): siguen
+                // siendo exclusivos del director (mapa confirmado 21/08).
                 'pagos.eliminar', 'pagos.mora-manual',
                 'reportes.credito-diario', 'reportes.credito-mensual', 'reportes.credito-semanal',
                 'reportes.cartera', 'reportes.pagos', 'reportes.morosidad', 'reportes.caja',

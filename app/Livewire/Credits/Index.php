@@ -60,8 +60,11 @@ class Index extends Component
         $totalPagado = CreditInstallment::where('credit_id', $id)
             ->sum('importe_aplicado');
 
-        // Sin permiso de bypass, solo se eliminan créditos sin pagos, del día y no refinanciados.
-        if (! $user->can('caja.bypass-fecha-anterior')) {
+        // Sin permiso de histórico, solo se eliminan créditos sin pagos, del día
+        // y no refinanciados. Mismo bypass que Credits\Edit (05/09: antes este
+        // usaba caja.bypass-fecha-anterior y el otro caja.editar-historico, dos
+        // llaves distintas para la misma puerta).
+        if (! $user->can('caja.editar-historico')) {
             if ($totalPagado > 0) {
                 $this->dispatch('errorAlert', ['message' => 'No se puede eliminar: el crédito tiene pagos aplicados.']);
 

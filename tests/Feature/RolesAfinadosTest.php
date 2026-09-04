@@ -47,8 +47,12 @@ class RolesAfinadosTest extends TestCase
         $this->assertTrue($admin->hasPermissionTo('registro.eliminar-masivo.revertir'));
         // Exclusivos del director (permisos-nuevos 21/08): eliminar registros,
         // identidad, usuarios/permisos y sucursales
+        // 05/09: creditos.eliminar SÍ lo tiene el administrador, pero los
+        // gates lo limitan a los créditos del día (ver PermisosDobleCheckTest).
+        $this->assertTrue($admin->hasPermissionTo('creditos.eliminar'));
+
         foreach ([
-            'clientes.eliminar', 'creditos.eliminar', 'clientes.editar-identidad',
+            'clientes.eliminar', 'clientes.editar-identidad',
             'configuracion.usuarios', 'usuarios.gestionar-permisos', 'configuracion.sucursales',
         ] as $p) {
             $this->assertFalse($admin->hasPermissionTo($p), "administrador NO debe tener $p");
