@@ -6,7 +6,25 @@
        previa → el margen va como padding del body (iframe en el navegador).
        word   → sin margen aquí: lo fija el wrapper de DocResponse (@page A4). --}}
 <style>
-    @php $medio = $medio ?? 'pdf'; @endphp
+    @php
+        $medio = $medio ?? 'pdf';
+        // Un solo juego de TTF en public/fonts/bookman: dompdf los lee por
+        // RUTA (public_path está dentro de su chroot) y la previa del
+        // navegador por URL. Así la pantalla se ve igual que el papel.
+        $bookmanSrc = $medio === 'pdf' ? public_path('fonts/bookman') : asset('fonts/bookman');
+    @endphp
+    /* Bookman Old Style (05/09): la tipografía de las maestras del área
+       legal. Embebida en el PDF —fsType=0, embebido libre— y servida a la
+       previa; Word usa la instalada en la máquina (viene con Office) y si
+       no está cae al serif de respaldo. */
+    @font-face { font-family: "Bookman Old Style"; font-style: normal; font-weight: normal;
+                 src: url("{{ $bookmanSrc }}/BookmanOldStyle.ttf") format("truetype"); }
+    @font-face { font-family: "Bookman Old Style"; font-style: normal; font-weight: bold;
+                 src: url("{{ $bookmanSrc }}/BookmanOldStyleBold.ttf") format("truetype"); }
+    @font-face { font-family: "Bookman Old Style"; font-style: italic; font-weight: normal;
+                 src: url("{{ $bookmanSrc }}/BookmanOldStyleItalic.ttf") format("truetype"); }
+    @font-face { font-family: "Bookman Old Style"; font-style: italic; font-weight: bold;
+                 src: url("{{ $bookmanSrc }}/BookmanOldStyleBoldItalic.ttf") format("truetype"); }
     @if($medio === 'pdf')
     @page { margin: 2.2cm 2cm 2.4cm 2.8cm; }
     .pie-pagina {
@@ -15,7 +33,7 @@
         left: 0;
         right: 0;
         text-align: right;
-        font-size: 7.5pt;
+        font-size: 6pt;
         color: #444;
     }
     .pie-pagina .num:after { content: counter(page); }
@@ -33,9 +51,9 @@
         box-sizing: border-box;
     }
     body {
-        font-family: "DejaVu Serif", serif;
-        font-size: 9.5pt;
-        line-height: 1.45;
+        font-family: "Bookman Old Style", "Bookman", "DejaVu Serif", serif;
+        font-size: 6.5pt;
+        line-height: 1.5;
         color: #000;
         margin: 0;
         @if($medio === 'previa')
@@ -44,7 +62,7 @@
         @endif
     }
     .titulo-contrato {
-        font-size: 11pt;
+        font-size: 8pt;
         font-weight: bold;
         text-align: center;
         text-transform: uppercase;
@@ -73,7 +91,7 @@
         width: 100%;
         border-collapse: collapse;
         margin: 4px 0 8px 0;
-        font-size: 9pt;
+        font-size: 6.5pt;
     }
     table.datos th, table.datos td {
         border: 0.6pt solid #000;
@@ -90,27 +108,27 @@
         padding: 30px 14px 8px 14px;
         text-align: center;
         vertical-align: bottom;
-        font-size: 9pt;
+        font-size: 6.5pt;
     }
     .linea-firma { border-top: 0.8pt solid #000; padding-top: 3px; }
 
     .salto { page-break-before: always; }
 
     .anexo-titulo {
-        font-size: 11pt;
+        font-size: 8pt;
         font-weight: bold;
         text-align: center;
         text-transform: uppercase;
         margin: 0 0 4px 0;
     }
     .anexo-subtitulo {
-        font-size: 9.5pt;
+        font-size: 7pt;
         text-align: center;
         text-transform: uppercase;
         margin: 0 0 12px 0;
     }
     .membrete {
-        font-size: 8.5pt;
+        font-size: 7pt;
         text-align: center;
         text-transform: uppercase;
         font-weight: bold;
@@ -150,5 +168,5 @@
     .voucher-img { text-align: center; margin: 10px 0; }
     .voucher-img img { max-width: 320px; max-height: 420px; }
     .detalles { text-align: justify; margin: 6px 0; }
-    .nota-pie { font-size: 8pt; text-align: center; margin-top: 14px; }
+    .nota-pie { font-size: 6pt; text-align: center; margin-top: 14px; }
 </style>
