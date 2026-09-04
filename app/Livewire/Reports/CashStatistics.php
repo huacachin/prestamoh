@@ -486,6 +486,9 @@ class CashStatistics extends Component
         ];
 
         // ─── DISTRIBUCIÓN UTILIDAD (legacy usa INGRESO BRUTO, NO el total después de egresos)
+        // 05/09: los cuadros se RETIRARON de la pantalla (pedido de Antony),
+        // pero el cálculo se queda: el Excel homologado al legacy
+        // (exportCashStatistics) los sigue consumiendo de este render.
         $msDiv2 = $ingMS > 0 ? $ingMS / 2 : 0;
         $msDiv6 = $msDiv2 > 0 ? $msDiv2 / 3 : 0;
         $dDiv2 = $ingD > 0 ? $ingD / 2 : 0;
@@ -664,7 +667,7 @@ class CashStatistics extends Component
             'pct_ms' => $pctMS_M, 'pct_d' => $pctD_M, 'pct_total' => $pctTotal_M,
         ];
 
-        // Distribución del mensual acumulado (usa INGRESO BRUTO igual al legacy)
+        // Distribución del mensual acumulado (solo para el Excel, ver arriba)
         $msDiv2_M = $ingMS_M > 0 ? $ingMS_M / 2 : 0;
         $msDiv6_M = $msDiv2_M > 0 ? $msDiv2_M / 3 : 0;
         $dDiv2_M = $ingD_M > 0 ? $ingD_M / 2 : 0;

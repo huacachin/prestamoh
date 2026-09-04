@@ -211,36 +211,6 @@
                             </table>
                         </div>
 
-                        {{-- DISTRIBUCIÓN UTILIDAD --}}
-                        <div class="mt-3">
-                            <table class="table table-bordered table-sm" style="font-size: 12px; max-width: 700px;">
-                                <thead class="bg-primary text-center">
-                                    <tr>
-                                        <th colspan="2">DETALLES</th>
-                                        <th>%</th>
-                                        <th colspan="2">M.S</th>
-                                        <th colspan="2">D</th>
-                                        <th>M.S + D</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                @foreach($distribution as $dist)
-                                    @php
-                                        $isUtil = $dist['label'] === 'Utilidad';
-                                        $isTotal = $dist['label'] === 'Total';
-                                    @endphp
-                                    <tr>
-                                        <td colspan="2"><b>{{ $dist['label'] }}</b></td>
-                                        <td class="text-center" style="{{ $isUtil || $isTotal ? 'color:red;' : '' }}"><b>{{ $dist['pct'] }}</b></td>
-                                        <td colspan="2" class="text-end" style="{{ $isTotal ? 'color:red;' : '' }}"><b>{{ number_format($dist['ms'], 2) }}</b></td>
-                                        <td colspan="2" class="text-end" style="{{ $isTotal ? 'color:red;' : '' }}"><b>{{ number_format($dist['d'], 2) }}</b></td>
-                                        <td class="text-end" style="{{ $isUtil || $isTotal ? 'color:red;' : '' }}"><b>{{ number_format($dist['total'], 2) }}</b></td>
-                                    </tr>
-                                @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-
                         {{-- TABLA 4: RESUMEN MENSUAL (Enero..mes seleccionado) --}}
                         <h6 class="mt-4 mb-2 fw-bold" style="color:red;">RESUMEN MENSUAL ({{ $year }})</h6>
                         <div class="table-responsive">
@@ -420,36 +390,6 @@
                                         <td colspan="2"></td>
                                         <td class="text-end" style="color:red;"><b>{{ number_format($detalleSummaryMonth['pct_total'], 2) }}%</b></td>
                                     </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        {{-- DISTRIBUCIÓN (acumulado mensual Ene-Mar) --}}
-                        <div class="mt-3">
-                            <table class="table table-bordered table-sm" style="font-size: 12px; max-width: 700px;">
-                                <thead class="bg-primary text-center">
-                                    <tr>
-                                        <th colspan="2">DETALLES</th>
-                                        <th>%</th>
-                                        <th colspan="2">M.S</th>
-                                        <th colspan="2">D</th>
-                                        <th>M.S + D</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                @foreach($distributionMonth as $dist)
-                                    @php
-                                        $isUtil = $dist['label'] === 'Utilidad';
-                                        $isTotal = $dist['label'] === 'Total';
-                                    @endphp
-                                    <tr>
-                                        <td colspan="2"><b>{{ $dist['label'] }}</b></td>
-                                        <td class="text-center" style="{{ $isUtil || $isTotal ? 'color:red;' : '' }}"><b>{{ $dist['pct'] }}</b></td>
-                                        <td colspan="2" class="text-end" style="{{ $isTotal ? 'color:red;' : '' }}"><b>{{ number_format($dist['ms'], 2) }}</b></td>
-                                        <td colspan="2" class="text-end" style="{{ $isTotal ? 'color:red;' : '' }}"><b>{{ number_format($dist['d'], 2) }}</b></td>
-                                        <td class="text-end" style="{{ $isUtil || $isTotal ? 'color:red;' : '' }}"><b>{{ number_format($dist['total'], 2) }}</b></td>
-                                    </tr>
-                                @endforeach
                                 </tbody>
                             </table>
                         </div>
