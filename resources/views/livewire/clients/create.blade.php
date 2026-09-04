@@ -292,7 +292,7 @@
                              limpio tras el morph de Livewire. --}}
                         <div class="col-md-3" wire:key="ubigeo-dep">
                             <label class="form-label mb-0 small fw-semibold">Departamento</label>
-                            <select class="form-select form-select-sm select2-simple @error('departamento') is-invalid @enderror @if(in_array('departamento', $autoCliente ?? [])) campo-api @endif"
+                            <select class="form-select form-select-sm select2-tags @error('departamento') is-invalid @enderror @if(in_array('departamento', $autoCliente ?? [])) campo-api @endif"
                                     wire:model.live="departamento">
                                 @foreach(\App\Support\Ubigeo::conHistorico(\App\Support\Ubigeo::departamentos(), $departamento) as $dep)
                                     <option value="{{ $dep }}">{{ $dep }}</option>
@@ -302,7 +302,7 @@
                         </div>
                         <div class="col-md-3" wire:key="ubigeo-prov-{{ md5((string) $departamento) }}">
                             <label class="form-label mb-0 small fw-semibold">Provincia</label>
-                            <select class="form-select form-select-sm select2-simple @error('provincia') is-invalid @enderror @if(in_array('provincia', $autoCliente ?? [])) campo-api @endif"
+                            <select class="form-select form-select-sm select2-tags @error('provincia') is-invalid @enderror @if(in_array('provincia', $autoCliente ?? [])) campo-api @endif"
                                     wire:model.live="provincia">
                                 @foreach(\App\Support\Ubigeo::conHistorico(\App\Support\Ubigeo::provinciasDe($departamento), $provincia) as $prov)
                                     <option value="{{ $prov }}">{{ $prov }}</option>

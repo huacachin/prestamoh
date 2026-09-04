@@ -236,7 +236,9 @@ document.addEventListener('click', function (e) {
                 language: { noResults: function () { return 'Sin resultados'; } },
                 tags: conTexto,                       // texto libre (historial / casos borde)
                 placeholder: jQuery(this).data('placeholder') || '',
-                allowClear: conTexto
+                // El botón de limpiar solo donde existe la opción vacía
+                // (distrito); en requeridos como provincia no tiene sentido.
+                allowClear: conTexto && !!this.querySelector('option[value=""]')
             }).on('select2:select select2:unselect select2:clear', function () {
                 this.dispatchEvent(new Event('input',  { bubbles: true }));
                 this.dispatchEvent(new Event('change', { bubbles: true }));
