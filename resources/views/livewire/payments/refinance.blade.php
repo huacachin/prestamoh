@@ -176,7 +176,7 @@
                 <div class="d-flex gap-2 mt-3 justify-content-center">
                     @if($importePagadoAlgo > 0)
                         <button type="submit" class="btn btn-sm btn-dark" wire:loading.attr="disabled">
-                            <i class="ti ti-piggy-bank"></i> Refinanciar
+                            <i class="ti ti-coin"></i> Refinanciar
                         </button>
                     @else
                         <div class="alert alert-warning mb-0" style="font-size: 12px; padding: 6px 12px;">

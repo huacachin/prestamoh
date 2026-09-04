@@ -18,14 +18,14 @@
                 <div class="card-header bg-primary">
                     <h5 class="text-white">
                         Compromisos de pago
-                        <span class="float-end"><i class="ti ti-calendar-dollar text-white"></i></span>
+                        <span class="float-end"><i class="ti ti-calendar-time text-white"></i></span>
                     </h5>
                 </div>
                 <div class="card-body p-0" style="max-height: 360px; overflow-y: auto;">
                     @if($compromisos->isEmpty())
                         <div class="hidden-massage py-4 px-3 text-center">
                             <div>
-                                <i class="ti ti-calendar-check f-s-28 text-success"></i>
+                                <i class="ti ti-calendar-event f-s-28 text-success"></i>
                                 <h6 class="mb-0 mt-1">Sin compromisos próximos</h6>
                                 <p class="text-secondary f-s-12 mb-0">Nada por cobrar en los próximos 2 días.</p>
                             </div>

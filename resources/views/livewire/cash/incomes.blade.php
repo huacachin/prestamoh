@@ -158,7 +158,7 @@
                                                    @click.prevent="openLightbox({{ \Illuminate\Support\Js::from($galleries[$row['id']]['items']) }}, {{ \Illuminate\Support\Js::from($galleries[$row['id']]['manageUrl']) }})"
                                                    title="Ver adjuntos ({{ $row['attachments_count'] ?? 0 }})"
                                                    style="cursor: zoom-in;">
-                                                    <i class="ti ti-camera-filled f-s-16 text-info"></i>
+                                                    <i class="ti ti-camera f-s-16 text-info"></i>
                                                     @if(($row['attachments_count'] ?? 0) > 0)
                                                         <span class="badge bg-info" style="font-size:9px; padding:1px 4px;">
                                                             {{ $row['attachments_count'] }}

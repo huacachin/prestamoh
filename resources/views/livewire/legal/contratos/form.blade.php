@@ -161,7 +161,7 @@
                             </div>
 
                             <div class="border rounded p-2 mb-3">
-                                <div class="small fw-bold mb-1"><i class="ti ti-user-star"></i> Gerente general</div>
+                                <div class="small fw-bold mb-1"><i class="ti ti-user-check"></i> Gerente general</div>
                                 <div class="row g-2">
                                     <div class="col-md-4">
                                         <label class="form-label mb-0 small fw-semibold">Nombre completo <span class="text-danger">*</span></label>

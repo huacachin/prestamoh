@@ -126,18 +126,18 @@
                                         <a href="{{ route('clients.documentos.pdf', $doc->id) }}"
                                            class="btn btn-xs btn-danger" style="padding: 2px 8px; font-size: 10px;"
                                            title="Descargar PDF">
-                                            <i class="ti ti-file-type-pdf"></i> PDF
+                                            <i class="ti ti-file-description"></i> PDF
                                         </a>
                                     @else
                                         <button type="button" class="btn btn-xs btn-danger" disabled
                                                 style="padding: 2px 8px; font-size: 10px;" title="Sin PDF guardado">
-                                            <i class="ti ti-file-type-pdf"></i> PDF
+                                            <i class="ti ti-file-description"></i> PDF
                                         </button>
                                     @endif
                                     <a href="{{ route('clients.documentos.word', $doc->id) }}"
                                        class="btn btn-xs btn-primary" style="padding: 2px 8px; font-size: 10px;"
                                        title="Descargar Word (editable)">
-                                        <i class="ti ti-file-type-doc"></i> Word
+                                        <i class="ti ti-file-text"></i> Word
                                     </a>
                                 </td>
                                 <td class="text-center">

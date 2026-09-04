@@ -111,7 +111,7 @@
                                         @else
                                             <button class="btn btn-sm btn-outline-success ms-1" title="Re-activar"
                                                     wire:click="reactivate({{ $user->id }})">
-                                                <i class="ti ti-restore"></i>
+                                                <i class="ti ti-refresh"></i>
                                             </button>
                                         @endif
                                         @endcan
