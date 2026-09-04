@@ -46,7 +46,7 @@ class ClienteWizardTest extends TestCase
             ->set('apellido_pat', 'De La Cruz')
             ->set('apellido_mat', 'Rojas')
             ->set('documento', '45678912')
-            ->set('correos.0.email', 'juan@correo.com')
+            ->set('email', 'juan@correo.com')
             // Domicilio legal: obligatorio desde el tramo B (arma la cláusula
             // PRIMERO del contrato sin que nadie lo retipee).
             ->set('direccion', 'AV. AREQUIPA 3400')
@@ -61,11 +61,11 @@ class ClienteWizardTest extends TestCase
             ->set('nombre', 'Juan')
             ->set('apellido_pat', 'Perez')
             ->set('documento', '45678912')
-            ->set('correos.0.email', '')
+            ->set('email', '')
             ->set('ocupacion', '')
             ->set('estado_civil', '')
             ->call('siguientePaso')
-            ->assertHasErrors(['correos.0.email', 'ocupacion', 'estado_civil'])
+            ->assertHasErrors(['email', 'ocupacion', 'estado_civil'])
             ->assertSet('paso', 1);
     }
 
@@ -80,9 +80,9 @@ class ClienteWizardTest extends TestCase
 
     public function test_correo_invalido_no_pasa_de_paso(): void
     {
-        $this->paso1()->set('correos.0.email', 'no-es-correo')
+        $this->paso1()->set('email', 'no-es-correo')
             ->call('siguientePaso')
-            ->assertHasErrors('correos.0.email')
+            ->assertHasErrors('email')
             ->assertSet('paso', 1);
     }
 

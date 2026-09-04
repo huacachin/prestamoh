@@ -199,44 +199,11 @@
                         </select>
                         @error('estado_civil') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
-                    <div class="col-md-4">
-                        {{-- Correos: mini-sección con aire (mismo diseño del alta). --}}
-                        <style>
-                            .correos-box { border:1px solid #e6e2d8; border-radius:8px; background:#fcfcfa; padding:8px 10px; }
-                            .correos-box .btn-agregar-correo {
-                                width:100%; margin-top:6px; padding:4px 8px; font-size:12px;
-                                border:1px dashed #9db99d; border-radius:6px; color:#198754; background:transparent;
-                            }
-                            .correos-box .btn-agregar-correo:hover { background:#eaf5ee; border-style:solid; }
-                            .correos-box .fila-correo + .fila-correo { margin-top:6px; }
-                        </style>
-                        <label class="form-label mb-1 small fw-semibold">
-                            Correos electrónicos
-                            <span class="text-muted fw-normal" style="font-size:11px;">· ● principal = contratos</span>
-                        </label>
-                        <div class="correos-box">
-                            @forelse($correos as $i => $c)
-                                <div class="input-group input-group-sm fila-correo" wire:key="correo-{{ $i }}">
-                                    <span class="input-group-text px-2 {{ $c['principal'] ? 'bg-success-subtle' : '' }}"
-                                          title="Principal: es el correo que sale en los contratos">
-                                        <input type="radio" class="form-check-input mt-0" name="correo-principal"
-                                               @checked($c['principal']) wire:click="marcarPrincipal({{ $i }})">
-                                    </span>
-                                    <input type="email" class="form-control @error('correos.'.$i.'.email') is-invalid @enderror"
-                                           wire:model.defer="correos.{{ $i }}.email" placeholder="cliente@correo.com">
-                                    <button type="button" class="btn btn-outline-danger px-2" tabindex="-1"
-                                            wire:click="quitarCorreo({{ $i }})" title="Quitar este correo">
-                                        <i class="ti ti-x f-s-12"></i>
-                                    </button>
-                                </div>
-                            @empty
-                                <div class="text-muted small">Sin correos registrados.</div>
-                            @endforelse
-                            <button type="button" class="btn-agregar-correo" wire:click="agregarCorreo">
-                                <i class="ti ti-plus f-s-12"></i> Agregar otro correo
-                            </button>
-                        </div>
-                        @error('correos') <div class="text-danger" style="font-size:11px;">{{ $message }}</div> @enderror
+                    <div class="col-md-3">
+                        <label class="form-label mb-0 small fw-semibold">Correo</label>
+                        <input type="email" class="form-control form-control-sm @error('email') is-invalid @enderror"
+                               wire:model.defer="email" placeholder="cliente@correo.com">
+                        @error('email') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                 </div>
 
