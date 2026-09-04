@@ -252,17 +252,30 @@
                          sobrepago está bloqueado —Monto ≤ Saldo— y la mora va en Total Mora.) --}}
                     <h6 class="mb-1 mt-3" style="color:red;">Registrar Pago</h6>
                     <div class="row g-2">
-                        <div class="col-md-2">
-                            <label class="form-label mb-0 small fw-semibold">Saldo Pendiente</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   style="color:white; font-size:15px;"
-                                   value="{{ number_format($c['saldo_restante'], 2) }}" readonly>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label mb-0 small fw-semibold">Saldo P. + Mora</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   style="color:white; font-size:15px;"
-                                   value="{{ number_format($c['saldo_mora_restante'], 2) }}" readonly>
+                        {{-- Los dos saldos NO son campos: son las cifras que el cajero
+                             tiene que leer de un vistazo. Van como tarjetas KPI, el
+                             mismo patrón de /reports/portfolio y el dashboard. Antes
+                             eran inputs readonly con texto blanco sobre gris: bajo
+                             contraste y parecían campos deshabilitados. --}}
+                        <div class="col-md-4">
+                            <div class="saldo-band">
+                                <div class="saldo-kpi" style="--kpi: #0d6efd;">
+                                    <div class="saldo-top"><i class="ti ti-wallet"></i> Saldo Pendiente</div>
+                                    <div class="saldo-val">{{ number_format($c['saldo_restante'], 2) }}</div>
+                                    <div class="saldo-pie">capital + interés</div>
+                                </div>
+                                <div class="saldo-kpi" style="--kpi: {{ $c['total_mora'] > 0 ? '#dc3545' : '#2eb85c' }};">
+                                    <div class="saldo-top"><i class="ti ti-cash"></i> Saldo P. + Mora</div>
+                                    <div class="saldo-val">{{ number_format($c['saldo_mora_restante'], 2) }}</div>
+                                    <div class="saldo-pie">
+                                        @if ($c['total_mora'] > 0)
+                                            incluye mora {{ number_format($c['total_mora'], 2) }}
+                                        @else
+                                            sin mora
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label mb-0 small fw-semibold d-flex justify-content-between align-items-center">
@@ -507,6 +520,31 @@
                 </div>
             </div>
         </div>
+
+        <style>
+            /* Tarjetas de saldo: mismo lenguaje que los KPI de Cartera. */
+            .saldo-band { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+            .saldo-kpi {
+                border: 1px solid #e9ecef;
+                border-left: 4px solid var(--kpi, #adb5bd);
+                border-radius: 8px;
+                padding: 6px 10px;
+                background: #fff;
+            }
+            .saldo-top {
+                font-size: 10.5px; font-weight: 600; color: #6c757d;
+                text-transform: uppercase; letter-spacing: .3px;
+                white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            }
+            .saldo-val {
+                font-size: 1.35rem; font-weight: 700; line-height: 1.2;
+                color: var(--kpi, #212529);
+                font-variant-numeric: tabular-nums;
+            }
+            .saldo-pie { font-size: 10.5px; color: #868e96; }
+            /* En móvil una debajo de la otra, sin apretar las cifras. */
+            @media (max-width: 575.98px) { .saldo-band { grid-template-columns: 1fr; } }
+        </style>
 
         {{-- ═══ Modal: pagar por cuotas (selección FIFO + mora editable por fila) ═══ --}}
         <div class="modal fade" id="moraCuotasModal" tabindex="-1" aria-hidden="true" wire:ignore.self
