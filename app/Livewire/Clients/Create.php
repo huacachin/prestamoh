@@ -3,6 +3,7 @@
 namespace App\Livewire\Clients;
 
 use App\Models\Client;
+use App\Models\ClientEmail;
 use App\Models\ClientEmpresa;
 use App\Models\User;
 use App\Services\Factiliza;
@@ -709,6 +710,18 @@ class Create extends Component
                 $clientId = $relacionado->id;
             } else {
                 $clientId = DB::table('clients')->insertGetId($datosCliente + ['created_at' => now()]);
+            }
+
+            // Correos múltiples (04/09): el correo del alta es (o pasa a ser)
+            // el PRINCIPAL — clients.email lo espeja vía ClientEmail::espejar.
+            $correo = trim($this->email);
+            if ($correo !== '') {
+                DB::table('client_emails')->where('client_id', $clientId)->update(['principal' => 0]);
+                DB::table('client_emails')->updateOrInsert(
+                    ['client_id' => $clientId, 'email' => $correo],
+                    ['principal' => 1, 'updated_at' => now()],
+                );
+                ClientEmail::espejar($clientId);
             }
 
             // Empresa: ficha registral + representante legal VIGENTE. El

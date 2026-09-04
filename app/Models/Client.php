@@ -69,6 +69,12 @@ class Client extends Model
         return $this->hasMany(Credit::class);
     }
 
+    /** Correos del cliente; `clients.email` espeja siempre al principal. */
+    public function emails(): HasMany
+    {
+        return $this->hasMany(ClientEmail::class);
+    }
+
     public function attachments(): HasMany
     {
         return $this->hasMany(ClientAttachment::class);

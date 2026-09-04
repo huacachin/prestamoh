@@ -3,11 +3,13 @@
 namespace App\Livewire\Clients;
 
 use App\Models\Client;
+use App\Models\ClientEmail;
 use App\Models\Credit;
 use App\Models\User;
 use App\Support\Audit;
 use App\Support\Documentos\Nacionalidades;
 use App\Support\Ubigeo;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -85,7 +87,52 @@ class Edit extends Component
 
     public ?string $nacionalidad = null;
 
-    public string $email = '';
+    /**
+     * Correos del cliente (04/09): filas {id|null, email, principal}. El
+     * PRINCIPAL es el que sale en contratos — clients.email lo espeja
+     * (ClientEmail::espejar) al guardar. Máximo uno principal.
+     *
+     * @var array<int, array{id: int|null, email: string, principal: bool}>
+     */
+    public array $correos = [];
+
+    public function agregarCorreo(): void
+    {
+        $this->correos[] = ['id' => null, 'email' => '', 'principal' => count($this->correos) === 0];
+    }
+
+    public function quitarCorreo(int $i): void
+    {
+        if (! isset($this->correos[$i])) {
+            return;
+        }
+
+        // El último correo con contenido no se quita: la cláusula de
+        // notificaciones del contrato lo exige. (Una fila vacía sí se puede.)
+        $conContenido = collect($this->correos)->filter(fn ($c) => filled($c['email']))->count();
+        if (filled($this->correos[$i]['email']) && $conContenido <= 1) {
+            $this->dispatch('errorAlert', ['message' => 'Es el único correo del cliente: agrega otro antes de quitarlo (los contratos lo exigen).']);
+
+            return;
+        }
+
+        $eraPrincipal = $this->correos[$i]['principal'];
+        unset($this->correos[$i]);
+        $this->correos = array_values($this->correos);
+        if ($eraPrincipal && $this->correos !== []) {
+            $this->correos[0]['principal'] = true; // auto-promoción
+        }
+    }
+
+    public function marcarPrincipal(int $i): void
+    {
+        if (! isset($this->correos[$i])) {
+            return;
+        }
+        foreach ($this->correos as $j => $c) {
+            $this->correos[$j]['principal'] = ($j === $i);
+        }
+    }
 
     public string $ocupacion = 'transportista';
 
@@ -147,7 +194,8 @@ class Edit extends Component
             'departamento' => 'nullable|string|max:100',
             // Acepta las opciones vigentes y el valor histórico ya guardado
             'nacionalidad' => 'nullable|string|in:'.implode(',', Nacionalidades::paraValor($this->nacionalidad)),
-            'email' => 'nullable|email|max:150',
+            'correos' => 'array',
+            'correos.*.email' => 'required|email|max:150',
             'ocupacion' => 'required|string|max:100',
             'estado_civil' => 'required|string|max:100',
             'referencia' => 'nullable|string|max:255',
@@ -209,7 +257,15 @@ class Edit extends Component
         $this->provincia = Ubigeo::resolverProvincia($this->departamento, $c->provincia)
             ?? ($c->provincia ?: 'Lima');
         $this->nacionalidad = $c->nacionalidad ?: Nacionalidades::DEFECTO;
-        $this->email = (string) ($c->email ?? '');
+        $this->correos = $c->emails()->orderByDesc('principal')->orderBy('id')
+            ->get(['id', 'email', 'principal'])
+            ->map(fn ($e) => ['id' => (int) $e->id, 'email' => (string) $e->email, 'principal' => (bool) $e->principal])
+            ->all();
+        // Ficha previa al backfill o sin correo: si la columna tiene algo
+        // que la tabla no, se muestra para que no se pierda al guardar.
+        if ($this->correos === [] && filled($c->email)) {
+            $this->correos = [['id' => null, 'email' => (string) $c->email, 'principal' => true]];
+        }
         $this->ocupacion = filled($c->ocupacion) ? (string) $c->ocupacion : 'transportista';
         $this->estado_civil = filled($c->estado_civil) ? (string) $c->estado_civil : 'soltero';
         $this->referencia = $c->referencia;
@@ -257,7 +313,6 @@ class Edit extends Component
             'provincia' => $this->provincia,
             'departamento' => $this->departamento,
             'nacionalidad' => filled($this->nacionalidad) ? $this->nacionalidad : null,
-            'email' => trim($this->email) ?: null,
             'ocupacion' => $this->ocupacion,
             'estado_civil' => $this->estado_civil,
             'referencia' => $this->referencia,
@@ -288,7 +343,33 @@ class Edit extends Component
             }
         }
 
-        $this->client->update($data);
+        // Duplicados en la lista (case-insensitive) antes de tocar nada.
+        $normalizados = collect($this->correos)->map(fn ($c) => mb_strtolower(trim($c['email'])));
+        if ($normalizados->duplicates()->isNotEmpty()) {
+            $this->addError('correos', 'Hay correos repetidos en la lista.');
+
+            return;
+        }
+
+        DB::transaction(function () use ($data) {
+            $this->client->update($data);
+
+            // Correos: borra los quitados, upserta los presentes, un principal.
+            $ids = collect($this->correos)->pluck('id')->filter()->all();
+            DB::table('client_emails')->where('client_id', $this->clientId)
+                ->whereNotIn('id', $ids ?: [0])->delete();
+
+            $hayPrincipal = collect($this->correos)->contains(fn ($c) => $c['principal']);
+            foreach ($this->correos as $i => $c) {
+                $principal = $hayPrincipal ? $c['principal'] : $i === 0;
+                DB::table('client_emails')->updateOrInsert(
+                    ['client_id' => $this->clientId, 'email' => trim($c['email'])],
+                    ['principal' => $principal ? 1 : 0, 'updated_at' => now()],
+                );
+            }
+
+            ClientEmail::espejar($this->clientId);
+        });
 
         Audit::log('Editó el cliente '.$this->client->fullName(), $this->client);
 

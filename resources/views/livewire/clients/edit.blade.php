@@ -200,10 +200,30 @@
                         @error('estado_civil') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label mb-0 small fw-semibold">Correo</label>
-                        <input type="email" class="form-control form-control-sm @error('email') is-invalid @enderror"
-                               wire:model.defer="email" placeholder="cliente@correo.com">
-                        @error('email') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        <label class="form-label mb-0 small fw-semibold d-flex justify-content-between align-items-center">
+                            <span>Correos</span>
+                            <a href="#" wire:click.prevent="agregarCorreo" class="text-primary text-decoration-underline fw-normal">
+                                <i class="ti ti-plus f-s-12"></i> agregar
+                            </a>
+                        </label>
+                        @forelse($correos as $i => $c)
+                            <div class="input-group input-group-sm {{ $loop->last ? '' : 'mb-1' }}" wire:key="correo-{{ $i }}">
+                                <span class="input-group-text px-2" title="Principal: es el correo que sale en los contratos">
+                                    <input type="radio" class="form-check-input mt-0" name="correo-principal"
+                                           @checked($c['principal']) wire:click="marcarPrincipal({{ $i }})">
+                                </span>
+                                <input type="email" class="form-control @error('correos.'.$i.'.email') is-invalid @enderror"
+                                       wire:model.defer="correos.{{ $i }}.email" placeholder="cliente@correo.com">
+                                <button type="button" class="btn btn-outline-danger px-2" tabindex="-1"
+                                        wire:click="quitarCorreo({{ $i }})" title="Quitar este correo">
+                                    <i class="ti ti-x f-s-12"></i>
+                                </button>
+                            </div>
+                        @empty
+                            <div class="text-muted small py-1">Sin correos — usa "agregar".</div>
+                        @endforelse
+                        @error('correos') <div class="text-danger" style="font-size:11px;">{{ $message }}</div> @enderror
+                        <div class="text-muted" style="font-size:11px;">El marcado (●) es el que sale en los contratos.</div>
                     </div>
                 </div>
 
