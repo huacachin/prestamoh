@@ -1,5 +1,6 @@
-{{-- Cierre y firmas. En las plantillas maestras cada firmante aparece DOS
-     VECES (dos juegos completos de firmas para notaría): se replica igual.
+{{-- Cierre y firmas. UN SOLO juego y el ACREEDOR primero (05/09, corrección
+     de Antony): antes se replicaba el juego completo dos veces —leído así de
+     las maestras, donde el bloque aparecía repetido— y el deudor iba delante.
      El rótulo bajo la línea es COLECTIVO ($vm->g), no el género individual:
      a.3 pone "LOS DEUDORES" en las dos cajas aunque los firmantes sean de
      distinto sexo, y a.2 pone "LA DEUDORA". Con el género por firmante salía
@@ -10,14 +11,11 @@
     $apoderada = $vm->constante('apoderada');
     $acreedor = $vm->constante('acreedor');
 
-    // Un juego = una celda por cada deudor + una celda de la apoderada;
-    // se repite el juego completo 2 veces. null = celda de la apoderada.
-    $celdas = [];
-    for ($juego = 0; $juego < 2; $juego++) {
-        foreach ($vm->deudores as $d) {
-            $celdas[] = $d;
-        }
-        $celdas[] = null;
+    // Un único juego: primero el acreedor (null = celda de la apoderada),
+    // después cada deudor.
+    $celdas = [null];
+    foreach ($vm->deudores as $d) {
+        $celdas[] = $d;
     }
 @endphp
 

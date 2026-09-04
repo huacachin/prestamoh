@@ -103,11 +103,14 @@
 
     .firmas { page-break-inside: avoid; margin-top: 26px; }
     table.tabla-firmas { width: 100%; border-collapse: collapse; }
+    /* vertical-align: top — con 'bottom' las líneas de firma quedaban a
+       distinta altura cuando una caja tenía más renglones que la otra
+       (la del acreedor lleva 5 y la del deudor 3). */
     table.tabla-firmas td {
         width: 50%;
-        padding: 30px 14px 8px 14px;
+        padding: 34px 14px 8px 14px;
         text-align: center;
-        vertical-align: bottom;
+        vertical-align: top;
         font-size: 6.5pt;
     }
     .linea-firma { border-top: 0.8pt solid #000; padding-top: 3px; }
