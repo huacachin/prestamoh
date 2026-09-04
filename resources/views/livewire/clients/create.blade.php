@@ -177,10 +177,30 @@
 
                         {{-- Campos obligatorios agregados el 28/08 --}}
                         <div class="col-md-4">
-                            <label class="form-label mb-0 small fw-semibold">Correo electrónico</label>
-                            <input type="email" class="form-control form-control-sm @error('email') is-invalid @enderror"
-                                   wire:model.defer="email" name="email" autocomplete="email" placeholder="cliente@correo.com">
-                            @error('email') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            <label class="form-label mb-0 small fw-semibold d-flex justify-content-between align-items-center">
+                                <span>Correos electrónicos</span>
+                                <a href="#" wire:click.prevent="agregarCorreo" class="text-primary text-decoration-underline fw-normal">
+                                    <i class="ti ti-plus f-s-12"></i> agregar
+                                </a>
+                            </label>
+                            @foreach($correos as $i => $c)
+                                <div class="input-group input-group-sm {{ $loop->last ? '' : 'mb-1' }}" wire:key="correo-alta-{{ $i }}">
+                                    <span class="input-group-text px-2" title="Principal: es el correo que sale en los contratos">
+                                        <input type="radio" class="form-check-input mt-0" name="correo-principal-alta"
+                                               @checked($c['principal']) wire:click="marcarPrincipal({{ $i }})">
+                                    </span>
+                                    <input type="email" class="form-control @error('correos.'.$i.'.email') is-invalid @enderror"
+                                           wire:model.defer="correos.{{ $i }}.email" placeholder="cliente@correo.com" autocomplete="email">
+                                    @if(count($correos) > 1)
+                                        <button type="button" class="btn btn-outline-danger px-2" tabindex="-1"
+                                                wire:click="quitarCorreo({{ $i }})" title="Quitar este correo">
+                                            <i class="ti ti-x f-s-12"></i>
+                                        </button>
+                                    @endif
+                                </div>
+                            @endforeach
+                            @error('correos') <div class="text-danger" style="font-size:11px;">{{ $message }}</div> @enderror
+                            <div class="text-muted" style="font-size:11px;">El marcado (●) es el que sale en los contratos.</div>
                         </div>
                         @unless($tipo_documento === 'RUC')
                         <div class="col-md-4">

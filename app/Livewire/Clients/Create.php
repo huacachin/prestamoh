@@ -91,7 +91,50 @@ class Create extends Component
 
     public string $tipo_documento = 'DNI';
 
-    public string $email = '';
+    /**
+     * Correos del cliente (04/09): filas {email, principal}. El principal
+     * es el que sale en contratos; clients.email lo espeja al guardar.
+     * En el alta siempre hay al menos una fila.
+     *
+     * @var array<int, array{email: string, principal: bool}>
+     */
+    public array $correos = [['email' => '', 'principal' => true]];
+
+    public function agregarCorreo(): void
+    {
+        $this->correos[] = ['email' => '', 'principal' => count($this->correos) === 0];
+    }
+
+    public function quitarCorreo(int $i): void
+    {
+        if (! isset($this->correos[$i]) || count($this->correos) <= 1) {
+            return; // siempre queda una fila (el correo es obligatorio en el alta)
+        }
+        $eraPrincipal = $this->correos[$i]['principal'];
+        unset($this->correos[$i]);
+        $this->correos = array_values($this->correos);
+        if ($eraPrincipal) {
+            $this->correos[0]['principal'] = true;
+        }
+    }
+
+    public function marcarPrincipal(int $i): void
+    {
+        if (! isset($this->correos[$i])) {
+            return;
+        }
+        foreach ($this->correos as $j => $c) {
+            $this->correos[$j]['principal'] = ($j === $i);
+        }
+    }
+
+    /** El correo principal (para clients.email, empresa y ficha). */
+    private function correoPrincipal(): string
+    {
+        $fila = collect($this->correos)->firstWhere('principal', true) ?? ($this->correos[0] ?? null);
+
+        return trim((string) ($fila['email'] ?? ''));
+    }
 
     public string $ocupacion = 'transportista';
 
@@ -266,7 +309,12 @@ class Create extends Component
             }
             $this->sexo = $existe->sexo ?: 'M';
             $this->nacionalidad = $existe->nacionalidad ?: $this->nacionalidad;
-            $this->email = (string) ($existe->email ?? '');
+            $correosPrevios = $existe->emails()->orderByDesc('principal')->orderBy('id')
+                ->get(['email', 'principal'])
+                ->map(fn ($e) => ['email' => (string) $e->email, 'principal' => (bool) $e->principal])
+                ->all();
+            $this->correos = $correosPrevios !== [] ? $correosPrevios
+                : [['email' => (string) ($existe->email ?? ''), 'principal' => true]];
             $this->ocupacion = $existe->ocupacion ?: $this->ocupacion;
             $this->estado_civil = $existe->estado_civil ?: $this->estado_civil;
             $this->departamento = Ubigeo::resolverDepartamento($existe->departamento) ?? ($existe->departamento ?: $this->departamento);
@@ -517,7 +565,7 @@ class Create extends Component
         $this->reset([
             'docBuscar', 'docMsg', 'docMsgType',
             'apellido_pat', 'apellido_mat', 'nombre', 'sexo', 'fecha_nacimiento',
-            'documento', 'tipo_documento', 'email', 'ocupacion', 'estado_civil',
+            'documento', 'tipo_documento', 'correos', 'ocupacion', 'estado_civil',
             'nacionalidad', 'direccion', 'distrito', 'provincia', 'departamento',
             'giro', 'zona', 'celular1', 'celular2',
             'vehiculos', 'vehMsg', 'vehMsgType', 'autoCliente', 'autoVehiculo',
@@ -556,7 +604,8 @@ class Create extends Component
             // fila) en vez de duplicarla.
             'documento' => ['required', 'string', 'min:8', 'max:12',
                 Rule::unique('clients', 'documento')->where(fn ($q) => $q->where('es_relacionado', false))],
-            'email' => 'required|email|max:150',
+            'correos' => 'required|array|min:1',
+            'correos.*.email' => 'required|email|max:150',
             'ocupacion' => $isRuc ? 'nullable' : 'required|string|max:100',
             'estado_civil' => $isRuc ? 'nullable' : 'required|string|max:100',
             'expediente' => 'required|integer|min:1',
@@ -677,7 +726,7 @@ class Create extends Component
                 'fecha_nacimiento' => $isRuc ? null : $this->fecha_nacimiento,
                 'sexo' => $isRuc ? null : $this->sexo,
                 'nacionalidad' => $isRuc ? null : Nacionalidades::normalizar($this->nacionalidad),
-                'email' => trim($this->email),
+                'email' => $this->correoPrincipal(),
                 'ocupacion' => $isRuc ? null : $this->ocupacion,
                 'estado_civil' => $isRuc ? null : $this->estado_civil,
                 'direccion' => $this->direccion,
@@ -712,17 +761,20 @@ class Create extends Component
                 $clientId = DB::table('clients')->insertGetId($datosCliente + ['created_at' => now()]);
             }
 
-            // Correos múltiples (04/09): el correo del alta es (o pasa a ser)
-            // el PRINCIPAL — clients.email lo espeja vía ClientEmail::espejar.
-            $correo = trim($this->email);
-            if ($correo !== '') {
-                DB::table('client_emails')->where('client_id', $clientId)->update(['principal' => 0]);
+            // Correos múltiples (04/09): se guardan TODOS; el principal se
+            // espeja en clients.email vía ClientEmail::espejar.
+            DB::table('client_emails')->where('client_id', $clientId)->update(['principal' => 0]);
+            foreach ($this->correos as $fila) {
+                $correo = trim((string) $fila['email']);
+                if ($correo === '') {
+                    continue;
+                }
                 DB::table('client_emails')->updateOrInsert(
                     ['client_id' => $clientId, 'email' => $correo],
-                    ['principal' => 1, 'updated_at' => now()],
+                    ['principal' => $fila['principal'] ? 1 : 0, 'updated_at' => now()],
                 );
-                ClientEmail::espejar($clientId);
             }
+            ClientEmail::espejar($clientId);
 
             // Empresa: ficha registral + representante legal VIGENTE. El
             // wizard de contrato los precarga (representanteVigente), así que
@@ -734,7 +786,7 @@ class Create extends Component
                         'domicilio' => DomicilioLegal::armar(
                             $this->direccion, $this->distrito, $this->provincia, $this->departamento
                         ) ?: null,
-                        'correo' => trim($this->email) ?: null,
+                        'correo' => $this->correoPrincipal() ?: null,
                     ],
                 );
                 $empresa->representantes()->create([

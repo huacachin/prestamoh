@@ -74,6 +74,21 @@
                     <td>{{ $client->celular1 }} {{ $client->celular2 }}</td>
                 </tr>
                 <tr>
+                    <td style="background-color:#f0f0f0;">Correos</td>
+                    <td colspan="3">
+                        @forelse($client->emails->sortByDesc('principal') as $correo)
+                            <span class="me-2 text-nowrap">
+                                @if($correo->principal)<i class="ti ti-star-filled text-warning f-s-12" title="Principal: sale en los contratos"></i>@endif
+                                {{ $correo->email }}@if(! $loop->last),@endif
+                            </span>
+                        @empty
+                            <span class="text-muted">—</span>
+                        @endforelse
+                        <a href="{{ route('clients.edit', $client->id) }}" class="ms-1" style="color:#0d6efd; text-decoration:underline; font-size:11px;"
+                           title="Agregar o editar correos en la ficha del cliente">editar</a>
+                    </td>
+                </tr>
+                <tr>
                     <td style="background-color:#f0f0f0;">Registrado el</td>
                     <td>{{ $client->fecha_registro ? $client->fecha_registro->format('d/m/Y') : '' }}</td>
                     <td style="background-color:#f0f0f0;">DNI</td>

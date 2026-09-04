@@ -43,7 +43,7 @@ class ClienteVehiculoTest extends TestCase
             'apellido_mat' => 'Vehicular',
             'documento' => '87654321',
             'sexo' => 'M',
-            'email' => 'vehicular@correo.com',
+            'correos.0.email' => 'vehicular@correo.com',
             // Domicilio legal: obligatorio desde el tramo B.
             'direccion' => 'AV. AREQUIPA 3400',
             'distrito' => 'LINCE',

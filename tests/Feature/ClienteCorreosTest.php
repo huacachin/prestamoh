@@ -55,7 +55,7 @@ class ClienteCorreosTest extends TestCase
     {
         Livewire::test(Create::class)
             ->set('nombre', 'Juan')->set('apellido_pat', 'Perez')
-            ->set('documento', '47000002')->set('email', 'juan@correo.com')
+            ->set('documento', '47000002')->set('correos.0.email', 'juan@correo.com')
             ->set('direccion', 'AV. LIMA 1')->set('distrito', 'LINCE')
             ->call('siguientePaso')->assertHasNoErrors()
             ->call('save')->assertHasNoErrors();
