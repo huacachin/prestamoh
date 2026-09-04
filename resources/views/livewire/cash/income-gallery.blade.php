@@ -70,14 +70,14 @@
                                 const valid = incoming.filter(f => f.type.startsWith('image/'));
                                 const skipped = incoming.length - valid.length;
                                 if (!valid.length) {
-                                    alert('Solo se aceptan imágenes (JPG, PNG, GIF, WebP).');
+                                    avisar('Solo se aceptan imágenes (JPG, PNG, GIF, WebP).');
                                     return;
                                 }
                                 const dt = new DataTransfer();
                                 for (const f of valid) dt.items.add(f);
                                 this.$refs.fileInput.files = dt.files;
                                 this.$refs.fileInput.dispatchEvent(new Event('change', { bubbles: true }));
-                                if (skipped > 0) alert(skipped + ' archivo(s) ignorados (no son imágenes).');
+                                if (skipped > 0) avisar(skipped + ' archivo(s) ignorados (no son imágenes).');
                             }
                          }"
                          x-init="

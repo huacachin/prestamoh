@@ -162,7 +162,7 @@
                                                            class="{{ $comp->cumplido_at ? 'text-secondary' : 'text-success' }}"><i class="ti ti-check"></i></a>
                                                         <a href="#" wire:click.prevent="editarCompromiso({{ $comp->id }})" title="Editar"><i class="ti ti-pencil"></i></a>
                                                         <a href="#" wire:click.prevent="eliminarCompromiso({{ $comp->id }})"
-                                                           wire:confirm="¿Eliminar este compromiso?" title="Eliminar" class="text-danger"><i class="ti ti-trash"></i></a>
+                                                           data-confirmar="¿Eliminar este compromiso?" title="Eliminar" class="text-danger"><i class="ti ti-trash"></i></a>
                                                     </div>
                                                 @endif
                                             @endforeach

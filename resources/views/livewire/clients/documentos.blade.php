@@ -145,7 +145,7 @@
                                         <button type="button" class="btn btn-xs btn-outline-danger"
                                                 style="padding: 2px 8px; font-size: 10px;"
                                                 wire:click="anular({{ $doc->id }})"
-                                                wire:confirm="¿Anular {{ $doc->tipoLabel() }} v{{ $doc->version }} del crédito #{{ $doc->credit_id }}? Quedará tachado, pero sus descargas seguirán disponibles."
+                                                data-confirmar="¿Anular {{ $doc->tipoLabel() }} v{{ $doc->version }} del crédito #{{ $doc->credit_id }}? Quedará tachado, pero sus descargas seguirán disponibles."
                                                 title="Anular documento">
                                             <i class="ti ti-ban"></i> Anular
                                         </button>

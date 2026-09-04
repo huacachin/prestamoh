@@ -186,7 +186,7 @@
                                     </button>
                                     <button type="button" class="btn btn-xs btn-outline-danger py-0 px-1"
                                             wire:click="eliminar({{ $v->id }})"
-                                            wire:confirm="¿Eliminar el vehículo {{ $v->placa }}? Esta acción no se puede deshacer."
+                                            data-confirmar="¿Eliminar el vehículo {{ $v->placa }}? Esta acción no se puede deshacer."
                                             title="Eliminar">
                                         <i class="ti ti-trash"></i>
                                     </button>
@@ -207,7 +207,7 @@
                                                 @if($puedeEditar)
                                                     <a href="#" class="text-white ms-1" title="Quitar copropietario"
                                                        wire:click.prevent="quitarCopro({{ $v->id }}, {{ $cop->id }})"
-                                                       wire:confirm="¿Quitar a {{ $cop->fullName() }} como copropietario de {{ $v->placa }}?">
+                                                       data-confirmar="¿Quitar a {{ $cop->fullName() }} como copropietario de {{ $v->placa }}?">
                                                         <i class="ti ti-x"></i>
                                                     </a>
                                                 @endif

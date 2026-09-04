@@ -74,7 +74,7 @@
                             <button class="btn btn-primary {{ $bloqueado ? 'disabled' : '' }}"
                                     @if($bloqueado) disabled @endif
                                     @if($saldoSel > 0.01) title="El crédito tiene saldo pendiente: no se puede re-activar" @endif
-                                    wire:confirm="¿Está seguro de Re-Activar este Préstamo?"
+                                    data-confirmar="¿Está seguro de Re-Activar este Préstamo?"
                                     wire:click="activate">
                                 <i class="ti ti-refresh f-s-14"></i> Confirmar Re-Activar
                             </button>

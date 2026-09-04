@@ -135,6 +135,52 @@ function successAlert(message) {
     });
 }
 
+// Aviso con mensaje propio (reemplaza a los alert() nativos del navegador).
+function avisar(message, icon) {
+    Swal.fire({
+        icon: icon || 'warning',
+        title: 'Atención',
+        text: message,
+        confirmButtonText: 'OK',
+    });
+}
+
+/**
+ * Confirmación con el modal de la casa en lugar del confirm() NATIVO que
+ * usa wire:confirm. En el blade se escribe igual de simple:
+ *
+ *   <button wire:click="borrar(1)" data-confirmar="¿Seguro?">
+ *   ... opcionales: data-confirmar-ok="Eliminar" data-confirmar-titulo="..."
+ *                   data-confirmar-icono="warning"
+ *
+ * Se intercepta en fase de CAPTURA para frenar el wire:click antes de que
+ * Livewire lo procese; si el usuario acepta, se marca el elemento y se
+ * re-dispara el click, que esta vez pasa de largo.
+ */
+document.addEventListener('click', function (e) {
+    var el = e.target.closest('[data-confirmar]');
+    if (!el || el.dataset.confirmado === '1') return;
+
+    e.preventDefault();
+    e.stopImmediatePropagation();
+
+    Swal.fire({
+        title: el.dataset.confirmarTitulo || 'Confirmar acción',
+        html: el.dataset.confirmar,
+        icon: el.dataset.confirmarIcono || 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: el.dataset.confirmarOk || 'Sí, continuar',
+        cancelButtonText: 'Cancelar',
+    }).then(function (r) {
+        if (!r.isConfirmed) return;
+        el.dataset.confirmado = '1';
+        el.click();
+        delete el.dataset.confirmado;
+    });
+}, true);
+
 function alertError() {
     Swal.fire({
         icon: 'error',
@@ -161,12 +207,10 @@ function questionDelete(id, role, name, event) {
         confirmButtonText: "Eliminar"
     }).then(function (result) {
         if (result.isConfirmed) {
+            // Sin Swal de exito aqui: lo canta el SERVIDOR con successAlert /
+            // errorAlert. Antes se mostraba "Eliminado!" siempre, incluso
+            // cuando el borrado rebotaba por permisos o por la regla del dia.
             Livewire.dispatch(event || 'register_destroy', [id]);
-            Swal.fire({
-                title: "Eliminado!",
-                text: "El registro se eliminado correctamente.",
-                icon: "success"
-            });
         }
     });
 }

@@ -144,7 +144,7 @@
                                     <td class="text-center">
                                         @if($canDelete)
                                             <button class="btn btn-xs btn-danger" style="padding: 2px 8px; font-size: 10px;"
-                                                    wire:confirm="¿Está seguro de eliminar este Préstamo? Este proceso no es reversible."
+                                                    data-confirmar="¿Está seguro de eliminar este Préstamo? Este proceso no es reversible."
                                                     wire:click="delete({{ $credit->id }})">
                                                 Eliminar
                                             </button>
@@ -210,7 +210,7 @@
                                     </div>
                                     @if($canDelete)
                                         <button class="btn btn-xs btn-danger w-100 mt-2" style="font-size: 10px;"
-                                                wire:confirm="¿Está seguro de eliminar este Préstamo?"
+                                                data-confirmar="¿Está seguro de eliminar este Préstamo?"
                                                 wire:click="delete({{ $credit->id }})">
                                             <i class="ti ti-trash"></i> Eliminar
                                         </button>
