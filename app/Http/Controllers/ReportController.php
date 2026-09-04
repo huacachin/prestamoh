@@ -8,6 +8,7 @@ use App\Livewire\Reports\CashGeneral1;
 use App\Livewire\Reports\CashGeneral2;
 use App\Livewire\Reports\CashGeneral3;
 use App\Livewire\Reports\CashStatistics;
+use App\Livewire\Reports\CreditStatistics;
 use App\Livewire\Reports\Delinquent;
 use App\Livewire\Reports\Payments;
 use App\Livewire\Reports\Portfolio;
@@ -156,7 +157,6 @@ class ReportController extends Controller
         return XlsResponse::make('exports.cancelled', [
             'rows' => $d['rows'],
             'totals' => $d['totals'],
-            'distribution' => $d['distribution'],
         ], 'Cancelado.xls');
     }
 
@@ -237,14 +237,10 @@ class ReportController extends Controller
         return XlsResponse::make('exports.reports.cash-statistics', [
             'rows' => $d['rows'],
             'totals' => $d['totals'],
-            'detalleSummary' => $d['detalleSummary'],
-            'distribution' => $d['distribution'],
             'months' => $d['months'],
             'monthRowsData' => $d['monthRowsData'],
             'monthTotals' => $d['monthTotals'],
             'monthsCount' => $d['monthsCount'],
-            'detalleSummaryMonth' => $d['detalleSummaryMonth'],
-            'distributionMonth' => $d['distributionMonth'],
             'yearRowsData' => $d['yearRowsData'],
             'yearTotals' => $d['yearTotals'],
             'month' => $c->month,
@@ -256,7 +252,7 @@ class ReportController extends Controller
     // del año, columnas Cap./Int. por tasa), con los filtros de la pantalla.
     public function exportCreditStatistics(Request $request)
     {
-        $c = new \App\Livewire\Reports\CreditStatistics;
+        $c = new CreditStatistics;
         $c->selemes = (string) $request->query('mes', date('m'));
         $c->selecano = (string) $request->query('anio', date('Y'));
         $c->seletipl = (string) $request->query('tipo', '');

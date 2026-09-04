@@ -440,68 +440,6 @@ class CashStatistics extends Component
             }
         }
 
-        // ─── DETALLES MS / D / OTROS ───────────────────────────────────
-        // INGRESO total por categoría
-        $ingMS = $totals['mensual_s'] + $totals['mensual_mora']
-               + $totals['semanal_s'] + $totals['semanal_mora'];
-        $ingD = $totals['diario_s'] + $totals['diario_mora'];
-        $ingOtrosCat = $totals['otros_ing'];
-        $ingTotal = $ingMS + $ingD + $ingOtrosCat;
-
-        // EGRESO por aa (Diario, Mensual, D.M)
-        // Rangos sargables (whereYear/whereMonth anulaban expenses_date_index)
-        $egrDiario = (float) Expense::where('caja', 1)
-            ->whereBetween('date', [$startMonth, $endMonth])
-            ->where('reason', 'Diario')->sum('total');
-        $egrMensual = (float) Expense::where('caja', 1)
-            ->whereBetween('date', [$startMonth, $endMonth])
-            ->where('reason', 'Mensual')->sum('total');
-        $egrDM = (float) Expense::where('caja', 1)
-            ->whereBetween('date', [$startMonth, $endMonth])
-            ->where('reason', 'D.M')->sum('total');
-
-        $newvalor2 = round($egrDM / 2, 2);
-        $egrMS = $egrMensual + $newvalor2;
-        $egrD = $egrDiario + $newvalor2;
-        $egrTotalCat = $egrMS + $egrD;
-
-        // TOTAL = INGRESO - EGRESO
-        $totMS = $ingMS - $egrMS;
-        $totD = $ingD - $egrD;
-        $totOtros = $ingOtrosCat;
-        $totTotal = $totMS + $totD + $totOtros;
-
-        // Porcentajes
-        $pctMS = $ingMS > 0 ? round(($totMS * 100) / $ingMS, 2) : 0;
-        $pctD = $ingD > 0 ? round(($totD * 100) / $ingD, 2) : 0;
-        // Legacy: denominador del % total NO incluye 'otros' (solo MS + D)
-        $denomTotal = $ingMS + $ingD;
-        $pctTotal = $denomTotal > 0 ? round(($totTotal * 100) / $denomTotal, 2) : 0;
-
-        $detalleSummary = [
-            'ing_ms' => $ingMS, 'ing_d' => $ingD, 'ing_otros' => $ingOtrosCat, 'ing_total' => $ingTotal,
-            'egr_ms' => $egrMS, 'egr_d' => $egrD, 'egr_total' => $egrTotalCat,
-            'tot_ms' => $totMS, 'tot_d' => $totD, 'tot_otros' => $totOtros, 'tot_total' => $totTotal,
-            'pct_ms' => $pctMS, 'pct_d' => $pctD, 'pct_total' => $pctTotal,
-        ];
-
-        // ─── DISTRIBUCIÓN UTILIDAD (legacy usa INGRESO BRUTO, NO el total después de egresos)
-        // 05/09: los cuadros se RETIRARON de la pantalla (pedido de Antony),
-        // pero el cálculo se queda: el Excel homologado al legacy
-        // (exportCashStatistics) los sigue consumiendo de este render.
-        $msDiv2 = $ingMS > 0 ? $ingMS / 2 : 0;
-        $msDiv6 = $msDiv2 > 0 ? $msDiv2 / 3 : 0;
-        $dDiv2 = $ingD > 0 ? $ingD / 2 : 0;
-        $dDiv6 = $dDiv2 > 0 ? $dDiv2 / 3 : 0;
-
-        $distribution = [
-            ['label' => 'Egreso',      'pct' => '16.67%', 'ms' => $msDiv6, 'd' => $dDiv6, 'total' => $msDiv6 + $dDiv6],
-            ['label' => 'Sueldo',      'pct' => '16.67%', 'ms' => $msDiv6, 'd' => $dDiv6, 'total' => $msDiv6 + $dDiv6],
-            ['label' => 'Provisiones', 'pct' => '16.67%', 'ms' => $msDiv6, 'd' => $dDiv6, 'total' => $msDiv6 + $dDiv6],
-            ['label' => 'Utilidad',    'pct' => '50.00%', 'ms' => $msDiv2, 'd' => $dDiv2, 'total' => $msDiv2 + $dDiv2],
-            ['label' => 'Total',       'pct' => '100.00%', 'ms' => $ingMS, 'd' => $ingD, 'total' => $ingMS + $ingD],
-        ];
-
         $months = [
             1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril',
             5 => 'Mayo', 6 => 'Junio', 7 => 'Julio', 8 => 'Agosto',
@@ -633,67 +571,15 @@ class CashStatistics extends Component
 
         $monthsCount = max(1, $month);
 
-        // ─── DETALLES & DISTRIBUCIÓN del MENSUAL ACUMULADO ─────────────
-        $ingMS_M = $monthTotals['mensual'] + $monthTotals['mora3']
-                 + $monthTotals['semanal'] + $monthTotals['mora1'];
-        $ingD_M = $monthTotals['diario'] + $monthTotals['mora4'];
-        $ingOtros_M = $monthTotals['otros2'];
-        $ingTotal_M = $ingMS_M + $ingD_M + $ingOtros_M;
-
-        // Egresos del año seleccionado (todos los meses hasta el seleccionado) por aa
-        $egrDiarioY = (float) DB::table('expenses')->where('caja', 1)->whereBetween('date', ["{$year}-01-01", $endMonth])->where('reason', 'Diario')->sum('total');
-        $egrMensualY = (float) DB::table('expenses')->where('caja', 1)->whereBetween('date', ["{$year}-01-01", $endMonth])->where('reason', 'Mensual')->sum('total');
-        $egrDMY = (float) DB::table('expenses')->where('caja', 1)->whereBetween('date', ["{$year}-01-01", $endMonth])->where('reason', 'D.M')->sum('total');
-
-        $newvalor2_M = round($egrDMY / 2, 2);
-        $egrMS_M = $egrMensualY + $newvalor2_M;
-        $egrD_M = $egrDiarioY + $newvalor2_M;
-        $egrTotal_M = $egrMS_M + $egrD_M;
-
-        $totMS_M = $ingMS_M - $egrMS_M;
-        $totD_M = $ingD_M - $egrD_M;
-        $totTotal_M = $totMS_M + $totD_M + $ingOtros_M;
-
-        $pctMS_M = $ingMS_M > 0 ? round(($totMS_M * 100) / $ingMS_M, 2) : 0;
-        $pctD_M = $ingD_M > 0 ? round(($totD_M * 100) / $ingD_M, 2) : 0;
-        // Legacy: denominador del % total NO incluye 'otros' (solo MS + D)
-        $denomTotal_M = $ingMS_M + $ingD_M;
-        $pctTotal_M = $denomTotal_M > 0 ? round(($totTotal_M * 100) / $denomTotal_M, 2) : 0;
-
-        $detalleSummaryMonth = [
-            'ing_ms' => $ingMS_M, 'ing_d' => $ingD_M, 'ing_otros' => $ingOtros_M, 'ing_total' => $ingTotal_M,
-            'egr_ms' => $egrMS_M, 'egr_d' => $egrD_M, 'egr_total' => $egrTotal_M,
-            'tot_ms' => $totMS_M, 'tot_d' => $totD_M, 'tot_otros' => $ingOtros_M, 'tot_total' => $totTotal_M,
-            'pct_ms' => $pctMS_M, 'pct_d' => $pctD_M, 'pct_total' => $pctTotal_M,
-        ];
-
-        // Distribución del mensual acumulado (solo para el Excel, ver arriba)
-        $msDiv2_M = $ingMS_M > 0 ? $ingMS_M / 2 : 0;
-        $msDiv6_M = $msDiv2_M > 0 ? $msDiv2_M / 3 : 0;
-        $dDiv2_M = $ingD_M > 0 ? $ingD_M / 2 : 0;
-        $dDiv6_M = $dDiv2_M > 0 ? $dDiv2_M / 3 : 0;
-
-        $distributionMonth = [
-            ['label' => 'Egreso',      'pct' => '16.67%', 'ms' => $msDiv6_M, 'd' => $dDiv6_M, 'total' => $msDiv6_M + $dDiv6_M],
-            ['label' => 'Sueldo',      'pct' => '16.67%', 'ms' => $msDiv6_M, 'd' => $dDiv6_M, 'total' => $msDiv6_M + $dDiv6_M],
-            ['label' => 'Provisiones', 'pct' => '16.67%', 'ms' => $msDiv6_M, 'd' => $dDiv6_M, 'total' => $msDiv6_M + $dDiv6_M],
-            ['label' => 'Utilidad',    'pct' => '50.00%', 'ms' => $msDiv2_M, 'd' => $dDiv2_M, 'total' => $msDiv2_M + $dDiv2_M],
-            ['label' => 'Total',       'pct' => '100.00%', 'ms' => $ingMS_M,  'd' => $ingD_M,  'total' => $ingMS_M + $ingD_M],
-        ];
-
         return view('livewire.reports.cash-statistics', [
             'rows' => $rows,
             'totals' => $totals,
-            'detalleSummary' => $detalleSummary,
-            'distribution' => $distribution,
             'months' => $months,
             'monthRowsData' => $monthRowsData,
             'monthTotals' => $monthTotals,
             'monthsCount' => $monthsCount,
             'yearRowsData' => $yearRowsData,
             'yearTotals' => $yearTotals,
-            'detalleSummaryMonth' => $detalleSummaryMonth,
-            'distributionMonth' => $distributionMonth,
         ]);
     }
 }
