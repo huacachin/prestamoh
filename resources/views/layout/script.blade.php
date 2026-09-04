@@ -241,11 +241,16 @@ document.addEventListener('click', function (e) {
                 this.dispatchEvent(new Event('input',  { bubbles: true }));
                 this.dispatchEvent(new Event('change', { bubbles: true }));
             }).on('select2:open', function () {
-                // Hint en el cajón de búsqueda del dropdown; .select2-sin-hint
-                // (p. ej. tipo de documento) queda fuera a pedido.
-                if (jQuery(this).hasClass('select2-sin-hint')) return;
                 var campo = document.querySelector('.select2-container--open .select2-search__field');
-                if (campo) campo.setAttribute('placeholder', 'Busca o escribe...');
+                if (!campo) return;
+                // jQuery 3.6 + select2: el buscador NO recibe foco al abrir
+                // (bug conocido) — sin esto, escribir de inmediato no filtra.
+                campo.focus();
+                // Hint en el cajón de búsqueda; .select2-sin-hint (p. ej.
+                // tipo de documento) queda fuera a pedido.
+                if (! jQuery(this).hasClass('select2-sin-hint')) {
+                    campo.setAttribute('placeholder', 'Busca o escribe...');
+                }
             });
         });
     }
