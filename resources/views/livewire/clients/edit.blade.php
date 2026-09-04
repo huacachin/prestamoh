@@ -202,9 +202,11 @@
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold d-flex justify-content-between align-items-center">
                             <span>Correos</span>
-                            <a href="#" wire:click.prevent="agregarCorreo" class="text-primary text-decoration-underline fw-normal">
-                                <i class="ti ti-plus f-s-12"></i> agregar
-                            </a>
+                            <button type="button" class="btn btn-success d-inline-flex align-items-center gap-1 fw-normal"
+                                    style="padding:1px 8px; font-size:11px; border-radius:12px;"
+                                    wire:click="agregarCorreo" title="Agregar otro correo">
+                                <i class="ti ti-plus f-s-12"></i> Agregar
+                            </button>
                         </label>
                         @forelse($correos as $i => $c)
                             <div class="input-group input-group-sm {{ $loop->last ? '' : 'mb-1' }}" wire:key="correo-{{ $i }}">
