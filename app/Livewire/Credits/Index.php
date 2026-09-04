@@ -77,6 +77,13 @@ class Index extends Component
 
                 return;
             }
+            // Y SOLO los propios (05/09): el administrador corrige lo que él
+            // mismo registró; los de otros usuarios son del director.
+            if ((int) $credit->user_id !== (int) $user->id) {
+                $this->dispatch('errorAlert', ['message' => 'Solo puedes eliminar créditos registrados por ti.']);
+
+                return;
+            }
         }
 
         // Eliminar cascade

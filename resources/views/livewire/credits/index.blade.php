@@ -111,8 +111,12 @@
                                     $pago   = $iapli + $aplido;
                                     $saldo  = $credit->importe - $iapli - $aplido + $interS;
                                     $tcLabel = $tcLabels[$credit->tipo_planilla] ?? '?';
-                                    $canDelete = ($iapli <= 0) && ($puedeEditarHistorico || (
-                                        $credit->fecha_prestamo?->format('Y-m-d') === $hoy && !$credit->refinanciado
+                                    // Propio Y del día (05/09): el administrador solo
+                                    // borra lo que él mismo registró; el director, todo.
+                                    $canDelete = $puedeEliminar && ($iapli <= 0) && ($puedeEditarHistorico || (
+                                        $credit->fecha_prestamo?->format('Y-m-d') === $hoy
+                                        && ! $credit->refinanciado
+                                        && (int) $credit->user_id === (int) auth()->id()
                                     ));
                                 @endphp
                                 <tr onmouseover="this.style.backgroundColor='#CCFF66'"
@@ -184,8 +188,10 @@
                                 $pago   = $iapli + $aplido;
                                 $saldo  = $credit->importe - $iapli - $aplido + $interS;
                                 $tcLabel = $tcLabels[$credit->tipo_planilla] ?? '?';
-                                $canDelete = ($iapli <= 0) && ($puedeEditarHistorico || (
-                                    $credit->fecha_prestamo?->format('Y-m-d') === $hoy && !$credit->refinanciado
+                                $canDelete = $puedeEliminar && ($iapli <= 0) && ($puedeEditarHistorico || (
+                                    $credit->fecha_prestamo?->format('Y-m-d') === $hoy
+                                    && ! $credit->refinanciado
+                                    && (int) $credit->user_id === (int) auth()->id()
                                 ));
                             @endphp
                             <div class="card mb-2 shadow-sm">

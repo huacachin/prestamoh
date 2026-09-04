@@ -108,8 +108,9 @@ class Edit extends Component
                 // desde aquí era la puerta de atrás para saltarse el día.
                 abort_unless(
                     ($user?->can('caja.editar-historico') ?? false)
-                    || $this->credit->fecha_prestamo?->format('Y-m-d') === now()->format('Y-m-d'),
-                    403, 'Solo se pueden eliminar créditos registrados hoy.'
+                    || ($this->credit->fecha_prestamo?->format('Y-m-d') === now()->format('Y-m-d')
+                        && (int) $this->credit->user_id === (int) $user?->id),
+                    403, 'Solo se pueden eliminar créditos registrados hoy por ti.'
                 );
             }
         }
@@ -153,8 +154,10 @@ class Edit extends Component
         $credit = Credit::withCount('payments')->findOrFail($id);
         abort_unless(
             ($user?->can('caja.editar-historico') ?? false)
-            || ($credit->fecha_prestamo?->format('Y-m-d') === now()->format('Y-m-d') && ! $credit->refinanciado),
-            403, 'Solo se pueden eliminar créditos registrados hoy.'
+            || ($credit->fecha_prestamo?->format('Y-m-d') === now()->format('Y-m-d')
+                && ! $credit->refinanciado
+                && (int) $credit->user_id === (int) $user?->id),
+            403, 'Solo se pueden eliminar créditos registrados hoy por ti.'
         );
         if ($credit->payments_count > 0) {
             $this->dispatch('errorAlert', ['message' => 'No se puede eliminar: el crédito tiene pagos registrados.']);

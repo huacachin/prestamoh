@@ -70,18 +70,19 @@ class PermisosDobleCheckTest extends TestCase
     }
 
     /**
-     * 05/09: el administrador SÍ elimina créditos, pero solo los del día
-     * (sin pagos y no refinanciados). Lo histórico sigue siendo del director.
+     * 05/09: el administrador SÍ elimina créditos, pero solo los que
+     * registró ÉL MISMO y del día (sin pagos y no refinanciados). Lo ajeno
+     * y lo histórico son del director.
      */
     public function test_destroy_de_credito_exige_permiso_y_dia(): void
     {
         $admin = User::factory()->create(['username' => 'adm-dc']);
         $admin->assignRole('administrador');
         $cliente = Client::create(['nombre' => 'Cliente DC', 'asesor_id' => $admin->id]);
-        $credito = fn (string $fecha) => Credit::create([
+        $credito = fn (string $fecha, ?int $dueno = null) => Credit::create([
             'client_id' => $cliente->id, 'fecha_prestamo' => $fecha, 'importe' => 1000,
             'cuotas' => 4, 'tipo_planilla' => 1, 'interes' => 10, 'interes_total' => 100,
-            'situacion' => 'Activo', 'estado' => 1,
+            'situacion' => 'Activo', 'estado' => 1, 'user_id' => $dueno ?? $admin->id,
         ]);
 
         $this->actingAs($admin);
@@ -100,6 +101,16 @@ class PermisosDobleCheckTest extends TestCase
             // 403 esperado
         }
         $this->assertSame('Activo', $ayer->fresh()->situacion, 'lo histórico es del director');
+
+        // El de OTRO usuario, aunque sea de hoy, tampoco.
+        $otroUser = User::factory()->create(['username' => 'otro-dc']);
+        $ajeno = $credito(now()->format('Y-m-d'), $otroUser->id);
+        try {
+            Livewire::test(CreditsEdit::class, ['id' => $ajeno->id])->call('destroy', $ajeno->id);
+        } catch (\Throwable) {
+            // 403 esperado
+        }
+        $this->assertSame('Activo', $ajeno->fresh()->situacion, 'solo se elimina lo registrado por uno mismo');
 
         // Y sin el permiso, ni el del día.
         $cobra = User::factory()->create(['username' => 'cob-dc']);
