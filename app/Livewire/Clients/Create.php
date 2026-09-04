@@ -9,7 +9,6 @@ use App\Services\Factiliza;
 use App\Support\Audit;
 use App\Support\Documentos\DomicilioLegal;
 use App\Support\Documentos\Nacionalidades;
-use App\Support\TiposCredito;
 use App\Support\Ubigeo;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -32,6 +31,29 @@ class Create extends Component
     public const ESTADOS_CIVILES = ['soltero' => 'Soltero(a)', 'casado' => 'Casado(a)', 'viudo' => 'Viudo(a)', 'divorciado' => 'Divorciado(a)'];
 
     public const TIPOS_DOCUMENTO = ['DNI' => 'DNI', 'CE' => 'CE — Carné de extranjería', 'RUC' => 'RUC'];
+
+    /**
+     * Opciones (clave => etiqueta) conservando un valor guardado fuera del
+     * catálogo — la ficha acepta texto libre (03/09); el wizard de contratos
+     * mantiene su catálogo estricto y no hereda valores fuera de él.
+     */
+    public static function ocupacionesPara(?string $actual): array
+    {
+        $actual = trim((string) $actual);
+
+        return ($actual !== '' && ! isset(self::OCUPACIONES[$actual]))
+            ? [$actual => $actual] + self::OCUPACIONES
+            : self::OCUPACIONES;
+    }
+
+    public static function estadosCivilesPara(?string $actual): array
+    {
+        $actual = trim((string) $actual);
+
+        return ($actual !== '' && ! isset(self::ESTADOS_CIVILES[$actual]))
+            ? [$actual => $actual] + self::ESTADOS_CIVILES
+            : self::ESTADOS_CIVILES;
+    }
 
     /**
      * Provincias que opera la financiera. El área legal las trata como un
@@ -534,8 +556,8 @@ class Create extends Component
             'documento' => ['required', 'string', 'min:8', 'max:12',
                 Rule::unique('clients', 'documento')->where(fn ($q) => $q->where('es_relacionado', false))],
             'email' => 'required|email|max:150',
-            'ocupacion' => $isRuc ? 'nullable' : 'required|in:'.implode(',', array_keys(self::OCUPACIONES)),
-            'estado_civil' => $isRuc ? 'nullable' : 'required|in:'.implode(',', array_keys(self::ESTADOS_CIVILES)),
+            'ocupacion' => $isRuc ? 'nullable' : 'required|string|max:100',
+            'estado_civil' => $isRuc ? 'nullable' : 'required|string|max:100',
             'expediente' => 'required|integer|min:1',
             // El domicilio legal es la cláusula PRIMERO del contrato: sin
             // dirección arranca en "DISTRITO DE" y sin ubigeo queda a medias.
@@ -546,7 +568,7 @@ class Create extends Component
             'departamento' => 'required|string|max:100',
             'giro' => 'nullable|string|max:100',
             'capital' => 'nullable|numeric|min:0',
-            'zona' => 'nullable|string|in:'.implode(',', TiposCredito::OPCIONES),
+            'zona' => 'nullable|string|max:100',
             'celular1' => 'nullable|string|max:20',
             'celular2' => 'nullable|string|max:20',
             'asesor_id' => 'nullable|exists:users,id',

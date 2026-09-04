@@ -7,7 +7,6 @@ use App\Models\Credit;
 use App\Models\User;
 use App\Support\Audit;
 use App\Support\Documentos\Nacionalidades;
-use App\Support\TiposCredito;
 use App\Support\Ubigeo;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
@@ -149,8 +148,8 @@ class Edit extends Component
             // Acepta las opciones vigentes y el valor histórico ya guardado
             'nacionalidad' => 'nullable|string|in:'.implode(',', Nacionalidades::paraValor($this->nacionalidad)),
             'email' => 'nullable|email|max:150',
-            'ocupacion' => 'required|in:'.implode(',', array_keys(Create::OCUPACIONES)),
-            'estado_civil' => 'required|in:'.implode(',', array_keys(Create::ESTADOS_CIVILES)),
+            'ocupacion' => 'required|string|max:100',
+            'estado_civil' => 'required|string|max:100',
             'referencia' => 'nullable|string|max:255',
             'giro' => 'nullable|string|max:100',
             'capital' => 'nullable|numeric|min:0',
@@ -158,7 +157,7 @@ class Edit extends Component
             'celular1' => 'nullable|string|max:20',
             'celular2' => 'nullable|string|max:20',
             // Acepta las opciones vigentes y el valor histórico ya guardado
-            'zona' => 'nullable|string|in:'.implode(',', TiposCredito::paraValor($this->zona)),
+            'zona' => 'nullable|string|max:100',
             'asesor_id' => 'nullable|exists:users,id',
         ];
     }
@@ -211,8 +210,8 @@ class Edit extends Component
             ?? ($c->provincia ?: 'Lima');
         $this->nacionalidad = $c->nacionalidad ?: Nacionalidades::DEFECTO;
         $this->email = (string) ($c->email ?? '');
-        $this->ocupacion = isset(Create::OCUPACIONES[(string) $c->ocupacion]) ? (string) $c->ocupacion : 'transportista';
-        $this->estado_civil = isset(Create::ESTADOS_CIVILES[(string) $c->estado_civil]) ? (string) $c->estado_civil : 'soltero';
+        $this->ocupacion = filled($c->ocupacion) ? (string) $c->ocupacion : 'transportista';
+        $this->estado_civil = filled($c->estado_civil) ? (string) $c->estado_civil : 'soltero';
         $this->referencia = $c->referencia;
         $this->giro = $c->giro;
         $this->capital = $c->capital;

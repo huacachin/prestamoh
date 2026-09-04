@@ -293,17 +293,43 @@ class ClienteWizardTest extends TestCase
 
     // ─── T. Crédito (clients.zona → garantía legal) ─────────
 
-    public function test_t_credito_solo_acepta_las_opciones_del_catalogo(): void
+    /**
+     * 03/09: Antony pidió texto libre (tags) también aquí — revierte el
+     * catálogo cerrado del 28/08. Un valor fuera de catálogo clasifica
+     * como garantía "otra" (Garantias::de por prefijo), igual que los
+     * históricos migrados.
+     */
+    public function test_t_credito_acepta_catalogo_y_texto_libre(): void
     {
         $this->paso1()->set('zona', 'Cualquier Cosa')
             ->call('siguientePaso')
-            ->assertHasErrors('zona')
-            ->assertSet('paso', 1);
+            ->assertHasNoErrors()
+            ->assertSet('paso', 2);
 
         $this->paso1()->set('zona', 'Gar. Hip.S')
             ->call('siguientePaso')
             ->assertHasNoErrors()
             ->assertSet('paso', 2);
+    }
+
+    /** Ocupación y estado civil también aceptan texto libre (03/09). */
+    public function test_ocupacion_y_estado_civil_aceptan_texto_libre(): void
+    {
+        $this->paso1()
+            ->set('ocupacion', 'Comerciante Mayorista')
+            ->set('estado_civil', 'conviviente')
+            ->call('siguientePaso')
+            ->assertHasNoErrors()
+            ->assertSet('paso', 2)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $c = Client::where('documento', '45678912')->firstOrFail();
+        $this->assertSame('Comerciante Mayorista', $c->ocupacion);
+        $this->assertSame('conviviente', $c->estado_civil);
+        // El editor los conserva como opción (no los pisa al abrir).
+        $this->assertArrayHasKey('Comerciante Mayorista', Create::ocupacionesPara('Comerciante Mayorista'));
+        $this->assertArrayHasKey('conviviente', Create::estadosCivilesPara('conviviente'));
     }
 
     public function test_t_credito_puede_quedar_vacio(): void

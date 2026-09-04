@@ -183,8 +183,8 @@
                     </div>
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">Ocupación</label>
-                        <select class="form-select form-select-sm @error('ocupacion') is-invalid @enderror" wire:model.defer="ocupacion">
-                            @foreach(\App\Livewire\Clients\Create::OCUPACIONES as $valor => $etiqueta)
+                        <select class="form-select form-select-sm select2-tags @error('ocupacion') is-invalid @enderror" wire:model.defer="ocupacion">
+                            @foreach(\App\Livewire\Clients\Create::ocupacionesPara($ocupacion) as $valor => $etiqueta)
                                 <option value="{{ $valor }}">{{ $etiqueta }}</option>
                             @endforeach
                         </select>
@@ -192,8 +192,8 @@
                     </div>
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">Estado civil</label>
-                        <select class="form-select form-select-sm select2-simple @error('estado_civil') is-invalid @enderror" wire:model.defer="estado_civil">
-                            @foreach(\App\Livewire\Clients\Create::ESTADOS_CIVILES as $valor => $etiqueta)
+                        <select class="form-select form-select-sm select2-tags @error('estado_civil') is-invalid @enderror" wire:model.defer="estado_civil">
+                            @foreach(\App\Livewire\Clients\Create::estadosCivilesPara($estado_civil) as $valor => $etiqueta)
                                 <option value="{{ $valor }}">{{ $etiqueta }}</option>
                             @endforeach
                         </select>
@@ -304,7 +304,7 @@
 
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">T.Credito</label>
-                        <select class="form-select form-select-sm select2-simple @error('zona') is-invalid @enderror" wire:model.defer="zona" data-placeholder="— Seleccione —">
+                        <select class="form-select form-select-sm select2-tags @error('zona') is-invalid @enderror" wire:model.defer="zona" data-placeholder="— Seleccione —">
                             <option value="">— Seleccione —</option>
                             @foreach(\App\Support\TiposCredito::paraValor($zona) as $opcion)
                                 <option value="{{ $opcion }}">{{ $opcion }}</option>
