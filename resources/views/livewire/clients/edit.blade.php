@@ -173,7 +173,7 @@
                         <label class="form-label mb-0 small fw-semibold">Nacionalidad</label>
                         {{-- No flexiona: el contrato dice PERUANO / VENEZOLANO
                              tanto para deudor como para deudora. --}}
-                        <select class="form-select form-select-sm @error('nacionalidad') is-invalid @enderror"
+                        <select class="form-select form-select-sm select2-simple @error('nacionalidad') is-invalid @enderror"
                                 wire:model.defer="nacionalidad">
                             @foreach(\App\Support\Documentos\Nacionalidades::paraValor($nacionalidad) as $opcion)
                                 <option value="{{ $opcion }}">{{ $opcion }}</option>
@@ -192,7 +192,7 @@
                     </div>
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">Estado civil</label>
-                        <select class="form-select form-select-sm @error('estado_civil') is-invalid @enderror" wire:model.defer="estado_civil">
+                        <select class="form-select form-select-sm select2-simple @error('estado_civil') is-invalid @enderror" wire:model.defer="estado_civil">
                             @foreach(\App\Livewire\Clients\Create::ESTADOS_CIVILES as $valor => $etiqueta)
                                 <option value="{{ $valor }}">{{ $etiqueta }}</option>
                             @endforeach
