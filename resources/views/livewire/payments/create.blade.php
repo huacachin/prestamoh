@@ -86,141 +86,134 @@
             <div class="card shadow-sm">
                 <div class="card-body">
 
-                    {{-- ── Datos del Crédito (solo lectura) ── --}}
+                    {{-- ── Datos del Crédito (solo lectura) ──
+                         Homologado a la banda de tarjetas (05/09) pero con el PESO
+                         VISUAL MÁS BAJO de la pantalla: son datos de contexto, no
+                         cifras de acción. Sin borde de color ni número grande —
+                         etiqueta pequeña arriba y valor sobrio debajo. --}}
                     <h6 class="mb-1" style="color:red;">Datos del Crédito</h6>
-                    <div class="row g-2">
-                        <div class="col-md-1">
-                            <label class="form-label mb-0 small fw-semibold">Expediente</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   value="{{ $credit->client?->expediente }}" readonly>
+                    <div class="dato-band">
+                        <div class="dato" style="grid-column: span 2;">
+                            <div class="dato-top">Expediente</div>
+                            <div class="dato-val">{{ $credit->client?->expediente }}</div>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label mb-0 small fw-semibold">Cliente</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   value="{{ $credit->id }}-{{ $credit->client?->fullName() }}" readonly>
+                        <div class="dato" style="grid-column: span 4;">
+                            <div class="dato-top">Cliente</div>
+                            <div class="dato-val">{{ $credit->id }}-{{ $credit->client?->fullName() }}</div>
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label mb-0 small fw-semibold">DNI</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   value="{{ $credit->client?->documento }}" maxlength="8" readonly>
+                        <div class="dato" style="grid-column: span 2;">
+                            <div class="dato-top">DNI</div>
+                            <div class="dato-val">{{ $credit->client?->documento }}</div>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label mb-0 small fw-semibold">Ejecutivo</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   value="{{ $c['asesor_nombre'] }}" readonly>
+                        <div class="dato" style="grid-column: span 3;">
+                            <div class="dato-top">Ejecutivo</div>
+                            <div class="dato-val">{{ $c['asesor_nombre'] }}</div>
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label mb-0 small fw-semibold">Moneda</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   value="{{ $credit->moneda ?: 'Soles' }}" readonly>
+                        <div class="dato">
+                            <div class="dato-top">Moneda</div>
+                            <div class="dato-val">{{ $credit->moneda ?: 'Soles' }}</div>
                         </div>
 
-                        <div class="col-md-2">
-                            <label class="form-label mb-0 small fw-semibold">Capital</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   value="{{ number_format($c['importe'], 2) }}" readonly>
+                        <div class="dato" style="grid-column: span 2;">
+                            <div class="dato-top">Capital</div>
+                            <div class="dato-val">{{ number_format($c['importe'], 2) }}</div>
                         </div>
-                        <div class="col-md-1">
-                            <label class="form-label mb-0 small fw-semibold">INT. %</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   value="{{ number_format($c['interes_pct'], 0) }}" readonly>
+                        <div class="dato">
+                            <div class="dato-top">Int. %</div>
+                            <div class="dato-val">{{ number_format($c['interes_pct'], 0) }}</div>
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label mb-0 small fw-semibold">Interés</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   value="{{ number_format($c['interes_total'], 2) }}" readonly>
+                        <div class="dato" style="grid-column: span 2;">
+                            <div class="dato-top">Interés</div>
+                            <div class="dato-val">{{ number_format($c['interes_total'], 2) }}</div>
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label mb-0 small fw-semibold">Total</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   value="{{ number_format($c['total_credito'], 2) }}" readonly>
+                        <div class="dato" style="grid-column: span 2;">
+                            <div class="dato-top">Total</div>
+                            <div class="dato-val fw-bold">{{ number_format($c['total_credito'], 2) }}</div>
                         </div>
-                        <div class="col-md-1">
-                            <label class="form-label mb-0 small fw-semibold">MOR. %</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   value="{{ \App\Models\Credit::TASA_MORA_PCT }}%" readonly>
+                        <div class="dato">
+                            <div class="dato-top">Mor. %</div>
+                            <div class="dato-val">{{ \App\Models\Credit::TASA_MORA_PCT }}%</div>
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label mb-0 small fw-semibold">Pago x día</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   style="color:red;"
-                                   value="{{ number_format($c['mora_rate'], 2) }}" readonly>
+                        <div class="dato" style="grid-column: span 2;">
+                            <div class="dato-top">Pago x día</div>
+                            <div class="dato-val text-danger">{{ number_format($c['mora_rate'], 2) }}</div>
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label mb-0 small fw-semibold">Fecha de Vencimiento</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   value="{{ $c['fecha_venc'] }}" readonly>
+                        <div class="dato" style="grid-column: span 2;">
+                            <div class="dato-top">Vencimiento</div>
+                            <div class="dato-val">{{ $c['fecha_venc'] }}</div>
                         </div>
                     </div>
 
                     @if($esPagable)
-                    {{-- ── Atraso ── --}}
+                    {{-- ── Atraso ──
+                         Peso visual INTERMEDIO: conserva el semáforo (ámbar la mora
+                         acumulada, rojo la vigente) pero como tinte suave y cifra
+                         mediana, para que "Registrar Pago" siga mandando. Antes eran
+                         barras saturadas que le ganaban a los saldos. --}}
                     <h6 class="mb-1 mt-3" style="color:red;">Atraso</h6>
-                    <div class="row g-2">
-                        {{-- Mora acumulada (exonerada) histórica: informativa, igual al
-                             total de la columna Mora Exon. del cronograma. NO entra en
-                             la operación de pago. --}}
-                        @php
-                            $moraAcumDias = collect($moraExon)->sum('dias');
-                            $moraAcumTotal = collect($moraExon)->sum('monto');
-                        @endphp
-                        <div class="col-md-3">
-                            <label class="form-label mb-0 small fw-semibold">Días Mora Acumulada</label>
-                            <input type="text" class="form-control form-control-sm input-bold"
-                                   style="background-color:#fac10f; color:#000;"
-                                   value="{{ $moraAcumDias }}" readonly>
+                    @php
+                        // Mora acumulada (exonerada) histórica: informativa, igual al
+                        // total de la columna Mora Exon. del cronograma. NO entra en
+                        // la operación de pago.
+                        $moraAcumDias = collect($moraExon)->sum('dias');
+                        $moraAcumTotal = collect($moraExon)->sum('monto');
+                        $diasAtr = (int) $c['dias_atraso'];
+                        $puedeMora = auth()->user()->can('pagos.mora-manual');
+                    @endphp
+                    <div class="atraso-band">
+                        <div class="atraso-kpi atraso-ambar">
+                            <div class="atraso-top">Días Mora Acumulada</div>
+                            <div class="atraso-val">{{ $moraAcumDias }}</div>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label mb-0 small fw-semibold">Total Mora Acumulada</label>
-                            <input type="text" class="form-control form-control-sm input-bold"
-                                   style="background-color:#fac10f; color:#000;"
-                                   value="{{ number_format($moraAcumTotal, 2) }}" readonly>
+                        <div class="atraso-kpi atraso-ambar">
+                            <div class="atraso-top">Total Mora Acumulada</div>
+                            <div class="atraso-val">{{ number_format($moraAcumTotal, 2) }}</div>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label mb-0 small fw-semibold">Días Transcurridos</label>
-                            @php $diasAtr = (int) $c['dias_atraso']; @endphp
-                            @if(!$c['fecha_venc'])
-                                <input type="text" class="form-control form-control-sm bg-light"
-                                       value="Sin cuotas pendientes" readonly>
+                        <div class="atraso-kpi {{ ! $c['fecha_venc'] ? 'atraso-gris' : ($diasAtr > 0 ? 'atraso-rojo' : 'atraso-verde') }}">
+                            <div class="atraso-top">Días Transcurridos</div>
+                            @if(! $c['fecha_venc'])
+                                <div class="atraso-val">—</div>
+                                <div class="atraso-pie">sin cuotas pendientes</div>
                             @elseif($diasAtr > 0)
-                                <input type="text" class="form-control form-control-sm input-rojo"
-                                       value="{{ $diasAtr }} {{ $diasAtr === 1 ? 'día' : 'días' }} de atraso" readonly>
+                                <div class="atraso-val">{{ $diasAtr }}</div>
+                                <div class="atraso-pie">{{ $diasAtr === 1 ? 'día' : 'días' }} de atraso</div>
                             @elseif($diasAtr === 0)
-                                <input type="text" class="form-control form-control-sm bg-success text-white"
-                                       value="Vence hoy" readonly>
+                                <div class="atraso-val">Hoy</div>
+                                <div class="atraso-pie">vence hoy</div>
                             @else
-                                <input type="text" class="form-control form-control-sm bg-success text-white"
-                                       value="Al día · vence en {{ abs($diasAtr) }} {{ abs($diasAtr) === 1 ? 'día' : 'días' }}" readonly>
+                                <div class="atraso-val">Al día</div>
+                                <div class="atraso-pie">vence en {{ abs($diasAtr) }} {{ abs($diasAtr) === 1 ? 'día' : 'días' }}</div>
                             @endif
                         </div>
-                        <div class="col-md-3">
-                            @php $puedeMora = auth()->user()->can('pagos.mora-manual'); @endphp
-                            <label class="form-label mb-0 small fw-semibold">
+                        <div class="atraso-kpi {{ $c['total_mora'] > 0 ? 'atraso-rojo' : 'atraso-verde' }}">
+                            <div class="atraso-top">
                                 Total Mora
                                 @if($puedeMora)
                                     <i class="ti {{ ((float)$monto) > 0 ? 'ti-pencil' : 'ti-lock' }} f-s-12"
                                        title="{{ ((float)$monto) > 0 ? 'Editable (override gerencial)' : 'Escribe el Monto a Pagar para habilitar' }}"></i>
                                 @endif
-                            </label>
+                            </div>
                             @if($cancel && $quitarMora)
                                 {{-- Condonada por el switch: manda sobre el campo (editable o no) --}}
-                                <input type="text" class="form-control form-control-sm input-rojo"
-                                       style="text-decoration: line-through;"
-                                       value="0.00 — exonerada" readonly
-                                       title="Mora exonerada al cancelar (switch Exonerar mora)">
+                                <div class="atraso-val" style="text-decoration: line-through;"
+                                     title="Mora exonerada al cancelar (switch Exonerar mora)">0.00</div>
+                                <div class="atraso-pie">exonerada</div>
                             @elseif($puedeMora)
                                 <input type="number" name="moraManual" autocomplete="off" step="0.01" min="0"
-                                       class="form-control form-control-sm input-rojo"
+                                       class="atraso-val atraso-input"
                                        wire:model.live.debounce.400ms="moraManual"
                                        placeholder="{{ number_format($c['total_mora_calc'], 2) }}"
                                        @disabled(((float)$monto) <= 0)
                                        title="{{ ((float)$monto) > 0 ? 'Total Mora editable (reemplaza la calculada)' : 'Escribe primero el Monto a Pagar' }}">
+                                <div class="atraso-pie">{{ ((float)$monto) > 0 ? 'editable' : 'calculada' }}</div>
                             @else
-                                <input type="text" class="form-control form-control-sm input-rojo"
-                                       value="{{ number_format($c['total_mora'], 2) }}" readonly>
+                                <div class="atraso-val">{{ number_format($c['total_mora'], 2) }}</div>
+                                <div class="atraso-pie">calculada</div>
                             @endif
                         </div>
+                    </div>
 
+                    <div class="row g-2">
                         {{-- Motivo del ajuste: aparece solo cuando el override CAMBIÓ el
                              monto. Sin él el cobro no se confirma — toda rebaja de mora
                              queda con responsable y explicación en `mora_overrides`. --}}
@@ -531,6 +524,57 @@
 
         <style>
             /* Tarjetas de saldo: mismo lenguaje que los KPI de Cartera. */
+            /* ── Datos del Crédito: el escalón MÁS BAJO de la jerarquía ── */
+            .dato-band {
+                display: grid; grid-template-columns: repeat(12, 1fr);
+                gap: 6px 10px; margin-bottom: 4px;
+            }
+            .dato { min-width: 0; padding: 3px 8px; border-left: 2px solid #e9ecef; }
+            .dato-top {
+                font-size: 10px; color: #868e96; text-transform: uppercase;
+                letter-spacing: .3px; white-space: nowrap;
+                overflow: hidden; text-overflow: ellipsis;
+            }
+            .dato-val {
+                font-size: 13px; font-weight: 600; color: #343a40; line-height: 1.35;
+                font-variant-numeric: tabular-nums;
+                white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            }
+            @media (max-width: 991.98px) { .dato-band { grid-template-columns: repeat(6, 1fr); } }
+            @media (max-width: 575.98px) { .dato-band { grid-template-columns: repeat(4, 1fr); } }
+
+            /* ── Atraso: escalón INTERMEDIO — semáforo en tinte suave ── */
+            .atraso-band {
+                display: grid; grid-template-columns: repeat(4, 1fr);
+                gap: 8px; margin-bottom: 4px;
+            }
+            .atraso-kpi { border-radius: 8px; padding: 5px 10px; border: 1px solid; }
+            .atraso-top {
+                font-size: 10px; font-weight: 600; text-transform: uppercase;
+                letter-spacing: .3px; opacity: .85;
+                white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            }
+            .atraso-val {
+                font-size: 1.05rem; font-weight: 700; line-height: 1.25;
+                font-variant-numeric: tabular-nums;
+            }
+            .atraso-pie { font-size: 10px; opacity: .75; }
+            .atraso-ambar { background: #fff8e1; border-color: #f3d98b; color: #8a6100; }
+            .atraso-rojo  { background: #fdecea; border-color: #f2b8b5; color: #b02a24; }
+            .atraso-verde { background: #eaf6ec; border-color: #b7dfc0; color: #1e7a34; }
+            .atraso-gris  { background: #f8f9fa; border-color: #e9ecef; color: #6c757d; }
+            /* El Total Mora sigue siendo editable: input sin marco dentro del chip
+               (el theme fuerza 10px !important en input, de ahí el override). */
+            .atraso-kpi input.atraso-input {
+                width: 100%; border: 0; padding: 0; background: transparent;
+                font-size: 1.05rem !important; font-weight: 700; color: inherit;
+                height: auto; box-shadow: none;
+            }
+            .atraso-kpi input.atraso-input:focus { outline: 0; box-shadow: none; }
+            .atraso-kpi input.atraso-input::placeholder { color: currentColor; opacity: .45; }
+            .atraso-kpi input.atraso-input:disabled { color: inherit; opacity: .75; }
+            @media (max-width: 767.98px) { .atraso-band { grid-template-columns: 1fr 1fr; } }
+
             /* Las cuatro tarjetas ocupan la fila completa y reparten el ancho
                por igual; a 2 columnas en tablet y a 1 en móvil. */
             .saldo-band { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
