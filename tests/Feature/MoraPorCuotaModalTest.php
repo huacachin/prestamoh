@@ -184,6 +184,33 @@ class MoraPorCuotaModalTest extends TestCase
     }
 
     /**
+     * El motivo pre-escrito "Mora exonerada" es para REBAJAS; si el override
+     * SUBE la mora (aplicar el desglose del modal, o tipear a mano) queda en
+     * blanco para que el responsable lo explique con sus palabras (04/09).
+     */
+    public function test_el_motivo_queda_en_blanco_cuando_la_mora_sube_y_vuelve_cuando_baja(): void
+    {
+        $this->actingAs($this->actor());
+        $credit = $this->credito();
+
+        // Calculada global: 14 días × 5.50 = 77.00 (desde la más antigua).
+        $comp = Livewire::test(Create::class, ['creditId' => $credit->id])
+            ->call('abrirMoraCuotas')          // suma del modal: 77.00 + 38.50 = 115.50 > 77.00
+            ->call('aplicarCuotas')
+            ->assertSet('moraManual', '115.50')
+            ->assertSet('moraMotivo', '');     // aumento → en blanco
+
+        // A mano hacia abajo: vuelve el default histórico de rebaja.
+        $comp->set('moraManual', '20')
+            ->assertSet('moraMotivo', 'Mora exonerada');
+
+        // Un motivo tipeado por el usuario NO se pisa al volver a subir.
+        $comp->set('moraMotivo', 'Acuerdo con el cliente')
+            ->set('moraManual', '150')
+            ->assertSet('moraMotivo', 'Acuerdo con el cliente');
+    }
+
+    /**
      * E2E: lo que se marca en el modal es EXACTAMENTE lo que se cobra.
      * Aplicar (cuotas 2 y 3, mora editada) → motivo → pagar: el motor FIFO
      * liquida esas dos cuotas, la mora cobrada es la del modal y el override

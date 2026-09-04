@@ -391,6 +391,7 @@ class Create extends Component
         $this->monto = $haySeleccion ? number_format(round($monto, 2), 2, '.', '') : null;
         if ($this->canEditMora()) {
             $this->moraManual = $haySeleccion ? number_format(round($mora, 2), 2, '.', '') : null;
+            $this->motivoSegunDireccion();
         }
         $this->refrescarPreview();
         $this->dispatch('mora-cuotas-close');
@@ -427,6 +428,31 @@ class Create extends Component
         if ($this->preview) {
             $this->preview = $this->construirPreview();
         }
+    }
+
+    /**
+     * El motivo pre-escrito "Mora exonerada" solo tiene sentido cuando la
+     * mora BAJA (la rebaja rutinaria). Si el override la SUBE (p. ej. el
+     * desglose por cuota del modal), el motivo queda EN BLANCO para que el
+     * responsable lo explique con sus palabras (04/09, pedido de Antony).
+     * Nunca pisa un motivo ya tipeado por el usuario.
+     */
+    private function motivoSegunDireccion(): void
+    {
+        $c = $this->buildCalcs();
+        if (($c['mora_ajustada'] ?? false) && $c['mora_ajuste_diff'] > 0) {
+            if ($this->moraMotivo === 'Mora exonerada') {
+                $this->moraMotivo = '';
+            }
+        } elseif (blank($this->moraMotivo)) {
+            $this->moraMotivo = 'Mora exonerada';
+        }
+    }
+
+    public function updatedMoraManual(): void
+    {
+        $this->motivoSegunDireccion();
+        $this->refrescarPreview();
     }
 
     public function updatedMonto(): void

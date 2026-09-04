@@ -239,6 +239,7 @@
                                 </label>
                                 <input type="text" name="moraMotivo" autocomplete="off" maxlength="255"
                                        class="form-control form-control-sm @error('moraMotivo') is-invalid @enderror"
+                                       placeholder="{{ ($diff ?? 0) > 0 ? 'Explica por qué se cobra más mora que la calculada…' : 'Motivo del ajuste…' }}"
                                        wire:model.live.debounce.500ms="moraMotivo"
                                        placeholder="Ej.: acuerdo con el cliente, error de digitación, condonación autorizada por gerencia…">
                                 @error('moraMotivo') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
