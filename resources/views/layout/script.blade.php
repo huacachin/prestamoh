@@ -174,7 +174,39 @@ document.addEventListener('click', function (e) {
         input.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
+    /**
+     * Cierra el calendario abierto y descarta la instancia si su input ya
+     * no está en el DOM.
+     *
+     * jQuery UI mantiene UNA instancia global ($.datepicker._curInst) ligada
+     * al input que abrió el calendario. Si Livewire re-renderiza y reemplaza
+     * ese input mientras el calendario está VISIBLE, la instancia queda
+     * apuntando a un nodo muerto: el calendario se sigue viendo, pero sus
+     * <a href="#"> ya no hacen nada — el click solo agrega "#" a la URL y la
+     * fecha no cambia. Eso era el "se cuelga al tercer intento".
+     */
+    function sanearDatepicker() {
+        if (typeof jQuery === 'undefined' || ! jQuery.datepicker) return;
+        var inst = jQuery.datepicker._curInst;
+        if (! inst) return;
+        var vivo = inst.input && inst.input[0] && document.contains(inst.input[0]);
+        try {
+            jQuery.datepicker._hideDatepicker();
+        } catch (e) { /* instancia ya inservible */ }
+        if (! vivo) {
+            jQuery.datepicker._curInst = null;
+        }
+    }
+
     function initDatepickers() {
+        // Un input puede volver del morph con la clase pero sin widget:
+        // se limpia para que el selector :not(.hasDatepicker) lo reinicialice.
+        jQuery('.dates, .dates2, .dates3, .dates-dyn').each(function () {
+            if (this.classList.contains('hasDatepicker') && ! jQuery.data(this, 'datepicker')) {
+                jQuery(this).removeClass('hasDatepicker');
+            }
+        });
+
         // .dates  → libre   .dates3 → máx hoy   .dates2 → mín -2 días
         jQuery('.dates:not(.hasDatepicker)').datepicker({
             changeMonth: true, changeYear: true, dateFormat: 'yy-mm-dd',
@@ -200,14 +232,39 @@ document.addEventListener('click', function (e) {
         });
     }
 
+    /**
+     * jQuery UI abre el calendario en FOCUS. Tras elegir una fecha el input
+     * conserva el foco, así que el siguiente click no dispara focus y el
+     * calendario ya no abre: había que salir del campo y volver. Ese era el
+     * "a la tercera ya no selecciona". Delegado en document para sobrevivir
+     * los morphs de Livewire.
+     */
+    document.addEventListener('click', function (e) {
+        var el = e.target.closest('.dates, .dates2, .dates3, .dates-dyn');
+        if (! el || typeof jQuery === 'undefined' || ! jQuery.datepicker) return;
+        if (! jQuery.data(el, 'datepicker')) return;
+        if (jQuery('#ui-datepicker-div').is(':visible')) return; // ya abierto
+        jQuery(el).datepicker('show');
+    });
+
     document.addEventListener('DOMContentLoaded', initDatepickers);
     // Re-init tras cada render de Livewire (inputs nuevos en el DOM)
     document.addEventListener('livewire:navigated', initDatepickers);
     document.addEventListener('livewire:init', function () {
         if (window.Livewire && window.Livewire.hook) {
-            window.Livewire.hook('morph.updated', initDatepickers);
+            window.Livewire.hook('morph.updated', function () {
+                sanearDatepicker();
+                initDatepickers();
+            });
             window.Livewire.hook('commit', function (payload) {
-                if (payload && payload.respond) payload.respond(initDatepickers);
+                // respond() corre con la respuesta en mano, ANTES del morph:
+                // ahí se cierra el calendario para que no quede huérfano.
+                if (payload && payload.respond) {
+                    payload.respond(function () {
+                        sanearDatepicker();
+                        initDatepickers();
+                    });
+                }
             });
         }
     });
