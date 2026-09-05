@@ -4,10 +4,17 @@
        pdf    → márgenes en @page (impresión: izquierdo más ancho para el
                 legajo) y pie con numeración de páginas.
        previa → el margen va como padding del body (iframe en el navegador).
-       word   → sin margen aquí: lo fija el wrapper de DocResponse (@page A4). --}}
+       word   → sin margen aquí: lo fija el wrapper de DocResponse (@page A4).
+     Y $compacto (solo lo pasa el CONTRATO): interlineado sencillo, márgenes
+     y separaciones apretadas para no pasar de 5 hojas. Los anexos NO lo
+     pasan — su maquetación ya está validada y no debe moverse. --}}
 <style>
     @php
         $medio = $medio ?? 'pdf';
+        $compacto = $compacto ?? false;
+        // 05/09: el contrato debe caber en 5 hojas (regla del área legal) y
+        // las cláusulas van "pegadas" como en las maestras en papel.
+        $margenes = $compacto ? '1.8cm 1.8cm 1.5cm 2.4cm' : '2.2cm 2cm 2.4cm 2.8cm';
         // Un solo juego de TTF en public/fonts/bookman: dompdf los lee por
         // RUTA (public_path está dentro de su chroot) y la previa del
         // navegador por URL. Así la pantalla se ve igual que el papel.
@@ -26,7 +33,7 @@
     @font-face { font-family: "Bookman Old Style"; font-style: italic; font-weight: bold;
                  src: url("{{ $bookmanSrc }}/BookmanOldStyleBoldItalic.ttf") format("truetype"); }
     @if($medio === 'pdf')
-    @page { margin: 2.2cm 2cm 2.4cm 2.8cm; }
+    @page { margin: {{ $margenes }}; }
     .pie-pagina {
         position: fixed;
         bottom: -1.2cm;
@@ -53,11 +60,11 @@
     body {
         font-family: "Bookman Old Style", "Bookman", "DejaVu Serif", serif;
         font-size: 6.5pt;
-        line-height: 1.5;
+        line-height: {{ $compacto ? '1.2' : '1.5' }};
         color: #000;
         margin: 0;
         @if($medio === 'previa')
-        padding: 2.2cm 2cm 2.4cm 2.8cm;
+        padding: {{ $margenes }};
         background: #fff;
         @endif
     }
@@ -68,55 +75,64 @@
         text-decoration: underline;
         text-align: center;
         text-transform: uppercase;
-        margin: 0 0 14px 0;
+        margin: 0 0 8px 0;
     }
-    .parrafo { text-align: justify; margin: 0 0 8px 0; }
-    .clausula { margin: 0 0 10px 0; }
+    .parrafo { text-align: justify; margin: 0 0 {{ $compacto ? '4px' : '8px' }} 0; }
+    .clausula { margin: 0 0 4px 0; }
     .clausula-titulo {
         font-weight: bold;
         text-transform: uppercase;
-        margin: 10px 0 4px 0;
+        margin: 5px 0 2px 0;
     }
-    .subtitulo { font-weight: bold; margin: 6px 0 2px 0; }
-    ul.vinetas { margin: 0 0 8px 18px; padding: 0; }
-    ul.vinetas li { text-align: justify; margin: 0 0 6px 0; }
+    .subtitulo { font-weight: bold; margin: {{ $compacto ? '4px 0 1px' : '6px 0 2px' }} 0; }
+    ul.vinetas { margin: 0 0 4px 18px; padding: 0; }
+    ul.vinetas li { text-align: justify; margin: 0 0 3px 0; }
 
     /* Listas NUMERADAS: las maestras usan numeración decimal (1., 2., 3...)
        en OCTAVO, NOVENO y DÉCIMO QUINTO — no bullets. El propio texto lo
        exige: "EN CASO DE LA HIPÓTESIS PREVISTA EN EL NUMERAL PRECEDENTE"
        no apunta a nada si no hay numerales. El start del segundo bloque de
        GPS continúa la cuenta tras el párrafo intercalado. */
-    ol.numerada { margin: 0 0 8px 18px; padding: 0; list-style-type: decimal; }
-    ol.numerada li { text-align: justify; margin: 0 0 6px 0; }
+    ol.numerada { margin: 0 0 4px 18px; padding: 0; list-style-type: decimal; }
+    ol.numerada li { text-align: justify; margin: 0 0 3px 0; }
 
     /* Numerales COMPUESTOS (05/09): OCTAVO, NOVENO y DÉCIMO QUINTO numeran
        8.1, 8.2… con el ordinal de su cláusula delante — el mismo formato que
        ya usaba DÉCIMO SÉPTIMO. Van en divs y no en <ol> porque el número lo
        arma Blade; la sangría francesa (text-indent negativo) alinea el texto
        corrido bajo la primera línea, como en las maestras. */
-    .numerales { margin: 0 0 8px 18px; }
+    .numerales { margin: 0 0 4px 18px; }
     .numerales .numeral {
         text-align: justify;
-        margin: 0 0 6px 0;
+        margin: 0 0 3px 0;
         padding-left: 26px;
         text-indent: -26px;
+    }
+    /* Párrafo de continuación DENTRO de un numeral (p. ej. el segundo
+       párrafo del 9.4 en GPS): sin número delante, así que no lleva la
+       sangría francesa — todas sus líneas van a la altura del cuerpo del
+       numeral, no pegadas al margen. */
+    .numerales .numeral-cont {
+        text-align: justify;
+        margin: 0 0 3px 0;
+        padding-left: 26px;
     }
 
     table.datos {
         width: 100%;
         border-collapse: collapse;
-        margin: 4px 0 8px 0;
+        margin: {{ $compacto ? '2px 0 4px' : '4px 0 8px' }} 0;
         font-size: 6.5pt;
     }
     table.datos th, table.datos td {
         border: 0.6pt solid #000;
-        padding: 3px 5px;
+        padding: {{ $compacto ? '1.5px 4px' : '3px 5px' }};
         text-align: left;
         vertical-align: top;
     }
     table.datos th { background: #eee; text-transform: uppercase; }
 
-    .firmas { page-break-inside: avoid; margin-top: 26px; }
+    .firmas { page-break-inside: avoid; margin-top: 50px; }
     table.tabla-firmas { width: 100%; border-collapse: collapse; }
     /* vertical-align: top — con 'bottom' las líneas de firma quedaban a
        distinta altura cuando una caja tenía más renglones que la otra

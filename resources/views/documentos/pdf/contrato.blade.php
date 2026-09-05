@@ -1,20 +1,17 @@
 {{-- CONTRATO de garantía mobiliaria — documento SUELTO (el Anexo 1 y el
      Anexo 2 se emiten por separado). Recibe: $vm (App\Services\Documentos\
-     ContratoVm) y $medio ('pdf' | 'previa' | 'word'); el pie con numeración
-     de páginas solo existe en 'pdf'. Las cláusulas activas y su numeración
+     ContratoVm) y $medio ('pdf' | 'previa' | 'word'). SIN pie de página
+     (05/09): las maestras en papel no lo llevan; los anexos sí lo mantienen
+     porque se archivan sueltos. Las cláusulas activas y su numeración
      las gobierna $vm->clausulas / $vm->ord. --}}
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="utf-8">
     <title>{{ $vm->numero }}</title>
-    @include('documentos.pdf.estilos')
+    @include('documentos.pdf.estilos', ['compacto' => true])
 </head>
 <body>
-
-@if ($medio === 'pdf')
-    <div class="pie-pagina">{{ $vm->numero }} — Página <span class="num"></span></div>
-@endif
 
 @include('documentos.pdf.partials.encabezado')
 
