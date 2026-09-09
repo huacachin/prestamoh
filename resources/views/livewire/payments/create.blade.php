@@ -255,7 +255,26 @@
                                 <div class="saldo-kpi" style="--kpi: #0d6efd;">
                                     <div class="saldo-top"><i class="ti ti-wallet"></i> Saldo Pendiente</div>
                                     <div class="saldo-val">{{ number_format($c['saldo_restante'], 2) }}</div>
-                                    <div class="saldo-pie">capital + interés</div>
+                                    @php
+                                        // 08/09: este saldo es del CRONOGRAMA COMPLETO (trae el
+                                        // interés futuro); cancelar hoy cuesta menos porque ese
+                                        // interés se condona. Sin decirlo aquí, "Saldo Pendiente
+                                        // 15,000" y "este pago cubre el total" con 10,875 parecían
+                                        // contradecirse.
+                                        $hayInteresFuturo = $cancelarHoy > 0.01 && ($c['saldo_pendiente'] - $cancelarHoy) > 0.01;
+                                    @endphp
+                                    {{-- Textos cortos: la banda lleva 4 tarjetas y a 1366px un pie
+                                         largo se parte en dos líneas. Sin depender del switch
+                                         Cancelado (enlace diferido: quedaría desfasado). --}}
+                                    <div class="saldo-pie">
+                                        @if($hayInteresFuturo && ! $cancelDisabled)
+                                            alcanza para cancelar hoy
+                                        @elseif($hayInteresFuturo)
+                                            cancelar hoy: S/ {{ number_format($cancelarHoy, 2) }}
+                                        @else
+                                            capital + interés
+                                        @endif
+                                    </div>
                                 </div>
                                 <div class="saldo-kpi" style="--kpi: {{ $c['total_mora'] > 0 ? '#dc3545' : '#2eb85c' }};">
                                     <div class="saldo-top"><i class="ti ti-cash"></i> Saldo P. + Mora</div>
@@ -796,7 +815,9 @@
                                 <div class="tp-sep"></div>
                                 <div class="tp-row tp-total"><span>TOTAL</span><span>S/ {{ number_format($preview['total'], 2) }}</span></div>
                                 <div class="tp-sep"></div>
-                                <div class="tp-row"><span>Saldo restante:</span><span>S/ {{ number_format($preview['saldo'], 2) }}</span></div>
+                                {{-- Con el aviso de cancelación abierto, este saldo es el de
+                                     "No, dejarlo vigente": si cancela, se condona. --}}
+                                <div class="tp-row"><span>{{ ($preview['cubre_total'] ?? false) && ! $preview['cancela'] ? 'Saldo si no cancela:' : 'Saldo restante:' }}</span><span>S/ {{ number_format($preview['saldo'], 2) }}</span></div>
                             </div>
 
                             @if($preview['cancela'])
@@ -859,7 +880,7 @@
                     @if($preview['cubre_total'] ?? false)
                         <div class="mx-3 mt-3 mb-2 p-2 rounded" style="background:#fff4e5; border:1px solid #ffb74d;">
                             <div class="fw-bold mb-1" style="color:#b26a00;">
-                                <i class="ti ti-alert-triangle"></i> Este pago cubre el TOTAL del crédito
+                                <i class="ti ti-alert-triangle"></i> Este monto alcanza para CANCELAR el crédito hoy
                             </div>
                             @php
                                 // Veredicto por mora: se actualiza en vivo (el preview se
@@ -871,9 +892,29 @@
                                 $vAcumCobra = (float) ($preview['mora_acum_cobrar'] ?? 0);
                                 $vCondAcum = (float) ($preview['condonada_acum'] ?? 0);
                             @endphp
-                            <div class="d-flex gap-3 flex-wrap small mb-1">
-                                <span>Capital + interés: <b>S/ {{ number_format($preview['cancelar_cap_int'], 2) }}</b></span>
+                            <div class="small mb-1">
+                                Capital pendiente <b>S/ {{ number_format($preview['cap_pendiente_total'] ?? 0, 2) }}</b>
+                                + interés al {{ $preview['fecha'] }} <b>S/ {{ number_format($preview['int_cancelar'] ?? 0, 2) }}</b>
+                                @if(($preview['exc_venc'] ?? 0) > 0.001)
+                                    + excedente vencido <b>S/ {{ number_format($preview['exc_venc'], 2) }}</b>
+                                @endif
+                                = <b>S/ {{ number_format($preview['cancelar_cap_int'], 2) }}</b>
                             </div>
+                            {{-- La cuenta que faltaba (08/09): por qué "Saldo Pendiente" dice más
+                                 que esto. El interés futuro solo se condona si se cancela. --}}
+                            @if(($preview['condona'] ?? 0) > 0.001)
+                                <div class="small mb-1" style="color:#6b7280;">
+                                    El saldo del cronograma es <b>S/ {{ number_format($preview['saldo_pendiente'] ?? 0, 2) }}</b>
+                                    porque incluye interés futuro. Si cancela, se condonan
+                                    <b>S/ {{ number_format($preview['condona'], 2) }}</b>; si lo deja vigente,
+                                    el monto se aplica a las cuotas y quedan <b>S/ {{ number_format($preview['condona'], 2) }}</b> pendientes.
+                                    Las moras se cobran aparte (detalle abajo).
+                                </div>
+                            @else
+                                <div class="small mb-1" style="color:#6b7280;">
+                                    Con este monto se paga el cronograma completo. Las moras se cobran aparte (detalle abajo).
+                                </div>
+                            @endif
                             @if($vCobra > 0.001 || $vVig > 0.001 || $vCondVig > 0.001)
                                 <div class="small mb-1">
                                     @if($vCobra > 0.001)

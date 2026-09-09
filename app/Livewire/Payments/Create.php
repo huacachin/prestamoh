@@ -1311,6 +1311,20 @@ class Create extends Component
         $aplicado = $dist['capital'] + $dist['interes'] + $dist['excedente'];
         $saldo = $this->cancel ? 0.0 : round($this->saldoDe($cronograma) - $aplicado, 2);
 
+        // Disclaimer del modal (08/09): "cubre el total" confundía porque la
+        // pantalla dice "Saldo Pendiente 15,000" (cronograma completo, con
+        // interés futuro) y el umbral de cancelación es menor (capital +
+        // interés devengado a la fecha). El aviso ahora muestra esa cuenta y
+        // cuánto interés futuro se condona SOLO si se cancela — que es lo
+        // mismo que quedaría pendiente si se deja vigente (saldo − monto).
+        $dc = $this->deudaCalcs();
+        $condona = round(max(0.0, (float) $calcs['saldo_pendiente'] - (float) $this->monto), 2);
+        // Mismo corte que condonarInteresFuturo(): un centavo de tolerancia
+        // no se condona, así que tampoco se anuncia.
+        if ($condona <= 0.01) {
+            $condona = 0.0;
+        }
+
         $client = $this->credit->client;
         $nombre = $client
             ? trim(($client->apellido_pat ?? '').' '.($client->apellido_mat ?? '').' '.($client->nombre ?? ''))
@@ -1341,7 +1355,14 @@ class Create extends Component
             'cancela' => $this->cancel,
             // Para la pregunta del modal cuando el cobro liquida el crédito.
             'cubre_total' => $this->cubreTotalidad(),
-            'cancelar_cap_int' => $this->deudaCalcs()['cancelar_cap_int'],
+            'cancelar_cap_int' => $dc['cancelar_cap_int'],
+            'cap_pendiente_total' => round((float) $dc['cap_pendiente_total'], 2),
+            'int_cancelar' => round((float) $dc['int_cancelar'], 2),
+            // Excedente de redondeo vencido: entra en el umbral, así que la
+            // cuenta del aviso lo muestra cuando existe (cuota uniforme).
+            'exc_venc' => round((float) $dc['exc_hoy'], 2),
+            'saldo_pendiente' => round((float) $calcs['saldo_pendiente'], 2),
+            'condona' => $condona,
             'mora_pendiente' => round($totMora, 2),
             'reserva_mora' => $this->ckmora && ! $this->cancel && $totMora > 0.001,
             // Ajuste manual de mora: se muestra en el modal para que quede a la
