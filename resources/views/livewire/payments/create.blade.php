@@ -823,6 +823,14 @@
                             @if($preview['cancela'])
                                 <div class="alert alert-warning py-1 px-2 mt-2 mb-0 small text-center">
                                     <i class="ti ti-alert-triangle"></i> Este cobro <strong>cancela</strong> el crédito.
+                                    @if(($preview['monto_tecleado'] ?? null) !== null)
+                                        {{-- Modo estricto (09/09): el excedente NO se cobra como interés. --}}
+                                        <div class="mt-1">
+                                            Solo se cobra lo necesario para cancelar hoy:
+                                            <strong>S/ {{ number_format($preview['monto'], 2) }}</strong>
+                                            (tecleaste S/ {{ number_format($preview['monto_tecleado'], 2) }}).
+                                        </div>
+                                    @endif
                                 </div>
                             @endif
                             @if(($preview['condonada_vigente'] ?? 0) > 0.001 || ($preview['condonada_acum'] ?? 0) > 0.001)
@@ -892,28 +900,59 @@
                                 $vAcumCobra = (float) ($preview['mora_acum_cobrar'] ?? 0);
                                 $vCondAcum = (float) ($preview['condonada_acum'] ?? 0);
                             @endphp
+                            @php
+                                $sSaldo = (float) ($preview['saldo_pendiente'] ?? 0);
+                                $sMontoSi = (float) ($preview['monto_si_cancela'] ?? ($preview['cancelar_cap_int'] ?? 0));
+                                $sMontoNo = (float) ($preview['monto_si_vigente'] ?? ($preview['monto'] ?? 0));
+                                $sCondonaSi = (float) ($preview['condona_si_cancela'] ?? 0);
+                                $sQuedaNo = (float) ($preview['queda_si_vigente'] ?? 0);
+                                // ¿El modo estricto recortaría (o ya recortó) el monto?
+                                $sRecorta = ($sMontoNo - $sMontoSi) > 0.01;
+                                $sUltima = (bool) ($preview['hasta_ultima_cuota'] ?? false);
+                                $sIntCancelar = $sUltima
+                                    ? round($sMontoSi - (float) ($preview['cap_pendiente_total'] ?? 0) - (float) ($preview['exc_venc'] ?? 0), 2)
+                                    : (float) ($preview['int_cancelar'] ?? 0);
+                                $sMorasCobra = (float) ($preview['mora_cobrar'] ?? 0) + (float) ($preview['mora_acum_cobrar'] ?? 0);
+                                $sMorasExon = (float) ($preview['condonada_vigente'] ?? 0) + (float) ($preview['condonada_acum'] ?? 0);
+                            @endphp
                             <div class="small mb-1">
                                 Capital pendiente <b>S/ {{ number_format($preview['cap_pendiente_total'] ?? 0, 2) }}</b>
-                                + interés al {{ $preview['fecha'] }} <b>S/ {{ number_format($preview['int_cancelar'] ?? 0, 2) }}</b>
+                                + interés {{ $sUltima ? 'hasta la última cuota' : 'al '.$preview['fecha'] }}
+                                <b>S/ {{ number_format($sIntCancelar, 2) }}</b>
                                 @if(($preview['exc_venc'] ?? 0) > 0.001)
                                     + excedente vencido <b>S/ {{ number_format($preview['exc_venc'], 2) }}</b>
                                 @endif
-                                = <b>S/ {{ number_format($preview['cancelar_cap_int'], 2) }}</b>
+                                = <b>S/ {{ number_format($sMontoSi, 2) }}</b>
                             </div>
-                            {{-- La cuenta que faltaba (08/09): por qué "Saldo Pendiente" dice más
-                                 que esto. El interés futuro solo se condona si se cancela. --}}
-                            @if(($preview['condona'] ?? 0) > 0.001)
+            {{-- Qué pasa con CADA respuesta, antes del clic (09/09). Cada rama con
+                 su propia cifra: la de "Sí" no depende de lo tecleado (modo
+                 estricto) y la de "No" sí. Antes ambas mostraban la misma y la
+                 de "Sí" quedaba falsa en cuanto el monto se recortaba. --}}
+                            @if($sCondonaSi > 0.001 || $sQuedaNo > 0.001)
                                 <div class="small mb-1" style="color:#6b7280;">
-                                    El saldo del cronograma es <b>S/ {{ number_format($preview['saldo_pendiente'] ?? 0, 2) }}</b>
-                                    porque incluye interés futuro. Si cancela, se condonan
-                                    <b>S/ {{ number_format($preview['condona'], 2) }}</b>; si lo deja vigente,
-                                    el monto se aplica a las cuotas y quedan <b>S/ {{ number_format($preview['condona'], 2) }}</b> pendientes.
-                                    Las moras se cobran aparte (detalle abajo).
+                                    El saldo del cronograma es <b>S/ {{ number_format($sSaldo, 2) }}</b> porque incluye interés futuro.
+                                    {{-- Texto condicional con ternarios, no con directivas: Blade
+                                         NO compila una directiva pegada al final de una palabra
+                                         (ej. "...pendientes" seguido de else) y la vista revienta
+                                         con "unexpected end of file". --}}
+                                    <div class="mt-1">
+                                        <b>Si cancela:</b> se cobran solo <b>S/ {{ number_format($sMontoSi, 2) }}</b>{{ $sRecorta ? ' (de los S/ '.number_format($sMontoNo, 2).' tecleados)' : '' }}{{ $sCondonaSi > 0.001 ? ' y se condonan S/ '.number_format($sCondonaSi, 2).' de interés futuro' : '' }}.
+                                    </div>
+                                    <div>
+                                        <b>Si lo deja vigente:</b> se aplican <b>S/ {{ number_format($sMontoNo, 2) }}</b> a las cuotas{{ $sQuedaNo > 0.001 ? ' y quedan S/ '.number_format($sQuedaNo, 2).' pendientes' : ' y el cronograma queda pagado' }}.
+                                    </div>
                                 </div>
                             @else
                                 <div class="small mb-1" style="color:#6b7280;">
-                                    Con este monto se paga el cronograma completo. Las moras se cobran aparte (detalle abajo).
+                                    Con este monto se paga el cronograma completo.
                                 </div>
+                            @endif
+                            @if($sMorasCobra > 0.001)
+                                <div class="small mb-1" style="color:#6b7280;">
+                                    Más moras por <b>S/ {{ number_format($sMorasCobra, 2) }}</b>, ya incluidas en el TOTAL (detalle abajo).
+                                </div>
+                            @elseif($sMorasExon > 0.001)
+                                <div class="small mb-1" style="color:#6b7280;">Las moras se exoneran (detalle abajo).</div>
                             @endif
                             @if($vCobra > 0.001 || $vVig > 0.001 || $vCondVig > 0.001)
                                 <div class="small mb-1">

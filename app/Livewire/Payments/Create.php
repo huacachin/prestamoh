@@ -71,6 +71,16 @@ class Create extends Component
      */
     public string $decisionTotal = '';
 
+    /**
+     * MODO ESTRICTO al cancelar (09/09, regla de Antony): al cancelar se cobra
+     * SOLO lo necesario (capital pendiente + interés a la fecha). Si el cajero
+     * tecleó de más, el monto se ajusta a esa cifra y aquí se guarda lo que
+     * había tecleado, para avisarle y para devolvérselo si vuelve a "No".
+     * Antes, todo excedente se absorbía como interés (y si el monto traía la
+     * mora, esta se cobraba dos veces).
+     */
+    public ?string $montoTecleado = null;
+
     // Exoneración al cancelar (desglosada 26/08): cada mora tiene su switch.
     // Solo actúan con el crédito cancelándose; exigen motivo (bitácora).
     public bool $quitarMora = false;        // exonera la mora vigente (días × tarifa)
@@ -389,6 +399,7 @@ class Create extends Component
         }
 
         $this->monto = $haySeleccion ? number_format(round($monto, 2), 2, '.', '') : null;
+        $this->montoTecleado = null;   // el monto de las cuotas elegidas manda
         if ($this->canEditMora()) {
             $this->moraManual = $haySeleccion ? number_format(round($mora, 2), 2, '.', '') : null;
             $this->motivoSegunDireccion();
@@ -457,6 +468,9 @@ class Create extends Component
 
     public function updatedMonto(): void
     {
+        // El cajero volvió a teclear: lo guardado para el modo estricto caduca.
+        $this->montoTecleado = null;
+
         if (! $this->canEditMora()) {
             return;
         }
@@ -671,6 +685,17 @@ class Create extends Component
      */
     public function confirmarPago(): void
     {
+        // Modo estricto ANTES de validar: con el switch marcado el monto baja a
+        // lo necesario, así un tecleado alto se AJUSTA en vez de rechazarse por
+        // "excede el saldo". Sin switch NO se restaura nada: lo que el cajero ve
+        // en el campo es lo que se cobra (restaurar aquí resucitaba un monto
+        // viejo tras desmarcar el switch o tras elegir cuotas).
+        if ($this->cancel) {
+            $this->ajustarMontoAlCancelar();
+        } else {
+            $this->montoTecleado = null;
+        }
+
         if ($error = $this->validarCobro()) {
             $this->dispatch('errorAlert', ['message' => $error]);
 
@@ -708,8 +733,10 @@ class Create extends Component
     {
         if ($this->decisionTotal === 'si') {
             $this->cancel = true;
+            $this->ajustarMontoAlCancelar();
         } elseif ($this->decisionTotal === 'no') {
             $this->cancel = false;
+            $this->restaurarMontoTecleado();
         }
 
         if ($this->preview) {
@@ -717,8 +744,73 @@ class Create extends Component
         }
     }
 
+    /**
+     * Modo estricto: si el monto supera lo necesario para cancelar hoy
+     * (capital pendiente + interés a la fecha), se baja a esa cifra exacta.
+     * Lo tecleado se conserva una sola vez (la primera) para el aviso y para
+     * restaurarlo si el cajero cambia de idea. Un monto MENOR no se toca: lo
+     * rechaza validarCobro().
+     */
+    private function ajustarMontoAlCancelar(): void
+    {
+        $necesario = $this->necesarioParaCancelar();
+        if ($necesario <= 0.01 || ! is_numeric($this->monto)) {
+            return;
+        }
+
+        if ((float) $this->monto - $necesario > 0.01) {
+            // Siempre el monto VIGENTE: si el cajero cambió el monto entre dos
+            // ajustes, el aviso y la bitácora deben citar ese, no el primero.
+            $this->montoTecleado = (string) $this->monto;
+            $this->monto = number_format($necesario, 2, '.', '');
+        }
+    }
+
+    /**
+     * Lo necesario para cancelar HOY. Normalmente capital pendiente + interés
+     * devengado a la fecha + excedente vencido. Con "Cancelar hasta la última
+     * cuota" el cajero pide expresamente cobrar TODO el interés del
+     * cronograma: el modo estricto respeta esa elección (misma fórmula que la
+     * tarjeta "Cancelar crédito").
+     */
+    private function necesarioParaCancelar(): float
+    {
+        $d = $this->deudaCalcs();
+        $int = $this->cancelUltimaCuota
+            ? round((float) $d['saldo_credito'] - (float) $d['cap_pendiente_total'], 2)
+            : (float) $d['int_cancelar'];
+
+        return round((float) $d['cap_pendiente_total'] + $int + (float) $d['exc_hoy'], 2);
+    }
+
+    /**
+     * Desmarcar el switch a mano NO resucita el monto anterior: el campo ya
+     * muestra el ajustado y esa es la cifra que el cajero está viendo. El "No"
+     * del modal sí lo restaura, porque ahí el ticket se rehace delante de él.
+     */
+    public function updatedCancel(): void
+    {
+        if (! $this->cancel) {
+            $this->montoTecleado = null;
+        }
+    }
+
+    private function restaurarMontoTecleado(): void
+    {
+        if ($this->montoTecleado !== null) {
+            $this->monto = $this->montoTecleado;
+            $this->montoTecleado = null;
+        }
+    }
+
     public function pagar(bool $imprimir = false)
     {
+        // Modo estricto también aquí (la pantalla puede llegar desfasada) y
+        // antes de validar, por lo mismo que en confirmarPago().
+        if ($this->cancel) {
+            $this->ajustarMontoAlCancelar();
+        }
+
         if ($error = $this->validarCobro()) {
             $this->dispatch('errorAlert', ['message' => $error]);
 
@@ -1149,6 +1241,7 @@ class Create extends Component
 
         Audit::log(
             "Registró pago de {$this->monto} en el crédito #{$this->credit->id}".($this->cancel ? ' (canceló el crédito)' : '')
+            .($this->cancel && $this->montoTecleado !== null ? " — ajustado desde {$this->montoTecleado}: solo lo necesario para cancelar" : '')
                 .($this->metodoPago === 'deposito' ? ' vía depósito ('.$this->depCanal.')' : ''),
             $this->credit,
             ['monto' => $this->monto, 'fecha' => $this->fecpag]
@@ -1166,7 +1259,7 @@ class Create extends Component
 
         $this->reset([
             'monto', 'obs', 'ckmora', 'cancel', 'impointe2', 'impomora',
-            'idpre', 'moraManual', 'moraMotivo', 'quitarMora', 'quitarMoraAcum', 'condonarMotivo', 'cancelUltimaCuota', 'decisionTotal',
+            'idpre', 'moraManual', 'moraMotivo', 'quitarMora', 'quitarMoraAcum', 'condonarMotivo', 'cancelUltimaCuota', 'decisionTotal', 'montoTecleado',
             'metodoPago', 'depBanco', 'depCuenta', 'depCuentaOtra', 'depCanal',
             'depFecha', 'voucherFoto', 'egresoCreadoId',
         ]);
@@ -1318,12 +1411,20 @@ class Create extends Component
         // cuánto interés futuro se condona SOLO si se cancela — que es lo
         // mismo que quedaría pendiente si se deja vigente (saldo − monto).
         $dc = $this->deudaCalcs();
-        $condona = round(max(0.0, (float) $calcs['saldo_pendiente'] - (float) $this->monto), 2);
+        $saldoCron = (float) $calcs['saldo_pendiente'];
+        $condona = round(max(0.0, $saldoCron - (float) $this->monto), 2);
+        // Rama "Sí": se cobra lo necesario y se condona el resto del cronograma.
+        // Rama "No": se aplica lo que el cajero tecleó (si el modo estricto ya
+        // lo recortó, el original) y queda la diferencia.
+        $necesarioCancelar = $this->necesarioParaCancelar();
+        $montoVigente = round((float) ($this->montoTecleado ?? $this->monto), 2);
+        $condonaSi = round(max(0.0, $saldoCron - $necesarioCancelar), 2);
+        $quedaNo = round(max(0.0, $saldoCron - $montoVigente), 2);
         // Mismo corte que condonarInteresFuturo(): un centavo de tolerancia
         // no se condona, así que tampoco se anuncia.
-        if ($condona <= 0.01) {
-            $condona = 0.0;
-        }
+        $condona = $condona <= 0.01 ? 0.0 : $condona;
+        $condonaSi = $condonaSi <= 0.01 ? 0.0 : $condonaSi;
+        $quedaNo = $quedaNo <= 0.01 ? 0.0 : $quedaNo;
 
         $client = $this->credit->client;
         $nombre = $client
@@ -1363,6 +1464,18 @@ class Create extends Component
             'exc_venc' => round((float) $dc['exc_hoy'], 2),
             'saldo_pendiente' => round((float) $calcs['saldo_pendiente'], 2),
             'condona' => $condona,
+            // Modo estricto: lo tecleado antes del ajuste (null si no hubo).
+            'monto' => round((float) $this->monto, 2),
+            'monto_tecleado' => $this->montoTecleado !== null ? round((float) $this->montoTecleado, 2) : null,
+            // Las dos ramas de la decisión, cada una con SU cifra, para que el
+            // cajero sepa qué pasa con cada respuesta ANTES de elegir. Antes
+            // ambas mostraban 'condona' (la del monto vigente), que es la de
+            // "No" y quedaba falsa para "Sí" en cuanto el modo estricto recorta.
+            'monto_si_cancela' => $necesarioCancelar,
+            'monto_si_vigente' => $montoVigente,
+            'condona_si_cancela' => $condonaSi,
+            'queda_si_vigente' => $quedaNo,
+            'hasta_ultima_cuota' => $this->cancelUltimaCuota,
             'mora_pendiente' => round($totMora, 2),
             'reserva_mora' => $this->ckmora && ! $this->cancel && $totMora > 0.001,
             // Ajuste manual de mora: se muestra en el modal para que quede a la

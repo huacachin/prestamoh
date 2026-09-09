@@ -92,7 +92,13 @@ class PagoCubreTotalDisclaimerTest extends TestCase
         // La cuenta completa, en orden: capital + interés a la fecha = umbral,
         // y la explicación de lo que se condona / lo que queda.
         $this->assertEnOrden($c->html(), ['Capital pendiente', 'S/ 1,000.00', 'interés al '.now()->format('d/m/Y'), 'S/ 75.00', 'S/ 1,075.00']);
-        $this->assertEnOrden($c->html(), ['porque incluye interés futuro', 'se condonan', 'S/ 20.00', 'el monto se aplica a las cuotas', 'quedan', 'S/ 20.00']);
+        // Cada rama con SU cifra: "Sí" cobra 1,075 y condona 25; "No" aplica
+        // los 1,080 tecleados y deja 20 pendientes.
+        $this->assertEnOrden($c->html(), [
+            'porque incluye interés futuro',
+            'Si cancela:', 'S/ 1,075.00', '(de los S/ 1,080.00 tecleados)', 'se condonan S/ 25.00 de interés futuro',
+            'Si lo deja vigente:', 'S/ 1,080.00', 'quedan S/ 20.00 pendientes',
+        ]);
     }
 
     /**
