@@ -116,6 +116,29 @@ class PagoCubreTotalDisclaimerTest extends TestCase
         }
     }
 
+    /**
+     * El aviso era un muro de texto justo donde el cajero decide (09/09):
+     * ahora solo se ven las dos cifras y el resto vive tras "Ver detalles".
+     */
+    public function test_el_detalle_viene_colapsado_detras_de_ver_detalles(): void
+    {
+        $this->actingAs($this->actor());
+        $credit = $this->credito();
+
+        $c = Livewire::test(Create::class, ['creditId' => $credit->id])
+            ->set('monto', 1080)
+            ->call('confirmarPago');
+
+        // Resumen visible: una línea por respuesta.
+        $c->assertSee('Si cancela:')
+            ->assertSee('S/ 1,075.00')
+            ->assertSee('Si lo deja vigente:')
+            ->assertSee('Ver detalles')
+            // El detalle está en el HTML pero colapsado (no otro modal).
+            ->assertSeeHtml('x-show="det" style="display:none;"')
+            ->assertSeeHtml('x-on:click="det = ! det"');
+    }
+
     public function test_el_recibo_cambia_de_etiqueta_segun_la_decision(): void
     {
         $this->actingAs($this->actor());

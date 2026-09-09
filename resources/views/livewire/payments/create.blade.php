@@ -821,7 +821,7 @@
                             </div>
 
                             @if($preview['cancela'])
-                                <div class="alert alert-warning py-1 px-2 mt-2 mb-0 small text-center">
+                                <div class="alert alert-warning py-1 px-2 mt-2 mb-0 small text-center" style="color:#000;">
                                     <i class="ti ti-alert-triangle"></i> Este cobro <strong>cancela</strong> el crédito.
                                     @if(($preview['monto_tecleado'] ?? null) !== null)
                                         {{-- Modo estricto (09/09): el excedente NO se cobra como interés. --}}
@@ -856,7 +856,7 @@
                             @endif
                             @if($preview['mora_ajustada'] ?? false)
                                 @php $pd = $preview['mora_ajuste_final'] - $preview['mora_calculada']; @endphp
-                                <div class="alert alert-warning py-1 px-2 mt-2 mb-0 small">
+                                <div class="alert alert-warning py-1 px-2 mt-2 mb-0 small" style="color:#000;">
                                     <i class="ti ti-alert-triangle"></i>
                                     <strong>Mora ajustada a mano.</strong>
                                     Calculada S/ {{ number_format($preview['mora_calculada'], 2) }} →
@@ -915,65 +915,76 @@
                                 $sMorasCobra = (float) ($preview['mora_cobrar'] ?? 0) + (float) ($preview['mora_acum_cobrar'] ?? 0);
                                 $sMorasExon = (float) ($preview['condonada_vigente'] ?? 0) + (float) ($preview['condonada_acum'] ?? 0);
                             @endphp
-                            <div class="small mb-1">
-                                Capital pendiente <b>S/ {{ number_format($preview['cap_pendiente_total'] ?? 0, 2) }}</b>
-                                + interés {{ $sUltima ? 'hasta la última cuota' : 'al '.$preview['fecha'] }}
-                                <b>S/ {{ number_format($sIntCancelar, 2) }}</b>
-                                @if(($preview['exc_venc'] ?? 0) > 0.001)
-                                    + excedente vencido <b>S/ {{ number_format($preview['exc_venc'], 2) }}</b>
-                                @endif
-                                = <b>S/ {{ number_format($sMontoSi, 2) }}</b>
+                            {{-- Resumen corto + "Ver detalles" (09/09): el bloque completo era
+                                 un muro de texto justo donde el cajero tiene que decidir. El
+                                 detalle se despliega aquí mismo (Alpine) y no en otro modal:
+                                 anidar modales de Bootstrap deja backdrops huérfanos. --}}
+                            <div x-data="{ det: false }">
+                                <div class="d-flex justify-content-between align-items-start gap-2">
+                                    <div class="small" style="color:#000;">
+                                        <div><b>Si cancela:</b> S/ {{ number_format($sMontoSi, 2) }}{{ $sRecorta ? ' (de S/ '.number_format($sMontoNo, 2).' tecleados)' : '' }}</div>
+                                        <div><b>Si lo deja vigente:</b> S/ {{ number_format($sMontoNo, 2) }}{{ $sQuedaNo > 0.001 ? ' · quedan S/ '.number_format($sQuedaNo, 2) : ' · queda pagado' }}</div>
+                                        @if($sMorasCobra > 0.001)
+                                            <div style="color:#c0392b;">+ moras S/ {{ number_format($sMorasCobra, 2) }} (ya en el TOTAL)</div>
+                                        @elseif($sMorasExon > 0.001)
+                                            <div style="color:#6b7280;">Las moras se exoneran</div>
+                                        @endif
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-link p-0 text-nowrap" style="font-size:.72rem;"
+                                            x-on:click="det = ! det">
+                                        <i class="ti ti-info-circle"></i>
+                                        <span x-text="det ? 'Ocultar' : 'Ver detalles'">Ver detalles</span>
+                                    </button>
+                                </div>
+
+                                <div x-show="det" style="display:none;" class="mt-2 pt-2">
+                                    <div class="small mb-1" style="color:#000; border-top:1px dashed #ffb74d; padding-top:6px;">
+                                        Capital pendiente <b>S/ {{ number_format($preview['cap_pendiente_total'] ?? 0, 2) }}</b>
+                                        + interés {{ $sUltima ? 'hasta la última cuota' : 'al '.$preview['fecha'] }}
+                                        <b>S/ {{ number_format($sIntCancelar, 2) }}</b>
+                                        @if(($preview['exc_venc'] ?? 0) > 0.001)
+                                            + excedente vencido <b>S/ {{ number_format($preview['exc_venc'], 2) }}</b>
+                                        @endif
+                                        = <b>S/ {{ number_format($sMontoSi, 2) }}</b>
+                                    </div>
+                                    @if($sCondonaSi > 0.001 || $sQuedaNo > 0.001)
+                                        <div class="small mb-1" style="color:#6b7280;">
+                                            El saldo del cronograma es <b>S/ {{ number_format($sSaldo, 2) }}</b> porque incluye interés futuro.
+                                            {{-- Texto condicional con ternarios, no con directivas: Blade
+                                                 NO compila una directiva pegada al final de una palabra
+                                                 (ej. "...pendientes" seguido de else) y la vista revienta. --}}
+                                            <div class="mt-1">
+                                                <b>Si cancela:</b> se cobran solo <b>S/ {{ number_format($sMontoSi, 2) }}</b>{{ $sRecorta ? ' (de los S/ '.number_format($sMontoNo, 2).' tecleados)' : '' }}{{ $sCondonaSi > 0.001 ? ' y se condonan S/ '.number_format($sCondonaSi, 2).' de interés futuro' : '' }}.
+                                            </div>
+                                            <div>
+                                                <b>Si lo deja vigente:</b> se aplican <b>S/ {{ number_format($sMontoNo, 2) }}</b> a las cuotas{{ $sQuedaNo > 0.001 ? ' y quedan S/ '.number_format($sQuedaNo, 2).' pendientes' : ' y el cronograma queda pagado' }}.
+                                            </div>
+                                        </div>
+                                    @else
+                                        <div class="small mb-1" style="color:#6b7280;">Con este monto se paga el cronograma completo.</div>
+                                    @endif
+                                    @if($vCobra > 0.001 || $vVig > 0.001 || $vCondVig > 0.001)
+                                        <div class="small mb-1">
+                                            @if($vCobra > 0.001)
+                                                <span style="color:#c0392b;">Mora: se cobra <b>S/ {{ number_format($vCobra, 2) }}</b>{{ ($preview['mora_ajustada'] ?? false) ? ' (ajustada a mano)' : '' }}</span>
+                                            @elseif($preview['reserva_mora'] ?? false)
+                                                <span style="color:#b8860b;">Mora: reservada — queda como deuda <b>S/ {{ number_format($vVig, 2) }}</b></span>
+                                            @else
+                                                <span style="color:#6b7280;">Mora: se exonera al cancelar <b style="text-decoration: line-through;">S/ {{ number_format($vCondVig > 0.001 ? $vCondVig : $vVig, 2) }}</b></span>
+                                            @endif
+                                        </div>
+                                    @endif
+                                    @if($vAcumCobra > 0.001 || $vCondAcum > 0.001)
+                                        <div class="small mb-2">
+                                            @if($vCondAcum > 0.001)
+                                                <span style="color:#6b7280;">Mora acumulada: se exonera al cancelar <b style="text-decoration: line-through;">S/ {{ number_format($vCondAcum, 2) }}</b></span>
+                                            @else
+                                                <span style="color:#c0392b;">Mora acumulada: se cobra <b>S/ {{ number_format($vAcumCobra, 2) }}</b></span>
+                                            @endif
+                                        </div>
+                                    @endif
+                                </div>
                             </div>
-            {{-- Qué pasa con CADA respuesta, antes del clic (09/09). Cada rama con
-                 su propia cifra: la de "Sí" no depende de lo tecleado (modo
-                 estricto) y la de "No" sí. Antes ambas mostraban la misma y la
-                 de "Sí" quedaba falsa en cuanto el monto se recortaba. --}}
-                            @if($sCondonaSi > 0.001 || $sQuedaNo > 0.001)
-                                <div class="small mb-1" style="color:#6b7280;">
-                                    El saldo del cronograma es <b>S/ {{ number_format($sSaldo, 2) }}</b> porque incluye interés futuro.
-                                    {{-- Texto condicional con ternarios, no con directivas: Blade
-                                         NO compila una directiva pegada al final de una palabra
-                                         (ej. "...pendientes" seguido de else) y la vista revienta
-                                         con "unexpected end of file". --}}
-                                    <div class="mt-1">
-                                        <b>Si cancela:</b> se cobran solo <b>S/ {{ number_format($sMontoSi, 2) }}</b>{{ $sRecorta ? ' (de los S/ '.number_format($sMontoNo, 2).' tecleados)' : '' }}{{ $sCondonaSi > 0.001 ? ' y se condonan S/ '.number_format($sCondonaSi, 2).' de interés futuro' : '' }}.
-                                    </div>
-                                    <div>
-                                        <b>Si lo deja vigente:</b> se aplican <b>S/ {{ number_format($sMontoNo, 2) }}</b> a las cuotas{{ $sQuedaNo > 0.001 ? ' y quedan S/ '.number_format($sQuedaNo, 2).' pendientes' : ' y el cronograma queda pagado' }}.
-                                    </div>
-                                </div>
-                            @else
-                                <div class="small mb-1" style="color:#6b7280;">
-                                    Con este monto se paga el cronograma completo.
-                                </div>
-                            @endif
-                            @if($sMorasCobra > 0.001)
-                                <div class="small mb-1" style="color:#6b7280;">
-                                    Más moras por <b>S/ {{ number_format($sMorasCobra, 2) }}</b>, ya incluidas en el TOTAL (detalle abajo).
-                                </div>
-                            @elseif($sMorasExon > 0.001)
-                                <div class="small mb-1" style="color:#6b7280;">Las moras se exoneran (detalle abajo).</div>
-                            @endif
-                            @if($vCobra > 0.001 || $vVig > 0.001 || $vCondVig > 0.001)
-                                <div class="small mb-1">
-                                    @if($vCobra > 0.001)
-                                        <span style="color:#c0392b;">Mora: se cobra <b>S/ {{ number_format($vCobra, 2) }}</b>{{ ($preview['mora_ajustada'] ?? false) ? ' (ajustada a mano)' : '' }}</span>
-                                    @elseif($preview['reserva_mora'] ?? false)
-                                        <span style="color:#b8860b;">Mora: reservada — queda como deuda <b>S/ {{ number_format($vVig, 2) }}</b></span>
-                                    @else
-                                        <span style="color:#6b7280;">Mora: se exonera al cancelar <b style="text-decoration: line-through;">S/ {{ number_format($vCondVig > 0.001 ? $vCondVig : $vVig, 2) }}</b></span>
-                                    @endif
-                                </div>
-                            @endif
-                            @if($vAcumCobra > 0.001 || $vCondAcum > 0.001)
-                                <div class="small mb-2">
-                                    @if($vCondAcum > 0.001)
-                                        <span style="color:#6b7280;">Mora acumulada: se exonera al cancelar <b style="text-decoration: line-through;">S/ {{ number_format($vCondAcum, 2) }}</b></span>
-                                    @else
-                                        <span style="color:#c0392b;">Mora acumulada: se cobra <b>S/ {{ number_format($vAcumCobra, 2) }}</b></span>
-                                    @endif
-                                </div>
-                            @endif
                             <div class="fw-semibold small mb-1">¿Cancelar el crédito?</div>
                             <div class="d-flex gap-3 flex-wrap">
                                 <div class="form-check">
