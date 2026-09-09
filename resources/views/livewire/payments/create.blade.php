@@ -801,7 +801,7 @@
                                 <div class="tp-sep"></div>
 
                                 @if($preview['cuotas'])
-                                    <div class="tp-row"><span>Cuotas:</span><span>{{ implode(',', $preview['cuotas']) }}</span></div>
+                                    <div class="tp-row tp-wrap"><span>Cuotas:</span><span>{{ \App\Support\RangoCuotas::texto($preview['cuotas']) }}</span></div>
                                 @endif
                                 <div class="tp-row"><span>Capital:</span><span>{{ number_format($preview['capital'], 2) }}</span></div>
                                 <div class="tp-row"><span>Interes:</span><span>{{ number_format($preview['interes'], 2) }}</span></div>
@@ -1053,6 +1053,9 @@
             .ticket-preview .tp-empresa { font-size: 13px; font-weight: bold; }
             .ticket-preview .tp-row { display: flex; justify-content: space-between; gap: 8px; }
             .ticket-preview .tp-row > span:last-child { text-align: right; white-space: nowrap; }
+            /* La lista de cuotas SÍ se parte: con tramos sueltos (19-25,27,30-40)
+               una sola línea se saldría del modal. */
+            .ticket-preview .tp-wrap > span:last-child { white-space: normal; word-break: break-word; }
             .ticket-preview .tp-total { font-size: 13px; font-weight: bold; }
             .ticket-preview .tp-sep { border-top: 1px dashed #000; margin: 4px 0; }
             .ticket-preview .tp-sep-dbl { border-top: 3px double #000; margin: 4px 0; }

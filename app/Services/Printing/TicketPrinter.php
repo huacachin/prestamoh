@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Printing;
 
 use App\Models\MassDeletion;
+use App\Support\RangoCuotas;
+use App\Support\Usernames;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -221,7 +223,7 @@ final class TicketPrinter
 
             // ── Detalle por tipo (C, I, E, M) ────────────────────────────
             if ($t['cuotas']) {
-                $this->pt($printer, $this->row('Cuotas:', implode(',', $t['cuotas']), $columns));
+                $this->pt($printer, $this->row('Cuotas:', RangoCuotas::texto($t['cuotas']), $columns));
             }
             // Desglose por cuota: cuánto recibió cada una en este cobro, con
             // marca de amortizada cuando quedó sin completar.
@@ -279,7 +281,7 @@ final class TicketPrinter
     /** Username del cobrador — lógica compartida en App\Support\Usernames. */
     private function usernameCobrador(?string $nombre): ?string
     {
-        return \App\Support\Usernames::de($nombre);
+        return Usernames::de($nombre);
     }
 
     private function saldoPendiente(int $creditId): float

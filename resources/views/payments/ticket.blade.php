@@ -135,7 +135,7 @@
     <div class="sep"></div>
 
     @if($t['cuotas'])
-        <div class="row"><span>Cuotas:</span><span>{{ implode(',', $t['cuotas']) }}</span></div>
+        <div class="row"><span>Cuotas:</span><span>{{ \App\Support\RangoCuotas::texto($t['cuotas']) }}</span></div>
     @endif
     {{-- Desglose por cuota (solo si hay varias o alguna quedó amortizada). --}}
     @if($t['detalle_cuotas_visible'] ?? false)
