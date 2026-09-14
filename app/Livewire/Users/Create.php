@@ -39,7 +39,9 @@ class Create extends Component
         return [
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'min:3', 'max:64', Rule::unique('users', 'username')],
-            'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')],
+            // NOT NULL en la tabla users: si se deja vacío el insert revienta
+            // con 1048 y el cajero ve un 500 (pasó el 14/09). Se pide aquí.
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
             'pwd' => ['required', 'string', 'min:8'],
             'document_type' => ['required', 'string', 'max:3'],
             'document_number' => ['required', 'string', 'max:11', Rule::unique('users', 'document_number')->where(fn ($q) => $q->where('document_type', $this->document_type))],

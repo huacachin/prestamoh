@@ -66,7 +66,9 @@ class Edit extends Component
         return [
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'min:3', 'max:64', Rule::unique('users', 'username')->ignore($id)],
-            'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($id)],
+            // Obligatorio por el mismo motivo que en el alta: la columna no
+            // admite nulos y vaciar el campo rompía el guardado.
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($id)],
             'pwd' => ['nullable', 'string', 'min:8'],
             'document_type' => ['required', 'string', 'max:3'],
             'document_number' => ['required', 'string', 'max:11', Rule::unique('users', 'document_number')->ignore($id)->where(fn ($q) => $q->where('document_type', $this->document_type))],
