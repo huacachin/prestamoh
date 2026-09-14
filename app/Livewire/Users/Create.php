@@ -46,7 +46,10 @@ class Create extends Component
             'document_type' => ['required', 'string', 'max:3'],
             'document_number' => ['required', 'string', 'max:11', Rule::unique('users', 'document_number')->where(fn ($q) => $q->where('document_type', $this->document_type))],
             'phone' => ['required', 'string', 'max:15'],
-            'headquarter_id' => ['nullable', 'integer', 'exists:headquarters,id'],
+            // Obligatoria (14/09): sin sede, una docena de pantallas (pagos,
+            // caja, clientes) asumen en silencio la sede 1 y lo registrado
+            // queda contabilizado donde no es.
+            'headquarter_id' => ['required', 'integer', 'exists:headquarters,id'],
             'selectedRoleId' => ['nullable', 'integer', Rule::in(RoleSetupSeeder::asignableRoles()->pluck('id'))],
         ];
     }
@@ -62,18 +65,40 @@ class Create extends Component
             abort(403);
         }
 
-        $this->headquarters = Headquarter::where('status', 'active')->get(['id', 'name']);
+        $this->headquarters = Headquarter::where('status', 'active')
+            ->orderBy('sort_order')->orderBy('id')->get(['id', 'name']);
+        // Viene marcada la sede principal: hoy solo hay una (Huacachín) y
+        // dejar "— Seleccionar —" solo servía para olvidarla.
+        $this->headquarter_id ??= $this->headquarters->first()?->id;
         // Catálogo completo: los no-asignables se pintan deshabilitados
         $this->roles = RoleSetupSeeder::orderedRoles();
+    }
+
+    /**
+     * Livewire no pasa por el TrimStrings de las peticiones normales, así que
+     * un espacio de más al tipear se guardaba tal cual ("Marvin "): ensucia
+     * exportes y comparaciones, y rompería el ingreso si algún día la base
+     * deja de ignorar los espacios finales al comparar.
+     */
+    private function recortarEspacios(): void
+    {
+        $this->name = trim($this->name);
+        $this->username = trim($this->username);
+        $this->email = $this->email === null ? null : trim($this->email);
+        $this->document_number = trim($this->document_number);
+        $this->phone = trim($this->phone);
     }
 
     public function clean(): void
     {
         $this->reset(['name', 'username', 'pwd', 'email', 'document_type', 'document_number', 'phone', 'headquarter_id', 'selectedRoleId']);
+        // Limpiar el formulario no debe dejar la sede vacía.
+        $this->headquarter_id = $this->headquarters->first()?->id;
     }
 
     public function save()
     {
+        $this->recortarEspacios();
         $this->validate();
 
         $user = User::create([

@@ -73,7 +73,8 @@ class Edit extends Component
             'document_type' => ['required', 'string', 'max:3'],
             'document_number' => ['required', 'string', 'max:11', Rule::unique('users', 'document_number')->ignore($id)->where(fn ($q) => $q->where('document_type', $this->document_type))],
             'phone' => ['required', 'string', 'max:15'],
-            'headquarter_id' => ['nullable', 'integer', 'exists:headquarters,id'],
+            // Obligatoria, por lo mismo que en el alta.
+            'headquarter_id' => ['required', 'integer', 'exists:headquarters,id'],
             // Solo ids de la lista visible (asignables + rol actual): el resto
             // del catálogo está bloqueado también en el backend.
             'selectedRoleId' => ['nullable', 'integer', Rule::in($this->rolesAsignablesIds())],
@@ -95,8 +96,19 @@ class Edit extends Component
         'pwd' => 'contraseña',
     ];
 
+    /** Mismo recorte que en el alta: Livewire no aplica TrimStrings. */
+    private function recortarEspacios(): void
+    {
+        $this->name = trim($this->name);
+        $this->username = trim($this->username);
+        $this->email = $this->email === null ? null : trim($this->email);
+        $this->document_number = trim($this->document_number);
+        $this->phone = trim($this->phone);
+    }
+
     public function update()
     {
+        $this->recortarEspacios();
         $this->validate();
 
         // Anti-lockout: un director no puede quitarse su propio rol de director
