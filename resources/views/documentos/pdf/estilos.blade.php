@@ -154,15 +154,20 @@
 
     .salto { page-break-before: always; }
 
+    /* Anexo 2 (15/09, área legal): el título va en negrita Y subrayado, y el
+       subtítulo en negrita, como sus maestros. Solo los usa anexo2.blade;
+       el Anexo 1 tiene sus propias clases (.ax-*). */
     .anexo-titulo {
         font-size: 8pt;
         font-weight: bold;
+        text-decoration: underline;
         text-align: center;
         text-transform: uppercase;
         margin: 0 0 4px 0;
     }
     .anexo-subtitulo {
         font-size: 7pt;
+        font-weight: bold;
         text-align: center;
         text-transform: uppercase;
         margin: 0 0 12px 0;

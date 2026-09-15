@@ -147,7 +147,10 @@
         <tr><th class="azul" colspan="5">DATOS DEL CRÉDITO</th></tr>
         <tr>
             <td class="etiqueta" style="width: 18%; text-align: center;">Nro.</td>
-            <td class="valor-cent" colspan="2" style="width: 32%;">{{ $cred['numero'] }}</td>
+            {{-- Numeración del ÁREA ("2026-230"), no el id interno: es la que
+                 citan en sus registros. Los documentos emitidos antes del
+                 15/09 no la traen y siguen mostrando su id. --}}
+            <td class="valor-cent" colspan="2" style="width: 32%;">{{ $cred['correlativo'] ?? $cred['numero'] }}</td>
             <td class="etiqueta" style="width: 24%;">Moneda</td>
             <td class="valor-der" style="width: 26%;">{{ ucfirst(mb_strtolower($cred['moneda'])) }}</td>
         </tr>

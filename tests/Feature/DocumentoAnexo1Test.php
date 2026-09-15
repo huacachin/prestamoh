@@ -132,7 +132,9 @@ class DocumentoAnexo1Test extends TestCase
             array_keys($d['cliente'])
         );
         $this->assertEqualsCanonicalizing(
-            ['numero', 'moneda', 'monto', 'frecuencia', 'cuotas', 'cuota', 'plazo', 'fecha_inicio', 'tim'],
+            // 'correlativo' es la numeración PROPIA del área ("2026-230"), que
+            // es la que imprime el anexo; 'numero' sigue siendo el id interno.
+            ['numero', 'correlativo', 'moneda', 'monto', 'frecuencia', 'cuotas', 'cuota', 'plazo', 'fecha_inicio', 'tim'],
             array_keys($d['credito'])
         );
         $this->assertEqualsCanonicalizing(['filas', 'total'], array_keys($d['cronograma']));

@@ -2,10 +2,10 @@
      CALCADO del maestro del área legal (15/09, las 15 plantillas .docx): título,
      imagen del voucher ARRIBA, línea DETALLES con la transcripción LITERAL del
      voucher —no etiquetas nuestras— y al pie las formas de pago. Se conserva
-     el párrafo de identificación (cliente, crédito, banco, fecha), que el
-     maestro no trae: sin él, el PDF suelto no dice a qué crédito pertenece
-     (decisión de Antony, 15/09). Fuera quedaron el membrete y el subtítulo de
-     modalidad, que tampoco están en el maestro.
+     Sin párrafo de identificación: el área lo pidió fuera el 15/09 tras
+     revisarlo, así que el documento queda exactamente como su maestro. El
+     vínculo con el crédito vive en la base y en el nombre del archivo, no en
+     la hoja. Fuera quedaron también el membrete y el subtítulo de modalidad.
      Recibe el snapshot congelado ($d) y $medio ('pdf' | 'previa' | 'word'). --}}
 <!DOCTYPE html>
 <html lang="es">
@@ -40,14 +40,6 @@
         </div>
     @endif
 
-    {{-- Identificación: lo único que separa este documento del maestro. --}}
-    <p class="parrafo">
-        LAS PARTES DEJAN CONSTANCIA DE QUE SE HA REALIZADO EL DEPÓSITO/TRANSFERENCIA DEL MONTO DE LA
-        OBLIGACIÓN PRINCIPAL A FAVOR DE {{ $d['cliente']['nombre'] }} ({{ $d['cliente']['documento_tipo'] }}
-        N° {{ $d['cliente']['documento'] }}) POR EL CRÉDITO N° {{ $d['credito']['numero'] }},
-        EN {{ $d['banco_legal'] }}, EL {{ $d['fecha'] }}.
-    </p>
-
     @php
         // La transcripción es LITERAL (texto del voucher, tal como se ve).
         // Los snapshots viejos la traían como pares label/valor: se siguen
@@ -59,6 +51,11 @@
         // En mayúsculas como el maestro (y como el resto del documento), sin
         // importar si lo escribió el operador o la lectura automática.
         $detalles = mb_strtoupper(rtrim($detalles, " .;"));
+        // La lectura automática ya entrega el texto con "DETALLES:" delante
+        // (15/09, pedido del área) y el operador puede escribirlo también: se
+        // quita aquí para no imprimirlo dos veces, porque la etiqueta la pone
+        // la propia plantilla en negrita.
+        $detalles = ltrim(preg_replace('/^\s*DETALLES\s*:\s*/u', '', $detalles));
     @endphp
     @if ($detalles !== '')
         <p class="detalles"><strong>DETALLES:</strong> {{ $detalles }}.</p>

@@ -1049,7 +1049,10 @@ class Documentos extends Component
             return;
         }
 
-        $this->anexo2Transcripcion = mb_strtoupper($leido['transcripcion']);
+        // Con "DETALLES:" delante (15/09, pedido del área): así lo que se ve en
+        // el formulario es literalmente lo que sale impreso. La plantilla no lo
+        // duplica — si ya viene, lo quita antes de poner el suyo en negrita.
+        $this->anexo2Transcripcion = 'DETALLES: '.mb_strtoupper($leido['transcripcion']);
         $this->anexo2Dudas = $leido['dudas'];
         if ($leido['monto'] !== '') {
             $this->anexo2Monto = $leido['monto'];

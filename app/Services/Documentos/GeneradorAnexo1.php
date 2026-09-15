@@ -7,6 +7,7 @@ use App\Models\Credit;
 use App\Models\DocumentoCliente;
 use App\Models\Vehiculo;
 use App\Support\Audit;
+use App\Support\Documentos\CorrelativoAnexo;
 use App\Support\Documentos\DomicilioLegal;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Collection;
@@ -94,7 +95,14 @@ class GeneradorAnexo1
             'vehiculo' => $vehiculosDatos[0] ?? null,
             'vehiculos' => $vehiculosDatos,
             'credito' => [
+                // Id interno del crédito. Se conserva porque lo usan el
+                // nombre del archivo, el título y los documentos ya emitidos.
                 'numero' => $credit->id,
+                // Numeración PROPIA del área legal ("2026-230"), que es la que
+                // citan en sus registros y ante la notaría (15/09). Se asigna
+                // al EMITIR; en la vista previa se muestra el próximo sin
+                // consumirlo, porque previsualizar no debe quemar números.
+                'correlativo' => $overrides['correlativo'] ?? CorrelativoAnexo::proximo(),
                 'moneda' => 'SOLES',
                 'monto' => (float) $credit->importe,
                 'frecuencia' => mb_strtoupper($credit->tipoPlanillaLabel()),
@@ -136,6 +144,11 @@ class GeneradorAnexo1
                     $v->update(['valor' => ($valor !== null && $valor !== '') ? (float) $valor : null]);
                 }
             }
+
+            // El número del área se consume AQUÍ, dentro de la transacción y
+            // con bloqueo: dos personas emitiendo a la vez no pueden llevarse
+            // el mismo, porque el documento se firma y se registra.
+            $overrides['correlativo'] = CorrelativoAnexo::siguiente();
 
             $snapshot = self::construirSnapshot($client, $credit, $vehiculo, $overrides);
 

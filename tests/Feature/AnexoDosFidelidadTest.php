@@ -45,19 +45,21 @@ class AnexoDosFidelidadTest extends TestCase
 
     private function render(array $extra = [], string $medio = 'pdf'): string
     {
-        $sede = Headquarter::create(['name' => 'Sede Anexo2', 'status' => 'active']);
-        $this->actingAs(User::factory()->create(['username' => 'anexo2-fid', 'headquarter_id' => $sede->id]));
+        // Reutilizable: varios tests renderizan más de una vez en el mismo caso.
+        $sede = Headquarter::firstOrCreate(['name' => 'Sede Anexo2'], ['status' => 'active']);
+        $this->actingAs(User::firstWhere('username', 'anexo2-fid')
+            ?? User::factory()->create(['username' => 'anexo2-fid', 'headquarter_id' => $sede->id]));
 
-        $client = Client::create([
-            'nombre' => 'ROSA', 'apellido_pat' => 'QUISPE', 'apellido_mat' => 'MAMANI',
-            'tipo_documento' => 'DNI', 'documento' => '46781234',
-            'headquarter_id' => $sede->id, 'status' => 'active',
-        ]);
-        $credit = Credit::create([
-            'client_id' => $client->id, 'fecha_prestamo' => '2026-08-20',
-            'importe' => 5000, 'cuotas' => 4, 'tipo_planilla' => 1, 'interes' => 10,
-            'situacion' => 'Activo', 'estado' => 1, 'headquarter_id' => $sede->id,
-        ]);
+        $client = Client::firstOrCreate(
+            ['documento' => '46781234'],
+            ['nombre' => 'ROSA', 'apellido_pat' => 'QUISPE', 'apellido_mat' => 'MAMANI',
+                'tipo_documento' => 'DNI', 'headquarter_id' => $sede->id, 'status' => 'active'],
+        );
+        $credit = Credit::firstOrCreate(
+            ['client_id' => $client->id, 'fecha_prestamo' => '2026-08-20'],
+            ['importe' => 5000, 'cuotas' => 4, 'tipo_planilla' => 1, 'interes' => 10,
+                'situacion' => 'Activo', 'estado' => 1, 'headquarter_id' => $sede->id],
+        );
 
         $snapshot = GeneradorAnexo2::construirSnapshot($client, $credit, array_merge([
             'banco' => 'bcp', 'modalidad' => 'transferencia',
@@ -94,15 +96,38 @@ class AnexoDosFidelidadTest extends TestCase
         $this->assertStringNotContainsString('Página <span', $html);
     }
 
-    public function test_conserva_la_identificacion_del_credito(): void
+    /**
+     * El área revisó el documento el 15/09 y pidió fuera el párrafo de tres
+     * líneas que identificaba cliente, crédito, banco y fecha: su maestro no
+     * lo trae. El vínculo con el crédito queda en la base y en el nombre del
+     * archivo, no en la hoja.
+     */
+    public function test_no_lleva_el_parrafo_de_identificacion(): void
     {
         $html = $this->render();
 
-        // Lo único que añadimos al maestro, a propósito.
-        $this->assertStringContainsString('QUISPE', $html);
-        $this->assertStringContainsString('46781234', $html);
-        $this->assertStringContainsString('EL BANCO DE CRÉDITO DEL PERÚ - BCP', $html);
-        $this->assertStringContainsString('22/08/2026', $html);
+        $this->assertStringNotContainsString('LAS PARTES DEJAN CONSTANCIA', $html);
+        $this->assertStringNotContainsString('46781234', $html);
+        $this->assertStringNotContainsString('EL BANCO DE CRÉDITO DEL PERÚ - BCP', $html);
+    }
+
+    /** Título en negrita Y subrayado; subtítulo en negrita (15/09, área legal). */
+    public function test_los_titulos_van_como_los_pidio_el_area(): void
+    {
+        $html = $this->render();
+
+        $this->assertMatchesRegularExpression('~\.anexo-titulo\s*\{[^}]*font-weight:\s*bold~s', $html);
+        $this->assertMatchesRegularExpression('~\.anexo-titulo\s*\{[^}]*text-decoration:\s*underline~s', $html);
+        $this->assertMatchesRegularExpression('~\.anexo-subtitulo\s*\{[^}]*font-weight:\s*bold~s', $html);
+    }
+
+    /** "DETALLES:" lo pone la plantilla: venga o no en la transcripción. */
+    public function test_detalles_no_se_duplica(): void
+    {
+        foreach (['DETALLES: '.self::TRANSCRIPCION, self::TRANSCRIPCION] as $entrada) {
+            $html = $this->render(['transcripcion' => $entrada]);
+            $this->assertSame(1, mb_substr_count($html, 'DETALLES:'), "Se duplicó con: {$entrada}");
+        }
     }
 
     public function test_la_imagen_va_arriba_de_los_detalles(): void

@@ -105,8 +105,9 @@ class LecturaVoucherTest extends TestCase
 
         $c = $this->modal()->call('leerVoucher');
 
-        // En mayúsculas, como el resto del documento.
-        $this->assertSame('¡TRANSFERENCIA EXITOSA!; S/5,000.00; NÚMERO DE OPERACIÓN 07365498', $c->get('anexo2Transcripcion'));
+        // En mayúsculas y con "DETALLES:" delante (15/09, pedido del área):
+        // lo que se ve en el formulario es lo que sale impreso.
+        $this->assertSame('DETALLES: ¡TRANSFERENCIA EXITOSA!; S/5,000.00; NÚMERO DE OPERACIÓN 07365498', $c->get('anexo2Transcripcion'));
         $this->assertSame('5,000.00', $c->get('anexo2Monto'));
         $c->assertDispatched('successAlert');
     }
