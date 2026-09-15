@@ -34,7 +34,11 @@ class AnexoDosFidelidadTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** Transcripción real del maestro "1.1 Anexo 2. BCP. Transf." (datos cambiados). */
+    /**
+     * Transcripción real del maestro "1.1 Anexo 2. BCP. Transf." (datos
+     * cambiados). Se deja el "aM" con la mayúscula suelta del original: sirve
+     * para comprobar que el render normaliza a mayúsculas.
+     */
     private const TRANSCRIPCION = '¡TRANSFERENCIA EXITOSA!; S/5,000.00; SABADO, 22 AGOSTO 2026 – 9:18 aM; '
         .'ENVIADO A BENEFICIARIO DE PRUEBA; ****2097; MONEDA SOLES; DESDE CUENTAS DE AHORRO; '
         .'****5098; NÚMERO DE OPERACIÓN 07365498; MENSAJE: GARANTIA VEHICULAR';
@@ -70,8 +74,10 @@ class AnexoDosFidelidadTest extends TestCase
 
         $this->assertStringContainsString('ANEXO 2', $html);
         $this->assertStringContainsString('CONSTANCIA DE ENTREGA DEL MONTO DE LA OBLIGACIÓN PRINCIPAL', $html);
-        // La transcripción va LITERAL, no traducida a etiquetas nuestras.
-        $this->assertStringContainsString(self::TRANSCRIPCION, $html);
+        // La transcripción va LITERAL, no traducida a etiquetas nuestras, y en
+        // MAYÚSCULAS como el maestro — da igual si la escribió el operador o
+        // la lectura automática, el documento sale parejo.
+        $this->assertStringContainsString(mb_strtoupper(self::TRANSCRIPCION), $html);
         $this->assertStringNotContainsString('MONTO TRANSFERIDO:', $html);
         // Pie del maestro: las formas de pago.
         $this->assertStringContainsString(config('documentos.formas_pago'), $html);

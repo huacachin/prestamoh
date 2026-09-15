@@ -56,7 +56,9 @@
         $detalles = is_array($t)
             ? collect($t)->map(fn (array $c) => $c['label'].': '.$c['valor'])->implode('; ')
             : trim((string) $t);
-        $detalles = rtrim($detalles, " .");
+        // En mayúsculas como el maestro (y como el resto del documento), sin
+        // importar si lo escribió el operador o la lectura automática.
+        $detalles = mb_strtoupper(rtrim($detalles, " .;"));
     @endphp
     @if ($detalles !== '')
         <p class="detalles"><strong>DETALLES:</strong> {{ $detalles }}.</p>

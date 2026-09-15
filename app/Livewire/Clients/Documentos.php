@@ -10,6 +10,8 @@ use App\Models\Vehiculo;
 use App\Services\Documentos\GeneradorAnexo1;
 use App\Services\Documentos\GeneradorAnexo2;
 use App\Services\Documentos\GeneradorContrato;
+use App\Services\Documentos\Ocr\LectorDeVoucher;
+use App\Services\Documentos\Ocr\VoucherIlegible;
 use App\Services\Factiliza;
 use App\Support\Audit;
 use App\Support\Documentos\BancosVoucher;
@@ -202,6 +204,14 @@ class Documentos extends Component
 
     /** Monto del voucher: cuadra la constancia contra el importe del crédito. */
     public string $anexo2Monto = '';
+
+    /**
+     * Dudas que la lectura automática declaró sobre su propia transcripción
+     * ("no distingo si es 0 u 8 y por qué"). Se muestran para que el operador
+     * mire justo ahí: en un documento que se firma, saber dónde dudar vale
+     * más que un acierto silencioso.
+     */
+    public string $anexo2Dudas = '';
 
     /** Fecha del documento (Y-m-d del input date; $datos la lleva d/m/Y). */
     public string $fechaAnexo2 = '';
@@ -859,6 +869,7 @@ class Documentos extends Component
         $this->anexo2Modalidad = '';
         $this->anexo2Transcripcion = '';
         $this->anexo2Monto = '';
+        $this->anexo2Dudas = '';
         $this->fechaAnexo2 = now()->format('Y-m-d');
         $this->comprobante = null;
         $this->htmlPreviewAnexo2 = '';
@@ -996,7 +1007,59 @@ class Documentos extends Component
     private function rearmarCamposAnexo2(): void
     {
         $this->anexo2Transcripcion = '';
+        $this->anexo2Dudas = '';
         $this->sugerirMontoAnexo2();
+    }
+
+    /**
+     * Lee la foto del voucher y rellena la transcripción para que el operador
+     * la CONFIRME. Nunca genera nada por sí sola: la lectura puede equivocarse
+     * y esto va a un documento que se firma. Si falla, se transcribe a mano
+     * como siempre — la pantalla sigue sirviendo sin la API.
+     */
+    public function leerVoucher(): void
+    {
+        if (! config('services.anthropic.habilitado')) {
+            $this->dispatch('errorAlert', ['message' => 'La lectura automática no está configurada.']);
+
+            return;
+        }
+
+        if (! $this->comprobante) {
+            $this->dispatch('errorAlert', ['message' => 'Sube primero la foto del voucher.']);
+
+            return;
+        }
+
+        if (! BancosVoucher::esComboValido($this->anexo2Banco, $this->anexo2Modalidad)) {
+            $this->dispatch('errorAlert', ['message' => 'Elige el banco y la modalidad antes de leer el voucher.']);
+
+            return;
+        }
+
+        try {
+            $leido = app(LectorDeVoucher::class)->leer(
+                (string) $this->comprobante->getRealPath(),
+                $this->anexo2Banco,
+                $this->anexo2Modalidad,
+            );
+        } catch (VoucherIlegible $e) {
+            $this->dispatch('errorAlert', ['message' => $e->getMessage().' Transcríbelo a mano.']);
+
+            return;
+        }
+
+        $this->anexo2Transcripcion = mb_strtoupper($leido['transcripcion']);
+        $this->anexo2Dudas = $leido['dudas'];
+        if ($leido['monto'] !== '') {
+            $this->anexo2Monto = $leido['monto'];
+        }
+
+        Audit::log("Leyó el voucher del Anexo 2 con {$leido['modelo']} (crédito #{$this->anexo2CreditoId})");
+
+        $this->dispatch('successAlert', ['message' => $leido['dudas'] === ''
+            ? 'Voucher leído. Revísalo antes de generar.'
+            : 'Voucher leído, con dudas señaladas. Revísalas antes de generar.']);
     }
 
     /** Pre-sugiere el monto con el importe desembolsado del crédito. */

@@ -966,6 +966,13 @@
                                               wire:model.blur="anexo2Transcripcion"
                                               placeholder="Copia lo que dice el voucher, en su orden, separando cada dato con punto y coma. Ej.: ¡TRANSFERENCIA EXITOSA!; S/10,000.00; SÁBADO, 22 AGOSTO 2026 – 9:18 aM; ENVIADO A ...; NÚMERO DE OPERACIÓN 07365498"></textarea>
                                     @error('anexo2Transcripcion') <span class="title-modules small">{{ $message }}</span> @enderror
+                                    @if($anexo2Dudas !== '')
+                                        {{-- Lo que la lectura NO pudo distinguir: es donde hay que mirar. --}}
+                                        <div class="alert alert-warning py-1 px-2 mt-2 mb-0 small" style="color:#000;">
+                                            <i class="ti ti-alert-triangle"></i> <strong>Revisa estos datos:</strong>
+                                            {{ $anexo2Dudas }}
+                                        </div>
+                                    @endif
                                     @if(! empty($camposAnexo2))
                                         <div class="form-text" style="font-size:10px;">
                                             No debe faltar:
@@ -991,6 +998,28 @@
                                     <div wire:loading wire:target="comprobante" class="small text-muted">
                                         <i class="ti ti-loader"></i> Subiendo imagen…
                                     </div>
+                                    @if(config('services.anthropic.habilitado'))
+                                        {{-- Lectura automática (15/09): rellena la transcripción para
+                                             que el operador la CONFIRME. Nunca genera sola. --}}
+                                        <button type="button" class="btn btn-sm btn-outline-dark mt-2"
+                                                wire:click="leerVoucher"
+                                                wire:loading.attr="disabled" wire:target="leerVoucher,comprobante"
+                                                @disabled(! $comprobante)>
+                                            <span wire:loading.remove wire:target="leerVoucher">
+                                                <i class="ti ti-scan"></i> Leer voucher
+                                            </span>
+                                            <span wire:loading wire:target="leerVoucher">
+                                                <i class="ti ti-loader"></i> Leyendo…
+                                            </span>
+                                        </button>
+                                        <div class="form-text" style="font-size:10px;">
+                                            @if($comprobante)
+                                                Rellena la transcripción a partir de la foto. Revísala siempre antes de generar.
+                                            @else
+                                                Sube la foto y podrás leerla automáticamente.
+                                            @endif
+                                        </div>
+                                    @endif
                                 </div>
                                 @if($comprobante && ! $errors->has('comprobante'))
                                     <div class="col-md-6 text-center">
