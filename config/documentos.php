@@ -44,4 +44,12 @@ return [
 
     'whatsapp_gps' => '+51 982 333 689',
 
+    /*
+     * Pie del ANEXO 2 (15/09): los maestros del área legal lo llevan al pie
+     * en las 15 plantillas, con las cuentas a las que el cliente paga. Si las
+     * cuentas cambian, se cambia aquí y sale en todos los anexos nuevos.
+     */
+    'formas_pago' => 'Formas de pago: BCP Cuenta N° 191-15272135-0-98 | CCI 002-191-15272135098-59; '
+        .'Yape N.º 981352577 Titular: Guilmer Nicefaro Huacachin Paucar',
+
 ];

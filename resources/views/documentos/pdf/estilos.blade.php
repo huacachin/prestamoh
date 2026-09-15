@@ -44,6 +44,8 @@
         color: #444;
     }
     .pie-pagina .num:after { content: counter(page); }
+    /* Anexo 2: el pie del maestro son las formas de pago, centradas. */
+    .pie-pagina.pie-formas { text-align: center; font-size: 6.5pt; color: #000; }
     @else
     .pie-pagina { display: none; }
     @endif

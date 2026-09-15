@@ -937,31 +937,44 @@
                             </div>
                         </div>
 
-                        {{-- ── Transcripción del voucher (inputs dinámicos del combo) ── --}}
-                        @if(! empty($camposAnexo2))
-                            <div class="mt-3" wire:key="anexo2-campos-{{ $anexo2Banco }}-{{ $anexo2Modalidad }}">
-                                <div class="fw-bold small text-uppercase border-bottom pb-1 mb-2">
-                                    Transcripción del voucher — {{ $tituloVoucherAnexo2 }}
-                                </div>
-                                <div class="row g-2">
-                                    @foreach($camposAnexo2 as $clave => [$label, $requerido])
-                                        <div class="col-md-4" wire:key="anexo2-campo-{{ $anexo2Banco }}-{{ $anexo2Modalidad }}-{{ $clave }}">
-                                            <label class="form-label small mb-1">
-                                                {{ $label }}@if($requerido) *@endif
-                                            </label>
-                                            <input type="text" class="form-control form-control-sm"
-                                                   wire:model.blur="anexo2Campos.{{ $clave }}"
-                                                   placeholder="{{ $requerido ? 'Tal como figura en el voucher' : 'Opcional' }}">
-                                            @if($clave === 'monto' && $montoDesembolsoAnexo2 !== null)
-                                                <div class="form-text" style="font-size:10px;">
-                                                    Debe coincidir con el desembolso: S/ {{ number_format($montoDesembolsoAnexo2, 2) }}
-                                                </div>
-                                            @endif
+                        {{-- ── Transcripción LITERAL del voucher (15/09) ──────────────
+                             Antes eran N inputs etiquetados y el documento salía
+                             distinto al que el área firma: el maestro transcribe lo
+                             que dice el voucher, en su orden. Los campos del catálogo
+                             quedan como recordatorio de qué no debe faltar. --}}
+                        <div class="mt-3" wire:key="anexo2-transcripcion-{{ $anexo2Banco }}-{{ $anexo2Modalidad }}">
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <label class="form-label small mb-1">Monto del voucher *</label>
+                                    <input type="text" class="form-control form-control-sm"
+                                           wire:model.blur="anexo2Monto" placeholder="10,000.00">
+                                    @if($montoDesembolsoAnexo2 !== null)
+                                        <div class="form-text" style="font-size:10px;">
+                                            Debe coincidir con el desembolso: S/ {{ number_format($montoDesembolsoAnexo2, 2) }}
                                         </div>
-                                    @endforeach
+                                    @endif
+                                    @error('anexo2Monto') <span class="title-modules small">{{ $message }}</span> @enderror
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="form-label small mb-1">
+                                        Transcripción del voucher *
+                                        @if(! empty($tituloVoucherAnexo2))
+                                            <span class="text-muted fw-normal">— {{ $tituloVoucherAnexo2 }}</span>
+                                        @endif
+                                    </label>
+                                    <textarea class="form-control form-control-sm" rows="5"
+                                              wire:model.blur="anexo2Transcripcion"
+                                              placeholder="Copia lo que dice el voucher, en su orden, separando cada dato con punto y coma. Ej.: ¡TRANSFERENCIA EXITOSA!; S/10,000.00; SÁBADO, 22 AGOSTO 2026 – 9:18 aM; ENVIADO A ...; NÚMERO DE OPERACIÓN 07365498"></textarea>
+                                    @error('anexo2Transcripcion') <span class="title-modules small">{{ $message }}</span> @enderror
+                                    @if(! empty($camposAnexo2))
+                                        <div class="form-text" style="font-size:10px;">
+                                            No debe faltar:
+                                            {{ collect($camposAnexo2)->filter(fn ($c) => $c[1])->map(fn ($c) => $c[0])->implode(' · ') }}
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
-                        @endif
+                        </div>
 
                         {{-- ── Foto del comprobante (opcional; se embebe en la constancia) ── --}}
                         <div class="mt-3">

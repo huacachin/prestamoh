@@ -5,10 +5,10 @@ namespace Tests\Feature;
 use Tests\TestCase;
 
 /**
- * Quién lleva pie de página con numeración y quién no (15/09):
- *   contrato → NO (las maestras en papel no lo llevan)
- *   Anexo 1  → NO (cabe en una hoja; el maestro del área tampoco lo trae)
- *   Anexo 2  → SÍ (se archiva suelto y ahí la numeración sirve)
+ * Qué lleva cada documento al pie (15/09):
+ *   contrato → NADA (las maestras en papel no lo llevan)
+ *   Anexo 1  → NADA (cabe en una hoja; el maestro del área tampoco lo trae)
+ *   Anexo 2  → las FORMAS DE PAGO, como sus 15 maestros; ya no la numeración
  * Se fija porque el estilo .pie-pagina vive en la hoja COMPARTIDA: basta con
  * pegar el div de vuelta para que reaparezca en el documento equivocado.
  */
@@ -29,9 +29,13 @@ class AnexoPieDePaginaTest extends TestCase
         $this->assertStringNotContainsString('class="pie-pagina"', $this->plantilla('contrato'));
     }
 
-    public function test_el_anexo_2_conserva_su_pie_de_pagina(): void
+    public function test_el_anexo_2_lleva_las_formas_de_pago_al_pie(): void
     {
-        $this->assertStringContainsString('class="pie-pagina"', $this->plantilla('anexo2'));
+        $anexo2 = $this->plantilla('anexo2');
+        $this->assertStringContainsString('pie-formas', $anexo2);
+        $this->assertStringContainsString("config('documentos.formas_pago')", $anexo2);
+        // Ya no numera páginas: el maestro no lo hace.
+        $this->assertStringNotContainsString('<span class="num">', $anexo2);
     }
 
     /** El estilo sigue existiendo (lo usa el Anexo 2) y solo aplica al PDF. */
