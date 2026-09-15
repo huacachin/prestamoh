@@ -59,8 +59,8 @@
     </style>
 </head>
 <body>
-    <div class="pie-pagina">Anexo 1 — Crédito #{{ $d['credito']['numero'] }} — Página <span class="num"></span></div>
-
+    {{-- SIN pie de página (15/09), como el contrato: el Anexo 1 cabe en una
+         hoja y el maestro del área no lo lleva. El Anexo 2 sí lo conserva. --}}
     <div class="ax-banner">{{ $d['marca'] }}</div>
     <div class="ax-titulo">ANEXO 1</div>
 
