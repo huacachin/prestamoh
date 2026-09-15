@@ -172,6 +172,10 @@ class GeneradorAnexo1
                 'tipo' => 'anexo1',
                 'modelo' => null, // solo aplica al contrato
                 'version' => $version,
+                // En columna propia: es el número que el área cita, y hay que
+                // poder saber cuáles están en uso para no repetirlos ni
+                // saltarlos cuando se anula un anexo.
+                'correlativo' => $overrides['correlativo'],
                 'snapshot' => $snapshot,
                 'pdf_path' => $path,
                 'sha256' => hash('sha256', $contenido),
