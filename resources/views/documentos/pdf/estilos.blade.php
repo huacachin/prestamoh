@@ -132,14 +132,18 @@
     }
     table.datos th { background: #eee; text-transform: uppercase; }
 
-    .firmas { page-break-inside: avoid; margin-top: 50px; }
+    /* 15/09: SIN aire extra antes de "EN SEÑAL DE CONFORMIDAD" —la frase va
+       pegada al final de las cláusulas— y el hueco se pasa ARRIBA DE LA LÍNEA,
+       que es donde hace falta: ahí se firma a mano. */
+    .firmas { page-break-inside: avoid; margin-top: 0; }
     table.tabla-firmas { width: 100%; border-collapse: collapse; }
     /* vertical-align: top — con 'bottom' las líneas de firma quedaban a
        distinta altura cuando una caja tenía más renglones que la otra
        (la del acreedor lleva 5 y la del deudor 3). */
     table.tabla-firmas td {
         width: 50%;
-        padding: 34px 14px 8px 14px;
+        /* El padding superior ES el espacio para firmar sobre la línea. */
+        padding: 62px 14px 8px 14px;
         text-align: center;
         vertical-align: top;
         font-size: 6.5pt;
