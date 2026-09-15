@@ -74,21 +74,29 @@ class LectorVoucherClaude implements LectorDeVoucher
             $respuesta = $this->pedir($modelo, $mensajes, conEsfuerzo: true);
         } catch (Throwable $e) {
             if (! str_contains($e->getMessage(), 'effort')) {
-                Log::warning('Lectura de voucher falló', ['modelo' => $modelo, 'error' => $e->getMessage()]);
-
-                throw new VoucherIlegible('No se pudo leer el voucher: '.$e->getMessage(), 0, $e);
+                throw $this->traducir($e, $modelo);
             }
 
             try {
                 $respuesta = $this->pedir($modelo, $mensajes, conEsfuerzo: false);
             } catch (Throwable $e2) {
-                Log::warning('Lectura de voucher falló', ['modelo' => $modelo, 'error' => $e2->getMessage()]);
-
-                throw new VoucherIlegible('No se pudo leer el voucher: '.$e2->getMessage(), 0, $e2);
+                throw $this->traducir($e2, $modelo);
             }
         }
 
         return $this->interpretar($respuesta, $modelo);
+    }
+
+    /** El detalle técnico va al log; al operador le llega algo accionable. */
+    private function traducir(Throwable $e, string $modelo): VoucherIlegible
+    {
+        Log::warning('Lectura de voucher falló', [
+            'modelo' => $modelo,
+            'clase' => $e::class,
+            'error' => $e->getMessage(),
+        ]);
+
+        return new VoucherIlegible(MensajeDeFallo::para($e), 0, $e);
     }
 
     /** @param  list<array<string, mixed>>  $mensajes */

@@ -8,6 +8,7 @@ use App\Models\Credit;
 use App\Models\Headquarter;
 use App\Models\User;
 use App\Services\Documentos\Ocr\LectorDeVoucher;
+use App\Services\Documentos\Ocr\MensajeDeFallo;
 use App\Services\Documentos\Ocr\VoucherIlegible;
 use Database\Seeders\PermissionCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -160,6 +161,32 @@ class LecturaVoucherTest extends TestCase
             ->call('leerVoucher')
             ->assertDispatched('errorAlert')
             ->assertSet('anexo2Transcripcion', '');
+    }
+
+    /**
+     * Los fallos se traducen a algo que el operador pueda resolver: lo que
+     * decide si reintenta, transcribe a mano o avisa a alguien. Se prueba con
+     * los mensajes REALES que devuelve la API, no con los ya traducidos.
+     */
+    public function test_traduce_los_fallos_a_algo_accionable(): void
+    {
+        $casos = [
+            // El más probable en el día a día.
+            ['Your credit balance is too low to access the Anthropic API.', 'sin saldo'],
+            ['invalid x-api-key', 'no está bien configurada'],
+            ['Number of requests has exceeded your rate limit', 'saturada'],
+            ['Connection timed out after 600000 milliseconds', 'No hubo conexión'],
+            ['Could not process image', 'no pudo procesar esta imagen'],
+            ['algo raro que nadie previó', 'No se pudo leer el voucher'],
+        ];
+
+        foreach ($casos as [$crudo, $esperado]) {
+            $traducido = MensajeDeFallo::para(new \RuntimeException($crudo));
+
+            $this->assertStringContainsString($esperado, $traducido, "No tradujo bien: {$crudo}");
+            // Y el error en inglés de la API nunca llega al operador.
+            $this->assertStringNotContainsString($crudo, $traducido);
+        }
     }
 
     public function test_sin_clave_configurada_el_boton_no_existe(): void
