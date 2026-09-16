@@ -173,15 +173,38 @@
     @php
         $filas = $d['cronograma']['filas'];
         $n = count($filas);
-        // Hasta 36 cuotas: una sola columna a lo ancho, como el maestro;
-        // hasta 72 en dos (pedido 04/09). El anexo debe caber en UNA hoja
-        // (regla del 28/08, blindada por Anexo1UnaHojaTest): la letra y los
-        // paddings del cronograma se reducen por tramos según cuántas filas
-        // cargue cada columna.
-        $cols = $n <= 36 ? 1 : ($n <= 72 ? 2 : ($n <= 108 ? 3 : 4));
+        // Una sola columna mientras quepa; luego se reparte (pedido 04/09). El
+        // anexo debe caber en UNA hoja (regla del 28/08, blindada por
+        // Anexo1UnaHojaTest): la letra y los paddings del cronograma se
+        // reducen por tramos según cuántas filas cargue cada columna.
+        //
+        // Se reparte por CAPACIDAD, no por tramos fijos (16/09). Lo que cabe
+        // depende de cuánto ocupe la cabecera, y eso VARÍA con los datos: una
+        // dirección de 6 líneas o un segundo vehículo empujan el cronograma
+        // hacia abajo. Antes el corte era fijo (36 en una columna, 72 en dos),
+        // medido con una dirección corta y un solo vehículo — por eso el 16/09
+        // un crédito de 28 cuotas se fue a una segunda hoja y su última fila
+        // pisó el pie.
+        //
+        // Se parte de 24 filas y se descuenta lo que la cabecera se lleva:
+        // cada vehículo extra trae su propia tabla, y una dirección larga se
+        // reparte en varias líneas dentro de su celda.
+        $lineasDireccion = (int) ceil(mb_strlen((string) ($d['cliente']['direccion'] ?? '')) / 45);
+        $porColumnaMax = 24
+            - 4 * max(0, count($vehiculos) - 1)
+            - 2 * max(0, $lineasDireccion - 2);
+        $porColumnaMax = max(10, $porColumnaMax);
+        // Máximo 4 columnas: más no caben a lo ancho de la hoja.
+        $cols = min(4, max(1, (int) ceil($n / $porColumnaMax)));
         $porColumna = max(1, (int) ceil($n / $cols));
         $grupos = array_chunk($filas, $porColumna);
-        $claseCron = $porColumna >= 30 ? 'apretado2' : ($porColumna >= 20 ? 'apretado' : '');
+        // El apretado mira DOS cosas: cuántas filas carga la columna y cuánto
+        // se llevó la cabecera. Con 3 vehículos y dirección larga queda poco
+        // alto aunque la columna lleve pocas filas, y ahí hay que encoger
+        // igual (16/09).
+        $claseCron = ($porColumna >= 30 || $porColumnaMax <= 12)
+            ? 'apretado2'
+            : (($porColumna >= 20 || $porColumnaMax <= 18) ? 'apretado' : '');
     @endphp
 
     <div class="ax-titulo">CRONOGRAMA DE PAGO</div>

@@ -21,11 +21,15 @@ class Anexo1UnaHojaTest extends TestCase
     {
         $this->actingAs(User::factory()->create(['username' => 'anx-hoja-'.$cuotas.'-'.$vehiculos]));
         $client = Client::create([
-            'expediente' => (string) (700 + $cuotas + $vehiculos), 'nombre' => 'Cliente De Prueba Con Nombre Largo',
+            'expediente' => (string) (700 + $cuotas * 10 + $vehiculos), 'nombre' => 'Cliente De Prueba Con Nombre Largo',
             'apellido_pat' => 'Apellido', 'apellido_mat' => 'Materno',
-            'tipo_documento' => 'DNI', 'documento' => str_pad((string) (10000000 + $cuotas * 10 + $vehiculos), 8, '0', STR_PAD_LEFT), 'sexo' => 'M', 'status' => 'active',
-            'direccion' => 'Av. Siempre Viva 742, Urbanización Las Palmeras', 'celular1' => '999888777',
-            'email' => 'cliente@correo.com',
+            'tipo_documento' => 'DNI', 'documento' => str_pad((string) (10000000 + $cuotas * 100 + $vehiculos), 8, '0', STR_PAD_LEFT), 'sexo' => 'M', 'status' => 'active',
+            // Peor caso REAL (16/09): con esta dirección de 6 líneas, 28 cuotas
+            // se salían a una segunda hoja y la última fila pisaba el pie. El
+            // fixture anterior traía una dirección corta y no lo veía.
+            'direccion' => 'CA. LOS GERANIOS MZ. J LT. 12 ASOC. UNIÓN SANTA CRUZ DE CAJAMARQUILLA, '
+                .'LURIGANCHO, DISTRITO DE LURIGANCHO, PROVINCIA Y DEPARTAMENTO DE LIMA',
+            'email' => 'adonishugolaurentelliuyacc@gmail.com', 'celular1' => '999888777',
         ]);
         $credit = Credit::create([
             'client_id' => $client->id, 'fecha_prestamo' => now()->format('Y-m-d'),
@@ -42,9 +46,9 @@ class Anexo1UnaHojaTest extends TestCase
         $lista = collect();
         for ($v = 1; $v <= $vehiculos; $v++) {
             $lista->push(Vehiculo::create([
-                'client_id' => $client->id, 'placa' => "P{$cuotas}{$v}-99",
+                'client_id' => $client->id, 'placa' => "P{$cuotas}X{$vehiculos}X{$v}",
                 'marca' => 'Mercedes Benz', 'modelo' => 'Sprinter 515',
-                'nro_serie' => "9BM38406{$v}KB123456", 'valor' => 45000 + $v,
+                'nro_serie' => "9BM3840{$cuotas}{$vehiculos}{$v}KB1234", 'valor' => 45000 + $v,
             ]));
         }
 
@@ -61,12 +65,32 @@ class Anexo1UnaHojaTest extends TestCase
     {
         Storage::fake('public');
 
-        foreach ([4, 12, 24, 36, 48, 72, 96] as $cuotas) {
+        foreach ([4, 12, 24, 26, 28, 30, 32, 36, 48, 72, 96] as $cuotas) {
             [$client, $credit, $vehiculos] = $this->mundo($cuotas);
             $doc = app(GeneradorAnexo1::class)->generar($client, $credit, $vehiculos);
             $pdf = Storage::disk('public')->get($doc->pdf_path);
 
             $this->assertSame(1, $this->paginas($pdf), "con {$cuotas} cuotas el anexo debe caber en 1 hoja");
+        }
+    }
+
+    /**
+     * La altura disponible depende de los DATOS: una dirección larga o un
+     * segundo vehículo empujan el cronograma hacia abajo. El barrido de arriba
+     * usa el peor caso; este recorre las combinaciones que lo rodean, que es
+     * donde el corte fijo anterior fallaba sin que nadie lo viera.
+     */
+    public function test_una_hoja_en_las_combinaciones_de_datos(): void
+    {
+        foreach ([1, 2, 3] as $vehiculos) {
+            foreach ([4, 20, 24, 28, 36, 48, 72] as $cuotas) {
+                [$client, $credit, $vs] = $this->mundo($cuotas, $vehiculos);
+                $pdf = Storage::disk('public')->get(
+                    GeneradorAnexo1::generar($client, $credit, $vs)->pdf_path
+                );
+                $this->assertSame(1, $this->paginas($pdf),
+                    "con {$vehiculos} vehículo(s) y {$cuotas} cuotas debe caber en 1 hoja");
+            }
         }
     }
 
