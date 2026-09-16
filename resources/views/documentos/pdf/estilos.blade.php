@@ -175,6 +175,23 @@
     }
     .linea-firma { border-top: 0.8pt solid #000; padding-top: 3px; }
 
+    @if($medio === 'word')
+    /* Word y las firmas (16/09). Dos cosas no sobreviven al importador:
+       1) El hueco para firmar es un padding-top de 62px en la celda. Word lo
+          traduce a márgenes de celda y descarta los superiores asimétricos
+          grandes: el espacio en blanco desaparecía y las cajas quedaban
+          pegadas al párrafo de "EN SEÑAL DE CONFORMIDAD". Se pasa a
+          espacio ANTES de la línea, que es lo que Word sí mapea.
+       2) page-break-inside: avoid está en el <div> .firmas, y Word solo
+          entiende ese corte en párrafos y en FILAS de tabla. Se traslada a
+          la fila. No se hace en el PDF: dompdf sí lo soporta en filas y
+          empujaría el bloque a una hoja nueva, rompiendo el tope de 5. */
+    table.tabla-firmas { table-layout: fixed; }
+    table.tabla-firmas td { padding: 8pt 10pt; vertical-align: top; }
+    table.tabla-firmas tr { page-break-inside: avoid; }
+    .firmas .linea-firma { margin-top: 46pt; }
+    @endif
+
     .salto { page-break-before: always; }
 
     /* Anexo 2 (15/09, área legal): el título va en negrita Y subrayado, y el

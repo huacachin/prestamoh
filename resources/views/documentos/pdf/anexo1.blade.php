@@ -24,8 +24,8 @@
         table.ax th, table.ax td { border: 1px solid #000; padding: 1.5px 5px; font-size: 8.5pt; line-height: 1.2; }
         /* "S/" pegado a la izquierda y monto a la derecha SIN floats (dompdf
            los rompe dentro de celdas): dos celdas con el borde interior fundido. */
-        table.ax td.sim { border-right: 0; width: 5%; font-weight: bold; }
-        table.ax td.montod { border-left: 0; text-align: right; font-weight: bold; }
+        table.ax td.sim { border-right: none; width: 5%; font-weight: bold; }
+        table.ax td.montod { border-left: none; text-align: right; font-weight: bold; }
         table.ax th.azul { background: #1f70c1; color: #fff; text-align: center; font-weight: bold; }
         table.ax td.etiqueta { font-weight: bold; }
         table.ax td.valor-cent { text-align: center; font-weight: bold; }
@@ -62,7 +62,15 @@
                   text-align: center; font-weight: bold; font-size: 9pt; }
         @endif
         table.ax-split { width: 100%; border-collapse: collapse; }
-        table.ax-split > tbody > tr > td.col { vertical-align: top; padding: 0 4px; border: 0; }
+        table.ax-split td.col { vertical-align: top; padding: 0 4px; border: 0; }
+        @if(($medio ?? 'pdf') === 'word')
+        /* Con el <colgroup> ya declarado, table-layout: fixed hace que
+           Word respete el reparto en vez de autoajustar al contenido.
+           NO se pone en el PDF: ahí la primera fila con colspan dejaría
+           los anchos indefinidos también para dompdf. */
+        table.ax { table-layout: fixed; }
+        table.ax td.sim { padding-left: 2px; padding-right: 0; }
+        @endif
     </style>
 </head>
 <body>
@@ -85,6 +93,17 @@
         $fechaInicio = $cred['fecha_inicio'] ?? $d['fecha'];
     @endphp
     <table class="ax">
+    @if ($medio === 'word')
+        {{-- Word deduce la rejilla desde la primera fila, que aquí lleva
+             colspan: sin <colgroup> reparte las columnas a su criterio. --}}
+        <colgroup>
+            <col style="width: 12%">
+            <col style="width: 38%">
+            <col style="width: 20%">
+            <col style="width: 5%">
+            <col style="width: 25%">
+        </colgroup>
+    @endif
         <tr>
             <th class="azul" colspan="2" style="width: 50%;">DATOS DEL CLIENTE</th>
             <th class="azul" colspan="3" style="width: 50%;">DATOS DEL VEHÍCULO</th>
@@ -129,6 +148,17 @@
     {{-- ── Vehículos adicionales (2° en adelante), mismo estilo ─────────── --}}
     @if (count($vehiculos) > 1)
         <table class="ax adicionales">
+        @if ($medio === 'word')
+            {{-- Word deduce la rejilla desde la primera fila, que aquí lleva
+                 colspan: sin <colgroup> reparte las columnas a su criterio. --}}
+            <colgroup>
+                <col style="width: 16%">
+                <col style="width: 22%">
+                <col style="width: 22%">
+                <col style="width: 24%">
+                <col style="width: 16%">
+            </colgroup>
+        @endif
             <tr><th class="azul" colspan="5">DATOS DE LOS VEHÍCULOS ADICIONALES</th></tr>
             <tr>
                 <th class="azul" style="width: 16%;">PLACA</th>
@@ -151,6 +181,17 @@
 
     {{-- ── Datos del crédito ────────────────────────────────────────────── --}}
     <table class="ax">
+    @if ($medio === 'word')
+        {{-- Word deduce la rejilla desde la primera fila, que aquí lleva
+             colspan: sin <colgroup> reparte las columnas a su criterio. --}}
+        <colgroup>
+            <col style="width: 18%">
+            <col style="width: 5%">
+            <col style="width: 27%">
+            <col style="width: 24%">
+            <col style="width: 26%">
+        </colgroup>
+    @endif
         <tr><th class="azul" colspan="5">DATOS DEL CRÉDITO</th></tr>
         <tr>
             <td class="etiqueta" style="width: 18%; text-align: center;">Nro.</td>
@@ -212,6 +253,19 @@
         $claseCron = ($porColumna >= 30 || $porColumnaMax <= 12)
             ? 'apretado2'
             : (($porColumna >= 20 || $porColumnaMax <= 18) ? 'apretado' : '');
+
+        // ── Anchos en CENTÍMETROS, solo para Word (16/09) ─────────────────
+        // El importador de Word mide el `width: 100%` de una tabla ANIDADA
+        // contra el ancho de texto de la PÁGINA, no contra la celda que la
+        // contiene. Con el cronograma en columnas eso ensanchaba cada bloque
+        // al ancho de la hoja entera: el Anexo 1 se salía por la derecha o
+        // Word encogía las columnas a su criterio y partía las fechas.
+        // Dándole medidas absolutas no queda nada que interpretar.
+        // 16.2 cm = A4 (21) menos los márgenes del anexo (2.8 + 2).
+        $anchoUtilCm = 16.2;
+        $anchoColCm = round($anchoUtilCm / max(1, count($grupos)), 2);
+        // Menos el padding horizontal de la celda contenedora (0 4px ≈ 0.22cm).
+        $anchoCronCm = count($grupos) === 1 ? $anchoUtilCm : round($anchoColCm - 0.22, 2);
     @endphp
 
     <div class="ax-titulo">CRONOGRAMA DE PAGO</div>
@@ -219,13 +273,16 @@
         {{-- Columna única SIN envoltorio: dompdf no parte tablas anidadas y
              empujaba el cronograma entero a la página 2. --}}
         @php $grupo = $grupos[0]; $esUltimo = true; @endphp
-        @include('documentos.pdf.anexo1-cron', ['grupo' => $grupo, 'esUltimo' => true, 'claseCron' => $claseCron, 'fmt' => $fmt, 'total' => $d['cronograma']['total']])
+        @include('documentos.pdf.anexo1-cron', ['grupo' => $grupo, 'esUltimo' => true, 'claseCron' => $claseCron, 'fmt' => $fmt, 'total' => $d['cronograma']['total'], 'anchoCronCm' => $anchoCronCm])
     @else
-    <table class="ax-split">
+    {{-- width="100%" como ATRIBUTO además del CSS: Word necesita una
+         referencia de ancho para el envoltorio; dompdf lo ignora porque la
+         regla de autor (table.ax-split) tiene más peso. --}}
+    <table class="ax-split" width="100%">
         <tr>
             @foreach ($grupos as $grupo)
-                <td class="col" style="width: {{ round(100 / count($grupos), 4) }}%;">
-                    @include('documentos.pdf.anexo1-cron', ['grupo' => $grupo, 'esUltimo' => $loop->last, 'claseCron' => $claseCron, 'fmt' => $fmt, 'total' => $d['cronograma']['total']])
+                <td class="col" valign="top" style="width: {{ $medio === 'word' ? $anchoColCm.'cm' : round(100 / count($grupos), 4).'%' }};">
+                    @include('documentos.pdf.anexo1-cron', ['grupo' => $grupo, 'esUltimo' => $loop->last, 'claseCron' => $claseCron, 'fmt' => $fmt, 'total' => $d['cronograma']['total'], 'anchoCronCm' => $anchoCronCm])
                 </td>
             @endforeach
         </tr>
