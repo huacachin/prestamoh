@@ -36,9 +36,34 @@
                 'word' => url('/storage/'.$d['imagen_path']),
                 default => '/storage/'.$d['imagen_path'], // previa (iframe srcdoc)
             };
+
+            // Word (16/09): NO soporta max-width ni max-height, así que pintaba
+            // el voucher a su tamaño natural — una foto de celular ocupaba tres
+            // hojas y salía cortada por la derecha. Las medidas ya escaladas se
+            // calculan aquí y se emiten como ATRIBUTOS del <img>, que es lo
+            // único que Word respeta. Misma caja que el PDF: 320 x 420 px.
+            $anchoWord = 320;
+            $altoWord = null;
+            if ($medio === 'word') {
+                $ruta = \Illuminate\Support\Facades\Storage::disk('public')->path($d['imagen_path']);
+                $tam = is_file($ruta) ? @getimagesize($ruta) : false;
+                if ($tam && $tam[0] > 0 && $tam[1] > 0) {
+                    $escala = min(320 / $tam[0], 420 / $tam[1], 1);
+                    $anchoWord = (int) round($tam[0] * $escala);
+                    $altoWord = (int) round($tam[1] * $escala);
+                }
+                // Si no se pudo leer el archivo se manda solo el ancho: Word
+                // mantiene la proporción y nunca queda a tamaño natural.
+            }
         @endphp
         <div class="voucher-img">
-            <img src="{{ $src }}" alt="Comprobante de la operación">
+            <img src="{{ $src }}" alt="Comprobante de la operación"
+                @if ($medio === 'word')
+                    width="{{ $anchoWord }}"
+                    @if ($altoWord) height="{{ $altoWord }}" @endif
+                    style="width: {{ $anchoWord }}px;@if ($altoWord) height: {{ $altoWord }}px;@endif"
+                @endif
+            >
         </div>
     @elseif ($medio === 'previa')
         <div class="voucher-img" style="border: 1pt dashed #999; padding: 30px 12px; color: #666;">

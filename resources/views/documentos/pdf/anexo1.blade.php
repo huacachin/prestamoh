@@ -70,6 +70,10 @@
            los anchos indefinidos también para dompdf. */
         table.ax { table-layout: fixed; }
         table.ax td.sim { padding-left: 2px; padding-right: 0; }
+        /* La fila Total de la tabla plana mezcla celdas del total con celdas
+           separadoras, así que el azul no puede ir en la fila (tr.total) como
+           en el PDF: va por celda. */
+        table.ax-cron td.total-celda { background: #1f70c1; color: #fff; font-weight: bold; border-color: #000; }
         @endif
     </style>
 </head>
@@ -274,6 +278,12 @@
              empujaba el cronograma entero a la página 2. --}}
         @php $grupo = $grupos[0]; $esUltimo = true; @endphp
         @include('documentos.pdf.anexo1-cron', ['grupo' => $grupo, 'esUltimo' => true, 'claseCron' => $claseCron, 'fmt' => $fmt, 'total' => $d['cronograma']['total'], 'anchoCronCm' => $anchoCronCm])
+    @elseif ($medio === 'word')
+        {{-- Word (16/09): UNA tabla plana en vez de tablas anidadas. Word no
+             aplica las reglas de clase a una tabla dentro de otra tabla, y el
+             cronograma salía sin un solo borde y sin la cabecera azul mientras
+             las tablas de datos de arriba —de primer nivel— se veían bien. --}}
+        @include('documentos.pdf.anexo1-cron-plano', ['grupos' => $grupos, 'claseCron' => $claseCron, 'fmt' => $fmt, 'anchoUtilCm' => $anchoUtilCm])
     @else
     {{-- width="100%" como ATRIBUTO además del CSS: Word necesita una
          referencia de ancho para el envoltorio; dompdf lo ignora porque la

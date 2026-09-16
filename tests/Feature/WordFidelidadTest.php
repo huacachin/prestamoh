@@ -14,6 +14,7 @@ use App\Services\Documentos\RenderDocumento;
 use App\Support\DocResponse;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -264,5 +265,111 @@ class WordFidelidadTest extends TestCase
             '/\.ax-pie\s*\{[^}]*position\s*:\s*(absolute|fixed)/', $doc,
             'Word no soporta ese posicionamiento: el pie termina encima del cronograma'
         );
+    }
+
+    /** Anexo 1 con cronograma largo: el que se reparte en varias columnas. */
+    private function anexo1ConCuotas(int $cuotas, string $medio = 'word'): string
+    {
+        $credito = Credit::create([
+            'client_id' => $this->client->id, 'fecha_prestamo' => '2026-09-01',
+            'importe' => 20000, 'cuotas' => $cuotas, 'tipo_planilla' => 1, 'interes' => 10,
+            'interes_total' => 2000, 'situacion' => 'Activo', 'estado' => 1,
+        ]);
+        for ($i = 1; $i <= $cuotas; $i++) {
+            CreditInstallment::create([
+                'credit_id' => $credito->id, 'num_cuota' => $i,
+                'fecha_vencimiento' => Carbon::parse('2026-09-08')->addWeeks($i - 1),
+                'importe_cuota' => 400, 'importe_interes' => 50, 'pagado' => false,
+            ]);
+        }
+
+        return RenderDocumento::html(
+            GeneradorAnexo1::construirSnapshot($this->client, $credito, $this->vehiculo),
+            'anexo1', $medio
+        );
+    }
+
+    /** Profundidad de anidamiento de tablas en el cuerpo del documento. */
+    private function anidamiento(string $html): int
+    {
+        $cuerpo = substr($html, (int) strpos($html, '<body'));
+        preg_match_all('/<table|<\/table>/i', $cuerpo, $m);
+
+        $prof = 0;
+        $max = 0;
+        foreach ($m[0] as $tag) {
+            $prof += str_starts_with(strtolower($tag), '</') ? -1 : 1;
+            $max = max($max, $prof);
+        }
+
+        return $max;
+    }
+
+    /**
+     * EL SEGUNDO SÍNTOMA REPORTADO: "el cronograma está mal".
+     *
+     * En el PDF el cronograma en columnas se arma con una tabla por columna
+     * dentro de una contenedora. Word NO aplica las reglas de clase a una
+     * tabla ANIDADA: el cronograma salía sin un solo borde y sin la cabecera
+     * azul, mientras las tablas de datos de arriba —de primer nivel— se veían
+     * perfectas. Por eso en Word se emite UNA tabla plana.
+     */
+    public function test_en_word_el_cronograma_en_columnas_no_va_anidado(): void
+    {
+        $word = $this->anexo1ConCuotas(48);
+
+        $this->assertSame(1, $this->anidamiento($word),
+            'en Word el cronograma no puede ir en tablas anidadas: pierde bordes y cabecera azul');
+        // Solo el CUERPO: la regla CSS table.ax-split sigue viviendo en el
+        // <style>, que es compartido por los tres medios. Lo que no debe
+        // existir es el ELEMENTO, que es el que anida.
+        $cuerpo = substr($word, (int) strpos($word, '<body'));
+        $this->assertStringNotContainsString('class="ax-split"', $cuerpo,
+            'la tabla contenedora es justo la que anida');
+        $this->assertStringContainsString('total-celda', $cuerpo,
+            'la fila Total va por celda, porque la fila mezcla total y separadores');
+    }
+
+    /** El PDF conserva la maquetación anidada, que es la validada en papel. */
+    public function test_el_pdf_conserva_el_cronograma_anidado(): void
+    {
+        $pdf = $this->anexo1ConCuotas(48, 'pdf');
+
+        $this->assertStringContainsString('ax-split', $pdf, 'el PDF no cambia: sigue con la contenedora');
+        $this->assertSame(2, $this->anidamiento($pdf));
+    }
+
+    /**
+     * TERCER SÍNTOMA REPORTADO: "la captura del voucher está muy grande".
+     *
+     * Word no soporta max-width ni max-height, así que pintaba la imagen a su
+     * tamaño natural. El voucher real mide 708x1280 px: en Word ocupaba tres
+     * hojas y salía cortado por la derecha. Las medidas se calculan en el
+     * servidor y se emiten como atributos, que Word sí respeta.
+     */
+    public function test_el_voucher_del_anexo_2_lleva_medidas_explicitas_en_word(): void
+    {
+        // Mismo tamaño que el voucher real de producción.
+        $img = imagecreatetruecolor(708, 1280);
+        $ruta = 'documentos/word-test/voucher.jpg';
+        Storage::disk('public')->put($ruta, '');
+        imagejpeg($img, Storage::disk('public')->path($ruta));
+        imagedestroy($img);
+
+        $snapshot = GeneradorAnexo2::construirSnapshot($this->client, $this->credit, [
+            'transcripcion' => 'OPERACION EXITOSA', 'monto' => 5000,
+        ]);
+        $snapshot['imagen_path'] = $ruta;
+
+        $word = RenderDocumento::html($snapshot, 'anexo2', 'word');
+
+        // 708x1280 topa por el alto: 420/1280 = 0.3281 -> 232 x 420.
+        $this->assertMatchesRegularExpression('/<img[^>]*width="232"/', $word, 'ancho escalado');
+        $this->assertMatchesRegularExpression('/<img[^>]*height="420"/', $word, 'alto escalado al tope');
+
+        // El PDF sigue con su max-width/max-height, que dompdf sí entiende.
+        $pdf = RenderDocumento::html($snapshot, 'anexo2', 'pdf');
+        $this->assertDoesNotMatchRegularExpression('/<img[^>]*width="232"/', $pdf,
+            'el PDF no lleva medidas fijas: las resuelve por CSS');
     }
 }
