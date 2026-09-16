@@ -22,8 +22,13 @@
     @endphp
     /* Bookman Old Style (05/09): la tipografía de las maestras del área
        legal. Embebida en el PDF —fsType=0, embebido libre— y servida a la
-       previa; Word usa la instalada en la máquina (viene con Office) y si
+       previa por URL.
+       En WORD no se declaran (16/09): Word no descarga fuentes web al abrir
+       un .doc, así que las cuatro reglas eran inútiles y encima podían
+       disparar el aviso de "contenido externo". Word toma la Bookman Old
+       Style INSTALADA —viene con Office— por el font-family del body, y si
        no está cae al serif de respaldo. */
+    @if($medio !== 'word')
     @font-face { font-family: "Bookman Old Style"; font-style: normal; font-weight: normal;
                  src: url("{{ $bookmanSrc }}/BookmanOldStyle.ttf") format("truetype"); }
     @font-face { font-family: "Bookman Old Style"; font-style: normal; font-weight: bold;
@@ -32,6 +37,7 @@
                  src: url("{{ $bookmanSrc }}/BookmanOldStyleItalic.ttf") format("truetype"); }
     @font-face { font-family: "Bookman Old Style"; font-style: italic; font-weight: bold;
                  src: url("{{ $bookmanSrc }}/BookmanOldStyleBoldItalic.ttf") format("truetype"); }
+    @endif
     @if($medio === 'pdf')
     @page { margin: {{ $margenes }}; }
     .pie-pagina {
@@ -46,6 +52,23 @@
     .pie-pagina .num:after { content: counter(page); }
     /* Anexo 2: el pie del maestro son las formas de pago, centradas. */
     .pie-pagina.pie-formas { text-align: center; font-size: 6.5pt; color: #000; }
+    @elseif($medio === 'word')
+    /* Word (16/09): la caja de página se declara AQUÍ y no en DocResponse,
+       porque aquí es donde se sabe si el documento es el CONTRATO (márgenes
+       apretados de $compacto) o un anexo. Fijarla allá le imponía al contrato
+       los márgenes del anexo y le corría todos los saltos de línea.
+       El tamaño va en PUNTOS y no como la palabra "A4": en una instalación
+       configurada en Carta la palabra se ignora y cambia la caja, y el
+       Anexo 1 —calibrado para entrar justo en UNA hoja— se parte en dos.
+       595.28 x 841.89 pt es el mismo A4 que lleva el MediaBox del PDF. */
+    @page { size: 595.28pt 841.89pt; margin: {{ $margenes }}; }
+    /* Word no posiciona con fixed/absolute: el pie va en el flujo. Las vistas
+       lo emiten al final del body cuando el medio no es PDF. */
+    .pie-pagina { margin-top: 16pt; text-align: right; font-size: 6pt; color: #444; }
+    .pie-pagina.pie-formas { margin-top: 16pt; text-align: center; font-size: 6.5pt; color: #000; }
+    /* counter(page) no existe en Word: mejor sin número que imprimir la
+       palabra "counter(page)" en el papel. */
+    .pie-pagina .num:after { content: ""; }
     @else
     .pie-pagina { display: none; }
     @endif

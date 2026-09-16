@@ -53,6 +53,41 @@ class DocumentosTipografiaTest extends TestCase
     {
         $css = $this->css('word');
         $this->assertStringContainsString('font-family: "Bookman Old Style"', $css);
-        $this->assertStringNotContainsString('@page {', $css, 'en Word el margen lo fija DocResponse');
+        // Word no descarga fuentes web al abrir un .doc: las cuatro @font-face
+        // eran inútiles y podían disparar el aviso de contenido externo.
+        $this->assertStringNotContainsString('@font-face', $css);
+    }
+
+    /**
+     * 16/09 — el margen de Word se declara AQUÍ y ya no en DocResponse.
+     *
+     * Antes lo fijaba DocResponse con un valor único, y el CONTRATO —que usa
+     * márgenes más apretados para entrar en 5 hojas— salía en Word con los
+     * del anexo: el texto entraba más angosto y se le corrían todos los
+     * saltos de línea y de página. estilos.blade.php es el único que sabe si
+     * el documento es compacto, así que el @page tiene que salir de aquí.
+     */
+    public function test_word_declara_el_margen_que_le_toca_a_cada_documento(): void
+    {
+        $anexo = view('documentos.pdf.estilos', ['medio' => 'word'])->render();
+        $contrato = view('documentos.pdf.estilos', ['medio' => 'word', 'compacto' => true])->render();
+
+        $this->assertStringContainsString('@page {', $anexo, 'Word necesita la caja de página');
+        $this->assertStringContainsString('@page {', $contrato);
+
+        // A4 en puntos y no la palabra "A4": en una instalación configurada
+        // en Carta la palabra se ignora y el Anexo 1 se parte en dos hojas.
+        $this->assertStringContainsString('595.28pt 841.89pt', $anexo);
+
+        $margen = function (string $css): string {
+            preg_match('/@page\s*\{([^}]*)\}/', $css, $m);
+
+            return trim($m[1] ?? '');
+        };
+
+        $this->assertNotSame(
+            $margen($anexo), $margen($contrato),
+            'el contrato usa márgenes apretados: en Word no pueden ser los del anexo'
+        );
     }
 }

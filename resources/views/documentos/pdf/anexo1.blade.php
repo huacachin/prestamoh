@@ -46,10 +46,17 @@
         @if(($medio ?? 'pdf') === 'pdf')
         .ax-pie { position: fixed; bottom: -0.4cm; left: 0; right: 0;
                   text-align: center; font-weight: bold; font-size: 9pt; }
+        @elseif(($medio ?? 'pdf') === 'word')
+        /* Word (16/09): NO ignora el position:absolute como decia el
+           comentario anterior — lo convierte en un marco flotante que se
+           posa encima del cronograma o se va a una hoja suelta, y la
+           direccion de Huaycan deja de verse al pie. Aqui va en el flujo,
+           al final del documento, con aire arriba. Tampoco se le pone
+           min-height al body: en Word estira el documento a dos hojas. */
+        .ax-pie { margin-top: 14pt; text-align: center; font-weight: bold; font-size: 9pt; }
         @else
         /* Previa: el pie va al fondo de la HOJA (body con alto minimo A4 y
-           pie absoluto) — sin fixed, que ancla al viewport y corta lineas.
-           Word ignora el absolute y lo deja al final del flujo, que esta bien. */
+           pie absoluto) — sin fixed, que ancla al viewport y corta lineas. */
         body { position: relative; min-height: 24.5cm; }
         .ax-pie { position: absolute; bottom: 0; left: 0; right: 0;
                   text-align: center; font-weight: bold; font-size: 9pt; }

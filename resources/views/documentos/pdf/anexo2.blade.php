@@ -15,8 +15,14 @@
     @include('documentos.pdf.estilos')
 </head>
 <body>
-    {{-- Pie del maestro: las cuentas a las que paga el cliente (config). --}}
-    <div class="pie-pagina pie-formas">{{ config('documentos.formas_pago') }}</div>
+    {{-- Pie del maestro: las cuentas a las que paga el cliente (config).
+         En PDF va aquí arriba porque es position:fixed y dompdf lo ancla al
+         fondo de la hoja. En Word (16/09) no hay posicionamiento: si se deja
+         en este punto se imprime ENCIMA del título, así que se emite al
+         cierre del body, que es donde cae de forma natural. --}}
+    @if ($medio === 'pdf')
+        <div class="pie-pagina pie-formas">{{ config('documentos.formas_pago') }}</div>
+    @endif
 
     <div class="anexo-titulo">ANEXO 2</div>
     <div class="anexo-subtitulo">CONSTANCIA DE ENTREGA DEL MONTO DE LA OBLIGACIÓN PRINCIPAL</div>
@@ -61,5 +67,10 @@
         <p class="detalles"><strong>DETALLES:</strong> {{ $detalles }}.</p>
     @endif
 
+    {{-- El pie del maestro al cierre, para Word (y para la previa, donde
+         tampoco hay pie fijo). Ver la nota de arriba. --}}
+    @if ($medio !== 'pdf')
+        <div class="pie-pagina pie-formas">{{ config('documentos.formas_pago') }}</div>
+    @endif
 </body>
 </html>
