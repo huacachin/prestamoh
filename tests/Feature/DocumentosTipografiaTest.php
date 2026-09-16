@@ -72,15 +72,20 @@ class DocumentosTipografiaTest extends TestCase
         $anexo = view('documentos.pdf.estilos', ['medio' => 'word'])->render();
         $contrato = view('documentos.pdf.estilos', ['medio' => 'word', 'compacto' => true])->render();
 
-        $this->assertStringContainsString('@page {', $anexo, 'Word necesita la caja de página');
-        $this->assertStringContainsString('@page {', $contrato);
+        // Word ata la puesta en página a una SECCIÓN con nombre; es lo que
+        // él mismo emite al guardar como página web y lo que respeta con
+        // más fiabilidad que un @page suelto.
+        $this->assertStringContainsString('@page WordSection1 {', $anexo, 'Word necesita la caja de página');
+        $this->assertStringContainsString('@page WordSection1 {', $contrato);
+        $this->assertStringContainsString('div.WordSection1 { page: WordSection1; }', $anexo,
+            'sin el div que referencia la sección, el @page con nombre no se aplica');
 
         // A4 en puntos y no la palabra "A4": en una instalación configurada
         // en Carta la palabra se ignora y el Anexo 1 se parte en dos hojas.
         $this->assertStringContainsString('595.28pt 841.89pt', $anexo);
 
         $margen = function (string $css): string {
-            preg_match('/@page\s*\{([^}]*)\}/', $css, $m);
+            preg_match('/@page[^{]*\{([^}]*)\}/', $css, $m);
 
             return trim($m[1] ?? '');
         };

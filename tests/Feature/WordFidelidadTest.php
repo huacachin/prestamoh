@@ -163,7 +163,10 @@ class WordFidelidadTest extends TestCase
     public function test_cada_documento_lleva_sus_propios_margenes(): void
     {
         $margen = function (string $tipo): string {
-            preg_match('/@page\s*\{([^}]*)\}/', $this->doc($tipo), $m);
+            // El @page lleva nombre de sección (WordSection1): es como Word
+            // ata la puesta en página, y es lo que él mismo emite al guardar
+            // como pagina web. Por eso el patrón admite el nombre.
+            preg_match('/@page[^{]*\{([^}]*)\}/', $this->doc($tipo), $m);
 
             return trim($m[1] ?? '');
         };
@@ -177,6 +180,27 @@ class WordFidelidadTest extends TestCase
             $contrato, $anexo,
             'el contrato usa márgenes apretados ($compacto) y el anexo no: en Word no pueden ser iguales'
         );
+    }
+
+    /**
+     * La puesta en página de Word va atada a una SECCIÓN con nombre, y son
+     * DOS piezas que solo sirven juntas: la regla `@page WordSection1` en el
+     * CSS y un <div class="WordSection1"> envolviendo el cuerpo. Si falta el
+     * div, la regla con nombre no se aplica a nada y el documento sale con
+     * los márgenes por defecto de Word.
+     */
+    #[DataProvider('tipos')]
+    public function test_la_seccion_de_pagina_esta_completa(string $tipo): void
+    {
+        $doc = $this->doc($tipo);
+
+        $this->assertStringContainsString('@page WordSection1 {', $doc, "{$tipo}: falta la regla de la sección");
+        $this->assertStringContainsString('div.WordSection1 { page: WordSection1; }', $doc, "{$tipo}: falta el enlace");
+        $this->assertMatchesRegularExpression(
+            '/<body[^>]*><div class="WordSection1">/', $doc,
+            "{$tipo}: el cuerpo debe ir dentro del div de la sección o la regla no aplica"
+        );
+        $this->assertStringContainsString('</div></body>', $doc, "{$tipo}: el div de la sección debe cerrar dentro del body");
     }
 
     /**

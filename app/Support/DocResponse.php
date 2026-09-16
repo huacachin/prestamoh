@@ -70,6 +70,7 @@ class DocResponse
         if (preg_match('/<head\b[^>]*>/i', $html)) {
             $html = preg_replace('/<html\b([^>]*)>/i', '<html$1'.self::NS.'>', $html, 1);
             $html = preg_replace('/(<head\b[^>]*>)/i', '$1'.self::MSO, $html, 1);
+            $html = preg_replace('/(<body\b[^>]*>)(.*)(<\/body>)/is', '$1<div class="WordSection1">$2</div>$3', $html, 1);
 
             return "\xEF\xBB\xBF".$html;
         }

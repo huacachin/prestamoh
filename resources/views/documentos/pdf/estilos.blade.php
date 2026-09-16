@@ -61,7 +61,8 @@
        configurada en Carta la palabra se ignora y cambia la caja, y el
        Anexo 1 —calibrado para entrar justo en UNA hoja— se parte en dos.
        595.28 x 841.89 pt es el mismo A4 que lleva el MediaBox del PDF. */
-    @page { size: 595.28pt 841.89pt; margin: {{ $margenes }}; }
+    @page WordSection1 { size: 595.28pt 841.89pt; margin: {{ $margenes }}; }
+    div.WordSection1 { page: WordSection1; }
     /* Word no posiciona con fixed/absolute: el pie va en el flujo. Las vistas
        lo emiten al final del body cuando el medio no es PDF. */
     .pie-pagina { margin-top: 16pt; text-align: right; font-size: 6pt; color: #444; }
