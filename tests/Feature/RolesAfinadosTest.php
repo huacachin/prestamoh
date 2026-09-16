@@ -47,8 +47,12 @@ class RolesAfinadosTest extends TestCase
         $this->assertTrue($admin->hasPermissionTo('registro.eliminar-masivo.revertir'));
         // Exclusivos del director (permisos-nuevos 21/08): eliminar registros,
         // identidad, usuarios/permisos y sucursales
+        // 05/09: creditos.eliminar SÍ lo tiene el administrador, pero los
+        // gates lo limitan a los créditos del día (ver PermisosDobleCheckTest).
+        $this->assertTrue($admin->hasPermissionTo('creditos.eliminar'));
+
         foreach ([
-            'clientes.eliminar', 'creditos.eliminar', 'clientes.editar-identidad',
+            'clientes.eliminar', 'clientes.editar-identidad',
             'configuracion.usuarios', 'usuarios.gestionar-permisos', 'configuracion.sucursales',
         ] as $p) {
             $this->assertFalse($admin->hasPermissionTo($p), "administrador NO debe tener $p");
@@ -141,7 +145,11 @@ class RolesAfinadosTest extends TestCase
             ->assertOk()->assertSee('Ingreso De Otro Usuario Historico');
     }
 
-    /** El administrador edita SOLO lo del día (guard de servidor); el director cualquier fecha. */
+    /**
+     * El administrador edita SOLO lo del día Y SOLO lo propio (regla 04/09:
+     * el director es el único que edita registros de todos — revierte la
+     * apertura del 21/08 que le dejaba corregir lo de los cobradores).
+     */
     public function test_administrador_edita_solo_lo_del_dia_en_caja(): void
     {
         $sede = Headquarter::create(['name' => 'Principal']);
@@ -158,9 +166,8 @@ class RolesAfinadosTest extends TestCase
         $egrHoy = DB::table('expenses')->insertGetId($base + ['date' => now()->format('Y-m-d')]);
         $egrAyer = DB::table('expenses')->insertGetId($base + ['date' => now()->subDays(5)->format('Y-m-d')]);
 
-        // Movimientos de HOY de OTRO usuario: el administrador también los edita
-        // (el candado de dueño hacía parecer que ingresos no se podían editar:
-        // los ingresos del día los registran los cobradores, no el admin)
+        // Movimientos de HOY de OTRO usuario: desde el 04/09 NO los edita
+        // (solo el director toca registros ajenos)
         $otro = User::factory()->create(['username' => 'cobrador-caja', 'headquarter_id' => $sede->id]);
         $ingHoyAjeno = DB::table('incomes')->insertGetId(
             array_merge($base, ['user_id' => $otro->id, 'date' => now()->format('Y-m-d'), 'documento' => 'GUIA'])
@@ -168,8 +175,8 @@ class RolesAfinadosTest extends TestCase
 
         $this->actingAs($admin);
         $this->get("/cash/incomes/{$ingHoy}/edit")->assertOk();
-        $this->get("/cash/incomes/{$ingHoyAjeno}/edit")->assertOk();
-        $this->get('/cash/incomes?desde=&hasta=')->assertSee("/cash/incomes/{$ingHoyAjeno}/edit");
+        $this->get("/cash/incomes/{$ingHoyAjeno}/edit")->assertForbidden();
+        $this->get('/cash/incomes?desde=&hasta=')->assertDontSee("/cash/incomes/{$ingHoyAjeno}/edit");
         $this->get("/cash/incomes/{$ingAyer}/edit")->assertForbidden();
         $this->get("/cash/expenses/{$egrHoy}/edit")->assertOk();
         $this->get("/cash/expenses/{$egrAyer}/edit")->assertForbidden();

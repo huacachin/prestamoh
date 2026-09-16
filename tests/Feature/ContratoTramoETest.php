@@ -165,26 +165,47 @@ class ContratoTramoETest extends TestCase
 
     // ── 1 · Listas numeradas ──────────────────────────────────────────────
 
+    /**
+     * 05/09: OCTAVO, NOVENO y DÉCIMO QUINTO numeran COMPUESTO (8.1, 9.1,
+     * 15.1…), con el ordinal de su propia cláusula delante.
+     */
     public function test_ejecucion_y_gps_van_numeradas_y_gps_continua_tras_el_parrafo(): void
     {
         $texto = $this->texto('a1');
 
-        $this->assertStringContainsString('1. PARA PROCEDER CON LA VENTA EXTRAJUDICIAL', $texto);
-        // El segundo bloque de GPS arranca en 5: "EL NUMERAL PRECEDENTE" (el 4) existe.
-        $this->assertStringContainsString('5. EN CASO DE LA HIPÓTESIS PREVISTA EN EL NUMERAL PRECEDENTE', $texto);
-        $this->assertStringContainsString('NUMERAL PRECEDENTE', $texto);
+        $this->assertStringContainsString('8.1. PARA PROCEDER CON LA VENTA EXTRAJUDICIAL', $texto);
+        // El segundo bloque de GPS sigue la cuenta: "EL NUMERAL PRECEDENTE" (9.4) existe.
+        $this->assertStringContainsString('9.5. EN CASO DE LA HIPÓTESIS PREVISTA EN EL NUMERAL PRECEDENTE', $texto);
+        $this->assertStringContainsString('9.4.', $texto);
+        // Ya no queda numeración suelta del formato viejo (el ordinal va pegado).
+        $this->assertDoesNotMatchRegularExpression('/^1\. PARA PROCEDER/m', $texto);
     }
 
     public function test_la_constancia_numera_certificacion_e_inserto(): void
     {
         $texto = $this->texto('a1');
-        $this->assertStringContainsString('1. AMBAS PARTES CERTIFICAN', $texto);
-        $this->assertStringContainsString('2. INSERTO:', $texto);
+        $this->assertStringContainsString('15.1. AMBAS PARTES CERTIFICAN', $texto);
+        $this->assertStringContainsString('15.2. INSERTO:', $texto);
 
         // Y en el destino tercero, el INSERTO sigue siendo el numeral 2
         // aunque el párrafo ASIMISMO parta la lista.
         $textoTercero = $this->texto('a11');
-        $this->assertStringContainsString('2. INSERTO:', $textoTercero);
+        $this->assertStringContainsString('15.2. INSERTO:', $textoTercero);
+    }
+
+    /**
+     * El número de la cláusula es DINÁMICO: en los b.* (sin GPS) la
+     * numeración cae y los numerales deben caer con ella.
+     */
+    public function test_los_numerales_siguen_al_ordinal_de_su_clausula(): void
+    {
+        $conGps = $this->texto('a1');
+        $this->assertStringContainsString('9.1. ', $conGps, 'con GPS, la cláusula del GPS es la 9');
+
+        $sinGps = $this->texto('b1');
+        $this->assertStringNotContainsString('9.1. ', $sinGps, 'sin GPS no existe la cláusula 9 de GPS');
+        // La constancia baja de 15 a 14 y sus numerales la acompañan.
+        $this->assertStringContainsString('14.1. AMBAS PARTES CERTIFICAN', $sinGps);
     }
 
     // ── 2 · BIENES PROPIO ─────────────────────────────────────────────────

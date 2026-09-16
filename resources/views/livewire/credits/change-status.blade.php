@@ -39,7 +39,9 @@
                             <input type="text" name="search" class="form-control"
                                    wire:model.live.debounce.300ms="search"
                                    placeholder="Escriba ID, nombre o DNI para buscar..."
-                                   autocomplete="off">
+                                   autocomplete="off"
+       list="hist_credits_estado" data-search-history="credits_estado">
+<datalist id="hist_credits_estado" wire:ignore></datalist>
 
                             {{-- Dropdown de resultados --}}
                             @if($showDropdown && count($results) > 0)
@@ -92,7 +94,7 @@
                             <button class="btn btn-primary w-100 {{ $bloqueado ? 'disabled' : '' }}"
                                     @if($bloqueado) disabled @endif
                                     @if($saldoSel > 0.01) title="El crédito tiene saldo pendiente: no se puede cancelar" @endif
-                                    wire:confirm="¿Está seguro de cambiar el estado del crédito a Cancelado?"
+                                    data-confirmar="¿Está seguro de cambiar el estado del crédito a Cancelado?"
                                     wire:click="changeStatus">
                                 <i class="ti ti-refresh f-s-14"></i> Cambiar Estado
                             </button>

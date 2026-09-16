@@ -3,6 +3,7 @@
 namespace App\Services\Documentos;
 
 use App\Models\DocumentoCliente;
+use App\Support\Documentos\Enfasis;
 
 /**
  * Mapa central tipo de documento → vista Blade y datos de render. Todo
@@ -42,5 +43,19 @@ class RenderDocumento
     public static function datos(DocumentoCliente $doc, bool $paraPdf): array
     {
         return self::datosDesdeSnapshot($doc->snapshot, $doc->tipo, $paraPdf ? 'pdf' : 'word');
+    }
+
+    /**
+     * HTML final del documento, con las negritas de los términos definidos
+     * ya aplicadas (solo el contrato las lleva). Punto único de render:
+     * PDF, Word y previa pasan por aquí y salen idénticos.
+     *
+     * @param  'pdf'|'word'|'previa'  $medio
+     */
+    public static function html(array $snapshot, string $tipo, string $medio): string
+    {
+        $html = view(self::vista($tipo), self::datosDesdeSnapshot($snapshot, $tipo, $medio))->render();
+
+        return $tipo === 'contrato' ? Enfasis::aplicar($html) : $html;
     }
 }

@@ -8,6 +8,9 @@
 <!-- jQuery UI (datepicker, igual al legacy) -->
 <script src="{{ asset('assets/vendor/jquery-ui/jquery-ui.js') }}"></script>
 
+<!-- select2 (desplegables con búsqueda: ubigeo de clientes) -->
+<script src="{{ asset('assets/vendor/select/select2.min.js') }}"></script>
+
 <!-- Bootstrap js-->
 <script src="{{asset('assets/vendor/bootstrap/bootstrap.bundle.min.js')}}"></script>
 
@@ -126,6 +129,10 @@ document.addEventListener('click', function (e) {
 })();
 </script>
 <style>
+    /* El placeholder de select2 cuando representa una opcion REAL
+       ("Todo el mes", "— Seleccione —") se lee como texto normal, no como
+       hint apagado. */
+    .select2-selection__placeholder { color: #495057 !important; }
     .table-responsive.can-drag thead { cursor: grab; }
     .table-responsive.is-dragging thead { cursor: grabbing; }
     /* Scrollbar siempre agarrable: el scroll horizontal no depende solo
@@ -167,7 +174,39 @@ document.addEventListener('click', function (e) {
         input.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
+    /**
+     * Cierra el calendario abierto y descarta la instancia si su input ya
+     * no está en el DOM.
+     *
+     * jQuery UI mantiene UNA instancia global ($.datepicker._curInst) ligada
+     * al input que abrió el calendario. Si Livewire re-renderiza y reemplaza
+     * ese input mientras el calendario está VISIBLE, la instancia queda
+     * apuntando a un nodo muerto: el calendario se sigue viendo, pero sus
+     * <a href="#"> ya no hacen nada — el click solo agrega "#" a la URL y la
+     * fecha no cambia. Eso era el "se cuelga al tercer intento".
+     */
+    function sanearDatepicker() {
+        if (typeof jQuery === 'undefined' || ! jQuery.datepicker) return;
+        var inst = jQuery.datepicker._curInst;
+        if (! inst) return;
+        var vivo = inst.input && inst.input[0] && document.contains(inst.input[0]);
+        try {
+            jQuery.datepicker._hideDatepicker();
+        } catch (e) { /* instancia ya inservible */ }
+        if (! vivo) {
+            jQuery.datepicker._curInst = null;
+        }
+    }
+
     function initDatepickers() {
+        // Un input puede volver del morph con la clase pero sin widget:
+        // se limpia para que el selector :not(.hasDatepicker) lo reinicialice.
+        jQuery('.dates, .dates2, .dates3, .dates-dyn').each(function () {
+            if (this.classList.contains('hasDatepicker') && ! jQuery.data(this, 'datepicker')) {
+                jQuery(this).removeClass('hasDatepicker');
+            }
+        });
+
         // .dates  → libre   .dates3 → máx hoy   .dates2 → mín -2 días
         jQuery('.dates:not(.hasDatepicker)').datepicker({
             changeMonth: true, changeYear: true, dateFormat: 'yy-mm-dd',
@@ -193,15 +232,214 @@ document.addEventListener('click', function (e) {
         });
     }
 
+    /**
+     * jQuery UI abre el calendario en FOCUS. Tras elegir una fecha el input
+     * conserva el foco, así que el siguiente click no dispara focus y el
+     * calendario ya no abre: había que salir del campo y volver. Ese era el
+     * "a la tercera ya no selecciona". Delegado en document para sobrevivir
+     * los morphs de Livewire.
+     */
+    document.addEventListener('click', function (e) {
+        var el = e.target.closest('.dates, .dates2, .dates3, .dates-dyn');
+        if (! el || typeof jQuery === 'undefined' || ! jQuery.datepicker) return;
+        if (! jQuery.data(el, 'datepicker')) return;
+        if (jQuery('#ui-datepicker-div').is(':visible')) return; // ya abierto
+        jQuery(el).datepicker('show');
+    });
+
     document.addEventListener('DOMContentLoaded', initDatepickers);
     // Re-init tras cada render de Livewire (inputs nuevos en el DOM)
     document.addEventListener('livewire:navigated', initDatepickers);
     document.addEventListener('livewire:init', function () {
         if (window.Livewire && window.Livewire.hook) {
-            window.Livewire.hook('morph.updated', initDatepickers);
-            window.Livewire.hook('commit', function (payload) {
-                if (payload && payload.respond) payload.respond(initDatepickers);
+            window.Livewire.hook('morph.updated', function () {
+                sanearDatepicker();
+                initDatepickers();
             });
+            window.Livewire.hook('commit', function (payload) {
+                // respond() corre con la respuesta en mano, ANTES del morph:
+                // ahí se cierra el calendario para que no quede huérfano.
+                if (payload && payload.respond) {
+                    payload.respond(function () {
+                        sanearDatepicker();
+                        initDatepickers();
+                    });
+                }
+            });
+        }
+    });
+})();
+</script>
+
+{{-- ── Autocompletador de correos (.correo-sugerencias) ──
+     Al escribir "juan" ofrece juan@gmail.com, juan@hotmail.com…; con
+     "juan@ho" filtra a hotmail. Panel flotante navegable con ↑↓/Enter,
+     Esc o click afuera lo cierran. Delegado en document: sobrevive los
+     morphs de Livewire sin re-init; la selección dispara input/change
+     nativos para que wire:model la capture. --}}
+<style>
+    .correo-panel { position: absolute; z-index: 1056; background: #fff; border: 1px solid #e2e2ea;
+                    border-radius: 8px; box-shadow: 0 8px 22px rgba(28, 36, 94, .14); padding: 4px; }
+    .correo-opcion { display: block; width: 100%; border: 0; background: transparent; text-align: left;
+                     padding: 5px 10px; border-radius: 6px; font-size: 12.5px; cursor: pointer;
+                     white-space: nowrap; color: #333; }
+    .correo-opcion b { color: #198754; font-weight: 600; }
+    .correo-opcion:hover, .correo-opcion.activa { background: #eaf5ee; }
+</style>
+<script>
+(function () {
+    var DOMINIOS = ['gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com', 'icloud.com', 'live.com'];
+    var panel = null, dueno = null, indice = -1, opciones = [];
+
+    function cerrar() {
+        if (panel) panel.remove();
+        panel = null; dueno = null; indice = -1; opciones = [];
+    }
+
+    function sugerencias(valor) {
+        valor = valor.trim();
+        if (valor === '' || /\s/.test(valor)) return [];
+        var at = valor.indexOf('@');
+        if (at === 0) return [];
+        var local = at === -1 ? valor : valor.slice(0, at);
+        var resto = at === -1 ? '' : valor.slice(at + 1).toLowerCase();
+        return DOMINIOS
+            .filter(function (d) { return d.indexOf(resto) === 0 && d !== resto; })
+            .map(function (d) { return local + '@' + d; });
+    }
+
+    function elegir(correo) {
+        if (!dueno) return;
+        dueno.value = correo;
+        dueno.dispatchEvent(new Event('input',  { bubbles: true }));
+        dueno.dispatchEvent(new Event('change', { bubbles: true }));
+        var campo = dueno;
+        cerrar();
+        campo.focus();
+    }
+
+    function resaltar(nuevo) {
+        if (!panel) return;
+        var botones = panel.querySelectorAll('.correo-opcion');
+        if (!botones.length) return;
+        indice = (nuevo + botones.length) % botones.length;
+        botones.forEach(function (b, i) { b.classList.toggle('activa', i === indice); });
+    }
+
+    function pintar(input) {
+        cerrar();
+        opciones = sugerencias(input.value);
+        if (!opciones.length) return;
+        dueno = input;
+        panel = document.createElement('div');
+        panel.className = 'correo-panel';
+        opciones.forEach(function (correo) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'correo-opcion';
+            var at = correo.indexOf('@');
+            var usuario = document.createElement('span');
+            usuario.textContent = correo.slice(0, at);   // textContent: sin inyección
+            var dominio = document.createElement('b');
+            dominio.textContent = '@' + correo.slice(at + 1);
+            b.appendChild(usuario); b.appendChild(dominio);
+            b.addEventListener('mousedown', function (e) { e.preventDefault(); elegir(correo); });
+            panel.appendChild(b);
+        });
+        var padre = input.parentElement;
+        if (getComputedStyle(padre).position === 'static') padre.style.position = 'relative';
+        panel.style.top = (input.offsetTop + input.offsetHeight + 2) + 'px';
+        panel.style.left = input.offsetLeft + 'px';
+        panel.style.minWidth = Math.min(input.offsetWidth, 320) + 'px';
+        padre.appendChild(panel);
+    }
+
+    document.addEventListener('input', function (e) {
+        if (e.target.matches && e.target.matches('input.correo-sugerencias')) pintar(e.target);
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if (!panel || e.target !== dueno) return;
+        if (e.key === 'ArrowDown') { e.preventDefault(); resaltar(indice + 1); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); resaltar(indice - 1); }
+        else if (e.key === 'Enter' && indice >= 0) { e.preventDefault(); elegir(opciones[indice]); }
+        else if (e.key === 'Escape' || e.key === 'Tab') { cerrar(); }
+    });
+
+    document.addEventListener('click', function (e) {
+        if (panel && !panel.contains(e.target) && e.target !== dueno) cerrar();
+    });
+
+    // Si Livewire re-renderiza mientras el panel está abierto, se cierra
+    // para no dejarlo huérfano apuntando a un input que ya no existe.
+    document.addEventListener('livewire:init', function () {
+        if (window.Livewire && window.Livewire.hook) {
+            window.Livewire.hook('morph.updated', function () { if (panel) cerrar(); });
+        }
+    });
+})();
+</script>
+
+{{-- ── select2 en selects .select2-simple / .select2-tags (ubigeo) ──
+     Mismo esquema de re-init que el datepicker. Los wrappers llevan
+     wire:key con la cascada, así el morph reemplaza el nodo entero y el
+     widget viejo se va con él; aquí solo barremos contenedores huérfanos
+     e inicializamos los selects nuevos. El change de select2 es jQuery,
+     no nativo: se re-dispara como evento nativo para que wire:model lo
+     escuche. --}}
+<script>
+(function () {
+    if (typeof jQuery === 'undefined' || !jQuery.fn.select2) return;
+
+    function initSelect2() {
+        // contenedores huérfanos (su select original ya no está en el DOM)
+        jQuery('.select2-container').each(function () {
+            var prev = this.previousElementSibling;
+            if (!prev || !jQuery(prev).hasClass('select2-hidden-accessible')) jQuery(this).remove();
+        });
+
+        jQuery('select.select2-simple, select.select2-tags').each(function () {
+            if (jQuery(this).hasClass('select2-hidden-accessible')) return; // ya montado
+            var conTexto = jQuery(this).hasClass('select2-tags');
+            // select2 trata la opcion con value="" como su slot de placeholder:
+            // sin uno definido la deja EN BLANCO aunque este seleccionada (el
+            // "Todo el mes" del dashboard salia vacio). Si el select trae esa
+            // opcion con texto, ese texto es el placeholder.
+            var vacia = this.querySelector('option[value=""]');
+            var hint = jQuery(this).data('placeholder')
+                || (vacia && vacia.textContent.trim())
+                || '';
+            jQuery(this).select2({
+                width: '100%',
+                language: { noResults: function () { return 'Sin resultados'; } },
+                tags: conTexto,                       // texto libre (historial / casos borde)
+                placeholder: hint,
+                // El botón de limpiar solo donde existe la opción vacía
+                // (distrito); en requeridos como provincia no tiene sentido.
+                allowClear: conTexto && !!this.querySelector('option[value=""]')
+            }).on('select2:select select2:unselect select2:clear', function () {
+                this.dispatchEvent(new Event('input',  { bubbles: true }));
+                this.dispatchEvent(new Event('change', { bubbles: true }));
+            }).on('select2:open', function () {
+                var campo = document.querySelector('.select2-container--open .select2-search__field');
+                if (!campo) return;
+                // jQuery 3.6 + select2: el buscador NO recibe foco al abrir
+                // (bug conocido) — sin esto, escribir de inmediato no filtra.
+                campo.focus();
+                // Hint en el cajón de búsqueda; .select2-sin-hint (p. ej.
+                // tipo de documento) queda fuera a pedido.
+                if (! jQuery(this).hasClass('select2-sin-hint')) {
+                    campo.setAttribute('placeholder', 'Busca o escribe...');
+                }
+            });
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', initSelect2);
+    document.addEventListener('livewire:navigated', initSelect2);
+    document.addEventListener('livewire:init', function () {
+        if (window.Livewire && window.Livewire.hook) {
+            window.Livewire.hook('morph.updated', function () { queueMicrotask(initSelect2); });
         }
     });
 })();

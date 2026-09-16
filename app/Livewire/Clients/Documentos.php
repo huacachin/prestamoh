@@ -10,6 +10,8 @@ use App\Models\Vehiculo;
 use App\Services\Documentos\GeneradorAnexo1;
 use App\Services\Documentos\GeneradorAnexo2;
 use App\Services\Documentos\GeneradorContrato;
+use App\Services\Documentos\Ocr\LectorDeVoucher;
+use App\Services\Documentos\Ocr\VoucherIlegible;
 use App\Services\Factiliza;
 use App\Support\Audit;
 use App\Support\Documentos\BancosVoucher;
@@ -192,8 +194,24 @@ class Documentos extends Component
     /** Clave de BancosVoucher::MODALIDADES (solo los combos válidos del banco). */
     public string $anexo2Modalidad = '';
 
-    /** Transcripción del voucher (clave de campo => valor), según ::campos(). */
-    public array $anexo2Campos = [];
+    /**
+     * Transcripción LITERAL del voucher: lo que dice en pantalla, en su orden.
+     * Es el cuerpo de la constancia (15/09) — antes eran N campos etiquetados
+     * y el documento salía distinto al que el área firma. Los campos del
+     * catálogo quedan como recordatorio de qué NO debe faltar.
+     */
+    public string $anexo2Transcripcion = '';
+
+    /** Monto del voucher: cuadra la constancia contra el importe del crédito. */
+    public string $anexo2Monto = '';
+
+    /**
+     * Dudas que la lectura automática declaró sobre su propia transcripción
+     * ("no distingo si es 0 u 8 y por qué"). Se muestran para que el operador
+     * mire justo ahí: en un documento que se firma, saber dónde dudar vale
+     * más que un acierto silencioso.
+     */
+    public string $anexo2Dudas = '';
 
     /** Fecha del documento (Y-m-d del input date; $datos la lleva d/m/Y). */
     public string $fechaAnexo2 = '';
@@ -569,7 +587,7 @@ class Documentos extends Component
         }
 
         // Ídem para el Anexo 2 (el comprobante no invalida: la previa nunca lo incluye)
-        $propsAnexo2 = ['anexo2CreditoId', 'anexo2Banco', 'anexo2Modalidad', 'anexo2Campos', 'fechaAnexo2'];
+        $propsAnexo2 = ['anexo2CreditoId', 'anexo2Banco', 'anexo2Modalidad', 'anexo2Transcripcion', 'anexo2Monto', 'fechaAnexo2'];
         if (in_array($raiz, $propsAnexo2, true)) {
             $this->htmlPreviewAnexo2 = '';
         }
@@ -849,7 +867,9 @@ class Documentos extends Component
         $this->anexo2CreditoId = $creditos->count() === 1 ? $creditos->first()->id : null;
         $this->anexo2Banco = '';
         $this->anexo2Modalidad = '';
-        $this->anexo2Campos = [];
+        $this->anexo2Transcripcion = '';
+        $this->anexo2Monto = '';
+        $this->anexo2Dudas = '';
         $this->fechaAnexo2 = now()->format('Y-m-d');
         $this->comprobante = null;
         $this->htmlPreviewAnexo2 = '';
@@ -976,38 +996,81 @@ class Documentos extends Component
         return [
             'banco' => $this->anexo2Banco,
             'modalidad' => $this->anexo2Modalidad,
-            'campos' => array_map(fn ($v) => trim((string) $v), $this->anexo2Campos),
+            'transcripcion' => trim($this->anexo2Transcripcion),
+            'monto' => trim($this->anexo2Monto),
             'imagen_path' => $imagenPath,
             'fecha' => Carbon::parse($this->fechaAnexo2)->format('d/m/Y'),
         ];
     }
 
-    /** Rearma los inputs dinámicos del combo elegido (todos vacíos + monto sugerido). */
+    /** Al cambiar de combo se limpia la transcripción y se resugiere el monto. */
     private function rearmarCamposAnexo2(): void
     {
-        $this->anexo2Campos = [];
-
-        if (! BancosVoucher::esComboValido($this->anexo2Banco, $this->anexo2Modalidad)) {
-            return;
-        }
-
-        foreach (array_keys(BancosVoucher::campos($this->anexo2Banco, $this->anexo2Modalidad)) as $clave) {
-            $this->anexo2Campos[$clave] = '';
-        }
-
+        $this->anexo2Transcripcion = '';
+        $this->anexo2Dudas = '';
         $this->sugerirMontoAnexo2();
     }
 
-    /** Pre-sugiere el campo 'monto' con el importe desembolsado del crédito. */
-    private function sugerirMontoAnexo2(): void
+    /**
+     * Lee la foto del voucher y rellena la transcripción para que el operador
+     * la CONFIRME. Nunca genera nada por sí sola: la lectura puede equivocarse
+     * y esto va a un documento que se firma. Si falla, se transcribe a mano
+     * como siempre — la pantalla sigue sirviendo sin la API.
+     */
+    public function leerVoucher(): void
     {
-        if (! array_key_exists('monto', $this->anexo2Campos)) {
+        if (! config('services.anthropic.habilitado')) {
+            $this->dispatch('errorAlert', ['message' => 'La lectura automática no está configurada.']);
+
             return;
         }
 
+        if (! $this->comprobante) {
+            $this->dispatch('errorAlert', ['message' => 'Sube primero la foto del voucher.']);
+
+            return;
+        }
+
+        if (! BancosVoucher::esComboValido($this->anexo2Banco, $this->anexo2Modalidad)) {
+            $this->dispatch('errorAlert', ['message' => 'Elige el banco y la modalidad antes de leer el voucher.']);
+
+            return;
+        }
+
+        try {
+            $leido = app(LectorDeVoucher::class)->leer(
+                (string) $this->comprobante->getRealPath(),
+                $this->anexo2Banco,
+                $this->anexo2Modalidad,
+            );
+        } catch (VoucherIlegible $e) {
+            $this->dispatch('errorAlert', ['message' => $e->getMessage().' Transcríbelo a mano.']);
+
+            return;
+        }
+
+        // Con "DETALLES:" delante (15/09, pedido del área): así lo que se ve en
+        // el formulario es literalmente lo que sale impreso. La plantilla no lo
+        // duplica — si ya viene, lo quita antes de poner el suyo en negrita.
+        $this->anexo2Transcripcion = 'DETALLES: '.mb_strtoupper($leido['transcripcion']);
+        $this->anexo2Dudas = $leido['dudas'];
+        if ($leido['monto'] !== '') {
+            $this->anexo2Monto = $leido['monto'];
+        }
+
+        Audit::log("Leyó el voucher del Anexo 2 con {$leido['modelo']} (crédito #{$this->anexo2CreditoId})");
+
+        $this->dispatch('successAlert', ['message' => $leido['dudas'] === ''
+            ? 'Voucher leído. Revísalo antes de generar.'
+            : 'Voucher leído, con dudas señaladas. Revísalas antes de generar.']);
+    }
+
+    /** Pre-sugiere el monto con el importe desembolsado del crédito. */
+    private function sugerirMontoAnexo2(): void
+    {
         $importe = $this->importeCreditoAnexo2();
         if ($importe !== null) {
-            $this->anexo2Campos['monto'] = number_format($importe, 2, '.', '');
+            $this->anexo2Monto = number_format($importe, 2, '.', '');
         }
     }
 
@@ -1039,6 +1102,8 @@ class Documentos extends Component
             'anexo2CreditoId' => ['required', 'integer'],
             'anexo2Banco' => ['required', Rule::in(array_keys(BancosVoucher::BANCOS))],
             'anexo2Modalidad' => ['required', Rule::in(array_keys(BancosVoucher::MODALIDADES))],
+            'anexo2Transcripcion' => ['required', 'string', 'min:20'],
+            'anexo2Monto' => ['required', 'string'],
             'fechaAnexo2' => ['required', 'date', 'before_or_equal:today'],
             'comprobante' => ['nullable', 'image', 'max:4096'],
         ];
@@ -1052,6 +1117,9 @@ class Documentos extends Component
             'anexo2Banco.in' => 'Banco no válido.',
             'anexo2Modalidad.required' => 'Selecciona la modalidad de la operación.',
             'anexo2Modalidad.in' => 'Modalidad no válida.',
+            'anexo2Transcripcion.required' => 'Transcribe el voucher: es el cuerpo de la constancia.',
+            'anexo2Transcripcion.min' => 'La transcripción parece incompleta.',
+            'anexo2Monto.required' => 'Indica el monto del voucher.',
             'fechaAnexo2.required' => 'Indica la fecha del documento.',
             'fechaAnexo2.date' => 'La fecha del documento no es válida.',
             'fechaAnexo2.before_or_equal' => 'La fecha del documento no puede ser futura.',

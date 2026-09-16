@@ -75,7 +75,7 @@
                             && (auth()->user()->can('caja.editar-historico') || $esDeHoy))
                             <button type="button"
                                     wire:click="reverse"
-                                    wire:confirm="¿Está seguro de revertir esta eliminación masiva? Se restaurarán las cuotas y el crédito."
+                                    data-confirmar="¿Está seguro de revertir esta eliminación masiva? Se restaurarán las cuotas y el crédito."
                                     class="btn btn-sm btn-danger">
                                 <i class="ti ti-trash"></i> Eliminar (revertir)
                             </button>

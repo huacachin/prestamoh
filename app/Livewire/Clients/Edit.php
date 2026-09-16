@@ -7,7 +7,7 @@ use App\Models\Credit;
 use App\Models\User;
 use App\Support\Audit;
 use App\Support\Documentos\Nacionalidades;
-use App\Support\TiposCredito;
+use App\Support\Ubigeo;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -44,9 +44,44 @@ class Edit extends Component
      */
     public ?string $distrito = null;
 
-    public string $provincia = 'LIMA';
+    public string $provincia = 'Lima';
 
     public ?string $departamento = null;
+
+    /** Misma cascada de ubigeo que en Create (ver el comentario de allá). */
+    public function updatedDepartamento(): void
+    {
+        $this->departamento = Ubigeo::resolverDepartamento($this->departamento) ?? $this->departamento;
+        if (Ubigeo::resolverProvincia($this->departamento, $this->provincia) === null) {
+            $this->provincia = Ubigeo::provinciasDe($this->departamento)[0] ?? $this->provincia;
+            $this->updatedProvincia();
+        }
+    }
+
+    public function updatedProvincia(): void
+    {
+        // Provincia de OTRO departamento (la API o un set directo la mandan
+        // antes que el departamento): arrastra a su departamento y normaliza.
+        if (Ubigeo::resolverProvincia($this->departamento, $this->provincia) === null) {
+            $ubicada = Ubigeo::buscarProvincia($this->provincia);
+            if ($ubicada !== null) {
+                [$this->departamento, $this->provincia] = $ubicada;
+            }
+        } else {
+            $this->provincia = Ubigeo::resolverProvincia($this->departamento, $this->provincia);
+        }
+
+        // El distrito se conserva si pertenece a la nueva provincia; si la
+        // provincia quedo fuera del catalogo (historico) no se toca nada.
+        $distritos = Ubigeo::distritosDe($this->departamento, $this->provincia);
+        if (filled($this->distrito) && $distritos !== []) {
+            $enCatalogo = collect($distritos)
+                ->contains(fn ($d) => mb_strtoupper($d) === mb_strtoupper(trim((string) $this->distrito)));
+            if (! $enCatalogo) {
+                $this->distrito = null;
+            }
+        }
+    }
 
     public ?string $nacionalidad = null;
 
@@ -108,13 +143,13 @@ class Edit extends Component
             'status' => 'required|in:active,inactive',
             'direccion' => 'nullable|string|max:255',
             'distrito' => 'nullable|string|max:100',
-            'provincia' => 'required|in:'.implode(',', array_keys(Create::PROVINCIAS)),
+            'provincia' => 'required|string|max:100',
             'departamento' => 'nullable|string|max:100',
             // Acepta las opciones vigentes y el valor histórico ya guardado
             'nacionalidad' => 'nullable|string|in:'.implode(',', Nacionalidades::paraValor($this->nacionalidad)),
             'email' => 'nullable|email|max:150',
-            'ocupacion' => 'required|in:'.implode(',', array_keys(Create::OCUPACIONES)),
-            'estado_civil' => 'required|in:'.implode(',', array_keys(Create::ESTADOS_CIVILES)),
+            'ocupacion' => 'required|string|max:100',
+            'estado_civil' => 'required|string|max:100',
             'referencia' => 'nullable|string|max:255',
             'giro' => 'nullable|string|max:100',
             'capital' => 'nullable|numeric|min:0',
@@ -122,7 +157,7 @@ class Edit extends Component
             'celular1' => 'nullable|string|max:20',
             'celular2' => 'nullable|string|max:20',
             // Acepta las opciones vigentes y el valor histórico ya guardado
-            'zona' => 'nullable|string|in:'.implode(',', TiposCredito::paraValor($this->zona)),
+            'zona' => 'nullable|string|max:100',
             'asesor_id' => 'nullable|exists:users,id',
         ];
     }
@@ -164,12 +199,19 @@ class Edit extends Component
         $this->status = $c->status ?? 'active';
         $this->direccion = $c->direccion;
         $this->distrito = $c->distrito;
-        $this->provincia = isset(Create::PROVINCIAS[(string) $c->provincia]) ? (string) $c->provincia : 'LIMA';
-        $this->departamento = $c->departamento;
+        // Resolución case-insensitive al catálogo ("LIMA" migrado → "Lima");
+        // un valor histórico fuera del catálogo se conserva tal cual. Sin
+        // departamento guardado (la migración lo deja NULL) hereda el de la
+        // provincia: lo que muestra el select es lo que se guardará.
+        $depGuardado = Ubigeo::resolverDepartamento($c->departamento) ?? $c->departamento;
+        $ubicada = Ubigeo::buscarProvincia($c->provincia);
+        $this->departamento = $depGuardado ?: ($ubicada[0] ?? 'Lima');
+        $this->provincia = Ubigeo::resolverProvincia($this->departamento, $c->provincia)
+            ?? ($c->provincia ?: 'Lima');
         $this->nacionalidad = $c->nacionalidad ?: Nacionalidades::DEFECTO;
         $this->email = (string) ($c->email ?? '');
-        $this->ocupacion = isset(Create::OCUPACIONES[(string) $c->ocupacion]) ? (string) $c->ocupacion : 'transportista';
-        $this->estado_civil = isset(Create::ESTADOS_CIVILES[(string) $c->estado_civil]) ? (string) $c->estado_civil : 'soltero';
+        $this->ocupacion = filled($c->ocupacion) ? (string) $c->ocupacion : 'transportista';
+        $this->estado_civil = filled($c->estado_civil) ? (string) $c->estado_civil : 'soltero';
         $this->referencia = $c->referencia;
         $this->giro = $c->giro;
         $this->capital = $c->capital;
@@ -257,7 +299,13 @@ class Edit extends Component
 
     public function questionDelete(int $id): void
     {
-        $this->dispatch('questionDelete', ['id' => $id]);
+        $this->dispatch('questionDelete', [
+            'id' => $id,
+            'role' => 'cliente',
+            'name' => trim($this->client->fullName().' (exp. '.$this->client->expediente.')'),
+            'accion' => 'desactivar',
+            'nota' => 'La ficha y su historial se conservan.',
+        ]);
     }
 
     #[On('register_destroy')]

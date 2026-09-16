@@ -132,13 +132,10 @@ class DocumentoAnexo2Test extends TestCase
         return [
             'banco' => 'bcp',
             'modalidad' => 'transferencia',
-            'campos' => [
-                'monto' => '5,000.00',
-                'fecha_hora' => '26/08/2026 10:00',
-                'beneficiario' => 'NOMBRE',
-                'cuenta_destino' => '****1234',
-                'nro_operacion' => '00112233',
-            ],
+            'monto' => '5,000.00',
+            // LITERAL, como el maestro: lo que dice el voucher, en su orden.
+            'transcripcion' => '¡TRANSFERENCIA EXITOSA!; S/5,000.00; 26/08/2026 10:00; '
+                .'ENVIADO A NOMBRE; ****1234; NÚMERO DE OPERACIÓN 00112233.',
             'imagen_path' => null,
             'fecha' => '26/08/2026',
         ];
@@ -194,22 +191,10 @@ class DocumentoAnexo2Test extends TestCase
         $this->assertSame(BancosVoucher::nombreLegal('bcp'), $d['banco_legal']);
         $this->assertNull($d['imagen_path']);
 
-        // Transcripción no vacía, con labels EN EL ORDEN del catálogo (solo los
-        // campos con valor) y pares label/valor listos para render.
-        $this->assertNotEmpty($d['transcripcion']);
-
-        $labelsEsperados = [];
-        foreach (BancosVoucher::campos('bcp', 'transferencia') as $clave => [$label, $requerido]) {
-            if (trim((string) ($datos['campos'][$clave] ?? '')) !== '') {
-                $labelsEsperados[] = $label;
-            }
-        }
-        $this->assertSame($labelsEsperados, array_column($d['transcripcion'], 'label'));
-
-        foreach ($d['transcripcion'] as $fila) {
-            $this->assertEqualsCanonicalizing(['label', 'valor'], array_keys($fila));
-            $this->assertNotSame('', trim($fila['valor']));
-        }
+        // La transcripción se guarda LITERAL: es el cuerpo de la constancia y
+        // debe reproducir el voucher, no traducirlo a etiquetas nuestras.
+        $this->assertIsString($d['transcripcion']);
+        $this->assertSame(trim($datos['transcripcion']), $d['transcripcion']);
     }
 
     public function test_monto_descuadrado_bloquea(): void
@@ -219,7 +204,7 @@ class DocumentoAnexo2Test extends TestCase
         // El voucher dice 8,000.00 pero el crédito es de 5000: la constancia
         // jamás debe transcribir una entrega que no cuadra con la obligación.
         $datos = $this->datosVoucher();
-        $datos['campos']['monto'] = '8,000.00';
+        $datos['monto'] = '8,000.00';
 
         $e = $this->capturarExcepcion(
             fn () => $this->generador()->previsualizar($this->client, $this->credit, $datos)
@@ -229,22 +214,35 @@ class DocumentoAnexo2Test extends TestCase
         $this->assertStringContainsString('no coincide', $e->getMessage());
     }
 
-    public function test_campos_requeridos_bloquean(): void
+    public function test_sin_transcripcion_bloquea(): void
     {
         $this->mundo();
 
-        // Sin N° de operación no hay voucher trazable: requerido por catálogo.
+        // Sin transcripción la constancia es un título y una foto: no dice qué
+        // operación se hizo. Es el cuerpo del documento, no un adorno.
         $datos = $this->datosVoucher();
-        unset($datos['campos']['nro_operacion']);
+        $datos['transcripcion'] = '';
 
         $e = $this->capturarExcepcion(
             fn () => $this->generador()->previsualizar($this->client, $this->credit, $datos)
         );
 
-        // El mensaje debe señalar el campo faltante por su LABEL del catálogo
-        // (el label sale de BancosVoucher, nunca de un literal a ciegas).
-        [$labelNroOperacion] = BancosVoucher::campos('bcp', 'transferencia')['nro_operacion'];
-        $this->assertStringContainsString($labelNroOperacion, $e->getMessage());
+        $this->assertStringContainsString('transcripción', $e->getMessage());
+    }
+
+    public function test_sin_monto_bloquea(): void
+    {
+        $this->mundo();
+
+        // Sin monto no hay cuadre posible contra el importe del crédito.
+        $datos = $this->datosVoucher();
+        $datos['monto'] = '';
+
+        $e = $this->capturarExcepcion(
+            fn () => $this->generador()->previsualizar($this->client, $this->credit, $datos)
+        );
+
+        $this->assertStringContainsString('monto', $e->getMessage());
     }
 
     public function test_generar_versiona_con_imagen(): void

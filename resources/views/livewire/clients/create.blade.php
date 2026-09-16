@@ -66,7 +66,7 @@
                     <div class="row g-2 align-items-end mb-2">
                         <div class="col-md-2">
                             <label class="form-label mb-0 small fw-semibold" style="color:red;">TIPO DE DOCUMENTO</label>
-                            <select class="form-select form-select-sm" wire:model.live="tipo_documento">
+                            <select class="form-select form-select-sm select2-simple select2-sin-hint" wire:model.live="tipo_documento">
                                 @foreach(\App\Livewire\Clients\Create::TIPOS_DOCUMENTO as $valor => $etiqueta)
                                     <option value="{{ $valor }}">{{ $etiqueta }}</option>
                                 @endforeach
@@ -138,7 +138,7 @@
                             <label class="form-label mb-0 small fw-semibold">Nacionalidad</label>
                             {{-- No flexiona: el contrato dice PERUANO / VENEZOLANO
                                  tanto para deudor como para deudora. --}}
-                            <select class="form-select form-select-sm @error('nacionalidad') is-invalid @enderror"
+                            <select class="form-select form-select-sm select2-simple @error('nacionalidad') is-invalid @enderror"
                                     wire:model.defer="nacionalidad" name="nacionalidad">
                                 @foreach(\App\Support\Documentos\Nacionalidades::OPCIONES as $opcion)
                                     <option value="{{ $opcion }}">{{ $opcion }}</option>
@@ -178,23 +178,23 @@
                         {{-- Campos obligatorios agregados el 28/08 --}}
                         <div class="col-md-4">
                             <label class="form-label mb-0 small fw-semibold">Correo electrónico</label>
-                            <input type="email" class="form-control form-control-sm @error('email') is-invalid @enderror"
-                                   wire:model.defer="email" name="email" autocomplete="email" placeholder="cliente@correo.com">
+                            <input type="email" class="form-control form-control-sm correo-sugerencias @error('email') is-invalid @enderror"
+                                   wire:model.defer="email" name="email" autocomplete="off" placeholder="cliente@correo.com">
                             @error('email') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                         @unless($tipo_documento === 'RUC')
                         <div class="col-md-4">
                             <label class="form-label mb-0 small fw-semibold">Ocupación</label>
-                            <select class="form-select form-select-sm @error('ocupacion') is-invalid @enderror" wire:model.defer="ocupacion">
-                                @foreach(\App\Livewire\Clients\Create::OCUPACIONES as $valor => $etiqueta)
+                            <select class="form-select form-select-sm select2-tags @error('ocupacion') is-invalid @enderror" wire:model.defer="ocupacion">
+                                @foreach(\App\Livewire\Clients\Create::ocupacionesPara($ocupacion) as $valor => $etiqueta)
                                     <option value="{{ $valor }}">{{ $etiqueta }}</option>
                                 @endforeach
                             </select>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label mb-0 small fw-semibold">Estado civil</label>
-                            <select class="form-select form-select-sm @error('estado_civil') is-invalid @enderror" wire:model.defer="estado_civil">
-                                @foreach(\App\Livewire\Clients\Create::ESTADOS_CIVILES as $valor => $etiqueta)
+                            <select class="form-select form-select-sm select2-tags @error('estado_civil') is-invalid @enderror" wire:model.defer="estado_civil">
+                                @foreach(\App\Livewire\Clients\Create::estadosCivilesPara($estado_civil) as $valor => $etiqueta)
                                     <option value="{{ $valor }}">{{ $etiqueta }}</option>
                                 @endforeach
                             </select>
@@ -261,7 +261,7 @@
                             <div class="col-md-3">
                                 <label class="form-label mb-0 small fw-semibold">Estado civil *</label>
                                 <select class="form-select form-select-sm @if(in_array('estado_civil', $autoRep)) campo-api @endif" wire:model.defer="representante.estado_civil">
-                                    @foreach(\App\Livewire\Clients\Create::ESTADOS_CIVILES as $valor => $etiqueta)
+                                    @foreach(\App\Livewire\Clients\Create::estadosCivilesPara($estado_civil) as $valor => $etiqueta)
                                         <option value="{{ $valor }}">{{ $etiqueta }}</option>
                                     @endforeach
                                 </select>
@@ -285,30 +285,42 @@
                                    wire:model.defer="direccion" name="direccion" autocomplete="street-address" placeholder="Av. Arequipa Nro. 3400">
                             @error('direccion') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
-                        {{-- Ubigeo: arma el domicilio legal de la cláusula PRIMERO.
-                             La provincia es combo porque cambia la frase registral
-                             (Lima colapsa, Callao es "PROVINCIA CONSTITUCIONAL"). --}}
-                        <div class="col-md-3">
-                            <label class="form-label mb-0 small fw-semibold">Distrito</label>
-                            <input type="text" class="form-control form-control-sm text-uppercase @error('distrito') is-invalid @enderror @if(in_array('distrito', $autoCliente)) campo-api @endif"
-                                   wire:model.defer="distrito" name="distrito" placeholder="Ate">
-                            @error('distrito') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        {{-- Ubigeo: arma el domicilio legal de la cláusula PRIMERO
+                             (la provincia gobierna la frase registral, ver DomicilioLegal).
+                             Los tres son select2 con búsqueda; el wire:key fuerza nodo
+                             nuevo cuando cambia la cascada para que select2 se reinicie
+                             limpio tras el morph de Livewire. --}}
+                        <div class="col-md-3" wire:key="ubigeo-dep">
+                            <label class="form-label mb-0 small fw-semibold">Departamento</label>
+                            <select class="form-select form-select-sm select2-tags @error('departamento') is-invalid @enderror @if(in_array('departamento', $autoCliente ?? [])) campo-api @endif"
+                                    wire:model.live="departamento">
+                                @foreach(\App\Support\Ubigeo::conHistorico(\App\Support\Ubigeo::departamentos(), $departamento) as $dep)
+                                    <option value="{{ $dep }}">{{ $dep }}</option>
+                                @endforeach
+                            </select>
+                            @error('departamento') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-3" wire:key="ubigeo-prov-{{ md5((string) $departamento) }}">
                             <label class="form-label mb-0 small fw-semibold">Provincia</label>
-                            <select class="form-select form-select-sm @error('provincia') is-invalid @enderror @if(in_array('provincia', $autoCliente)) campo-api @endif"
+                            <select class="form-select form-select-sm select2-tags @error('provincia') is-invalid @enderror @if(in_array('provincia', $autoCliente ?? [])) campo-api @endif"
                                     wire:model.live="provincia">
-                                @foreach(\App\Livewire\Clients\Create::PROVINCIAS as $valor => $etiqueta)
-                                    <option value="{{ $valor }}">{{ $etiqueta }}</option>
+                                @foreach(\App\Support\Ubigeo::conHistorico(\App\Support\Ubigeo::provinciasDe($departamento), $provincia) as $prov)
+                                    <option value="{{ $prov }}">{{ $prov }}</option>
                                 @endforeach
                             </select>
                             @error('provincia') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label mb-0 small fw-semibold">Departamento</label>
-                            <input type="text" class="form-control form-control-sm text-uppercase @error('departamento') is-invalid @enderror @if(in_array('departamento', $autoCliente)) campo-api @endif"
-                                   wire:model.defer="departamento" name="departamento" placeholder="Lima">
-                            @error('departamento') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        <div class="col-md-3" wire:key="ubigeo-dist-{{ md5($departamento.'|'.$provincia) }}">
+                            <label class="form-label mb-0 small fw-semibold">Distrito</label>
+                            {{-- tags: permite texto libre (historial migrado / casos borde) --}}
+                            <select class="form-select form-select-sm select2-tags @error('distrito') is-invalid @enderror @if(in_array('distrito', $autoCliente ?? [])) campo-api @endif"
+                                    wire:model="distrito" data-placeholder="Busca o escribe...">
+                                <option value=""></option>
+                                @foreach(\App\Support\Ubigeo::conHistorico(\App\Support\Ubigeo::distritosDe($departamento, $provincia), $distrito) as $d)
+                                    <option value="{{ $d }}">{{ $d }}</option>
+                                @endforeach
+                            </select>
+                            @error('distrito') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                         <div class="col-md-3">
                             <label class="form-label mb-0 small fw-semibold">Giro</label>
@@ -317,9 +329,9 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label mb-0 small fw-semibold">T. Crédito</label>
-                            <select class="form-select form-select-sm @error('zona') is-invalid @enderror" wire:model.defer="zona">
+                            <select class="form-select form-select-sm select2-tags @error('zona') is-invalid @enderror" wire:model.defer="zona" data-placeholder="— Seleccione —">
                                 <option value="">— Seleccione —</option>
-                                @foreach(\App\Support\TiposCredito::OPCIONES as $opcion)
+                                @foreach(\App\Support\TiposCredito::paraValor($zona) as $opcion)
                                     <option value="{{ $opcion }}">{{ $opcion }}</option>
                                 @endforeach
                             </select>
@@ -452,7 +464,13 @@
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label mb-0 small fw-semibold">Categoría</label>
-                                    <input type="text" class="form-control form-control-sm" wire:model.defer="vehiculos.{{ $i }}.categoria" placeholder="M2-C3">
+                                    <select class="form-select form-select-sm select2-tags" wire:model.defer="vehiculos.{{ $i }}.categoria"
+                                            data-placeholder="— Seleccione —">
+                                        <option value=""></option>
+                                        @foreach(\App\Support\VehiculoCatalogos::paraValor(\App\Support\VehiculoCatalogos::CATEGORIAS, $v['categoria'] ?? null) as $opcion)
+                                            <option value="{{ $opcion }}">{{ $opcion }}</option>
+                                        @endforeach
+                                    </select>
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label mb-0 small fw-semibold">Año de Modelo</label>
@@ -461,15 +479,33 @@
 
                                 <div class="col-md-3">
                                     <label class="form-label mb-0 small fw-semibold">Carrocería</label>
-                                    <input type="text" class="form-control form-control-sm" wire:model.defer="vehiculos.{{ $i }}.carroceria" placeholder="Microbús">
+                                    <select class="form-select form-select-sm select2-tags" wire:model.defer="vehiculos.{{ $i }}.carroceria"
+                                            data-placeholder="— Seleccione —">
+                                        <option value=""></option>
+                                        @foreach(\App\Support\VehiculoCatalogos::paraValor(\App\Support\VehiculoCatalogos::CARROCERIAS, $v['carroceria'] ?? null) as $opcion)
+                                            <option value="{{ $opcion }}">{{ $opcion }}</option>
+                                        @endforeach
+                                    </select>
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label mb-0 small fw-semibold">Color</label>
-                                    <input type="text" class="form-control form-control-sm @if(in_array('color', $autoVehiculo[$i] ?? [])) campo-api @endif" wire:model.defer="vehiculos.{{ $i }}.color" placeholder="Blanco">
+                                    <select class="form-select form-select-sm select2-tags @if(in_array('color', $autoVehiculo[$i] ?? [])) campo-api @endif" wire:model.defer="vehiculos.{{ $i }}.color"
+                                            data-placeholder="— Seleccione —">
+                                        <option value=""></option>
+                                        @foreach(\App\Support\VehiculoCatalogos::paraValor(\App\Support\VehiculoCatalogos::COLORES, $v['color'] ?? null) as $opcion)
+                                            <option value="{{ $opcion }}">{{ $opcion }}</option>
+                                        @endforeach
+                                    </select>
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label mb-0 small fw-semibold">Combustible</label>
-                                    <input type="text" class="form-control form-control-sm" wire:model.defer="vehiculos.{{ $i }}.combustible" placeholder="GNV / Gasolina">
+                                    <select class="form-select form-select-sm select2-tags" wire:model.defer="vehiculos.{{ $i }}.combustible"
+                                            data-placeholder="— Seleccione —">
+                                        <option value=""></option>
+                                        @foreach(\App\Support\Combustibles::paraValor($v['combustible'] ?? null) as $comb)
+                                            <option value="{{ $comb }}">{{ $comb }}</option>
+                                        @endforeach
+                                    </select>
                                 </div>
                             </div>
                         </div>

@@ -72,7 +72,7 @@
 
 <table class="fila">
     @if($t['cuotas'])
-        <tr><td>Cuotas:</td><td class="der">{{ implode(',', $t['cuotas']) }}</td></tr>
+        <tr><td>Cuotas:</td><td class="der">{{ \App\Support\RangoCuotas::texto($t['cuotas']) }}</td></tr>
     @endif
     {{-- Desglose por cuota (solo si hay varias o alguna quedó amortizada). --}}
     @if($t['detalle_cuotas_visible'] ?? false)

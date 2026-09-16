@@ -28,7 +28,7 @@ class DocumentoCliente extends Model
 
     protected $fillable = [
         'client_id', 'credit_id', 'tipo', 'modelo', 'version', 'snapshot',
-        'pdf_path', 'sha256', 'estado', 'generado_por',
+        'pdf_path', 'sha256', 'estado', 'generado_por', 'correlativo',
     ];
 
     protected $casts = [

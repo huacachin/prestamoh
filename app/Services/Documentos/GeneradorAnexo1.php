@@ -7,6 +7,7 @@ use App\Models\Credit;
 use App\Models\DocumentoCliente;
 use App\Models\Vehiculo;
 use App\Support\Audit;
+use App\Support\Documentos\CorrelativoAnexo;
 use App\Support\Documentos\DomicilioLegal;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Collection;
@@ -94,12 +95,29 @@ class GeneradorAnexo1
             'vehiculo' => $vehiculosDatos[0] ?? null,
             'vehiculos' => $vehiculosDatos,
             'credito' => [
+                // Id interno del crédito. Se conserva porque lo usan el
+                // nombre del archivo, el título y los documentos ya emitidos.
                 'numero' => $credit->id,
+                // Numeración PROPIA del área legal ("2026-230"), que es la que
+                // citan en sus registros y ante la notaría (15/09). Se asigna
+                // al EMITIR; en la vista previa se muestra el próximo sin
+                // consumirlo, porque previsualizar no debe quemar números.
+                'correlativo' => $overrides['correlativo'] ?? CorrelativoAnexo::proximo(),
                 'moneda' => 'SOLES',
                 'monto' => (float) $credit->importe,
                 'frecuencia' => mb_strtoupper($credit->tipoPlanillaLabel()),
                 'cuotas' => $filas->count(),
                 'cuota' => $cuota,
+                // Maestro del área legal (04/09): plazo en unidades del tipo,
+                // fecha de inicio y TIM (5% semanal/mensual; el diario mantiene
+                // su mora1 histórico en soles por día).
+                'plazo' => $filas->count().' '.match ((int) $credit->tipo_planilla) {
+                    1 => 'semanas', 3 => 'meses', 4 => 'días', default => 'cuotas',
+                },
+                'fecha_inicio' => $credit->fecha_prestamo?->format('d/m/Y') ?? '',
+                'tim' => (int) $credit->tipo_planilla === 4
+                    ? 'S/ '.number_format((float) $credit->mora1, 2, ',', '.').' por día'
+                    : Credit::TASA_MORA_PCT.'%',
             ],
             'cronograma' => [
                 'filas' => $filas->all(),
@@ -127,6 +145,11 @@ class GeneradorAnexo1
                 }
             }
 
+            // El número del área se consume AQUÍ, dentro de la transacción y
+            // con bloqueo: dos personas emitiendo a la vez no pueden llevarse
+            // el mismo, porque el documento se firma y se registra.
+            $overrides['correlativo'] = CorrelativoAnexo::siguiente();
+
             $snapshot = self::construirSnapshot($client, $credit, $vehiculo, $overrides);
 
             $version = (int) DocumentoCliente::where('client_id', $client->id)
@@ -149,6 +172,10 @@ class GeneradorAnexo1
                 'tipo' => 'anexo1',
                 'modelo' => null, // solo aplica al contrato
                 'version' => $version,
+                // En columna propia: es el número que el área cita, y hay que
+                // poder saber cuáles están en uso para no repetirlos ni
+                // saltarlos cuando se anula un anexo.
+                'correlativo' => $overrides['correlativo'],
                 'snapshot' => $snapshot,
                 'pdf_path' => $path,
                 'sha256' => hash('sha256', $contenido),

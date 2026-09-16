@@ -5,6 +5,9 @@
 
 <!-- jQuery UI datepicker css -->
 <link rel="stylesheet" href="{{ asset('assets/vendor/jquery-ui/jquery-ui.css') }}">
+
+<!-- select2 (desplegables con búsqueda: ubigeo de clientes) -->
+<link rel="stylesheet" href="{{ asset('assets/vendor/select/select2.min.css') }}">
 <style>
     /* Icono de calendario dentro del input (réplica del legacy ideasweb.css).
        Se usa background-image (no el shorthand background) + !important para que

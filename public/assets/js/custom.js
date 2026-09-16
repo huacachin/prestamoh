@@ -135,6 +135,52 @@ function successAlert(message) {
     });
 }
 
+// Aviso con mensaje propio (reemplaza a los alert() nativos del navegador).
+function avisar(message, icon) {
+    Swal.fire({
+        icon: icon || 'warning',
+        title: 'Atención',
+        text: message,
+        confirmButtonText: 'OK',
+    });
+}
+
+/**
+ * Confirmación con el modal de la casa en lugar del confirm() NATIVO que
+ * usa wire:confirm. En el blade se escribe igual de simple:
+ *
+ *   <button wire:click="borrar(1)" data-confirmar="¿Seguro?">
+ *   ... opcionales: data-confirmar-ok="Eliminar" data-confirmar-titulo="..."
+ *                   data-confirmar-icono="warning"
+ *
+ * Se intercepta en fase de CAPTURA para frenar el wire:click antes de que
+ * Livewire lo procese; si el usuario acepta, se marca el elemento y se
+ * re-dispara el click, que esta vez pasa de largo.
+ */
+document.addEventListener('click', function (e) {
+    var el = e.target.closest('[data-confirmar]');
+    if (!el || el.dataset.confirmado === '1') return;
+
+    e.preventDefault();
+    e.stopImmediatePropagation();
+
+    Swal.fire({
+        title: el.dataset.confirmarTitulo || 'Confirmar acción',
+        html: el.dataset.confirmar,
+        icon: el.dataset.confirmarIcono || 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: el.dataset.confirmarOk || 'Sí, continuar',
+        cancelButtonText: 'Cancelar',
+    }).then(function (r) {
+        if (!r.isConfirmed) return;
+        el.dataset.confirmado = '1';
+        el.click();
+        delete el.dataset.confirmado;
+    });
+}, true);
+
 function alertError() {
     Swal.fire({
         icon: 'error',
@@ -147,26 +193,50 @@ function alertError() {
 // `event` (opcional) permite un canal propio de confirmación (p. ej.
 // 'attachment_destroy' en galerías anidadas), para que el register_destroy
 // global no llegue a otros componentes de la misma pantalla que también lo escuchan.
-function questionDelete(id, role, name, event) {
-    var msg = (role && name)
-        ? '¿Está seguro de eliminar al ' + role + ' <span style="color:red;font-weight:bold">' + name + '</span>?'
-        : "¿Está seguro que desea eliminar el registro?";
+function questionDelete(id, role, name, event, accion, nota) {
+    // El nombre viene de la base: se ESCAPA antes de inyectarlo como html
+    // (un apellido con < o & rompia el modal; y no se confia en el dato).
+    var escapar = function (t) {
+        var d = document.createElement('div');
+        d.textContent = t;
+        return d.innerHTML;
+    };
+    // El VERBO lo manda quien abre el modal: varias pantallas DESACTIVAN y el
+    // texto generico decia "eliminar el registro" — ni que ni a quien.
+    accion = accion || 'eliminar';
+    var articulo = role ? (role === 'usuario' || role === 'crédito' ? 'el ' : 'la ') : '';
+    var titulo = role
+        ? 'Se va a ' + accion + ' ' + articulo + escapar(role)
+        : 'Se va a ' + accion + ' el registro';
+
+    var msg;
+    if (name) {
+        var quien = '<span style="color:red;font-weight:bold">' + escapar(name) + '</span>';
+        msg = role
+            ? '¿Está seguro de ' + accion + ' ' + articulo + escapar(role) + ' ' + quien + '?'
+            : '¿Está seguro de ' + accion + ' a ' + quien + '?';
+    } else {
+        msg = '¿Está seguro que desea ' + accion + ' el registro?';
+    }
+    if (nota) {
+        msg += '<br><small style="color:#6c757d">' + escapar(nota) + '</small>';
+    }
+
     Swal.fire({
-        title: "Se va a eliminar el registro",
+        title: titulo,
         html: msg,
         icon: "warning",
         showCancelButton: true,
         confirmButtonColor: "#3085d6",
         cancelButtonColor: "#d33",
-        confirmButtonText: "Eliminar"
+        confirmButtonText: accion.charAt(0).toUpperCase() + accion.slice(1),
+        cancelButtonText: "Cancelar"
     }).then(function (result) {
         if (result.isConfirmed) {
+            // Sin Swal de exito aqui: lo canta el SERVIDOR con successAlert /
+            // errorAlert. Antes se mostraba "Eliminado!" siempre, incluso
+            // cuando el borrado rebotaba por permisos o por la regla del dia.
             Livewire.dispatch(event || 'register_destroy', [id]);
-            Swal.fire({
-                title: "Eliminado!",
-                text: "El registro se eliminado correctamente.",
-                icon: "success"
-            });
         }
     });
 }
@@ -225,7 +295,8 @@ window.addEventListener('successAlert', function (event) {
 
 window.addEventListener('questionDelete', function (event) {
     var data = event.detail[0];
-    questionDelete(data['id'], data['role'] || '', data['name'] || '', data['event'] || '');
+    questionDelete(data['id'], data['role'] || '', data['name'] || '', data['event'] || '',
+                   data['accion'] || '', data['nota'] || '');
 });
 
 window.addEventListener('questionGenerate', function (event) {
@@ -279,52 +350,68 @@ window.addEventListener('go-back', function (e) {
 // "search box" y NO guarda su historial de autofill aunque el input tenga
 // name + autocomplete="on" — por eso el historial se maneja aqui.
 // Uso: al input agregarle data-search-history="clave" y list="<id>", y poner
-// un <datalist id="<id>" wire:ignore> al lado. Registra al enviar el form
-// (aunque Livewire haga .prevent, el evento submit igual dispara) y al
-// perder el foco con valor; guarda los ultimos 10 en localStorage.
+// un <datalist id="<id>" wire:ignore> al lado. Guarda las ultimas 10 en
+// localStorage al cambiar el valor (blur) o enviar el form.
+//
+// TODO delegado en document (05/09): los listeners por-input morian cuando
+// Livewire reemplazaba el nodo en re-renders .live (reporte de pagos, filtros
+// de cartera...) y el historial dejaba de grabar. La delegacion sobrevive
+// cualquier morph; el datalist se repuebla al enfocar por si un render lo vacio.
 (function () {
     function readHistory(key) {
         try { return JSON.parse(localStorage.getItem(key)) || []; } catch (e) { return []; }
     }
 
-    function initSearchHistory() {
-        document.querySelectorAll('input[data-search-history]').forEach(function (input) {
-            if (input.dataset.searchHistoryInit) return;
-            input.dataset.searchHistoryInit = '1';
+    function keyOf(input) { return 'searchHist:' + input.dataset.searchHistory; }
 
-            var key = 'searchHist:' + input.dataset.searchHistory;
-            var datalist = input.getAttribute('list') ? document.getElementById(input.getAttribute('list')) : null;
-            if (!datalist) return;
-
-            var render = function () {
-                datalist.innerHTML = '';
-                readHistory(key).forEach(function (v) {
-                    var opt = document.createElement('option');
-                    opt.value = v;
-                    datalist.appendChild(opt);
-                });
-            };
-
-            var record = function () {
-                var v = (input.value || '').trim();
-                if (v.length < 2) return;
-                var items = readHistory(key).filter(function (x) {
-                    return x.toLowerCase() !== v.toLowerCase();
-                });
-                items.unshift(v);
-                localStorage.setItem(key, JSON.stringify(items.slice(0, 10)));
-                render();
-            };
-
-            if (input.form) input.form.addEventListener('submit', record);
-            input.addEventListener('change', record);
-
-            render();
+    function render(input) {
+        var id = input.getAttribute('list');
+        var datalist = id ? document.getElementById(id) : null;
+        if (!datalist) return;
+        datalist.innerHTML = '';
+        readHistory(keyOf(input)).forEach(function (v) {
+            var opt = document.createElement('option');
+            opt.value = v;
+            datalist.appendChild(opt);
         });
     }
 
-    document.addEventListener('DOMContentLoaded', initSearchHistory);
-    document.addEventListener('livewire:navigated', initSearchHistory);
+    function record(input) {
+        var v = (input.value || '').trim();
+        if (v.length < 2) return;
+        var key = keyOf(input);
+        var items = readHistory(key).filter(function (x) {
+            return x.toLowerCase() !== v.toLowerCase();
+        });
+        items.unshift(v);
+        localStorage.setItem(key, JSON.stringify(items.slice(0, 10)));
+        render(input);
+    }
+
+    function esHist(el) { return el && el.matches && el.matches('input[data-search-history]'); }
+
+    // focusout y no 'change': en inputs .live, Livewire re-asigna el value
+    // programaticamente tras cada render y eso resetea el dirty-flag del
+    // navegador — el change de blur nunca llega. Grabar al salir del campo
+    // funciona siempre (y el dedup hace inofensivo grabar de mas).
+    document.addEventListener('focusout', function (e) {
+        if (esHist(e.target)) record(e.target);
+    });
+    // capture: el submit se registra aunque Livewire haga .prevent
+    document.addEventListener('submit', function (e) {
+        if (e.target && e.target.querySelectorAll) {
+            e.target.querySelectorAll('input[data-search-history]').forEach(record);
+        }
+    }, true);
+    document.addEventListener('focusin', function (e) {
+        if (esHist(e.target)) render(e.target);
+    });
+
+    function renderAll() {
+        document.querySelectorAll('input[data-search-history]').forEach(render);
+    }
+    document.addEventListener('DOMContentLoaded', renderAll);
+    document.addEventListener('livewire:navigated', renderAll);
 })();
 
 // Tooltips Bootstrap con delegación en body: los elementos con

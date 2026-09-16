@@ -129,10 +129,11 @@
                                     $rowBg = ($loop->iteration % 2 === 0) ? '#ffffff' : '#F2F2EC';
                                     // Legacy: solo modo='Otros' en rojo. CREDITO no recibe color especial.
                                     $rowColor = ($row['modo'] === 'Otros') ? 'color: red;' : '';
-                                    // Del día lo edita quien lo ve: el scope del listado ya limita
-                                    // a los operadores a sus propios movimientos (caja.ver-todo).
+                                    // Regla 04/09: solo el director edita lo de todos; el resto,
+                                    // SOLO sus propios movimientos del día (ver-todo ya no da edición).
                                     $canEdit = $row['editable'] && ($puedeEditarHistorico || (
                                         $row['date']?->format('Y-m-d') === $hoy
+                                        && (int) $row['user_id'] === (int) auth()->id()
                                     ));
                                 @endphp
                                 <tr style="background-color: {{ $rowBg }}; {{ $rowColor }}"
@@ -157,7 +158,7 @@
                                                    @click.prevent="openLightbox({{ \Illuminate\Support\Js::from($galleries[$row['id']]['items']) }}, {{ \Illuminate\Support\Js::from($galleries[$row['id']]['manageUrl']) }})"
                                                    title="Ver adjuntos ({{ $row['attachments_count'] ?? 0 }})"
                                                    style="cursor: zoom-in;">
-                                                    <i class="ti ti-camera-filled f-s-16 text-info"></i>
+                                                    <i class="ti ti-camera f-s-16 text-info"></i>
                                                     @if(($row['attachments_count'] ?? 0) > 0)
                                                         <span class="badge bg-info" style="font-size:9px; padding:1px 4px;">
                                                             {{ $row['attachments_count'] }}
@@ -334,6 +335,7 @@
                                     && !$isGat
                                     && ($puedeEditarHistorico || (
                                         $row['date']?->format('Y-m-d') === $hoy
+                                        && (int) $row['user_id'] === (int) auth()->id()
                                     ));
                             @endphp
                             <div class="card mb-2 shadow-sm {{ $isOtros ? 'border-danger' : '' }}">

@@ -63,7 +63,9 @@
                         <div class="col-md-2">
                             <label class="form-label mb-0 small">Buscar acción</label>
                             <input type="text" class="form-control form-control-sm" placeholder="Ej. pago, anuló, usuario…"
-                                   wire:model.live.debounce.400ms="buscar" autocomplete="off">
+                                   wire:model.live.debounce.400ms="buscar" autocomplete="off"
+       list="hist_audit" data-search-history="audit">
+<datalist id="hist_audit" wire:ignore></datalist>
                         </div>
                         <div class="col-md-2 d-flex align-items-end">
                             <button class="btn btn-sm btn-secondary" wire:click="limpiar">

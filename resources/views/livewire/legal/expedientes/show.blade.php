@@ -196,7 +196,7 @@
                             @if($expediente->cautelares->isEmpty())
                                 <button type="button" class="btn btn-sm btn-danger"
                                         wire:click="crearCautelar"
-                                        wire:confirm="Se creará el cuaderno cautelar {{ \App\Models\ExpedienteJudicial::nroCautelarDesde($expediente->nro_expediente) }} en estado 'Medida solicitada'. ¿Continuar?"
+                                        data-confirmar="Se creará el cuaderno cautelar {{ \App\Models\ExpedienteJudicial::nroCautelarDesde($expediente->nro_expediente) }} en estado 'Medida solicitada'. ¿Continuar?"
                                         wire:loading.attr="disabled" wire:target="crearCautelar">
                                     <i class="ti ti-plus f-s-12"></i> Crear cautelar
                                 </button>
@@ -412,7 +412,7 @@
                                                             style="padding:2px 8px; font-size:10px;"
                                                             title="Marcar cumplido"
                                                             wire:click="marcarCumplido({{ $plazo->id }})"
-                                                            wire:confirm="¿Marcar este plazo como cumplido?"
+                                                            data-confirmar="¿Marcar este plazo como cumplido?"
                                                             wire:loading.attr="disabled" wire:target="marcarCumplido">
                                                         <i class="ti ti-check"></i>
                                                     </button>

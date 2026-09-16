@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Models\User;
+use App\Services\Documentos\Ocr\LectorDeVoucher;
+use App\Services\Documentos\Ocr\LectorVoucherClaude;
 use App\Support\PermisosVista;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
@@ -18,7 +20,12 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        // Lectura del voucher del Anexo 2: se resuelve por interfaz para que
+        // los tests inyecten un doble y no gasten llamadas a la API.
+        $this->app->bind(
+            LectorDeVoucher::class,
+            LectorVoucherClaude::class,
+        );
     }
 
     public function boot(): void

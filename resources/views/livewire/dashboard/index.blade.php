@@ -139,9 +139,10 @@
     <div class="card dashx-tile">
         <div class="card-body py-2">
             <div class="row g-2 align-items-end">
+                {{-- select2 con búsqueda, SIN texto libre (solo elegir del catálogo) --}}
                 <div class="col-6 col-md-2">
                     <label class="form-label mb-0 small fw-semibold">Año</label>
-                    <select class="form-select form-select-sm" wire:model.live="year">
+                    <select class="form-select form-select-sm select2-simple" wire:model.live="year">
                         @foreach($anios as $a)
                             <option value="{{ $a }}">{{ $a }}</option>
                         @endforeach
@@ -149,15 +150,17 @@
                 </div>
                 <div class="col-6 col-md-2">
                     <label class="form-label mb-0 small fw-semibold">Mes</label>
-                    <select class="form-select form-select-sm" wire:model.live="month">
+                    <select class="form-select form-select-sm select2-simple" wire:model.live="month">
                         @foreach($meses as $num => $nombre)
                             <option value="{{ $num }}">{{ $nombre }}</option>
                         @endforeach
                     </select>
                 </div>
-                <div class="col-6 col-md-2">
+                {{-- wire:key: las opciones del día dependen del mes — nodo nuevo
+                     al cambiar para que select2 se reinicie limpio tras el morph --}}
+                <div class="col-6 col-md-2" wire:key="dash-dia-{{ $year }}-{{ $month }}">
                     <label class="form-label mb-0 small fw-semibold">Día</label>
-                    <select class="form-select form-select-sm" wire:model.live="day">
+                    <select class="form-select form-select-sm select2-simple" wire:model.live="day">
                         <option value="">Todo el mes</option>
                         @for($d = 1; $d <= $diasDelMes; $d++)
                             <option value="{{ $d }}">{{ $d }}</option>

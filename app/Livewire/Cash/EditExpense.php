@@ -70,19 +70,22 @@ class EditExpense extends Component
     ];
 
     /**
-     * Sin caja.editar-historico solo lo registrado HOY, y solo lo propio salvo
-     * caja.ver-todo. Se llama en mount() Y en cada acción (update/destroy):
-     * Livewire hidrata sin re-ejecutar mount, así que el guard debe repetirse.
+     * Regla 04/09 (Antony): el director (caja.editar-historico) edita los
+     * registros DE TODOS y de cualquier fecha; administrador hacia abajo,
+     * SOLO los hechos por ellos mismos y SOLO del día. caja.ver-todo da
+     * visibilidad, ya no edición ajena. Se llama en mount() Y en cada
+     * acción (update/destroy): Livewire hidrata sin re-ejecutar mount,
+     * así que el guard debe repetirse.
      */
     private function autorizar(): void
     {
         $user = auth()->user();
         $esDeHoy = $this->expense->date->format('Y-m-d') === now()->format('Y-m-d');
-        $propioOVeTodo = ($user?->can('caja.ver-todo') ?? false) || $this->expense->user_id === $user?->id;
+        $esPropio = $this->expense->user_id === $user?->id;
         abort_unless(
-            ($user?->can('caja.editar-historico') ?? false) || ($esDeHoy && $propioOVeTodo),
+            ($user?->can('caja.editar-historico') ?? false) || ($esDeHoy && $esPropio),
             403,
-            'Solo se pueden editar movimientos del día.'
+            'Solo puedes editar tus propios movimientos del día.'
         );
     }
 

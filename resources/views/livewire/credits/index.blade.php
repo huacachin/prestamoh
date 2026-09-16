@@ -111,8 +111,12 @@
                                     $pago   = $iapli + $aplido;
                                     $saldo  = $credit->importe - $iapli - $aplido + $interS;
                                     $tcLabel = $tcLabels[$credit->tipo_planilla] ?? '?';
-                                    $canDelete = ($iapli <= 0) && ($puedeEditarHistorico || (
-                                        $credit->fecha_prestamo?->format('Y-m-d') === $hoy && !$credit->refinanciado
+                                    // Propio Y del día (05/09): el administrador solo
+                                    // borra lo que él mismo registró; el director, todo.
+                                    $canDelete = $puedeEliminar && ($iapli <= 0) && ($puedeEditarHistorico || (
+                                        $credit->fecha_prestamo?->format('Y-m-d') === $hoy
+                                        && ! $credit->refinanciado
+                                        && (int) $credit->user_id === (int) auth()->id()
                                     ));
                                 @endphp
                                 <tr onmouseover="this.style.backgroundColor='#CCFF66'"
@@ -144,7 +148,7 @@
                                     <td class="text-center">
                                         @if($canDelete)
                                             <button class="btn btn-xs btn-danger" style="padding: 2px 8px; font-size: 10px;"
-                                                    wire:confirm="¿Está seguro de eliminar este Préstamo? Este proceso no es reversible."
+                                                    data-confirmar="¿Está seguro de eliminar este Préstamo? Este proceso no es reversible."
                                                     wire:click="delete({{ $credit->id }})">
                                                 Eliminar
                                             </button>
@@ -184,8 +188,10 @@
                                 $pago   = $iapli + $aplido;
                                 $saldo  = $credit->importe - $iapli - $aplido + $interS;
                                 $tcLabel = $tcLabels[$credit->tipo_planilla] ?? '?';
-                                $canDelete = ($iapli <= 0) && ($puedeEditarHistorico || (
-                                    $credit->fecha_prestamo?->format('Y-m-d') === $hoy && !$credit->refinanciado
+                                $canDelete = $puedeEliminar && ($iapli <= 0) && ($puedeEditarHistorico || (
+                                    $credit->fecha_prestamo?->format('Y-m-d') === $hoy
+                                    && ! $credit->refinanciado
+                                    && (int) $credit->user_id === (int) auth()->id()
                                 ));
                             @endphp
                             <div class="card mb-2 shadow-sm">
@@ -210,7 +216,7 @@
                                     </div>
                                     @if($canDelete)
                                         <button class="btn btn-xs btn-danger w-100 mt-2" style="font-size: 10px;"
-                                                wire:confirm="¿Está seguro de eliminar este Préstamo?"
+                                                data-confirmar="¿Está seguro de eliminar este Préstamo?"
                                                 wire:click="delete({{ $credit->id }})">
                                             <i class="ti ti-trash"></i> Eliminar
                                         </button>

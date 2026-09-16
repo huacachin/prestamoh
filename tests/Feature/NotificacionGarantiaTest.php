@@ -39,6 +39,14 @@ class NotificacionGarantiaTest extends TestCase
         $this->assertSame(Garantias::VEHICULAR, Garantias::de('Cred. Vehicular-Rojo 13/04'));
         $this->assertSame(Garantias::HIPOTECARIA, Garantias::de('Gar. Hip.S'));
         $this->assertSame(Garantias::HIPOTECARIA, Garantias::de(' Gar. Hip.M-Rojo 05/12/2025'));
+        // 05/09: los estados "en ejecución" del catálogo llevan la garantía
+        // delante justo para no perder su plantilla legal.
+        $this->assertSame(Garantias::VEHICULAR, Garantias::de('SIGM.S-Ejecución'));
+        $this->assertSame(Garantias::VEHICULAR, Garantias::de('SIGM.M-Ejecución'));
+        $this->assertSame(Garantias::HIPOTECARIA, Garantias::de('Gar. Hip.S-Ejecución'));
+        $this->assertSame(Garantias::HIPOTECARIA, Garantias::de('Gar. Hip.M-Ejecución'));
+        // Y el valor histórico del legacy, que sigue igual.
+        $this->assertSame(Garantias::VEHICULAR, Garantias::de('SIGM.S-Ejecucion 14/01'));
         $this->assertSame(Garantias::OTRA, Garantias::de('Sin Garantia'));
         $this->assertSame(Garantias::OTRA, Garantias::de('Demandado Veh. Cap.-Moto B03163'));
         $this->assertSame(Garantias::OTRA, Garantias::de(null));
@@ -163,6 +171,39 @@ class NotificacionGarantiaTest extends TestCase
 
         $this->assertStringContainsString('REQUERIMIENTO FINAL', $texto);
         $this->assertStringNotContainsString('EJECUCIÓN EXTRAJUDICIAL - GARANTIA', $texto);
+    }
+
+    /**
+     * Regresión (02/09): dentro del mismo nivel, un envío previo NO debe
+     * pegar el texto viejo. Antes se reutilizaba el último mensaje del nivel
+     * y las cuotas/montos quedaban congelados al día del primer envío.
+     */
+    public function test_nuevo_editor_trae_datos_frescos_aunque_haya_envio_previo_del_mismo_nivel(): void
+    {
+        $this->actingAs(User::factory()->create(['username' => 'tester']));
+        [$client, $credit] = $this->clienteConCredito('SIGM.S');
+
+        // 4 vencidas → comunicado de ejecución; se envía (queda en historial).
+        CreditInstallment::where('credit_id', $credit->id)->where('num_cuota', 4)
+            ->update(['fecha_vencimiento' => now()->subDay()->format('Y-m-d')]);
+
+        $c = Livewire::test(NotificationsModal::class)
+            ->call('abrir', $client->id)
+            ->call('nuevaNotif');
+        $this->assertStringContainsString('4(CUATRO) CUOTAS', $c->get('texto'));
+        $c->call('enviarNotif');
+
+        // Cae la 5ta cuota: mismo nivel (4+), pero el editor debe traer CINCO.
+        CreditInstallment::where('credit_id', $credit->id)->where('num_cuota', 5)
+            ->update(['fecha_vencimiento' => now()->subDay()->format('Y-m-d')]);
+
+        $texto = Livewire::test(NotificationsModal::class)
+            ->call('abrir', $client->id)
+            ->call('nuevaNotif')
+            ->get('texto');
+
+        $this->assertStringContainsString('5(CINCO) CUOTAS', $texto);
+        $this->assertStringNotContainsString('4(CUATRO) CUOTAS', $texto);
     }
 
     public function test_sin_garantia_conserva_el_comunicado_generico(): void

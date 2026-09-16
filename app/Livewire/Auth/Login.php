@@ -2,23 +2,27 @@
 
 namespace App\Livewire\Auth;
 
+use App\Support\Audit;
+use App\Support\MenuLateral;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
-use Illuminate\Http\Request;
 
 class Login extends Component
 {
     public string $username = '';
+
     public string $password = '';
+
     public bool $remember = false;
 
     protected function rules(): array
     {
         return [
-            'username' => ['required','string'],
-            'password' => ['required','string'],
+            'username' => ['required', 'string'],
+            'password' => ['required', 'string'],
             'remember' => ['boolean'],
         ];
     }
@@ -26,7 +30,7 @@ class Login extends Component
     public function mount(Request $request)
     {
         if (Auth::check()) {
-            return redirect()->intended('/dashboard');
+            return redirect()->intended(route(MenuLateral::rutaInicio(auth()->user())));
         }
     }
 
@@ -61,9 +65,9 @@ class Login extends Component
         RateLimiter::clear($this->throttleKey());
         session()->regenerate();
 
-        \App\Support\Audit::log('Inicio de sesión');
+        Audit::log('Inicio de sesión');
 
-        return redirect()->intended('/dashboard');
+        return redirect()->intended(route(MenuLateral::rutaInicio(auth()->user())));
     }
 
     public function render()

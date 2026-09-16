@@ -45,6 +45,11 @@ Route::middleware('auth')->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
 
+    // Aterrizaje de respaldo: usuario autenticado SIN ningún módulo accesible
+    // (ver App\Support\MenuLateral::rutaInicio). Sin permiso propio a
+    // propósito: es la única pantalla que siempre puede abrir.
+    Route::view('sin-accesos', 'errors.sin-accesos')->name('sin-accesos');
+
     // Auditoría (solo rol director)
     Route::view('audit', 'audit.index')->name('audit.index')->middleware('role:director');
 

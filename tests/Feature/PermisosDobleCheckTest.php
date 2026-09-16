@@ -12,10 +12,8 @@ use App\Models\User;
 use Database\Seeders\PermissionCatalogSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Database\Seeders\RoleSetupSeeder;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 /**
@@ -71,26 +69,83 @@ class PermisosDobleCheckTest extends TestCase
         $this->get("/exports/clients/{$ajeno->id}/history")->assertForbidden();
     }
 
+    /**
+     * 05/09: el administrador SÍ elimina créditos, pero solo los que
+     * registró ÉL MISMO y del día (sin pagos y no refinanciados). Lo ajeno
+     * y lo histórico son del director.
+     */
     public function test_destroy_de_credito_exige_permiso_y_dia(): void
     {
-        // El administrador NO tiene creditos.eliminar: destroy debe rebotar
         $admin = User::factory()->create(['username' => 'adm-dc']);
         $admin->assignRole('administrador');
         $cliente = Client::create(['nombre' => 'Cliente DC', 'asesor_id' => $admin->id]);
-        $credit = Credit::create([
-            'client_id' => $cliente->id, 'fecha_prestamo' => now()->format('Y-m-d'), 'importe' => 1000,
+        $credito = fn (string $fecha, ?int $dueno = null) => Credit::create([
+            'client_id' => $cliente->id, 'fecha_prestamo' => $fecha, 'importe' => 1000,
             'cuotas' => 4, 'tipo_planilla' => 1, 'interes' => 10, 'interes_total' => 100,
-            'situacion' => 'Activo', 'estado' => 1,
+            'situacion' => 'Activo', 'estado' => 1, 'user_id' => $dueno ?? $admin->id,
+        ]);
+
+        $this->actingAs($admin);
+
+        // El del DÍA sí se elimina.
+        $hoy = $credito(now()->format('Y-m-d'));
+        Livewire::test(CreditsEdit::class, ['id' => $hoy->id])->call('destroy', $hoy->id);
+        // destroy es borrado LÓGICO: marca la situación, no borra la fila.
+        $this->assertSame('Eliminado', $hoy->fresh()->situacion, 'el administrador elimina el crédito del día');
+
+        // El de AYER rebota.
+        $ayer = $credito(now()->subDay()->format('Y-m-d'));
+        try {
+            Livewire::test(CreditsEdit::class, ['id' => $ayer->id])->call('destroy', $ayer->id);
+        } catch (\Throwable) {
+            // 403 esperado
+        }
+        $this->assertSame('Activo', $ayer->fresh()->situacion, 'lo histórico es del director');
+
+        // El de OTRO usuario, aunque sea de hoy, tampoco.
+        $otroUser = User::factory()->create(['username' => 'otro-dc']);
+        $ajeno = $credito(now()->format('Y-m-d'), $otroUser->id);
+        try {
+            Livewire::test(CreditsEdit::class, ['id' => $ajeno->id])->call('destroy', $ajeno->id);
+        } catch (\Throwable) {
+            // 403 esperado
+        }
+        $this->assertSame('Activo', $ajeno->fresh()->situacion, 'solo se elimina lo registrado por uno mismo');
+
+        // Y sin el permiso, ni el del día.
+        $cobra = User::factory()->create(['username' => 'cob-dc']);
+        $cobra->assignRole('cobranzas');
+        $this->actingAs($cobra);
+        $otro = $credito(now()->format('Y-m-d'));
+        try {
+            Livewire::test(CreditsEdit::class, ['id' => $otro->id])->call('destroy', $otro->id);
+        } catch (\Throwable) {
+            // 403 esperado
+        }
+        $this->assertSame('Activo', $otro->fresh()->situacion, 'sin creditos.eliminar no se elimina');
+    }
+
+    /** La puerta de atrás: marcar "Eliminado" desde la edición sigue la misma regla. */
+    public function test_marcar_eliminado_desde_la_edicion_tambien_exige_el_dia(): void
+    {
+        $admin = User::factory()->create(['username' => 'adm-dc3']);
+        $admin->assignRole('administrador');
+        $cliente = Client::create(['nombre' => 'Cliente DC3', 'asesor_id' => $admin->id]);
+        $viejo = Credit::create([
+            'client_id' => $cliente->id, 'fecha_prestamo' => now()->subDays(30)->format('Y-m-d'),
+            'importe' => 1000, 'cuotas' => 4, 'tipo_planilla' => 1, 'interes' => 10,
+            'interes_total' => 100, 'situacion' => 'Activo', 'estado' => 1,
         ]);
 
         $this->actingAs($admin);
         try {
-            Livewire::test(CreditsEdit::class, ['id' => $credit->id])
-                ->call('destroy', $credit->id);
-        } catch (AuthorizationException|HttpException) {
-            // 403 esperado
+            Livewire::test(CreditsEdit::class, ['id' => $viejo->id])
+                ->set('situacion', 'Eliminado')
+                ->call('update');
+        } catch (\Throwable) {
+            // 403 esperado (tras el abort, Livewire deja el snapshot inservible)
         }
-        $this->assertSame('Activo', $credit->fresh()->situacion, 'sin creditos.eliminar no se elimina');
+        $this->assertSame('Activo', $viejo->fresh()->situacion);
     }
 
     public function test_update_de_credito_no_backdatea_sin_bypass(): void

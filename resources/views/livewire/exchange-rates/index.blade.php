@@ -108,7 +108,9 @@
                                         <div class="col-md-4">
                                             <label class="form-label mb-0 small fw-semibold">Compra</label>
                                             <input type="number" step="0.0001" min="0" name="compra" autocomplete="off" class="form-control form-control-sm"
-                                                   placeholder="0.0000" wire:model="compra">
+                                                   placeholder="0.0000" wire:model="compra"
+       list="hist_tipo_cambio" data-search-history="tipo_cambio">
+<datalist id="hist_tipo_cambio" wire:ignore></datalist>
                                         </div>
                                         <div class="col-12 d-flex gap-2 mt-2">
                                             <button type="button" class="btn btn-sm btn-warning"

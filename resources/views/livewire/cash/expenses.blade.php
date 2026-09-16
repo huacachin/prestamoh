@@ -129,8 +129,11 @@
                                     // ($contador % 2): 1ª fila (contador=1) => #F2F2EC, 2ª => #ffffff
                                     $rowBg = ($loop->iteration % 2 === 0) ? '#ffffff' : '#F2F2EC';
                                     $rowColor = ($expense->modo === 'Otros') ? 'color: red;' : '';
+                                    // Regla 04/09: solo el director edita lo de todos; el resto,
+                                    // SOLO sus propios movimientos del día.
                                     $canEdit = $puedeEditarHistorico || (
                                         $expense->date?->format('Y-m-d') === $hoy
+                                        && (int) $expense->user_id === (int) auth()->id()
                                     );
                                 @endphp
                                 <tr style="background-color: {{ $rowBg }}; {{ $rowColor }}"
@@ -154,7 +157,7 @@
                                                @click.prevent="openLightbox({{ \Illuminate\Support\Js::from($galleries[$expense->id]['items']) }}, {{ \Illuminate\Support\Js::from($galleries[$expense->id]['manageUrl']) }})"
                                                title="Ver adjuntos ({{ $expense->attachments_count ?? 0 }})"
                                                style="cursor: zoom-in;">
-                                                <i class="ti ti-camera-filled f-s-16 text-info"></i>
+                                                <i class="ti ti-camera f-s-16 text-info"></i>
                                                 @if(($expense->attachments_count ?? 0) > 0)
                                                     <span class="badge bg-info" style="font-size:9px; padding:1px 4px;">
                                                         {{ $expense->attachments_count }}
@@ -307,6 +310,7 @@
                                 $isOtros = $expense->modo === 'Otros';
                                 $canEdit = $puedeEditarHistorico || (
                                     $expense->date?->format('Y-m-d') === $hoy
+                                    && (int) $expense->user_id === (int) auth()->id()
                                 );
                             @endphp
                             <div class="card mb-2 shadow-sm {{ $isOtros ? 'border-danger' : '' }}">

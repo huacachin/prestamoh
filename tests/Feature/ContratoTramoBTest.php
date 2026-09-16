@@ -110,8 +110,10 @@ class ContratoTramoBTest extends TestCase
 
         $this->assertSame('VENEZOLANO', $c->nacionalidad);
         $this->assertSame('BELLAVISTA', $c->distrito);
-        $this->assertSame('CALLAO', $c->provincia);
-        $this->assertSame('CALLAO', $c->departamento);
+        // 03/09: los hooks de cascada normalizan al catálogo (Title Case);
+        // el contrato no cambia porque DomicilioLegal vuelve a mayúsculas.
+        $this->assertSame('Callao', $c->provincia);
+        $this->assertSame('Callao', $c->departamento);
 
         // Y con eso el domicilio legal sale entero, sin retipear nada.
         $this->assertSame(
@@ -157,7 +159,9 @@ class ContratoTramoBTest extends TestCase
 
         $c->refresh();
         $this->assertSame('ATE', $c->distrito);
-        $this->assertSame('LIMA', $c->provincia);
+        // 03/09: normalizada al catálogo (mayúscula/minúscula); el contrato
+        // no cambia porque DomicilioLegal vuelve todo a mayúsculas.
+        $this->assertSame('Lima', $c->provincia);
         $this->assertSame('PERUANO', $c->nacionalidad, 'se normaliza a mayúsculas');
         $this->assertSame('maria@example.com', $c->email);
         $this->assertSame('independiente', $c->ocupacion);

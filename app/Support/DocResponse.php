@@ -20,6 +20,15 @@ class DocResponse
      */
     public static function make(string $view, array $data, string $filename): Response
     {
+        return self::desdeHtml(view($view, $data)->render(), $filename);
+    }
+
+    /**
+     * Igual que make() pero con el HTML ya renderizado: lo usa el contrato,
+     * cuyo HTML pasa antes por Enfasis (negritas de términos definidos).
+     */
+    public static function desdeHtml(string $contenido, string $filename): Response
+    {
         // BOM UTF-8 para que Word respete las tildes; el wrapper mso-* fija
         // vista de impresión y tamaño A4 al abrirlo.
         $html = "\xEF\xBB\xBF"
@@ -28,7 +37,7 @@ class DocResponse
             .'<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->'
             .'<style>@page { size: A4; margin: 2.2cm 2cm 2.4cm 2.8cm; }</style>'
             .'</head><body>'
-            .view($view, $data)->render()
+            .$contenido
             .'</body></html>';
 
         return new Response($html, 200, [

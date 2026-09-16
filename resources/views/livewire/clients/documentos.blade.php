@@ -126,18 +126,18 @@
                                         <a href="{{ route('clients.documentos.pdf', $doc->id) }}"
                                            class="btn btn-xs btn-danger" style="padding: 2px 8px; font-size: 10px;"
                                            title="Descargar PDF">
-                                            <i class="ti ti-file-type-pdf"></i> PDF
+                                            <i class="ti ti-file-description"></i> PDF
                                         </a>
                                     @else
                                         <button type="button" class="btn btn-xs btn-danger" disabled
                                                 style="padding: 2px 8px; font-size: 10px;" title="Sin PDF guardado">
-                                            <i class="ti ti-file-type-pdf"></i> PDF
+                                            <i class="ti ti-file-description"></i> PDF
                                         </button>
                                     @endif
                                     <a href="{{ route('clients.documentos.word', $doc->id) }}"
                                        class="btn btn-xs btn-primary" style="padding: 2px 8px; font-size: 10px;"
                                        title="Descargar Word (editable)">
-                                        <i class="ti ti-file-type-doc"></i> Word
+                                        <i class="ti ti-file-text"></i> Word
                                     </a>
                                 </td>
                                 <td class="text-center">
@@ -145,7 +145,7 @@
                                         <button type="button" class="btn btn-xs btn-outline-danger"
                                                 style="padding: 2px 8px; font-size: 10px;"
                                                 wire:click="anular({{ $doc->id }})"
-                                                wire:confirm="¿Anular {{ $doc->tipoLabel() }} v{{ $doc->version }} del crédito #{{ $doc->credit_id }}? Quedará tachado, pero sus descargas seguirán disponibles."
+                                                data-confirmar="¿Anular {{ $doc->tipoLabel() }} v{{ $doc->version }} del crédito #{{ $doc->credit_id }}? Quedará tachado, pero sus descargas seguirán disponibles."
                                                 title="Anular documento">
                                             <i class="ti ti-ban"></i> Anular
                                         </button>
@@ -937,31 +937,51 @@
                             </div>
                         </div>
 
-                        {{-- ── Transcripción del voucher (inputs dinámicos del combo) ── --}}
-                        @if(! empty($camposAnexo2))
-                            <div class="mt-3" wire:key="anexo2-campos-{{ $anexo2Banco }}-{{ $anexo2Modalidad }}">
-                                <div class="fw-bold small text-uppercase border-bottom pb-1 mb-2">
-                                    Transcripción del voucher — {{ $tituloVoucherAnexo2 }}
-                                </div>
-                                <div class="row g-2">
-                                    @foreach($camposAnexo2 as $clave => [$label, $requerido])
-                                        <div class="col-md-4" wire:key="anexo2-campo-{{ $anexo2Banco }}-{{ $anexo2Modalidad }}-{{ $clave }}">
-                                            <label class="form-label small mb-1">
-                                                {{ $label }}@if($requerido) *@endif
-                                            </label>
-                                            <input type="text" class="form-control form-control-sm"
-                                                   wire:model.blur="anexo2Campos.{{ $clave }}"
-                                                   placeholder="{{ $requerido ? 'Tal como figura en el voucher' : 'Opcional' }}">
-                                            @if($clave === 'monto' && $montoDesembolsoAnexo2 !== null)
-                                                <div class="form-text" style="font-size:10px;">
-                                                    Debe coincidir con el desembolso: S/ {{ number_format($montoDesembolsoAnexo2, 2) }}
-                                                </div>
-                                            @endif
+                        {{-- ── Transcripción LITERAL del voucher (15/09) ──────────────
+                             Antes eran N inputs etiquetados y el documento salía
+                             distinto al que el área firma: el maestro transcribe lo
+                             que dice el voucher, en su orden. Los campos del catálogo
+                             quedan como recordatorio de qué no debe faltar. --}}
+                        <div class="mt-3" wire:key="anexo2-transcripcion-{{ $anexo2Banco }}-{{ $anexo2Modalidad }}">
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <label class="form-label small mb-1">Monto del voucher *</label>
+                                    <input type="text" class="form-control form-control-sm"
+                                           wire:model.blur="anexo2Monto" placeholder="10,000.00">
+                                    @if($montoDesembolsoAnexo2 !== null)
+                                        <div class="form-text" style="font-size:10px;">
+                                            Debe coincidir con el desembolso: S/ {{ number_format($montoDesembolsoAnexo2, 2) }}
                                         </div>
-                                    @endforeach
+                                    @endif
+                                    @error('anexo2Monto') <span class="title-modules small">{{ $message }}</span> @enderror
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="form-label small mb-1">
+                                        Transcripción del voucher *
+                                        @if(! empty($tituloVoucherAnexo2))
+                                            <span class="text-muted fw-normal">— {{ $tituloVoucherAnexo2 }}</span>
+                                        @endif
+                                    </label>
+                                    <textarea class="form-control form-control-sm" rows="5"
+                                              wire:model.blur="anexo2Transcripcion"
+                                              placeholder="Copia lo que dice el voucher, en su orden, separando cada dato con punto y coma. Ej.: ¡TRANSFERENCIA EXITOSA!; S/10,000.00; SÁBADO, 22 AGOSTO 2026 – 9:18 aM; ENVIADO A ...; NÚMERO DE OPERACIÓN 07365498"></textarea>
+                                    @error('anexo2Transcripcion') <span class="title-modules small">{{ $message }}</span> @enderror
+                                    @if($anexo2Dudas !== '')
+                                        {{-- Lo que la lectura NO pudo distinguir: es donde hay que mirar. --}}
+                                        <div class="alert alert-warning py-1 px-2 mt-2 mb-0 small" style="color:#000;">
+                                            <i class="ti ti-alert-triangle"></i> <strong>Revisa estos datos:</strong>
+                                            {{ $anexo2Dudas }}
+                                        </div>
+                                    @endif
+                                    @if(! empty($camposAnexo2))
+                                        <div class="form-text" style="font-size:10px;">
+                                            No debe faltar:
+                                            {{ collect($camposAnexo2)->filter(fn ($c) => $c[1])->map(fn ($c) => $c[0])->implode(' · ') }}
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
-                        @endif
+                        </div>
 
                         {{-- ── Foto del comprobante (opcional; se embebe en la constancia) ── --}}
                         <div class="mt-3">
@@ -978,6 +998,28 @@
                                     <div wire:loading wire:target="comprobante" class="small text-muted">
                                         <i class="ti ti-loader"></i> Subiendo imagen…
                                     </div>
+                                    @if(config('services.anthropic.habilitado'))
+                                        {{-- Lectura automática (15/09): rellena la transcripción para
+                                             que el operador la CONFIRME. Nunca genera sola. --}}
+                                        <button type="button" class="btn btn-sm btn-outline-dark mt-2"
+                                                wire:click="leerVoucher"
+                                                wire:loading.attr="disabled" wire:target="leerVoucher,comprobante"
+                                                @disabled(! $comprobante)>
+                                            <span wire:loading.remove wire:target="leerVoucher">
+                                                <i class="ti ti-scan"></i> Leer voucher
+                                            </span>
+                                            <span wire:loading wire:target="leerVoucher">
+                                                <i class="ti ti-loader"></i> Leyendo…
+                                            </span>
+                                        </button>
+                                        <div class="form-text" style="font-size:10px;">
+                                            @if($comprobante)
+                                                Rellena la transcripción a partir de la foto. Revísala siempre antes de generar.
+                                            @else
+                                                Sube la foto y podrás leerla automáticamente.
+                                            @endif
+                                        </div>
+                                    @endif
                                 </div>
                                 @if($comprobante && ! $errors->has('comprobante'))
                                     <div class="col-md-6 text-center">

@@ -59,14 +59,20 @@ class GeneradorAnexo2
             'modalidad' => $modalidad,
             'titulo' => BancosVoucher::titulo($banco, $modalidad),
             'banco_legal' => BancosVoucher::nombreLegal($banco),
-            'transcripcion' => BancosVoucher::transcripcion($banco, $modalidad, $campos),
+            // LITERAL (15/09): el maestro transcribe lo que dice el voucher, en
+            // su orden y con sus palabras ("ENVIADO A", "NÚMERO DE OPERACIÓN"),
+            // no con etiquetas nuestras. Antes se armaba con
+            // BancosVoucher::transcripcion() y salía un documento distinto al
+            // que el área firma. Los snapshots viejos (pares label/valor) se
+            // siguen renderizando a su manera en la vista.
+            'transcripcion' => trim((string) ($datos['transcripcion'] ?? '')),
             'imagen_path' => filled($datos['imagen_path'] ?? null) ? $datos['imagen_path'] : null,
         ];
     }
 
     /**
-     * Bloqueantes: combo banco/modalidad fuera del catálogo, campos requeridos
-     * del voucher sin valor y el CUADRE DEL MONTO contra credit->importe.
+     * Bloqueantes: combo banco/modalidad fuera del catálogo, transcripción
+     * vacía y el CUADRE DEL MONTO contra credit->importe.
      * La imagen NO bloquea (puede adjuntarse después).
      *
      * @return list<string> errores bloqueantes
@@ -81,20 +87,19 @@ class GeneradorAnexo2
         }
 
         $errores = [];
-        $campos = $datos['campos'] ?? [];
 
-        $faltantes = BancosVoucher::faltantes($banco, $modalidad, $campos);
-        if ($faltantes !== []) {
-            $errores[] = 'Faltan campos requeridos del voucher: '.implode(', ', $faltantes).'.';
+        if (trim((string) ($datos['transcripcion'] ?? '')) === '') {
+            $errores[] = 'Falta la transcripción del voucher: es el cuerpo de la constancia.';
         }
 
         // ─── Cuadre del monto: la constancia debe reproducir el desembolso ───
-        // El BBVA declara IMPORTE PAGADO = abonado + ITF: si el voucher trae
-        // el IMPORTE ABONADO por separado, el cuadre va contra ESE, que es lo
-        // que el deudor recibió de verdad. El ITF no es parte del desembolso.
-        $montoTexto = trim((string) ($campos['monto_abonado'] ?? ''))
-            ?: trim((string) ($campos['monto'] ?? ''));
-        if ($montoTexto !== '') {
+        // Se compara el monto declarado del voucher contra credit->importe. En
+        // BBVA hay que escribir el IMPORTE ABONADO, no el PAGADO (que suma el
+        // ITF): el ITF no es parte del desembolso que recibió el deudor.
+        $montoTexto = trim((string) ($datos['monto'] ?? ''));
+        if ($montoTexto === '') {
+            $errores[] = 'Falta el monto del voucher: es lo que cuadra la constancia contra el crédito.';
+        } else {
             $montoVoucher = self::parsearMonto($montoTexto);
 
             if ($montoVoucher === null) {

@@ -4,21 +4,48 @@
        pdf    → márgenes en @page (impresión: izquierdo más ancho para el
                 legajo) y pie con numeración de páginas.
        previa → el margen va como padding del body (iframe en el navegador).
-       word   → sin margen aquí: lo fija el wrapper de DocResponse (@page A4). --}}
+       word   → sin margen aquí: lo fija el wrapper de DocResponse (@page A4).
+     Y $compacto (solo lo pasa el CONTRATO): interlineado sencillo, márgenes
+     y separaciones apretadas para no pasar de 5 hojas. Los anexos NO lo
+     pasan — su maquetación ya está validada y no debe moverse. --}}
 <style>
-    @php $medio = $medio ?? 'pdf'; @endphp
+    @php
+        $medio = $medio ?? 'pdf';
+        $compacto = $compacto ?? false;
+        // 05/09: el contrato debe caber en 5 hojas (regla del área legal) y
+        // las cláusulas van "pegadas" como en las maestras en papel.
+        $margenes = $compacto ? '1.8cm 1.8cm 1.5cm 2.4cm' : '2.2cm 2cm 2.4cm 2.8cm';
+        // Un solo juego de TTF en public/fonts/bookman: dompdf los lee por
+        // RUTA (public_path está dentro de su chroot) y la previa del
+        // navegador por URL. Así la pantalla se ve igual que el papel.
+        $bookmanSrc = $medio === 'pdf' ? public_path('fonts/bookman') : asset('fonts/bookman');
+    @endphp
+    /* Bookman Old Style (05/09): la tipografía de las maestras del área
+       legal. Embebida en el PDF —fsType=0, embebido libre— y servida a la
+       previa; Word usa la instalada en la máquina (viene con Office) y si
+       no está cae al serif de respaldo. */
+    @font-face { font-family: "Bookman Old Style"; font-style: normal; font-weight: normal;
+                 src: url("{{ $bookmanSrc }}/BookmanOldStyle.ttf") format("truetype"); }
+    @font-face { font-family: "Bookman Old Style"; font-style: normal; font-weight: bold;
+                 src: url("{{ $bookmanSrc }}/BookmanOldStyleBold.ttf") format("truetype"); }
+    @font-face { font-family: "Bookman Old Style"; font-style: italic; font-weight: normal;
+                 src: url("{{ $bookmanSrc }}/BookmanOldStyleItalic.ttf") format("truetype"); }
+    @font-face { font-family: "Bookman Old Style"; font-style: italic; font-weight: bold;
+                 src: url("{{ $bookmanSrc }}/BookmanOldStyleBoldItalic.ttf") format("truetype"); }
     @if($medio === 'pdf')
-    @page { margin: 2.2cm 2cm 2.4cm 2.8cm; }
+    @page { margin: {{ $margenes }}; }
     .pie-pagina {
         position: fixed;
         bottom: -1.2cm;
         left: 0;
         right: 0;
         text-align: right;
-        font-size: 7.5pt;
+        font-size: 6pt;
         color: #444;
     }
     .pie-pagina .num:after { content: counter(page); }
+    /* Anexo 2: el pie del maestro son las formas de pago, centradas. */
+    .pie-pagina.pie-formas { text-align: center; font-size: 6.5pt; color: #000; }
     @else
     .pie-pagina { display: none; }
     @endif
@@ -33,84 +60,120 @@
         box-sizing: border-box;
     }
     body {
-        font-family: "DejaVu Serif", serif;
-        font-size: 9.5pt;
-        line-height: 1.45;
+        font-family: "Bookman Old Style", "Bookman", "DejaVu Serif", serif;
+        font-size: 6.5pt;
+        line-height: {{ $compacto ? '1.2' : '1.5' }};
         color: #000;
         margin: 0;
         @if($medio === 'previa')
-        padding: 2.2cm 2cm 2.4cm 2.8cm;
+        padding: {{ $margenes }};
         background: #fff;
         @endif
     }
+    /* Como en las maestras: negrita Y subrayado. */
     .titulo-contrato {
-        font-size: 11pt;
+        font-size: 8pt;
         font-weight: bold;
+        text-decoration: underline;
         text-align: center;
         text-transform: uppercase;
-        margin: 0 0 14px 0;
+        margin: 0 0 8px 0;
     }
-    .parrafo { text-align: justify; margin: 0 0 8px 0; }
-    .clausula { margin: 0 0 10px 0; }
+    .parrafo { text-align: justify; margin: 0 0 {{ $compacto ? '4px' : '8px' }} 0; }
+    .clausula { margin: 0 0 4px 0; }
     .clausula-titulo {
         font-weight: bold;
         text-transform: uppercase;
-        margin: 10px 0 4px 0;
+        margin: 5px 0 2px 0;
     }
-    .subtitulo { font-weight: bold; margin: 6px 0 2px 0; }
-    ul.vinetas { margin: 0 0 8px 18px; padding: 0; }
-    ul.vinetas li { text-align: justify; margin: 0 0 6px 0; }
+    .subtitulo { font-weight: bold; margin: {{ $compacto ? '4px 0 1px' : '6px 0 2px' }} 0; }
+    ul.vinetas { margin: 0 0 4px 18px; padding: 0; }
+    ul.vinetas li { text-align: justify; margin: 0 0 3px 0; }
 
     /* Listas NUMERADAS: las maestras usan numeración decimal (1., 2., 3...)
        en OCTAVO, NOVENO y DÉCIMO QUINTO — no bullets. El propio texto lo
        exige: "EN CASO DE LA HIPÓTESIS PREVISTA EN EL NUMERAL PRECEDENTE"
        no apunta a nada si no hay numerales. El start del segundo bloque de
        GPS continúa la cuenta tras el párrafo intercalado. */
-    ol.numerada { margin: 0 0 8px 18px; padding: 0; list-style-type: decimal; }
-    ol.numerada li { text-align: justify; margin: 0 0 6px 0; }
+    ol.numerada { margin: 0 0 4px 18px; padding: 0; list-style-type: decimal; }
+    ol.numerada li { text-align: justify; margin: 0 0 3px 0; }
+
+    /* Numerales COMPUESTOS (05/09): OCTAVO, NOVENO y DÉCIMO QUINTO numeran
+       8.1, 8.2… con el ordinal de su cláusula delante — el mismo formato que
+       ya usaba DÉCIMO SÉPTIMO. Van en divs y no en <ol> porque el número lo
+       arma Blade; la sangría francesa (text-indent negativo) alinea el texto
+       corrido bajo la primera línea, como en las maestras. */
+    .numerales { margin: 0 0 4px 18px; }
+    .numerales .numeral {
+        text-align: justify;
+        margin: 0 0 3px 0;
+        padding-left: 26px;
+        text-indent: -26px;
+    }
+    /* Párrafo de continuación DENTRO de un numeral (p. ej. el segundo
+       párrafo del 9.4 en GPS): sin número delante, así que no lleva la
+       sangría francesa — todas sus líneas van a la altura del cuerpo del
+       numeral, no pegadas al margen. */
+    .numerales .numeral-cont {
+        text-align: justify;
+        margin: 0 0 3px 0;
+        padding-left: 26px;
+    }
 
     table.datos {
         width: 100%;
         border-collapse: collapse;
-        margin: 4px 0 8px 0;
-        font-size: 9pt;
+        margin: {{ $compacto ? '2px 0 4px' : '4px 0 8px' }} 0;
+        font-size: 6.5pt;
     }
     table.datos th, table.datos td {
         border: 0.6pt solid #000;
-        padding: 3px 5px;
+        padding: {{ $compacto ? '1.5px 4px' : '3px 5px' }};
         text-align: left;
         vertical-align: top;
     }
     table.datos th { background: #eee; text-transform: uppercase; }
 
-    .firmas { page-break-inside: avoid; margin-top: 26px; }
+    /* 15/09: SIN aire extra antes de "EN SEÑAL DE CONFORMIDAD" —la frase va
+       pegada al final de las cláusulas— y el hueco se pasa ARRIBA DE LA LÍNEA,
+       que es donde hace falta: ahí se firma a mano. */
+    .firmas { page-break-inside: avoid; margin-top: 0; }
     table.tabla-firmas { width: 100%; border-collapse: collapse; }
+    /* vertical-align: top — con 'bottom' las líneas de firma quedaban a
+       distinta altura cuando una caja tenía más renglones que la otra
+       (la del acreedor lleva 5 y la del deudor 3). */
     table.tabla-firmas td {
         width: 50%;
-        padding: 30px 14px 8px 14px;
+        /* El padding superior ES el espacio para firmar sobre la línea. */
+        padding: 62px 14px 8px 14px;
         text-align: center;
-        vertical-align: bottom;
-        font-size: 9pt;
+        vertical-align: top;
+        font-size: 6.5pt;
     }
     .linea-firma { border-top: 0.8pt solid #000; padding-top: 3px; }
 
     .salto { page-break-before: always; }
 
+    /* Anexo 2 (15/09, área legal): el título va en negrita Y subrayado, y el
+       subtítulo en negrita, como sus maestros. Solo los usa anexo2.blade;
+       el Anexo 1 tiene sus propias clases (.ax-*). */
     .anexo-titulo {
-        font-size: 11pt;
+        font-size: 8pt;
         font-weight: bold;
+        text-decoration: underline;
         text-align: center;
         text-transform: uppercase;
         margin: 0 0 4px 0;
     }
     .anexo-subtitulo {
-        font-size: 9.5pt;
+        font-size: 7pt;
+        font-weight: bold;
         text-align: center;
         text-transform: uppercase;
         margin: 0 0 12px 0;
     }
     .membrete {
-        font-size: 8.5pt;
+        font-size: 7pt;
         text-align: center;
         text-transform: uppercase;
         font-weight: bold;
@@ -150,5 +213,5 @@
     .voucher-img { text-align: center; margin: 10px 0; }
     .voucher-img img { max-width: 320px; max-height: 420px; }
     .detalles { text-align: justify; margin: 6px 0; }
-    .nota-pie { font-size: 8pt; text-align: center; margin-top: 14px; }
+    .nota-pie { font-size: 6pt; text-align: center; margin-top: 14px; }
 </style>

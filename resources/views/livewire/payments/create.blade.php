@@ -86,141 +86,134 @@
             <div class="card shadow-sm">
                 <div class="card-body">
 
-                    {{-- ── Datos del Crédito (solo lectura) ── --}}
+                    {{-- ── Datos del Crédito (solo lectura) ──
+                         Homologado a la banda de tarjetas (05/09) pero con el PESO
+                         VISUAL MÁS BAJO de la pantalla: son datos de contexto, no
+                         cifras de acción. Sin borde de color ni número grande —
+                         etiqueta pequeña arriba y valor sobrio debajo. --}}
                     <h6 class="mb-1" style="color:red;">Datos del Crédito</h6>
-                    <div class="row g-2">
-                        <div class="col-md-1">
-                            <label class="form-label mb-0 small fw-semibold">Expediente</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   value="{{ $credit->client?->expediente }}" readonly>
+                    <div class="dato-band">
+                        <div class="dato" style="grid-column: span 2;">
+                            <div class="dato-top">Expediente</div>
+                            <div class="dato-val">{{ $credit->client?->expediente }}</div>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label mb-0 small fw-semibold">Cliente</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   value="{{ $credit->id }}-{{ $credit->client?->fullName() }}" readonly>
+                        <div class="dato" style="grid-column: span 4;">
+                            <div class="dato-top">Cliente</div>
+                            <div class="dato-val">{{ $credit->id }}-{{ $credit->client?->fullName() }}</div>
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label mb-0 small fw-semibold">DNI</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   value="{{ $credit->client?->documento }}" maxlength="8" readonly>
+                        <div class="dato" style="grid-column: span 2;">
+                            <div class="dato-top">DNI</div>
+                            <div class="dato-val">{{ $credit->client?->documento }}</div>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label mb-0 small fw-semibold">Ejecutivo</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   value="{{ $c['asesor_nombre'] }}" readonly>
+                        <div class="dato" style="grid-column: span 3;">
+                            <div class="dato-top">Ejecutivo</div>
+                            <div class="dato-val">{{ $c['asesor_nombre'] }}</div>
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label mb-0 small fw-semibold">Moneda</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   value="{{ $credit->moneda ?: 'Soles' }}" readonly>
+                        <div class="dato">
+                            <div class="dato-top">Moneda</div>
+                            <div class="dato-val">{{ $credit->moneda ?: 'Soles' }}</div>
                         </div>
 
-                        <div class="col-md-2">
-                            <label class="form-label mb-0 small fw-semibold">Capital</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   value="{{ number_format($c['importe'], 2) }}" readonly>
+                        <div class="dato" style="grid-column: span 2;">
+                            <div class="dato-top">Capital</div>
+                            <div class="dato-val">{{ number_format($c['importe'], 2) }}</div>
                         </div>
-                        <div class="col-md-1">
-                            <label class="form-label mb-0 small fw-semibold">INT. %</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   value="{{ number_format($c['interes_pct'], 0) }}" readonly>
+                        <div class="dato">
+                            <div class="dato-top">Int. %</div>
+                            <div class="dato-val">{{ number_format($c['interes_pct'], 0) }}</div>
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label mb-0 small fw-semibold">Interés</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   value="{{ number_format($c['interes_total'], 2) }}" readonly>
+                        <div class="dato" style="grid-column: span 2;">
+                            <div class="dato-top">Interés</div>
+                            <div class="dato-val">{{ number_format($c['interes_total'], 2) }}</div>
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label mb-0 small fw-semibold">Total</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   value="{{ number_format($c['total_credito'], 2) }}" readonly>
+                        <div class="dato" style="grid-column: span 2;">
+                            <div class="dato-top">Total</div>
+                            <div class="dato-val fw-bold">{{ number_format($c['total_credito'], 2) }}</div>
                         </div>
-                        <div class="col-md-1">
-                            <label class="form-label mb-0 small fw-semibold">MOR. %</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   value="{{ \App\Models\Credit::TASA_MORA_PCT }}%" readonly>
+                        <div class="dato">
+                            <div class="dato-top">Mor. %</div>
+                            <div class="dato-val">{{ \App\Models\Credit::TASA_MORA_PCT }}%</div>
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label mb-0 small fw-semibold">Pago x día</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   style="color:red;"
-                                   value="{{ number_format($c['mora_rate'], 2) }}" readonly>
+                        <div class="dato" style="grid-column: span 2;">
+                            <div class="dato-top">Pago x día</div>
+                            <div class="dato-val text-danger">{{ number_format($c['mora_rate'], 2) }}</div>
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label mb-0 small fw-semibold">Fecha de Vencimiento</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   value="{{ $c['fecha_venc'] }}" readonly>
+                        <div class="dato" style="grid-column: span 2;">
+                            <div class="dato-top">Vencimiento</div>
+                            <div class="dato-val">{{ $c['fecha_venc'] }}</div>
                         </div>
                     </div>
 
                     @if($esPagable)
-                    {{-- ── Atraso ── --}}
+                    {{-- ── Atraso ──
+                         Peso visual INTERMEDIO: conserva el semáforo (ámbar la mora
+                         acumulada, rojo la vigente) pero como tinte suave y cifra
+                         mediana, para que "Registrar Pago" siga mandando. Antes eran
+                         barras saturadas que le ganaban a los saldos. --}}
                     <h6 class="mb-1 mt-3" style="color:red;">Atraso</h6>
-                    <div class="row g-2">
-                        {{-- Mora acumulada (exonerada) histórica: informativa, igual al
-                             total de la columna Mora Exon. del cronograma. NO entra en
-                             la operación de pago. --}}
-                        @php
-                            $moraAcumDias = collect($moraExon)->sum('dias');
-                            $moraAcumTotal = collect($moraExon)->sum('monto');
-                        @endphp
-                        <div class="col-md-3">
-                            <label class="form-label mb-0 small fw-semibold">Días Mora Acumulada</label>
-                            <input type="text" class="form-control form-control-sm input-bold"
-                                   style="background-color:#fac10f; color:#000;"
-                                   value="{{ $moraAcumDias }}" readonly>
+                    @php
+                        // Mora acumulada (exonerada) histórica: informativa, igual al
+                        // total de la columna Mora Exon. del cronograma. NO entra en
+                        // la operación de pago.
+                        $moraAcumDias = collect($moraExon)->sum('dias');
+                        $moraAcumTotal = collect($moraExon)->sum('monto');
+                        $diasAtr = (int) $c['dias_atraso'];
+                        $puedeMora = auth()->user()->can('pagos.mora-manual');
+                    @endphp
+                    <div class="atraso-band">
+                        <div class="atraso-kpi atraso-ambar">
+                            <div class="atraso-top">Días Mora Acumulada</div>
+                            <div class="atraso-val">{{ $moraAcumDias }}</div>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label mb-0 small fw-semibold">Total Mora Acumulada</label>
-                            <input type="text" class="form-control form-control-sm input-bold"
-                                   style="background-color:#fac10f; color:#000;"
-                                   value="{{ number_format($moraAcumTotal, 2) }}" readonly>
+                        <div class="atraso-kpi atraso-ambar">
+                            <div class="atraso-top">Total Mora Acumulada</div>
+                            <div class="atraso-val">{{ number_format($moraAcumTotal, 2) }}</div>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label mb-0 small fw-semibold">Días Transcurridos</label>
-                            @php $diasAtr = (int) $c['dias_atraso']; @endphp
-                            @if(!$c['fecha_venc'])
-                                <input type="text" class="form-control form-control-sm bg-light"
-                                       value="Sin cuotas pendientes" readonly>
+                        <div class="atraso-kpi {{ ! $c['fecha_venc'] ? 'atraso-gris' : ($diasAtr > 0 ? 'atraso-rojo' : 'atraso-verde') }}">
+                            <div class="atraso-top">Días Transcurridos</div>
+                            @if(! $c['fecha_venc'])
+                                <div class="atraso-val">—</div>
+                                <div class="atraso-pie">sin cuotas pendientes</div>
                             @elseif($diasAtr > 0)
-                                <input type="text" class="form-control form-control-sm input-rojo"
-                                       value="{{ $diasAtr }} {{ $diasAtr === 1 ? 'día' : 'días' }} de atraso" readonly>
+                                <div class="atraso-val">{{ $diasAtr }}</div>
+                                <div class="atraso-pie">{{ $diasAtr === 1 ? 'día' : 'días' }} de atraso</div>
                             @elseif($diasAtr === 0)
-                                <input type="text" class="form-control form-control-sm bg-success text-white"
-                                       value="Vence hoy" readonly>
+                                <div class="atraso-val">Hoy</div>
+                                <div class="atraso-pie">vence hoy</div>
                             @else
-                                <input type="text" class="form-control form-control-sm bg-success text-white"
-                                       value="Al día · vence en {{ abs($diasAtr) }} {{ abs($diasAtr) === 1 ? 'día' : 'días' }}" readonly>
+                                <div class="atraso-val">Al día</div>
+                                <div class="atraso-pie">vence en {{ abs($diasAtr) }} {{ abs($diasAtr) === 1 ? 'día' : 'días' }}</div>
                             @endif
                         </div>
-                        <div class="col-md-3">
-                            @php $puedeMora = auth()->user()->can('pagos.mora-manual'); @endphp
-                            <label class="form-label mb-0 small fw-semibold">
+                        <div class="atraso-kpi {{ $c['total_mora'] > 0 ? 'atraso-rojo' : 'atraso-verde' }}">
+                            <div class="atraso-top">
                                 Total Mora
                                 @if($puedeMora)
                                     <i class="ti {{ ((float)$monto) > 0 ? 'ti-pencil' : 'ti-lock' }} f-s-12"
                                        title="{{ ((float)$monto) > 0 ? 'Editable (override gerencial)' : 'Escribe el Monto a Pagar para habilitar' }}"></i>
                                 @endif
-                            </label>
+                            </div>
                             @if($cancel && $quitarMora)
                                 {{-- Condonada por el switch: manda sobre el campo (editable o no) --}}
-                                <input type="text" class="form-control form-control-sm input-rojo"
-                                       style="text-decoration: line-through;"
-                                       value="0.00 — exonerada" readonly
-                                       title="Mora exonerada al cancelar (switch Exonerar mora)">
+                                <div class="atraso-val" style="text-decoration: line-through;"
+                                     title="Mora exonerada al cancelar (switch Exonerar mora)">0.00</div>
+                                <div class="atraso-pie">exonerada</div>
                             @elseif($puedeMora)
                                 <input type="number" name="moraManual" autocomplete="off" step="0.01" min="0"
-                                       class="form-control form-control-sm input-rojo"
+                                       class="atraso-val atraso-input"
                                        wire:model.live.debounce.400ms="moraManual"
                                        placeholder="{{ number_format($c['total_mora_calc'], 2) }}"
                                        @disabled(((float)$monto) <= 0)
                                        title="{{ ((float)$monto) > 0 ? 'Total Mora editable (reemplaza la calculada)' : 'Escribe primero el Monto a Pagar' }}">
+                                <div class="atraso-pie">{{ ((float)$monto) > 0 ? 'editable' : 'calculada' }}</div>
                             @else
-                                <input type="text" class="form-control form-control-sm input-rojo"
-                                       value="{{ number_format($c['total_mora'], 2) }}" readonly>
+                                <div class="atraso-val">{{ number_format($c['total_mora'], 2) }}</div>
+                                <div class="atraso-pie">calculada</div>
                             @endif
                         </div>
+                    </div>
 
+                    <div class="row g-2">
                         {{-- Motivo del ajuste: aparece solo cuando el override CAMBIÓ el
                              monto. Sin él el cobro no se confirma — toda rebaja de mora
                              queda con responsable y explicación en `mora_overrides`. --}}
@@ -239,6 +232,7 @@
                                 </label>
                                 <input type="text" name="moraMotivo" autocomplete="off" maxlength="255"
                                        class="form-control form-control-sm @error('moraMotivo') is-invalid @enderror"
+                                       placeholder="{{ ($diff ?? 0) > 0 ? 'Explica por qué se cobra más mora que la calculada…' : 'Motivo del ajuste…' }}"
                                        wire:model.live.debounce.500ms="moraMotivo"
                                        placeholder="Ej.: acuerdo con el cliente, error de digitación, condonación autorizada por gerencia…">
                                 @error('moraMotivo') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
@@ -251,29 +245,75 @@
                          sobrepago está bloqueado —Monto ≤ Saldo— y la mora va en Total Mora.) --}}
                     <h6 class="mb-1 mt-3" style="color:red;">Registrar Pago</h6>
                     <div class="row g-2">
-                        <div class="col-md-2">
-                            <label class="form-label mb-0 small fw-semibold">Saldo Pendiente</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   style="color:white; font-size:15px;"
-                                   value="{{ number_format($c['saldo_restante'], 2) }}" readonly>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label mb-0 small fw-semibold">Saldo P. + Mora</label>
-                            <input type="text" class="form-control form-control-sm bg-light"
-                                   style="color:white; font-size:15px;"
-                                   value="{{ number_format($c['saldo_mora_restante'], 2) }}" readonly>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label mb-0 small fw-semibold">Monto a Pagar</label>
-                            <input type="number" name="monto" autocomplete="off" class="form-control form-control-sm"
-                                   wire:model.live.debounce.400ms="monto"
-                                   min="0.00" max="{{ $c['saldo_pendiente'] }}" step="0.01"
-                                   style="background:#fff9c4;">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label mb-0 small fw-semibold">Fecha de Pago</label>
-                            <input type="text" name="fecpag" autocomplete="off" class="form-control form-control-sm bg-light dates3"
-                                   wire:model="fecpag" readonly>
+                        {{-- Los dos saldos NO son campos: son las cifras que el cajero
+                             tiene que leer de un vistazo. Van como tarjetas KPI, el
+                             mismo patrón de /reports/portfolio y el dashboard. Antes
+                             eran inputs readonly con texto blanco sobre gris: bajo
+                             contraste y parecían campos deshabilitados. --}}
+                        <div class="col-12">
+                            <div class="saldo-band">
+                                <div class="saldo-kpi" style="--kpi: #0d6efd;">
+                                    <div class="saldo-top"><i class="ti ti-wallet"></i> Saldo Pendiente</div>
+                                    <div class="saldo-val">{{ number_format($c['saldo_restante'], 2) }}</div>
+                                    @php
+                                        // 08/09: este saldo es del CRONOGRAMA COMPLETO (trae el
+                                        // interés futuro); cancelar hoy cuesta menos porque ese
+                                        // interés se condona. Sin decirlo aquí, "Saldo Pendiente
+                                        // 15,000" y "este pago cubre el total" con 10,875 parecían
+                                        // contradecirse.
+                                        $hayInteresFuturo = $cancelarHoy > 0.01 && ($c['saldo_pendiente'] - $cancelarHoy) > 0.01;
+                                    @endphp
+                                    {{-- Textos cortos: la banda lleva 4 tarjetas y a 1366px un pie
+                                         largo se parte en dos líneas. Sin depender del switch
+                                         Cancelado (enlace diferido: quedaría desfasado). --}}
+                                    <div class="saldo-pie">
+                                        @if($hayInteresFuturo && ! $cancelDisabled)
+                                            alcanza para cancelar hoy
+                                        @elseif($hayInteresFuturo)
+                                            cancelar hoy: S/ {{ number_format($cancelarHoy, 2) }}
+                                        @else
+                                            capital + interés
+                                        @endif
+                                    </div>
+                                </div>
+                                <div class="saldo-kpi" style="--kpi: {{ $c['total_mora'] > 0 ? '#dc3545' : '#2eb85c' }};">
+                                    <div class="saldo-top"><i class="ti ti-cash"></i> Saldo P. + Mora</div>
+                                    <div class="saldo-val">{{ number_format($c['saldo_mora_restante'], 2) }}</div>
+                                    <div class="saldo-pie">
+                                        @if ($c['total_mora'] > 0)
+                                            incluye mora {{ number_format($c['total_mora'], 2) }}
+                                        @else
+                                            sin mora
+                                        @endif
+                                    </div>
+                                </div>
+                                {{-- Monto a Pagar: la MISMA tarjeta, pero es el campo de
+                                     acción de la pantalla — borde ámbar, fondo cálido y el
+                                     número tan grande como los saldos. El input pierde su
+                                     marco: la tarjeta es el marco. --}}
+                                <div class="saldo-kpi saldo-editable" style="--kpi: #f0ad4e;">
+                                    <div class="saldo-top d-flex justify-content-between align-items-center">
+                                        <span><i class="ti ti-coin"></i> Monto a Pagar</span>
+                                        <a href="#" wire:click.prevent="abrirMoraCuotas"
+                                           class="saldo-link text-decoration-underline"
+                                           title="Elegir qué cuotas pagar, cada una con su mora por días">
+                                            <i class="ti ti-list-check f-s-12"></i> elegir cuotas
+                                        </a>
+                                    </div>
+                                    <input type="number" name="monto" autocomplete="off" class="saldo-input"
+                                           wire:model.live.debounce.400ms="monto"
+                                           min="0.00" max="{{ $c['saldo_pendiente'] }}" step="0.01"
+                                           placeholder="0.00">
+                                    <div class="saldo-pie">máx. {{ number_format($c['saldo_pendiente'], 2) }}</div>
+                                </div>
+                                <div class="saldo-kpi" style="--kpi: #adb5bd;">
+                                    <div class="saldo-top"><i class="ti ti-calendar"></i> Fecha de Pago</div>
+                                    <input type="text" name="fecpag" autocomplete="off"
+                                           class="saldo-input saldo-fecha dates3"
+                                           wire:model="fecpag" readonly>
+                                    <div class="saldo-pie">{{ \Carbon\Carbon::parse($fecpag)->translatedFormat('l d \\d\\e F') }}</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -501,6 +541,213 @@
             </div>
         </div>
 
+        <style>
+            /* Tarjetas de saldo: mismo lenguaje que los KPI de Cartera. */
+            /* ── Datos del Crédito: el escalón MÁS BAJO de la jerarquía ── */
+            .dato-band {
+                display: grid; grid-template-columns: repeat(12, 1fr);
+                gap: 6px 10px; margin-bottom: 4px;
+            }
+            .dato { min-width: 0; padding: 3px 8px; border-left: 2px solid #e9ecef; }
+            .dato-top {
+                font-size: 10px; color: #868e96; text-transform: uppercase;
+                letter-spacing: .3px; white-space: nowrap;
+                overflow: hidden; text-overflow: ellipsis;
+            }
+            .dato-val {
+                font-size: 13px; font-weight: 600; color: #343a40; line-height: 1.35;
+                font-variant-numeric: tabular-nums;
+                white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            }
+            @media (max-width: 991.98px) { .dato-band { grid-template-columns: repeat(6, 1fr); } }
+            @media (max-width: 575.98px) { .dato-band { grid-template-columns: repeat(4, 1fr); } }
+
+            /* ── Atraso: escalón INTERMEDIO — semáforo en tinte suave ── */
+            .atraso-band {
+                display: grid; grid-template-columns: repeat(4, 1fr);
+                gap: 8px; margin-bottom: 4px;
+            }
+            .atraso-kpi { border-radius: 8px; padding: 5px 10px; border: 1px solid; }
+            .atraso-top {
+                font-size: 10px; font-weight: 600; text-transform: uppercase;
+                letter-spacing: .3px; opacity: .85;
+                white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            }
+            .atraso-val {
+                font-size: 1.05rem; font-weight: 700; line-height: 1.25;
+                font-variant-numeric: tabular-nums;
+            }
+            .atraso-pie { font-size: 10px; opacity: .75; }
+            .atraso-ambar { background: #fff8e1; border-color: #f3d98b; color: #8a6100; }
+            .atraso-rojo  { background: #fdecea; border-color: #f2b8b5; color: #b02a24; }
+            .atraso-verde { background: #eaf6ec; border-color: #b7dfc0; color: #1e7a34; }
+            .atraso-gris  { background: #f8f9fa; border-color: #e9ecef; color: #6c757d; }
+            /* El Total Mora sigue siendo editable: input sin marco dentro del chip
+               (el theme fuerza 10px !important en input, de ahí el override). */
+            .atraso-kpi input.atraso-input {
+                width: 100%; border: 0; padding: 0; background: transparent;
+                font-size: 1.05rem !important; font-weight: 700; color: inherit;
+                height: auto; box-shadow: none;
+            }
+            .atraso-kpi input.atraso-input:focus { outline: 0; box-shadow: none; }
+            .atraso-kpi input.atraso-input::placeholder { color: currentColor; opacity: .45; }
+            .atraso-kpi input.atraso-input:disabled { color: inherit; opacity: .75; }
+            @media (max-width: 767.98px) { .atraso-band { grid-template-columns: 1fr 1fr; } }
+
+            /* Las cuatro tarjetas ocupan la fila completa y reparten el ancho
+               por igual; a 2 columnas en tablet y a 1 en móvil. */
+            .saldo-band { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+            @media (max-width: 991.98px) { .saldo-band { grid-template-columns: 1fr 1fr; } }
+            .saldo-kpi {
+                border: 1px solid #e9ecef;
+                border-left: 4px solid var(--kpi, #adb5bd);
+                border-radius: 8px;
+                padding: 6px 10px;
+                background: #fff;
+            }
+            .saldo-top {
+                font-size: 10.5px; font-weight: 600; color: #6c757d;
+                text-transform: uppercase; letter-spacing: .3px;
+                white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            }
+            .saldo-val {
+                font-size: 1.35rem; font-weight: 700; line-height: 1.2;
+                color: var(--kpi, #212529);
+                font-variant-numeric: tabular-nums;
+            }
+            .saldo-pie { font-size: 10.5px; color: #868e96; }
+            /* El input vive DENTRO de la tarjeta: sin marco propio, con la
+               misma tipografía de las cifras para que la banda se lea pareja. */
+            .saldo-editable { background: #fffdf5; }
+            /* !important a propósito: el theme trae
+               `.btn, input, select { font-size: 10px !important }`, que si no
+               deja la cifra editable en 10px al lado de saldos de 21.6px. */
+            .saldo-kpi input.saldo-input {
+                width: 100%; border: 0; padding: 0; background: transparent;
+                font-size: 1.35rem !important; font-weight: 700; line-height: 1.2;
+                color: var(--kpi, #212529);
+                font-variant-numeric: tabular-nums;
+                height: auto; box-shadow: none;
+            }
+            .saldo-kpi input.saldo-input:focus { outline: 0; box-shadow: none; background: transparent; }
+            .saldo-kpi input.saldo-input::placeholder { color: #e0c48a; font-weight: 600; }
+            /* El datepicker del legacy pinta su icono de fondo a la derecha:
+               se le deja aire para que no pise la fecha. */
+            .saldo-kpi input.saldo-fecha {
+                color: #495057; cursor: pointer;
+                padding-right: 22px; background-position: right center;
+            }
+            .saldo-link { font-size: 10.5px; font-weight: 400; color: #0d6efd; text-transform: none; letter-spacing: 0; }
+            /* En móvil una debajo de la otra, sin apretar las cifras. */
+            @media (max-width: 575.98px) { .saldo-band { grid-template-columns: 1fr; } }
+        </style>
+
+        {{-- ═══ Modal: pagar por cuotas (selección FIFO + mora editable por fila) ═══ --}}
+        <div class="modal fade" id="moraCuotasModal" tabindex="-1" aria-hidden="true" wire:ignore.self
+             x-data="{ modal: null }"
+             x-init="modal = bootstrap.Modal.getOrCreateInstance($el)"
+             x-on:mora-cuotas-open.window="modal.show()"
+             x-on:mora-cuotas-close.window="modal.hide()">
+            <div class="modal-dialog modal-dialog-centered" style="max-width:660px;">
+                <div class="modal-content">
+                    <div class="modal-header py-2">
+                        <h6 class="modal-title mb-0">
+                            <i class="ti ti-list-check f-s-14"></i>
+                            Pagar por cuotas
+                        </h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body py-2">
+                        @if(count($moraCuotas) === 0)
+                            <p class="text-muted mb-0 py-2 text-center">No hay cuotas pendientes.</p>
+                        @else
+                            <div style="max-height: 320px; overflow:auto;">
+                                <table class="table table-sm table-striped mb-0 align-middle">
+                                    <thead style="position: sticky; top: 0; background: var(--bs-body-bg); z-index: 1;">
+                                        <tr>
+                                            <th style="width:34px;"></th>
+                                            <th class="text-center">Cuota</th>
+                                            <th>Vencimiento</th>
+                                            <th class="text-end">Saldo</th>
+                                            <th class="text-center">Días</th>
+                                            <th class="text-end">Mora calc.</th>
+                                            <th class="text-end" style="width:110px;">Mora</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($moraCuotas as $i => $fila)
+                                            <tr class="{{ $fila['sel'] ? '' : 'opacity-50' }}" style="cursor:pointer;"
+                                                wire:key="mora-cuota-{{ $fila['num'] }}">
+                                                <td class="text-center">
+                                                    {{-- wire:model (no wire:click): el checkbox debe ser CONTROLADO
+                                                         por Livewire — con wire:click el navegador lo marca por su
+                                                         cuenta y queda desfasado del estado real cuando el servidor
+                                                         corrige la selección (regla del prefijo). --}}
+                                                    <input type="checkbox" class="form-check-input"
+                                                           wire:model.live="moraCuotas.{{ $i }}.sel"
+                                                           title="La selección no puede saltarse cuotas: el pago se imputa a la más antigua primero">
+                                                </td>
+                                                <td class="text-center" wire:click="toggleCuota({{ $i }})">{{ $fila['num'] }}</td>
+                                                <td wire:click="toggleCuota({{ $i }})">{{ $fila['venc'] }}</td>
+                                                <td class="text-end" wire:click="toggleCuota({{ $i }})">{{ number_format($fila['saldo'], 2) }}</td>
+                                                <td class="text-center {{ $fila['dias'] > 0 ? 'text-danger fw-semibold' : '' }}" wire:click="toggleCuota({{ $i }})">
+                                                    {{ $fila['dias'] > 0 ? $fila['dias'] : '—' }}
+                                                </td>
+                                                <td class="text-end" wire:click="toggleCuota({{ $i }})">{{ number_format($fila['calc'], 2) }}</td>
+                                                <td>
+                                                    @if($this->canEditMora())
+                                                        <input type="number" step="0.01" min="0"
+                                                               class="form-control form-control-sm text-end input-rojo"
+                                                               wire:model.live.debounce.400ms="moraCuotas.{{ $i }}.valor"
+                                                               @disabled(! $fila['sel'])>
+                                                    @else
+                                                        <span class="d-block text-end">{{ number_format(is_numeric($fila['valor']) ? (float) $fila['valor'] : 0, 2) }}</span>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                    <tfoot>
+                                        @php
+                                            $selRows = collect($moraCuotas)->where('sel', true);
+                                            $selMonto = $selRows->sum('saldo');
+                                            $selMora = $selRows->sum(fn ($f) => is_numeric($f['valor'] ?? null) ? max(0, (float) $f['valor']) : 0);
+                                        @endphp
+                                        <tr class="fw-semibold">
+                                            <td colspan="3" class="text-end">Seleccionado ({{ $selRows->count() }})</td>
+                                            <td class="text-end">{{ number_format($selMonto, 2) }}</td>
+                                            <td colspan="2" class="text-end">Mora</td>
+                                            <td class="text-end text-danger">{{ number_format($selMora, 2) }}</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                            <p class="text-muted small mb-0 mt-2">
+                                Marca las cuotas a pagar: la suma de sus saldos arma el Monto a Pagar.
+                                El pago se imputa a la cuota más antigua primero, así que no se puede
+                                saltar cuotas.
+                                @if($this->canEditMora())
+                                    La mora editada por fila suma al Total Mora (si difiere de la
+                                    calculada, pedirá motivo).
+                                @else
+                                    La mora del cobro será la calculada por el sistema.
+                                @endif
+                            </p>
+                        @endif
+                    </div>
+                    <div class="modal-footer justify-content-between py-2">
+                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                        @if(count($moraCuotas) > 0)
+                            <button type="button" class="btn btn-sm btn-primary" wire:click="aplicarCuotas">
+                                <i class="ti ti-check f-s-14"></i>
+                                Aplicar al cobro
+                            </button>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+
         {{-- ═══ Modal de confirmación del cobro ═══ --}}
         {{-- OJO: SIEMPRE en el DOM, aunque el crédito no sea pagable. Si se
              envuelve en @if($esPagable), al CANCELAR un crédito desde el
@@ -554,7 +801,7 @@
                                 <div class="tp-sep"></div>
 
                                 @if($preview['cuotas'])
-                                    <div class="tp-row"><span>Cuotas:</span><span>{{ implode(',', $preview['cuotas']) }}</span></div>
+                                    <div class="tp-row tp-wrap"><span>Cuotas:</span><span>{{ \App\Support\RangoCuotas::texto($preview['cuotas']) }}</span></div>
                                 @endif
                                 <div class="tp-row"><span>Capital:</span><span>{{ number_format($preview['capital'], 2) }}</span></div>
                                 <div class="tp-row"><span>Interes:</span><span>{{ number_format($preview['interes'], 2) }}</span></div>
@@ -568,12 +815,22 @@
                                 <div class="tp-sep"></div>
                                 <div class="tp-row tp-total"><span>TOTAL</span><span>S/ {{ number_format($preview['total'], 2) }}</span></div>
                                 <div class="tp-sep"></div>
-                                <div class="tp-row"><span>Saldo restante:</span><span>S/ {{ number_format($preview['saldo'], 2) }}</span></div>
+                                {{-- Con el aviso de cancelación abierto, este saldo es el de
+                                     "No, dejarlo vigente": si cancela, se condona. --}}
+                                <div class="tp-row"><span>{{ ($preview['cubre_total'] ?? false) && ! $preview['cancela'] ? 'Saldo si no cancela:' : 'Saldo restante:' }}</span><span>S/ {{ number_format($preview['saldo'], 2) }}</span></div>
                             </div>
 
                             @if($preview['cancela'])
-                                <div class="alert alert-warning py-1 px-2 mt-2 mb-0 small text-center">
+                                <div class="alert alert-warning py-1 px-2 mt-2 mb-0 small text-center" style="color:#000;">
                                     <i class="ti ti-alert-triangle"></i> Este cobro <strong>cancela</strong> el crédito.
+                                    @if(($preview['monto_tecleado'] ?? null) !== null)
+                                        {{-- Modo estricto (09/09): el excedente NO se cobra como interés. --}}
+                                        <div class="mt-1">
+                                            Solo se cobra lo necesario para cancelar hoy:
+                                            <strong>S/ {{ number_format($preview['monto'], 2) }}</strong>
+                                            (tecleaste S/ {{ number_format($preview['monto_tecleado'], 2) }}).
+                                        </div>
+                                    @endif
                                 </div>
                             @endif
                             @if(($preview['condonada_vigente'] ?? 0) > 0.001 || ($preview['condonada_acum'] ?? 0) > 0.001)
@@ -599,7 +856,7 @@
                             @endif
                             @if($preview['mora_ajustada'] ?? false)
                                 @php $pd = $preview['mora_ajuste_final'] - $preview['mora_calculada']; @endphp
-                                <div class="alert alert-warning py-1 px-2 mt-2 mb-0 small">
+                                <div class="alert alert-warning py-1 px-2 mt-2 mb-0 small" style="color:#000;">
                                     <i class="ti ti-alert-triangle"></i>
                                     <strong>Mora ajustada a mano.</strong>
                                     Calculada S/ {{ number_format($preview['mora_calculada'], 2) }} →
@@ -631,7 +888,7 @@
                     @if($preview['cubre_total'] ?? false)
                         <div class="mx-3 mt-3 mb-2 p-2 rounded" style="background:#fff4e5; border:1px solid #ffb74d;">
                             <div class="fw-bold mb-1" style="color:#b26a00;">
-                                <i class="ti ti-alert-triangle"></i> Este pago cubre el TOTAL del crédito
+                                <i class="ti ti-alert-triangle"></i> Este monto alcanza para CANCELAR el crédito hoy
                             </div>
                             @php
                                 // Veredicto por mora: se actualiza en vivo (el preview se
@@ -643,29 +900,91 @@
                                 $vAcumCobra = (float) ($preview['mora_acum_cobrar'] ?? 0);
                                 $vCondAcum = (float) ($preview['condonada_acum'] ?? 0);
                             @endphp
-                            <div class="d-flex gap-3 flex-wrap small mb-1">
-                                <span>Capital + interés: <b>S/ {{ number_format($preview['cancelar_cap_int'], 2) }}</b></span>
+                            @php
+                                $sSaldo = (float) ($preview['saldo_pendiente'] ?? 0);
+                                $sMontoSi = (float) ($preview['monto_si_cancela'] ?? ($preview['cancelar_cap_int'] ?? 0));
+                                $sMontoNo = (float) ($preview['monto_si_vigente'] ?? ($preview['monto'] ?? 0));
+                                $sCondonaSi = (float) ($preview['condona_si_cancela'] ?? 0);
+                                $sQuedaNo = (float) ($preview['queda_si_vigente'] ?? 0);
+                                // ¿El modo estricto recortaría (o ya recortó) el monto?
+                                $sRecorta = ($sMontoNo - $sMontoSi) > 0.01;
+                                $sUltima = (bool) ($preview['hasta_ultima_cuota'] ?? false);
+                                $sIntCancelar = $sUltima
+                                    ? round($sMontoSi - (float) ($preview['cap_pendiente_total'] ?? 0) - (float) ($preview['exc_venc'] ?? 0), 2)
+                                    : (float) ($preview['int_cancelar'] ?? 0);
+                                $sMorasCobra = (float) ($preview['mora_cobrar'] ?? 0) + (float) ($preview['mora_acum_cobrar'] ?? 0);
+                                $sMorasExon = (float) ($preview['condonada_vigente'] ?? 0) + (float) ($preview['condonada_acum'] ?? 0);
+                            @endphp
+                            {{-- Resumen corto + "Ver detalles" (09/09): el bloque completo era
+                                 un muro de texto justo donde el cajero tiene que decidir. El
+                                 detalle se despliega aquí mismo (Alpine) y no en otro modal:
+                                 anidar modales de Bootstrap deja backdrops huérfanos. --}}
+                            <div x-data="{ det: false }">
+                                <div class="d-flex justify-content-between align-items-start gap-2">
+                                    <div class="small" style="color:#000;">
+                                        <div><b>Si cancela:</b> S/ {{ number_format($sMontoSi, 2) }}{{ $sRecorta ? ' (de S/ '.number_format($sMontoNo, 2).' tecleados)' : '' }}</div>
+                                        <div><b>Si lo deja vigente:</b> S/ {{ number_format($sMontoNo, 2) }}{{ $sQuedaNo > 0.001 ? ' · quedan S/ '.number_format($sQuedaNo, 2) : ' · queda pagado' }}</div>
+                                        @if($sMorasCobra > 0.001)
+                                            <div style="color:#c0392b;">+ moras S/ {{ number_format($sMorasCobra, 2) }} (ya en el TOTAL)</div>
+                                        @elseif($sMorasExon > 0.001)
+                                            <div style="color:#6b7280;">Las moras se exoneran</div>
+                                        @endif
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-link p-0 text-nowrap" style="font-size:.72rem;"
+                                            x-on:click="det = ! det">
+                                        <i class="ti ti-info-circle"></i>
+                                        <span x-text="det ? 'Ocultar' : 'Ver detalles'">Ver detalles</span>
+                                    </button>
+                                </div>
+
+                                <div x-show="det" style="display:none;" class="mt-2 pt-2">
+                                    <div class="small mb-1" style="color:#000; border-top:1px dashed #ffb74d; padding-top:6px;">
+                                        Capital pendiente <b>S/ {{ number_format($preview['cap_pendiente_total'] ?? 0, 2) }}</b>
+                                        + interés {{ $sUltima ? 'hasta la última cuota' : 'al '.$preview['fecha'] }}
+                                        <b>S/ {{ number_format($sIntCancelar, 2) }}</b>
+                                        @if(($preview['exc_venc'] ?? 0) > 0.001)
+                                            + excedente vencido <b>S/ {{ number_format($preview['exc_venc'], 2) }}</b>
+                                        @endif
+                                        = <b>S/ {{ number_format($sMontoSi, 2) }}</b>
+                                    </div>
+                                    @if($sCondonaSi > 0.001 || $sQuedaNo > 0.001)
+                                        <div class="small mb-1" style="color:#6b7280;">
+                                            El saldo del cronograma es <b>S/ {{ number_format($sSaldo, 2) }}</b> porque incluye interés futuro.
+                                            {{-- Texto condicional con ternarios, no con directivas: Blade
+                                                 NO compila una directiva pegada al final de una palabra
+                                                 (ej. "...pendientes" seguido de else) y la vista revienta. --}}
+                                            <div class="mt-1">
+                                                <b>Si cancela:</b> se cobran solo <b>S/ {{ number_format($sMontoSi, 2) }}</b>{{ $sRecorta ? ' (de los S/ '.number_format($sMontoNo, 2).' tecleados)' : '' }}{{ $sCondonaSi > 0.001 ? ' y se condonan S/ '.number_format($sCondonaSi, 2).' de interés futuro' : '' }}.
+                                            </div>
+                                            <div>
+                                                <b>Si lo deja vigente:</b> se aplican <b>S/ {{ number_format($sMontoNo, 2) }}</b> a las cuotas{{ $sQuedaNo > 0.001 ? ' y quedan S/ '.number_format($sQuedaNo, 2).' pendientes' : ' y el cronograma queda pagado' }}.
+                                            </div>
+                                        </div>
+                                    @else
+                                        <div class="small mb-1" style="color:#6b7280;">Con este monto se paga el cronograma completo.</div>
+                                    @endif
+                                    @if($vCobra > 0.001 || $vVig > 0.001 || $vCondVig > 0.001)
+                                        <div class="small mb-1">
+                                            @if($vCobra > 0.001)
+                                                <span style="color:#c0392b;">Mora: se cobra <b>S/ {{ number_format($vCobra, 2) }}</b>{{ ($preview['mora_ajustada'] ?? false) ? ' (ajustada a mano)' : '' }}</span>
+                                            @elseif($preview['reserva_mora'] ?? false)
+                                                <span style="color:#b8860b;">Mora: reservada — queda como deuda <b>S/ {{ number_format($vVig, 2) }}</b></span>
+                                            @else
+                                                <span style="color:#6b7280;">Mora: se exonera al cancelar <b style="text-decoration: line-through;">S/ {{ number_format($vCondVig > 0.001 ? $vCondVig : $vVig, 2) }}</b></span>
+                                            @endif
+                                        </div>
+                                    @endif
+                                    @if($vAcumCobra > 0.001 || $vCondAcum > 0.001)
+                                        <div class="small mb-2">
+                                            @if($vCondAcum > 0.001)
+                                                <span style="color:#6b7280;">Mora acumulada: se exonera al cancelar <b style="text-decoration: line-through;">S/ {{ number_format($vCondAcum, 2) }}</b></span>
+                                            @else
+                                                <span style="color:#c0392b;">Mora acumulada: se cobra <b>S/ {{ number_format($vAcumCobra, 2) }}</b></span>
+                                            @endif
+                                        </div>
+                                    @endif
+                                </div>
                             </div>
-                            @if($vCobra > 0.001 || $vVig > 0.001 || $vCondVig > 0.001)
-                                <div class="small mb-1">
-                                    @if($vCobra > 0.001)
-                                        <span style="color:#c0392b;">Mora: se cobra <b>S/ {{ number_format($vCobra, 2) }}</b>{{ ($preview['mora_ajustada'] ?? false) ? ' (ajustada a mano)' : '' }}</span>
-                                    @elseif($preview['reserva_mora'] ?? false)
-                                        <span style="color:#b8860b;">Mora: reservada — queda como deuda <b>S/ {{ number_format($vVig, 2) }}</b></span>
-                                    @else
-                                        <span style="color:#6b7280;">Mora: se exonera al cancelar <b style="text-decoration: line-through;">S/ {{ number_format($vCondVig > 0.001 ? $vCondVig : $vVig, 2) }}</b></span>
-                                    @endif
-                                </div>
-                            @endif
-                            @if($vAcumCobra > 0.001 || $vCondAcum > 0.001)
-                                <div class="small mb-2">
-                                    @if($vCondAcum > 0.001)
-                                        <span style="color:#6b7280;">Mora acumulada: se exonera al cancelar <b style="text-decoration: line-through;">S/ {{ number_format($vCondAcum, 2) }}</b></span>
-                                    @else
-                                        <span style="color:#c0392b;">Mora acumulada: se cobra <b>S/ {{ number_format($vAcumCobra, 2) }}</b></span>
-                                    @endif
-                                </div>
-                            @endif
                             <div class="fw-semibold small mb-1">¿Cancelar el crédito?</div>
                             <div class="d-flex gap-3 flex-wrap">
                                 <div class="form-check">
@@ -734,6 +1053,9 @@
             .ticket-preview .tp-empresa { font-size: 13px; font-weight: bold; }
             .ticket-preview .tp-row { display: flex; justify-content: space-between; gap: 8px; }
             .ticket-preview .tp-row > span:last-child { text-align: right; white-space: nowrap; }
+            /* La lista de cuotas SÍ se parte: con tramos sueltos (19-25,27,30-40)
+               una sola línea se saldría del modal. */
+            .ticket-preview .tp-wrap > span:last-child { white-space: normal; word-break: break-word; }
             .ticket-preview .tp-total { font-size: 13px; font-weight: bold; }
             .ticket-preview .tp-sep { border-top: 1px dashed #000; margin: 4px 0; }
             .ticket-preview .tp-sep-dbl { border-top: 3px double #000; margin: 4px 0; }

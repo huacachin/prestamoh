@@ -33,7 +33,9 @@
                             <input type="text" name="search" class="form-control"
                                    wire:model.live.debounce.300ms="search"
                                    placeholder="Escriba ID, nombre o DNI para buscar..."
-                                   autocomplete="off">
+                                   autocomplete="off"
+       list="hist_credits_activate" data-search-history="credits_activate">
+<datalist id="hist_credits_activate" wire:ignore></datalist>
 
                             {{-- Dropdown de resultados --}}
                             @if($showDropdown && count($results) > 0)
@@ -72,7 +74,7 @@
                             <button class="btn btn-primary {{ $bloqueado ? 'disabled' : '' }}"
                                     @if($bloqueado) disabled @endif
                                     @if($saldoSel > 0.01) title="El crédito tiene saldo pendiente: no se puede re-activar" @endif
-                                    wire:confirm="¿Está seguro de Re-Activar este Préstamo?"
+                                    data-confirmar="¿Está seguro de Re-Activar este Préstamo?"
                                     wire:click="activate">
                                 <i class="ti ti-refresh f-s-14"></i> Confirmar Re-Activar
                             </button>

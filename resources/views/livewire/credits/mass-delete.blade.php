@@ -39,7 +39,9 @@
                                 </div>
                                 <input type="text" name="compra" autocomplete="off" class="form-control form-control-sm"
                                        wire:model.live.debounce.300ms="compra"
-                                       placeholder="Ingrese el texto a buscar">
+                                       placeholder="Ingrese el texto a buscar"
+       list="hist_mass_delete" data-search-history="mass_delete">
+<datalist id="hist_mass_delete" wire:ignore></datalist>
                             </div>
 
                             <div class="col-md-2">

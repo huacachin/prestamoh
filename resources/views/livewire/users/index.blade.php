@@ -30,7 +30,9 @@
                             <div class="d-flex flex-nowrap align-items-end gap-2 overflow-auto py-1">
                                 <div class="flex-shrink-0" style="width: 260px;">
                                     <input type="search" class="form-control form-control-sm"
-                                           placeholder="Buscar..." wire:model="search" name="search" autocomplete="off">
+                                           placeholder="Buscar..." wire:model="search" name="search" autocomplete="off"
+       list="hist_users" data-search-history="users">
+<datalist id="hist_users" wire:ignore></datalist>
                                 </div>
 
                                 <div class="flex-shrink-0" style="width: 140px;">
@@ -102,14 +104,14 @@
                                         @if($user->status === 'active')
                                             @if(!$user->hasRole('director'))
                                             <button class="btn btn-sm btn-outline-danger ms-1" title="Desactivar"
-                                                    wire:click="questionDelete({{ $user->id }}, '{{ $user->name }}')">
+                                                    wire:click="questionDelete({{ $user->id }})">
                                                 <i class="ti ti-trash"></i>
                                             </button>
                                             @endif
                                         @else
                                             <button class="btn btn-sm btn-outline-success ms-1" title="Re-activar"
                                                     wire:click="reactivate({{ $user->id }})">
-                                                <i class="ti ti-restore"></i>
+                                                <i class="ti ti-refresh"></i>
                                             </button>
                                         @endif
                                         @endcan
