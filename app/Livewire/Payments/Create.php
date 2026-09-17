@@ -1811,17 +1811,23 @@ class Create extends Component
             }
         }
 
+        // 17/09: el reparto de la mora se calcula UNA vez por render y alimenta
+        // tres cosas: las celdas (su parte por cuota), la exonerada en rojo
+        // (que resta esa parte) y el tooltip de la fila Totales.
+        $reparto = $this->credit ? MoraPagada::porCuota($this->credit) : [];
+        $moraCelda = $this->credit ? MoraPagada::mostradaPorCuota($this->credit, $reparto) : [];
+
         return view('livewire.payments.create', [
             'calcs' => $this->buildCalcs(),
             'sim' => $this->deudaCalcs($alSim),    // a la fecha simulada: tarjetas
             'cancelarHoy' => $this->deudaCalcs()['cancelar_cap_int'], // gate del switch Cancelado
             'fecsimMin' => $fecsimMin,
-            'moraExon' => $this->credit ? MoraExonerada::porCuota($this->credit) : [],
+            'moraExon' => $this->credit ? MoraExonerada::porCuota($this->credit, $moraCelda) : [],
             'recibos' => $this->recibosPorCuota(),
-            'moraPagadaCuotas' => $this->moraPagadaCuotas(),
-            // 17/09: la celda de cada cuota muestra SU parte del reparto (antes
-            // pintaba importe_mora, que carga todo el cobro en la primera cuota).
-            'moraCelda' => $this->credit ? MoraPagada::mostradaPorCuota($this->credit) : [],
+            'moraPagadaCuotas' => $reparto,
+            // La celda de cada cuota muestra SU parte del reparto (antes pintaba
+            // importe_mora, que carga todo el cobro en la primera cuota).
+            'moraCelda' => $moraCelda,
         ]);
     }
 
@@ -1831,11 +1837,6 @@ class Create extends Component
      *
      * @return array<int, list<array{num:int, monto:float, dias:?int}>> por installment_id
      */
-    private function moraPagadaCuotas(): array
-    {
-        return $this->credit ? MoraPagada::porCuota($this->credit) : [];
-    }
-
     /**
      * Links del recibo por cuota — lógica compartida con
      * /credits/{id}/schedule en App\Support\RecibosCuota.

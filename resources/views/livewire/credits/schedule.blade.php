@@ -201,7 +201,10 @@
                                 <td></td>
                                 <td class="text-end" style="white-space:nowrap;">
                                     @if($row['mora'] > 0)
-                                        <b><span data-bs-toggle="tooltip" title="Mora pagada" style="cursor:help;">{{ number_format($row['mora'], 2) }}</span></b>
+                                        {{-- 17/09: mora que entró a caja por encima de lo anotado en
+                                             las cuotas (p. ej. MORA ACUM. al cancelar). Misma fila que
+                                             "Mora sin cuota asignada" en /payments/create. --}}
+                                        <b><span data-bs-toggle="tooltip" title="Mora sin cuota asignada: entró a caja como mora pero no está anotada en ninguna cuota" style="cursor:help;">{{ number_format($row['mora'], 2) }}</span></b>
                                     @else
                                         <b>0.00</b>
                                     @endif

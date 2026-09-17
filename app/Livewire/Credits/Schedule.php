@@ -47,15 +47,16 @@ class Schedule extends Component
             ->get();
 
         // Pagos capital/interés agrupados por EVENTO (misma fecha+hora = un
-        // pago registrado en ventanilla); la mora se agrupa por fecha.
+        // pago registrado en ventanilla). La mora NO se cuelga por fecha
+        // (17/09): cada cuota muestra su parte del reparto del cobro
+        // (MoraPagada), igual que /payments/create; de la caja solo se toma
+        // el total, para el residuo "sin cuota asignada".
         $eventos = []; // ['fecha','hora','monto'] en orden cronológico
-        $payMora = []; // [Y-m-d] = sum pagos MORA
+        $cajaMora = 0.0; // suma de TODOS los pagos MORA (caja)
         foreach ($pays as $p) {
             $f = $p->fecha ? Carbon::parse($p->fecha)->format('Y-m-d') : '';
             if (strtoupper(substr($p->documento ?? '', 0, 4)) === 'MORA') {
-                if ($f) {
-                    $payMora[$f] = ($payMora[$f] ?? 0) + (float) $p->monto;
-                }
+                $cajaMora += (float) $p->monto;
             } else {
                 $last = count($eventos) - 1;
                 if ($last >= 0 && $eventos[$last]['fecha'] === $f && $eventos[$last]['hora'] === $p->hora) {
@@ -70,7 +71,6 @@ class Schedule extends Component
         // el motor de pagos: cuota más antigua primero hasta cubrir cap+int).
         // Lo que sobra tras llenar todo el cronograma es pago "OTROS".
         $alloc = [];      // idx cuota => ['monto', 'fecha', 'hora'] (fecha/hora del último pago que la tocó)
-        $moraCuota = [];  // idx cuota => fechas de pago asociadas (para colgar la mora del día)
         $restos = [];     // [Y-m-d] => ['monto', 'hora'] sobras fuera del cronograma
         $n = $installments->count();
         $idx = 0;
@@ -89,9 +89,6 @@ class Schedule extends Component
                     $alloc[$idx]['monto'] += $take;
                     $alloc[$idx]['fecha'] = $p['fecha'];
                     $alloc[$idx]['hora'] = $p['hora'];
-                    if ($p['fecha']) {
-                        $moraCuota[$idx][$p['fecha']] = true;
-                    }
                     $rem -= $take;
                     $capacidad -= $take;
                 }
@@ -112,13 +109,18 @@ class Schedule extends Component
             }
         }
 
+        // Mora por cuota: reparto del cobro entre las cuotas que lo generaron
+        // (mismo helper y misma regla que /payments/create). porCuota se
+        // calcula una sola vez y alimenta también los tooltips de Totales.
+        $reparto = MoraPagada::porCuota($this->credit);
+        $moraCelda = MoraPagada::mostradaPorCuota($this->credit, $reparto);
+
         // Mora diaria: 5% de la cuota ÷7 semanal / ÷30 mensual (diarios: mora1
         // histórico) — regla centralizada en Credit::moraDiaria().
 
         // ─── Filas del cronograma ────────────────────────────────────────
         $rows = [];
         $totals = ['capital' => 0, 'interes' => 0, 'excedente' => 0, 'total' => 0, 'mora' => 0, 'pagado' => 0, 'mora_exon' => 0, 'mora_exon_dias' => 0];
-        $moraUsada = []; // fechas de mora ya colgadas a una cuota
         $tt = 0;
 
         foreach ($installments as $k => $ins) {
@@ -128,14 +130,8 @@ class Schedule extends Component
             $fechaPago = ($a && $pagado >= 0.01) ? ($a['fecha'] ?? '') : '';
             $hora = $fechaPago !== '' ? $a['hora'] : null;
 
-            // Mora pagada en los días en que esta cuota recibió pagos
-            $mora = 0.0;
-            foreach (array_keys($moraCuota[$k] ?? []) as $f) {
-                if (! isset($moraUsada[$f]) && isset($payMora[$f])) {
-                    $mora += (float) $payMora[$f];
-                    $moraUsada[$f] = true;
-                }
-            }
+            // Mora pagada por ESTA cuota: su parte del reparto (+ la propia).
+            $mora = (float) ($moraCelda[(int) $ins->id]['monto'] ?? 0);
 
             $dow = $fechaPago !== '' ? Carbon::parse($fechaPago)->dayOfWeek : null;
             $color = '';
@@ -151,8 +147,8 @@ class Schedule extends Component
 
             // Mora exonerada teórica POR CUOTA: días calendario de atraso
             // entre su vencimiento y su fecha de pago real (todos los tipos,
-            // regla única desde 02/09) × tarifa, menos la mora que sí se
-            // cobró en la cuota. Informativa: no afecta los totales.
+            // regla única desde 02/09) × tarifa, menos la mora que ESA cuota
+            // pagó (su parte del reparto). Informativa: no afecta los totales.
             $moraExon = 0.0;
             $moraExonDias = 0;
             $moraRate = $this->credit->moraDiaria((float) $ins->importe_cuota + (float) $ins->importe_interes + (float) $ins->importe_excedente);
@@ -207,30 +203,16 @@ class Schedule extends Component
             ];
         }
 
-        // ─── Pagos OTROS: sobras del FIFO + mora suelta sin cuota ────────
+        // ─── Pagos OTROS: sobras del FIFO (capital/interés fuera del cronograma)
         $otrosRows = [];
         $sumOtros = 0;
         $sumOtrosMora = 0;
-
-        foreach ($payMora as $f => $monto) {
-            if (! isset($moraUsada[$f]) && ! isset($restos[$f])) {
-                $restos[$f] = ['monto' => 0.0, 'hora' => null];
-            }
-        }
         $sumOtrosExon = 0;
         $sumOtrosExonDias = 0;
         ksort($restos);
         foreach ($restos as $f => $info) {
             $tt++;
-            $mora = isset($moraUsada[$f]) ? 0.0 : (float) ($payMora[$f] ?? 0);
-            $moraUsada[$f] = true;
-            // Sin cuota de referencia no hay vencimiento contra el cual medir atraso
-            $moraExon = 0.0;
-            $moraExonDias = 0;
             $sumOtros += (float) $info['monto'];
-            $sumOtrosMora += $mora;
-            $sumOtrosExon += $moraExon;
-            $sumOtrosExonDias += $moraExonDias;
             $otrosRows[] = [
                 'tipo' => 'otro',
                 'n' => $tt,
@@ -239,9 +221,9 @@ class Schedule extends Component
                 'interes' => 0,
                 'excedente' => 0,
                 'total' => 0,
-                'mora' => $mora,
-                'mora_exon' => $moraExon,
-                'mora_exon_dias' => $moraExonDias,
+                'mora' => 0.0,
+                'mora_exon' => 0.0,
+                'mora_exon_dias' => 0,
                 'pagado' => (float) $info['monto'],
                 'pagado_cap' => 0.0,
                 'pagado_int' => 0.0,
@@ -250,6 +232,37 @@ class Schedule extends Component
                 'flag_pagado' => null,
                 'hora' => $info['hora'],
                 'fecha_pago' => $f,
+                'color' => '',
+            ];
+        }
+
+        // ─── Mora sin cuota asignada: lo que entró a caja como MORA por encima
+        // de lo anotado en las cuotas (p. ej. 'MORA ACUM.' al cancelar, que no
+        // se anota en ninguna cuota). Misma regla que /payments/create. Con
+        // esto la columna cuadra: Totales = Σ celdas + esta fila.
+        $moraSinCuota = round($cajaMora - $totals['mora'], 2);
+        if ($moraSinCuota > 0.01) {
+            $tt++;
+            $sumOtrosMora = $moraSinCuota;
+            $otrosRows[] = [
+                'tipo' => 'otro',
+                'n' => $tt,
+                'periodo' => '',
+                'capital' => 0,
+                'interes' => 0,
+                'excedente' => 0,
+                'total' => 0,
+                'mora' => $moraSinCuota,
+                'mora_exon' => 0.0,
+                'mora_exon_dias' => 0,
+                'pagado' => 0.0,
+                'pagado_cap' => 0.0,
+                'pagado_int' => 0.0,
+                'pagado_exc' => 0.0,
+                'saldo' => 0.0,
+                'flag_pagado' => null,
+                'hora' => null,
+                'fecha_pago' => '',
                 'color' => '',
             ];
         }
@@ -276,10 +289,10 @@ class Schedule extends Component
             // Homologado con /payments/create: recibo por cuota (modal) y
             // desglose de la mora pagada para los tooltips de la columna Mora
             'recibos' => RecibosCuota::porCuota($this->credit),
-            'moraPagadaCuotas' => MoraPagada::porCuota($this->credit),
+            'moraPagadaCuotas' => $reparto,
             // 17/09: la celda de cada cuota muestra SU parte del reparto (antes
             // pintaba importe_mora, que carga todo el cobro en la primera cuota).
-            'moraCelda' => MoraPagada::mostradaPorCuota($this->credit),
+            'moraCelda' => $moraCelda,
         ]);
     }
 }
