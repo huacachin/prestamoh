@@ -44,26 +44,29 @@
            Word el position:fixed ancla al viewport y CORTA la linea del
            celular — ahi va en el flujo normal. */
         /* 17/09 (Antony, Desktop/anexo1raya.jpeg): el maestro lleva una RAYA
-           a todo el ancho encima del pie, con aire entre la raya y el texto.
-           Regla común a los tres medios; la posición la pone cada rama. */
-        .ax-pie { border-top: 0.8pt solid #000; padding-top: 6px; }
+           encima del pie, DEL ANCHO DE LA TABLA (no de la hoja), con aire
+           entre la raya y el texto. Regla común a los tres medios; la
+           posición la pone cada rama. */
+        .ax-pie { border-top: 0.8pt solid #000; padding-top: 6px;
+                  text-align: center; font-weight: bold; font-size: 9pt; }
         @if(($medio ?? 'pdf') === 'pdf')
-        .ax-pie { position: fixed; bottom: -0.4cm; left: 0; right: 0;
-                  text-align: center; font-weight: bold; font-size: 9pt; }
+        /* PDF: anclado abajo. left/right 0 en dompdf es el área de contenido
+           (dentro de los márgenes), así que la raya mide lo que las tablas. */
+        .ax-pie { position: fixed; bottom: -0.4cm; left: 0; right: 0; }
         @elseif(($medio ?? 'pdf') === 'word')
-        /* Word (16/09): NO ignora el position:absolute como decia el
-           comentario anterior — lo convierte en un marco flotante que se
-           posa encima del cronograma o se va a una hoja suelta, y la
-           direccion de Huaycan deja de verse al pie. Aqui va en el flujo,
-           al final del documento, con aire arriba. Tampoco se le pone
-           min-height al body: en Word estira el documento a dos hojas. */
-        .ax-pie { margin-top: 14pt; text-align: center; font-weight: bold; font-size: 9pt; }
+        /* Word (16/09): NO ignora el position:absolute — lo convierte en un
+           marco flotante que se posa encima del cronograma. Aquí va en el
+           flujo, al final, con aire arriba; sin min-height al body (en Word
+           estira el documento a dos hojas). La raya mide el ancho de texto,
+           que es el de las tablas. */
+        .ax-pie { margin-top: 14pt; }
         @else
-        /* Previa: el pie va al fondo de la HOJA (body con alto minimo A4 y
-           pie absoluto) — sin fixed, que ancla al viewport y corta lineas. */
-        body { position: relative; min-height: 24.5cm; }
-        .ax-pie { position: absolute; bottom: 0; left: 0; right: 0;
-                  text-align: center; font-weight: bold; font-size: 9pt; }
+        /* Previa: el pie va al fondo de la HOJA, absoluto dentro de .ax-hoja
+           (el contenido, SIN el padding que hace de margen). Antes se
+           posicionaba contra el body y left/right 0 abarcaban también el
+           padding: la raya salía más ancha que las tablas — eso vio Antony. */
+        .ax-hoja { position: relative; min-height: 24.5cm; }
+        .ax-pie { position: absolute; bottom: 0; left: 0; right: 0; }
         @endif
         table.ax-split { width: 100%; border-collapse: collapse; }
         table.ax-split td.col { vertical-align: top; padding: 0 4px; border: 0; }
@@ -84,6 +87,10 @@
 <body>
     {{-- SIN pie de página (15/09), como el contrato: el Anexo 1 cabe en una
          hoja y el maestro del área no lo lleva. El Anexo 2 sí lo conserva. --}}
+    {{-- .ax-hoja: en la previa, el contenedor contra el que se ancla el pie
+         (solo el contenido, sin el padding de los márgenes) para que la raya
+         mida lo que las tablas. En PDF y Word no tiene estilos. --}}
+    <div class="ax-hoja">
     <div class="ax-banner">{{ $d['marca'] }}</div>
     <div class="ax-titulo">ANEXO 1</div>
 
@@ -119,7 +126,8 @@
         <tr>
             <td class="etiqueta" style="width: 12%;">Cliente</td>
             <td style="width: 38%;">{{ $d['cliente']['nombre'] }}</td>
-            <td class="etiqueta" style="width: 20%; white-space: nowrap;">PLACA DE RODAJE</td>
+            {{-- 17/09 (Antony): "Placa de Rodaje", como las demás etiquetas, no en mayúsculas. --}}
+            <td class="etiqueta" style="width: 20%; white-space: nowrap;">Placa de Rodaje</td>
             <td class="valor-cent" colspan="2" style="width: 30%;">{{ $v1['placa'] ?? '—' }}</td>
         </tr>
         <tr>
@@ -245,7 +253,14 @@
         // Se parte de 24 filas y se descuenta lo que la cabecera se lleva:
         // cada vehículo extra trae su propia tabla, y una dirección larga se
         // reparte en varias líneas dentro de su celda.
-        $lineasDireccion = (int) ceil(mb_strlen((string) ($d['cliente']['direccion'] ?? '')) / 45);
+        // OJO: el snapshot guarda la dirección como 'domicilio' (es lo que
+        // pinta la tabla de arriba). Hasta el 17/09 esto leía 'direccion', que
+        // no existe: el descuento por dirección larga nunca actuó y el barrido
+        // pasaba solo porque el pie iba anclado y no ocupaba alto.
+        $lineasDireccion = (int) ceil(mb_strlen((string) ($d['cliente']['domicilio'] ?? $d['cliente']['direccion'] ?? '')) / 45);
+        // El pie va anclado abajo (no ocupa alto del flujo), así que la base
+        // sigue en 24 filas; con la clave corregida, una dirección de 6
+        // renglones la baja a 20 y 24 cuotas pasan a dos columnas.
         $porColumnaMax = 24
             - 4 * max(0, count($vehiculos) - 1)
             - 2 * max(0, $lineasDireccion - 2);
@@ -308,5 +323,6 @@
         DPTO. SEC. B UCV 72 LOTE 51 ZONA E AAHH HUAYCAN, DISTRITO DE ATE<br>
         CELULAR: 982333689/981352577
     </div>
+    </div>{{-- /.ax-hoja --}}
 </body>
 </html>
