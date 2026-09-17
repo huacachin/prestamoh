@@ -13,12 +13,14 @@ use Illuminate\Support\Facades\DB;
  * mass_deletion_details (apunta a la cuota donde se anotó la mora) y las
  * cuotas C/I/E de esa misma operación son las que generaron el atraso.
  *
- * El monto se reparte entre esas cuotas por los días en que cada una fue
- * la más antigua impaga (de su vencimiento al vencimiento de la siguiente,
- * o a la fecha del pago) — el mismo reloj del cálculo de mora, que cobra
- * días × tasa desde la vencida más antigua. Como la tasa diaria es
- * uniforme, el prorrateo por días reproduce la mora que generó cada cuota
- * sin depender de la tasa histórica.
+ * El monto se reparte entre esas cuotas en proporción a los DÍAS DE ATRASO
+ * de cada una al momento del pago (de su vencimiento a la fecha del cobro).
+ * Es la misma regla con la que el modal "Pagar por cuotas" calcula y cobra
+ * la mora cuota por cuota (días × tarifa), así que con tarifa diaria
+ * uniforme el prorrateo reproduce exactamente lo que se cobró por cada una,
+ * sin depender de la tarifa histórica. Hasta el 17/09 se repartía por los
+ * siete días en que cada cuota fue la más antigua impaga: salía parejo
+ * (104,90 en las ocho del 28957) cuando lo cobrado iba de 186,48 a 23,31.
  *
  * La mora migrada del legacy no tiene vínculo de operación: pertenece a su
  * propia cuota (allá venía anotada cuota por cuota) y no aparece en este
@@ -61,10 +63,16 @@ class MoraPagada
                 ->filter(fn ($c) => $c['venc']->lt($fpago))
                 ->sortBy('num')->values();
 
+            // 17/09: cada cuota pesa por SUS días de atraso al momento del pago
+            // (de su vencimiento a la fecha del cobro), no por los siete días
+            // en que fue la más antigua impaga. Con tarifa diaria uniforme eso
+            // reproduce exactamente lo que cobra el modal "Pagar por cuotas"
+            // (días × tarifa por cuota): en el 28957, 186,48 en la 18 bajando
+            // hasta 23,31 en la 25. El reparto parejo anterior mostraba 104,90
+            // en todas y Antony lo señaló: "cada cuota tiene diferente mora".
             $items = [];
-            foreach ($vencidas as $i => $c) {
-                $hasta = $vencidas[$i + 1]['venc'] ?? $fpago;
-                $items[] = ['num' => $c['num'], 'dias' => self::diasMoraEntre($c['venc'], $hasta)];
+            foreach ($vencidas as $c) {
+                $items[] = ['num' => $c['num'], 'dias' => self::diasMoraEntre($c['venc'], $fpago)];
             }
             $totDias = array_sum(array_column($items, 'dias'));
 

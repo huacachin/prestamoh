@@ -126,12 +126,18 @@ class MoraRepartoEnCeldasTest extends TestCase
 
         $celda = MoraPagada::mostradaPorCuota($credit);
 
-        // 839,16 entre 8 cuotas de 7 días cada una: 104,90 y el resto en la última.
-        foreach (range(18, 24) as $n) {
-            $this->assertSame(104.90, $celda[$ids[$n]]['monto'], "cuota {$n} debe mostrar su parte");
-            $this->assertSame(7, $celda[$ids[$n]]['dias']);
+        // Cada cuota pesa por SUS días de atraso al 17/09 (56, 49 … 7): es
+        // exactamente lo que el modal cobró por cada una (días × 3,33), no
+        // un reparto parejo. La 25 se lleva el resto del redondeo.
+        $esperado = [
+            18 => [186.48, 56], 19 => [163.17, 49], 20 => [139.86, 42], 21 => [116.55, 35],
+            22 => [93.24, 28], 23 => [69.93, 21], 24 => [46.62, 14], 25 => [23.31, 7],
+        ];
+        foreach ($esperado as $n => [$monto, $dias]) {
+            $this->assertSame($monto, $celda[$ids[$n]]['monto'], "cuota {$n}: su mora, no un reparto parejo");
+            $this->assertSame($dias, $celda[$ids[$n]]['dias'], "cuota {$n}: sus días de atraso");
         }
-        $this->assertSame(104.86, $celda[$ids[25]]['monto'], 'la última se lleva el redondeo');
+        $this->assertSame(self::MORA, round(array_sum(array_column($celda, 'monto')), 2));
 
         // LA CLAVE: la cuota 18 ya no muestra los 839,16 enteros.
         $this->assertNotEquals(self::MORA, $celda[$ids[18]]['monto']);
@@ -177,8 +183,8 @@ class MoraRepartoEnCeldasTest extends TestCase
 
         $celda = MoraPagada::mostradaPorCuota($credit);
 
-        $this->assertSame(124.90, $celda[$ids[18]]['monto'], '104,90 del reparto + 20 propios');
-        $this->assertSame(104.90, $celda[$ids[19]]['monto']);
+        $this->assertSame(206.48, $celda[$ids[18]]['monto'], '186,48 del reparto + 20 propios');
+        $this->assertSame(163.17, $celda[$ids[19]]['monto']);
         $this->assertStringContainsString('anotada en la propia cuota: 20.00', $celda[$ids[18]]['detalle']);
     }
 
@@ -189,8 +195,11 @@ class MoraRepartoEnCeldasTest extends TestCase
 
         $html = Livewire::test(Create::class, ['creditId' => $credit->id])->html();
 
-        $this->assertGreaterThanOrEqual(7, substr_count($html, '104.90'), 'siete cuotas con 104,90');
-        $this->assertStringContainsString('104.86', $html);
+        // La 18 con sus 56 días, la 25 con sus 7: distintas, como las cobró el modal.
+        foreach (['186.48', '163.17', '139.86', '116.55', '93.24', '69.93', '46.62', '23.31'] as $monto) {
+            $this->assertStringContainsString($monto, $html, "la celda debe mostrar {$monto}");
+        }
+        $this->assertStringNotContainsString('104.90', $html, 'ya no se reparte parejo');
         $this->assertStringContainsString('50.00', $html, 'la mora legacy de la cuota 5');
         // El total del crédito sigue siendo el registrado: 839,16 + 50.
         $this->assertStringContainsString('889.16', $html);
@@ -203,7 +212,9 @@ class MoraRepartoEnCeldasTest extends TestCase
 
         $html = Livewire::test(Schedule::class, ['id' => $credit->id])->html();
 
-        $this->assertGreaterThanOrEqual(7, substr_count($html, '104.90'));
-        $this->assertStringContainsString('104.86', $html);
+        foreach (['186.48', '163.17', '46.62', '23.31'] as $monto) {
+            $this->assertStringContainsString($monto, $html, "el cronograma debe mostrar {$monto}");
+        }
+        $this->assertStringNotContainsString('104.90', $html, 'ya no se reparte parejo');
     }
 }
