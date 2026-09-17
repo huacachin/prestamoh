@@ -1819,6 +1819,9 @@ class Create extends Component
             'moraExon' => $this->credit ? MoraExonerada::porCuota($this->credit) : [],
             'recibos' => $this->recibosPorCuota(),
             'moraPagadaCuotas' => $this->moraPagadaCuotas(),
+            // 17/09: la celda de cada cuota muestra SU parte del reparto (antes
+            // pintaba importe_mora, que carga todo el cobro en la primera cuota).
+            'moraCelda' => $this->credit ? MoraPagada::mostradaPorCuota($this->credit) : [],
         ]);
     }
 

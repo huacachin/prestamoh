@@ -277,6 +277,9 @@ class Schedule extends Component
             // desglose de la mora pagada para los tooltips de la columna Mora
             'recibos' => RecibosCuota::porCuota($this->credit),
             'moraPagadaCuotas' => MoraPagada::porCuota($this->credit),
+            // 17/09: la celda de cada cuota muestra SU parte del reparto (antes
+            // pintaba importe_mora, que carga todo el cobro en la primera cuota).
+            'moraCelda' => MoraPagada::mostradaPorCuota($this->credit),
         ]);
     }
 }

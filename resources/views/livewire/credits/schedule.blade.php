@@ -137,27 +137,24 @@
                                 <td style="{{ $st }}" class="text-end">{{ number_format($row['pagado_cap'] + $row['pagado_int'] + $row['pagado_exc'], 2) }}</td>
                                 <td style="{{ $st }}" class="text-end">{{ number_format($row['saldo'], 2) }}</td>
                                 {{-- Mora unificada (homologada con /payments/create):
-                                     pagada en negro, exonerada en rojo, con tooltips --}}
+                                     pagada en negro, exonerada en rojo. 17/09: la celda
+                                     muestra la parte de ESTA cuota en el reparto del cobro
+                                     (MoraPagada::mostradaPorCuota); antes pintaba
+                                     importe_mora, que carga todo el cobro en la primera
+                                     cuota. El total del crédito no cambia. --}}
                                 @php
-                                    $mpc = $moraPagadaCuotas[$row['installment_id']]
-                                        ?? [['num' => $row['n'], 'monto' => $row['mora'], 'dias' => null]];
-                                    $tipMoraPag = 'Mora pagada de '.count($mpc).' cuota(s):<br>'
-                                        .collect($mpc)->take(15)->map(fn ($it) =>
-                                            'Cuota '.$it['num'].': '.number_format($it['monto'], 2)
-                                            .($it['dias'] ? ' - D. '.$it['dias'] : ''))->implode('<br>')
-                                        .(count($mpc) > 15 ? '<br>…' : '')
-                                        .'<br>Total: '.number_format(collect($mpc)->sum('monto'), 2)
-                                        .(collect($mpc)->sum('dias') ? ' - D. '.collect($mpc)->sum('dias') : '');
+                                    $mc = $moraCelda[$row['installment_id']] ?? null;
+                                    $mPagFila = $mc['monto'] ?? 0;
                                 @endphp
                                 <td class="text-end" style="white-space:nowrap;">
-                                    @if($row['mora'] > 0)
-                                        <span data-bs-toggle="tooltip" data-bs-html="true" title="{{ $tipMoraPag }}" style="cursor:help;">{{ number_format($row['mora'], 2) }}</span>
+                                    @if($mPagFila > 0)
+                                        <span data-bs-toggle="tooltip" data-bs-html="true" title="{{ $mc['detalle'] }}" style="cursor:help;">{{ number_format($mPagFila, 2) }}</span>
                                     @endif
                                     @if($row['mora_exon'] > 0)
-                                        @if($row['mora'] > 0)<br>@endif
+                                        @if($mPagFila > 0)<br>@endif
                                         <span class="text-danger" data-bs-toggle="tooltip" title="Mora exonerada" style="cursor:help;">{{ number_format($row['mora_exon'], 2) }} - D. {{ $row['mora_exon_dias'] }}</span>
                                     @endif
-                                    @if($row['mora'] <= 0 && $row['mora_exon'] <= 0)
+                                    @if($mPagFila <= 0 && $row['mora_exon'] <= 0)
                                         0.00
                                     @endif
                                 </td>

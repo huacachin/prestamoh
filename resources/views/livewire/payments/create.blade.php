@@ -1373,28 +1373,21 @@
                                 <td class="text-end">{{ number_format($inst->interes_aplicado, 2) }}</td>
                                 <td class="text-end">{{ number_format($inst->importe_aplicado + $inst->interes_aplicado + $inst->excedente_aplicado, 2) }}</td>
                                 <td class="text-end">{{ number_format($saldo, 2) }}</td>
-                                {{-- Mora unificada: pagada (negro, flecha de entrada:
-                                     importe_mora + mora_interes, los impomora/impomorai del
-                                     legacy) y exonerada (rojo, flecha de salida) --}}
+                                {{-- Mora unificada: pagada (negro) y exonerada (rojo).
+                                     17/09: la celda muestra la parte de ESTA cuota en el
+                                     reparto del cobro (MoraPagada::mostradaPorCuota). Antes
+                                     pintaba importe_mora, que carga toda la mora del cobro en
+                                     la primera cuota y dejaba en blanco a las demás que la
+                                     generaron; el reparto solo se veía en el tooltip. El total
+                                     del crédito no cambia (fila de Totales). --}}
                                 @php
                                     $me = $moraExon[$inst->num_cuota] ?? null;
-                                    $mPag = $inst->importe_mora + $inst->mora_interes;
-                                    // Desglose de la operación que generó esta mora; la mora
-                                    // migrada del legacy pertenece a su propia cuota.
-                                    $mpc = $moraPagadaCuotas[$inst->id]
-                                        ?? [['num' => $inst->num_cuota, 'monto' => $mPag, 'dias' => null]];
-                                    $diasMpc = collect($mpc)->sum('dias');
-                                    $tipMoraPag = 'Mora pagada de '.count($mpc).' cuota(s):<br>'
-                                        .collect($mpc)->take(15)->map(fn ($it) =>
-                                            'Cuota '.$it['num'].': '.number_format($it['monto'], 2)
-                                            .($it['dias'] ? ' - D. '.$it['dias'] : ''))->implode('<br>')
-                                        .(count($mpc) > 15 ? '<br>…' : '')
-                                        .'<br>Total: '.number_format(collect($mpc)->sum('monto'), 2)
-                                        .($diasMpc ? ' - D. '.$diasMpc : '');
+                                    $mc = $moraCelda[$inst->id] ?? null;
+                                    $mPag = $mc['monto'] ?? 0;
                                 @endphp
                                 <td class="text-end" style="white-space:nowrap;">
                                     @if($mPag > 0)
-                                        <span data-bs-toggle="tooltip" data-bs-html="true" title="{{ $tipMoraPag }}" style="cursor:help;">{{ number_format($mPag, 2) }}</span>
+                                        <span data-bs-toggle="tooltip" data-bs-html="true" title="{{ $mc['detalle'] }}" style="cursor:help;">{{ number_format($mPag, 2) }}</span>
                                     @endif
                                     @if($me)
                                         @if($mPag > 0)<br>@endif
