@@ -43,6 +43,10 @@
            del flujo y se repite por hoja); en la previa del navegador y en
            Word el position:fixed ancla al viewport y CORTA la linea del
            celular — ahi va en el flujo normal. */
+        /* 17/09 (Antony, Desktop/anexo1raya.jpeg): el maestro lleva una RAYA
+           a todo el ancho encima del pie, con aire entre la raya y el texto.
+           Regla común a los tres medios; la posición la pone cada rama. */
+        .ax-pie { border-top: 0.8pt solid #000; padding-top: 6px; }
         @if(($medio ?? 'pdf') === 'pdf')
         .ax-pie { position: fixed; bottom: -0.4cm; left: 0; right: 0;
                   text-align: center; font-weight: bold; font-size: 9pt; }
