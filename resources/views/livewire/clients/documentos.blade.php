@@ -865,11 +865,33 @@
     </div>
 
     {{-- ═══ Modal "Generar Anexo 2" (constancia de entrega del monto — FASE 3) ═══ --}}
+    {{-- 18/09: la foto entra por tres caminos —pegada (Ctrl+V), arrastrada o
+         elegida— y los tres desembocan en el mismo upload de Livewire
+         ($wire.upload → wire:model comprobante → updatedComprobante), que lee
+         el voucher solo. El pegado se escucha en la ventana pero solo mientras
+         el modal está abierto. --}}
     <div class="modal fade" id="anexo2Modal" tabindex="-1" aria-hidden="true" wire:ignore.self
-         x-data="{ modal: null }"
-         x-init="modal = bootstrap.Modal.getOrCreateInstance($el);"
+         x-data="{
+             modal: null,
+             abierto: false,
+             subir(archivo) {
+                 if (! archivo || ! (archivo.type || '').startsWith('image/')) { return; }
+                 // this.$wire: dentro de un método de x-data las "magics" de
+                 // Alpine se leen del propio objeto, no del ámbito léxico.
+                 this.$wire.upload('comprobante', archivo);
+             },
+             pegar(evento) {
+                 if (! this.abierto) { return; }
+                 const item = [...((evento.clipboardData || {}).items || [])].find(i => (i.type || '').startsWith('image/'));
+                 if (item) { evento.preventDefault(); this.subir(item.getAsFile()); }
+             },
+         }"
+         x-init="modal = bootstrap.Modal.getOrCreateInstance($el);
+                 $el.addEventListener('shown.bs.modal', () => abierto = true);
+                 $el.addEventListener('hidden.bs.modal', () => abierto = false);"
          x-on:anexo2-modal-open.window="modal.show()"
-         x-on:anexo2-modal-close.window="modal.hide()">
+         x-on:anexo2-modal-close.window="modal.hide()"
+         x-on:paste.window="pegar($event)">
         <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header py-2">
@@ -908,30 +930,53 @@
                                        wire:model.live="fechaAnexo2" max="{{ now()->format('Y-m-d') }}">
                                 @error('fechaAnexo2') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label small fw-semibold mb-1">Banco del voucher *</label>
-                                <select class="form-select form-select-sm @error('anexo2Banco') is-invalid @enderror"
-                                        wire:model.live="anexo2Banco">
-                                    <option value="">— Selecciona el banco —</option>
-                                    @foreach($bancosVoucher as $clave => $nombre)
-                                        <option value="{{ $clave }}">{{ $nombre }}</option>
-                                    @endforeach
-                                </select>
-                                @error('anexo2Banco') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label small fw-semibold mb-1">Modalidad de la operación *</label>
-                                <select class="form-select form-select-sm @error('anexo2Modalidad') is-invalid @enderror"
-                                        wire:model.live="anexo2Modalidad" @disabled($anexo2Banco === '')>
-                                    <option value="">— Selecciona la modalidad —</option>
-                                    @foreach($modalidadesAnexo2 as $mod)
-                                        <option value="{{ $mod }}">{{ $modalidadesVoucher[$mod] ?? $mod }}</option>
-                                    @endforeach
-                                </select>
-                                @error('anexo2Modalidad') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                                @if($anexo2Banco === '')
-                                    <div class="form-text" style="font-size:10px;">Elige primero el banco: cada uno tiene sus modalidades.</div>
+                            {{-- 18/09: banco y modalidad los identifica la lectura del
+                                 voucher. Si los reconoció, se muestran como un resumen con
+                                 "cambiar"; los selectores solo aparecen si no los reconoció
+                                 (o si el operador quiere corregirlos). --}}
+                            <div class="col-12" x-data="{ editarFormato: false }"
+                                 wire:key="anexo2-formato-{{ $anexo2Banco }}-{{ $anexo2Modalidad }}">
+                                @if($tituloVoucherAnexo2 !== '')
+                                    <div x-show="! editarFormato" class="small">
+                                        <span class="text-muted">Formato del voucher:</span>
+                                        <span class="badge bg-light text-dark border">{{ $tituloVoucherAnexo2 }}</span>
+                                        <a href="#" class="ms-1" style="font-size:11px;" x-on:click.prevent="editarFormato = true">cambiar</a>
+                                    </div>
                                 @endif
+                                <div x-show="editarFormato || {{ $tituloVoucherAnexo2 === '' ? 'true' : 'false' }}" class="row g-2">
+                                    @if($tituloVoucherAnexo2 === '' && ($anexo2Transcripcion !== '' || $comprobante))
+                                        <div class="col-12">
+                                            <div class="alert alert-warning py-1 px-2 mb-0 small" style="color:#000;">
+                                                <i class="ti ti-alert-triangle"></i> No reconocí el formato del voucher: elige el banco y la modalidad.
+                                            </div>
+                                        </div>
+                                    @endif
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold mb-1">Banco del voucher *</label>
+                                        <select class="form-select form-select-sm @error('anexo2Banco') is-invalid @enderror"
+                                                wire:model.live="anexo2Banco">
+                                            <option value="">— Selecciona el banco —</option>
+                                            @foreach($bancosVoucher as $clave => $nombre)
+                                                <option value="{{ $clave }}">{{ $nombre }}</option>
+                                            @endforeach
+                                        </select>
+                                        @error('anexo2Banco') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold mb-1">Modalidad de la operación *</label>
+                                        <select class="form-select form-select-sm @error('anexo2Modalidad') is-invalid @enderror"
+                                                wire:model.live="anexo2Modalidad" @disabled($anexo2Banco === '')>
+                                            <option value="">— Selecciona la modalidad —</option>
+                                            @foreach($modalidadesAnexo2 as $mod)
+                                                <option value="{{ $mod }}">{{ $modalidadesVoucher[$mod] ?? $mod }}</option>
+                                            @endforeach
+                                        </select>
+                                        @error('anexo2Modalidad') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                        @if($anexo2Banco === '')
+                                            <div class="form-text" style="font-size:10px;">Elige primero el banco: cada uno tiene sus modalidades.</div>
+                                        @endif
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -947,8 +992,15 @@
                                     <input type="text" class="form-control form-control-sm"
                                            wire:model.blur="anexo2Monto" placeholder="10,000.00">
                                     @if($montoDesembolsoAnexo2 !== null)
+                                        {{-- 18/09: el cotejo con el desembolso se ve ANTES de generar. --}}
                                         <div class="form-text" style="font-size:10px;">
-                                            Debe coincidir con el desembolso: S/ {{ number_format($montoDesembolsoAnexo2, 2) }}
+                                            @if(($chequeosAnexo2['monto'] ?? null) === true)
+                                                <span class="text-success"><i class="ti ti-check"></i> Coincide con el desembolso: S/ {{ number_format($montoDesembolsoAnexo2, 2) }}</span>
+                                            @elseif(($chequeosAnexo2['monto'] ?? null) === false)
+                                                <span class="text-danger"><i class="ti ti-alert-triangle"></i> No coincide con el desembolso: S/ {{ number_format($montoDesembolsoAnexo2, 2) }}</span>
+                                            @else
+                                                Debe coincidir con el desembolso: S/ {{ number_format($montoDesembolsoAnexo2, 2) }}
+                                            @endif
                                         </div>
                                     @endif
                                     @error('anexo2Monto') <span class="title-modules small">{{ $message }}</span> @enderror
@@ -971,6 +1023,17 @@
                                             {{ $anexo2Dudas }}
                                         </div>
                                     @endif
+                                    @if($anexo2Beneficiario !== '')
+                                        {{-- 18/09: el beneficiario leído contra el nombre del cliente. --}}
+                                        <div class="form-text" style="font-size:10px;">
+                                            Beneficiario leído: <b>{{ $anexo2Beneficiario }}</b>
+                                            @if(($chequeosAnexo2['beneficiario'] ?? null) === true)
+                                                <span class="text-success"><i class="ti ti-check"></i> coincide con el cliente</span>
+                                            @elseif(($chequeosAnexo2['beneficiario'] ?? null) === false)
+                                                <span class="text-danger"><i class="ti ti-alert-triangle"></i> no parece ser {{ $client->fullName() }}: verifica que el voucher sea de este cliente</span>
+                                            @endif
+                                        </div>
+                                    @endif
                                     @if(! empty($camposAnexo2))
                                         <div class="form-text" style="font-size:10px;">
                                             No debe faltar:
@@ -986,37 +1049,41 @@
                             <div class="fw-bold small text-uppercase border-bottom pb-1 mb-2">Foto del comprobante</div>
                             <div class="row g-2 align-items-start">
                                 <div class="col-md-6">
-                                    <input type="file" accept="image/*"
-                                           class="form-control form-control-sm @error('comprobante') is-invalid @enderror"
-                                           wire:model="comprobante">
-                                    @error('comprobante') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                                    <div class="form-text" style="font-size:10px;">
-                                        Imagen del voucher (máx. 4 MB). Sin foto, la constancia sale solo con la transcripción.
-                                    </div>
-                                    <div wire:loading wire:target="comprobante" class="small text-muted">
-                                        <i class="ti ti-loader"></i> Subiendo imagen…
-                                    </div>
-                                    @if(config('services.anthropic.habilitado'))
-                                        {{-- Lectura automática (15/09): rellena la transcripción para
-                                             que el operador la CONFIRME. Nunca genera sola. --}}
-                                        <button type="button" class="btn btn-sm btn-outline-dark mt-2"
-                                                wire:click="leerVoucher"
-                                                wire:loading.attr="disabled" wire:target="leerVoucher,comprobante"
-                                                @disabled(! $comprobante)>
-                                            <span wire:loading.remove wire:target="leerVoucher">
-                                                <i class="ti ti-scan"></i> Leer voucher
-                                            </span>
-                                            <span wire:loading wire:target="leerVoucher">
-                                                <i class="ti ti-loader"></i> Leyendo…
-                                            </span>
-                                        </button>
-                                        <div class="form-text" style="font-size:10px;">
-                                            @if($comprobante)
-                                                Rellena la transcripción a partir de la foto. Revísala siempre antes de generar.
+                                    {{-- 18/09: zona única para pegar (Ctrl+V), arrastrar o elegir
+                                         la foto. Cualquiera de los tres dispara el mismo upload y,
+                                         con la lectura configurada, el voucher se lee solo. --}}
+                                    <div class="border rounded p-3 text-center small @error('comprobante') border-danger @enderror"
+                                         style="border-style: dashed !important; cursor: pointer; background: #fafafa;"
+                                         x-on:click="$refs.archivoVoucher.click()"
+                                         x-on:dragover.prevent="$el.style.background = '#eef6ff'"
+                                         x-on:dragleave.prevent="$el.style.background = '#fafafa'"
+                                         x-on:drop.prevent="$el.style.background = '#fafafa'; subir(($event.dataTransfer.files || [])[0])">
+                                        <input type="file" accept="image/*" class="d-none" x-ref="archivoVoucher" wire:model="comprobante">
+                                        <div wire:loading.remove wire:target="comprobante,leerVoucher">
+                                            <i class="ti ti-clipboard-plus"></i>
+                                            <b>Pega la imagen (Ctrl+V)</b>, arrástrala aquí o haz clic para elegirla.
+                                            <div class="text-muted" style="font-size:10px;">Máx. 4 MB. Sin foto, la constancia sale solo con la transcripción.</div>
+                                        </div>
+                                        <div wire:loading wire:target="comprobante,leerVoucher" class="text-muted">
+                                            <i class="ti ti-loader"></i>
+                                            @if(config('services.anthropic.habilitado'))
+                                                Subiendo y leyendo el voucher…
                                             @else
-                                                Sube la foto y podrás leerla automáticamente.
+                                                Subiendo imagen…
                                             @endif
                                         </div>
+                                    </div>
+                                    @error('comprobante') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                                    @if(config('services.anthropic.habilitado') && $comprobante)
+                                        {{-- La lectura ya corrió al subir; esto es para repetirla
+                                             (p. ej. tras corregir el formato a mano). Nunca genera sola. --}}
+                                        <button type="button" class="btn btn-sm btn-outline-dark mt-2"
+                                                wire:click="leerVoucher"
+                                                wire:loading.attr="disabled" wire:target="leerVoucher,comprobante">
+                                            <span wire:loading.remove wire:target="leerVoucher"><i class="ti ti-scan"></i> Leer de nuevo</span>
+                                            <span wire:loading wire:target="leerVoucher"><i class="ti ti-loader"></i> Leyendo…</span>
+                                        </button>
+                                        <div class="form-text" style="font-size:10px;">La transcripción se rellenó sola. Revísala siempre antes de generar.</div>
                                     @endif
                                 </div>
                                 @if($comprobante && ! $errors->has('comprobante'))

@@ -41,8 +41,13 @@ class LectorVoucherClaude implements LectorDeVoucher
                 'monto' => ['type' => 'string'],
                 'beneficiario' => ['type' => 'string'],
                 'dudas' => ['type' => 'string'],
+                // 18/09: el banco y la modalidad los identifica la propia lectura
+                // (claves del catálogo BancosVoucher, o vacío si no coincide con
+                // ninguno). Antes el operador los elegía a mano antes de leer.
+                'banco' => ['type' => 'string'],
+                'modalidad' => ['type' => 'string'],
             ],
-            'required' => ['transcripcion', 'monto', 'beneficiario', 'dudas'],
+            'required' => ['transcripcion', 'monto', 'beneficiario', 'dudas', 'banco', 'modalidad'],
             'additionalProperties' => false,
         ],
     ];
@@ -84,7 +89,16 @@ class LectorVoucherClaude implements LectorDeVoucher
             }
         }
 
-        return $this->interpretar($respuesta, $modelo);
+        $leido = $this->interpretar($respuesta, $modelo);
+
+        // Si el operador ya fijó el formato, manda la pista; lo identificado
+        // solo cuenta cuando no había pista.
+        if (BancosVoucher::esComboValido($banco, $modalidad)) {
+            $leido['banco'] = $banco;
+            $leido['modalidad'] = $modalidad;
+        }
+
+        return $leido;
     }
 
     /** El detalle técnico va al log; al operador le llega algo accionable. */
@@ -162,23 +176,40 @@ class LectorVoucherClaude implements LectorDeVoucher
     /** Las instrucciones llevan el formato esperado y, si existe, su checklist. */
     private function instrucciones(string $banco, string $modalidad): string
     {
-        $formato = BancosVoucher::esComboValido($banco, $modalidad)
-            ? BancosVoucher::titulo($banco, $modalidad)
-            : 'comprobante bancario';
+        $conPista = BancosVoucher::esComboValido($banco, $modalidad);
 
-        $checklist = '';
-        if (BancosVoucher::esComboValido($banco, $modalidad)) {
+        if ($conPista) {
+            // El operador fijó el formato: se le dice cuál es y qué no debe faltar.
+            $bloqueFormato = 'FORMATO ESPERADO: '.BancosVoucher::titulo($banco, $modalidad);
             $obligatorios = collect(BancosVoucher::campos($banco, $modalidad))
                 ->filter(fn (array $c) => $c[1])->map(fn (array $c) => $c[0])->implode(', ');
             if ($obligatorios !== '') {
-                $checklist = "\nEn este formato no debería faltar: {$obligatorios}.";
+                $bloqueFormato .= "\nEn este formato no debería faltar: {$obligatorios}.";
             }
+            $bloqueFormato .= "\nEn \"banco\" y \"modalidad\" devuelve exactamente: {$banco} y {$modalidad}.";
+        } else {
+            // 18/09: sin pista, la lectura identifica el formato entre los del
+            // catálogo (los 15 maestros del área). Se le dan las claves con su
+            // descripción y se le pide la clave, no el nombre.
+            // Cada opción lleva los datos que la caracterizan (los del catálogo):
+            // es lo que separa variantes parecidas del mismo banco, como la
+            // transferencia común de la interbancaria del BCP (probado 18/09:
+            // sin esto, 13 de 15 maestros exactos; el banco, 15 de 15).
+            $opciones = collect(BancosVoucher::combosDisponibles())
+                ->flatMap(fn (array $mods, string $bco) => collect($mods)->map(function (string $mod) use ($bco) {
+                    $datos = collect(BancosVoucher::campos($bco, $mod))->map(fn (array $c) => $c[0])->implode(', ');
+
+                    return "  - banco \"{$bco}\", modalidad \"{$mod}\": ".BancosVoucher::titulo($bco, $mod)." (muestra: {$datos})";
+                }))->implode("\n");
+            $bloqueFormato = "FORMATO: identifícalo tú. Estas son las opciones que existen (clave de banco, clave de modalidad, descripción y qué datos muestra ese tipo de comprobante):\n"
+                .$opciones
+                ."\nEn \"banco\" y \"modalidad\" devuelve las CLAVES de la opción que mejor coincida con el comprobante: primero el banco (logo o nombre) y luego la modalidad por el tipo de operación y los datos que aparecen. Si no coincide con ninguna, deja las dos vacías.";
         }
 
         return <<<TXT
         Transcribes comprobantes bancarios para una constancia legal que se FIRMA, así que cada dígito importa más que la velocidad.
 
-        FORMATO ESPERADO: {$formato}{$checklist}
+        {$bloqueFormato}
 
         Devuelve:
 
@@ -186,6 +217,7 @@ class LectorVoucherClaude implements LectorDeVoucher
         2. "monto": el importe de la operación tal como aparece, sin el símbolo de moneda (ej. "10,000.00"). Si el voucher distingue importe abonado del pagado, devuelve el ABONADO: el ITF no es parte del desembolso.
         3. "beneficiario": a quién se le envió o depositó, tal como figura.
         4. "dudas": los dígitos o palabras que NO distingues con certeza y por qué (ej. "el 3er dígito de la operación podría ser 6 u 8: el punteado está borroso"). Vacío si no tienes ninguna. Sé honesto: declarar la duda es más útil que adivinar, porque quien revisa mira justo ahí.
+        5. "banco" y "modalidad": las claves indicadas arriba.
 
         ESTILO DE LA TRANSCRIPCIÓN — así se hace en el área (ejemplo con datos inventados):
 
@@ -221,11 +253,22 @@ class LectorVoucherClaude implements LectorDeVoucher
 
         $limpio = fn (string $clave) => trim((string) ($json[$clave] ?? ''));
 
+        // Solo se acepta un combo del catálogo; cualquier otra cosa es "no
+        // identificado" y el operador lo elige a mano.
+        $banco = mb_strtolower($limpio('banco'));
+        $modalidad = mb_strtolower($limpio('modalidad'));
+        if (! BancosVoucher::esComboValido($banco, $modalidad)) {
+            $banco = '';
+            $modalidad = '';
+        }
+
         return [
             'transcripcion' => rtrim($limpio('transcripcion'), ' .;'),
             'monto' => $limpio('monto'),
             'beneficiario' => $limpio('beneficiario'),
             'dudas' => $limpio('dudas'),
+            'banco' => $banco,
+            'modalidad' => $modalidad,
             'modelo' => $modelo,
         ];
     }
