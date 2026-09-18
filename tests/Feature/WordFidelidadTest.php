@@ -234,6 +234,33 @@ class WordFidelidadTest extends TestCase
     }
 
     /**
+     * 18/09 (Antony: "la dirección siempre abajo como pie de página"): en Word
+     * el pie del Anexo 1 va en el PIE DE LA SECCIÓN, que Word repite al fondo
+     * de cada hoja. Antes iba en el flujo y quedaba pegado al final del
+     * cronograma, a media hoja. Son DOS piezas y solo sirven juntas: la regla
+     * `mso-footer: f1` en el @page y el div con mso-element:footer e id="f1".
+     */
+    public function test_el_pie_del_anexo_1_es_el_pie_de_seccion_de_word(): void
+    {
+        $doc = $this->doc('anexo1');
+
+        $this->assertMatchesRegularExpression('/@page WordSection1 \{[^}]*mso-footer:\s*f1/', $doc, 'falta la referencia al pie');
+        $this->assertMatchesRegularExpression('/<div[^>]*mso-element:\s*footer[^>]*id="f1"/', $doc, 'falta el div del pie');
+        $this->assertStringContainsString('DPTO. SEC. B UCV 72', $doc, 'el pie debe llevar la dirección');
+        // Y no se posiciona a mano: Word convierte eso en un marco flotante
+        // que se posa encima del cronograma.
+        $this->assertDoesNotMatchRegularExpression('/\.ax-pie\s*\{[^}]*position\s*:\s*(absolute|fixed)/', $doc);
+    }
+
+    /** El contrato y el Anexo 2 no llevan pie: no deben pedirle uno a Word. */
+    public function test_solo_el_anexo_1_declara_pie_en_word(): void
+    {
+        foreach (['contrato', 'anexo2'] as $tipo) {
+            $this->assertStringNotContainsString('mso-footer', $this->doc($tipo), "{$tipo} no lleva pie");
+        }
+    }
+
+    /**
      * 18/09: el Anexo 2 dejó de llevar pie (las formas de pago). Antes el div
      * iba arriba del body y en Word —que no posiciona— se imprimía ENCIMA del
      * título; ahora no existe en ninguno de los tres medios.
@@ -244,24 +271,6 @@ class WordFidelidadTest extends TestCase
 
         $this->assertStringNotContainsString('pie-formas', $doc);
         $this->assertStringNotContainsString(config('documentos.formas_pago'), $doc);
-    }
-
-    /**
-     * Word convierte position:absolute en un marco flotante que se posa
-     * encima del contenido. En el Anexo 1 eso tapaba el cronograma.
-     */
-    public function test_el_anexo_1_no_posiciona_el_pie_en_word(): void
-    {
-        $doc = $this->doc('anexo1');
-
-        $this->assertMatchesRegularExpression(
-            '/\.ax-pie\s*\{[^}]*margin-top/', $doc,
-            'en Word el pie del Anexo 1 va en el flujo'
-        );
-        $this->assertDoesNotMatchRegularExpression(
-            '/\.ax-pie\s*\{[^}]*position\s*:\s*(absolute|fixed)/', $doc,
-            'Word no soporta ese posicionamiento: el pie termina encima del cronograma'
-        );
     }
 
     /** Anexo 1 con cronograma largo: el que se reparte en varias columnas. */

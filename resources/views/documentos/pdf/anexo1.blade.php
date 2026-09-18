@@ -14,7 +14,9 @@
 <head>
     <meta charset="utf-8">
     <title>Anexo 1 — Crédito #{{ $d['credito']['numero'] }}</title>
-    @include('documentos.pdf.estilos')
+    {{-- pieWord: el Anexo 1 es el único documento con pie, y en Word necesita
+         el pie DE LA SECCIÓN para quedar siempre al fondo de la hoja. --}}
+    @include('documentos.pdf.estilos', ['pieWord' => true])
     <style>
         /* Estilos SOLO del Anexo 1 (el maestro Excel); no tocan contratos. */
         .ax-banner { background: #7f7f7f; color: #fff; text-align: center; font-weight: bold;
@@ -54,12 +56,12 @@
            (dentro de los márgenes), así que la raya mide lo que las tablas. */
         .ax-pie { position: fixed; bottom: -0.4cm; left: 0; right: 0; }
         @elseif(($medio ?? 'pdf') === 'word')
-        /* Word (16/09): NO ignora el position:absolute — lo convierte en un
-           marco flotante que se posa encima del cronograma. Aquí va en el
-           flujo, al final, con aire arriba; sin min-height al body (en Word
-           estira el documento a dos hojas). La raya mide el ancho de texto,
-           que es el de las tablas. */
-        .ax-pie { margin-top: 14pt; }
+        /* Word (18/09, Antony: "la dirección siempre abajo como pie de
+           página"): va en el PIE DE LA SECCIÓN, que Word repite al fondo de
+           cada hoja. En el flujo quedaba pegado al final del cronograma, a
+           media hoja. El position:fixed/absolute no sirve aquí: Word lo
+           convierte en un marco flotante que se posa sobre el contenido. */
+        .ax-pie { margin: 0; }
         @else
         /* Previa: el pie va al fondo de la HOJA, absoluto dentro de .ax-hoja
            (el contenido, SIN el padding que hace de margen). Antes se
@@ -319,10 +321,19 @@
     @endif
 
     {{-- Pie fijo del maestro del área legal --}}
-    <div class="ax-pie">
-        DPTO. SEC. B UCV 72 LOTE 51 ZONA E AAHH HUAYCAN, DISTRITO DE ATE<br>
-        CELULAR: 982333689/981352577
-    </div>
+    @php
+        $pieTexto = 'DPTO. SEC. B UCV 72 LOTE 51 ZONA E AAHH HUAYCAN, DISTRITO DE ATE<br>CELULAR: 982333689/981352577';
+    @endphp
+    @if (($medio ?? 'pdf') === 'word')
+        {{-- Pie de la SECCIÓN de Word: es lo único que lo deja siempre al fondo
+             de la hoja. Va al cierre del body, con mso-element:footer, y la
+             regla @page WordSection1 lo referencia por su id. --}}
+        <div class="msoFooterHost" style="mso-element: footer;" id="f1">
+            <div class="ax-pie">{!! $pieTexto !!}</div>
+        </div>
+    @else
+        <div class="ax-pie">{!! $pieTexto !!}</div>
+    @endif
     </div>{{-- /.ax-hoja --}}
 </body>
 </html>

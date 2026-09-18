@@ -12,6 +12,10 @@
     @php
         $medio = $medio ?? 'pdf';
         $compacto = $compacto ?? false;
+        // 18/09: lo pasa el Anexo 1, el único documento con pie. En Word, un
+        // pie DE VERDAD (el de la sección) es lo único que lo deja siempre al
+        // fondo de la hoja; en el flujo quedaba pegado al cronograma.
+        $pieWord = $pieWord ?? false;
         // 05/09: el contrato debe caber en 5 hojas (regla del área legal) y
         // las cláusulas van "pegadas" como en las maestras en papel.
         $margenes = $compacto ? '1.8cm 1.8cm 1.5cm 2.4cm' : '2.2cm 2cm 2.4cm 2.8cm';
@@ -49,8 +53,13 @@
        configurada en Carta la palabra se ignora y cambia la caja, y el
        Anexo 1 —calibrado para entrar justo en UNA hoja— se parte en dos.
        595.28 x 841.89 pt es el mismo A4 que lleva el MediaBox del PDF. */
-    @page WordSection1 { size: 595.28pt 841.89pt; margin: {{ $margenes }}; }
+    @page WordSection1 { size: 595.28pt 841.89pt; margin: {{ $margenes }};@if($pieWord) mso-footer: f1; mso-footer-margin: 1.2cm;@endif }
     div.WordSection1 { page: WordSection1; }
+    @if($pieWord)
+    /* El pie de la sección: Word lo repite al fondo de CADA hoja. El div que
+       lo alimenta va al final del body con mso-element:footer e id="f1". */
+    div.msoFooterHost { mso-element: footer; }
+    @endif
     @endif
     /* OJO dompdf (verificado empíricamente con 3.1.6): el marco de página
        hereda el estilo del elemento raíz, así que NI el selector universal *
