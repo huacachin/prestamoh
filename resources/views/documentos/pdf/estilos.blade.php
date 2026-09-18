@@ -16,6 +16,13 @@
         // pie DE VERDAD (el de la sección) es lo único que lo deja siempre al
         // fondo de la hoja; en el flujo quedaba pegado al cronograma.
         $pieWord = $pieWord ?? false;
+        // A cuánto del borde del papel arranca el pie de la sección. El
+        // margen inferior de Word tiene que ser MAYOR que esto más el alto
+        // del pie, o el pie se monta sobre el contenido: en Word el pie vive
+        // dentro del margen, no como en el PDF, donde va anclado y no
+        // reserva alto. Por eso el documento puede mandar su propio margen
+        // para Word ($margenesWord).
+        $pieMargen = $pieMargen ?? '1.2cm';
         // 05/09: el contrato debe caber en 5 hojas (regla del área legal) y
         // las cláusulas van "pegadas" como en las maestras en papel.
         // El documento puede traer los suyos (el Anexo 1 los aprieta desde el
@@ -55,7 +62,7 @@
        configurada en Carta la palabra se ignora y cambia la caja, y el
        Anexo 1 —calibrado para entrar justo en UNA hoja— se parte en dos.
        595.28 x 841.89 pt es el mismo A4 que lleva el MediaBox del PDF. */
-    @page WordSection1 { size: 595.28pt 841.89pt; margin: {{ $margenes }};@if($pieWord) mso-footer: f1; mso-footer-margin: 1.2cm;@endif }
+    @page WordSection1 { size: 595.28pt 841.89pt; margin: {{ $margenesWord ?? $margenes }};@if($pieWord) mso-footer: f1; mso-footer-margin: {{ $pieMargen }};@endif }
     div.WordSection1 { page: WordSection1; }
     @if($pieWord)
     /* El pie de la sección: Word lo repite al fondo de CADA hoja. El div que

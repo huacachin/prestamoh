@@ -51,6 +51,16 @@
     // resto solo — antes estaban copiados a mano en media plantilla.
     $margenAx = ['sup' => 1.2, 'der' => 1.2, 'inf' => 1.2, 'izq' => 1.5];
     $margenesAx = "{$margenAx['sup']}cm {$margenAx['der']}cm {$margenAx['inf']}cm {$margenAx['izq']}cm";
+    // El pie (la raya, la dirección y el celular) mide ~1,4 cm. En el PDF va
+    // anclado abajo y no consume alto del flujo, así que cabe de sobra en el
+    // margen de 1,2. En WORD el pie vive DENTRO del margen inferior: si ese
+    // margen no es más alto que el pie, Word lo dibuja encima del cronograma
+    // —que es lo que pasó al bajar los márgenes, porque el margen inferior y
+    // el del pie quedaron los dos en 1,2 cm—. Word lleva el suyo.
+    $piePieCm = 0.5;                                   // del papel al pie
+    $pieAltoCm = 1.4;                                  // raya + aire + 2 renglones
+    $margenInfWord = max($margenAx['inf'], $piePieCm + $pieAltoCm);
+    $margenesAxWord = "{$margenAx['sup']}cm {$margenAx['der']}cm {$margenInfWord}cm {$margenAx['izq']}cm";
     $anchoUtilCm = round(21 - $margenAx['izq'] - $margenAx['der'], 2);
     $altoUtilCm = round(29.7 - $margenAx['sup'] - $margenAx['inf'], 2);
     // Cuerpo de las tablas de datos. El resto de tamaños sale de éste, para
@@ -196,7 +206,12 @@
     <title>Anexo 1 — Crédito #{{ $d['credito']['numero'] }}</title>
     {{-- pieWord: el Anexo 1 es el único documento con pie, y en Word necesita
          el pie DE LA SECCIÓN para quedar siempre al fondo de la hoja. --}}
-    @include('documentos.pdf.estilos', ['pieWord' => true, 'margenes' => $margenesAx])
+    @include('documentos.pdf.estilos', [
+        'pieWord' => true,
+        'margenes' => $margenesAx,
+        'margenesWord' => $margenesAxWord,
+        'pieMargen' => $piePieCm.'cm',
+    ])
     <style>
         /* Estilos SOLO del Anexo 1 (el maestro Excel); no tocan contratos. */
         .ax-banner { background: #7f7f7f; color: #fff; text-align: center; font-weight: bold;

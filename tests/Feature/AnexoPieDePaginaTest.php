@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Services\Documentos\RenderDocumento;
 use Tests\TestCase;
 
 /**
@@ -20,6 +21,57 @@ class AnexoPieDePaginaTest extends TestCase
     private function plantilla(string $nombre): string
     {
         return file_get_contents(resource_path("views/documentos/pdf/{$nombre}.blade.php"));
+    }
+
+    /**
+     * En WORD el pie vive DENTRO del margen inferior de la página, así que
+     * ese margen tiene que ser más alto que el pie; si no, Word lo dibuja
+     * encima del cronograma. El 18/09, al bajar los márgenes del anexo, los
+     * dos números quedaron en 1,2 cm y el pie se montó sobre el contenido —y
+     * ningún test lo vio, porque todos miraban el PDF, donde el pie va
+     * anclado y no reserva alto.
+     */
+    public function test_en_word_el_margen_inferior_del_anexo_1_deja_sitio_al_pie(): void
+    {
+        $html = RenderDocumento::html(
+            $this->snapshotMinimo(), 'anexo1', 'word'
+        );
+
+        preg_match('/@page\s+WordSection1\s*\{[^}]*margin:\s*[\d.]+cm\s+[\d.]+cm\s+([\d.]+)cm/', $html, $m);
+        $this->assertNotEmpty($m, 'no se pudo leer el margen inferior de la sección de Word');
+        preg_match('/mso-footer-margin:\s*([\d.]+)cm/', $html, $f);
+        $this->assertNotEmpty($f, 'el Anexo 1 debe declarar mso-footer-margin');
+
+        $inferior = (float) $m[1];
+        $delPapelAlPie = (float) $f[1];
+        // El pie mide ~1,4 cm: raya, aire y dos renglones.
+        $this->assertGreaterThanOrEqual($delPapelAlPie + 1.4, $inferior,
+            "el margen inferior de Word ({$inferior} cm) no deja sitio al pie, "
+            ."que arranca a {$delPapelAlPie} cm del papel: Word lo dibujará sobre el cronograma");
+    }
+
+    /** Lo mínimo que la plantilla necesita para renderizar. */
+    private function snapshotMinimo(): array
+    {
+        $cliente = [
+            'nombre' => 'CLIENTE DE PRUEBA', 'documento_tipo' => 'DNI', 'documento' => '12345678',
+            'domicilio' => 'CALLE FALSA 123', 'celular' => '999888777', 'correo' => 'c@example.com',
+        ];
+
+        return [
+            'marca' => 'HUACACHIN', 'fecha' => '18/09/2026',
+            'cliente' => $cliente, 'clientes' => [$cliente],
+            'vehiculo' => null, 'vehiculos' => [],
+            'credito' => [
+                'numero' => 1, 'correlativo' => '2026-001', 'moneda' => 'SOLES', 'monto' => 10000.0,
+                'frecuencia' => 'SEMANAL', 'cuotas' => 4, 'cuota' => 500.0, 'plazo' => '4 semanas',
+                'fecha_inicio' => '18/09/2026', 'tim' => '5%',
+            ],
+            'cronograma' => [
+                'filas' => array_map(fn ($i) => ['n' => $i, 'fecha' => '25/09/2026', 'monto' => 500.0], range(1, 4)),
+                'total' => 2000.0,
+            ],
+        ];
     }
 
     public function test_el_anexo_1_ya_no_lleva_pie_de_pagina(): void
