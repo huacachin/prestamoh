@@ -234,19 +234,16 @@ class WordFidelidadTest extends TestCase
     }
 
     /**
-     * El pie del Anexo 2 (las cuentas a las que paga el cliente) es CONTENIDO
-     * del maestro. En PDF va anclado al fondo; en Word no hay anclaje, así
-     * que tiene que ir al final del flujo y NO encima del título.
+     * 18/09: el Anexo 2 dejó de llevar pie (las formas de pago). Antes el div
+     * iba arriba del body y en Word —que no posiciona— se imprimía ENCIMA del
+     * título; ahora no existe en ninguno de los tres medios.
      */
-    public function test_el_pie_del_anexo_2_va_al_final_y_no_sobre_el_titulo(): void
+    public function test_el_anexo_2_ya_no_lleva_pie(): void
     {
         $doc = $this->doc('anexo2');
 
-        $pie = strpos($doc, 'pie-formas">');
-        $titulo = strpos($doc, 'anexo-titulo');
-
-        $this->assertNotFalse($pie, 'el Anexo 2 debe conservar el pie con las formas de pago');
-        $this->assertTrue($pie > $titulo, 'en Word el pie debe ir DESPUÉS del título, no encima');
+        $this->assertStringNotContainsString('pie-formas', $doc);
+        $this->assertStringNotContainsString(config('documentos.formas_pago'), $doc);
     }
 
     /**

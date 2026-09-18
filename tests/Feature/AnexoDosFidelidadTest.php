@@ -20,7 +20,6 @@ use Tests\TestCase;
  *   CONSTANCIA DE ENTREGA DEL MONTO DE LA OBLIGACIÓN PRINCIPAL
  *   [imagen del voucher]
  *   DETALLES: <transcripción literal del voucher>.
- *   (al pie) Formas de pago: ...
  *
  * Lo ÚNICO que añadimos a propósito es el párrafo que identifica cliente,
  * crédito, banco y fecha: el maestro va grapado al contrato, el nuestro se
@@ -81,8 +80,7 @@ class AnexoDosFidelidadTest extends TestCase
         // la lectura automática, el documento sale parejo.
         $this->assertStringContainsString(mb_strtoupper(self::TRANSCRIPCION), $html);
         $this->assertStringNotContainsString('MONTO TRANSFERIDO:', $html);
-        // Pie del maestro: las formas de pago.
-        $this->assertStringContainsString(config('documentos.formas_pago'), $html);
+
     }
 
     public function test_no_tiene_lo_que_el_maestro_no_trae(): void
@@ -91,6 +89,9 @@ class AnexoDosFidelidadTest extends TestCase
 
         // Membrete y subtítulo de modalidad: fuera.
         $this->assertStringNotContainsString(config('documentos.marca'), $html);
+        // Y el pie con las formas de pago (18/09): son las cuentas a las que
+        // PAGA el cliente, y esto constata un desembolso ya entregado.
+        $this->assertStringNotContainsString(config('documentos.formas_pago'), $html);
         $this->assertStringNotContainsString('TRANSFERENCIA — BCP', $html);
         // Y el pie ya no numera páginas.
         $this->assertStringNotContainsString('Página <span', $html);

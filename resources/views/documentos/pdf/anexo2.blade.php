@@ -1,7 +1,7 @@
 {{-- ANEXO 2 — Constancia de entrega del monto de la obligación principal.
      CALCADO del maestro del área legal (15/09, las 15 plantillas .docx): título,
      imagen del voucher ARRIBA, línea DETALLES con la transcripción LITERAL del
-     voucher —no etiquetas nuestras— y al pie las formas de pago. Se conserva
+     voucher —no etiquetas nuestras— subrayada entera (18/09).
      Sin párrafo de identificación: el área lo pidió fuera el 15/09 tras
      revisarlo, así que el documento queda exactamente como su maestro. El
      vínculo con el crédito vive en la base y en el nombre del archivo, no en
@@ -15,15 +15,10 @@
     @include('documentos.pdf.estilos')
 </head>
 <body>
-    {{-- Pie del maestro: las cuentas a las que paga el cliente (config).
-         En PDF va aquí arriba porque es position:fixed y dompdf lo ancla al
-         fondo de la hoja. En Word (16/09) no hay posicionamiento: si se deja
-         en este punto se imprime ENCIMA del título, así que se emite al
-         cierre del body, que es donde cae de forma natural. --}}
-    @if ($medio === 'pdf')
-        <div class="pie-pagina pie-formas">{{ config('documentos.formas_pago') }}</div>
-    @endif
-
+    {{-- SIN pie (18/09, pedido de Antony), como el contrato y el Anexo 1.
+         Hasta hoy cerraba con las cuentas a las que PAGA el cliente, y esto
+         constata un desembolso ya entregado: no venía al caso. El texto sigue
+         en la configuración, de donde lo toman otras vistas. --}}
     <div class="anexo-titulo">ANEXO 2</div>
     <div class="anexo-subtitulo">CONSTANCIA DE ENTREGA DEL MONTO DE LA OBLIGACIÓN PRINCIPAL</div>
 
@@ -92,10 +87,5 @@
         <p class="detalles"><strong>DETALLES:</strong> {{ $detalles }}.</p>
     @endif
 
-    {{-- El pie del maestro al cierre, para Word (y para la previa, donde
-         tampoco hay pie fijo). Ver la nota de arriba. --}}
-    @if ($medio !== 'pdf')
-        <div class="pie-pagina pie-formas">{{ config('documentos.formas_pago') }}</div>
-    @endif
 </body>
 </html>

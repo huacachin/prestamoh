@@ -2,7 +2,7 @@
      de payments/ticket-pdf): nada de flexbox — solo bloques y tablas.
      Recibe $medio del render ('pdf' | 'previa' | 'word'):
        pdf    → márgenes en @page (impresión: izquierdo más ancho para el
-                legajo) y pie con numeración de páginas.
+                legajo). Ningún documento lleva pie desde el 18/09.
        previa → el margen va como padding del body (iframe en el navegador).
        word   → sin margen aquí: lo fija el wrapper de DocResponse (@page A4).
      Y $compacto (solo lo pasa el CONTRATO): interlineado sencillo, márgenes
@@ -40,18 +40,6 @@
     @endif
     @if($medio === 'pdf')
     @page { margin: {{ $margenes }}; }
-    .pie-pagina {
-        position: fixed;
-        bottom: -1.2cm;
-        left: 0;
-        right: 0;
-        text-align: right;
-        font-size: 6pt;
-        color: #444;
-    }
-    .pie-pagina .num:after { content: counter(page); }
-    /* Anexo 2: el pie del maestro son las formas de pago, centradas. */
-    .pie-pagina.pie-formas { text-align: center; font-size: 6.5pt; color: #000; }
     @elseif($medio === 'word')
     /* Word (16/09): la caja de página se declara AQUÍ y no en DocResponse,
        porque aquí es donde se sabe si el documento es el CONTRATO (márgenes
@@ -63,15 +51,6 @@
        595.28 x 841.89 pt es el mismo A4 que lleva el MediaBox del PDF. */
     @page WordSection1 { size: 595.28pt 841.89pt; margin: {{ $margenes }}; }
     div.WordSection1 { page: WordSection1; }
-    /* Word no posiciona con fixed/absolute: el pie va en el flujo. Las vistas
-       lo emiten al final del body cuando el medio no es PDF. */
-    .pie-pagina { margin-top: 16pt; text-align: right; font-size: 6pt; color: #444; }
-    .pie-pagina.pie-formas { margin-top: 16pt; text-align: center; font-size: 6.5pt; color: #000; }
-    /* counter(page) no existe en Word: mejor sin número que imprimir la
-       palabra "counter(page)" en el papel. */
-    .pie-pagina .num:after { content: ""; }
-    @else
-    .pie-pagina { display: none; }
     @endif
     /* OJO dompdf (verificado empíricamente con 3.1.6): el marco de página
        hereda el estilo del elemento raíz, así que NI el selector universal *
