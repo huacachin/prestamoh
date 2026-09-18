@@ -163,6 +163,13 @@ class CashGeneral3 extends Component
                 continue;
             }
 
+            // El TOTAL del día en la columna INGRESO es ACUMULADO (saldo de
+            // ayer + ingresos de hoy), no el ingreso suelto: mismo defecto y
+            // mismo arreglo que Caja General 2 (18/09). El legacy imprime ahí
+            // $totalImporte0 y por eso en su reporte TOTAL − EGRESO = SALDO en
+            // todos los renglones; con $sumIngresoDay solo cuadraba el día 1.
+            $ingresoAcumulado = $balanceAcumulado;
+
             $saldoDia = $balanceAcumulado - $sumEgresoDay;
             $balanceAcumulado = $saldoDia;
             $sumIngresoTotal += $sumIngresoDay;
@@ -172,7 +179,7 @@ class CashGeneral3 extends Component
                 'date' => $date,
                 'date_label' => Carbon::parse($date)->translatedFormat('l d \\d\\e F Y'),
                 'items' => $items,
-                'total_ingreso' => $sumIngresoDay,
+                'total_ingreso' => $ingresoAcumulado,
                 'total_egreso' => $sumEgresoDay,
                 'saldo' => $saldoDia,
             ];
