@@ -5,6 +5,7 @@ namespace App\Services\Documentos\Ocr;
 use Anthropic\Client;
 use App\Support\Documentos\BancosVoucher;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -89,16 +90,10 @@ class LectorVoucherClaude implements LectorDeVoucher
             }
         }
 
-        $leido = $this->interpretar($respuesta, $modelo);
-
-        // Si el operador ya fijó el formato, manda la pista; lo identificado
-        // solo cuenta cuando no había pista.
-        if (BancosVoucher::esComboValido($banco, $modalidad)) {
-            $leido['banco'] = $banco;
-            $leido['modalidad'] = $modalidad;
-        }
-
-        return $leido;
+        // Se devuelve SIEMPRE lo que la lectura vio, aunque haya pista: quien
+        // decide si la pista manda es el componente, y así puede avisar cuando
+        // el voucher no parece del banco que el operador eligió.
+        return $this->interpretar($respuesta, $modelo);
     }
 
     /** El detalle técnico va al log; al operador le llega algo accionable. */
@@ -111,6 +106,30 @@ class LectorVoucherClaude implements LectorDeVoucher
         ]);
 
         return new VoucherIlegible(MensajeDeFallo::para($e), 0, $e);
+    }
+
+    /** "Yape ", "TRANSFERENCIA_DATOS", "«deposito»" → "yape", "transferencia_datos", "deposito". */
+    private static function clave(string $texto): string
+    {
+        $t = mb_strtolower(trim(Str::ascii($texto)));
+
+        return trim(preg_replace('/[^a-z0-9_]+/', '_', $t) ?? '', '_');
+    }
+
+    /** Clave del banco: acepta la clave o el nombre visible ("BCP", "Caja Huancayo", "Interbank"). */
+    private static function claveBanco(string $texto): string
+    {
+        $k = self::clave($texto);
+        if (array_key_exists($k, BancosVoucher::BANCOS)) {
+            return $k;
+        }
+        foreach (BancosVoucher::BANCOS as $clave => $nombre) {
+            if ($k === self::clave($nombre)) {
+                return $clave;
+            }
+        }
+
+        return $k;
     }
 
     /** @param  list<array<string, mixed>>  $mensajes */
@@ -186,7 +205,12 @@ class LectorVoucherClaude implements LectorDeVoucher
             if ($obligatorios !== '') {
                 $bloqueFormato .= "\nEn este formato no debería faltar: {$obligatorios}.";
             }
-            $bloqueFormato .= "\nEn \"banco\" y \"modalidad\" devuelve exactamente: {$banco} y {$modalidad}.";
+            // No se le pide eco ciego: si el comprobante claramente no es de ese
+            // banco o tipo, que lo diga; el componente avisa al operador.
+            $bloqueFormato .= "\nEn \"banco\" y \"modalidad\" devuelve las claves \"{$banco}\" y \"{$modalidad}\" si el comprobante coincide con ese formato."
+                ."\nSi CLARAMENTE es de otro banco o de otro tipo de operación, devuelve en su lugar las claves de lo que ves"
+                .' (bancos: '.collect(BancosVoucher::BANCOS)->map(fn ($n, $k) => "\"{$k}\" = {$n}")->implode(', ')
+                .'; modalidades: '.collect(BancosVoucher::MODALIDADES)->map(fn ($n, $k) => "\"{$k}\" = {$n}")->implode(', ').').';
         } else {
             // 18/09: sin pista, la lectura identifica el formato entre los del
             // catálogo (los 15 maestros del área). Se le dan las claves con su
@@ -253,13 +277,17 @@ class LectorVoucherClaude implements LectorDeVoucher
 
         $limpio = fn (string $clave) => trim((string) ($json[$clave] ?? ''));
 
-        // Solo se acepta un combo del catálogo; cualquier otra cosa es "no
-        // identificado" y el operador lo elige a mano.
-        $banco = mb_strtolower($limpio('banco'));
-        $modalidad = mb_strtolower($limpio('modalidad'));
+        // Claves del catálogo, tolerando que el modelo devuelva "BCP", "Caja
+        // Huancayo" o "yape " en vez de la clave exacta. Si el banco es válido
+        // pero la modalidad no, se conserva el banco: al operador le queda
+        // elegir solo la modalidad. Cualquier otra cosa es "no identificado".
+        $banco = self::claveBanco($limpio('banco'));
+        $modalidad = self::clave($limpio('modalidad'));
         if (! BancosVoucher::esComboValido($banco, $modalidad)) {
-            $banco = '';
             $modalidad = '';
+            if (! array_key_exists($banco, BancosVoucher::BANCOS)) {
+                $banco = '';
+            }
         }
 
         return [

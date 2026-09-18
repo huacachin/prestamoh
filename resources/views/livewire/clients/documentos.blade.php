@@ -874,24 +874,53 @@
          x-data="{
              modal: null,
              abierto: false,
+             aviso: '',
              subir(archivo) {
-                 if (! archivo || ! (archivo.type || '').startsWith('image/')) { return; }
-                 // this.$wire: dentro de un método de x-data las "magics" de
-                 // Alpine se leen del propio objeto, no del ámbito léxico.
-                 this.$wire.upload('comprobante', archivo);
+                 // Sin créditos activos el modal no tiene formulario (ni
+                 // input): pegar ahí no debe hacer nada, y menos pagar una
+                 // lectura que no se va a usar.
+                 if (! archivo || ! this.$refs.archivoVoucher) { return; }
+                 if (! (archivo.type || '').startsWith('image/')) {
+                     this.aviso = 'Eso no es una imagen: pega o arrastra la foto del voucher (JPG o PNG).';
+                     return;
+                 }
+                 this.aviso = '';
+                 // Se encamina por el <input wire:model> —y no por
+                 // $wire.upload()— para que Livewire emita sus eventos de
+                 // carga: si no, pegar o arrastrar no encendía
+                 // 'Subiendo y leyendo…' ni deshabilitaba los botones, y la
+                 // pantalla se quedaba muda los segundos que tarda la lectura.
+                 const dt = new DataTransfer();
+                 dt.items.add(archivo);
+                 const input = this.$refs.archivoVoucher;
+                 input.files = dt.files;
+                 input.dispatchEvent(new Event('change', { bubbles: true }));
              },
              pegar(evento) {
                  if (! this.abierto) { return; }
-                 const item = [...((evento.clipboardData || {}).items || [])].find(i => (i.type || '').startsWith('image/'));
-                 if (item) { evento.preventDefault(); this.subir(item.getAsFile()); }
+                 const datos = evento.clipboardData || {};
+                 const item = [...(datos.items || [])].find(i => (i.type || '').startsWith('image/'));
+                 if (! item) { return; }   // sin imagen no se toca nada: pegar TEXTO sigue igual
+                 // Si el foco está en un campo de texto y el portapapeles
+                 // TAMBIÉN trae texto, gana el texto: el operador está
+                 // escribiendo, no subiendo una foto.
+                 const enTexto = ['INPUT', 'TEXTAREA'].includes((document.activeElement || {}).tagName);
+                 if (enTexto && (datos.getData ? datos.getData('text/plain') : '')) { return; }
+                 evento.preventDefault();
+                 this.subir(item.getAsFile());
              },
          }"
          x-init="modal = bootstrap.Modal.getOrCreateInstance($el);
                  $el.addEventListener('shown.bs.modal', () => abierto = true);
-                 $el.addEventListener('hidden.bs.modal', () => abierto = false);"
+                 $el.addEventListener('hidden.bs.modal', () => { abierto = false; aviso = ''; });"
          x-on:anexo2-modal-open.window="modal.show()"
          x-on:anexo2-modal-close.window="modal.hide()"
-         x-on:paste.window="pegar($event)">
+         x-on:paste.window="pegar($event)"
+         {{-- Soltar la foto FUERA del recuadro hacía que el navegador abriera
+              la imagen y se perdiera el formulario a medio llenar. Mientras el
+              modal está abierto, el navegador no se queda con lo soltado. --}}
+         x-on:dragover.window="if (abierto) $event.preventDefault()"
+         x-on:drop.window="if (abierto) $event.preventDefault()">
         <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header py-2">
@@ -1058,7 +1087,11 @@
                                          x-on:dragover.prevent="$el.style.background = '#eef6ff'"
                                          x-on:dragleave.prevent="$el.style.background = '#fafafa'"
                                          x-on:drop.prevent="$el.style.background = '#fafafa'; subir(($event.dataTransfer.files || [])[0])">
-                                        <input type="file" accept="image/*" class="d-none" x-ref="archivoVoucher" wire:model="comprobante">
+                                        {{-- click.stop: el input está DENTRO de la zona, cuyo click
+                                             abre el selector. Sin esto, el click programático sobre el
+                                             input burbujea a la zona y vuelve a abrirlo. --}}
+                                        <input type="file" accept="image/*" class="d-none" x-ref="archivoVoucher"
+                                               x-on:click.stop wire:model="comprobante">
                                         <div wire:loading.remove wire:target="comprobante,leerVoucher">
                                             <i class="ti ti-clipboard-plus"></i>
                                             <b>Pega la imagen (Ctrl+V)</b>, arrástrala aquí o haz clic para elegirla.
@@ -1073,6 +1106,7 @@
                                             @endif
                                         </div>
                                     </div>
+                                    <div x-show="aviso" x-text="aviso" class="text-danger small mt-1" style="display:none;"></div>
                                     @error('comprobante') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                                     @if(config('services.anthropic.habilitado') && $comprobante)
                                         {{-- La lectura ya corrió al subir; esto es para repetirla

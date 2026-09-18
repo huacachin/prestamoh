@@ -54,28 +54,30 @@ class LecturaVoucherTest extends TestCase
         ]);
     }
 
+    /** Pista (banco/modalidad) que el componente le pasó al lector en la última lectura. */
+    public string $pistaRecibida = '';
+
     /** Doble del lector: devuelve lo pactado sin llamar a ninguna API. */
     private function lectorDevuelve(array $datos): void
     {
-        $this->app->bind(LectorDeVoucher::class, fn () => new class($datos) implements LectorDeVoucher
+        $this->pistaRecibida = '';
+        $this->app->bind(LectorDeVoucher::class, fn () => new class($datos, $this) implements LectorDeVoucher
         {
-            public function __construct(private array $datos) {}
+            public function __construct(private array $datos, private LecturaVoucherTest $test) {}
 
             public function leer(string $rutaAbsoluta, string $banco, string $modalidad): array
             {
-                // Como el lector real: la pista del operador manda; si no la
-                // hay, vale lo que "identificó" (lo pactado en $datos).
-                $leido = array_merge([
+                // Se anota la pista recibida: es la mitad del contrato nuevo
+                // (la pista del operador va; lo que el modelo adivinó, no) y
+                // sin observarla el test sería tautológico.
+                $this->test->pistaRecibida = "{$banco}/{$modalidad}";
+
+                // Como el lector real: devuelve lo que "vio" (lo pactado en
+                // $datos) reciba o no pista; quien decide es el componente.
+                return array_merge([
                     'transcripcion' => '', 'monto' => '', 'beneficiario' => '',
                     'dudas' => '', 'banco' => '', 'modalidad' => '', 'modelo' => 'modelo-de-prueba',
                 ], $this->datos);
-                if ($banco !== '' && $modalidad !== '') {
-                    $leido['banco'] = $banco;
-                    $leido['modalidad'] = $modalidad;
-                }
-                $leido['pista_recibida'] = "{$banco}/{$modalidad}";
-
-                return $leido;
             }
         });
     }
@@ -240,7 +242,7 @@ class LecturaVoucherTest extends TestCase
             ->assertSee('Leer de nuevo');        // y la lectura se puede repetir
     }
 
-    /** Si el operador ya fijó el formato, esa pista manda sobre lo que "identifique" la lectura. */
+    /** Si el operador ya fijó el formato, esa pista VIAJA al lector y manda sobre lo que él identifique. */
     public function test_la_pista_del_operador_manda(): void
     {
         $this->mundo();
@@ -254,6 +256,9 @@ class LecturaVoucherTest extends TestCase
             ->set('comprobante', UploadedFile::fake()->image('v.jpg'))
             ->assertSet('anexo2Banco', 'bcp')
             ->assertSet('anexo2Modalidad', 'transferencia');
+
+        // Y la pista llegó de verdad al lector (si no, el test no probaría nada).
+        $this->assertSame('bcp/transferencia', $this->pistaRecibida);
     }
 
     /** Si la lectura no reconoce el formato, lo dice y deja los selectores a la vista. */
@@ -324,10 +329,11 @@ class LecturaVoucherTest extends TestCase
         ]);
 
         // Dos créditos activos: se precarga el más reciente (antes no se precargaba ninguno).
+        // El MONTO, en cambio, arranca vacío a propósito: ver el test de abajo.
         Livewire::test(Documentos::class, ['id' => $this->client->id])
             ->call('abrirModalAnexo2')
             ->assertSet('anexo2CreditoId', $nuevo->id)
-            ->assertSet('anexo2Monto', '8000.00');
+            ->assertSet('anexo2Monto', '');
 
         // El nuevo ya tiene su Anexo 2: se precarga el que falta.
         DocumentoCliente::create([
@@ -337,5 +343,160 @@ class LecturaVoucherTest extends TestCase
         Livewire::test(Documentos::class, ['id' => $this->client->id])
             ->call('abrirModalAnexo2')
             ->assertSet('anexo2CreditoId', $viejo->id);
+    }
+
+    // ─── Revisión adversarial del 18/09: tres cosas que se corrigieron ─────
+
+    /**
+     * Lo que la lectura adivinó NO se le reenvía como pista al releer: si
+     * no, "Leer de nuevo" jamás podría corregir una identificación errada.
+     */
+    public function test_releer_puede_corregir_lo_que_la_lectura_adivino(): void
+    {
+        $this->mundo();
+        config(['services.anthropic.habilitado' => true, 'services.anthropic.key' => 'sk-ant-falsa']);
+
+        $this->lectorDevuelve(['transcripcion' => 'X', 'banco' => 'bcp', 'modalidad' => 'transferencia']);
+        $c = Livewire::test(Documentos::class, ['id' => $this->client->id])
+            ->set('anexo2CreditoId', $this->credit->id)
+            ->set('comprobante', UploadedFile::fake()->image('v.jpg'))
+            ->assertSet('anexo2Banco', 'bcp')->assertSet('anexo2Modalidad', 'transferencia');
+        $this->assertSame('/', $this->pistaRecibida, 'la primera lectura va sin pista');
+
+        // Segunda lectura: el lector ahora ve otra cosa, y la corrección entra.
+        $this->lectorDevuelve(['transcripcion' => 'X', 'banco' => 'bcp', 'modalidad' => 'transferencia_interbancaria']);
+        $c->call('leerVoucher')
+            ->assertSet('anexo2Modalidad', 'transferencia_interbancaria');
+        // Tampoco se le reenvió como pista lo que él mismo había adivinado.
+        $this->assertSame('/', $this->pistaRecibida);
+    }
+
+    /** Lo que eligió el OPERADOR sí manda al releer, y si la lectura ve otra cosa, avisa. */
+    public function test_la_eleccion_del_operador_sobrevive_a_la_relectura_y_avisa_si_no_cuadra(): void
+    {
+        $this->mundo();
+        config(['services.anthropic.habilitado' => true, 'services.anthropic.key' => 'sk-ant-falsa']);
+        $this->lectorDevuelve(['transcripcion' => 'X', 'banco' => 'bbva', 'modalidad' => 'deposito']);
+
+        Livewire::test(Documentos::class, ['id' => $this->client->id])
+            ->set('anexo2CreditoId', $this->credit->id)
+            ->set('anexo2Banco', 'bcp')
+            ->set('anexo2Modalidad', 'yape')
+            ->set('comprobante', UploadedFile::fake()->image('v.jpg'))
+            ->assertSet('anexo2Banco', 'bcp')->assertSet('anexo2Modalidad', 'yape')
+            // dispatch('x', ['message' => ...]) llega al callback como $params[0].
+            ->assertDispatched('successAlert', fn ($name, $params) => str_contains($params[0]['message'] ?? ($params['message'] ?? ''), 'OJO: el voucher parece DEPÓSITO EN VENTANILLA — BBVA'))
+            ->call('leerVoucher')
+            ->assertSet('anexo2Banco', 'bcp')->assertSet('anexo2Modalidad', 'yape');
+    }
+
+    /** Si reconoce el banco pero no la modalidad, deja el banco puesto: solo falta elegir la modalidad. */
+    public function test_si_reconoce_el_banco_pero_no_la_modalidad_deja_el_banco(): void
+    {
+        $this->mundo();
+        config(['services.anthropic.habilitado' => true, 'services.anthropic.key' => 'sk-ant-falsa']);
+        $this->lectorDevuelve(['transcripcion' => 'X', 'banco' => 'interbank', 'modalidad' => '']);
+
+        Livewire::test(Documentos::class, ['id' => $this->client->id])
+            ->set('anexo2CreditoId', $this->credit->id)
+            ->set('comprobante', UploadedFile::fake()->image('v.jpg'))
+            ->assertSet('anexo2Banco', 'interbank')
+            ->assertSet('anexo2Modalidad', '')
+            ->assertDispatched('successAlert', fn ($name, $params) => str_contains($params[0]['message'] ?? ($params['message'] ?? ''), 'reconocí el banco pero no la modalidad'))
+            ->assertSee('Selecciona la modalidad');
+    }
+
+    /**
+     * EL COTEJO DEL MONTO TIENE QUE VERIFICAR ALGO.
+     *
+     * El campo venía precargado con el importe del crédito, así que al abrir
+     * el modal el cotejo comparaba el importe consigo mismo y pintaba
+     * "Coincide con el desembolso" en verde sin que ningún voucher lo dijera.
+     * En modo manual eso invitaba a firmar una constancia con un monto que el
+     * voucher no decía. Ahora el campo arranca vacío: solo lo llena la lectura
+     * o el operador.
+     */
+    public function test_sin_monto_leido_no_hay_check_verde(): void
+    {
+        $this->mundo();
+
+        $c = Livewire::test(Documentos::class, ['id' => $this->client->id])->call('abrirModalAnexo2');
+
+        $this->assertSame('', $c->get('anexo2Monto'), 'el monto no se precarga con el importe');
+        $this->assertNull($c->viewData('chequeosAnexo2')['monto'], 'sin monto no hay cotejo');
+        $c->assertDontSee('Coincide con el desembolso')
+            ->assertSee('Debe coincidir con el desembolso');
+
+        // Y si la lectura no logra leer el monto, sigue sin haber verde.
+        config(['services.anthropic.habilitado' => true, 'services.anthropic.key' => 'sk-ant-falsa']);
+        $this->lectorDevuelve(['transcripcion' => 'X', 'monto' => '', 'banco' => 'bcp', 'modalidad' => 'yape']);
+        $c = Livewire::test(Documentos::class, ['id' => $this->client->id])
+            ->set('anexo2CreditoId', $this->credit->id)
+            ->set('comprobante', UploadedFile::fake()->image('v.jpg'));
+        $this->assertNull($c->viewData('chequeosAnexo2')['monto']);
+        $c->assertDontSee('Coincide con el desembolso');
+    }
+
+    /** Cambiar de crédito limpia el monto: el anterior era de otro crédito. */
+    public function test_cambiar_de_credito_limpia_el_monto(): void
+    {
+        $this->mundo();
+        $otro = Credit::create([
+            'client_id' => $this->client->id, 'fecha_prestamo' => '2026-09-01',
+            'importe' => 9000, 'cuotas' => 9, 'tipo_planilla' => 1, 'interes' => 10,
+            'situacion' => 'Activo', 'estado' => 1, 'headquarter_id' => $this->client->headquarter_id,
+        ]);
+
+        Livewire::test(Documentos::class, ['id' => $this->client->id])
+            ->set('anexo2CreditoId', $this->credit->id)
+            ->set('anexo2Monto', '5,000.00')
+            ->set('anexo2CreditoId', $otro->id)
+            ->assertSet('anexo2Monto', '');
+    }
+
+    /**
+     * El cotejo del beneficiario es un AVISO, y un aviso que se equivoca
+     * seguido enseña a ignorarlo. Los bancos abrevian, invierten el orden y
+     * enmascaran; y con deudor empresa el desembolso va a otra cuenta.
+     */
+    public function test_el_cotejo_del_beneficiario_tolera_como_escriben_los_bancos(): void
+    {
+        $this->mundo();
+        config(['services.anthropic.habilitado' => true, 'services.anthropic.key' => 'sk-ant-falsa']);
+
+        $cuadra = function (string $beneficiario) {
+            $this->lectorDevuelve(['transcripcion' => 'X', 'beneficiario' => $beneficiario, 'banco' => 'bcp', 'modalidad' => 'yape']);
+
+            return Livewire::test(Documentos::class, ['id' => $this->client->id])
+                ->set('anexo2CreditoId', $this->credit->id)
+                ->set('comprobante', UploadedFile::fake()->image('v.jpg'))
+                ->viewData('chequeosAnexo2')['beneficiario'];
+        };
+
+        // La clienta es QUISPE MAMANI ROSA.
+        $this->assertTrue($cuadra('Quispe Mamani Rosa'), 'igual');
+        $this->assertTrue($cuadra('Rosa Quispe M.'), 'orden invertido y apellido abreviado');
+        $this->assertTrue($cuadra('QUISPE MAMANI ROS***'), 'nombre enmascarado');
+        $this->assertFalse($cuadra('Carlos Huaman Flores'), 'otra persona');
+
+        // Deudor empresa: el desembolso va a la cuenta del gerente o de un
+        // tercero, así que no se coteja el nombre (sería rojo siempre).
+        $this->client->update(['tipo_documento' => 'RUC']);
+        $this->assertNull($cuadra('TRANSPORTES ROSA S.A.C.'));
+    }
+
+    /** El aviso del monto usa el mismo parser que la validación: "5.000,00" y "5,000.00" cuadran igual. */
+    public function test_el_cotejo_del_monto_parsea_como_la_validacion(): void
+    {
+        $this->mundo();
+        config(['services.anthropic.habilitado' => true, 'services.anthropic.key' => 'sk-ant-falsa']);
+
+        foreach (['5,000.00', '5.000,00', 'S/ 5000', '-5,000.00'] as $monto) {
+            $this->lectorDevuelve(['transcripcion' => 'X', 'monto' => $monto, 'banco' => 'bcp', 'modalidad' => 'yape']);
+            $c = Livewire::test(Documentos::class, ['id' => $this->client->id])
+                ->set('anexo2CreditoId', $this->credit->id)
+                ->set('comprobante', UploadedFile::fake()->image('v.jpg'));
+            $this->assertTrue($c->viewData('chequeosAnexo2')['monto'], "'{$monto}' es el desembolso de 5000");
+        }
     }
 }

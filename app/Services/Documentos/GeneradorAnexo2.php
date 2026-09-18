@@ -208,7 +208,7 @@ class GeneradorAnexo2
      * últimos 2 dígitos tras el último . o ,) y devolver el valor absoluto.
      * Devuelve null si no hay ningún número.
      */
-    private static function parsearMonto(string $valor): ?float
+    public static function parsearMonto(string $valor): ?float
     {
         // El monto es el último grupo numérico (dígitos con . , intercalados).
         if (! preg_match_all('/\d[\d.,]*/u', $valor, $m) || $m[0] === []) {
