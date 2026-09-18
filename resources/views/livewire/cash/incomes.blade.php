@@ -95,6 +95,11 @@
                                class="btn btn-sm btn-success">
                                 <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
                             </a>
+                            {{-- 18/09 (Antony): dos botones explícitos para recorrer la tabla,
+                                 que tiene su propio scroll (max-height 70vh). Antes era uno
+                                 flotante que alternaba y caía sobre el menú lateral. --}}
+                            <x-scroll-bottom-btn scrollable="#incomesTable" dir="down" />
+                            <x-scroll-bottom-btn scrollable="#incomesTable" dir="up" />
                         </div>
                     </form>
 
@@ -238,17 +243,10 @@
                         </table>
                         </div>{{-- /#incomesTable --}}
 
-                        {{-- Botón flotante toggle para scroll dentro de la tabla (1er clic baja, 2do sube) --}}
-                        <div class="incomes-fab">
-                            <button type="button"
-                                    class="btn btn-sm btn-primary rounded-circle shadow"
-                                    data-scroll-sel="#incomesTable"
-                                    data-scroll-cont="1"
-                                    title="Ir al final">
-                                <i class="ti ti-chevron-down"></i>
-                            </button>
-                        </div>
-                    </div>{{-- /position-relative --}}
+                        {{-- 18/09: el botón flotante se movió a la barra de filtros, junto a
+                             Excel: en left:24px caía ENCIMA del menú lateral (17rem) y
+                             nadie lo veía. Ahora son dos, y están donde en las otras 22
+                             pantallas. --}}{{-- /position-relative --}}
 
                     <style>
                         /* Colores legacy (ingresos.php): cabecera azul/gris, filas blanco/#F2F2EC */
@@ -299,31 +297,7 @@
                             bottom: 0;
                             z-index: 3;
                         }
-                        .incomes-fab {
-                            position: fixed;
-                            bottom: 24px;
-                            left: 24px;
-                            display: flex;
-                            flex-direction: column;
-                            gap: 8px;
-                            z-index: 1050;
-                        }
-                        .incomes-fab .btn {
-                            width: 42px;
-                            height: 42px;
-                            padding: 0;
-                            display: inline-flex;
-                            align-items: center;
-                            justify-content: center;
-                            opacity: 0.9;
-                            transition: opacity .15s ease, transform .15s ease;
-                        }
-                        .incomes-fab .btn:hover {
-                            opacity: 1;
-                            transform: scale(1.08);
-                        }
-                        .incomes-fab .ti { font-size: 18px; }
-                    </style>
+                                            </style>
 
                     {{-- Cards Mobile --}}
                     <div class="d-md-none">

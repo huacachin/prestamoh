@@ -37,6 +37,20 @@ document.addEventListener('click', function (e) {
     var el = document.querySelector(sel);
     if (!el) { console.warn('[scroll-bottom-btn] no se encontró', sel); return; }
 
+    // 18/09: con data-scroll-dir el botón hace SIEMPRE lo mismo (bajar o
+    // subir) y su ícono no cambia. Sin el atributo sigue el toggle de antes.
+    var fija = btn.getAttribute('data-scroll-dir');
+    if (fija === 'up' || fija === 'down') {
+        if (isCont) {
+            el.scrollTop = fija === 'up' ? 0 : el.scrollHeight;
+        } else if (fija === 'up') {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+            el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+        return;
+    }
+
     // Toggle: si estás arriba → baja; si estás cerca del fondo → vuelve arriba.
     var icon = btn.querySelector('i');
     var setDir = function (dir) {
