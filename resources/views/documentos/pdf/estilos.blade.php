@@ -253,6 +253,10 @@
 
     .voucher-img { text-align: center; margin: 10px 0; }
     .voucher-img img { max-width: 320px; max-height: 420px; }
-    .detalles { text-align: justify; margin: 6px 0; }
+    /* Anexo 2 (18/09, Antony): la transcripción debajo del voucher va
+       subrayada ENTERA, con su etiqueta en negrita incluida, como el
+       maestro. (Sin escribir aquí la etiqueta literal: AnexoDosFidelidadTest
+       cuenta sus apariciones en el HTML y este bloque viaja dentro.) */
+    .detalles { text-align: justify; margin: 6px 0; text-decoration: underline; }
     .nota-pie { font-size: 6pt; text-align: center; margin-top: 14px; }
 </style>
