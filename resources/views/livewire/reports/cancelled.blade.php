@@ -226,29 +226,12 @@
                                     <td colspan="10"></td>
                                 </tr>
 
-                                {{-- Distribucion --}}
-                                <tr>
-                                    <th colspan="3" class="text-center" style="background-color:#2874A6; color:white;">Detalle</th>
-                                    <th class="text-center" style="background-color:#2874A6; color:white;">%</th>
-                                    <th class="text-center" style="background-color:#2874A6; color:white;">S/</th>
-                                    <th class="text-center" style="background-color:#2874A6; color:white;">%</th>
-                                    <th class="text-center" style="background-color:#2874A6; color:white;">S/</th>
-                                    <th class="text-center" style="background-color:#2874A6; color:white;">%</th>
-                                    <th class="text-center" style="background-color:#2874A6; color:white;">S/</th>
-                                    <th colspan="13"></th>
-                                </tr>
-                                @foreach($distribution as $dist)
-                                    <tr>
-                                        <td colspan="3">{{ $dist['label'] }}</td>
-                                        <td class="text-center">{{ $dist['pct1'] }}</td>
-                                        <td class="text-end">{{ number_format($dist['val1'], 2) }}</td>
-                                        <td class="text-center">{{ $dist['pct2'] }}</td>
-                                        <td class="text-end">{{ number_format($dist['val2'], 2) }}</td>
-                                        <td class="text-center">{{ $dist['pct3'] }}</td>
-                                        <td class="text-end">{{ number_format($dist['val3'], 2) }}</td>
-                                        <td colspan="13"></td>
-                                    </tr>
-                                @endforeach
+                                {{-- 18/09 (pedido de Antony): fuera el cuadro "Detalle / % / S/"
+                                     de distribución que colgaba debajo del Total General. Mismo
+                                     criterio que en /reports/cash-statistics el 05/09: se retira
+                                     de la PANTALLA y el cálculo se queda en el componente, porque
+                                     el Excel homologado al legacy (exportCancelled) consume
+                                     `distribution` y ahí sí tiene que seguir saliendo. --}}
                             </tbody>
                         </table>
                     </div>
