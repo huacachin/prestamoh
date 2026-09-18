@@ -116,13 +116,32 @@ class Anexo1UnaHojaTest extends TestCase
         return round($max, 1);
     }
 
+    /**
+     * Hasta dónde PUEDE llegar el contenido, leído de la propia plantilla.
+     *
+     * No se fija a mano: la plantilla declara su caja de página en
+     * `@page { margin: sup der inf izq }` y de ahí sale el borde. Así, si
+     * alguien cambia los márgenes del anexo, el test sigue midiendo contra
+     * los de verdad en vez de contra un número copiado.
+     */
+    private function bordeUtil(array $snapshot): float
+    {
+        $html = RenderDocumento::html($snapshot, 'anexo1', 'pdf');
+        $this->assertMatchesRegularExpression('/@page\s*\{\s*margin:/', $html, 'la plantilla ya no declara @page');
+        preg_match('/@page\s*\{\s*margin:\s*([\d.]+)cm\s+([\d.]+)cm/', $html, $m);
+        $this->assertNotEmpty($m, 'no se pudo leer el margen derecho de la plantilla');
+
+        // A4 son 595,28 pt de ancho; 1 cm son 28,3465 pt.
+        return round(595.28 - (float) $m[2] * 28.3465, 1);
+    }
+
     /** Una hoja Y dentro del margen: las dos reglas, en una sola aserción. */
-    private function assertCabeEnLaHoja(string $pdf, string $caso): void
+    private function assertCabeEnLaHoja(string $pdf, array $snapshot, string $caso): void
     {
         $this->assertSame(1, $this->paginas($pdf), "{$caso}: debe caber en 1 hoja");
-        // A4 son 595,28 pt; el anexo deja 2 cm de margen derecho (56,7 pt).
-        $this->assertLessThanOrEqual(539.0, $this->bordeDerecho($pdf),
-            "{$caso}: el contenido se sale por la derecha del área útil");
+        $borde = $this->bordeUtil($snapshot);
+        $this->assertLessThanOrEqual($borde + 0.5, $this->bordeDerecho($pdf),
+            "{$caso}: el contenido se sale por la derecha del área útil ({$borde} pt)");
     }
 
     public function test_una_hoja_con_cronogramas_de_distinto_largo(): void
@@ -134,7 +153,7 @@ class Anexo1UnaHojaTest extends TestCase
             $doc = app(GeneradorAnexo1::class)->generar($client, $credit, $vehiculos);
             $pdf = Storage::disk('public')->get($doc->pdf_path);
 
-            $this->assertCabeEnLaHoja($pdf, "con {$cuotas} cuotas");
+            $this->assertCabeEnLaHoja($pdf, $doc->snapshot, "con {$cuotas} cuotas");
         }
     }
 
@@ -149,10 +168,9 @@ class Anexo1UnaHojaTest extends TestCase
         foreach ([1, 2, 3] as $vehiculos) {
             foreach ([4, 20, 24, 28, 36, 48, 72] as $cuotas) {
                 [$client, $credit, $vs] = $this->mundo($cuotas, $vehiculos);
-                $pdf = Storage::disk('public')->get(
-                    GeneradorAnexo1::generar($client, $credit, $vs)->pdf_path
-                );
-                $this->assertCabeEnLaHoja($pdf, "con {$vehiculos} vehículo(s) y {$cuotas} cuotas");
+                $doc = GeneradorAnexo1::generar($client, $credit, $vs);
+                $this->assertCabeEnLaHoja(Storage::disk('public')->get($doc->pdf_path),
+                    $doc->snapshot, "con {$vehiculos} vehículo(s) y {$cuotas} cuotas");
             }
         }
     }
@@ -166,7 +184,7 @@ class Anexo1UnaHojaTest extends TestCase
         $pdf = Storage::disk('public')->get($doc->pdf_path);
 
         $this->assertCount(3, $doc->snapshot['vehiculos']);
-        $this->assertCabeEnLaHoja($pdf, 'con 3 vehículos y 48 cuotas');
+        $this->assertCabeEnLaHoja($pdf, $doc->snapshot, 'con 3 vehículos y 48 cuotas');
     }
 
     /**
@@ -187,7 +205,7 @@ class Anexo1UnaHojaTest extends TestCase
                 $this->assertCount(2, $doc->snapshot['clientes'],
                     "con {$vehiculos} vehículo(s) el anexo debe llevar titular y codeudor");
                 $this->assertCabeEnLaHoja(Storage::disk('public')->get($doc->pdf_path),
-                    "con codeudor, {$vehiculos} vehículo(s) y {$cuotas} cuotas");
+                    $doc->snapshot, "con codeudor, {$vehiculos} vehículo(s) y {$cuotas} cuotas");
             }
         }
     }

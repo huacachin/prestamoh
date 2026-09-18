@@ -18,7 +18,9 @@
         $pieWord = $pieWord ?? false;
         // 05/09: el contrato debe caber en 5 hojas (regla del área legal) y
         // las cláusulas van "pegadas" como en las maestras en papel.
-        $margenes = $compacto ? '1.8cm 1.8cm 1.5cm 2.4cm' : '2.2cm 2cm 2.4cm 2.8cm';
+        // El documento puede traer los suyos (el Anexo 1 los aprieta desde el
+        // 18/09); si no, el juego del contrato o el general.
+        $margenes = $margenes ?? ($compacto ? '1.8cm 1.8cm 1.5cm 2.4cm' : '2.2cm 2cm 2.4cm 2.8cm');
         // Un solo juego de TTF en public/fonts/bookman: dompdf los lee por
         // RUTA (public_path está dentro de su chroot) y la previa del
         // navegador por URL. Así la pantalla se ve igual que el papel.

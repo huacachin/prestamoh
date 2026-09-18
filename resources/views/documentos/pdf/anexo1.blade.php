@@ -39,10 +39,25 @@
     $wSim = $varios ? 4 : 5;
     $wDeudor = $varios ? 22 : 38;
     $wMonto = 100 - $wEtiqueta - ($wDeudor * $nDeudores) - $wVehLabel - $wSim;
-    // Ancho útil de la hoja: A4 (21 cm) menos los márgenes del anexo
-    // (2,8 + 2). Lo usan el cálculo de capacidad de abajo y las medidas
-    // en centímetros que necesita Word.
-    $anchoUtilCm = 16.2;
+    // ── Caja de página y tamaño de letra del Anexo 1 ──────────────────
+    // 18/09 (Antony, viendo el PDF ya desplegado): "tiene mucho margen
+    // izquierdo y derecho, supongo que superior e inferior también, hay que
+    // bajarle bastante y la letra también es muy grande". El izquierdo queda
+    // algo mayor que el derecho por el legajo.
+    //
+    // TODO lo que sigue se deriva de estos cuatro números y del cuerpo de
+    // letra: el ancho útil, el alto útil, cuántas columnas de cronograma
+    // entran y cuántas filas caben. Tocar un margen o el cuerpo recalibra el
+    // resto solo — antes estaban copiados a mano en media plantilla.
+    $margenAx = ['sup' => 1.2, 'der' => 1.2, 'inf' => 1.2, 'izq' => 1.5];
+    $margenesAx = "{$margenAx['sup']}cm {$margenAx['der']}cm {$margenAx['inf']}cm {$margenAx['izq']}cm";
+    $anchoUtilCm = round(21 - $margenAx['izq'] - $margenAx['der'], 2);
+    $altoUtilCm = round(29.7 - $margenAx['sup'] - $margenAx['inf'], 2);
+    // Cuerpo de las tablas de datos. El resto de tamaños sale de éste, para
+    // que subirlo o bajarlo mueva el documento entero de una pieza.
+    $ptAx = 7.5;
+    $escalaAx = $ptAx / 8.5;            // contra el cuerpo original
+    $pt = fn (float $factor) => round($ptAx * $factor, 1);
     // Documentos emitidos antes del rediseño: campos nuevos con fallback.
     $plazo = $cred['plazo'] ?? ($cred['cuotas'].' cuotas');
     $tim = $cred['tim'] ?? '5%';
@@ -89,8 +104,9 @@
     // en 7 renglones con un deudor (columna de 5,9 cm) y en 13 con dos
     // (3,3 cm)—. La fórmula anterior suponía la mitad de ancho por carácter
     // y por eso creía que la cabecera medía la mitad de lo que mide.
-    $capacidad = function (float $escala) use ($clientes, $clientesExtra, $vehiculos, $wDeudor, $anchoUtilCm) {
-        $cmPorChar = 0.26 * $escala;
+    $capacidad = function (float $escala) use ($clientes, $clientesExtra, $vehiculos, $wDeudor, $anchoUtilCm, $altoUtilCm, $escalaAx) {
+        // 0,26 cm por carácter era a 8.5pt: escala con el cuerpo del anexo.
+        $cmPorChar = 0.26 * $escalaAx * $escala;
         $porLinea = fn (float $pct, float $padding) => max(6, (int) floor(($pct / 100 * $anchoUtilCm - $padding) / $cmPorChar));
         $ancho = $porLinea($wDeudor, 0.26);
         // Cada fila de la cabecera crece con el dato MÁS largo de los
@@ -114,10 +130,14 @@
             )),
             $clientesExtra
         )) : 0;
-        // Base 24: las 5 filas de la cabecera en un solo renglón. El pie va
-        // anclado abajo y no consume alto del flujo. Encoger la letra acorta
-        // cada renglón, así que un renglón de más cuesta menos de una fila.
-        return 24
+        // Base: 24 filas eran las que entraban con la caja y el cuerpo
+        // originales (25,1 cm de alto útil a 8.5pt), con las 5 filas de la
+        // cabecera en un solo renglón. Se reescala con la caja y con el
+        // cuerpo, así que apretar márgenes o bajar la letra aumenta el cupo
+        // sin tocar este número. El pie va anclado abajo y no consume alto.
+        $base = (int) round(24 * ($altoUtilCm / 25.1) / $escalaAx);
+
+        return $base
             - 4 * max(0, count($vehiculos) - 1)
             - (int) ceil($extra * $escala)
             - (int) ceil(max(0, $lineas - 5) * $escala);
@@ -134,13 +154,19 @@
         $porColumnaMax = $capacidad(7 / 8.5);
     }
     $porColumnaMax = max(10, $porColumnaMax);
-    // Máximo TRES columnas. Las celdas del cronograma van con nowrap
-    // (una fecha no se parte), así que cada columna tiene un ancho mínimo
-    // de ~4,8 cm: tres llenan 14,4 de los 16,2 cm útiles y la cuarta se
-    // imprimía FUERA del papel —con 72 y 96 cuotas el texto llegaba a
-    // 614,9 pt sobre un borde útil de 538,6—. El conteo de páginas no lo
-    // veía porque salirse a la derecha no agrega hojas (18/09).
-    $cols = min(3, max(1, (int) ceil($n / $porColumnaMax)));
+    // Cuántas columnas de cronograma entran A LO ANCHO. Sus celdas van con
+    // nowrap (una fecha no se parte), así que cada columna pide un mínimo de
+    // ~4,8 cm al cuerpo original; con la caja y el cuerpo de antes eso daba
+    // tres, y la cuarta se imprimía FUERA del papel —con 72 y 96 cuotas el
+    // texto llegaba a 614,9 pt sobre un borde útil de 538,6—. El conteo de
+    // páginas no lo veía: salirse a la derecha no agrega hojas (18/09).
+    // 5,25 cm al cuerpo original: 4,98 que pide la tabla con sus fechas sin
+    // partir, más los 0,22 de padding de la celda que la contiene. Medido
+    // sobre el render —con 4,8 el reparto a cuatro columnas se pasaba 1,1 pt
+    // del papel con 72 cuotas y dos vehículos—.
+    $anchoMinColCm = 5.25 * $escalaAx;
+    $colsMax = max(1, (int) floor($anchoUtilCm / $anchoMinColCm));
+    $cols = min($colsMax, max(1, (int) ceil($n / $porColumnaMax)));
     $porColumna = max(1, (int) ceil($n / $cols));
     $grupos = array_chunk($filas, $porColumna);
     // El apretado mira DOS cosas: cuántas filas carga la columna y cuánto
@@ -170,14 +196,14 @@
     <title>Anexo 1 — Crédito #{{ $d['credito']['numero'] }}</title>
     {{-- pieWord: el Anexo 1 es el único documento con pie, y en Word necesita
          el pie DE LA SECCIÓN para quedar siempre al fondo de la hoja. --}}
-    @include('documentos.pdf.estilos', ['pieWord' => true])
+    @include('documentos.pdf.estilos', ['pieWord' => true, 'margenes' => $margenesAx])
     <style>
         /* Estilos SOLO del Anexo 1 (el maestro Excel); no tocan contratos. */
         .ax-banner { background: #7f7f7f; color: #fff; text-align: center; font-weight: bold;
-                     font-size: 12pt; padding: 3px; border: 1px solid #000; }
-        .ax-titulo { text-align: center; font-weight: bold; font-size: 10.5pt; margin: 2px 0; }
+                     font-size: {{ $pt(12/8.5) }}pt; padding: 2px; border: 1px solid #000; }
+        .ax-titulo { text-align: center; font-weight: bold; font-size: {{ $pt(10.5/8.5) }}pt; margin: 2px 0; }
         table.ax { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
-        table.ax th, table.ax td { border: 1px solid #000; padding: 1.5px 5px; font-size: 8.5pt; line-height: 1.2; }
+        table.ax th, table.ax td { border: 1px solid #000; padding: 1.5px 4px; font-size: {{ $ptAx }}pt; line-height: 1.2; }
         /* "S/" pegado a la izquierda y monto a la derecha SIN floats (dompdf
            los rompe dentro de celdas): dos celdas con el borde interior fundido. */
         table.ax td.sim { border-right: none; width: 5%; font-weight: bold; }
@@ -191,15 +217,16 @@
         table.ax-cron td.num { text-align: center; }
         table.ax-cron td, table.ax-cron th { white-space: nowrap; line-height: 1.2; }
         /* Tramos de compactado segun filas por columna (una hoja siempre) */
-        table.ax-cron.apretado td, table.ax-cron.apretado th { font-size: 7.8pt; padding: 1px 4px; line-height: 1.1; }
-        table.ax-cron.apretado2 td, table.ax-cron.apretado2 th { font-size: 7.2pt; padding: 0.5px 3px; line-height: 1; }
-        table.ax.adicionales td, table.ax.adicionales th { font-size: 7.5pt; padding: 1px 4px; white-space: nowrap; }
+        table.ax-cron.apretado td, table.ax-cron.apretado th { font-size: {{ $pt(7.8/8.5) }}pt; padding: 1px 3px; line-height: 1.1; }
+        table.ax-cron.apretado2 td, table.ax-cron.apretado2 th { font-size: {{ $pt(7.2/8.5) }}pt; padding: 0.5px 2px; line-height: 1; }
+        table.ax.adicionales td, table.ax.adicionales th { font-size: {{ $pt(7.5/8.5) }}pt; padding: 1px 3px; white-space: nowrap; }
         /* La de deudores adicionales es la excepción: sus datos son nombres,
            direcciones y correos largos. Con nowrap la tabla se estiraba hasta
            salirse del papel por la derecha, así que aquí la rejilla es fija y
            el texto se parte. */
-        table.ax.cli-extra { table-layout: fixed; }
-        table.ax.cli-extra td, table.ax.cli-extra th { font-size: 6.8pt; padding: 0.5px 3px;
+        table.ax.cli-extra, table.ax.veh-extra { table-layout: fixed; }
+        table.ax.veh-extra td, table.ax.veh-extra th { white-space: normal; word-wrap: break-word; }
+        table.ax.cli-extra td, table.ax.cli-extra th { font-size: {{ $pt(6.8/8.5) }}pt; padding: 0.5px 2px;
                                                        white-space: normal; word-wrap: break-word; }
         table.ax-cron tr.total td { background: #1f70c1; color: #fff; font-weight: bold; border-color: #000; }
         /* Pie del maestro. SOLO en el PDF va anclado abajo (no consume alto
@@ -211,7 +238,7 @@
            entre la raya y el texto. Regla común a los tres medios; la
            posición la pone cada rama. */
         .ax-pie { border-top: 0.8pt solid #000; padding-top: 6px;
-                  text-align: center; font-weight: bold; font-size: 9pt; }
+                  text-align: center; font-weight: bold; font-size: {{ $pt(9/8.5) }}pt; }
         @if(($medio ?? 'pdf') === 'pdf')
         /* PDF: anclado abajo. left/right 0 en dompdf es el área de contenido
            (dentro de los márgenes), así que la raya mide lo que las tablas. */
@@ -228,7 +255,7 @@
            (el contenido, SIN el padding que hace de margen). Antes se
            posicionaba contra el body y left/right 0 abarcaban también el
            padding: la raya salía más ancha que las tablas — eso vio Antony. */
-        .ax-hoja { position: relative; min-height: 24.5cm; }
+        .ax-hoja { position: relative; min-height: {{ $altoUtilCm - 0.6 }}cm; }
         .ax-pie { position: absolute; bottom: 0; left: 0; right: 0; }
         @endif
         @if(($d['clientes'] ?? null) && count($d['clientes']) > 1)
@@ -246,13 +273,13 @@
            alto de las filas Y mete más caracteres por renglón, así que la
            dirección se parte en menos líneas: el bloque de datos pierde
            cerca de un tercio de su alto. */
-        table.ax td, table.ax th { font-size: 7pt; padding: 0.5px 3px; }
-        table.ax.cli-extra td, table.ax.cli-extra th { font-size: 6.2pt; }
-        .ax-banner { font-size: 10.5pt; }
-        .ax-titulo { font-size: 9.5pt; }
+        table.ax td, table.ax th { font-size: {{ $pt(7/8.5) }}pt; padding: 0.5px 2px; }
+        table.ax.cli-extra td, table.ax.cli-extra th { font-size: {{ $pt(6.2/8.5) }}pt; }
+        .ax-banner { font-size: {{ $pt(10.5/8.5) }}pt; }
+        .ax-titulo { font-size: {{ $pt(9.5/8.5) }}pt; }
         /* "Reduces todo" es todo: el cronograma también, porque en estos
            casos carga el máximo de filas por columna. */
-        table.ax-cron td, table.ax-cron th { font-size: 6.5pt; padding: 0.5px 2px; line-height: 1; }
+        table.ax-cron td, table.ax-cron th { font-size: {{ $pt(6.5/8.5) }}pt; padding: 0.5px 2px; line-height: 1; }
         @endif
         table.ax-split { width: 100%; border-collapse: collapse; }
         table.ax-split td.col { vertical-align: top; padding: 0 4px; border: 0; }
@@ -423,10 +450,12 @@
 
     {{-- ── Vehículos adicionales (2° en adelante), mismo estilo ─────────── --}}
     @if (count($vehiculos) > 1)
-        <table class="ax adicionales">
-        @if ($medio === 'word')
-            {{-- Word deduce la rejilla desde la primera fila, que aquí lleva
-                 colspan: sin <colgroup> reparte las columnas a su criterio. --}}
+        <table class="ax adicionales veh-extra">
+            {{-- Rejilla declarada. Word la deduce de la primera fila, que
+                 aquí lleva colspan, y dompdf ni siquiera lee el colgroup:
+                 por eso va además la fila sin alto. Con la rejilla libre un
+                 N° de serie —un solo token sin espacios y con nowrap—
+                 estiraba la tabla fuera del papel. --}}
             <colgroup>
                 <col style="width: 16%">
                 <col style="width: 22%">
@@ -434,7 +463,13 @@
                 <col style="width: 24%">
                 <col style="width: 16%">
             </colgroup>
-        @endif
+            @if ($medio !== 'word')
+            <tr class="rejilla">
+                <td style="width: 16%;"></td><td style="width: 22%;"></td>
+                <td style="width: 22%;"></td><td style="width: 24%;"></td>
+                <td style="width: 16%;"></td>
+            </tr>
+            @endif
             <tr><th class="azul" colspan="5">DATOS DE LOS VEHÍCULOS ADICIONALES</th></tr>
             <tr>
                 <th class="azul" style="width: 16%;">PLACA</th>
