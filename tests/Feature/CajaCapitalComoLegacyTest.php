@@ -120,6 +120,34 @@ class CajaCapitalComoLegacyTest extends TestCase
             'el settlement de una refi verdadera se netea, como en el legacy');
     }
 
+    /**
+     * El caso del 03/09/2026 (Antony): dos créditos refinanciados EN EL SISTEMA
+     * NUEVO, cada uno con solo el interés del día pagado. Con el flag puesto,
+     * Caja 1 cuenta el settlement completo (importe + interés), como el legacy:
+     * 3.000 + 150 y 500 + 25 = 3.675, no los 175 de los pagos sueltos.
+     */
+    public function test_refi_hecha_en_el_sistema_nuevo_entra_completa_en_caja(): void
+    {
+        $total = 0.0;
+        foreach ([[3000, 150], [500, 25]] as [$importe, $interes]) {
+            $credit = $this->credito([
+                'refinanciado' => 1, 'cancelado_por_refi' => 1, 'cod_rem' => 'REF',
+                'importe' => $importe, 'interes' => 5, 'cuotas' => 1,
+                'fecha_cancelacion' => '2026-08-24',
+            ]);
+            Payment::create([
+                'credit_id' => $credit->id, 'fecha' => '2026-08-24', 'tipo' => 'INTERES',
+                'documento' => 'INTERES', 'monto' => $interes, 'detalle' => 'Pago : X Interes: 1/1',
+                'user_id' => auth()->id(), 'headquarter_id' => $this->sede->id,
+            ]);
+        }
+        foreach (app(CajaDailyService::class)->ingresosPorDia(2026, 8, null, '2026-08-31')['2026-08-24'] ?? [] as $ing) {
+            $total += $ing['total'];
+        }
+
+        $this->assertSame(3675.00, round($total, 2), 'importe + interés de cada refi, como el legacy');
+    }
+
     /** Un crédito normal (sin marcas) suma sus filas CAPITAL tal cual. */
     public function test_credito_normal_no_cambia(): void
     {

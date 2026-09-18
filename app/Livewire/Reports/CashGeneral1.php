@@ -95,8 +95,6 @@ class CashGeneral1 extends Component
         $TmorAcum = 0;
         $toff = 0;
         $toff2 = 0;
-        $toffRef = 0;
-        $toffRefN = 0;
 
         $daysInMonth = Carbon::create($year, $month)->daysInMonth;
 
@@ -147,12 +145,6 @@ class CashGeneral1 extends Component
             $subMora = collect($ingresos)->sum('mora') - $subMoraAcum;
             $subEgr = collect($egresos)->sum('monto');
             $subEgrInt = collect($egresos)->sum('interes_monto');
-            // Refinanciados (cod_rem=REF): no es plata que salió de caja, es
-            // rollover de un crédito anterior. Se informa vía tooltip en el
-            // subtotal de egresos, sin alterar el número mostrado.
-            $egrRef = collect($egresos)->where('cod_rem', 'REF');
-            $subEgrRef = $egrRef->sum('monto');
-            $subEgrRefN = $egrRef->count();
 
             $days[] = [
                 'date' => $date,
@@ -167,8 +159,6 @@ class CashGeneral1 extends Component
                 'sub_mora_acum' => $subMoraAcum,
                 'sub_egresos' => $subEgr,
                 'sub_egresos_interes' => $subEgrInt,
-                'sub_egresos_ref' => $subEgrRef,
-                'sub_egresos_ref_n' => $subEgrRefN,
             ];
 
             $Tcpi += $subIng;
@@ -179,8 +169,6 @@ class CashGeneral1 extends Component
             $TmorAcum += $subMoraAcum;
             $toff += $subEgr;
             $toff2 += $subEgrInt;
-            $toffRef += $subEgrRef;
-            $toffRefN += $subEgrRefN;
         }
 
         // Comparativa contra el mes anterior (solo la usa la vista resumen)
@@ -199,8 +187,6 @@ class CashGeneral1 extends Component
             'toff' => $toff,
             'toff2' => $toff2,
             'toff1' => $Tcpi + $Texc + $Tmor4 + $TmorAcum,
-            'toffRef' => $toffRef,
-            'toffRefN' => $toffRefN,
             'prevStats' => $prevStats,
         ]);
     }

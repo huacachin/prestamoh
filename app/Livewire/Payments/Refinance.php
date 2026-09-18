@@ -256,11 +256,18 @@ class Refinance extends Component
             $interesTotalExacto = round(round($impopres * $inte / 100, 2) * $tocuota, 2);
             CuotaUniforme::aplicar($pid, $impopres, $interesTotalExacto);
 
-            // Marcar el ORIGINAL como Cancelado + REF
+            // Marcar el ORIGINAL como Cancelado + REF. Es el mismo UPDATE del
+            // legacy (pagossrefi.php:101: situacion, estado, refi='1', fechacan,
+            // cod_rem). `cancelado_por_refi` ES ese refi='1': el único flag que
+            // dispara la rama de settlement de Caja 1. Hasta el 18/09 no se
+            // ponía aquí —solo lo ponía la migración desde el legacy—, así que
+            // toda refi hecha en el sistema nuevo dejaba la cancelación fuera
+            // de caja: el 03/09 el día salía en 5.647,20 en vez de 9.147,20.
             DB::table('credits')->where('id', $codigopre)->update([
                 'situacion' => 'Cancelado',
                 'estado' => 0,
                 'refinanciado' => 1,
+                'cancelado_por_refi' => 1,
                 'cod_rem' => 'REF',
                 'fecha_cancelacion' => now()->format('Y-m-d'),
                 'updated_at' => now(),

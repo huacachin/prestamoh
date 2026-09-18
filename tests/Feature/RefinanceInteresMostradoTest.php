@@ -98,6 +98,40 @@ class RefinanceInteresMostradoTest extends TestCase
         $this->assertEqualsWithDelta($mostrado, (float) $cuota->importe_interes, 0.01);
     }
 
+    /**
+     * Refinanciar deja en el crédito ORIGINAL el mismo juego de marcas que el
+     * legacy (pagossrefi.php:101), incluido `cancelado_por_refi` = su refi='1'.
+     * Ese flag es el ÚNICO que dispara la rama de settlement de Caja 1: hasta
+     * el 18/09 solo lo ponía la migración, así que toda refi hecha aquí dejaba
+     * su cancelación fuera de caja (03/09/2026: 5.647,20 en vez de 9.147,20).
+     */
+    public function test_refinanciar_marca_el_original_como_cancelado_por_refi(): void
+    {
+        $this->actingAs($this->actor());
+        $credit = $this->credito(0);
+        DB::table('payments')->insert([
+            'credit_id' => $credit->id, 'fecha' => '2026-08-20', 'tipo' => 'INTERES',
+            'documento' => 'INTERES', 'monto' => 50, 'detalle' => 'Pago : X Interes: 1/1',
+            'user_id' => auth()->id(), 'headquarter_id' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        Livewire::test(Refinance::class, ['creditId' => $credit->id])
+            ->set('nomasesores', 'Licet')
+            ->call('refinance')
+            ->assertHasNoErrors();
+
+        $original = Credit::find($credit->id);
+        $this->assertSame('Cancelado', $original->situacion);
+        $this->assertTrue((bool) $original->refinanciado, 'refinanciado=1 como siempre');
+        $this->assertTrue($original->cancelado_por_refi, 'cancelado_por_refi=1: el refi del legacy');
+        $this->assertSame('REF', $original->cod_rem);
+
+        // El NUEVO nace de una refi (cod_rem=REF, idcan) pero NO fue cancelado por una.
+        $nuevo = Credit::where('idcan', $credit->id)->first();
+        $this->assertNotNull($nuevo);
+        $this->assertFalse($nuevo->cancelado_por_refi, 'el crédito nuevo no lleva el flag de cancelación');
+    }
+
     public function test_sin_abono_a_capital_el_valor_no_cambia(): void
     {
         // Caso mayoritario (solo se pagó el interés): el saldo sigue siendo el
