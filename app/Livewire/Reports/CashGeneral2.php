@@ -195,6 +195,21 @@ class CashGeneral2 extends Component
                 continue;
             }
 
+            // El TOTAL del día en la columna INGRESO es ACUMULADO, no el
+            // ingreso suelto: el legacy imprime ahí $totalImporte0 —el saldo
+            // del día anterior MÁS los ingresos de hoy— y por eso en su
+            // reporte se cumple TOTAL − EGRESO = SALDO en TODOS los
+            // renglones (reporte2a.php:277 imprime $totalImporte0 y :281 le
+            // resta los mismos egresos que pinta la celda de al lado,
+            // $totgdescuento = $totalImporte3 + $totalImporte7, línea 265).
+            //
+            // Nosotros publicábamos $sumIngresoDay, que se reinicia cada día,
+            // así que la resta solo cuadraba el PRIMER día del mes: de ahí en
+            // adelante faltaba exactamente el saldo del día anterior. El
+            // saldo en sí siempre estuvo bien —$balanceAcumulado sí se
+            // arrastra—, lo que no arrastraba era lo que se enseña.
+            $ingresoAcumulado = $balanceAcumulado;
+
             // Saldo acumulado del día (legacy: $tottoto2 = $totalImporte0 - egresos)
             $saldoDia = $balanceAcumulado - $sumEgresoDay;
             $balanceAcumulado = $saldoDia; // reasignar como legacy
@@ -203,7 +218,7 @@ class CashGeneral2 extends Component
                 'date' => $date,
                 'date_label' => Carbon::parse($date)->translatedFormat('l d \\d\\e F Y'),
                 'items' => $items,
-                'total_ingreso' => $sumIngresoDay,
+                'total_ingreso' => $ingresoAcumulado,
                 'total_egreso' => $sumEgresoDay,
                 'saldo' => $saldoDia,
             ];
