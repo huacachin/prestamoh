@@ -226,6 +226,41 @@ class Anexo1UnaHojaTest extends TestCase
         }
     }
 
+    /**
+     * Si los deudores no comparten tipo de documento, el número de cada uno
+     * NO puede salir bajo la etiqueta del otro: el anexo se firma ante
+     * notaría y ahí un carné de extranjería rotulado 'DNI' es un dato falso.
+     */
+    public function test_con_tipos_de_documento_distintos_cada_numero_lleva_el_suyo(): void
+    {
+        Storage::fake('public');
+        [$client, $credit, $vs] = $this->mundo(28, 1, conCodeudor: true);
+        $vs->first()->copropietarios->first()->update(['tipo_documento' => 'CE']);
+        $vs = $vs->map(fn ($v) => $v->load('copropietarios'));
+
+        $doc = GeneradorAnexo1::generar($client, $credit, $vs);
+        [$titular, $codeudor] = $doc->snapshot['clientes'];
+        $html = RenderDocumento::html($doc->snapshot, 'anexo1', 'pdf');
+
+        $this->assertSame('CE', $codeudor['documento_tipo']);
+        // Rótulo genérico y cada número con su tipo delante.
+        $this->assertStringContainsString('>Documento<', $html);
+        $this->assertStringContainsString('DNI '.$titular['documento'], $html);
+        $this->assertStringContainsString('CE '.$codeudor['documento'], $html);
+    }
+
+    /** Compartiendo tipo, el maestro rotula una sola vez y el número va solo. */
+    public function test_con_el_mismo_tipo_la_fila_se_rotula_una_vez(): void
+    {
+        Storage::fake('public');
+        [$client, $credit, $vs] = $this->mundo(28, 1, conCodeudor: true);
+
+        $html = RenderDocumento::html(GeneradorAnexo1::generar($client, $credit, $vs)->snapshot, 'anexo1', 'pdf');
+
+        $this->assertStringContainsString('>DNI<', $html);
+        $this->assertStringNotContainsString('>Documento<', $html);
+    }
+
     /** Sin codeudor nada cambia: cabecera en singular y una sola columna. */
     public function test_sin_codeudor_la_cabecera_sigue_en_singular(): void
     {

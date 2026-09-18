@@ -75,6 +75,10 @@
     // renglones: se mide con los caracteres que entran POR COLUMNA y se
     // toma el deudor con la dirección más larga, que es quien manda el
     // alto de la fila.
+    // Tipo de documento para rotular la fila: solo si TODOS lo comparten.
+    $tiposDoc = array_unique(array_map(fn (array $c) => ($c['documento_tipo'] ?? '') ?: 'DNI', $clientes));
+    $tipoDocComun = count($tiposDoc) === 1 ? reset($tiposDoc) : null;
+
     // ── Cuántas filas de cronograma caben ────────────────────────────
     // Cuánto se lleva la cabecera depende de los DATOS: una dirección larga
     // o un segundo deudor la parten en más renglones y empujan el cronograma
@@ -327,10 +331,15 @@
             <td class="valor-cent" colspan="2" style="width: {{ $wSim + $wMonto }}%;">{{ $v1['placa'] ?? '—' }}</td>
         </tr>
         <tr>
-            {{-- La etiqueta la pone el PRIMER deudor: el maestro rotula una vez. --}}
-            <td class="etiqueta">{{ $clientes[0]['documento_tipo'] ?: 'DNI' }}</td>
+            {{-- El maestro rotula una vez, con el tipo del titular. Eso vale
+                 mientras los deudores tengan el MISMO tipo de documento; si
+                 uno lleva carné de extranjería y el otro DNI, su número
+                 saldría bajo la etiqueta equivocada —en un documento que se
+                 firma ante notaría—, así que ahí se rotula genérico y cada
+                 número lleva el suyo delante. --}}
+            <td class="etiqueta">{{ $tipoDocComun ?: 'Documento' }}</td>
             @foreach ($clientes as $c)
-                <td class="cli">{{ $c['documento'] }}</td>
+                <td class="cli">{{ $tipoDocComun ? $c['documento'] : trim(($c['documento_tipo'] ?: 'DNI').' '.$c['documento']) }}</td>
             @endforeach
             <td class="etiqueta">Marca</td>
             <td class="valor-cent" colspan="2">{{ ($v1['marca'] ?? '') ?: '—' }}</td>
