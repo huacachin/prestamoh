@@ -251,6 +251,37 @@
                             </div>
                         </div>
 
+                        {{-- ── Codeudores (18/09) ──────────────────────────────────
+                             Los copropietarios de los vehículos MARCADOS salen en el
+                             documento con su propia columna (nombre, DNI, dirección,
+                             celular y correo), como el maestro del área. Se detectan
+                             solos —misma regla que el contrato— y se pueden dejar
+                             fuera con el interruptor. --}}
+                        @if($codeudoresAnexo1->isNotEmpty())
+                            <div class="mt-3">
+                                <div class="fw-bold small text-uppercase border-bottom pb-1 mb-2">
+                                    Codeudores del anexo
+                                </div>
+                                <div class="alert alert-light border py-2 small mb-2">
+                                    <i class="ti ti-users"></i>
+                                    {{ $codeudoresAnexo1->count() === 1 ? 'Copropietario' : 'Copropietarios' }} de
+                                    {{ $codeudoresAnexo1->count() === 1 ? 'un vehículo anexado' : 'los vehículos anexados' }}:
+                                    <b>{{ $codeudoresAnexo1->map(fn ($c) => $c->fullName())->implode(' · ') }}</b>
+                                    <div class="form-text" style="font-size:10px;">
+                                        El documento sale con una columna por cada uno. Si a alguno le falta el
+                                        celular o el correo, se corrige en su ficha y se vuelve a generar.
+                                    </div>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="anexoSinCodeudores"
+                                           wire:model.live="anexoSinCodeudores">
+                                    <label class="form-check-label small" for="anexoSinCodeudores">
+                                        Emitir solo con el titular (sin {{ $codeudoresAnexo1->count() === 1 ? 'el codeudor' : 'los codeudores' }})
+                                    </label>
+                                </div>
+                            </div>
+                        @endif
+
                         {{-- Vista previa (render 'previa' del snapshot congelado) --}}
                         @if($htmlPreview !== '')
                             <div class="border rounded mt-3 p-2 bg-light" style="max-height:65vh; overflow:auto;">

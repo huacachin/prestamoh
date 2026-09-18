@@ -8,6 +8,7 @@ use App\Models\CreditInstallment;
 use App\Models\User;
 use App\Models\Vehiculo;
 use App\Services\Documentos\GeneradorAnexo1;
+use App\Services\Documentos\RenderDocumento;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -17,13 +18,14 @@ class Anexo1UnaHojaTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function mundo(int $cuotas, int $vehiculos = 1): array
+    private function mundo(int $cuotas, int $vehiculos = 1, bool $conCodeudor = false): array
     {
-        $this->actingAs(User::factory()->create(['username' => 'anx-hoja-'.$cuotas.'-'.$vehiculos]));
+        $sufijo = $cuotas.'-'.$vehiculos.($conCodeudor ? '-c' : '');
+        $this->actingAs(User::factory()->create(['username' => 'anx-hoja-'.$sufijo]));
         $client = Client::create([
-            'expediente' => (string) (700 + $cuotas * 10 + $vehiculos), 'nombre' => 'Cliente De Prueba Con Nombre Largo',
+            'expediente' => (string) (700 + $cuotas * 10 + $vehiculos + ($conCodeudor ? 5000 : 0)), 'nombre' => 'Cliente De Prueba Con Nombre Largo',
             'apellido_pat' => 'Apellido', 'apellido_mat' => 'Materno',
-            'tipo_documento' => 'DNI', 'documento' => str_pad((string) (10000000 + $cuotas * 100 + $vehiculos), 8, '0', STR_PAD_LEFT), 'sexo' => 'M', 'status' => 'active',
+            'tipo_documento' => 'DNI', 'documento' => str_pad((string) (10000000 + $cuotas * 100 + $vehiculos + ($conCodeudor ? 500000 : 0)), 8, '0', STR_PAD_LEFT), 'sexo' => 'M', 'status' => 'active',
             // Peor caso REAL (16/09): con esta dirección de 6 líneas, 28 cuotas
             // se salían a una segunda hoja y la última fila pisaba el pie. El
             // fixture anterior traía una dirección corta y no lo veía.
@@ -46,10 +48,30 @@ class Anexo1UnaHojaTest extends TestCase
         $lista = collect();
         for ($v = 1; $v <= $vehiculos; $v++) {
             $lista->push(Vehiculo::create([
-                'client_id' => $client->id, 'placa' => "P{$cuotas}X{$vehiculos}X{$v}",
+                'client_id' => $client->id, 'placa' => "P{$sufijo}X{$v}",
                 'marca' => 'Mercedes Benz', 'modelo' => 'Sprinter 515',
-                'nro_serie' => "9BM3840{$cuotas}{$vehiculos}{$v}KB1234", 'valor' => 45000 + $v,
+                'nro_serie' => "9BM3840{$cuotas}{$vehiculos}{$v}KB1234".($conCodeudor ? 'C' : ''), 'valor' => 45000 + $v,
             ]));
+        }
+
+        // 18/09: el codeudor del Anexo 1 es el COPROPIETARIO de un vehículo
+        // anexado. Se le da la MISMA dirección larga que al titular: es el
+        // caso real (conviven) y el peor para el alto de la cabecera, porque
+        // con dos columnas cada dirección se parte en más renglones.
+        if ($conCodeudor && $lista->isNotEmpty()) {
+            $codeudor = Client::create([
+                'expediente' => (string) (9000 + $cuotas * 10 + $vehiculos),
+                'nombre' => 'Codeudora De Prueba Con Nombre Largo',
+                'apellido_pat' => 'Segundo', 'apellido_mat' => 'Deudor',
+                'tipo_documento' => 'DNI',
+                'documento' => str_pad((string) (20000000 + $cuotas * 100 + $vehiculos), 8, '0', STR_PAD_LEFT),
+                'sexo' => 'F', 'status' => 'active',
+                'direccion' => 'CA. LOS GERANIOS MZ. J LT. 12 ASOC. UNIÓN SANTA CRUZ DE CAJAMARQUILLA, '
+                    .'LURIGANCHO, DISTRITO DE LURIGANCHO, PROVINCIA Y DEPARTAMENTO DE LIMA',
+                'email' => 'miguelalcides.mejiavillanueva@gmail.com', 'celular1' => '953243546',
+            ]);
+            $lista->first()->copropietarios()->attach($codeudor->id);
+            $lista = $lista->map(fn ($v) => $v->load('copropietarios'));
         }
 
         return [$client, $credit, $lista];
@@ -104,5 +126,108 @@ class Anexo1UnaHojaTest extends TestCase
 
         $this->assertCount(3, $doc->snapshot['vehiculos']);
         $this->assertSame(1, $this->paginas($pdf), 'con 3 vehículos y 48 cuotas también debe caber en 1 hoja');
+    }
+
+    /**
+     * CON CODEUDOR (18/09) la cabecera se lleva una columna más: las
+     * direcciones se parten en más renglones y el cronograma arranca más
+     * abajo. Es el caso que puede empujar el anexo a una segunda hoja, así
+     * que se barre igual que el del titular solo.
+     */
+    public function test_una_hoja_con_codeudor(): void
+    {
+        Storage::fake('public');
+
+        foreach ([1, 2, 3] as $vehiculos) {
+            foreach ([4, 20, 24, 28, 36, 48, 72] as $cuotas) {
+                [$client, $credit, $vs] = $this->mundo($cuotas, $vehiculos, conCodeudor: true);
+                $doc = GeneradorAnexo1::generar($client, $credit, $vs);
+
+                $this->assertCount(2, $doc->snapshot['clientes'],
+                    "con {$vehiculos} vehículo(s) el anexo debe llevar titular y codeudor");
+                $this->assertSame(1, $this->paginas(Storage::disk('public')->get($doc->pdf_path)),
+                    "con codeudor, {$vehiculos} vehículo(s) y {$cuotas} cuotas debe caber en 1 hoja");
+            }
+        }
+    }
+
+    /** El documento imprime los DOS deudores completos, como el maestro. */
+    public function test_el_documento_trae_los_datos_de_ambos_deudores(): void
+    {
+        Storage::fake('public');
+        [$client, $credit, $vs] = $this->mundo(28, 1, conCodeudor: true);
+
+        $doc = GeneradorAnexo1::generar($client, $credit, $vs);
+        [$titular, $codeudor] = $doc->snapshot['clientes'];
+
+        // Nombre, DNI, dirección, celular y correo de cada uno, cada dato con
+        // el valor de SU ficha (no el del titular repetido).
+        foreach (['nombre', 'documento', 'domicilio', 'celular', 'correo'] as $campo) {
+            $this->assertNotSame('', trim((string) $titular[$campo]), "falta {$campo} del titular");
+            $this->assertNotSame('', trim((string) $codeudor[$campo]), "falta {$campo} del codeudor");
+        }
+        // Los propios de cada persona sí difieren. El DOMICILIO no entra: en el
+        // caso real —y en el maestro del área— los dos deudores conviven y la
+        // dirección es la misma.
+        foreach (['nombre', 'documento', 'celular', 'correo'] as $campo) {
+            $this->assertNotSame($titular[$campo], $codeudor[$campo], "{$campo} no puede ser el mismo en ambos");
+        }
+
+        // Y salen los dos en la hoja, bajo la cabecera en PLURAL.
+        $html = RenderDocumento::html($doc->snapshot, 'anexo1', 'pdf');
+        $this->assertStringContainsString('DATOS DE LOS CLIENTES', $html);
+        $this->assertStringContainsString('>Clientes<', $html);
+        foreach ([$titular, $codeudor] as $c) {
+            $this->assertStringContainsString($c['nombre'], $html);
+            $this->assertStringContainsString($c['documento'], $html);
+            $this->assertStringContainsString($c['celular'], $html);
+            $this->assertStringContainsString($c['correo'], $html);
+        }
+    }
+
+    /** Sin codeudor nada cambia: cabecera en singular y una sola columna. */
+    public function test_sin_codeudor_la_cabecera_sigue_en_singular(): void
+    {
+        Storage::fake('public');
+        [$client, $credit, $vs] = $this->mundo(28, 1);
+
+        $doc = GeneradorAnexo1::generar($client, $credit, $vs);
+        $html = RenderDocumento::html($doc->snapshot, 'anexo1', 'pdf');
+
+        $this->assertCount(1, $doc->snapshot['clientes']);
+        $this->assertStringContainsString('DATOS DEL CLIENTE', $html);
+        $this->assertStringNotContainsString('DATOS DE LOS CLIENTES', $html);
+        $this->assertStringContainsString('>Cliente<', $html);
+    }
+
+    /** El interruptor del modal deja fuera al codeudor. */
+    public function test_se_puede_emitir_solo_con_el_titular(): void
+    {
+        Storage::fake('public');
+        [$client, $credit, $vs] = $this->mundo(28, 1, conCodeudor: true);
+
+        $doc = GeneradorAnexo1::generar($client, $credit, $vs, ['sin_codeudores' => true]);
+        $html = RenderDocumento::html($doc->snapshot, 'anexo1', 'pdf');
+
+        $this->assertCount(1, $doc->snapshot['clientes']);
+        $this->assertStringContainsString('DATOS DEL CLIENTE', $html);
+        $this->assertStringNotContainsString('DATOS DE LOS CLIENTES', $html);
+    }
+
+    /**
+     * Los anexos emitidos ANTES del 18/09 no tienen 'clientes' en su snapshot:
+     * tienen que seguir imprimiéndose igual, con una sola columna.
+     */
+    public function test_los_snapshots_viejos_se_siguen_viendo(): void
+    {
+        Storage::fake('public');
+        [$client, $credit, $vs] = $this->mundo(28, 1);
+        $snapshot = GeneradorAnexo1::construirSnapshot($client, $credit, $vs);
+        unset($snapshot['clientes']);   // como los emitidos antes del cambio
+
+        $html = RenderDocumento::html($snapshot, 'anexo1', 'pdf');
+
+        $this->assertStringContainsString('DATOS DEL CLIENTE', $html);
+        $this->assertStringContainsString($snapshot['cliente']['nombre'], $html);
     }
 }

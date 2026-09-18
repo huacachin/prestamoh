@@ -19,6 +19,7 @@ use App\Support\Documentos\DomicilioLegal;
 use App\Support\Documentos\ModelosContrato;
 use App\Support\Documentos\Nacionalidades;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -280,6 +281,13 @@ class Documentos extends Component
     }
 
     /** Abre el modal del Anexo 1 con los selects precargados. */
+    /**
+     * Anexo 1 (18/09): los codeudores —los copropietarios de los vehículos
+     * que se anexan— salen en el documento con su columna, como el maestro.
+     * Este interruptor los deja fuera cuando el área no los quiere.
+     */
+    public bool $anexoSinCodeudores = false;
+
     public function abrirModalAnexo1(): void
     {
         $creditos = $this->creditosActivos();
@@ -293,6 +301,7 @@ class Documentos extends Component
             ->mapWithKeys(fn ($v) => [$v->id => $v->valor !== null ? number_format((float) $v->valor, 2, '.', '') : ''])
             ->all();
         $this->fechaDoc = now()->format('Y-m-d');
+        $this->anexoSinCodeudores = false;
         $this->htmlPreview = '';
         $this->resetErrorBag();
 
@@ -328,6 +337,11 @@ class Documentos extends Component
     }
 
     public function updatedValorVehiculo(): void
+    {
+        $this->htmlPreview = '';
+    }
+
+    public function updatedAnexoSinCodeudores(): void
     {
         $this->htmlPreview = '';
     }
@@ -1355,6 +1369,7 @@ class Documentos extends Component
         return [
             'fecha' => Carbon::parse($this->fechaDoc)->format('d/m/Y'),
             'valores_vehiculo' => $valores,
+            'sin_codeudores' => $this->anexoSinCodeudores,
         ];
     }
 
@@ -1390,6 +1405,28 @@ class Documentos extends Component
             $q->whereIn('client_id', $duenos)
                 ->orWhereHas('copropietarios', fn ($c) => $c->whereKey($duenos));
         })->orderBy('id')->get()->unique('id')->values();
+    }
+
+    /**
+     * Codeudores que llevaría el Anexo 1: los copropietarios de los vehículos
+     * MARCADOS en el modal. Misma regla que el contrato (copropietario =
+     * codeudor), pero acotada a la garantía que realmente se anexa: si se
+     * anexa solo el vehículo del titular, el copropietario de otro no aparece.
+     *
+     * @return Collection<int, Client>
+     */
+    private function codeudoresDelAnexo1()
+    {
+        $ids = array_values(array_filter(array_map('intval', $this->anexoVehiculos)));
+        if ($ids === []) {
+            return collect();
+        }
+
+        return Vehiculo::with('copropietarios')->whereIn('id', $ids)->get()
+            ->flatMap(fn (Vehiculo $v) => $v->copropietarios)
+            ->unique('id')
+            ->reject(fn (Client $c) => (int) $c->id === (int) $this->clientId)
+            ->values();
     }
 
     private function valorDe(?int $vehiculoId): string
@@ -1971,6 +2008,9 @@ class Documentos extends Component
             'documentos' => $documentos,
             'creditosActivos' => $this->creditosActivos(),
             'vehiculos' => $this->vehiculosCliente(),
+            // 18/09: los codeudores que saldrían en el Anexo 1 (copropietarios
+            // de los vehículos MARCADOS), para mostrarlos en el modal.
+            'codeudoresAnexo1' => $this->codeudoresDelAnexo1(),
             'modelosAgrupados' => $this->modelosAgrupados(),
             'presetContrato' => $presetContrato,
             'esEmpresaContrato' => mb_strtoupper(trim((string) $client->tipo_documento)) === 'RUC',

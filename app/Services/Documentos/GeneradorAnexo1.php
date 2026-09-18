@@ -43,6 +43,52 @@ class GeneradorAnexo1
         return $vehiculo instanceof Vehiculo ? collect([$vehiculo]) : collect($vehiculo)->filter();
     }
 
+    /** Ficha de un deudor tal como la imprime el maestro del área. */
+    private static function fichaCliente(Client $c): array
+    {
+        return [
+            'nombre' => mb_strtoupper($c->fullName()),
+            'documento_tipo' => mb_strtoupper(trim((string) $c->tipo_documento)) ?: 'DNI',
+            'documento' => trim((string) $c->documento),
+            'domicilio' => self::domicilio($c),
+            'celular' => trim((string) $c->celular1),
+            'correo' => trim((string) $c->email),
+        ];
+    }
+
+    /**
+     * Deudores del anexo: el titular y, si los hay, los COPROPIETARIOS de los
+     * vehículos que se anexan (18/09, pedido de Antony con el maestro
+     * Desktop/clientes1.jpeg, donde la cabecera dice "DATOS DE LOS CLIENTES"
+     * y hay una columna por deudor).
+     *
+     * Es la misma regla del contrato —copropietario = codeudor— pero acotada
+     * a los vehículos REALMENTE anexados: si se anexa solo el vehículo del
+     * titular, el copropietario de otro no pinta nada aquí.
+     *
+     * `$overrides['sin_codeudores'] = true` los deja fuera (el operador los
+     * quitó en el modal).
+     *
+     * @return list<Client>
+     */
+    private static function deudoresDe(Client $client, Collection $vehiculos, array $overrides): array
+    {
+        if ($overrides['sin_codeudores'] ?? false) {
+            return [$client];
+        }
+
+        $codeudores = $vehiculos
+            ->flatMap(fn (Vehiculo $v) => $v->relationLoaded('copropietarios')
+                ? $v->copropietarios
+                : $v->copropietarios()->get())
+            ->unique('id')
+            ->reject(fn (Client $c) => (int) $c->id === (int) $client->id)
+            ->values()
+            ->all();
+
+        return array_merge([$client], $codeudores);
+    }
+
     public static function construirSnapshot(Client $client, Credit $credit, Vehiculo|iterable|null $vehiculo, array $overrides = []): array
     {
         // Cronograma ÍNTEGRO desde credit_installments (la relación no ordena).
@@ -67,7 +113,8 @@ class GeneradorAnexo1
         // Varios vehículos por anexo (28/08). Los valores llegan en
         // $overrides['valores_vehiculo'] indexados por id del vehículo.
         $valores = $overrides['valores_vehiculo'] ?? [];
-        $vehiculosDatos = self::comoColeccion($vehiculo)->map(function (Vehiculo $v) use ($valores) {
+        $coleccionVehiculos = self::comoColeccion($vehiculo);
+        $vehiculosDatos = $coleccionVehiculos->map(function (Vehiculo $v) use ($valores) {
             $valor = array_key_exists($v->id, $valores) ? $valores[$v->id] : $v->valor;
 
             return [
@@ -79,17 +126,20 @@ class GeneradorAnexo1
             ];
         })->values()->all();
 
+        $fichas = array_map(
+            fn (Client $c) => self::fichaCliente($c),
+            self::deudoresDe($client, $coleccionVehiculos, $overrides)
+        );
+
         return [
             'marca' => config('documentos.marca'),
             'fecha' => filled($overrides['fecha'] ?? null) ? $overrides['fecha'] : now()->format('d/m/Y'),
-            'cliente' => [
-                'nombre' => mb_strtoupper($client->fullName()),
-                'documento_tipo' => mb_strtoupper(trim((string) $client->tipo_documento)) ?: 'DNI',
-                'documento' => trim((string) $client->documento),
-                'domicilio' => self::domicilio($client),
-                'celular' => trim((string) $client->celular1),
-                'correo' => trim((string) $client->email),
-            ],
+            // 'cliente' (singular) es el TITULAR: se conserva porque lo leen
+            // los documentos ya emitidos, la previa y los tests viejos.
+            'cliente' => $fichas[0],
+            // 18/09: todos los deudores (titular + copropietarios anexados),
+            // que es lo que el maestro imprime en columnas.
+            'clientes' => $fichas,
             // 'vehiculo' (singular) se conserva para que los documentos ya
             // emitidos y las vistas antiguas sigan resolviendo igual.
             'vehiculo' => $vehiculosDatos[0] ?? null,

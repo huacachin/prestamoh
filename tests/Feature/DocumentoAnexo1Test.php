@@ -124,9 +124,13 @@ class DocumentoAnexo1Test extends TestCase
 
         // Claves exactas del contrato, en cada nivel.
         $this->assertEqualsCanonicalizing(
-            ['marca', 'fecha', 'cliente', 'vehiculo', 'vehiculos', 'credito', 'cronograma'],
+            // 18/09: 'clientes' (plural) = titular + copropietarios de los
+            // vehículos anexados. 'cliente' (singular) sigue siendo el titular,
+            // porque lo leen los documentos ya emitidos.
+            ['marca', 'fecha', 'cliente', 'clientes', 'vehiculo', 'vehiculos', 'credito', 'cronograma'],
             array_keys($d)
         );
+        $this->assertSame([$d['cliente']], $d['clientes'], 'sin copropietarios, un solo deudor');
         $this->assertEqualsCanonicalizing(
             ['nombre', 'documento_tipo', 'documento', 'domicilio', 'celular', 'correo'],
             array_keys($d['cliente'])
@@ -193,7 +197,7 @@ class DocumentoAnexo1Test extends TestCase
         // Snapshot congelado con el contrato
         $d = $doc->snapshot;
         $this->assertEqualsCanonicalizing(
-            ['marca', 'fecha', 'cliente', 'vehiculo', 'vehiculos', 'credito', 'cronograma'],
+            ['marca', 'fecha', 'cliente', 'clientes', 'vehiculo', 'vehiculos', 'credito', 'cronograma'],
             array_keys($d)
         );
         $this->assertEquals($this->credit->id, $d['credito']['numero']);

@@ -70,6 +70,12 @@
         .ax-hoja { position: relative; min-height: 24.5cm; }
         .ax-pie { position: absolute; bottom: 0; left: 0; right: 0; }
         @endif
+        @if(($d['clientes'] ?? null) && count($d['clientes']) > 1)
+        /* Con codeudor el bloque de clientes se lleva una columna más y las
+           del vehículo se angostan. Un N° de serie es UN SOLO token sin
+           espacios: sin esto desborda la celda y se ve cortado. */
+        table.ax td.valor-cent, table.ax td.montod { word-wrap: break-word; }
+        @endif
         table.ax-split { width: 100%; border-collapse: collapse; }
         table.ax-split td.col { vertical-align: top; padding: 0 4px; border: 0; }
         @if(($medio ?? 'pdf') === 'word')
@@ -104,6 +110,21 @@
         $vehiculos = $d['vehiculos'] ?? (($d['vehiculo'] ?? null) ? [$d['vehiculo']] : []);
         $v1 = $vehiculos[0] ?? null;
         $cred = $d['credito'];
+
+        // 18/09: uno o VARIOS deudores (titular + copropietarios de los
+        // vehículos anexados), una columna por cada uno, como el maestro
+        // Desktop/clientes1.jpeg. Los snapshots anteriores solo traen
+        // 'cliente' y siguen imprimiéndose igual, con una sola columna.
+        $clientes = $d['clientes'] ?? [$d['cliente']];
+        $nDeudores = max(1, count($clientes));
+        $varios = $nDeudores > 1;
+        // Anchos del bloque de clientes: la etiqueta y una columna por deudor.
+        // Con dos deudores el bloque crece y el del vehículo se aprieta.
+        $wEtiqueta = $varios ? 9 : 12;
+        $wDeudor = $varios ? 22 : 38;
+        $wVehLabel = $varios ? 14 : 20;
+        $wSim = $varios ? 4 : 5;
+        $wMonto = 100 - $wEtiqueta - ($wDeudor * $nDeudores) - $wVehLabel - $wSim;
         // Documentos emitidos antes del rediseño: campos nuevos con fallback.
         $plazo = $cred['plazo'] ?? ($cred['cuotas'].' cuotas');
         $tim = $cred['tim'] ?? '5%';
@@ -114,45 +135,59 @@
         {{-- Word deduce la rejilla desde la primera fila, que aquí lleva
              colspan: sin <colgroup> reparte las columnas a su criterio. --}}
         <colgroup>
-            <col style="width: 12%">
-            <col style="width: 38%">
-            <col style="width: 20%">
-            <col style="width: 5%">
-            <col style="width: 25%">
+            <col style="width: {{ $wEtiqueta }}%">
+            @foreach ($clientes as $ignorado)
+                <col style="width: {{ $wDeudor }}%">
+            @endforeach
+            <col style="width: {{ $wVehLabel }}%">
+            <col style="width: {{ $wSim }}%">
+            <col style="width: {{ $wMonto }}%">
         </colgroup>
     @endif
         <tr>
-            <th class="azul" colspan="2" style="width: 50%;">DATOS DEL CLIENTE</th>
-            <th class="azul" colspan="3" style="width: 50%;">DATOS DEL VEHÍCULO</th>
+            {{-- Plural cuando hay codeudor, como el maestro. --}}
+            <th class="azul" colspan="{{ 1 + $nDeudores }}">DATOS {{ $varios ? 'DE LOS CLIENTES' : 'DEL CLIENTE' }}</th>
+            <th class="azul" colspan="3">DATOS DEL VEHÍCULO</th>
         </tr>
         <tr>
-            <td class="etiqueta" style="width: 12%;">Cliente</td>
-            <td style="width: 38%;">{{ $d['cliente']['nombre'] }}</td>
+            <td class="etiqueta" style="width: {{ $wEtiqueta }}%;">{{ $varios ? 'Clientes' : 'Cliente' }}</td>
+            @foreach ($clientes as $c)
+                <td style="width: {{ $wDeudor }}%;">{{ $c['nombre'] }}</td>
+            @endforeach
             {{-- 17/09 (Antony): "Placa de Rodaje", como las demás etiquetas, no en mayúsculas. --}}
-            <td class="etiqueta" style="width: 20%; white-space: nowrap;">Placa de Rodaje</td>
-            <td class="valor-cent" colspan="2" style="width: 30%;">{{ $v1['placa'] ?? '—' }}</td>
+            <td class="etiqueta" style="width: {{ $wVehLabel }}%; white-space: nowrap;">Placa de Rodaje</td>
+            <td class="valor-cent" colspan="2" style="width: {{ $wSim + $wMonto }}%;">{{ $v1['placa'] ?? '—' }}</td>
         </tr>
         <tr>
-            <td class="etiqueta">{{ $d['cliente']['documento_tipo'] ?: 'DNI' }}</td>
-            <td>{{ $d['cliente']['documento'] }}</td>
+            {{-- La etiqueta la pone el PRIMER deudor: el maestro rotula una vez. --}}
+            <td class="etiqueta">{{ $clientes[0]['documento_tipo'] ?: 'DNI' }}</td>
+            @foreach ($clientes as $c)
+                <td>{{ $c['documento'] }}</td>
+            @endforeach
             <td class="etiqueta">Marca</td>
             <td class="valor-cent" colspan="2">{{ ($v1['marca'] ?? '') ?: '—' }}</td>
         </tr>
         <tr>
             <td class="etiqueta">Dirección</td>
-            <td>{{ $d['cliente']['domicilio'] }}</td>
+            @foreach ($clientes as $c)
+                <td>{{ $c['domicilio'] }}</td>
+            @endforeach
             <td class="etiqueta">Modelo</td>
             <td class="valor-cent" colspan="2">{{ ($v1['modelo'] ?? '') ?: '—' }}</td>
         </tr>
         <tr>
             <td class="etiqueta">Celular</td>
-            <td>{{ $d['cliente']['celular'] }}</td>
+            @foreach ($clientes as $c)
+                <td>{{ $c['celular'] }}</td>
+            @endforeach
             <td class="etiqueta">N° Serie</td>
             <td class="valor-cent" colspan="2">{{ ($v1['nro_serie'] ?? '') ?: '—' }}</td>
         </tr>
         <tr>
             <td class="etiqueta">Correo</td>
-            <td><span class="ax-correo">{{ $d['cliente']['correo'] }}</span></td>
+            @foreach ($clientes as $c)
+                <td><span class="ax-correo">{{ $c['correo'] }}</span></td>
+            @endforeach
             <td class="etiqueta">Valor Vehículo</td>
             @if (($v1['valor'] ?? null) !== null)
                 <td class="sim">S/</td>
@@ -259,7 +294,16 @@
         // pinta la tabla de arriba). Hasta el 17/09 esto leía 'direccion', que
         // no existe: el descuento por dirección larga nunca actuó y el barrido
         // pasaba solo porque el pie iba anclado y no ocupaba alto.
-        $lineasDireccion = (int) ceil(mb_strlen((string) ($d['cliente']['domicilio'] ?? $d['cliente']['direccion'] ?? '')) / 45);
+        // Con codeudor la columna de dirección se parte en dos y cada una es
+        // más angosta, así que el mismo texto ocupa casi el doble de
+        // renglones: se mide con los caracteres que entran POR COLUMNA y se
+        // toma el deudor con la dirección más larga, que es quien manda el
+        // alto de la fila.
+        $charsPorLinea = (int) round(45 * ($wDeudor / 38));
+        $lineasDireccion = max(array_map(
+            fn (array $c) => (int) ceil(mb_strlen((string) ($c['domicilio'] ?? $c['direccion'] ?? '')) / max(10, $charsPorLinea)),
+            $clientes
+        ));
         // El pie va anclado abajo (no ocupa alto del flujo), así que la base
         // sigue en 24 filas; con la clave corregida, una dirección de 6
         // renglones la baja a 20 y 24 cuotas pasan a dos columnas.
