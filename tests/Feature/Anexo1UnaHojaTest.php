@@ -83,6 +83,48 @@ class Anexo1UnaHojaTest extends TestCase
         return preg_match_all('#/Type\s*/Page[^s]#', $pdf);
     }
 
+    /**
+     * Hasta dónde llega el contenido por la DERECHA, en puntos.
+     *
+     * Contar páginas no ve el otro desborde: salirse de la hoja a lo ancho no
+     * agrega hojas, simplemente imprime cortado. Así se descubrió el 18/09 que
+     * el cronograma a cuatro columnas llegaba a 614,9 pt —fuera del papel—
+     * desde que existe el reparto en columnas, sin que ningún test chistara.
+     *
+     * Se leen los flujos de contenido del PDF y se toma la X mayor de los
+     * rectángulos (bordes de tabla) y de los operadores de posición de texto.
+     */
+    private function bordeDerecho(string $pdf): float
+    {
+        $max = 0.0;
+        preg_match_all('/stream\r?\n(.*?)endstream/s', $pdf, $m);
+        foreach ($m[1] as $crudo) {
+            $texto = @gzuncompress(trim($crudo, "\r\n"));
+            if ($texto === false) {
+                continue;
+            }
+            preg_match_all('/([\d.-]+)\s+([\d.-]+)\s+([\d.-]+)\s+([\d.-]+)\s+re/', $texto, $r, PREG_SET_ORDER);
+            foreach ($r as $op) {
+                $max = max($max, (float) $op[1] + (float) $op[3]);
+            }
+            preg_match_all('/([\d.-]+)\s+([\d.-]+)\s+(?:Td|Tm)/', $texto, $t, PREG_SET_ORDER);
+            foreach ($t as $op) {
+                $max = max($max, (float) $op[1]);
+            }
+        }
+
+        return round($max, 1);
+    }
+
+    /** Una hoja Y dentro del margen: las dos reglas, en una sola aserción. */
+    private function assertCabeEnLaHoja(string $pdf, string $caso): void
+    {
+        $this->assertSame(1, $this->paginas($pdf), "{$caso}: debe caber en 1 hoja");
+        // A4 son 595,28 pt; el anexo deja 2 cm de margen derecho (56,7 pt).
+        $this->assertLessThanOrEqual(539.0, $this->bordeDerecho($pdf),
+            "{$caso}: el contenido se sale por la derecha del área útil");
+    }
+
     public function test_una_hoja_con_cronogramas_de_distinto_largo(): void
     {
         Storage::fake('public');
@@ -92,7 +134,7 @@ class Anexo1UnaHojaTest extends TestCase
             $doc = app(GeneradorAnexo1::class)->generar($client, $credit, $vehiculos);
             $pdf = Storage::disk('public')->get($doc->pdf_path);
 
-            $this->assertSame(1, $this->paginas($pdf), "con {$cuotas} cuotas el anexo debe caber en 1 hoja");
+            $this->assertCabeEnLaHoja($pdf, "con {$cuotas} cuotas");
         }
     }
 
@@ -110,8 +152,7 @@ class Anexo1UnaHojaTest extends TestCase
                 $pdf = Storage::disk('public')->get(
                     GeneradorAnexo1::generar($client, $credit, $vs)->pdf_path
                 );
-                $this->assertSame(1, $this->paginas($pdf),
-                    "con {$vehiculos} vehículo(s) y {$cuotas} cuotas debe caber en 1 hoja");
+                $this->assertCabeEnLaHoja($pdf, "con {$vehiculos} vehículo(s) y {$cuotas} cuotas");
             }
         }
     }
@@ -125,7 +166,7 @@ class Anexo1UnaHojaTest extends TestCase
         $pdf = Storage::disk('public')->get($doc->pdf_path);
 
         $this->assertCount(3, $doc->snapshot['vehiculos']);
-        $this->assertSame(1, $this->paginas($pdf), 'con 3 vehículos y 48 cuotas también debe caber en 1 hoja');
+        $this->assertCabeEnLaHoja($pdf, 'con 3 vehículos y 48 cuotas');
     }
 
     /**
@@ -145,8 +186,8 @@ class Anexo1UnaHojaTest extends TestCase
 
                 $this->assertCount(2, $doc->snapshot['clientes'],
                     "con {$vehiculos} vehículo(s) el anexo debe llevar titular y codeudor");
-                $this->assertSame(1, $this->paginas(Storage::disk('public')->get($doc->pdf_path)),
-                    "con codeudor, {$vehiculos} vehículo(s) y {$cuotas} cuotas debe caber en 1 hoja");
+                $this->assertCabeEnLaHoja(Storage::disk('public')->get($doc->pdf_path),
+                    "con codeudor, {$vehiculos} vehículo(s) y {$cuotas} cuotas");
             }
         }
     }
