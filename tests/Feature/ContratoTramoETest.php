@@ -290,6 +290,37 @@ class ContratoTramoETest extends TestCase
      * cambio de partial es DELIBERADO, se regeneran con:
      *   REGENERAR_GOLDENS=1 php artisan test --filter=test_golden
      */
+    /**
+     * El valor de los bienes va SEPARADO por vehículo, no sumado (18/09,
+     * Antony con el maestro Desktop/contrato1.jpeg). No basta con los
+     * goldens: se regeneran de una pasada y esta regla se perdería sin que
+     * nadie la leyera. Aquí se afirma sola.
+     */
+    public function test_con_dos_bienes_cada_uno_lleva_su_propio_valor(): void
+    {
+        // a12 es un modelo de DOS bienes presentes, con valores distintos.
+        $texto = $this->texto('a12');
+
+        $v1 = (float) $this->v1->valor;
+        $v2 = (float) $this->v2->valor;
+        $this->assertNotSame($v1, $v2, 'el fixture debe traer valores distintos o la prueba no prueba nada');
+
+        $this->assertStringContainsString('VALOR DEL BIEN AFECTADO 1: S/ '.number_format($v1, 2), $texto);
+        $this->assertStringContainsString('VALOR DEL BIEN AFECTADO 2: S/ '.number_format($v2, 2), $texto);
+        // Y la SUMA no aparece rotulada como el valor del bien.
+        $this->assertStringNotContainsString('VALOR DE LOS BIENES AFECTADOS', $texto);
+        $this->assertStringNotContainsString('AFECTADO: S/ '.number_format($v1 + $v2, 2), $texto);
+    }
+
+    /** Con un solo bien el maestro no cambia: un párrafo, sin numerar. */
+    public function test_con_un_solo_bien_la_clausula_no_se_numera(): void
+    {
+        $texto = $this->texto('a1');
+
+        $this->assertStringContainsString('VALOR DEL BIEN AFECTADO: S/ ', $texto);
+        $this->assertStringNotContainsString('VALOR DEL BIEN AFECTADO 1:', $texto);
+    }
+
     public function test_golden_de_los_32_modelos(): void
     {
         if (! is_dir(self::DIR_GOLDEN)) {

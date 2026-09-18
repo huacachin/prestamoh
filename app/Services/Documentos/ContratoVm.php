@@ -4,6 +4,7 @@ namespace App\Services\Documentos;
 
 use App\Support\Documentos\Genero;
 use App\Support\Documentos\Ordinales;
+use App\Support\NumerosEnLetras;
 
 /**
  * View-model inmutable que consumen las vistas Blade del contrato de garantía
@@ -54,6 +55,23 @@ final class ContratoVm
         }
 
         return "S/ {$m['cifra']} ({$m['letras']} SOLES)";
+    }
+
+    /**
+     * El mismo formato, para un importe suelto que no vive en $montos.
+     *
+     * Lo usa la cláusula del valor cuando hay VARIOS bienes: el maestro
+     * (18/09, Desktop/contrato1.jpeg) exige el valor de CADA vehículo por
+     * separado, no la suma —"el valor de los bienes no debe ir sumado"—, y
+     * ese importe es el de cada bien, no una clave de $montos.
+     */
+    public function montoDe(?float $valor): string
+    {
+        if ($valor === null) {
+            return '—';
+        }
+
+        return 'S/ '.number_format($valor, 2).' ('.NumerosEnLetras::monto($valor).' SOLES)';
     }
 
     /** Solo la cifra: "S/ 7,000.00" */

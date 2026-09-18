@@ -6,7 +6,19 @@
 <div class="clausula">
     <div class="clausula-titulo">{{ $vm->ord->de('valor') }}: VALOR {{ $valorPlural ? 'DE LOS BIENES' : 'DEL BIEN' }}, MONTO DE LA OBLIGACIÓN Y MONTO MÁXIMO DE LA GARANTÍA</div>
 
-    <p class="parrafo">VALOR {{ $valorPlural ? 'DE LOS BIENES AFECTADOS' : 'DEL BIEN AFECTADO' }}: {{ $vm->monto('valor_bien') }}, AMBAS PARTES DEJAN CONSTANCIA DE SU CONFORMIDAD CON EL VALOR ASIGNADO {{ $valorPlural ? 'A LOS BIENES OBJETO' : 'AL BIEN OBJETO' }} DE LA PRESENTE GARANTÍA, CONSIDERANDO LAS CONDICIONES DEL BIEN Y SU DEPRECIACIÓN NATURAL, QUEDANDO FIJADO DICHO MONTO COMO REFERENCIA PARA TODOS LOS EFECTOS LEGALES CORRESPONDIENTES, INCLUSO EN CASO DE EJECUCIÓN JUDICIAL O EXTRAJUDICIAL.</p>
+    @if ($valorPlural)
+        {{-- 18/09 (Antony, maestro Desktop/contrato1.jpeg): "el valor de los
+             bienes no debe ir sumado, sino separado el valor de cada
+             vehículo". Un párrafo por bien, numerado, con el mismo texto: el
+             valor asignado es el de CADA vehículo, que es lo que se ejecuta
+             por separado si hay que ejecutar. Antes salía una sola cifra con
+             la suma, y ningún bien quedaba tasado en el contrato. --}}
+        @foreach ($vm->bienes as $i => $bien)
+            <p class="parrafo">VALOR DEL BIEN AFECTADO {{ $i + 1 }}: {{ $vm->montoDe($bien['valor'] ?? null) }}, AMBAS PARTES DEJAN CONSTANCIA DE SU CONFORMIDAD CON EL VALOR ASIGNADO AL BIEN OBJETO DE LA PRESENTE GARANTÍA, CONSIDERANDO LAS CONDICIONES DEL BIEN Y SU DEPRECIACIÓN NATURAL, QUEDANDO FIJADO DICHO MONTO COMO REFERENCIA PARA TODOS LOS EFECTOS LEGALES CORRESPONDIENTES, INCLUSO EN CASO DE EJECUCIÓN JUDICIAL O EXTRAJUDICIAL.</p>
+        @endforeach
+    @else
+        <p class="parrafo">VALOR DEL BIEN AFECTADO: {{ $vm->monto('valor_bien') }}, AMBAS PARTES DEJAN CONSTANCIA DE SU CONFORMIDAD CON EL VALOR ASIGNADO AL BIEN OBJETO DE LA PRESENTE GARANTÍA, CONSIDERANDO LAS CONDICIONES DEL BIEN Y SU DEPRECIACIÓN NATURAL, QUEDANDO FIJADO DICHO MONTO COMO REFERENCIA PARA TODOS LOS EFECTOS LEGALES CORRESPONDIENTES, INCLUSO EN CASO DE EJECUCIÓN JUDICIAL O EXTRAJUDICIAL.</p>
+    @endif
 
     <p class="parrafo">MONTO DE LA OBLIGACIÓN PRINCIPAL: {{ $vm->monto('obligacion') }}, MONTO QUE CORRESPONDE AL CRÉDITO OTORGADO POR EL ACREEDOR EN FAVOR DE {{ $vm->g->deudor() }} Y QUE CONSTITUYE LA OBLIGACIÓN GARANTIZADA CON LA PRESENTE GARANTÍA MOBILIARIA.</p>
 
