@@ -321,6 +321,46 @@ class ContratoTramoETest extends TestCase
         $this->assertStringNotContainsString('VALOR DEL BIEN AFECTADO 1:', $texto);
     }
 
+    /**
+     * Las firmas de LOS DEUDORES van todas del mismo lado (18/09, Antony con
+     * el maestro Desktop/deudor1.jpeg): el acreedor en la columna izquierda y
+     * cada deudor en la derecha, uno debajo de otro. Antes las cajas se
+     * repartían de dos en dos y el segundo deudor caía bajo el acreedor,
+     * como si firmara por él.
+     *
+     * El golden no puede verlo: aplana la tabla a texto y el ORDEN de las
+     * cajas no cambia, solo la columna. Aquí se mira la columna.
+     */
+    public function test_los_deudores_firman_todos_en_la_misma_columna(): void
+    {
+        $html = GeneradorContrato::previsualizar(
+            $this->client, $this->credit, [$this->v1->id], 'a3', $this->datos('a3')
+        );
+
+        preg_match('/<table class="tabla-firmas">(.*?)<\/table>/s', $html, $tabla);
+        $this->assertNotEmpty($tabla, 'no se encontró la tabla de firmas');
+        preg_match_all('/<tr>(.*?)<\/tr>/s', $tabla[1], $filas);
+        $this->assertNotEmpty($filas[1], 'la tabla de firmas no tiene filas');
+
+        $columnaDe = [];
+        foreach ($filas[1] as $fila) {
+            preg_match_all('/<td[^>]*>(.*?)<\/td>/s', $fila, $celdas);
+            foreach ($celdas[1] as $i => $celda) {
+                if (str_contains($celda, 'EL ACREEDOR')) {
+                    $columnaDe['acreedor'] = $i;
+                }
+                if (preg_match('/LOS DEUDORES|EL DEUDOR|LA DEUDORA/', $celda)) {
+                    $columnaDe['deudores'][] = $i;
+                }
+            }
+        }
+
+        $this->assertSame(0, $columnaDe['acreedor'] ?? null, 'el acreedor debe ir en la columna izquierda');
+        $this->assertCount(2, $columnaDe['deudores'] ?? [], 'a3 es un modelo de DOS deudores');
+        $this->assertSame([1, 1], $columnaDe['deudores'],
+            'los dos deudores deben firmar en la MISMA columna, la derecha');
+    }
+
     public function test_golden_de_los_32_modelos(): void
     {
         if (! is_dir(self::DIR_GOLDEN)) {

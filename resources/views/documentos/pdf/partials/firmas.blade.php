@@ -11,11 +11,19 @@
     $apoderada = $vm->constante('apoderada');
     $acreedor = $vm->constante('acreedor');
 
-    // Un único juego: primero el acreedor (null = celda de la apoderada),
-    // después cada deudor.
-    $celdas = [null];
-    foreach ($vm->deudores as $d) {
-        $celdas[] = $d;
+    // Una columna por PARTE (18/09, maestro Desktop/deudor1.jpeg): el
+    // acreedor a la izquierda y TODOS los deudores a la derecha, uno debajo
+    // de otro. Antes las cajas se repartían de dos en dos, así que con dos
+    // deudores el segundo caía en la columna del acreedor y parecía firmar
+    // por él.
+    //
+    // 'acreedor' = la caja de la apoderada; 'vacio' = hueco para alinear.
+    $filas = [];
+    foreach ($vm->deudores as $i => $d) {
+        $filas[] = [$i === 0 ? 'acreedor' : 'vacio', $d];
+    }
+    if ($filas === []) {
+        $filas[] = ['acreedor', 'vacio'];
     }
 @endphp
 
@@ -23,12 +31,16 @@
     <p class="parrafo">EN SEÑAL DE CONFORMIDAD, LAS PARTES FIRMAN EL PRESENTE DOCUMENTO EN {{ mb_strtoupper($vm->constante('ciudad_firma')) }}, EL {{ $vm->fechaSimple }}.</p>
 
     <table class="tabla-firmas">
-        @foreach (array_chunk($celdas, 2) as $fila)
+        @foreach ($filas as $fila)
             <tr>
                 @foreach ($fila as $celda)
                     <td>
+                        @if ($celda === 'vacio')
+                            {{-- Hueco: la columna del acreedor solo lleva
+                                 caja en la primera fila. --}}
+                        @else
                         <div class="linea-firma">
-                            @if ($celda === null)
+                            @if ($celda === 'acreedor')
                                 {{ mb_strtoupper($apoderada['nombre']) }}<br>
                                 DNI N° {{ $apoderada['dni'] }}<br>
                                 APODERADA DE:<br>
@@ -47,11 +59,9 @@
                                 {{ $vm->g->deudor() }}
                             @endif
                         </div>
+                        @endif
                     </td>
                 @endforeach
-                @if (count($fila) === 1)
-                    <td></td>
-                @endif
             </tr>
         @endforeach
     </table>
