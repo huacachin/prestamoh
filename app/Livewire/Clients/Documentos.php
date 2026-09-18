@@ -144,7 +144,7 @@ class Documentos extends Component
      * es un dato variable), editable por si el caso es otro.
      */
     public array $tercero = [
-        'nombre' => '', 'dni' => '', 'banco' => '', 'cuenta' => '',
+        'nombre' => '', 'dni' => '', 'cuenta' => '',
         'motivo' => self::MOTIVO_TERCERO,
     ];
 
@@ -417,7 +417,7 @@ class Documentos extends Component
             'banco' => '', 'cuenta' => '',
         ];
         $this->tercero = [
-            'nombre' => '', 'dni' => '', 'banco' => '', 'cuenta' => '',
+            'nombre' => '', 'dni' => '', 'cuenta' => '',
             'motivo' => self::MOTIVO_TERCERO,
         ];
         $this->valorBien = '';
@@ -1663,7 +1663,9 @@ class Documentos extends Component
             $reglas += [
                 'tercero.nombre' => ['required', 'string', 'max:150'],
                 'tercero.dni' => ['required', 'string', 'max:15'],
-                'tercero.banco' => ['required', 'string', 'max:80'],
+                // 18/09: sin 'tercero.banco'. El banco del depósito es
+                // bancoDesembolso (el único que cita la constancia); este se
+                // exigía y nunca llegaba al contrato: pedía el banco dos veces.
                 'tercero.cuenta' => ['nullable', 'string', 'max:40'],
                 'tercero.motivo' => ['nullable', 'string', 'max:300'],
             ];

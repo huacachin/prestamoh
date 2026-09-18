@@ -799,12 +799,10 @@
                                                         </div>
                                                         @error('tercero.dni') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                                                     </div>
-                                                    <div class="col-md-3">
-                                                        <label class="form-label small mb-1">Banco *</label>
-                                                        <input type="text" class="form-control form-control-sm @error('tercero.banco') is-invalid @enderror"
-                                                               wire:model.blur="tercero.banco" placeholder="BCP / Interbank / ...">
-                                                        @error('tercero.banco') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                                                    </div>
+                                                    {{-- 18/09 (Antony): se quitó el "Banco *" del tercero. El banco
+                                                         del depósito ya se pide arriba ("Banco del desembolso") y es
+                                                         el único que cita la cláusula de constancia; este campo se
+                                                         exigía y nunca llegaba al contrato: pedía el banco dos veces. --}}
                                                     <div class="col-md-3">
                                                         <label class="form-label small mb-1">N° de cuenta o CCI</label>
                                                         <input type="text" class="form-control form-control-sm" wire:model.blur="tercero.cuenta">
