@@ -279,6 +279,57 @@ class Anexo1UnaHojaTest extends TestCase
         $this->assertStringNotContainsString('>Documento<', $html);
     }
 
+    /**
+     * Los VEHÍCULOS van igual que los deudores (18/09, maestro
+     * Desktop/vehiculos1.jpeg): los dos primeros en columnas dentro de la
+     * tabla de arriba, no el segundo relegado a la tabla de adicionales.
+     */
+    public function test_dos_vehiculos_van_en_columnas_arriba(): void
+    {
+        Storage::fake('public');
+        [$client, $credit, $vs] = $this->mundo(28, 2);
+
+        $doc = GeneradorAnexo1::generar($client, $credit, $vs);
+        $html = RenderDocumento::html($doc->snapshot, 'anexo1', 'pdf');
+
+        $this->assertStringContainsString('DATOS DE LOS VEHÍCULOS', $html);
+        $this->assertStringNotContainsString('VEHÍCULOS ADICIONALES', $html);
+        // Las dos placas, arriba, cada una en su columna.
+        foreach ($doc->snapshot['vehiculos'] as $veh) {
+            $this->assertStringContainsString($veh['placa'], $html);
+            $this->assertStringContainsString($veh['nro_serie'], $html);
+        }
+        $this->assertCabeEnLaHoja(Storage::disk('public')->get($doc->pdf_path), $doc->snapshot, 'dos vehículos');
+    }
+
+    /** Con uno solo, el maestro no cambia: singular y el "S/" en su celda. */
+    public function test_un_solo_vehiculo_conserva_la_maqueta_del_maestro(): void
+    {
+        Storage::fake('public');
+        [$client, $credit, $vs] = $this->mundo(28, 1);
+
+        $html = RenderDocumento::html(GeneradorAnexo1::generar($client, $credit, $vs)->snapshot, 'anexo1', 'pdf');
+
+        $this->assertStringContainsString('DATOS DEL VEHÍCULO', $html);
+        $this->assertStringNotContainsString('DATOS DE LOS VEHÍCULOS', $html);
+        $this->assertStringContainsString('class="sim"', $html);   // el "S/" pegado a la izquierda
+    }
+
+    /** Del TERCER vehículo en adelante sí bajan a su propia tabla. */
+    public function test_del_tercer_vehiculo_en_adelante_van_en_la_tabla_de_abajo(): void
+    {
+        Storage::fake('public');
+        [$client, $credit, $vs] = $this->mundo(28, 3);
+
+        $doc = GeneradorAnexo1::generar($client, $credit, $vs);
+        $html = RenderDocumento::html($doc->snapshot, 'anexo1', 'pdf');
+
+        $this->assertCount(3, $doc->snapshot['vehiculos']);
+        $this->assertStringContainsString('DATOS DE LOS VEHÍCULOS', $html);
+        $this->assertStringContainsString('VEHÍCULOS ADICIONALES', $html);
+        $this->assertCabeEnLaHoja(Storage::disk('public')->get($doc->pdf_path), $doc->snapshot, 'tres vehículos');
+    }
+
     /** Sin codeudor nada cambia: cabecera en singular y una sola columna. */
     public function test_sin_codeudor_la_cabecera_sigue_en_singular(): void
     {

@@ -34,11 +34,42 @@
     $varios = $nDeudores > 1;
     // Anchos del bloque de clientes: la etiqueta y una columna por deudor.
     // Con dos deudores el bloque crece y el del vehículo se aprieta.
-    $wEtiqueta = $varios ? 9 : 12;
-    $wVehLabel = $varios ? 14 : 20;
-    $wSim = $varios ? 4 : 5;
-    $wDeudor = $varios ? 22 : 38;
-    $wMonto = 100 - $wEtiqueta - ($wDeudor * $nDeudores) - $wVehLabel - $wSim;
+    // Los VEHÍCULOS van igual que los deudores (18/09, Antony con el maestro
+    // Desktop/vehiculos1.jpeg): una columna por vehículo en la tabla de
+    // arriba, en vez de mandar el segundo a la tabla de adicionales. Del
+    // tercero en adelante siguen listándose abajo, por lo mismo que los
+    // deudores: más columnas no caben a lo ancho de la hoja.
+    $vehiculosCab = array_slice($vehiculos, 0, 2);
+    $vehiculosExtra = array_slice($vehiculos, 2);
+    $nVeh = max(1, count($vehiculosCab));
+    $variosVeh = $nVeh > 1;
+
+    if (! $variosVeh) {
+        // Un solo vehículo: el reparto del maestro, intacto. El importe va
+        // partido en dos celdas con el borde interior fundido para que el
+        // "S/" quede pegado a la izquierda sin usar floats.
+        $wEtiqueta = $varios ? 9 : 12;
+        $wVehLabel = $varios ? 14 : 20;
+        $wSim = $varios ? 4 : 5;
+        $wDeudor = $varios ? 22 : 38;
+        $wMonto = 100 - $wEtiqueta - ($wDeudor * $nDeudores) - $wVehLabel - $wSim;
+        $wVeh = [$wSim + $wMonto];
+    } else {
+        // Con varios vehículos hay una columna por cada uno y el truco de las
+        // dos celdas ya no cabe: el importe va entero en su columna.
+        $wEtiqueta = 9;
+        $wVehLabel = 13;
+        $wSim = 0;
+        $wMonto = 0;
+        $reparto = 100 - $wEtiqueta - $wVehLabel;
+        $wDeudor = intdiv($reparto, $nDeudores + $nVeh);
+        // El sobrante de la división se lo queda la última columna.
+        $wVeh = array_fill(0, $nVeh, $wDeudor);
+        $wVeh[$nVeh - 1] = $reparto - ($wDeudor * $nDeudores) - ($wDeudor * ($nVeh - 1));
+    }
+    // La rejilla fija hace falta en cuanto haya más de una columna de datos:
+    // un correo o un N° de serie es UN SOLO token y ensancha la tabla.
+    $rejillaFija = $varios || $variosVeh;
     // ── Caja de página y tamaño de letra del Anexo 1 ──────────────────
     // 18/09 (Antony, viendo el PDF ya desplegado): "tiene mucho margen
     // izquierdo y derecho, supongo que superior e inferior también, hay que
@@ -114,7 +145,8 @@
     // en 7 renglones con un deudor (columna de 5,9 cm) y en 13 con dos
     // (3,3 cm)—. La fórmula anterior suponía la mitad de ancho por carácter
     // y por eso creía que la cabecera medía la mitad de lo que mide.
-    $capacidad = function (float $escala) use ($clientes, $clientesExtra, $vehiculos, $wDeudor, $anchoUtilCm, $altoUtilCm, $escalaAx) {
+    $extraVeh = count($vehiculosExtra);
+    $capacidad = function (float $escala) use ($clientes, $clientesExtra, $extraVeh, $wDeudor, $anchoUtilCm, $altoUtilCm, $escalaAx) {
         // 0,26 cm por carácter era a 8.5pt: escala con el cuerpo del anexo.
         $cmPorChar = 0.26 * $escalaAx * $escala;
         $porLinea = fn (float $pct, float $padding) => max(6, (int) floor(($pct / 100 * $anchoUtilCm - $padding) / $cmPorChar));
@@ -148,7 +180,7 @@
         $base = (int) round(24 * ($altoUtilCm / 25.1) / $escalaAx);
 
         return $base
-            - 4 * max(0, count($vehiculos) - 1)
+            - ($extraVeh > 0 ? 2 + $extraVeh : 0)
             - (int) ceil($extra * $escala)
             - (int) ceil(max(0, $lineas - 5) * $escala);
     };
@@ -324,44 +356,56 @@
 
     {{-- ── Cliente | Vehículo (como el maestro) ─────────────────────────── --}}
     <table class="ax cab">
-    @if ($varios && $medio !== 'word')
+    @if ($rejillaFija && $medio !== 'word')
         {{-- Fila-rejilla. dompdf NO lee el <colgroup> (lo descarta antes de
              armar el árbol de marcos) y, con table-layout: fixed, resuelve
              los anchos mirando SOLO la primera fila; la primera fila de aquí
              son dos celdas con colspan, que él ignora, así que repartía las
-             seis columnas por igual —de ahí el hueco entre el "S/" y el
-             importe del vehículo—. Esta fila sin alto le da la rejilla
-             declarada y no se ve en la hoja. --}}
+             columnas por igual —de ahí el hueco entre el "S/" y el importe
+             del vehículo—. Esta fila sin alto le da la rejilla declarada y no
+             se ve en la hoja. --}}
         <tr class="rejilla">
             <td style="width: {{ $wEtiqueta }}%;"></td>
             @foreach ($clientes as $ignorado)
                 <td style="width: {{ $wDeudor }}%;"></td>
             @endforeach
             <td style="width: {{ $wVehLabel }}%;"></td>
-            <td style="width: {{ $wSim }}%;"></td>
-            <td style="width: {{ $wMonto }}%;"></td>
+            @if ($variosVeh)
+                @foreach ($wVeh as $w)
+                    <td style="width: {{ $w }}%;"></td>
+                @endforeach
+            @else
+                <td style="width: {{ $wSim }}%;"></td>
+                <td style="width: {{ $wMonto }}%;"></td>
+            @endif
         </tr>
     @endif
-    @if ($medio === 'word' || $varios)
+    @if ($medio === 'word' || $rejillaFija)
         {{-- Rejilla explícita. En Word siempre (la deduce de la primera fila,
-             que aquí lleva colspan). En el PDF cuando hay codeudor: dompdf
-             mide cada columna por la palabra MÁS LARGA que contiene —y un
-             correo es una sola palabra—, así que ensanchaba la tabla fuera
-             del papel y el bloque del vehículo se salía de la hoja. --}}
+             que aquí lleva colspan). En el PDF en cuanto hay más de una
+             columna de datos: dompdf mide cada columna por la palabra MÁS
+             larga que contiene —y un correo o un N° de serie es una sola
+             palabra—, así que ensanchaba la tabla fuera del papel. --}}
         <colgroup>
             <col style="width: {{ $wEtiqueta }}%">
             @foreach ($clientes as $ignorado)
                 <col style="width: {{ $wDeudor }}%">
             @endforeach
             <col style="width: {{ $wVehLabel }}%">
-            <col style="width: {{ $wSim }}%">
-            <col style="width: {{ $wMonto }}%">
+            @if ($variosVeh)
+                @foreach ($wVeh as $w)
+                    <col style="width: {{ $w }}%">
+                @endforeach
+            @else
+                <col style="width: {{ $wSim }}%">
+                <col style="width: {{ $wMonto }}%">
+            @endif
         </colgroup>
     @endif
         <tr>
-            {{-- Plural cuando hay codeudor, como el maestro. --}}
+            {{-- Plural cuando hay codeudor o más de un vehículo, como el maestro. --}}
             <th class="azul" colspan="{{ 1 + $nDeudores }}">DATOS {{ $varios ? 'DE LOS CLIENTES' : 'DEL CLIENTE' }}</th>
-            <th class="azul" colspan="3">DATOS DEL VEHÍCULO</th>
+            <th class="azul" colspan="{{ 1 + ($variosVeh ? $nVeh : 2) }}">DATOS {{ $variosVeh ? 'DE LOS VEHÍCULOS' : 'DEL VEHÍCULO' }}</th>
         </tr>
         <tr>
             <td class="etiqueta" style="width: {{ $wEtiqueta }}%;">{{ $varios ? 'Clientes' : 'Cliente' }}</td>
@@ -369,8 +413,13 @@
                 <td class="cli" style="width: {{ $wDeudor }}%;">{{ $c['nombre'] }}</td>
             @endforeach
             {{-- 17/09 (Antony): "Placa de Rodaje", como las demás etiquetas, no en mayúsculas. --}}
-            <td class="etiqueta" style="width: {{ $wVehLabel }}%; white-space: nowrap;">Placa de Rodaje</td>
-            <td class="valor-cent" colspan="2" style="width: {{ $wSim + $wMonto }}%;">{{ $v1['placa'] ?? '—' }}</td>
+            <td class="etiqueta" style="width: {{ $wVehLabel }}%; white-space: nowrap;">{{ $variosVeh ? 'Placas de Rodaje' : 'Placa de Rodaje' }}</td>
+            @foreach ($vehiculosCab as $i => $veh)
+                <td class="valor-cent cli" @if (! $variosVeh) colspan="2" @endif>{{ ($veh['placa'] ?? '') ?: '—' }}</td>
+            @endforeach
+            @if (! $vehiculosCab)
+                <td class="valor-cent" colspan="2">—</td>
+            @endif
         </tr>
         <tr>
             {{-- El maestro rotula una vez, con el tipo del titular. Eso vale
@@ -384,7 +433,12 @@
                 <td class="cli">{{ $tipoDocComun ? $c['documento'] : trim(($c['documento_tipo'] ?: 'DNI').' '.$c['documento']) }}</td>
             @endforeach
             <td class="etiqueta">Marca</td>
-            <td class="valor-cent" colspan="2">{{ ($v1['marca'] ?? '') ?: '—' }}</td>
+            @foreach ($vehiculosCab as $veh)
+                <td class="valor-cent cli" @if (! $variosVeh) colspan="2" @endif>{{ ($veh['marca'] ?? '') ?: '—' }}</td>
+            @endforeach
+            @if (! $vehiculosCab)
+                <td class="valor-cent" colspan="2">—</td>
+            @endif
         </tr>
         <tr>
             <td class="etiqueta">Dirección</td>
@@ -392,7 +446,12 @@
                 <td class="cli">{{ $c['domicilio'] }}</td>
             @endforeach
             <td class="etiqueta">Modelo</td>
-            <td class="valor-cent" colspan="2">{{ ($v1['modelo'] ?? '') ?: '—' }}</td>
+            @foreach ($vehiculosCab as $veh)
+                <td class="valor-cent cli" @if (! $variosVeh) colspan="2" @endif>{{ ($veh['modelo'] ?? '') ?: '—' }}</td>
+            @endforeach
+            @if (! $vehiculosCab)
+                <td class="valor-cent" colspan="2">—</td>
+            @endif
         </tr>
         <tr>
             <td class="etiqueta">Celular</td>
@@ -400,15 +459,27 @@
                 <td class="cli">{{ $c['celular'] }}</td>
             @endforeach
             <td class="etiqueta">N° Serie</td>
-            <td class="valor-cent" colspan="2">{{ ($v1['nro_serie'] ?? '') ?: '—' }}</td>
+            @foreach ($vehiculosCab as $veh)
+                <td class="valor-cent cli" @if (! $variosVeh) colspan="2" @endif>{{ ($veh['nro_serie'] ?? '') ?: '—' }}</td>
+            @endforeach
+            @if (! $vehiculosCab)
+                <td class="valor-cent" colspan="2">—</td>
+            @endif
         </tr>
         <tr>
             <td class="etiqueta">Correo</td>
             @foreach ($clientes as $c)
                 <td class="cli"><span class="ax-correo">{{ $c['correo'] }}</span></td>
             @endforeach
-            <td class="etiqueta">Valor Vehículo</td>
-            @if (($v1['valor'] ?? null) !== null)
+            <td class="etiqueta">{{ $variosVeh ? 'Valor Vehículos' : 'Valor Vehículo' }}</td>
+            @if ($variosVeh)
+                {{-- Con una columna por vehículo ya no cabe el truco del
+                     maestro —"S/" en su propia celda, pegado a la izquierda—:
+                     el importe va entero en la columna de su vehículo. --}}
+                @foreach ($vehiculosCab as $veh)
+                    <td class="valor-der">{{ ($veh['valor'] ?? null) !== null ? 'S/ '.$fmt($veh['valor']) : '—' }}</td>
+                @endforeach
+            @elseif (($v1['valor'] ?? null) !== null)
                 <td class="sim">S/</td>
                 <td class="montod">{{ $fmt($v1['valor']) }}</td>
             @else
@@ -463,8 +534,9 @@
         </table>
     @endif
 
-    {{-- ── Vehículos adicionales (2° en adelante), mismo estilo ─────────── --}}
-    @if (count($vehiculos) > 1)
+    {{-- ── Vehículos adicionales (3° en adelante), mismo estilo ─────────
+         Los dos primeros van en columnas arriba, igual que los deudores. --}}
+    @if (count($vehiculosExtra) > 0)
         <table class="ax adicionales veh-extra">
             {{-- Rejilla declarada. Word la deduce de la primera fila, que
                  aquí lleva colspan, y dompdf ni siquiera lee el colgroup:
@@ -493,7 +565,7 @@
                 <th class="azul" style="width: 24%;">N° SERIE</th>
                 <th class="azul" style="width: 16%;">VALOR</th>
             </tr>
-            @foreach (array_slice($vehiculos, 1) as $veh)
+            @foreach ($vehiculosExtra as $veh)
                 <tr>
                     <td class="valor-cent">{{ $veh['placa'] ?: '—' }}</td>
                     <td class="valor-cent">{{ $veh['marca'] ?: '—' }}</td>
