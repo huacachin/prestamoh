@@ -242,8 +242,12 @@ class LecturaVoucherTest extends TestCase
             ->assertSee('Leer de nuevo');        // y la lectura se puede repetir
     }
 
-    /** Si el operador ya fijó el formato, esa pista VIAJA al lector y manda sobre lo que él identifique. */
-    public function test_la_pista_del_operador_manda(): void
+    /**
+     * 21/09 (Antony): los selectores de banco y modalidad se quitaron. Lo que
+     * identifica la lectura MANDA, aunque el componente trajera otro valor, y
+     * al lector no viaja pista alguna (así "Leer de nuevo" siempre corrige).
+     */
+    public function test_lo_leido_manda_y_no_viaja_pista(): void
     {
         $this->mundo();
         $this->lectorDevuelve(['transcripcion' => 'S/5,000.00', 'banco' => 'bbva', 'modalidad' => 'deposito']);
@@ -254,15 +258,15 @@ class LecturaVoucherTest extends TestCase
             ->set('anexo2Banco', 'bcp')
             ->set('anexo2Modalidad', 'transferencia')
             ->set('comprobante', UploadedFile::fake()->image('v.jpg'))
-            ->assertSet('anexo2Banco', 'bcp')
-            ->assertSet('anexo2Modalidad', 'transferencia');
+            ->assertSet('anexo2Banco', 'bbva')
+            ->assertSet('anexo2Modalidad', 'deposito')
+            ->assertDontSee('Banco del voucher');
 
-        // Y la pista llegó de verdad al lector (si no, el test no probaría nada).
-        $this->assertSame('bcp/transferencia', $this->pistaRecibida);
+        $this->assertSame('/', $this->pistaRecibida, 'al lector no debe viajar ninguna pista');
     }
 
-    /** Si la lectura no reconoce el formato, lo dice y deja los selectores a la vista. */
-    public function test_si_no_reconoce_el_formato_lo_pide(): void
+    /** Si la lectura no reconoce el formato, lo dice y pide otra foto: ya no hay selectores. */
+    public function test_si_no_reconoce_el_formato_pide_otra_foto(): void
     {
         $this->mundo();
         $this->lectorDevuelve(['transcripcion' => 'S/5,000.00; OPERACIÓN 123']);   // sin banco/modalidad
@@ -273,24 +277,13 @@ class LecturaVoucherTest extends TestCase
             ->set('comprobante', UploadedFile::fake()->image('v.jpg'))
             ->assertSet('anexo2Transcripcion', 'DETALLES: S/5,000.00; OPERACIÓN 123')
             ->assertSet('anexo2Banco', '')
-            ->assertSee('No reconocí el formato del voucher')
-            ->assertSee('Selecciona el banco');
-    }
+            ->assertSee('No reconocí el banco ni la modalidad del voucher')
+            ->assertDontSee('Banco del voucher')
+            ->assertDontSee('Modalidad de la operación')
+            ->call('generarAnexo2');
 
-    /** Elegir o corregir el formato a mano NO borra lo ya leído (antes sí, y había que releer). */
-    public function test_cambiar_el_formato_no_borra_la_transcripcion(): void
-    {
-        $this->mundo();
-        $this->lectorDevuelve(['transcripcion' => 'S/5,000.00; OPERACIÓN 123', 'monto' => '5,000.00']);
-        config(['services.anthropic.habilitado' => true, 'services.anthropic.key' => 'sk-ant-falsa']);
-
-        Livewire::test(Documentos::class, ['id' => $this->client->id])
-            ->set('anexo2CreditoId', $this->credit->id)
-            ->set('comprobante', UploadedFile::fake()->image('v.jpg'))
-            ->set('anexo2Banco', 'interbank')
-            ->set('anexo2Modalidad', 'deposito')
-            ->assertSet('anexo2Transcripcion', 'DETALLES: S/5,000.00; OPERACIÓN 123')
-            ->assertSet('anexo2Monto', '5,000.00');
+        $this->assertSame(0, DocumentoCliente::where('tipo', 'anexo2')->count(),
+            'sin banco y modalidad identificados no se emite constancia');
     }
 
     /** El monto se coteja con el desembolso y el beneficiario con el cliente, a la vista. */
@@ -371,26 +364,7 @@ class LecturaVoucherTest extends TestCase
         $this->assertSame('/', $this->pistaRecibida);
     }
 
-    /** Lo que eligió el OPERADOR sí manda al releer, y si la lectura ve otra cosa, avisa. */
-    public function test_la_eleccion_del_operador_sobrevive_a_la_relectura_y_avisa_si_no_cuadra(): void
-    {
-        $this->mundo();
-        config(['services.anthropic.habilitado' => true, 'services.anthropic.key' => 'sk-ant-falsa']);
-        $this->lectorDevuelve(['transcripcion' => 'X', 'banco' => 'bbva', 'modalidad' => 'deposito']);
-
-        Livewire::test(Documentos::class, ['id' => $this->client->id])
-            ->set('anexo2CreditoId', $this->credit->id)
-            ->set('anexo2Banco', 'bcp')
-            ->set('anexo2Modalidad', 'yape')
-            ->set('comprobante', UploadedFile::fake()->image('v.jpg'))
-            ->assertSet('anexo2Banco', 'bcp')->assertSet('anexo2Modalidad', 'yape')
-            // dispatch('x', ['message' => ...]) llega al callback como $params[0].
-            ->assertDispatched('successAlert', fn ($name, $params) => str_contains($params[0]['message'] ?? ($params['message'] ?? ''), 'OJO: el voucher parece DEPÓSITO EN VENTANILLA — BBVA'))
-            ->call('leerVoucher')
-            ->assertSet('anexo2Banco', 'bcp')->assertSet('anexo2Modalidad', 'yape');
-    }
-
-    /** Si reconoce el banco pero no la modalidad, deja el banco puesto: solo falta elegir la modalidad. */
+    /** Si reconoce el banco pero no la modalidad, deja el banco puesto y pide otra foto (ya no hay selector). */
     public function test_si_reconoce_el_banco_pero_no_la_modalidad_deja_el_banco(): void
     {
         $this->mundo();
@@ -403,7 +377,7 @@ class LecturaVoucherTest extends TestCase
             ->assertSet('anexo2Banco', 'interbank')
             ->assertSet('anexo2Modalidad', '')
             ->assertDispatched('successAlert', fn ($name, $params) => str_contains($params[0]['message'] ?? ($params['message'] ?? ''), 'reconocí el banco pero no la modalidad'))
-            ->assertSee('Selecciona la modalidad');
+            ->assertDontSee('Modalidad de la operación');
     }
 
     /**

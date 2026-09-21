@@ -990,53 +990,20 @@
                                        wire:model.live="fechaAnexo2" max="{{ now()->format('Y-m-d') }}">
                                 @error('fechaAnexo2') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
-                            {{-- 18/09: banco y modalidad los identifica la lectura del
-                                 voucher. Si los reconoció, se muestran como un resumen con
-                                 "cambiar"; los selectores solo aparecen si no los reconoció
-                                 (o si el operador quiere corregirlos). --}}
-                            <div class="col-12" x-data="{ editarFormato: false }"
-                                 wire:key="anexo2-formato-{{ $anexo2Banco }}-{{ $anexo2Modalidad }}">
+                            {{-- 21/09 (Antony): fuera los selectores de banco y modalidad.
+                                 Los identifica la lectura del voucher y se muestran solo
+                                 como resumen; si no los reconoce, se pide otra foto. --}}
+                            <div class="col-12" wire:key="anexo2-formato-{{ $anexo2Banco }}-{{ $anexo2Modalidad }}">
                                 @if($tituloVoucherAnexo2 !== '')
-                                    <div x-show="! editarFormato" class="small">
+                                    <div class="small">
                                         <span class="text-muted">Formato del voucher:</span>
                                         <span class="badge bg-light text-dark border">{{ $tituloVoucherAnexo2 }}</span>
-                                        <a href="#" class="ms-1" style="font-size:11px;" x-on:click.prevent="editarFormato = true">cambiar</a>
+                                    </div>
+                                @elseif($anexo2Transcripcion !== '' || $comprobante)
+                                    <div class="alert alert-warning py-1 px-2 mb-0 small" style="color:#000;">
+                                        <i class="ti ti-alert-triangle"></i> No reconocí el banco ni la modalidad del voucher: sube una foto más nítida o léelo de nuevo.
                                     </div>
                                 @endif
-                                <div x-show="editarFormato || {{ $tituloVoucherAnexo2 === '' ? 'true' : 'false' }}" class="row g-2">
-                                    @if($tituloVoucherAnexo2 === '' && ($anexo2Transcripcion !== '' || $comprobante))
-                                        <div class="col-12">
-                                            <div class="alert alert-warning py-1 px-2 mb-0 small" style="color:#000;">
-                                                <i class="ti ti-alert-triangle"></i> No reconocí el formato del voucher: elige el banco y la modalidad.
-                                            </div>
-                                        </div>
-                                    @endif
-                                    <div class="col-md-6">
-                                        <label class="form-label small fw-semibold mb-1">Banco del voucher *</label>
-                                        <select class="form-select form-select-sm @error('anexo2Banco') is-invalid @enderror"
-                                                wire:model.live="anexo2Banco">
-                                            <option value="">— Selecciona el banco —</option>
-                                            @foreach($bancosVoucher as $clave => $nombre)
-                                                <option value="{{ $clave }}">{{ $nombre }}</option>
-                                            @endforeach
-                                        </select>
-                                        @error('anexo2Banco') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label small fw-semibold mb-1">Modalidad de la operación *</label>
-                                        <select class="form-select form-select-sm @error('anexo2Modalidad') is-invalid @enderror"
-                                                wire:model.live="anexo2Modalidad" @disabled($anexo2Banco === '')>
-                                            <option value="">— Selecciona la modalidad —</option>
-                                            @foreach($modalidadesAnexo2 as $mod)
-                                                <option value="{{ $mod }}">{{ $modalidadesVoucher[$mod] ?? $mod }}</option>
-                                            @endforeach
-                                        </select>
-                                        @error('anexo2Modalidad') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                                        @if($anexo2Banco === '')
-                                            <div class="form-text" style="font-size:10px;">Elige primero el banco: cada uno tiene sus modalidades.</div>
-                                        @endif
-                                    </div>
-                                </div>
                             </div>
                         </div>
 
@@ -1112,12 +1079,12 @@
                                     {{-- 18/09: zona única para pegar (Ctrl+V), arrastrar o elegir
                                          la foto. Cualquiera de los tres dispara el mismo upload y,
                                          con la lectura configurada, el voucher se lee solo. --}}
-                                    <div class="border rounded p-3 text-center small @error('comprobante') border-danger @enderror"
-                                         style="border-style: dashed !important; cursor: pointer; background: #fafafa;"
+                                    <div class="border border-success rounded p-3 text-center small @error('comprobante') border-danger @enderror"
+                                         style="border-style: dashed !important; cursor: pointer; border-width: 2px !important; background: #e6f7ea;"
                                          x-on:click="$refs.archivoVoucher.click()"
-                                         x-on:dragover.prevent="$el.style.background = '#eef6ff'"
-                                         x-on:dragleave.prevent="$el.style.background = '#fafafa'"
-                                         x-on:drop.prevent="$el.style.background = '#fafafa'; subir(($event.dataTransfer.files || [])[0])">
+                                         x-on:dragover.prevent="$el.style.background = '#c8ecd2'"
+                                         x-on:dragleave.prevent="$el.style.background = '#e6f7ea'"
+                                         x-on:drop.prevent="$el.style.background = '#e6f7ea'; subir(($event.dataTransfer.files || [])[0])">
                                         {{-- click.stop: el input está DENTRO de la zona, cuyo click
                                              abre el selector. Sin esto, el click programático sobre el
                                              input burbujea a la zona y vuelve a abrirlo. --}}

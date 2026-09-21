@@ -221,14 +221,6 @@ class Documentos extends Component
      */
     public string $anexo2Beneficiario = '';
 
-    /**
-     * true cuando banco/modalidad los eligió el OPERADOR (selector); false
-     * cuando los puso la lectura o están vacíos. Decide si van como pista al
-     * releer: lo que eligió una persona manda; lo que adivinó el modelo no se
-     * le reenvía como pista, porque entonces nunca podría corregirse.
-     */
-    public bool $anexo2FormatoManual = false;
-
     /** Fecha del documento (Y-m-d del input date; $datos la lleva d/m/Y). */
     public string $fechaAnexo2 = '';
 
@@ -907,7 +899,6 @@ class Documentos extends Component
         $this->anexo2Monto = '';
         $this->anexo2Dudas = '';
         $this->anexo2Beneficiario = '';
-        $this->anexo2FormatoManual = false;
         $this->fechaAnexo2 = now()->format('Y-m-d');
         $this->comprobante = null;
         $this->htmlPreviewAnexo2 = '';
@@ -923,20 +914,6 @@ class Documentos extends Component
     public function updatedAnexo2CreditoId(): void
     {
         $this->limpiarMontoAnexo2();
-    }
-
-    /** Cambiar de banco rearma la modalidad (autoselección si solo hay una). */
-    public function updatedAnexo2Banco(): void
-    {
-        $modalidades = BancosVoucher::combosDisponibles()[$this->anexo2Banco] ?? [];
-        $this->anexo2Modalidad = count($modalidades) === 1 ? $modalidades[0] : '';
-        // Lo tocó el operador: esta elección manda sobre la lectura.
-        $this->anexo2FormatoManual = $this->anexo2Banco !== '';
-    }
-
-    public function updatedAnexo2Modalidad(): void
-    {
-        $this->anexo2FormatoManual = $this->anexo2Banco !== '';
     }
 
     /**
@@ -1045,7 +1022,9 @@ class Documentos extends Component
         }
 
         if (! BancosVoucher::esComboValido($this->anexo2Banco, $this->anexo2Modalidad)) {
-            $this->dispatch('errorAlert', ['message' => 'La modalidad elegida no está disponible para ese banco.']);
+            // 21/09: el banco y la modalidad ya no se eligen a mano; los
+            // identifica la lectura del voucher. Sin ellos no hay formato.
+            $this->dispatch('errorAlert', ['message' => 'La lectura no identificó el banco y la modalidad del voucher: sube una foto más nítida o léelo de nuevo.']);
 
             return null;
         }
@@ -1086,22 +1065,11 @@ class Documentos extends Component
             return;
         }
 
-        // 18/09: el banco y la modalidad ya no se piden antes de leer. Si el
-        // operador los fijó, van como pista; si no, la lectura los identifica
-        // entre los del catálogo y se rellenan solos. Solo si no los reconoce
-        // aparecen los selectores.
-        // La pista solo va cuando el formato lo eligió el OPERADOR. Lo que la
-        // lectura adivinó antes no se le reenvía: si no, "Leer de nuevo" nunca
-        // podría corregir una identificación equivocada.
-        $conPista = $this->anexo2FormatoManual
-            && BancosVoucher::esComboValido($this->anexo2Banco, $this->anexo2Modalidad);
-
+        // 21/09: banco y modalidad los identifica SIEMPRE la lectura (los
+        // selectores se quitaron); no viaja pista alguna, así "Leer de nuevo"
+        // siempre puede corregir una identificación anterior.
         try {
-            $leido = app(LectorDeVoucher::class)->leer(
-                (string) $this->comprobante->getRealPath(),
-                $conPista ? $this->anexo2Banco : '',
-                $conPista ? $this->anexo2Modalidad : '',
-            );
+            $leido = app(LectorDeVoucher::class)->leer((string) $this->comprobante->getRealPath(), '', '');
         } catch (VoucherIlegible $e) {
             $this->dispatch('errorAlert', ['message' => $e->getMessage().' Transcríbelo a mano.']);
 
@@ -1124,23 +1092,10 @@ class Documentos extends Component
 
         $bancoLeido = (string) ($leido['banco'] ?? '');
         $modalidadLeida = (string) ($leido['modalidad'] ?? '');
-        $aviso = '';
-        if ($conPista) {
-            // El operador manda; pero si la lectura vio claramente otro banco
-            // o tipo, se le avisa: puede haber elegido mal.
-            $leidoValido = BancosVoucher::esComboValido($bancoLeido, $modalidadLeida);
-            if ($leidoValido && ($bancoLeido !== $this->anexo2Banco || $modalidadLeida !== $this->anexo2Modalidad)) {
-                $aviso = ' OJO: el voucher parece '.BancosVoucher::titulo($bancoLeido, $modalidadLeida)
-                    .', no '.BancosVoucher::titulo($this->anexo2Banco, $this->anexo2Modalidad).'.';
-            }
-        } elseif (array_key_exists($bancoLeido, BancosVoucher::BANCOS)) {
-            // Lo identificado (el banco aunque la modalidad no; ahí solo queda
-            // elegir la modalidad). Sigue siendo "no manual": una relectura
-            // puede corregirlo.
-            $this->anexo2Banco = $bancoLeido;
-            $this->anexo2Modalidad = BancosVoucher::esComboValido($bancoLeido, $modalidadLeida) ? $modalidadLeida : '';
-            $this->anexo2FormatoManual = false;
-        }
+        // Lo que identificó la lectura manda (el banco aunque la modalidad
+        // no); si no identificó nada, queda vacío y el aviso pide otra foto.
+        $this->anexo2Banco = array_key_exists($bancoLeido, BancosVoucher::BANCOS) ? $bancoLeido : '';
+        $this->anexo2Modalidad = BancosVoucher::esComboValido($bancoLeido, $modalidadLeida) ? $modalidadLeida : '';
         $formatoOk = BancosVoucher::esComboValido($this->anexo2Banco, $this->anexo2Modalidad);
 
         Audit::log("Leyó el voucher del Anexo 2 con {$leido['modelo']} (crédito #{$this->anexo2CreditoId})"
@@ -1148,10 +1103,10 @@ class Documentos extends Component
 
         $formato = $formatoOk ? BancosVoucher::titulo($this->anexo2Banco, $this->anexo2Modalidad) : null;
         $this->dispatch('successAlert', ['message' => match (true) {
-            $formato === null && $this->anexo2Banco !== '' => 'Voucher leído: reconocí el banco pero no la modalidad, elígela. Revísalo antes de generar.',
-            $formato === null => 'Voucher leído, pero no reconocí el formato: elige el banco y la modalidad. Revísalo antes de generar.',
-            $leido['dudas'] !== '' => "Voucher leído ({$formato}), con dudas señaladas. Revísalas antes de generar.{$aviso}",
-            default => "Voucher leído ({$formato}). Revísalo antes de generar.{$aviso}",
+            $formato === null && $this->anexo2Banco !== '' => 'Voucher leído: reconocí el banco pero no la modalidad. Sube una foto más nítida o léelo de nuevo.',
+            $formato === null => 'Voucher leído, pero no reconocí el banco y la modalidad: sube una foto más nítida o léelo de nuevo.',
+            $leido['dudas'] !== '' => "Voucher leído ({$formato}), con dudas señaladas. Revísalas antes de generar.",
+            default => "Voucher leído ({$formato}). Revísalo antes de generar.",
         }]);
     }
 
@@ -1995,10 +1950,7 @@ class Documentos extends Component
                 ->get();
         }
 
-        // Anexo 2: modalidades válidas del banco elegido y campos del combo
-        $modalidadesAnexo2 = $this->anexo2Banco !== ''
-            ? (BancosVoucher::combosDisponibles()[$this->anexo2Banco] ?? [])
-            : [];
+        // Anexo 2: campos del combo identificado por la lectura
         $camposAnexo2 = BancosVoucher::esComboValido($this->anexo2Banco, $this->anexo2Modalidad)
             ? BancosVoucher::campos($this->anexo2Banco, $this->anexo2Modalidad)
             : [];
@@ -2021,9 +1973,6 @@ class Documentos extends Component
             'codeudoresEncontrados' => $codeudoresEncontrados,
             'bancosDesembolso' => BancosVoucher::NOMBRES_LEGALES,
             'estadosCiviles' => self::ESTADOS_CIVILES,
-            'bancosVoucher' => BancosVoucher::BANCOS,
-            'modalidadesVoucher' => BancosVoucher::MODALIDADES,
-            'modalidadesAnexo2' => $modalidadesAnexo2,
             'camposAnexo2' => $camposAnexo2,
             'tituloVoucherAnexo2' => $camposAnexo2 !== []
                 ? BancosVoucher::titulo($this->anexo2Banco, $this->anexo2Modalidad)
