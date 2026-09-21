@@ -48,6 +48,19 @@ class ContratoEnfasisTest extends TestCase
         }
     }
 
+    /**
+     * Con dos bienes la etiqueta del valor va numerada (18/09) y tiene que
+     * salir en negrita ENTERA, número incluido —Antony, 21/09: "falta poner
+     * negrita en Valor del bien afectado 1: y 2:"—. La sin número sigue igual.
+     */
+    public function test_resalta_la_etiqueta_del_valor_numerada(): void
+    {
+        foreach (['VALOR DEL BIEN AFECTADO 1:', 'VALOR DEL BIEN AFECTADO 2:', 'VALOR DEL BIEN AFECTADO:'] as $etiqueta) {
+            $salida = Enfasis::aplicar("<p>{$etiqueta} S/ 15,000.00 (QUINCE MIL CON 00/100 SOLES)</p>");
+            $this->assertStringContainsString("<b>{$etiqueta}</b> S/", $salida, $etiqueta);
+        }
+    }
+
     public function test_no_toca_los_atributos_html(): void
     {
         // "EL DEUDOR" dentro de un atributo NO debe recibir etiquetas.

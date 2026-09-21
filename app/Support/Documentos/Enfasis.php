@@ -29,7 +29,8 @@ final class Enfasis
         'DATOS DEL ACREEDOR A CUYO FAVOR SE CONSTITUYE LA GARANTÍA MOBILIARIA:',
         'MONTO DE LA OBLIGACIÓN PRINCIPAL:',
         'MONTO MÁXIMO DE LA GARANTÍA:',
-        'VALOR DEL BIEN AFECTADO:',
+        // Con varios bienes la etiqueta va numerada (18/09): "... AFECTADO 1:".
+        'VALOR DEL BIEN AFECTADO(?: \d+)?:',
         'INSERTO:',
     ];
 

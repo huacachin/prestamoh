@@ -310,6 +310,12 @@ class ContratoTramoETest extends TestCase
         // Y la SUMA no aparece rotulada como el valor del bien.
         $this->assertStringNotContainsString('VALOR DE LOS BIENES AFECTADOS', $texto);
         $this->assertStringNotContainsString('AFECTADO: S/ '.number_format($v1 + $v2, 2), $texto);
+
+        // Las etiquetas numeradas van en NEGRITA enteras, como la sin número
+        // (Antony, 21/09). El golden no lo ve porque quita las etiquetas.
+        $html = GeneradorContrato::previsualizar($this->client, $this->credit, [$this->v1->id, $this->v2->id], 'a12', $this->datos('a12'));
+        $this->assertStringContainsString('<b>VALOR DEL BIEN AFECTADO 1:</b>', $html);
+        $this->assertStringContainsString('<b>VALOR DEL BIEN AFECTADO 2:</b>', $html);
     }
 
     /** Con un solo bien el maestro no cambia: un párrafo, sin numerar. */
