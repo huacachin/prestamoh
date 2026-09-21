@@ -174,20 +174,39 @@ class ContratoEspecFinalTest extends TestCase
         $this->assertSame([], $ok, implode(' | ', $ok));
     }
 
-    public function test_el_bien_futuro_exige_estado_registral(): void
+    /**
+     * El bien futuro pide SOLO fecha de transferencia, kárdex y notario
+     * (Antony, 21/09): su estado registral es conocido y fijo, lo dice la
+     * propia declaración jurada. Hasta entonces se exigía un campo más.
+     */
+    public function test_el_bien_futuro_no_exige_estado_registral(): void
     {
         [$client, $credit, $v] = $this->mundo();
 
-        $texto = implode(' | ', GeneradorContrato::validar($client, $credit, [$v->id], 'a14', [
+        $errores = GeneradorContrato::validar($client, $credit, [$v->id], 'a14', [
             'banco' => 'bcp',
             'bienes' => [$v->id => [
                 'es_futuro' => true, 'fecha_acta' => '2026-05-04',
                 'kardex' => '0373-2026', 'notario' => 'JULIO BLAS',
-                // sin estado_registral
             ]],
+        ]);
+
+        $this->assertSame([], $errores, 'con fecha, kárdex y notario el bien futuro está completo');
+    }
+
+    /** Y esos tres sí siguen siendo obligatorios. */
+    public function test_el_bien_futuro_exige_fecha_kardex_y_notario(): void
+    {
+        [$client, $credit, $v] = $this->mundo();
+
+        $texto = implode(' | ', GeneradorContrato::validar($client, $credit, [$v->id], 'a14', [
+            'banco' => 'bcp', 'bienes' => [$v->id => ['es_futuro' => true]],
         ]));
 
-        $this->assertStringContainsString('estado registral', $texto);
+        foreach (['la fecha de transferencia', 'el kárdex', 'el notario'] as $falta) {
+            $this->assertStringContainsString($falta, $texto);
+        }
+        $this->assertStringNotContainsString('estado registral', $texto);
     }
 
     public function test_un_gerente_con_ce_no_sale_como_dni(): void

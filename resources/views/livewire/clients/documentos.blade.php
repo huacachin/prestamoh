@@ -503,11 +503,6 @@
                                                             <input type="text" class="form-control form-control-sm" placeholder="Notario"
                                                                    wire:model.blur="contratoVehiculos.{{ $i }}.notario">
                                                         </div>
-                                                        <div class="col-3">
-                                                            <input type="text" class="form-control form-control-sm" placeholder="Estado registral"
-                                                                   title="Estado registral de la transferencia (ej. EN TRÁMITE DE INSCRIPCIÓN)"
-                                                                   wire:model.blur="contratoVehiculos.{{ $i }}.estado_registral">
-                                                        </div>
                                                     </div>
                                                 @endif
                                             </div>

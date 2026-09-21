@@ -517,7 +517,7 @@ class Documentos extends Component
     {
         return [
             'vehiculo_id' => null, 'es_futuro' => false, 'fecha_acta' => '',
-            'kardex' => '', 'notario' => '', 'estado_registral' => '',
+            'kardex' => '', 'notario' => '',
         ];
     }
 
@@ -1476,7 +1476,6 @@ class Documentos extends Component
                 'fecha_acta' => (string) ($previo['fecha_acta'] ?? ''),
                 'kardex' => (string) ($previo['kardex'] ?? ''),
                 'notario' => (string) ($previo['notario'] ?? ''),
-                'estado_registral' => (string) ($previo['estado_registral'] ?? ''),
             ];
         }
         $this->valorBien = $this->sumaValorVehiculos();
@@ -1749,7 +1748,6 @@ class Documentos extends Component
                 'fecha_acta' => trim((string) $slot['fecha_acta']) ?: null,
                 'kardex' => trim((string) $slot['kardex']) ?: null,
                 'notario' => trim((string) $slot['notario']) ?: null,
-                'estado_registral' => trim((string) $slot['estado_registral']) ?: null,
             ];
         }
 
@@ -1779,7 +1777,6 @@ class Documentos extends Component
             'contratoVehiculos.*.fecha_acta' => ['nullable', 'date'],
             'contratoVehiculos.*.kardex' => ['nullable', 'string', 'max:20'],
             'contratoVehiculos.*.notario' => ['nullable', 'string', 'max:120'],
-            'contratoVehiculos.*.estado_registral' => ['nullable', 'string', 'max:80'],
         ];
 
         if (! $preset) {

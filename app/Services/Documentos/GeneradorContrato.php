@@ -315,7 +315,10 @@ class GeneradorContrato
             }
             // Bien futuro: la declaración jurada cita la transferencia.
             if ($b['esFuturo'] ?? false) {
-                foreach (['fechaActa' => 'la fecha de transferencia', 'kardex' => 'el kárdex', 'notario' => 'el notario', 'estadoRegistral' => 'el estado registral'] as $campo => $etiqueta) {
+                // Solo fecha, kárdex y notario (Antony, 21/09): el estado
+                // registral de un bien futuro es conocido y fijo —lo dice la
+                // propia declaración jurada— y no es un dato del contrato.
+                foreach (['fechaActa' => 'la fecha de transferencia', 'kardex' => 'el kárdex', 'notario' => 'el notario'] as $campo => $etiqueta) {
                     if (blank($b[$campo] ?? null)) {
                         $errores[] = "Falta {$etiqueta} del vehículo {$n}, que es bien futuro.";
                     }
@@ -609,9 +612,9 @@ class GeneradorContrato
                 'kardex' => filled($d['kardex'] ?? null) ? trim((string) $d['kardex']) : null,
                 'notario' => filled($d['notario'] ?? null) ? mb_strtoupper(trim((string) $d['notario'])) : null,
                 'fechaActa' => self::fechaActa($d['fecha_acta'] ?? null),
-                // La Guía simple lo pide junto con fecha/kárdex/notario; las
-                // maestras no lo imprimen — queda en el snapshot.
-                'estadoRegistral' => filled($d['estado_registral'] ?? null) ? mb_strtoupper(trim((string) $d['estado_registral'])) : null,
+                // Sin 'estadoRegistral' desde el 21/09: ninguna maestra lo
+                // imprime y el área no lo pide. Los snapshots anteriores lo
+                // traen y se ignora.
             ];
         }
 
