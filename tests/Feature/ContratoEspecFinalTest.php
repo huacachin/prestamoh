@@ -115,16 +115,36 @@ class ContratoEspecFinalTest extends TestCase
         return [$client, $credit, $v];
     }
 
-    public function test_el_tercero_exige_banco(): void
+    /**
+     * El tercero NO exige banco (21/09): ningún partial lo imprime —la
+     * constancia cita el banco del desembolso— y el modal dejó de pedirlo el
+     * 18/09, así que exigirlo bloqueaba todo contrato con depósito a tercero.
+     */
+    public function test_el_tercero_no_exige_banco(): void
+    {
+        [$client, $credit, $v] = $this->mundo();
+
+        $errores = GeneradorContrato::validar($client, $credit, [$v->id], 'a11', [
+            'banco' => 'bcp',
+            'tercero' => ['nombre' => 'CARLOS HUAMAN', 'dni' => '74218017', 'cuenta' => '123', 'motivo' => 'X'],
+        ]);
+
+        $this->assertSame([], $errores, 'con nombre, DNI, cuenta y motivo el tercero está completo');
+    }
+
+    /** Lo que sí sigue siendo obligatorio del tercero. */
+    public function test_el_tercero_exige_nombre_dni_cuenta_y_motivo(): void
     {
         [$client, $credit, $v] = $this->mundo();
 
         $texto = implode(' | ', GeneradorContrato::validar($client, $credit, [$v->id], 'a11', [
-            'banco' => 'bcp',
-            'tercero' => ['nombre' => 'CARLOS HUAMAN', 'dni' => '74218017', 'cuenta' => '123', 'motivo' => 'X'],
+            'banco' => 'bcp', 'tercero' => [],
         ]));
 
-        $this->assertStringContainsString('banco del tercero', $texto);
+        foreach (['el nombre del tercero', 'el DNI del tercero', 'la cuenta o CCI del tercero', 'el motivo de la autorización'] as $falta) {
+            $this->assertStringContainsString($falta, $texto);
+        }
+        $this->assertStringNotContainsString('banco del tercero', $texto);
     }
 
     public function test_el_deposito_al_gerente_exige_su_banco_y_cuenta(): void

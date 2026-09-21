@@ -342,10 +342,13 @@ class GeneradorContrato
         }
 
         if ($snapshot['destino'] === 'tercero') {
+            // Sin 'banco': ningún partial lo imprime (la constancia cita el
+            // banco del DESEMBOLSO, $snapshot['banco']), y el modal dejó de
+            // pedirlo el 18/09. Exigirlo bloqueaba TODO contrato con depósito a
+            // tercero: "necesita el banco del tercero" (Antony, 21/09).
             foreach ([
                 'nombre' => 'el nombre del tercero',
                 'dni' => 'el DNI del tercero',
-                'banco' => 'el banco del tercero',
                 'cuenta' => 'la cuenta o CCI del tercero',
                 'motivo' => 'el motivo de la autorización',
             ] as $campo => $etiqueta) {
