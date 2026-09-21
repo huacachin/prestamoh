@@ -142,13 +142,11 @@ class Documentos extends Component
 
     /**
      * Tercero autorizado a recibir el desembolso (modelos de depósito a tercero).
-     * El motivo trae el texto fijo de la maestra a.1.1 (allí va en negro, no
-     * es un dato variable), editable por si el caso es otro.
+     * El motivo NO se pide: es el texto fijo de la maestra a.1.1
+     * (MOTIVO_TERCERO) y va tal cual al contrato (Antony, 21/09: "ese dato
+     * no es modificable"). Hasta entonces había un campo editable.
      */
-    public array $tercero = [
-        'nombre' => '', 'dni' => '', 'cuenta' => '',
-        'motivo' => self::MOTIVO_TERCERO,
-    ];
+    public array $tercero = ['nombre' => '', 'dni' => '', 'cuenta' => ''];
 
     /**
      * Campos del gerente / tercero que llenó la consulta de documento — se
@@ -437,10 +435,7 @@ class Documentos extends Component
             // ficha — no se precargan ni se persisten.
             'banco' => '', 'cuenta' => '',
         ];
-        $this->tercero = [
-            'nombre' => '', 'dni' => '', 'cuenta' => '',
-            'motivo' => self::MOTIVO_TERCERO,
-        ];
+        $this->tercero = ['nombre' => '', 'dni' => '', 'cuenta' => ''];
         $this->valorBien = '';
         $this->bancoDesembolso = '';
         $this->fechaContrato = now()->format('Y-m-d');
@@ -1743,7 +1738,8 @@ class Documentos extends Component
                 'nombre' => trim((string) $this->tercero['nombre']),
                 'dni' => trim((string) $this->tercero['dni']),
                 'cuenta' => trim((string) $this->tercero['cuenta']) ?: null,
-                'motivo' => trim((string) $this->tercero['motivo']) ?: null,
+                // Texto fijo de la maestra, no un dato del formulario.
+                'motivo' => self::MOTIVO_TERCERO,
             ];
         }
 
@@ -1828,7 +1824,6 @@ class Documentos extends Component
                 // bancoDesembolso (el único que cita la constancia); este se
                 // exigía y nunca llegaba al contrato: pedía el banco dos veces.
                 'tercero.cuenta' => ['nullable', 'string', 'max:40'],
-                'tercero.motivo' => ['nullable', 'string', 'max:300'],
             ];
         }
 

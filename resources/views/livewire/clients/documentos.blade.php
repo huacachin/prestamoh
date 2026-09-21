@@ -838,11 +838,6 @@
                                                         <label class="form-label small mb-1">N° de cuenta o CCI</label>
                                                         <input type="text" class="form-control form-control-sm" wire:model.blur="tercero.cuenta">
                                                     </div>
-                                                    <div class="col-12">
-                                                        <label class="form-label small mb-1">Motivo del depósito a tercero</label>
-                                                        <input type="text" class="form-control form-control-sm" wire:model.blur="tercero.motivo"
-                                                               placeholder="Ej.: pago del saldo de precio del vehículo al vendedor">
-                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
