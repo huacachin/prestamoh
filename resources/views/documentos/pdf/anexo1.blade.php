@@ -413,7 +413,11 @@
                 <td class="cli" style="width: {{ $wDeudor }}%;">{{ $c['nombre'] }}</td>
             @endforeach
             {{-- 17/09 (Antony): "Placa de Rodaje", como las demás etiquetas, no en mayúsculas. --}}
-            <td class="etiqueta" style="width: {{ $wVehLabel }}%; white-space: nowrap;">{{ $variosVeh ? 'Placas de Rodaje' : 'Placa de Rodaje' }}</td>
+            {{-- Con dos vehículos la columna de etiquetas es angosta y "Placas
+                 de Rodaje" en una sola línea quedaba a tope con el borde
+                 (Antony, 21/09): ahí se deja partir en dos, como "Valor
+                 Vehículos". Con uno solo cabe y sigue en una línea. --}}
+            <td class="etiqueta" style="width: {{ $wVehLabel }}%;{{ $variosVeh ? '' : ' white-space: nowrap;' }}">{{ $variosVeh ? 'Placas de Rodaje' : 'Placa de Rodaje' }}</td>
             @foreach ($vehiculosCab as $i => $veh)
                 <td class="valor-cent cli" @if (! $variosVeh) colspan="2" @endif>{{ ($veh['placa'] ?? '') ?: '—' }}</td>
             @endforeach
