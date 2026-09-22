@@ -30,9 +30,10 @@
     @if ($vm->destino === 'tercero')
         <div class="numerales">
             <div class="numeral">{{ $n }}.{{ ++$i }}. AMBAS PARTES CERTIFICAN LA VALIDEZ Y EFICACIA LEGAL DEL COMPROBANTE DEL DEPÓSITO/TRANSFERENCIA BANCARIA A FAVOR DE {{ $vm->g->deudor() }} {{ $nombres }} POR EL IMPORTE TOTAL DE {{ $vm->monto('obligacion') }} EN {{ $banco }}.</div>
-        </div>
-        <p class="parrafo">ASIMISMO, LAS PARTES DEJAN CONSTANCIA QUE, POR EXPRESA AUTORIZACIÓN DE {{ $vm->g->deudor() }}, DICHO DEPÓSITO FUE REALIZADO A LA CUENTA BANCARIA N° {{ $vm->tercero['cuenta'] }} A NOMBRE DE {{ mb_strtoupper($vm->tercero['nombre']) }}, IDENTIFICADO CON DNI N.° {{ $vm->tercero['dni'] }}, DEBIDO A QUE {{ mb_strtoupper($vm->tercero['motivo']) }}, CIRCUNSTANCIA QUE NO AFECTA LA VALIDEZ NI EL DESTINO DEL PAGO, EL CUAL SE CONSIDERA ÍNTEGRAMENTE RECIBIDO POR {{ $vm->g->deudor() }}.</p>
-        <div class="numerales">
+            {{-- Segundo párrafo del numeral, al MISMO nivel que su texto (21/09,
+                 Antony con Desktop/ejem_sigm.jpeg): antes iba como párrafo
+                 suelto y arrancaba en el margen izquierdo. --}}
+            <div class="numeral-cont">ASIMISMO, LAS PARTES DEJAN CONSTANCIA QUE, POR EXPRESA AUTORIZACIÓN DE {{ $vm->g->deudor() }}, DICHO DEPÓSITO FUE REALIZADO A LA CUENTA BANCARIA N° {{ $vm->tercero['cuenta'] }} A NOMBRE DE {{ mb_strtoupper($vm->tercero['nombre']) }}, IDENTIFICADO CON DNI N.° {{ $vm->tercero['dni'] }}, DEBIDO A QUE {{ mb_strtoupper($vm->tercero['motivo']) }}, CIRCUNSTANCIA QUE NO AFECTA LA VALIDEZ NI EL DESTINO DEL PAGO, EL CUAL SE CONSIDERA ÍNTEGRAMENTE RECIBIDO POR {{ $vm->g->deudor() }}.</div>
             <div class="numeral">{{ $n }}.{{ ++$i }}. INSERTO: EL COMPROBANTE DEL DEPÓSITO/TRANSFERENCIA BANCARIA POR EL IMPORTE TOTAL DE {{ $vm->monto('obligacion') }} EFECTUADO EN {{ $banco }}, A LA CUENTA DE {{ mb_strtoupper($vm->tercero['nombre']) }}, POR AUTORIZACIÓN EXPRESA DE {{ $vm->g->deudor() }} {{ $nombres }}, {{ $anexo2 }}</div>
         </div>
     @elseif ($vm->destino === 'gerente')
