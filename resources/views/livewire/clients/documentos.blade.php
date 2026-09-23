@@ -123,6 +123,12 @@
                                 <td class="text-center text-nowrap">
                                     {{-- Las descargas de un anulado siguen disponibles: son la constancia de lo entregado --}}
                                     @if($doc->pdf_path)
+                                        {{-- Copia para imprimir: hojas como imagen, lo único que la fotocopiadora saca rápido --}}
+                                        <a href="{{ route('clients.documentos.imprimir', $doc->id) }}" target="_blank" rel="noopener"
+                                           class="btn btn-xs btn-success" style="padding: 2px 8px; font-size: 10px;"
+                                           title="Abrir la copia para imprimir (hojas como imagen: sale rápido en la fotocopiadora)">
+                                            <i class="ti ti-printer"></i> Imprimir
+                                        </a>
                                         <a href="{{ route('clients.documentos.pdf', $doc->id) }}"
                                            class="btn btn-xs btn-danger" style="padding: 2px 8px; font-size: 10px;"
                                            title="Descargar PDF">

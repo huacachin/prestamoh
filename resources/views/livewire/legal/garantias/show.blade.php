@@ -363,6 +363,11 @@
                                         <td class="text-center">
                                             @can('legal.contratos')
                                                 @if($contrato->pdf_path)
+                                                    <a href="{{ route('legal.contratos.imprimir', $contrato->id) }}" target="_blank" rel="noopener"
+                                                       class="btn btn-xs btn-outline-success" style="padding:2px 8px; font-size:10px;"
+                                                       title="Abrir la copia para imprimir (hojas como imagen: sale rápido en la fotocopiadora)">
+                                                        <i class="ti ti-printer"></i> Imprimir
+                                                    </a>
                                                     <a href="{{ route('legal.contratos.pdf', $contrato->id) }}"
                                                        class="btn btn-xs btn-outline-danger" style="padding:2px 8px; font-size:10px;"
                                                        title="Descargar PDF">

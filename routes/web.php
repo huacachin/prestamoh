@@ -64,6 +64,7 @@ Route::middleware('auth')->group(function () {
         Route::get('clients/{id}/documentos', [ClientController::class, 'documentos'])->name('clients.documentos');
         Route::get('clients/documentos/{id}/pdf', [DocumentoClienteController::class, 'pdf'])->name('clients.documentos.pdf');
         Route::get('clients/documentos/{id}/word', [DocumentoClienteController::class, 'word'])->name('clients.documentos.word');
+        Route::get('clients/documentos/{id}/imprimir', [DocumentoClienteController::class, 'imprimir'])->name('clients.documentos.imprimir');
         Route::get('clients/{id}', [ClientController::class, 'show'])->name('clients.show');
     });
 
@@ -131,6 +132,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware('permission:legal.contratos')->group(function () {
         Route::get('legal/garantias/{id}/contrato', [LegalController::class, 'contratoForm'])->name('legal.contratos.form');
         Route::get('legal/contratos/{id}/pdf', [LegalController::class, 'contratoPdf'])->name('legal.contratos.pdf');
+        Route::get('legal/contratos/{id}/imprimir', [LegalController::class, 'contratoImprimir'])->name('legal.contratos.imprimir');
     });
     Route::get('legal/notaria', [LegalController::class, 'notaria'])->name('legal.notaria')->middleware('permission:legal.notaria');
     Route::get('legal/papeletas', [LegalController::class, 'papeletas'])->name('legal.papeletas')->middleware('permission:legal.papeletas');

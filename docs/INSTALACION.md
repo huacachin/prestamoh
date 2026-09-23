@@ -40,6 +40,8 @@ cd prestamoh
 # 2. Dependencias
 composer install --no-dev --optimize-autoloader
 npm ci && npm run build
+sudo apt install -y ghostscript   # botón "Imprimir" de los documentos: rasteriza el PDF emitido (App\Services\Documentos\CopiaImpresion)
+sudo -u www-data HOME=/tmp gs --version   # debe responder (10.x); sin gs el botón avisa y ofrece el PDF normal
 
 # 3. Configurar entorno
 cp .env.example .env

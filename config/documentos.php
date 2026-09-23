@@ -45,6 +45,26 @@ return [
     'whatsapp_gps' => '+51 982 333 689',
 
     /*
+     * Copia de IMPRESIÓN (22/09): el botón "Imprimir" sirve el PDF emitido
+     * rasterizado con Ghostscript (una imagen por hoja) porque la
+     * fotocopiadora tarda 15-20 s por hoja con las fuentes de dompdf.
+     * Ver App\Services\Documentos\CopiaImpresion.
+     */
+    'impresion' => [
+        'ghostscript' => env('GHOSTSCRIPT_BIN', 'gs'),
+        'dpi' => 300,
+        'timeout' => 90, // segundos por documento
+        'sufijo' => '-impresion',
+        // La fotocopiadora cobra el color: el contrato es texto negro; los
+        // anexos llevan cabeceras de color y la foto del voucher.
+        'color' => [
+            'contrato' => false,
+            'anexo1' => true,
+            'anexo2' => true,
+        ],
+    ],
+
+    /*
      * Pie del ANEXO 2 (15/09): los maestros del área legal lo llevan al pie
      * en las 15 plantillas, con las cuentas a las que el cliente paga. Si las
      * cuentas cambian, se cambia aquí y sale en todos los anexos nuevos.
