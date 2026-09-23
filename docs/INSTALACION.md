@@ -56,6 +56,8 @@ php artisan db:seed --force
 
 # 6. Symlink storage
 php artisan storage:link
+# OJO: public/.htaccess niega por URL los PDF de storage/documentos (contratos y anexos
+# emitidos, nombres adivinables). El vhost debe tener AllowOverride All para que aplique.
 
 # 7. Cachear configuración para producción
 php artisan config:cache

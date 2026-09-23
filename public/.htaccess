@@ -5,6 +5,13 @@
 
     RewriteEngine On
 
+    # Los PDF emitidos (contratos, anexos y sus copias de impresión) son DATOS
+    # de clientes con nombres adivinables (cliente-N/contrato-credito-M-vK.pdf):
+    # solo se sirven por la app, con sesión y permiso (DocumentoClienteController
+    # lee del disco). Las imágenes de esa misma carpeta (foto del voucher, nombre
+    # aleatorio) sí van por URL: las usan la vista previa y el Word del anexo 2.
+    RewriteRule ^storage/documentos/.*\.pdf$ - [NC,R=404,L]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
