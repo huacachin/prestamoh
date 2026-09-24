@@ -4,8 +4,9 @@ namespace App\Livewire\Credits;
 
 use App\Models\Credit;
 use App\Models\CreditInstallment;
-use App\Models\Payment;
 use App\Models\User;
+use App\Services\Credits\CreditoNoEliminableException;
+use App\Services\Credits\EliminadorCredito;
 use Illuminate\Pagination\AbstractPaginator;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -86,10 +87,15 @@ class Index extends Component
             }
         }
 
-        // Eliminar cascade
-        CreditInstallment::where('credit_id', $id)->delete();
-        Payment::where('credit_id', $id)->delete();
-        $credit->delete();
+        // Borrado real con todo lo suyo (documentos emitidos incluidos), en
+        // una transacción y con traza en la auditoría. Ver EliminadorCredito.
+        try {
+            EliminadorCredito::eliminar($credit);
+        } catch (CreditoNoEliminableException $e) {
+            $this->dispatch('errorAlert', ['message' => $e->getMessage()]);
+
+            return;
+        }
 
         $this->dispatch('successAlert', ['message' => 'Préstamo eliminado correctamente.']);
     }

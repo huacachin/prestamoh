@@ -55,6 +55,25 @@ final class CopiaImpresion
         return preg_replace('/\.pdf$/i', '', $pdfPath)."{$sufijo}-{$marca}.pdf";
     }
 
+    /**
+     * Copias de impresión que existen para un PDF emitido (cualquier color o
+     * resolución), como rutas del disco public. Para borrarlas con el original.
+     *
+     * @return list<string>
+     */
+    public static function copiasDe(string $pdfPath): array
+    {
+        $disco = Storage::disk(self::DISCO);
+        $sufijo = (string) config('documentos.impresion.sufijo', '-impresion');
+        $base = preg_replace('/\.pdf$/i', '', $pdfPath).$sufijo.'-';
+        $carpeta = dirname($pdfPath);
+
+        return array_values(array_filter(
+            $disco->files($carpeta === '.' ? '' : $carpeta),
+            fn (string $f) => str_starts_with($f, $base) && str_ends_with(strtolower($f), '.pdf')
+        ));
+    }
+
     /** Color según el tipo de documento; lo que no esté en la tabla sale a color (no pierde nada). */
     public static function colorPara(string $tipo): bool
     {
