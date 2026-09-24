@@ -84,6 +84,7 @@ class Vehiculos extends Component
         'nacionalidad' => 'PERUANO', 'ocupacion' => 'transportista',
         'estado_civil' => 'soltero', 'direccion' => '', 'distrito' => '',
         'provincia' => 'LIMA', 'departamento' => 'LIMA', 'email' => '',
+        'celular1' => '', // 24/09: faltaba y el anexo 1 imprime el celular de cada deudor
     ];
 
     public ?string $coproDocMsg = null;
@@ -392,11 +393,13 @@ class Vehiculos extends Component
             'nuevoCopro.provincia' => 'required|in:'.implode(',', array_keys(Create::PROVINCIAS)),
             'nuevoCopro.departamento' => 'required|string|max:100',
             'nuevoCopro.email' => 'required|email|max:150',
+            'nuevoCopro.celular1' => 'required|string|max:20',
         ], [], [
             'nuevoCopro.documento' => 'documento',
             'nuevoCopro.nombre' => 'nombres',
             'nuevoCopro.apellido_pat' => 'apellido paterno',
             'nuevoCopro.email' => 'correo',
+            'nuevoCopro.celular1' => 'celular',
         ]);
 
         $copro = Client::create([
@@ -414,6 +417,7 @@ class Vehiculos extends Component
             'provincia' => $this->nuevoCopro['provincia'],
             'departamento' => mb_strtoupper(trim($this->nuevoCopro['departamento'])),
             'email' => trim($this->nuevoCopro['email']),
+            'celular1' => trim($this->nuevoCopro['celular1']),
             'es_relacionado' => true,
             'usuario' => auth()->user()->username ?? auth()->user()->name ?? null,
             'fecha_registro' => now()->toDateString(),

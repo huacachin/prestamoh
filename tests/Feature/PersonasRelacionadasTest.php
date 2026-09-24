@@ -66,6 +66,7 @@ class PersonasRelacionadasTest extends TestCase
             'nacionalidad' => 'PERUANO', 'ocupacion' => 'independiente', 'estado_civil' => 'casado',
             'direccion' => 'AV. DOS 123', 'distrito' => 'LINCE', 'provincia' => 'LIMA',
             'departamento' => 'LIMA', 'email' => 'maria.rel@example.com',
+            'celular1' => '987654321',
         ];
     }
 
@@ -89,6 +90,8 @@ class PersonasRelacionadasTest extends TestCase
         $this->assertNull($copro->expediente, 'sin expediente');
         $this->assertNull($copro->asesor_id, 'sin asesor');
         $this->assertTrue($v->fresh()->copropietarios->contains($copro->id), 'queda vinculada al vehículo en el mismo paso');
+        // 24/09: el celular faltaba en el alta rápida y el anexo 1 lo imprime por cada deudor.
+        $this->assertSame('987654321', $copro->celular1);
     }
 
     public function test_el_alta_rapida_exige_los_datos_del_contrato(): void
@@ -100,10 +103,10 @@ class PersonasRelacionadasTest extends TestCase
             ->call('abrirCopro', $v->id)
             ->call('abrirCrearCopro')
             ->set('nuevoCopro', array_merge($this->formularioCopro(), [
-                'email' => '', 'direccion' => '', 'distrito' => '',
+                'email' => '', 'direccion' => '', 'distrito' => '', 'celular1' => '',
             ]))
             ->call('crearYVincularCopro')
-            ->assertHasErrors(['nuevoCopro.email', 'nuevoCopro.direccion', 'nuevoCopro.distrito']);
+            ->assertHasErrors(['nuevoCopro.email', 'nuevoCopro.direccion', 'nuevoCopro.distrito', 'nuevoCopro.celular1']);
 
         $this->assertNull(Client::where('documento', '47000002')->first());
     }

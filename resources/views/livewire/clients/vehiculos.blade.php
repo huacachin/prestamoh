@@ -329,6 +329,13 @@
                                                             @endforeach
                                                         </select>
                                                     </div>
+                                                    <div class="col-6 col-md-2">
+                                                        <label class="form-label mb-0 small fw-semibold">Celular / WhatsApp *</label>
+                                                        <input type="text" inputmode="tel" maxlength="20"
+                                                               class="form-control form-control-sm @error('nuevoCopro.celular1') is-invalid @enderror"
+                                                               wire:model.blur="nuevoCopro.celular1" placeholder="987654321">
+                                                        @error('nuevoCopro.celular1') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                                    </div>
                                                     <div class="col-12 col-md-4">
                                                         <label class="form-label mb-0 small fw-semibold">Correo *</label>
                                                         <input type="email" class="form-control form-control-sm @error('nuevoCopro.email') is-invalid @enderror"
