@@ -85,12 +85,11 @@
                             @if($clienteFiltrado)
                                 <div class="d-flex align-items-center gap-2 py-1 small">
                                     <span class="text-muted">Cliente:</span>
-                                    <span class="badge bg-dark" style="font-size:11px;">
-                                        <i class="ti ti-user"></i> {{ $clienteFiltrado->fullName() }}
+                                    <span class="badge bg-dark fw-normal" style="font-size:11px;">
+                                        {{ $clienteFiltrado->fullName() }}
+                                        <a href="#" class="text-white text-decoration-none ms-1" style="opacity:.7;"
+                                           wire:click.prevent="quitarCliente" title="Quitar el filtro de cliente">&times;</a>
                                     </span>
-                                    <a href="#" class="text-danger text-decoration-none" wire:click.prevent="quitarCliente" title="Quitar el filtro de cliente">
-                                        <i class="ti ti-x"></i> quitar filtro
-                                    </a>
                                 </div>
                             @endif
                         </div>
