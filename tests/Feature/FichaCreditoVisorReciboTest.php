@@ -28,7 +28,7 @@ class FichaCreditoVisorReciboTest extends TestCase
         $user = User::factory()->create(['username' => 'ficha-tester', 'headquarter_id' => $sede->id]);
         $this->actingAs($user);
         $this->seed(PermissionCatalogSeeder::class);
-        $user->givePermissionTo('creditos');
+        $user->givePermissionTo(['creditos', 'reportes.pagos']);
 
         $client = Client::create([
             'expediente' => '9040', 'nombre' => 'LUIS', 'apellido_pat' => 'PEREZ', 'apellido_mat' => 'RAMOS',
@@ -50,6 +50,9 @@ class FichaCreditoVisorReciboTest extends TestCase
         Livewire::test(Show::class, ['id' => $credit->id])
             ->assertSeeHtml('id="modal-recibo"')
             ->assertSeeHtml('allow="clipboard-write"')
-            ->assertSeeHtml('function abrirRecibo(url)');
+            ->assertSeeHtml('function abrirRecibo(url)')
+            // 26/09: botón al reporte de pagos filtrado a este cliente (igual que el cronograma).
+            ->assertSee('Reporte de pagos')
+            ->assertSeeHtml('cliente='.$client->id);
     }
 }
