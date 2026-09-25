@@ -64,6 +64,7 @@
                     <div id="printme">
                         {{-- Daily detail table --}}
                         <div id="tabla-caja-3" class="table-responsive" style="max-height: 650px; overflow: auto;">
+                            {{-- Azul de ingresos/TOTAL/SALDO: #0000FF, el <font color=blue> del legacy (no el text-primary celeste del tema). 25/09 --}}
                             <table class="table table-bordered table-striped table-hover table-sm caja3-legacy" style="min-width: 900px;">
                                 <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                     <tr>
@@ -85,7 +86,7 @@
                                                 <td class="text-start col-wrap">{{ $item['detalle'] }}</td>
                                                 <td class="text-end">
                                                     @if($item['ingreso'] > 0)
-                                                        <span class="text-primary">{{ number_format($item['ingreso'], 2) }}</span>
+                                                        <span style="color:#0000FF;">{{ number_format($item['ingreso'], 2) }}</span>
                                                     @endif
                                                 </td>
                                                 <td class="text-end">
@@ -101,7 +102,7 @@
                                             <td></td>
                                             <td></td>
                                             <td><strong>TOTAL</strong></td>
-                                            <td class="text-end" style="color:#0d6efd;">
+                                            <td class="text-end" style="color:#0000FF;">
                                                 <strong>{{ number_format($day['total_ingreso'], 2) }}</strong>
                                             </td>
                                             <td class="text-end" style="color:#dc3545;">
@@ -113,7 +114,7 @@
                                             <td></td>
                                             <td></td>
                                             <td><strong>SALDO <span style="color:#dc3545;">FINAL-INICIAL</span></strong></td>
-                                            <td class="text-end" style="color:#0d6efd;">
+                                            <td class="text-end" style="color:#0000FF;">
                                                 <strong>{{ number_format($day['saldo'], 2) }}</strong>
                                             </td>
                                             <td></td>
@@ -130,7 +131,7 @@
                                             <td colspan="4" style="color:#000;">
                                                 <strong>REPORTE GENERAL <span style="color:#dc3545;">CAJA 3 - </span>TOTAL <span style="color:#dc3545;">GENERAL</span></strong>
                                             </td>
-                                            <td class="text-end" style="color:#0d6efd;">
+                                            <td class="text-end" style="color:#0000FF;">
                                                 <strong>{{ number_format($report['total_ingresos'], 2) }}</strong>
                                             </td>
                                             <td class="text-end" style="color:#dc3545;">
@@ -163,8 +164,8 @@
                                                 <tr>
                                                     <td><strong>{{ $sCount }}</strong></td>
                                                     <td><strong>INTERES</strong></td>
-                                                    <td class="text-end" style="color:#0d6efd;">0.00</td>
-                                                    <td class="text-end" style="color:#0d6efd;">{{ number_format($report['total_interes'], 2) }}</td>
+                                                    <td class="text-end" style="color:#0000FF;">0.00</td>
+                                                    <td class="text-end" style="color:#0000FF;">{{ number_format($report['total_interes'], 2) }}</td>
                                                     <td class="text-end align-middle" rowspan="3">
                                                         {{ number_format($report['total_interes'] + $report['total_mora'] + $report['total_mora_acum'], 2) }}
                                                     </td>
@@ -174,8 +175,8 @@
                                                 <tr>
                                                     <td><strong>{{ $sCount }}</strong></td>
                                                     <td><strong>MORA</strong></td>
-                                                    <td class="text-end" style="color:#0d6efd;">0.00</td>
-                                                    <td class="text-end" style="color:#0d6efd;">{{ number_format($report['total_mora'], 2) }}</td>
+                                                    <td class="text-end" style="color:#0000FF;">0.00</td>
+                                                    <td class="text-end" style="color:#0000FF;">{{ number_format($report['total_mora'], 2) }}</td>
                                                 </tr>
                                                 {{-- Mora acumulada (cobrada al cancelar) --}}
                                                 @php $sCount++; @endphp
@@ -195,8 +196,8 @@
                                                     <tr>
                                                         <td><strong>{{ $sCount }}</strong></td>
                                                         <td><strong>{{ trim(($row->aa ?? '') . ' ' . ($row->asesores ?? '')) }}</strong></td>
-                                                        <td class="text-end" style="color:#0d6efd;">{{ number_format($row->tm ?? 0, 2) }}</td>
-                                                        <td class="text-end" style="color:#0d6efd;">{{ number_format($row->gm, 2) }}</td>
+                                                        <td class="text-end" style="color:#0000FF;">{{ number_format($row->tm ?? 0, 2) }}</td>
+                                                        <td class="text-end" style="color:#0000FF;">{{ number_format($row->gm, 2) }}</td>
                                                         @if($advisorIdx === 1)
                                                             <td class="text-end align-middle" rowspan="{{ $advisorCount }}">
                                                                 {{ number_format($report['total_advisor'], 2) }}
@@ -209,8 +210,8 @@
                                                 <tr>
                                                     <td></td>
                                                     <td><strong>Total General</strong></td>
-                                                    <td class="text-end" style="color:#0d6efd;"><strong>0.00</strong></td>
-                                                    <td class="text-center" colspan="2" style="color:#0d6efd;">
+                                                    <td class="text-end" style="color:#0000FF;"><strong>0.00</strong></td>
+                                                    <td class="text-center" colspan="2" style="color:#0000FF;">
                                                         <strong>{{ number_format($report['total_resumen'], 2) }}</strong>
                                                     </td>
                                                 </tr>
