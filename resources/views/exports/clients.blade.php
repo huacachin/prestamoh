@@ -30,7 +30,7 @@
                         $fecha = $c->fecha_registro ? \Illuminate\Support\Carbon::parse($c->fecha_registro)->format('Y-m-d') : '';
                         $asesor = $c->asesor?->username ?? $c->asesor?->name ?? '';
                         $hasCredit = isset($clientsWithCredit[$c->id]);
-                        $rowColor = $hasCredit ? null : '#dc3545';
+                        $rowColor = $hasCredit ? null : '#FF0000'; // sin crédito vigente (nuevo o todo cancelado): rojo del legacy, 25/09
                     @endphp
                     <tr @if($rowColor) style="color:{{ $rowColor }};" @endif>
                         <td {!! $cell !!}>@if($rowColor)<font color="{{ $rowColor }}">{{ $i + 1 }}</font>@else{{ $i + 1 }}@endif</td>
@@ -72,7 +72,7 @@
                         $fecha = $c->fecha_registro ? \Illuminate\Support\Carbon::parse($c->fecha_registro)->format('Y-m-d') : '';
                         $asesor = $c->asesor?->username ?? $c->asesor?->name ?? '';
                         $hasCredit = isset($clientsWithCredit[$c->id]);
-                        $rowColor = $hasCredit ? null : '#dc3545';
+                        $rowColor = $hasCredit ? null : '#FF0000'; // sin crédito vigente (nuevo o todo cancelado): rojo del legacy, 25/09
                     @endphp
                     <tr @if($rowColor) style="color:{{ $rowColor }};" @endif>
                         <td {!! $cell !!}>@if($rowColor)<font color="{{ $rowColor }}">{{ $i + 1 }}</font>@else{{ $i + 1 }}@endif</td>

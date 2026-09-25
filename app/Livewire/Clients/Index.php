@@ -192,7 +192,8 @@ class Index extends Component
         // Estado de créditos de los visibles de la página, para el color del texto:
         //   'activo'    → tiene al menos un crédito vigente
         //   'cancelado' → tuvo créditos y TODOS están cancelados  → se pinta en rojo
-        //   'sin'       → nunca tuvo un crédito (no es lo mismo, no se pinta)
+        //   'sin'       → nunca tuvo un crédito (cliente nuevo)   → también en rojo (25/09,
+        //                 como el legacy: rojo = sin crédito vigente)
         $estadoCreditos = Credit::whereIn('client_id', $pageIds)
             ->selectRaw("client_id, SUM(situacion = 'Activo') AS activos")
             ->groupBy('client_id')

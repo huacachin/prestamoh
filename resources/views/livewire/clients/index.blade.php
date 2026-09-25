@@ -177,9 +177,10 @@
                             <tbody>
                             @forelse($clients as $client)
                                 @php
-                                    // Rojo solo si TUVO créditos y ya no le queda ninguno vigente.
-                                    // Quien nunca tuvo crédito no se marca: es un caso distinto.
-                                    $todoCancelado = ($estadoCreditos[$client->id] ?? 'sin') === 'cancelado';
+                                    // Rojo si NO tiene ningún crédito vigente, como el legacy (cliente.php):
+                                    // el cliente nuevo que aún no tiene crédito y el que ya canceló todos.
+                                    // (Hasta el 25/09 el nuevo no se marcaba.)
+                                    $sinVigente = ($estadoCreditos[$client->id] ?? 'sin') !== 'activo';
                                     // Morosidad del peor crédito activo: 2 cuotas vencidas → naranja, 3+ → rojo
                                     $venc = $morosidad[$client->id] ?? 0;
                                     // Ejecución PREVALECE sobre la morosidad: el expediente ya está en
@@ -195,7 +196,7 @@
                                 {{-- El color va por clase, no en el style de la fila: Bootstrap 5 pinta
                                      cada celda con .table > :not(caption) > * > *, y eso tapaba
                                      cualquier color puesto en el <tr>. --}}
-                                <tr class="{{ $todoCancelado ? 'cliente-cancelado' : '' }}"
+                                <tr class="{{ $sinVigente ? 'sin-vigente' : '' }}"
                                     style="{{ $rowBg !== '' ? "background-color: {$rowBg};" : '' }}"
                                     data-bg="{{ $rowBg }}"
                                     onmouseover="this.style.backgroundColor='#CCFF66'"
@@ -279,13 +280,14 @@
                     <div class="d-md-none">
                         @forelse($clients as $client)
                             @php
-                                $todoCancelado = ($estadoCreditos[$client->id] ?? 'sin') === 'cancelado';
+                                // Mismo criterio que la tabla: sin crédito vigente (nuevo o todo cancelado) → rojo.
+                                $sinVigente = ($estadoCreditos[$client->id] ?? 'sin') !== 'activo';
                             @endphp
-                            <div class="card mb-2 shadow-sm {{ $todoCancelado ? 'border-danger' : '' }}">
-                                <div class="card-body p-3" style="{{ $todoCancelado ? 'color: red;' : '' }}">
+                            <div class="card mb-2 shadow-sm {{ $sinVigente ? 'border-danger sin-vigente' : '' }}">
+                                <div class="card-body p-3" style="{{ $sinVigente ? 'color: #FF0000;' : '' }}">
                                     <div class="d-flex justify-content-between align-items-start mb-1">
                                         <h6 class="mb-0">
-                                            <a href="{{ route('clients.edit', $client->id) }}" style="{{ $todoCancelado ? 'color: red;' : 'color: black;' }}">
+                                            <a href="{{ route('clients.edit', $client->id) }}" style="{{ $sinVigente ? 'color: #FF0000;' : 'color: black;' }}">
                                                 {{ $client->apellido_pat }} {{ $client->apellido_mat }} {{ $client->nombre }}
                                             </a>
                                         </h6>
@@ -372,16 +374,17 @@
         background-color: inherit !important;
     }
 
-    /* Cliente que ya cancelo todos sus creditos: el rojo tiene que ir sobre las
+    /* Cliente sin credito vigente (nuevo sin credito aun, o que ya cancelo todos):
+       toda la fila en el rojo del legacy (#FF0000). El rojo tiene que ir sobre las
        CELDAS. Bootstrap 5 les asigna color con `.table > :not(caption) > * > *`,
        asi que un color puesto en el <tr> nunca se ve. Esta regla tiene mas
        especificidad que la suya, por eso no hace falta !important.
 
        Se excluyen los .btn: llevan color propio sobre fondo de color, y
        pintarlos de rojo dejaba el boton "Aval" en rojo sobre rojo. */
-    .table > tbody > tr.cliente-cancelado > td,
-    .table > tbody > tr.cliente-cancelado > td a:not(.btn) {
-        color: #dc3545;
+    .table > tbody > tr.sin-vigente > td,
+    .table > tbody > tr.sin-vigente > td a:not(.btn) {
+        color: #FF0000;
     }
 
     /* ── Chips del filtro de morosidad ── */
