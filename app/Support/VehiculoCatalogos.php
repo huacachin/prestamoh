@@ -17,6 +17,7 @@ class VehiculoCatalogos
     public const CARROCERIAS = [
         'SEDAN', 'SUV', 'MINIBUS', 'MICROBUS', 'MULTIPROPÓSITO',
         'ÓMNIBUS', 'FURGON', 'STATION WAGON',
+        'PICK UP', // 26/09: faltaba (así la nombra la tarjeta de propiedad)
     ];
 
     /** Opciones del select conservando un valor guardado fuera del catálogo. */
