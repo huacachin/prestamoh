@@ -70,7 +70,7 @@
                                 <button class="btn btn-sm btn-dark flex-shrink-0" wire:click="search">
                                     <i class="ti ti-search f-s-12"></i> Buscar
                                 </button>
-                                <a href="{{ route('exports.reports.payments', ['tipo' => $tipo, 'compra' => $compra, 'fei' => $fei, 'fef' => $fef, 'cliente' => $clienteId]) }}"
+                                <a href="{{ route('exports.reports.payments', ['tipo' => $tipo, 'compra' => $compra, 'fei' => $fei, 'fef' => $fef, 'cliente' => $clienteId, 'credito' => $creditoId]) }}"
                                    target="_blank"
                                    class="btn btn-sm btn-success flex-shrink-0">
                                     <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
@@ -80,16 +80,25 @@
                                 </button>
                                 <x-scroll-bottom-btn scrollable="#tabla-pagos-rep" />
                             </div>
-                            {{-- Filtro por cliente (26/09, viene del cronograma): en su propia línea,
-                                 alineado con los filtros; antes iba suelto en medio de los botones. --}}
-                            @if($clienteFiltrado)
-                                <div class="d-flex align-items-center gap-2 py-1 small">
-                                    <span class="text-muted">Cliente:</span>
-                                    <span class="badge bg-dark" style="font-size:11px;">
-                                        <i class="ti ti-user"></i> {{ $clienteFiltrado->fullName() }}
-                                    </span>
-                                    <a href="#" class="text-danger text-decoration-none" wire:click.prevent="quitarCliente"
-                                       title="Quitar el filtro de cliente (vuelve al reporte de hoy)">
+                            {{-- Filtro por crédito o cliente (26/09, viene del cronograma / ficha):
+                                 en su propia línea, alineado con los filtros. Con crédito, el reporte
+                                 trae SOLO los pagos de ese crédito. --}}
+                            @if($creditoFiltrado || $clienteFiltrado)
+                                <div class="d-flex align-items-center gap-2 py-1 small flex-wrap">
+                                    @if($creditoFiltrado)
+                                        <span class="text-muted">Crédito:</span>
+                                        <a href="{{ route('credits.show', $creditoFiltrado->id) }}" class="badge bg-dark text-decoration-none" style="font-size:11px;" title="Ir al crédito">
+                                            <i class="ti ti-file-invoice"></i> #{{ $creditoFiltrado->id }}
+                                        </a>
+                                    @endif
+                                    @if($clienteFiltrado)
+                                        <span class="text-muted">Cliente:</span>
+                                        <span class="badge bg-dark" style="font-size:11px;">
+                                            <i class="ti ti-user"></i> {{ $clienteFiltrado->fullName() }}
+                                        </span>
+                                    @endif
+                                    <a href="#" class="text-danger text-decoration-none" wire:click.prevent="quitarFiltro"
+                                       title="Quitar el filtro (vuelve al reporte de hoy)">
                                         <i class="ti ti-x"></i> quitar filtro
                                     </a>
                                 </div>

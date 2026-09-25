@@ -3,6 +3,7 @@
 namespace App\Livewire\Reports;
 
 use App\Models\Client;
+use App\Models\Credit;
 use App\Models\Payment;
 use App\Support\Usernames;
 use Carbon\Carbon;
@@ -32,13 +33,22 @@ class Payments extends Component
     public $clienteId = '';
 
     /**
-     * Quita el filtro de cliente y vuelve al rango de HOY. El enlace del
-     * cronograma trae "desde el primer crédito del cliente" (años atrás):
-     * sin cliente, ese rango cargaba todos los pagos de la empresa en una
-     * sola tabla y el navegador se quedaba colgado (26/09).
+     * 26/09: filtro exacto por crédito (id). Es el que usan los botones
+     * "Reporte de pagos" del cronograma y de la ficha: solo los pagos de ESE
+     * crédito, no de todos los del cliente. Manda sobre el filtro de cliente.
      */
-    public function quitarCliente(): void
+    #[Url(as: 'credito', except: '')]
+    public $creditoId = '';
+
+    /**
+     * Quita el filtro de crédito/cliente y vuelve al rango de HOY. El enlace
+     * del cronograma trae "desde la fecha del préstamo" (puede ser años
+     * atrás): sin filtro, ese rango cargaba todos los pagos de la empresa en
+     * una sola tabla y el navegador se quedaba colgado (26/09).
+     */
+    public function quitarFiltro(): void
     {
+        $this->creditoId = '';
         $this->clienteId = '';
         $this->fei = Carbon::today()->format('Y-m-d');
         $this->fef = Carbon::today()->format('Y-m-d');
@@ -71,7 +81,12 @@ class Payments extends Component
         }
 
         $clienteFiltrado = null;
-        if ($this->clienteId !== '' && $this->clienteId !== null) {
+        $creditoFiltrado = null;
+        if ($this->creditoId !== '' && $this->creditoId !== null) {
+            $creditoFiltrado = Credit::with('client:id,nombre,apellido_pat,apellido_mat')->find((int) $this->creditoId);
+            $clienteFiltrado = $creditoFiltrado?->client;
+            $base->where('credit_id', (int) $this->creditoId);
+        } elseif ($this->clienteId !== '' && $this->clienteId !== null) {
             $clienteFiltrado = Client::find((int) $this->clienteId);
             $base->whereHas('credit', fn ($q) => $q->where('client_id', (int) $this->clienteId));
         }
@@ -155,6 +170,7 @@ class Payments extends Component
 
         return view('livewire.reports.payments', [
             'clienteFiltrado' => $clienteFiltrado,
+            'creditoFiltrado' => $creditoFiltrado,
             'rows' => $rows,
             'totals' => $totals,
             'isAdmin' => $isAdmin,

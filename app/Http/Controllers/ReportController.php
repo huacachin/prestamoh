@@ -168,6 +168,7 @@ class ReportController extends Controller
         $c->fei = (string) $request->query('fei', now()->format('Y-m-d'));
         $c->fef = (string) $request->query('fef', now()->format('Y-m-d'));
         $c->clienteId = (string) $request->query('cliente', '');
+        $c->creditoId = (string) $request->query('credito', '');
 
         $d = $c->render()->getData();
 

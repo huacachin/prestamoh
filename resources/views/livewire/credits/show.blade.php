@@ -96,10 +96,9 @@
                     <i class="ti ti-currency-dollar"></i> Registrar Pago
                 </a>
                 @can('reportes.pagos')
-                    {{-- 26/09: el mismo enlace que el cronograma: reporte de pagos filtrado a este cliente --}}
-                    @php $desdeReporte = \App\Models\Credit::where('client_id', $credit->client_id)->min('fecha_prestamo'); @endphp
-                    <a href="{{ route('reports.payments', ['cliente' => $credit->client_id, 'desde' => \Carbon\Carbon::parse($desdeReporte ?: $credit->fecha_prestamo)->format('Y-m-d'), 'hasta' => now()->format('Y-m-d')]) }}"
-                       class="btn btn-sm btn-outline-info" title="Reporte de pagos de este cliente">
+                    {{-- 26/09: el reporte de pagos filtrado a ESTE crédito, desde la fecha del préstamo hasta hoy --}}
+                    <a href="{{ route('reports.payments', ['credito' => $credit->id, 'desde' => ($credit->fecha_prestamo ?? now())->format('Y-m-d'), 'hasta' => now()->format('Y-m-d')]) }}"
+                       class="btn btn-sm btn-outline-info" title="Reporte de pagos de este crédito #{{ $credit->id }}">
                         <i class="ti ti-report-money"></i> Reporte de pagos
                     </a>
                 @endcan
