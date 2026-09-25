@@ -70,7 +70,13 @@
                                 <button class="btn btn-sm btn-dark flex-shrink-0" wire:click="search">
                                     <i class="ti ti-search f-s-12"></i> Buscar
                                 </button>
-                                <a href="{{ route('exports.reports.payments', ['tipo' => $tipo, 'compra' => $compra, 'fei' => $fei, 'fef' => $fef]) }}"
+                                @if($clienteFiltrado)
+                                    <span class="badge bg-dark align-self-center" style="font-size:11px;" title="Filtrado por cliente (desde el cronograma)">
+                                        <i class="ti ti-user"></i> {{ $clienteFiltrado->fullName() }}
+                                        <a href="#" class="text-white ms-1" wire:click.prevent="quitarCliente" title="Quitar el filtro de cliente"><i class="ti ti-x"></i></a>
+                                    </span>
+                                @endif
+                                <a href="{{ route('exports.reports.payments', ['tipo' => $tipo, 'compra' => $compra, 'fei' => $fei, 'fef' => $fef, 'cliente' => $clienteId]) }}"
                                    target="_blank"
                                    class="btn btn-sm btn-success flex-shrink-0">
                                     <i class="ti ti-file-spreadsheet f-s-12"></i> Excel

@@ -24,6 +24,14 @@
                 <button type="button" class="btn btn-sm btn-secondary" onclick="window.print()">
                     <i class="ti ti-printer"></i> Imprimir
                 </button>
+                @can('reportes.pagos')
+                    {{-- 26/09: el reporte de pagos filtrado a este cliente, desde su primer crédito hasta hoy --}}
+                    @php $desdeReporte = \App\Models\Credit::where('client_id', $credit->client_id)->min('fecha_prestamo'); @endphp
+                    <a href="{{ route('reports.payments', ['cliente' => $credit->client_id, 'desde' => \Carbon\Carbon::parse($desdeReporte ?: $credit->fecha_prestamo)->format('Y-m-d'), 'hasta' => now()->format('Y-m-d')]) }}"
+                       class="btn btn-sm btn-info" title="Reporte de pagos de este cliente">
+                        <i class="ti ti-report-money"></i> Reporte de pagos
+                    </a>
+                @endcan
                 <a href="{{ route('clients.show', $credit->client_id) }}" class="btn btn-sm btn-secondary ms-auto">Regresar</a>
             </div>
         </div>

@@ -2,7 +2,9 @@
 
 namespace App\Livewire\Reports;
 
+use App\Models\Client;
 use App\Models\Payment;
+use App\Support\Usernames;
 use Carbon\Carbon;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -20,6 +22,19 @@ class Payments extends Component
 
     #[Url(as: 'hasta')]
     public $fef;
+
+    /**
+     * 26/09: filtro exacto por cliente (id), para el botón "Reporte de pagos"
+     * del cronograma. El texto de "A/" busca por LIKE en nombre y apellidos,
+     * así que no sirve para aislar a UNA persona.
+     */
+    #[Url(as: 'cliente', except: '')]
+    public $clienteId = '';
+
+    public function quitarCliente(): void
+    {
+        $this->clienteId = '';
+    }
 
     public function mount()
     {
@@ -45,6 +60,12 @@ class Payments extends Component
         }
         if ($this->fef) {
             $base->where('fecha', '<=', $this->fef);
+        }
+
+        $clienteFiltrado = null;
+        if ($this->clienteId !== '' && $this->clienteId !== null) {
+            $clienteFiltrado = Client::find((int) $this->clienteId);
+            $base->whereHas('credit', fn ($q) => $q->where('client_id', (int) $this->clienteId));
         }
 
         if ($this->compra !== '') {
@@ -88,7 +109,7 @@ class Payments extends Component
                 'hora' => $first->hora,
                 // Username, no nombre: los pagos migrados ya lo traen y los
                 // nuevos guardan el nombre completo — Usernames::de normaliza
-                'usuario' => \App\Support\Usernames::de($first->usuario),
+                'usuario' => Usernames::de($first->usuario),
                 'asesor' => $first->asesor,
                 'cliente' => $first->credit?->client
                     ? trim(($first->credit->client->apellido_pat ?? '').' '.($first->credit->client->apellido_mat ?? '').' '.($first->credit->client->nombre ?? ''))
@@ -125,6 +146,7 @@ class Payments extends Component
         $isAdmin = auth()->user()?->can('transacciones.autorizar') ?? false;
 
         return view('livewire.reports.payments', [
+            'clienteFiltrado' => $clienteFiltrado,
             'rows' => $rows,
             'totals' => $totals,
             'isAdmin' => $isAdmin,
