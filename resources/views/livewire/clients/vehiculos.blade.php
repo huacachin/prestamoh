@@ -204,6 +204,14 @@
                                         @forelse($v->copropietarios as $cop)
                                             <span class="badge bg-dark" wire:key="copro-{{ $v->id }}-{{ $cop->id }}">
                                                 {{ $cop->fullName() }} — {{ $cop->documento }}
+                                                {{-- Editar sus datos (celular, correo…) sin pasar por el listado; el
+                                                     analista solo si la persona es de su cartera (la ficha lo exige). --}}
+                                                @if($puedeEditar && (! auth()->user()->can('clientes.scope-propio') || (int) $cop->asesor_id === (int) auth()->id()))
+                                                    <a href="{{ route('clients.edit', $cop->id) }}" class="text-white ms-1" target="_blank" rel="noopener"
+                                                       title="Editar datos de {{ $cop->fullName() }} (celular, correo, dirección)">
+                                                        <i class="ti ti-pencil"></i>
+                                                    </a>
+                                                @endif
                                                 @if($puedeEditar)
                                                     <a href="#" class="text-white ms-1" title="Quitar copropietario"
                                                        wire:click.prevent="quitarCopro({{ $v->id }}, {{ $cop->id }})"

@@ -77,7 +77,7 @@ class PersonasRelacionadasTest extends TestCase
         $titular = $this->titular();
         $v = $this->vehiculo($titular);
 
-        Livewire::test(Vehiculos::class, ['id' => $titular->id])
+        $comp = Livewire::test(Vehiculos::class, ['id' => $titular->id])
             ->call('abrirCopro', $v->id)
             ->call('abrirCrearCopro')
             ->set('nuevoCopro', $this->formularioCopro())
@@ -85,6 +85,9 @@ class PersonasRelacionadasTest extends TestCase
             ->assertHasNoErrors();
 
         $copro = Client::where('documento', '47000002')->firstOrFail();
+
+        // 25/09: desde la placa se puede abrir su ficha para completar datos (celular, correo…).
+        $comp->assertSeeHtml(route('clients.edit', $copro->id));
 
         $this->assertTrue($copro->es_relacionado, 'nace marcada como relacionada');
         $this->assertNull($copro->expediente, 'sin expediente');
