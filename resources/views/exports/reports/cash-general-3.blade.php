@@ -8,10 +8,11 @@
     $cellr = 'style="border-style:dotted solid dotted solid;text-align:right;"';
     $blue = 'color:#0000FF;';
     $red = 'color:#FF0000;';
-    // Filas TOTAL / SALDO / total general: borde sólido en TODAS las celdas, también
-    // las vacías (25/09, como reportecj3.php; antes los <td></td> iban sin borde).
-    $sol = 'style="border-style:solid;text-align:center;"';
-    $solr = 'style="border-style:solid;text-align:right;"';
+    // Filas TOTAL / SALDO / total general: borde en TODAS las celdas, también las
+    // vacías (antes los <td></td> iban sin borde), y punteado como el resto del
+    // Excel y como todos los Excel del legacy (25/09).
+    $sol = $cellc;
+    $solr = $cellr;
 @endphp
 
 @section('content')
