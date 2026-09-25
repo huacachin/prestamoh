@@ -88,8 +88,8 @@
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
                                     <th rowspan="2" class="text-center align-middle">Fecha</th>
-                                    <th rowspan="2" class="text-center align-middle">Ingresos Creditos</th>
-                                    <th rowspan="2" class="text-center align-middle">Egresos Capital</th>
+                                    <th rowspan="2" class="text-center align-middle" style="white-space: normal; padding: 4px 12px;">Ingresos<br>Créditos</th>
+                                    <th rowspan="2" class="text-center align-middle" style="white-space: normal; padding: 4px 12px;">Egresos<br>Capital</th>
                                     @foreach($dailyRates as $rate)
                                         <th colspan="2" class="text-center">{{ $rate }}%</th>
                                     @endforeach
@@ -147,8 +147,8 @@
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
                                     <th rowspan="2" class="text-center align-middle">Fecha</th>
-                                    <th rowspan="2" class="text-center align-middle">Ingresos Creditos</th>
-                                    <th rowspan="2" class="text-center align-middle">Egresos Capital</th>
+                                    <th rowspan="2" class="text-center align-middle" style="white-space: normal; padding: 4px 12px;">Ingresos<br>Créditos</th>
+                                    <th rowspan="2" class="text-center align-middle" style="white-space: normal; padding: 4px 12px;">Egresos<br>Capital</th>
                                     @foreach($monthlyRates as $rate)
                                         <th colspan="2" class="text-center">{{ $rate }}%</th>
                                     @endforeach
