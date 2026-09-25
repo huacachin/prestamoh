@@ -258,8 +258,14 @@
                                         <i class="ti ti-brand-whatsapp"></i>
                                     </a>
                                 @endif
+                                {{-- 26/09: el mismo visor que la pantalla de cobro: abre el recibo en un
+                                     modal, con "Copiar imagen" (listo para pegar en WhatsApp) e "Imprimir". --}}
+                                <button type="button" class="btn btn-sm btn-secondary"
+                                        title="Ver recibo (copiar imagen / imprimir)" onclick="abrirRecibo(@js($verRecibo))">
+                                    <i class="ti ti-eye"></i>
+                                </button>
                                 <a href="{{ \Illuminate\Support\Facades\URL::signedRoute('recibo.pdf', ['massDeletionId' => $masivo->id]) }}"
-                                   class="btn btn-sm btn-secondary"
+                                   class="btn btn-sm btn-outline-secondary"
                                    title="Descargar recibo en PDF">
                                     <i class="ti ti-file-download"></i>
                                 </a>
@@ -302,4 +308,31 @@
             </div>
         </div>
     </div>
+    {{-- Modal del recibo (26/09): el mismo de la pantalla de cobro. iframe del recibo
+         público con allow=clipboard-write, sin eso el botón "Copiar imagen" no puede
+         escribir al portapapeles desde dentro del iframe. --}}
+    <div class="modal fade" id="modal-recibo" tabindex="-1" wire:ignore>
+        <div class="modal-dialog modal-dialog-centered" style="max-width:430px;">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title">Recibo</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <iframe id="iframe-recibo" src="about:blank" allow="clipboard-write"
+                            style="width:100%; height:75vh; border:0;"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        function abrirRecibo(url) {
+            document.getElementById('iframe-recibo').src = url;
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-recibo')).show();
+        }
+        // Al cerrar se descarga el iframe: no queda el recibo cargado de fondo
+        document.getElementById('modal-recibo').addEventListener('hidden.bs.modal', function () {
+            document.getElementById('iframe-recibo').src = 'about:blank';
+        });
+    </script>
 </div>
