@@ -8,6 +8,10 @@
     $cellr = 'style="border-style:dotted solid dotted solid;text-align:right;"';
     $blue = 'color:#0000FF;';
     $red = 'color:#FF0000;';
+    // Filas TOTAL / SALDO / total general: borde sólido en TODAS las celdas, también
+    // las vacías (25/09, como reportecj3.php; antes los <td></td> iban sin borde).
+    $sol = 'style="border-style:solid;text-align:center;"';
+    $solr = 'style="border-style:solid;text-align:right;"';
 @endphp
 
 @section('content')
@@ -35,27 +39,28 @@
                         <td {!! $cellr !!}>@if($item['egreso'] > 0)<font color="#FF0000">{{ number_format($item['egreso'], 2) }}</font>@endif</td>
                     </tr>
                 @endforeach
-                <tr bgcolor="#F0F0F0">
-                    <td></td><td></td><td></td>
-                    <td {!! $cell !!}><b>TOTAL</b></td>
-                    <td {!! $cellr !!}><b><font color="#0000FF">{{ number_format($day['total_ingreso'], 2) }}</font></b></td>
-                    <td {!! $cellr !!}><b><font color="#FF0000">{{ number_format($day['total_egreso'], 2) }}</font></b></td>
+                {{-- TOTAL y SALDO en celeste #CEE7FF, como el legacy (el TOTAL iba en gris). --}}
+                <tr bgcolor="#CEE7FF">
+                    <td {!! $sol !!}></td><td {!! $sol !!}></td><td {!! $sol !!}></td>
+                    <td {!! $sol !!}><b>TOTAL</b></td>
+                    <td {!! $solr !!}><b><font color="#0000FF">{{ number_format($day['total_ingreso'], 2) }}</font></b></td>
+                    <td {!! $solr !!}><b><font color="#FF0000">{{ number_format($day['total_egreso'], 2) }}</font></b></td>
                 </tr>
                 <tr bgcolor="#CEE7FF">
-                    <td></td><td></td><td></td>
-                    <td {!! $cell !!}><b>SALDO <font color="#FF0000">FINAL-INICIAL</font></b></td>
-                    <td {!! $cellr !!}><b><font color="#0000FF">{{ number_format($day['saldo'], 2) }}</font></b></td>
-                    <td></td>
+                    <td {!! $sol !!}></td><td {!! $sol !!}></td><td {!! $sol !!}></td>
+                    <td {!! $sol !!}><b>SALDO <font color="#FF0000">FINAL-INICIAL</font></b></td>
+                    <td {!! $solr !!}><b><font color="#0000FF">{{ number_format($day['saldo'], 2) }}</font></b></td>
+                    <td {!! $sol !!}></td>
                 </tr>
             @empty
                 <tr><td colspan="6" {!! $cellc !!}>Sin movimientos para el periodo seleccionado</td></tr>
             @endforelse
 
             @if(count($report['days']) > 0)
-                <tr bgcolor="#FFFFFF">
-                    <td colspan="4"><b>REPORTE GENERAL <font color="#FF0000">CAJA 3 - </font>TOTAL <font color="#FF0000">GENERAL</font></b></td>
-                    <td {!! $cellr !!}><b><font color="#0000FF">{{ number_format($report['total_ingresos'], 2) }}</font></b></td>
-                    <td {!! $cellr !!}><b><font color="#FF0000">{{ number_format($report['total_egresos'], 2) }}</font></b></td>
+                <tr bgcolor="#CEE7FF">
+                    <td {!! $sol !!} colspan="4"><b>REPORTE GENERAL <font color="#FF0000">CAJA 3 - </font>TOTAL <font color="#FF0000">GENERAL</font></b></td>
+                    <td {!! $solr !!}><b><font color="#0000FF">{{ number_format($report['total_ingresos'], 2) }}</font></b></td>
+                    <td {!! $solr !!}><b><font color="#FF0000">{{ number_format($report['total_egresos'], 2) }}</font></b></td>
                 </tr>
             @endif
         </tbody>
@@ -102,7 +107,7 @@
             </tbody>
             <tfoot>
                 <tr bgcolor="#CEE7FF">
-                    <td></td>
+                    <td {!! $cell !!}></td>
                     <td {!! $cell !!}><b>Total General</b></td>
                     <td {!! $cellr !!}><b><font color="#0000FF">0.00</font></b></td>
                     <td {!! $cellc !!} colspan="2"><b><font color="#0000FF">{{ number_format($report['total_resumen'], 2) }}</font></b></td>
