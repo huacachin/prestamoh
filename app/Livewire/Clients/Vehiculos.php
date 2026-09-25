@@ -72,6 +72,9 @@ class Vehiculos extends Component
     /** Vehículo cuyo panel de copropietario está abierto (null = ninguno). */
     public ?int $coproVehiculoId = null;
 
+    /** 25/09: el buscador y el alta rápida solo se muestran al pulsar "Agregar copropietario". */
+    public bool $coproAgregando = false;
+
     public string $buscarCopro = '';
 
     /** Alta rápida de PERSONA RELACIONADA (es_relacionado=1): solo los datos
@@ -260,7 +263,21 @@ class Vehiculos extends Component
         $this->autorizarEdicion();
         Vehiculo::where('client_id', $this->clientId)->findOrFail($vehiculoId);
         $this->coproVehiculoId = $this->coproVehiculoId === $vehiculoId ? null : $vehiculoId;
+        $this->cancelarAgregarCopro();
+    }
+
+    public function agregarCopro(): void
+    {
+        $this->autorizarEdicion();
+        $this->coproAgregando = true;
         $this->buscarCopro = '';
+    }
+
+    public function cancelarAgregarCopro(): void
+    {
+        $this->coproAgregando = false;
+        $this->buscarCopro = '';
+        $this->cancelarCrearCopro();
     }
 
     public function vincularCopro(int $vehiculoId, int $clientId): void
@@ -288,13 +305,14 @@ class Vehiculos extends Component
         Audit::log("Vinculó a {$copro->fullName()} como copropietario del vehículo {$v->placa}", $this->client);
         $this->msgType = 'ok';
         $this->msg = "{$copro->fullName()} quedó como copropietario del vehículo {$v->placa}.";
-        $this->coproVehiculoId = null;
-        $this->buscarCopro = '';
+        // El panel queda abierto mostrando la tabla con el recién vinculado.
+        $this->cancelarAgregarCopro();
     }
 
     public function abrirCrearCopro(): void
     {
         $this->autorizarEdicion();
+        $this->coproAgregando = true;
         $this->coproCreando = true;
         $this->coproDocMsg = null;
         // Si lo tipeado en el buscador parece un documento, arranca cargado.

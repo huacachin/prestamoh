@@ -86,8 +86,13 @@ class PersonasRelacionadasTest extends TestCase
 
         $copro = Client::where('documento', '47000002')->firstOrFail();
 
-        // 25/09: desde la placa se puede abrir su ficha para completar datos (celular, correo…).
-        $comp->assertSeeHtml(route('clients.edit', $copro->id));
+        // 25/09: el panel queda abierto como tabla (celular y correo a la vista, botón
+        // para agregar otro) y desde ahí se abre su ficha para completar datos.
+        $comp->assertSeeHtml(route('clients.edit', $copro->id))
+            ->assertSee('987654321')
+            ->assertSee('maria.rel@example.com')
+            ->assertSee('Agregar copropietario')
+            ->assertSee('Copropietarios (1)');
 
         $this->assertTrue($copro->es_relacionado, 'nace marcada como relacionada');
         $this->assertNull($copro->expediente, 'sin expediente');

@@ -161,7 +161,7 @@
                         <th class="text-center" width="60">Año</th>
                         <th width="120">Color</th>
                         <th class="text-end" width="95">Valor (S/)</th>
-                        @if($puedeEditar)<th class="text-center" width="75">Op.</th>@endif
+                        @if($puedeEditar)<th class="text-center" style="min-width:335px;">Op.</th>@endif
                     </tr>
                 </thead>
                 <tbody>
@@ -176,56 +176,90 @@
                             <td class="text-end">{{ $v->valor !== null ? number_format((float) $v->valor, 2) : '—' }}</td>
                             @if($puedeEditar)
                                 <td class="text-center" style="white-space:nowrap;">
-                                    <button type="button" class="btn btn-xs btn-outline-primary py-0 px-1"
-                                            wire:click="editar({{ $v->id }})" title="Editar">
-                                        <i class="ti ti-edit"></i>
+                                    {{-- 25/09: botones con texto y tamaño normal (los iconos de 12 px no se veían). --}}
+                                    <button type="button" class="btn btn-sm btn-outline-primary py-0"
+                                            wire:click="editar({{ $v->id }})" title="Editar vehículo">
+                                        <i class="ti ti-edit"></i> Editar
                                     </button>
-                                    <button type="button" class="btn btn-xs {{ $v->copropietarios->isNotEmpty() ? 'btn-dark' : 'btn-outline-dark' }} py-0 px-1"
-                                            wire:click="abrirCopro({{ $v->id }})" title="Copropietario">
-                                        <i class="ti ti-users"></i>
+                                    <button type="button" class="btn btn-sm {{ $v->copropietarios->isNotEmpty() ? 'btn-dark' : 'btn-outline-dark' }} py-0"
+                                            wire:click="abrirCopro({{ $v->id }})"
+                                            title="{{ $coproVehiculoId === $v->id ? 'Cerrar' : 'Ver' }} los copropietarios de {{ $v->placa }}">
+                                        <i class="ti {{ $coproVehiculoId === $v->id ? 'ti-chevron-up' : 'ti-users' }}"></i> Copropietarios ({{ $v->copropietarios->count() }})
                                     </button>
-                                    <button type="button" class="btn btn-xs btn-outline-danger py-0 px-1"
+                                    <button type="button" class="btn btn-sm btn-outline-danger py-0"
                                             wire:click="eliminar({{ $v->id }})"
                                             data-confirmar="¿Eliminar el vehículo {{ $v->placa }}? Esta acción no se puede deshacer."
-                                            title="Eliminar">
-                                        <i class="ti ti-trash"></i>
+                                            title="Eliminar vehículo">
+                                        <i class="ti ti-trash"></i> Eliminar
                                     </button>
                                 </td>
                             @endif
                         </tr>
 
                         {{-- Copropietarios: habilitan el contrato de DOS deudores
-                             (a.3.x) con este mismo vehículo compartido. --}}
-                        @if($v->copropietarios->isNotEmpty() || $coproVehiculoId === $v->id)
+                             (a.3.x) con este mismo vehículo compartido. Panel desplegable
+                             (25/09): tabla con celular y correo a la vista, botones con
+                             texto; quien no puede editar lo ve abierto si hay alguien. --}}
+                        @if($coproVehiculoId === $v->id || (! $puedeEditar && $v->copropietarios->isNotEmpty()))
                             <tr wire:key="veh-copro-{{ $v->id }}" class="table-light">
-                                <td colspan="{{ $puedeEditar ? 8 : 7 }}" class="py-1">
-                                    <div class="d-flex flex-wrap align-items-center gap-2 small">
-                                        <span class="text-muted"><i class="ti ti-users"></i> Copropietarios:</span>
-                                        @forelse($v->copropietarios as $cop)
-                                            <span class="badge bg-dark" wire:key="copro-{{ $v->id }}-{{ $cop->id }}">
-                                                {{ $cop->fullName() }} — {{ $cop->documento }}
-                                                {{-- Editar sus datos (celular, correo…) sin pasar por el listado; el
-                                                     analista solo si la persona es de su cartera (la ficha lo exige). --}}
-                                                @if($puedeEditar && (! auth()->user()->can('clientes.scope-propio') || (int) $cop->asesor_id === (int) auth()->id()))
-                                                    <a href="{{ route('clients.edit', $cop->id) }}" class="text-white ms-1" target="_blank" rel="noopener"
-                                                       title="Editar datos de {{ $cop->fullName() }} (celular, correo, dirección)">
-                                                        <i class="ti ti-pencil"></i>
-                                                    </a>
-                                                @endif
-                                                @if($puedeEditar)
-                                                    <a href="#" class="text-white ms-1" title="Quitar copropietario"
-                                                       wire:click.prevent="quitarCopro({{ $v->id }}, {{ $cop->id }})"
-                                                       data-confirmar="¿Quitar a {{ $cop->fullName() }} como copropietario de {{ $v->placa }}?">
-                                                        <i class="ti ti-x"></i>
-                                                    </a>
-                                                @endif
-                                            </span>
-                                        @empty
-                                            <span class="text-muted fst-italic">ninguno</span>
-                                        @endforelse
-                                    </div>
+                                <td colspan="{{ $puedeEditar ? 8 : 7 }}" class="py-2 px-3">
+                                    <div class="fw-semibold mb-1"><i class="ti ti-users"></i> Copropietarios de {{ $v->placa }}</div>
+                                    @if($v->copropietarios->isEmpty())
+                                        <div class="text-muted fst-italic mb-2">Ninguno todavía.</div>
+                                    @else
+                                        <table class="table table-sm table-bordered bg-white mb-2" style="max-width: 980px;">
+                                            <thead class="table-secondary">
+                                                <tr>
+                                                    <th>Nombre</th>
+                                                    <th class="text-center" width="95">DNI</th>
+                                                    <th class="text-center" width="120">Celular</th>
+                                                    <th width="220">Correo</th>
+                                                    @if($puedeEditar)<th class="text-center" width="170"></th>@endif
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                            @foreach($v->copropietarios as $cop)
+                                                <tr wire:key="copro-{{ $v->id }}-{{ $cop->id }}">
+                                                    <td class="text-start">{{ $cop->fullName() }}</td>
+                                                    <td class="text-center">{{ $cop->documento }}</td>
+                                                    <td class="text-center">
+                                                        @if($cop->celular1)
+                                                            {{ $cop->celular1 }}
+                                                        @else
+                                                            <span class="text-danger fw-semibold" title="El anexo 1 imprime el celular de cada deudor">Sin celular</span>
+                                                        @endif
+                                                    </td>
+                                                    <td class="text-start">{{ $cop->email ?: '—' }}</td>
+                                                    @if($puedeEditar)
+                                                        <td class="text-center" style="white-space:nowrap;">
+                                                            {{-- Editar sus datos sin pasar por el listado; el analista
+                                                                 solo si la persona es de su cartera (la ficha lo exige). --}}
+                                                            @if(! auth()->user()->can('clientes.scope-propio') || (int) $cop->asesor_id === (int) auth()->id())
+                                                                <a href="{{ route('clients.edit', $cop->id) }}" class="btn btn-sm btn-outline-primary py-0"
+                                                                   target="_blank" rel="noopener" title="Editar datos de {{ $cop->fullName() }} (celular, correo, dirección)">
+                                                                    <i class="ti ti-pencil"></i> Editar
+                                                                </a>
+                                                            @endif
+                                                            <button type="button" class="btn btn-sm btn-outline-danger py-0"
+                                                                    wire:click="quitarCopro({{ $v->id }}, {{ $cop->id }})"
+                                                                    data-confirmar="¿Quitar a {{ $cop->fullName() }} como copropietario de {{ $v->placa }}?">
+                                                                <i class="ti ti-x"></i> Quitar
+                                                            </button>
+                                                        </td>
+                                                    @endif
+                                                </tr>
+                                            @endforeach
+                                            </tbody>
+                                        </table>
+                                    @endif
 
-                                    @if($puedeEditar && $coproVehiculoId === $v->id)
+                                    @if($puedeEditar && ! $coproAgregando)
+                                        <button type="button" class="btn btn-sm btn-success py-0" wire:click="agregarCopro">
+                                            <i class="ti ti-user-plus"></i> Agregar copropietario
+                                        </button>
+                                    @endif
+
+                                    @if($puedeEditar && $coproAgregando)
                                         {{-- Resultados EN FLUJO NORMAL (la fila crece), nunca
                                              position-absolute: el overflow del .table-responsive
                                              recortaba el desplegable al escribir. --}}
@@ -252,6 +286,9 @@
                                                 <button type="button" class="btn btn-sm btn-outline-success mt-1"
                                                         wire:click="abrirCrearCopro">
                                                     <i class="ti ti-user-plus"></i> No está registrado: crear persona
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary mt-1" wire:click="cancelarAgregarCopro">
+                                                    Cancelar
                                                 </button>
                                             @endunless
                                         </div>
