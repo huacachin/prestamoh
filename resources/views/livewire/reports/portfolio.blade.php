@@ -432,15 +432,15 @@
                             <tbody>
                             @forelse($rows as $r)
                                 @php
-                                    $bg = $r['is_refi'] ? 'background-color:yellow;' : '';
                                     $tcStyle = match($r['tipo_planilla']) {
                                         1 => 'color:blue;', 3 => 'color:red;', default => '',
                                     };
                                     $estadoStyle = $r['estado'] === 'Vencida' ? 'color:red;' : '';
                                 @endphp
-                                <tr style="{{ $bg }}"
-                                    onmouseover="this.style.backgroundColor='#CCFF66'"
-                                    onmouseout="this.style.backgroundColor='{{ $r['is_refi'] ? '#ffff00' : '' }}'">
+                                {{-- Refinanciado en amarillo y hover verde del legacy por CSS sobre las
+                                     CELDAS (.fila-refi): la cebra de Bootstrap pinta los <td>, así que un
+                                     fondo puesto en el <tr> quedaba tapado en las filas impares (25/09). --}}
+                                <tr @class(['fila-refi' => $r['is_refi']])>
                                     <td class="text-center">{{ $r['n'] }}</td>
                                     <td class="text-center">
                                         @if($r['client_id'])
@@ -689,6 +689,16 @@
        de truncar la mayoria, y el nombre es justo como se identifica al
        cliente. Mejor 59px de scroll que nombres cortados. */
     .cartera-detalle, .cartera-detalle td, .cartera-detalle th { font-size: 11px !important; }
+    /* Amarillo del refinanciado y verde del hover (#CCFF66, el onmouseover del legacy)
+       sobre las celdas, por encima de la cebra y del hover de Bootstrap. 25/09 */
+    .cartera-detalle > tbody > tr.fila-refi > td {
+        background-color: #ffff00 !important;
+        --bs-table-bg-type: transparent; --bs-table-accent-bg: transparent; box-shadow: none;
+    }
+    .cartera-detalle > tbody > tr:hover > td {
+        background-color: #CCFF66 !important;
+        --bs-table-bg-type: transparent; --bs-table-accent-bg: transparent; box-shadow: none;
+    }
     .cartera-detalle td.col-cliente,
     .cartera-detalle th:nth-child(5) {
         max-width: 220px;

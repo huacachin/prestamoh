@@ -119,7 +119,15 @@
                     @endif
                     <div id="tabla-morosidad" class="table-responsive" style="max-height: 70vh; overflow: auto;">
                         {{-- Montos en azul del legacy (#0000FF, el <font color=blue>), no el celeste del tema. 25/09 --}}
-                        <table class="table table-bordered table-striped table-hover table-nowrap">
+                        <style>
+                            /* Vencida en amarillo sobre las CELDAS (.fila-vencida): la cebra de Bootstrap
+                               pinta los <td>, así que el fondo en el <tr> quedaba tapado en las filas impares. 25/09 */
+                            .morosos-detalle > tbody > tr.fila-vencida > td {
+                                background-color: #ffff00 !important;
+                                --bs-table-bg-type: transparent; --bs-table-accent-bg: transparent; box-shadow: none;
+                            }
+                        </style>
+                        <table class="table table-bordered table-striped table-hover table-nowrap morosos-detalle">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
                                     <th rowspan="2" class="text-center align-middle" width="40">N°</th>
@@ -151,13 +159,12 @@
                             <tbody>
                             @forelse($rows as $r)
                                 @php
-                                    $bg = $r['estado'] === 'Vencida' ? 'background-color:yellow;' : '';
                                     $tcStyle = match($r['tipo_planilla']) {
                                         1 => 'color:blue;', 3 => 'color:red;', default => '',
                                     };
                                     $estadoStyle = $r['estado'] === 'Vencida' ? 'color:red;' : '';
                                 @endphp
-                                <tr style="{{ $bg }}">
+                                <tr @class(['fila-vencida' => $r['estado'] === 'Vencida'])>
                                     <td class="text-center">{{ $r['n'] }}</td>
                                     <td class="text-center">
                                         @if($r['client_id'])
