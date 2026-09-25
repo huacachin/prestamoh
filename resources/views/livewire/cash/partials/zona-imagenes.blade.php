@@ -68,7 +68,7 @@
                                 </div>
                                 <div class="row g-2" @click.stop>
                                     @foreach($files as $i => $f)
-                                        <div class="col-6 col-sm-3 col-md-2">
+                                        <div class="col-12 col-xl-6">{{-- 26/09: vista previa grande, a tamaño real --}}
                                             <div class="position-relative border rounded p-1 bg-white">
                                                 @php
                                                     $tmpUrl = null;
@@ -76,11 +76,11 @@
                                                 @endphp
                                                 @if($tmpUrl)
                                                     <img src="{{ $tmpUrl }}" alt="Preview"
-                                                         class="w-100 rounded"
-                                                         style="height:90px; object-fit:contain; background:#fff;">
+                                                         class="rounded"
+                                                         style="width:auto; max-width:100%; height:auto; max-height:70vh; display:block; margin:0 auto; background:#fff;">
                                                 @else
                                                     <div class="d-flex align-items-center justify-content-center small text-muted bg-light rounded"
-                                                         style="height:90px;">
+                                                         style="height:160px;">
                                                         <i class="ti ti-photo"></i>
                                                     </div>
                                                 @endif
