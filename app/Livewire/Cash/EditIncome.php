@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Cash;
 
+use App\Livewire\Cash\Concerns\SavesIncomeAttachments;
 use App\Models\Concept;
 use App\Models\Income;
 use App\Support\Audit;
@@ -13,6 +14,7 @@ use Livewire\WithFileUploads;
 
 class EditIncome extends Component
 {
+    use SavesIncomeAttachments;
     use WithFileUploads;
 
     public Income $income;
@@ -28,8 +30,15 @@ class EditIncome extends Component
 
     public string $total = '';
 
-    public $image;
+    /**
+     * 26/09: imágenes del comprobante elegidas en el formulario (varias, como
+     * en CreateIncome); se suben como adjuntos al pulsar "Guardar cambios".
+     * Reemplaza al campo suelto `image` (image_path) y al botón "Subir"
+     * aparte de la galería.
+     */
+    public array $files = [];
 
+    /** Imagen antigua (image_path del legacy), solo se muestra. */
     public ?string $current_image = null;
 
     public bool $canEditDate = false;
@@ -58,8 +67,23 @@ class EditIncome extends Component
         'reason' => 'required|string|max:255',
         'detail' => 'nullable|string|max:500',
         'total' => 'required|numeric|min:0.01',
-        'image' => 'nullable|image|max:2048',
+        'files' => 'nullable|array',
+        'files.*' => 'image|mimes:jpg,jpeg,png,gif,webp|max:10240',
     ];
+
+    protected $messages = [
+        'files.*.image' => 'Cada archivo debe ser una imagen.',
+        'files.*.mimes' => 'Formatos válidos: JPG, PNG, GIF o WebP.',
+        'files.*.max' => 'Cada imagen debe pesar máximo 10 MB.',
+    ];
+
+    public function removeFile(int $i): void
+    {
+        if (isset($this->files[$i])) {
+            unset($this->files[$i]);
+            $this->files = array_values($this->files);
+        }
+    }
 
     /**
      * Regla 04/09 (Antony): el director (caja.editar-historico) edita los
@@ -96,15 +120,15 @@ class EditIncome extends Component
                 'total' => $this->total,
             ];
 
-            if ($this->image) {
-                $data['image_path'] = $this->image->store('incomes', 'public');
-            }
-
             $this->income->update($data);
 
-            Audit::log("Editó el ingreso #{$this->income->id} (monto {$this->total})", $this->income);
+            // Las imágenes elegidas se suben en el mismo clic (como adjuntos de la galería).
+            $subidas = $this->files !== [] ? $this->storeIncomeAttachments($this->income, $this->files) : 0;
+            $this->files = [];
 
-            session()->flash('cash_success', 'Ingreso actualizado correctamente.');
+            Audit::log("Editó el ingreso #{$this->income->id} (monto {$this->total})".($subidas ? ", subió {$subidas} imagen(es)" : ''), $this->income);
+
+            session()->flash('cash_success', 'Ingreso actualizado correctamente.'.($subidas ? " {$subidas} ".($subidas === 1 ? 'imagen subida.' : 'imágenes subidas.') : ''));
             $this->redirectRoute('cash.incomes');
         } catch (ValidationException $e) {
             throw $e;

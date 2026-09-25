@@ -77,22 +77,26 @@
                             </div>
                         </div>
 
-                        <div class="col-md-3">
-                            <div class="mb-3">
-                                <label class="form-label">Imagen (opcional)</label>
-                                <input type="file" class="form-control form-control-sm @error('image') is-invalid @enderror"
-                                       wire:model="image" accept="image/*">
-                                @error('image') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                                @if($current_image)
-                                    <small class="text-muted">Imagen actual: {{ basename($current_image) }}</small>
-                                @endif
-                            </div>
-                        </div>
+                    </div>
+
+                    {{-- 26/09: las imágenes se eligen aquí (varias, con miniaturas) y se
+                         suben con el MISMO "Guardar cambios"; antes había un campo suelto
+                         y otro botón "Subir" en la galería de abajo. --}}
+                    <div class="mb-3">
+                        <label class="form-label">Imágenes del comprobante (opcional)</label>
+                        @include('livewire.cash.partials.zona-imagenes')
+                        <small class="text-muted">Se suben al pulsar "Guardar cambios".</small>
+                        @if($current_image)
+                            <div><small class="text-muted">Imagen antigua: {{ basename($current_image) }}</small></div>
+                        @endif
                     </div>
 
                     <div class="d-flex gap-2 flex-wrap">
-                        <button type="button" class="btn btn-sm btn-primary" wire:click="update">
-                            <i class="ti ti-device-floppy f-s-12"></i> Guardar cambios
+                        <button type="button" class="btn btn-sm btn-primary" wire:click="update"
+                                wire:loading.attr="disabled" wire:target="update,files,removeFile">
+                            <i class="ti ti-device-floppy f-s-12"></i>
+                            <span wire:loading.remove wire:target="update">Guardar cambios{{ ! empty($files) ? ' y subir '.count($files).(count($files) === 1 ? ' imagen' : ' imágenes') : '' }}</span>
+                            <span wire:loading wire:target="update">Guardando…</span>
                         </button>
                         @can('caja.eliminar')
                         <button type="button" class="btn btn-sm btn-danger" wire:click="questionDelete({{ $incomeId }})">
@@ -105,7 +109,7 @@
                 </div>
             </div>
 
-            {{-- Galería de adjuntos en la misma pantalla (ver, subir y eliminar) --}}
+            {{-- Galería de adjuntos ya subidos (ver y eliminar; la subida va arriba) --}}
             <livewire:cash.income-gallery :id="$incomeId" :embedded="true" />
         </div>
     </div>
