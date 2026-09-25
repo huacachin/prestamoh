@@ -70,12 +70,6 @@
                                 <button class="btn btn-sm btn-dark flex-shrink-0" wire:click="search">
                                     <i class="ti ti-search f-s-12"></i> Buscar
                                 </button>
-                                @if($clienteFiltrado)
-                                    <span class="badge bg-dark align-self-center" style="font-size:11px;" title="Filtrado por cliente (desde el cronograma)">
-                                        <i class="ti ti-user"></i> {{ $clienteFiltrado->fullName() }}
-                                        <a href="#" class="text-white ms-1" wire:click.prevent="quitarCliente" title="Quitar el filtro de cliente"><i class="ti ti-x"></i></a>
-                                    </span>
-                                @endif
                                 <a href="{{ route('exports.reports.payments', ['tipo' => $tipo, 'compra' => $compra, 'fei' => $fei, 'fef' => $fef, 'cliente' => $clienteId]) }}"
                                    target="_blank"
                                    class="btn btn-sm btn-success flex-shrink-0">
@@ -86,6 +80,19 @@
                                 </button>
                                 <x-scroll-bottom-btn scrollable="#tabla-pagos-rep" />
                             </div>
+                            {{-- Filtro por cliente (26/09, viene del cronograma): en su propia línea,
+                                 alineado con los filtros; antes iba suelto en medio de los botones. --}}
+                            @if($clienteFiltrado)
+                                <div class="d-flex align-items-center gap-2 py-1 small">
+                                    <span class="text-muted">Cliente:</span>
+                                    <span class="badge bg-dark" style="font-size:11px;">
+                                        <i class="ti ti-user"></i> {{ $clienteFiltrado->fullName() }}
+                                    </span>
+                                    <a href="#" class="text-danger text-decoration-none" wire:click.prevent="quitarCliente" title="Quitar el filtro de cliente">
+                                        <i class="ti ti-x"></i> quitar filtro
+                                    </a>
+                                </div>
+                            @endif
                         </div>
                     </div>
 
