@@ -53,6 +53,10 @@ class CashStatisticsExcelTest extends TestCase
         $this->assertSame(22, substr_count($html, '#f0f0f0'),
             'La fila Promedio debe pintar sus 22 celdas de gris');
         $respuesta->assertSee('Promedio', false);
+
+        // 26/09: las filas Total van en celeste #CEE7FF celda por celda, como el
+        // Excel legacy (caja-estadisticae2.php): 3 tablas × 22 celdas.
+        $this->assertGreaterThanOrEqual(66, substr_count($html, 'bgcolor="#CEE7FF"'), 'las filas Total deben ir en celeste');
         // Cabecera multinivel en las 3 tablas grandes (diaria, mensual, anual).
         $this->assertSame(3, substr_count($html, '>CREDITO<'));
     }
