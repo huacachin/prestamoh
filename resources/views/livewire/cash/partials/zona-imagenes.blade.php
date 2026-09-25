@@ -1,6 +1,12 @@
 {{-- Zona de imágenes (arrastrar o elegir, con miniaturas) compartida por la
-     galería de adjuntos y por editar ingreso (26/09). Espera $files en el
-     componente (wire:model="files") y un método removeFile($i). --}}
+     galería de adjuntos, editar ingreso/egreso y los reportes de GPS (26/09).
+     Por defecto usa la propiedad $files y el método removeFile($i); se puede
+     incluir con ['modelo' => 'otraPropiedad', 'quitar' => 'otroMetodo']. --}}
+@php
+    $modelo = $modelo ?? 'files';
+    $quitar = $quitar ?? 'removeFile';
+    $lista = $$modelo ?? [];
+@endphp
                     <div x-data="{
                             drag: false,
                             uploading: false,
@@ -42,10 +48,10 @@
                          @click="openPicker()">
 
                         <input type="file" class="d-none" x-ref="fileInput" multiple
-                               wire:model="files"
+                               wire:model="{{ $modelo }}"
                                accept="image/jpeg,image/png,image/gif,image/webp">
 
-                        @if(empty($files))
+                        @if(empty($lista))
                             <div class="d-flex align-items-center justify-content-center gap-2 flex-wrap">
                                 <i class="ti ti-cloud-upload" style="font-size:22px; color:#9aa0aa;"></i>
                                 <span class="fw-semibold small">Arrastra imágenes aquí</span>
@@ -55,19 +61,19 @@
                             </div>
                         @endif
 
-                        @if(!empty($files))
+                        @if(!empty($lista))
                             <div>
                                 <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
                                     <span class="small fw-semibold text-success">
                                         <i class="ti ti-circle-check"></i>
-                                        {{ count($files) }} {{ count($files) === 1 ? 'imagen lista' : 'imágenes listas' }}
+                                        {{ count($lista) }} {{ count($lista) === 1 ? 'imagen lista' : 'imágenes listas' }}
                                     </span>
                                     <span class="small text-muted">
                                         Suelta más imágenes para añadirlas — o haz clic fuera de las miniaturas para seleccionar.
                                     </span>
                                 </div>
                                 <div class="row g-2" @click.stop>
-                                    @foreach($files as $i => $f)
+                                    @foreach($lista as $i => $f)
                                         <div class="col-12 col-xl-6">{{-- 26/09: vista previa al 75% del tamaño real --}}
                                             <div class="position-relative border rounded p-1 bg-white">
                                                 @php
@@ -87,7 +93,7 @@
                                                 <button type="button"
                                                         class="btn btn-danger position-absolute"
                                                         style="top:2px; right:2px; padding:0 6px; font-size:10px; line-height:18px;"
-                                                        wire:click="removeFile({{ $i }})"
+                                                        wire:click="{{ $quitar }}({{ $i }})"
                                                         title="Quitar">
                                                     <i class="ti ti-x"></i>
                                                 </button>
@@ -99,8 +105,8 @@
                         @endif
                     </div>
 
-                    @error('files')   <div class="text-danger small mt-2"><i class="ti ti-alert-circle"></i> {{ $message }}</div> @enderror
-                    @error('files.*') <div class="text-danger small mt-2"><i class="ti ti-alert-circle"></i> {{ $message }}</div> @enderror
+                    @error($modelo)   <div class="text-danger small mt-2"><i class="ti ti-alert-circle"></i> {{ $message }}</div> @enderror
+                    @error($modelo.'.*') <div class="text-danger small mt-2"><i class="ti ti-alert-circle"></i> {{ $message }}</div> @enderror
                 <style>
                     .huac-drop {
                         border: 2px dashed #cfd5e0; border-radius: 10px;
