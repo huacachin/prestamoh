@@ -77,7 +77,11 @@ class ReportePagosPorClienteTest extends TestCase
             ->assertDontSee('PEREZ TEST JUAN')
             ->assertSee('Quitar el filtro de cliente')
             ->call('quitarCliente')
-            ->assertSee('PEREZ TEST JUAN');
+            ->assertSee('PEREZ TEST JUAN')
+            // Al quitarlo vuelve al rango de hoy: sin cliente, el rango "desde el primer
+            // crédito" cargaba todos los pagos de la empresa y colgaba el navegador.
+            ->assertSet('fei', now()->format('Y-m-d'))
+            ->assertSet('fef', now()->format('Y-m-d'));
     }
 
     public function test_el_cronograma_enlaza_al_reporte_filtrado_por_el_cliente(): void

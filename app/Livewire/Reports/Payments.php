@@ -31,9 +31,17 @@ class Payments extends Component
     #[Url(as: 'cliente', except: '')]
     public $clienteId = '';
 
+    /**
+     * Quita el filtro de cliente y vuelve al rango de HOY. El enlace del
+     * cronograma trae "desde el primer crédito del cliente" (años atrás):
+     * sin cliente, ese rango cargaba todos los pagos de la empresa en una
+     * sola tabla y el navegador se quedaba colgado (26/09).
+     */
     public function quitarCliente(): void
     {
         $this->clienteId = '';
+        $this->fei = Carbon::today()->format('Y-m-d');
+        $this->fef = Carbon::today()->format('Y-m-d');
     }
 
     public function mount()
