@@ -118,6 +118,7 @@
                         </div>
                     @endif
                     <div id="tabla-morosidad" class="table-responsive" style="max-height: 70vh; overflow: auto;">
+                        {{-- Montos en azul del legacy (#0000FF, el <font color=blue>), no el celeste del tema. 25/09 --}}
                         <table class="table table-bordered table-striped table-hover table-nowrap">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
@@ -210,25 +211,25 @@
                                     <tr style="background-color:#ffffff;">
                                         <td colspan="5" class="text-end" style="color:#000;"><b>Total Soles</b></td>
                                         <td></td>
-                                        <td class="text-end" style="color:#0d6efd;"><b>{{ number_format($totals['cuota'], 2) }}</b></td>
+                                        <td class="text-end" style="color:#0000FF;"><b>{{ number_format($totals['cuota'], 2) }}</b></td>
                                         <td colspan="2"></td>
-                                        <td class="text-end" style="color:#0d6efd;"><b>{{ number_format($totals['interes'], 2) }}</b></td>
+                                        <td class="text-end" style="color:#0000FF;"><b>{{ number_format($totals['interes'], 2) }}</b></td>
                                         <td></td>
-                                        <td class="text-end" style="color:#0d6efd;"><b>{{ number_format($totals['total'], 2) }}</b></td>
-                                        <td class="text-end" style="color:#0d6efd;"><b>{{ number_format($totals['pago'], 2) }}</b></td>
-                                        <td class="text-end" style="color:#0d6efd;"><b>{{ number_format($totals['saldo'], 2) }}</b></td>
+                                        <td class="text-end" style="color:#0000FF;"><b>{{ number_format($totals['total'], 2) }}</b></td>
+                                        <td class="text-end" style="color:#0000FF;"><b>{{ number_format($totals['pago'], 2) }}</b></td>
+                                        <td class="text-end" style="color:#0000FF;"><b>{{ number_format($totals['saldo'], 2) }}</b></td>
                                         <td colspan="7"></td>
                                     </tr>
                                     <tr style="background-color:#ffffff;">
                                         <td colspan="5" class="text-end" style="color:#000;"><b>Total Dólares</b></td>
                                         <td></td>
-                                        <td class="text-end" style="color:#0d6efd;"><b>{{ number_format($totals['cuota'] / $tc, 2) }}</b></td>
+                                        <td class="text-end" style="color:#0000FF;"><b>{{ number_format($totals['cuota'] / $tc, 2) }}</b></td>
                                         <td colspan="2"></td>
-                                        <td class="text-end" style="color:#0d6efd;"><b>{{ number_format($totals['interes'] / $tc, 2) }}</b></td>
+                                        <td class="text-end" style="color:#0000FF;"><b>{{ number_format($totals['interes'] / $tc, 2) }}</b></td>
                                         <td></td>
-                                        <td class="text-end" style="color:#0d6efd;"><b>{{ number_format($totals['total'] / $tc, 2) }}</b></td>
-                                        <td class="text-end" style="color:#0d6efd;"><b>{{ number_format($totals['pago'] / $tc, 2) }}</b></td>
-                                        <td class="text-end" style="color:#0d6efd;"><b>{{ number_format($totals['saldo'] / $tc, 2) }}</b></td>
+                                        <td class="text-end" style="color:#0000FF;"><b>{{ number_format($totals['total'] / $tc, 2) }}</b></td>
+                                        <td class="text-end" style="color:#0000FF;"><b>{{ number_format($totals['pago'] / $tc, 2) }}</b></td>
+                                        <td class="text-end" style="color:#0000FF;"><b>{{ number_format($totals['saldo'] / $tc, 2) }}</b></td>
                                         <td colspan="7"></td>
                                     </tr>
                                 </tfoot>

@@ -244,6 +244,7 @@
                     {{-- ═══ VISTA DETALLE: tabla completa homóloga al legacy ═══ --}}
                     <div id="printme">
                         <div id="tabla-caja-1" class="table-responsive" style="max-height: 70vh; overflow: auto;">
+                            {{-- Montos en azul del legacy (#0000FF, el <font color=blue>), no el celeste del tema. 25/09 --}}
                             <table class="table table-bordered table-striped table-hover table-nowrap">
                                 <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                     <tr>
@@ -313,10 +314,10 @@
                                                     <td class="col-cliente" title="{{ $ing['cliente'] }}"><span class="ellip">{{ $ing['cliente'] }}</span></td>
                                                     <td>{{ $ing['detalle'] }}</td>
                                                     <td class="text-center">{{ $ing['nro_cuotas'] }}</td>
-                                                    <td class="text-end"><span class="text-primary">{{ number_format($ing['total'], 2) }}</span></td>
-                                                    <td class="text-end"><span class="text-primary">{{ number_format($ing['capital'], 2) }}</span></td>
+                                                    <td class="text-end"><span style="color:#0000FF;">{{ number_format($ing['total'], 2) }}</span></td>
+                                                    <td class="text-end"><span style="color:#0000FF;">{{ number_format($ing['capital'], 2) }}</span></td>
                                                     <td class="text-end">
-                                                        <span class="text-primary">{{ number_format($ing['interes'], 2) }}</span>
+                                                        <span style="color:#0000FF;">{{ number_format($ing['interes'], 2) }}</span>
                                                         @if(!empty($ing['obs_interes']))
                                                             <span class="caja1-obs-int"
                                                                   data-bs-toggle="tooltip" data-bs-placement="top"
@@ -325,8 +326,8 @@
                                                             </span>
                                                         @endif
                                                     </td>
-                                                    <td class="text-end"><span class="text-primary">{{ number_format($ing['excedente'] ?? 0, 2) }}</span></td>
-                                                    <td class="text-end"><span class="text-primary">{{ number_format($ing['mora'] - $ing['mora_acum'], 2) }}</span></td>
+                                                    <td class="text-end"><span style="color:#0000FF;">{{ number_format($ing['excedente'] ?? 0, 2) }}</span></td>
+                                                    <td class="text-end"><span style="color:#0000FF;">{{ number_format($ing['mora'] - $ing['mora_acum'], 2) }}</span></td>
                                                     <td class="text-end"><span style="color:#b8860b;">{{ number_format($ing['mora_acum'], 2) }}</span></td>
                                                     <td>{{ $ing['asesor'] }}</td>
                                                     <td class="text-center fw-bold">{{ $tcLabels[$ing['tipo_planilla']] ?? '?' }}</td>
@@ -343,7 +344,7 @@
                                                         <a href="{{ route('credits.show', $egr['credit_id']) }}" target="_blank">{{ $egr['credit_id'] }}</a>
                                                     </td>
                                                     <td class="col-cliente" style="{{ $egrRowStyle }}" title="{{ $egr['cliente'] }}"><span class="ellip">{{ $egr['cliente'] }}</span>@if($egr['cod_rem'])<span style="color:red;font-size:9px;"> ({{ $egr['cod_rem'] }})</span>@endif</td>
-                                                    <td class="text-end" style="{{ $egrRowStyle }}"><span class="text-primary">{{ number_format($egr['monto'], 2) }}</span></td>
+                                                    <td class="text-end" style="{{ $egrRowStyle }}"><span style="color:#0000FF;">{{ number_format($egr['monto'], 2) }}</span></td>
                                                     <td class="text-end" style="color: red;">
                                                         @if((int)$egr['interes_pct'] == (float)$egr['interes_pct'])
                                                             {{ (int) $egr['interes_pct'] }}
@@ -351,7 +352,7 @@
                                                             {{ number_format($egr['interes_pct'], 2) }}
                                                         @endif
                                                     </td>
-                                                    <td class="text-end" style="{{ $egrRowStyle }}"><span class="text-primary">{{ number_format($egr['interes_monto'], 2) }}</span></td>
+                                                    <td class="text-end" style="{{ $egrRowStyle }}"><span style="color:#0000FF;">{{ number_format($egr['interes_monto'], 2) }}</span></td>
                                                     <td style="{{ $egrRowStyle }}">{{ $egr['usuario'] }}</td>
                                                     <td style="{{ $egrRowStyle }}">{{ $egr['asesor'] }}</td>
                                                     <td class="text-center fw-bold" style="{{ $egrRowStyle }}">{{ $tcLabels[$egr['tipo_planilla']] ?? '?' }}</td>
@@ -402,11 +403,11 @@
                                         {{-- Sub Total General --}}
                                         <tr style="background-color: #ffffff;">
                                             <td colspan="5" class="text-end" style="color:#000;"><strong>Sub Total General</strong></td>
-                                            <td class="text-end" style="color:#0d6efd;"><strong>{{ number_format($Tcpi, 2) }}</strong></td>
-                                            <td class="text-end" style="color:#0d6efd;"><strong>{{ number_format($Tcpi2, 2) }}</strong></td>
-                                            <td class="text-end" style="color:#0d6efd;"><strong>{{ number_format($Tint, 2) }}</strong></td>
-                                            <td class="text-end" style="color:#0d6efd;"><strong>{{ number_format($Texc, 2) }}</strong></td>
-                                            <td class="text-end" style="color:#0d6efd;"><strong>{{ number_format($Tmor4, 2) }}</strong></td>
+                                            <td class="text-end" style="color:#0000FF;"><strong>{{ number_format($Tcpi, 2) }}</strong></td>
+                                            <td class="text-end" style="color:#0000FF;"><strong>{{ number_format($Tcpi2, 2) }}</strong></td>
+                                            <td class="text-end" style="color:#0000FF;"><strong>{{ number_format($Tint, 2) }}</strong></td>
+                                            <td class="text-end" style="color:#0000FF;"><strong>{{ number_format($Texc, 2) }}</strong></td>
+                                            <td class="text-end" style="color:#0000FF;"><strong>{{ number_format($Tmor4, 2) }}</strong></td>
                                             <td class="text-end" style="color:#b8860b;"><strong>{{ number_format($TmorAcum, 2) }}</strong></td>
                                             <td colspan="4"></td>
                                             <td class="text-end" style="color:#000;"><strong>{{ number_format($toff, 2) }}</strong></td>
