@@ -1,4 +1,7 @@
-<div class="container-fluid">    <div class="row">
+<div class="container-fluid"
+     x-data
+     x-on:monto-usado.window="const el = document.getElementById('monto-a-pagar'); if (!el) return; el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus({ preventScroll: true }); const tarjeta = el.closest('.saldo-kpi'); tarjeta.classList.remove('saldo-resaltado'); void tarjeta.offsetWidth; tarjeta.classList.add('saldo-resaltado'); setTimeout(() => tarjeta.classList.remove('saldo-resaltado'), 2600)">
+    <div class="row">
         <div class="col-sm-6">
             <h4 class="main-title title-modules" style="color:red;">PAGO DE CRÉDITO MASIVO</h4>
         </div>
@@ -300,7 +303,7 @@
                                             <i class="ti ti-list-check f-s-12"></i> elegir cuotas
                                         </a>
                                     </div>
-                                    <input type="number" name="monto" autocomplete="off" class="saldo-input"
+                                    <input type="number" name="monto" id="monto-a-pagar" autocomplete="off" class="saldo-input"
                                            wire:model.live.debounce.400ms="monto"
                                            min="0.00" max="{{ $c['saldo_pendiente'] }}" step="0.01"
                                            placeholder="0.00">
@@ -619,6 +622,15 @@
             /* El input vive DENTRO de la tarjeta: sin marco propio, con la
                misma tipografía de las cifras para que la banda se lea pareja. */
             .saldo-editable { background: #fffdf5; }
+            /* Al pulsar "Usar … en Monto a Pagar" la tarjeta late en ámbar un
+               par de segundos: el botón queda lejos y el usuario nuevo no veía
+               que el campo ya se llenó. */
+            .saldo-resaltado { animation: saldo-latido 1.3s ease-in-out 2; }
+            @keyframes saldo-latido {
+                0%   { box-shadow: 0 0 0 0 rgba(240, 173, 78, .9); background: #fff3cd; }
+                60%  { box-shadow: 0 0 0 12px rgba(240, 173, 78, 0); }
+                100% { box-shadow: 0 0 0 0 rgba(240, 173, 78, 0); background: #fffdf5; }
+            }
             /* !important a propósito: el theme trae
                `.btn, input, select { font-size: 10px !important }`, que si no
                deja la cifra editable en 10px al lado de saldos de 21.6px. */

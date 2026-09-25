@@ -1783,6 +1783,11 @@ class Create extends Component
         $saldo = (float) $this->buildCalcs()['saldo_pendiente'];
         $this->monto = number_format(min(round($monto, 2), $saldo), 2, '.', '');
         $this->updatedMonto();
+
+        // 26/09: el botón queda lejos del campo y los usuarios nuevos no veían
+        // que ya se llenó: el navegador lleva la vista al Monto a Pagar, le da
+        // el foco y lo resalta un momento (ver x-on:monto-usado en la vista).
+        $this->dispatch('monto-usado', monto: $this->monto);
     }
 
     public function render()
