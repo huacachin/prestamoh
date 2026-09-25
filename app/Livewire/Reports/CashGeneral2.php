@@ -7,6 +7,7 @@ use App\Models\Credit;
 use App\Models\Expense;
 use App\Models\Income;
 use App\Models\Payment;
+use App\Support\FechaLarga;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Url;
@@ -216,7 +217,7 @@ class CashGeneral2 extends Component
 
             $rows[] = [
                 'date' => $date,
-                'date_label' => Carbon::parse($date)->translatedFormat('l d \\d\\e F Y'),
+                'date_label' => FechaLarga::etiqueta($date), // "Viernes 24 de Febrero del 2026", como el legacy
                 'items' => $items,
                 'total_ingreso' => $ingresoAcumulado,
                 'total_egreso' => $sumEgresoDay,

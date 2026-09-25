@@ -4,6 +4,7 @@ namespace App\Livewire\Reports;
 
 use App\Models\Credit;
 use App\Services\CajaDailyService;
+use App\Support\FechaLarga;
 use Carbon\Carbon;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
@@ -148,7 +149,7 @@ class CashGeneral1 extends Component
 
             $days[] = [
                 'date' => $date,
-                'date_label' => Carbon::parse($date)->translatedFormat('l d \\d\\e F Y'),
+                'date_label' => FechaLarga::etiqueta($date), // "Viernes 24 de Febrero del 2026", como el legacy
                 'ingresos' => $ingresos,
                 'egresos' => $egresos,
                 'sub_ingresos' => $subIng,
