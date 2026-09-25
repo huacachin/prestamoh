@@ -1,4 +1,4 @@
-<div class="container-fluid">
+<div class="container-fluid" x-data x-init="if (window.matchMedia('(max-width: 767.98px)').matches) $wire.set('movil', true)">
     <div class="row">
         <div class="col-sm-6">
             <h4 class="main-title title-modules">CLIENTES</h4>
@@ -143,7 +143,18 @@
                         </div>
                     </form>
 
-                    {{-- Tabla Desktop / Cards Mobile --}}
+                    {{-- Tabla Desktop / Cards Mobile: solo se renderiza la que se ve
+                         ($movil lo fija Alpine al cargar). El paginador va arriba Y abajo,
+                         y al cambiar de página se vuelve al inicio de la lista, no de la
+                         página entera. --}}
+                    {{-- scroll-margin-top: la cabecera fija tapa lo que scrollIntoView deja en el borde. --}}
+                    <div id="lista-clientes" style="scroll-margin-top: 90px;">
+                    @if($clients->hasPages())
+                        <div class="mb-2">
+                            {{ $clients->links(data: ['scrollTo' => '#lista-clientes']) }}
+                        </div>
+                    @endif
+                    @unless($movil)
                     <div class="table-responsive d-none d-md-block">
                         <table class="table table-bordered table-striped table-hover table-autofit clients-legacy">
                             <thead class="bg-primary">
@@ -263,7 +274,9 @@
                         </table>
                     </div>
 
+                    @endunless
                     {{-- Cards Mobile --}}
+                    @if($movil)
                     <div class="d-md-none">
                         @forelse($clients as $client)
                             @php
@@ -319,9 +332,11 @@
                         </div>
                     </div>
 
+                    @endif
                     {{-- Paginación (LIMIT en SQL: solo viaja la página visible) --}}
                     <div class="mt-3">
-                        {{ $clients->links() }}
+                        {{ $clients->links(data: ['scrollTo' => '#lista-clientes']) }}
+                    </div>
                     </div>
                 </div>
             </div>
