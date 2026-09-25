@@ -61,13 +61,8 @@
                 </tr>
                 <tr>
                     <td style="background-color:#f0f0f0;">N° Expediente</td>
-                    <td>
-                        <a href="{{ route('clients.gallery', $client->id) }}"
-                           title="Ver adjuntos"
-                           style="color:#0d6efd; text-decoration:underline;">
-                            {{ $client->expediente }}
-                        </a>
-                    </td>
+                    {{-- 26/09: ya no enlaza a los adjuntos; para eso está el botón "Imágenes" --}}
+                    <td>{{ $client->expediente }}</td>
                     <td style="background-color:#f0f0f0;">Nacionalidad</td>
                     <td>Peruano</td>
                 </tr>
