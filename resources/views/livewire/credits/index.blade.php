@@ -1,4 +1,4 @@
-<div class="container-fluid">
+<div class="container-fluid" x-data x-init="if (window.matchMedia('(max-width: 767.98px)').matches) $wire.set('movil', true)">
     <div class="row">
         <div class="col-sm-6">
             <h4 class="main-title title-modules" style="color:red;">PRESTAMOS</h4>
@@ -79,7 +79,17 @@
                         $tcLabels = [1 => 'S.', 3 => 'M.', 4 => 'D.'];
                     @endphp
 
-                    {{-- Tabla Desktop --}}
+                    {{-- Tabla Desktop / Cards Mobile: solo se renderiza la que se ve
+                         ($movil lo fija Alpine al cargar). El paginador va arriba Y abajo,
+                         y al cambiar de página se vuelve al inicio de la lista (data-lista),
+                         no de la página entera. --}}
+                    <div data-lista>
+                    @if($credits->hasPages())
+                        <div class="mb-2">
+                            {{ $credits->links() }}
+                        </div>
+                    @endif
+                    @unless($movil)
                     <div id="tabla-creditos" class="table-responsive d-none d-md-block" style="max-height: 70vh; overflow: auto;">
                         <table class="table table-bordered table-striped table-hover table-autofit" style="font-size: 11px;">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
@@ -176,8 +186,10 @@
                             </tfoot>
                         </table>
                     </div>
+                    @endunless
 
                     {{-- Cards Mobile --}}
+                    @if($movil)
                     <div class="d-md-none">
                         @forelse($credits as $credit)
                             @php
@@ -230,8 +242,10 @@
                             <span class="badge bg-primary">Total: {{ number_format($sumtotal, 2) }} | Saldo: {{ number_format($sumsaldo, 2) }} | {{ $credits->total() }} créditos</span>
                         </div>
                     </div>
+                    @endif
 
                     {{ $credits->links() }}
+                    </div>
 
                 </div>
             </div>

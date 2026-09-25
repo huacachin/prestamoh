@@ -13,6 +13,14 @@ class Index extends Component
 
     protected $paginationTheme = 'bootstrap';
 
+    /**
+     * 25/09: el listado renderizaba SIEMPRE la tabla de escritorio Y las 100
+     * tarjetas móviles (una de las dos oculta por CSS), así que cada cambio de
+     * página bajaba ~560 KB de HTML. Alpine avisa al cargar si la pantalla es
+     * móvil y solo se renderiza la versión que se ve.
+     */
+    public bool $movil = false;
+
     #[Url(as: 'dni', except: '')]
     public string $nombre = ''; // DNI
 

@@ -59,7 +59,15 @@
                         </div>
                     </form>
 
-                    {{-- Tabla --}}
+                    {{-- Tabla. El paginador va arriba Y abajo, y al cambiar de página
+                         se vuelve al inicio de la lista (data-lista), no de la página
+                         entera. --}}
+                    <div data-lista>
+                    @if($garantias->hasPages())
+                        <div class="mb-2">
+                            {{ $garantias->links() }}
+                        </div>
+                    @endif
                     <div class="table-responsive">
                         <table class="table table-bordered table-striped table-hover align-middle" style="font-size: 11px;">
                             <thead class="bg-primary">
@@ -160,6 +168,7 @@
 
                     <div class="mt-2">
                         {{ $garantias->links() }}
+                    </div>
                     </div>
                 </div>
             </div>

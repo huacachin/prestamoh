@@ -67,7 +67,14 @@
                         </div>
                     </form>
 
-                    {{-- Tabla --}}
+                    {{-- Tabla. El paginador va arriba Y abajo, y al cambiar de página
+                         se vuelve al inicio de la lista (data-lista), no de la página entera. --}}
+                    <div data-lista>
+                    @if($vehiculos->hasPages())
+                        <div class="mb-2">
+                            {{ $vehiculos->links() }}
+                        </div>
+                    @endif
                     <div class="table-responsive">
                         <table class="table table-bordered table-striped table-hover" style="font-size: 11px;">
                             <thead class="bg-primary">
@@ -188,6 +195,7 @@
                     </div>
 
                     {{ $vehiculos->links() }}
+                    </div>
                 </div>
             </div>
         </div>

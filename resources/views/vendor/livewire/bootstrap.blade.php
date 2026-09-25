@@ -1,12 +1,22 @@
 @php
+// 25/09: al cambiar de página se vuelve al inicio de la LISTA (el envoltorio
+// marcado con data-lista) o, si el módulo no lo marcó, a la raíz del
+// componente — nunca al inicio del body, que obligaba a bajar de nuevo
+// pasando los filtros. El desfase por la cabecera fija lo pone el CSS
+// (scroll-margin-top en [data-lista] y [wire:id]). scrollTo => false no
+// desplaza; un selector propio lo respeta.
 if (! isset($scrollTo)) {
-    $scrollTo = 'body';
+    $scrollTo = '[data-lista]';
 }
 
+// Además, las tablas con scroll propio (max-height + overflow) conservan su
+// scrollTop tras el morph de Livewire: se devuelven arriba para que la
+// página nueva se vea desde su primera fila.
 $scrollIntoViewJsSnippet = ($scrollTo !== false)
-    ? <<<JS
-       (\$el.closest('{$scrollTo}') || document.querySelector('{$scrollTo}')).scrollIntoView()
-    JS
+    ? sprintf(
+        "let l = \$el.closest('%1\$s') || document.querySelector('%1\$s') || \$el.closest('[wire\\\\:id]') || document.body; l.scrollIntoView(); l.querySelectorAll('.table-responsive, [style*=overflow]').forEach(e => e.scrollTop = 0)",
+        $scrollTo
+    )
     : '';
 @endphp
 

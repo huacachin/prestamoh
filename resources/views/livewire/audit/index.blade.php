@@ -74,6 +74,14 @@
                         </div>
                     </div>
 
+                    {{-- El paginador va arriba Y abajo, y al cambiar de página se vuelve
+                         al inicio de la lista (data-lista), no de la página entera. --}}
+                    <div data-lista>
+                    @if($logs->hasPages())
+                        <div class="mb-2">
+                            {{ $logs->links() }}
+                        </div>
+                    @endif
                     <div class="table-responsive tableFixHead">
                         <table class="table table-bordered table-striped table-hover table-sm">
                             <thead class="bg-primary">
@@ -126,6 +134,7 @@
                     <div class="mt-2">
                         {{ $logs->links() }}
                     </div>
+                    </div>{{-- /data-lista --}}
                 </div>
             </div>
         </div>

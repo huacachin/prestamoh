@@ -109,7 +109,14 @@
                         </div>
                     </form>
 
-                    {{-- TABLA --}}
+                    {{-- TABLA. El paginador va arriba Y abajo, y al cambiar de página se
+                         vuelve al inicio de la lista (data-lista), no de la página entera. --}}
+                    <div data-lista>
+                    @if($rows->hasPages())
+                        <div class="mb-2">
+                            {{ $rows->links() }}
+                        </div>
+                    @endif
                     <div id="tabla-morosidad" class="table-responsive" style="max-height: 70vh; overflow: auto;">
                         <table class="table table-bordered table-striped table-hover table-nowrap">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
@@ -230,6 +237,7 @@
                     </div>
 
                     {{ $rows->links() }}
+                    </div>
                 </div>
             </div>
         </div>

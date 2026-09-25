@@ -1,4 +1,4 @@
-<div class="container-fluid">
+<div class="container-fluid" x-data x-init="if (window.matchMedia('(max-width: 767.98px)').matches) $wire.set('movil', true)">
     <div class="row">
         <div class="col-sm-6">
             <h4 class="main-title title-modules" style="color:red;">PAGO/CREDITO</h4>
@@ -50,7 +50,17 @@
                         </div>
                     </form>
 
-                    {{-- Tabla Desktop --}}
+                    {{-- Tabla Desktop / Cards Mobile: solo se renderiza la que se ve
+                         ($movil lo fija Alpine al cargar). El paginador va arriba Y abajo,
+                         y al cambiar de página se vuelve al inicio de la lista (data-lista),
+                         no de la página entera. --}}
+                    <div data-lista>
+                    @if($credits->hasPages())
+                        <div class="mb-2">
+                            {{ $credits->links() }}
+                        </div>
+                    @endif
+                    @unless($movil)
                     <div class="table-responsive d-none d-md-block">
                         <table class="table table-bordered table-striped table-hover table-autofit" style="font-size: 11px;">
                             <thead class="bg-primary">
@@ -117,8 +127,10 @@
                             </tfoot>
                         </table>
                     </div>
+                    @endunless
 
                     {{-- Cards Mobile --}}
+                    @if($movil)
                     <div class="d-md-none">
                         @forelse($credits as $credit)
                             <div class="card mb-2 shadow-sm">
@@ -158,10 +170,12 @@
                             <span class="badge bg-primary">Total Capital: S/ {{ number_format($totalCapital, 2) }} | {{ $totalFiltrados }} créditos</span>
                         </div>
                     </div>
+                    @endif
 
                     {{-- Paginación (LIMIT en SQL: solo viaja la página visible) --}}
                     <div class="mt-3">
                         {{ $credits->links() }}
+                    </div>
                     </div>
                 </div>
             </div>

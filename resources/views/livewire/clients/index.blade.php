@@ -145,13 +145,12 @@
 
                     {{-- Tabla Desktop / Cards Mobile: solo se renderiza la que se ve
                          ($movil lo fija Alpine al cargar). El paginador va arriba Y abajo,
-                         y al cambiar de página se vuelve al inicio de la lista, no de la
-                         página entera. --}}
-                    {{-- scroll-margin-top: la cabecera fija tapa lo que scrollIntoView deja en el borde. --}}
-                    <div id="lista-clientes" style="scroll-margin-top: 90px;">
+                         y al cambiar de página se vuelve al inicio de la lista (data-lista),
+                         no de la página entera. --}}
+                    <div data-lista>
                     @if($clients->hasPages())
                         <div class="mb-2">
-                            {{ $clients->links(data: ['scrollTo' => '#lista-clientes']) }}
+                            {{ $clients->links() }}
                         </div>
                     @endif
                     @unless($movil)
@@ -335,7 +334,7 @@
                     @endif
                     {{-- Paginación (LIMIT en SQL: solo viaja la página visible) --}}
                     <div class="mt-3">
-                        {{ $clients->links(data: ['scrollTo' => '#lista-clientes']) }}
+                        {{ $clients->links() }}
                     </div>
                     </div>
                 </div>

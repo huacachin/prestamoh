@@ -1,4 +1,4 @@
-<div class="container-fluid">
+<div class="container-fluid" x-data x-init="if (window.matchMedia('(max-width: 767.98px)').matches) $wire.set('movil', true)">
     <div class="row">
         <div class="col-sm-6">
             <h4 class="main-title title-modules" style="color:red;">CLIENTES CESADOS</h4>
@@ -64,7 +64,17 @@
                         </div>
                     </form>
 
-                    {{-- Tabla Desktop --}}
+                    {{-- Tabla Desktop / Cards Mobile: solo se renderiza la que se ve
+                         ($movil lo fija Alpine al cargar). El paginador va arriba Y abajo,
+                         y al cambiar de página se vuelve al inicio de la lista (data-lista),
+                         no de la página entera. --}}
+                    <div data-lista>
+                    @if($clients->hasPages())
+                        <div class="mb-2">
+                            {{ $clients->links() }}
+                        </div>
+                    @endif
+                    @unless($movil)
                     <div class="table-responsive d-none d-md-block">
                         <table class="table table-bordered table-striped table-hover table-autofit" style="font-size: 11px;">
                             <thead class="bg-primary">
@@ -163,8 +173,10 @@
                             </tfoot>
                         </table>
                     </div>
+                    @endunless
 
                     {{-- Cards Mobile --}}
+                    @if($movil)
                     <div class="d-md-none">
                         @forelse($clients as $client)
                             @php
@@ -224,8 +236,10 @@
                             <span class="badge bg-warning text-dark">Total: {{ $clients->total() }}</span>
                         </div>
                     </div>
+                    @endif
 
                     {{ $clients->links() }}
+                    </div>
                 </div>
             </div>
         </div>

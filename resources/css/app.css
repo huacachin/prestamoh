@@ -4,3 +4,9 @@
 
 
 @keyframes spin { to { transform: rotate(360deg); } }
+
+
+/* 25/09: al paginar se vuelve al inicio de la lista ([data-lista]) o del
+   componente; este margen evita que la cabecera fija tape lo que scrollIntoView
+   deja en el borde superior. */
+[data-lista], [wire\:id] { scroll-margin-top: 90px; }
