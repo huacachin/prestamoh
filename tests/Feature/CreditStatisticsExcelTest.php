@@ -27,8 +27,9 @@ class CreditStatisticsExcelTest extends TestCase
             'attachment; filename="Reporte Estadistico De Credito.xls"');
 
         $respuesta->assertSee('REPORTE ESTADISTICO DE CREDITO', false);
-        $respuesta->assertSee('Ingresos Creditos', false);
-        $respuesta->assertSee('Egresos Capital', false);
+        // Cabeceras en dos líneas dentro de la misma celda, como en pantalla (25/09).
+        $respuesta->assertSee('Ingresos<br style="mso-data-placement:same-cell;">Creditos', false);
+        $respuesta->assertSee('Egresos<br style="mso-data-placement:same-cell;">Capital', false);
         $respuesta->assertSee('RESUMEN MENSUAL 2026', false);
 
         // Dos tablas (diaria + mensual) y domingos pintados en la celda Fecha

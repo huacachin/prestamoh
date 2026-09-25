@@ -34,8 +34,11 @@
             <thead>
                 <tr>
                     <th {!! $hd !!} rowspan="2">Fecha</th>
-                    <th {!! $hd !!} rowspan="2">Ingresos Creditos</th>
-                    <th {!! $hd !!} rowspan="2">Egresos Capital</th>
+                    {{-- En dos líneas, como en pantalla (25/09): el <br> con
+                         mso-data-placement:same-cell es el salto de línea dentro
+                         de la misma celda que entiende Excel. --}}
+                    <th {!! $hd !!} rowspan="2">Ingresos<br style="mso-data-placement:same-cell;">Creditos</th>
+                    <th {!! $hd !!} rowspan="2">Egresos<br style="mso-data-placement:same-cell;">Capital</th>
                     @foreach($sec['rates'] as $rate)
                         <th {!! $hd !!} colspan="2">{{ $rate }}%</th>
                     @endforeach
