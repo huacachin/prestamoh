@@ -31,6 +31,10 @@
                 <button type="button" class="btn btn-sm btn-secondary" onclick="window.print()">
                     <i class="ti ti-printer"></i> Imprimir
                 </button>
+                {{-- 26/09: lo mismo que el enlace del número de expediente, pero a la vista --}}
+                <a href="{{ route('clients.gallery', $client->id) }}" class="btn btn-sm btn-outline-secondary" title="Ver adjuntos del cliente">
+                    <i class="ti ti-photo"></i> Imágenes
+                </a>
                 <a href="{{ route('clients.index') }}" class="btn btn-sm btn-secondary ms-auto">Volver</a>
             </div>
         </div>
