@@ -9,12 +9,16 @@ if (! isset($scrollTo)) {
     $scrollTo = '[data-lista]';
 }
 
+// Solo se desplaza si el inicio de la lista NO está a la vista (quedó por
+// encima, tapado por la cabecera fija): es el caso del paginador de abajo.
+// Desde el paginador de arriba la lista ya se ve y la página no se mueve
+// (26/09: antes bajaba en cada clic y escondía el título y los filtros).
 // Además, las tablas con scroll propio (max-height + overflow) conservan su
 // scrollTop tras el morph de Livewire: se devuelven arriba para que la
 // página nueva se vea desde su primera fila.
 $scrollIntoViewJsSnippet = ($scrollTo !== false)
     ? sprintf(
-        "let l = \$el.closest('%1\$s') || document.querySelector('%1\$s') || \$el.closest('[wire\\\\:id]') || document.body; l.scrollIntoView(); l.querySelectorAll('.table-responsive, [style*=overflow]').forEach(e => e.scrollTop = 0)",
+        "let l = \$el.closest('%1\$s') || document.querySelector('%1\$s') || \$el.closest('[wire\\\\:id]') || document.body; if (l.getBoundingClientRect().top < (parseFloat(getComputedStyle(l).scrollMarginTop) || 0)) l.scrollIntoView(); l.querySelectorAll('.table-responsive, [style*=overflow]').forEach(e => e.scrollTop = 0)",
         $scrollTo
     )
     : '';
