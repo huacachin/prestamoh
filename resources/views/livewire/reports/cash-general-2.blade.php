@@ -64,7 +64,7 @@
 
                     <div id="printme">
                         <div id="tabla-caja-2" class="table-responsive" style="max-height: 650px; overflow: auto;">
-                            {{-- Azul de ingresos/TOTAL/SALDO: #0000FF, el <font color=blue> del legacy (no el text-primary celeste del tema). 25/09 --}}
+                            {{-- Azul de ingresos/TOTAL/SALDO (#0000FF) y rojo de egresos y rótulos (#FF0000): los <font color=blue|red> del legacy, no el celeste/rojo del tema. 25/09 --}}
                             <table class="table table-bordered table-striped table-hover table-sm caja2-legacy">
                                 <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                     <tr>
@@ -92,7 +92,7 @@
                                                 </td>
                                                 <td class="text-end text-nowrap">
                                                     @if($item['egreso'] > 0)
-                                                        <span class="text-danger">{{ number_format($item['egreso'], 2) }}</span>
+                                                        <span style="color:#FF0000;">{{ number_format($item['egreso'], 2) }}</span>
                                                     @endif
                                                 </td>
                                             </tr>
@@ -107,14 +107,14 @@
                                                 <strong><span style="color:#0000FF;">{{ number_format($day['total_ingreso'], 2) }}</span></strong>
                                             </td>
                                             <td class="text-end text-nowrap">
-                                                <strong><span class="text-danger">{{ number_format($day['total_egreso'], 2) }}</span></strong>
+                                                <strong><span style="color:#FF0000;">{{ number_format($day['total_egreso'], 2) }}</span></strong>
                                             </td>
                                         </tr>
                                         <tr class="table-light">
                                             <td></td>
                                             <td></td>
                                             <td></td>
-                                            <td><strong>SALDO <span class="text-danger">FINAL-INICIAL</span></strong></td>
+                                            <td><strong>SALDO <span style="color:#FF0000;">FINAL-INICIAL</span></strong></td>
                                             <td class="text-end text-nowrap">
                                                 <strong><span style="color:#0000FF;">{{ number_format($day['saldo'], 2) }}</span></strong>
                                             </td>
@@ -134,7 +134,7 @@
                                     <tfoot>
                                         <tr style="background-color:#ffffff;">
                                             <td colspan="4" style="color:#000;">
-                                                <strong>REPORTE GENERAL <span style="color:#dc3545;">CAJA 2 - </span>TOTAL <span style="color:#dc3545;">GENERAL</span></strong>
+                                                <strong>REPORTE GENERAL <span style="color:#FF0000;">CAJA 2 - </span>TOTAL <span style="color:#FF0000;">GENERAL</span></strong>
                                             </td>
                                             <td class="text-end text-nowrap" colspan="2" style="color:#0000FF;">
                                                 <strong>{{ number_format($report['balance_general'], 2) }}</strong>

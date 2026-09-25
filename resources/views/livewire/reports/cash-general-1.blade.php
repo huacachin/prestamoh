@@ -244,7 +244,7 @@
                     {{-- ═══ VISTA DETALLE: tabla completa homóloga al legacy ═══ --}}
                     <div id="printme">
                         <div id="tabla-caja-1" class="table-responsive" style="max-height: 70vh; overflow: auto;">
-                            {{-- Montos en azul del legacy (#0000FF, el <font color=blue>), no el celeste del tema. 25/09 --}}
+                            {{-- Montos en azul (#0000FF) y totales generales/rótulos en rojo (#FF0000): los <font color=blue|red> del legacy, no el celeste/rojo del tema. 25/09 --}}
                             <table class="table table-bordered table-striped table-hover table-nowrap">
                                 <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                     <tr>
@@ -418,15 +418,15 @@
                                         {{-- TOTAL GENERAL --}}
                                         <tr style="background-color: #ffffff;">
                                             <td colspan="5" class="text-end" style="color:#000;">
-                                                <strong>REPORTE GENERAL <span style="color:#dc3545;">CAJA 1 -</span> TOTAL <span style="color:#dc3545;">GENERAL</span></strong>
+                                                <strong>REPORTE GENERAL <span style="color:#FF0000;">CAJA 1 -</span> TOTAL <span style="color:#FF0000;">GENERAL</span></strong>
                                             </td>
-                                            <td class="text-end" style="color:#dc3545;">
+                                            <td class="text-end" style="color:#FF0000;">
                                                 <strong>{{ number_format($toff1, 2) }}</strong>
                                             </td>
                                             <td colspan="9"></td>
-                                            <td class="text-end" style="color:#dc3545;"><strong>{{ number_format($toff, 2) }}</strong></td>
+                                            <td class="text-end" style="color:#FF0000;"><strong>{{ number_format($toff, 2) }}</strong></td>
                                             <td></td>
-                                            <td class="text-end" style="color:#dc3545;"><strong>{{ number_format($toff2, 2) }}</strong></td>
+                                            <td class="text-end" style="color:#FF0000;"><strong>{{ number_format($toff2, 2) }}</strong></td>
                                             <td colspan="3"></td>
                                         </tr>
                                     </tfoot>

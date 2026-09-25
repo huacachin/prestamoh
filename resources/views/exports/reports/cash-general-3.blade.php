@@ -1,13 +1,13 @@
 @extends('exports.layout')
 
 @php
-    // Montos en azul del legacy (#0000FF, el <font color=blue>), no el celeste del tema. 25/09
+    // Montos en azul (#0000FF) y egresos/rótulos en rojo (#FF0000) del legacy (<font color=blue|red>), no el celeste/rojo del tema. 25/09
     $hd = 'bgcolor="#2874A6" style="color:white;text-align:center;"';
     $cell = 'style="border-style:dotted solid dotted solid;"';
     $cellc = 'style="border-style:dotted solid dotted solid;text-align:center;"';
     $cellr = 'style="border-style:dotted solid dotted solid;text-align:right;"';
     $blue = 'color:#0000FF;';
-    $red = 'color:#dc3545;';
+    $red = 'color:#FF0000;';
 @endphp
 
 @section('content')
@@ -32,18 +32,18 @@
                         <td {!! $cell !!}>{{ $item['cliente'] }}</td>
                         <td {!! $cell !!}>{{ $item['detalle'] }}</td>
                         <td {!! $cellr !!}>@if($item['ingreso'] > 0)<font color="#0000FF">{{ number_format($item['ingreso'], 2) }}</font>@endif</td>
-                        <td {!! $cellr !!}>@if($item['egreso'] > 0)<font color="#dc3545">{{ number_format($item['egreso'], 2) }}</font>@endif</td>
+                        <td {!! $cellr !!}>@if($item['egreso'] > 0)<font color="#FF0000">{{ number_format($item['egreso'], 2) }}</font>@endif</td>
                     </tr>
                 @endforeach
                 <tr bgcolor="#F0F0F0">
                     <td></td><td></td><td></td>
                     <td {!! $cell !!}><b>TOTAL</b></td>
                     <td {!! $cellr !!}><b><font color="#0000FF">{{ number_format($day['total_ingreso'], 2) }}</font></b></td>
-                    <td {!! $cellr !!}><b><font color="#dc3545">{{ number_format($day['total_egreso'], 2) }}</font></b></td>
+                    <td {!! $cellr !!}><b><font color="#FF0000">{{ number_format($day['total_egreso'], 2) }}</font></b></td>
                 </tr>
                 <tr bgcolor="#CEE7FF">
                     <td></td><td></td><td></td>
-                    <td {!! $cell !!}><b>SALDO <font color="#dc3545">FINAL-INICIAL</font></b></td>
+                    <td {!! $cell !!}><b>SALDO <font color="#FF0000">FINAL-INICIAL</font></b></td>
                     <td {!! $cellr !!}><b><font color="#0000FF">{{ number_format($day['saldo'], 2) }}</font></b></td>
                     <td></td>
                 </tr>
@@ -53,9 +53,9 @@
 
             @if(count($report['days']) > 0)
                 <tr bgcolor="#FFFFFF">
-                    <td colspan="4"><b>REPORTE GENERAL <font color="#dc3545">CAJA 3 - </font>TOTAL <font color="#dc3545">GENERAL</font></b></td>
+                    <td colspan="4"><b>REPORTE GENERAL <font color="#FF0000">CAJA 3 - </font>TOTAL <font color="#FF0000">GENERAL</font></b></td>
                     <td {!! $cellr !!}><b><font color="#0000FF">{{ number_format($report['total_ingresos'], 2) }}</font></b></td>
-                    <td {!! $cellr !!}><b><font color="#dc3545">{{ number_format($report['total_egresos'], 2) }}</font></b></td>
+                    <td {!! $cellr !!}><b><font color="#FF0000">{{ number_format($report['total_egresos'], 2) }}</font></b></td>
                 </tr>
             @endif
         </tbody>
