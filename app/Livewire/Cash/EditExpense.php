@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Cash;
 
+use App\Livewire\Cash\Concerns\SavesExpenseAttachments;
 use App\Models\Concept;
 use App\Models\Expense;
 use App\Support\Audit;
@@ -13,6 +14,7 @@ use Livewire\WithFileUploads;
 
 class EditExpense extends Component
 {
+    use SavesExpenseAttachments;
     use WithFileUploads;
 
     public Expense $expense;
@@ -32,8 +34,14 @@ class EditExpense extends Component
 
     public string $in_charge = '';
 
-    public $image;
+    /**
+     * 26/09: imágenes del comprobante elegidas en el formulario (varias); se
+     * suben como adjuntos al pulsar "Guardar cambios". Reemplaza al campo
+     * suelto `image` (image_path) y al botón "Subir" aparte de la galería.
+     */
+    public array $files = [];
 
+    /** Imagen antigua (image_path del legacy), solo se muestra. */
     public ?string $current_image = null;
 
     public bool $canEditDate = false;
@@ -66,8 +74,23 @@ class EditExpense extends Component
         'total' => 'required|numeric|min:0.01',
         'document_type' => 'nullable|string|max:100',
         'in_charge' => 'nullable|string|max:255',
-        'image' => 'nullable|image|max:2048',
+        'files' => 'nullable|array',
+        'files.*' => 'image|mimes:jpg,jpeg,png,gif,webp|max:10240',
     ];
+
+    protected $messages = [
+        'files.*.image' => 'Cada archivo debe ser una imagen.',
+        'files.*.mimes' => 'Formatos válidos: JPG, PNG, GIF o WebP.',
+        'files.*.max' => 'Cada imagen debe pesar máximo 10 MB.',
+    ];
+
+    public function removeFile(int $i): void
+    {
+        if (isset($this->files[$i])) {
+            unset($this->files[$i]);
+            $this->files = array_values($this->files);
+        }
+    }
 
     /**
      * Regla 04/09 (Antony): el director (caja.editar-historico) edita los
@@ -106,11 +129,11 @@ class EditExpense extends Component
                 'in_charge' => $this->in_charge,
             ];
 
-            if ($this->image) {
-                $data['image_path'] = $this->image->store('expenses', 'public');
-            }
-
             $this->expense->update($data);
+
+            // Las imágenes elegidas se suben en el mismo clic (como adjuntos de la galería).
+            $subidas = $this->files !== [] ? $this->storeExpenseAttachments($this->expense, $this->files) : 0;
+            $this->files = [];
 
             // Espejo caja 3 (legacy gastos-modificar22.php): al editar un egreso se
             // sincroniza la copia caja=3 (aa=reason, detalle, totalgeneral=mismo monto).
@@ -124,9 +147,9 @@ class EditExpense extends Component
                     ]);
             }
 
-            Audit::log("Editó el egreso #{$this->expense->id} (monto {$this->total})", $this->expense);
+            Audit::log("Editó el egreso #{$this->expense->id} (monto {$this->total})".($subidas ? ", subió {$subidas} imagen(es)" : ''), $this->expense);
 
-            session()->flash('cash_success', 'Egreso actualizado correctamente.');
+            session()->flash('cash_success', 'Egreso actualizado correctamente.'.($subidas ? " {$subidas} ".($subidas === 1 ? 'imagen subida.' : 'imágenes subidas.') : ''));
             $this->redirectRoute('cash.expenses');
         } catch (ValidationException $e) {
             throw $e;
