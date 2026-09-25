@@ -13,12 +13,17 @@ use Livewire\Component;
  *
  * Reemplaza las columnas "C." y "N." del listado, que solo mostraban un pin
  * y abrían un modal para pegar coordenadas. Misma funcionalidad —pegar el
- * texto de Google Maps— pero con las dos ubicaciones a la vista, editables y
- * con lectura cómoda en el celular (que es donde se capturan).
+ * texto de Google Maps— pero con la ubicación a la vista, editable y con
+ * lectura cómoda en el celular (que es donde se captura).
  */
 class Gps extends Component
 {
-    public const TIPOS = ['casa' => 'Casa', 'negocio' => 'Negocio'];
+    /**
+     * 26/09 (Antony): solo Casa. La ubicación del negocio se quitó del mapa;
+     * lo guardado en latitud2/longitud2 queda en la BD pero ya no se muestra
+     * ni se edita desde aquí.
+     */
+    public const TIPOS = ['casa' => 'Casa'];
 
     #[Locked]
     public int $clientId;
@@ -27,8 +32,8 @@ class Gps extends Component
 
     public bool $puedeEditar = true;
 
-    /** Texto pegado por tipo: ['casa' => '...', 'negocio' => '...'] */
-    public array $pegado = ['casa' => '', 'negocio' => ''];
+    /** Texto pegado por tipo: ['casa' => '...'] */
+    public array $pegado = ['casa' => ''];
 
     public ?string $msg = null;
 

@@ -43,26 +43,25 @@ class ClienteGpsTest extends TestCase
         $this->assertNull(Coordenadas::parse('99.5, -300.2'));
     }
 
-    public function test_guarda_casa_y_negocio_por_separado(): void
+    /** 26/09: solo Casa. "negocio" ya no es un tipo válido: no guarda ni se muestra. */
+    public function test_solo_hay_casa_y_negocio_ya_no_se_guarda_ni_se_muestra(): void
     {
-        $c = $this->cliente();
+        $c = $this->cliente(); // cliente() ya autentica al usuario de prueba
 
-        Livewire::test(Gps::class, ['id' => $c->id])
+        $comp = Livewire::test(Gps::class, ['id' => $c->id])
+            ->assertSee('Casa')
+            ->assertDontSee('Negocio')
             ->set('pegado.casa', '-12.014431, -76.824936')
-            ->call('guardar', 'casa')
-            ->assertSet('msgType', 'ok');
+            ->call('guardar', 'casa');
 
         $c->refresh();
         $this->assertEqualsWithDelta(-12.014431, (float) $c->latitud, 0.0000001);
-        $this->assertEqualsWithDelta(-76.824936, (float) $c->longitud, 0.0000001);
-        $this->assertNull($c->latitud2, 'guardar Casa no toca Negocio');
+        $this->assertNull($c->latitud2);
 
-        Livewire::test(Gps::class, ['id' => $c->id])
-            ->set('pegado.negocio', 'https://www.google.com/maps/@-12.0464,-77.0428,17z')
+        $comp->set('pegado.negocio', 'https://www.google.com/maps/@-12.0464,-77.0428,17z')
             ->call('guardar', 'negocio');
 
-        $c->refresh();
-        $this->assertEqualsWithDelta(-12.0464, (float) $c->latitud2, 0.0000001);
+        $this->assertNull($c->fresh()->latitud2, 'negocio ya no existe como tipo: no guarda nada');
     }
 
     public function test_formato_invalido_no_guarda(): void
