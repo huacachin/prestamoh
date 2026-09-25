@@ -278,6 +278,13 @@ class Documentos extends Component
      */
     public bool $anexoSinCodeudores = false;
 
+    /**
+     * 25/09: los anulados se OCULTAN por defecto (emitir, anular y volver a
+     * emitir es el uso normal, y la lista se llenaba de tachados). No se
+     * borran: son la constancia de lo entregado y consumen correlativo.
+     */
+    public bool $verAnulados = false;
+
     public function abrirModalAnexo1(): void
     {
         $creditos = $this->creditosActivos();
@@ -1920,10 +1927,14 @@ class Documentos extends Component
     {
         $client = Client::findOrFail($this->clientId);
 
-        $documentos = DocumentoCliente::with(['credit', 'generadoPor'])
+        $todosLosDocumentos = DocumentoCliente::with(['credit', 'generadoPor'])
             ->where('client_id', $this->clientId)
             ->orderByDesc('id')
             ->get();
+        $anulados = $todosLosDocumentos->where('estado', 'anulado')->count();
+        $documentos = $this->verAnulados
+            ? $todosLosDocumentos
+            : $todosLosDocumentos->where('estado', '<>', 'anulado')->values();
 
         // Buscador de codeudor del contrato (mín. 2 caracteres, máx. 10 resultados)
         $presetContrato = $this->presetNormalizado();
@@ -1950,6 +1961,7 @@ class Documentos extends Component
         return view('livewire.clients.documentos', [
             'client' => $client,
             'documentos' => $documentos,
+            'documentosAnulados' => $anulados,
             'creditosActivos' => $this->creditosActivos(),
             'vehiculos' => $this->vehiculosCliente(),
             // 18/09: los codeudores que saldrían en el Anexo 1 (copropietarios

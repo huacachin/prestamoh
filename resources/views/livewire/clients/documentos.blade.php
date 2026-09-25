@@ -64,12 +64,26 @@
                 </div>
             </div>
 
-            {{-- Historial de documentos emitidos --}}
+            {{-- Historial de documentos emitidos. Los anulados van ocultos por
+                 defecto (25/09): siguen existiendo y descargables, solo no estorban. --}}
+            @if($documentosAnulados > 0)
+                <div class="text-end mb-1">
+                    <a href="#" class="small text-muted" wire:click.prevent="$toggle('verAnulados')">
+                        <i class="ti {{ $verAnulados ? 'ti-eye-off' : 'ti-eye' }}"></i>
+                        {{ $verAnulados ? 'Ocultar los anulados' : "Ver {$documentosAnulados} anulado".($documentosAnulados === 1 ? '' : 's') }}
+                    </a>
+                </div>
+            @endif
             @if($documentos->isEmpty())
                 <div class="text-center py-5 text-muted">
                     <i class="ti ti-file-off" style="font-size:48px; opacity:.4;"></i>
-                    <p class="mt-2 mb-0">Este cliente aún no tiene documentos generados.</p>
-                    <small>Genera el primer Anexo 1 con el botón de arriba.</small>
+                    @if($documentosAnulados > 0)
+                        <p class="mt-2 mb-0">Este cliente no tiene documentos vigentes; los {{ $documentosAnulados }} que tuvo están anulados.</p>
+                        <small>Puedes verlos con el enlace de arriba o generar uno nuevo.</small>
+                    @else
+                        <p class="mt-2 mb-0">Este cliente aún no tiene documentos generados.</p>
+                        <small>Genera el primer Anexo 1 con el botón de arriba.</small>
+                    @endif
                 </div>
             @else
                 <div class="table-responsive">
