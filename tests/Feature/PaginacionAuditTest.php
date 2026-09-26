@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Support\Audit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
 /**
@@ -26,6 +27,7 @@ class PaginacionAuditTest extends TestCase
     {
         $user = User::factory()->create(['username' => 'audit-tester']);
         $this->actingAs($user);
+        Activity::query()->delete(); // el alta del usuario ya deja su registro automático
 
         foreach (range(1, $registros) as $n) {
             Audit::log("Creó el registro de prueba #{$n}");

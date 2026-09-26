@@ -2,12 +2,17 @@
 
 namespace App\Models;
 
+use App\Support\Auditable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ExpedienteJudicial extends Model
 {
+    use Auditable;
+
+    public const AUDIT_MODULO = 'Expediente judicial';
+
     protected $table = 'expedientes_judiciales';
 
     /** Formato estándar del PJ peruano: 04388-2024-0-3209-JP-CI-01 */
@@ -143,5 +148,11 @@ class ExpedienteJudicial extends Model
         }
 
         return implode('-', $partes);
+    }
+
+    /** Texto corto para la descripción de auditoría. */
+    public function auditNombre(): ?string
+    {
+        return $this->nro_expediente;
     }
 }

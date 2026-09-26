@@ -2,12 +2,17 @@
 
 namespace App\Models;
 
+use App\Support\Auditable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Papeleta extends Model
 {
+    use Auditable;
+
+    public const AUDIT_MODULO = 'Papeleta';
+
     protected $table = 'papeletas';
 
     public const ENTIDADES = [
@@ -63,5 +68,11 @@ class Papeleta extends Model
     public function registradoPor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'registrado_por');
+    }
+
+    /** Texto corto para la descripción de auditoría. */
+    public function auditNombre(): ?string
+    {
+        return trim("{$this->entidad} {$this->nro_papeleta}");
     }
 }

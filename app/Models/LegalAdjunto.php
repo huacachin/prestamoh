@@ -2,11 +2,16 @@
 
 namespace App\Models;
 
+use App\Support\Auditable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class LegalAdjunto extends Model
 {
+    use Auditable;
+
+    public const AUDIT_MODULO = 'Adjunto legal';
+
     protected $table = 'legal_adjuntos';
 
     protected $fillable = [
@@ -29,5 +34,11 @@ class LegalAdjunto extends Model
         return $this->thumb_path
             ? '/storage/'.ltrim($this->thumb_path, '/')
             : $this->url();
+    }
+
+    /** Texto corto para la descripción de auditoría. */
+    public function auditNombre(): ?string
+    {
+        return $this->original_name ?: $this->filename;
     }
 }

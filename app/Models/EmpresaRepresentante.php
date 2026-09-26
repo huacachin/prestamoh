@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Auditable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -12,6 +13,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class EmpresaRepresentante extends Model
 {
+    use Auditable;
+
+    public const AUDIT_MODULO = 'Representante legal';
+
     protected $table = 'empresa_representantes';
 
     protected $fillable = [
@@ -24,5 +29,11 @@ class EmpresaRepresentante extends Model
     public function empresa(): BelongsTo
     {
         return $this->belongsTo(ClientEmpresa::class, 'client_empresa_id');
+    }
+
+    /** Texto corto para la descripción de auditoría. */
+    public function auditNombre(): ?string
+    {
+        return $this->nombre;
     }
 }

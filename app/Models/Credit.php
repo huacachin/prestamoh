@@ -2,12 +2,17 @@
 
 namespace App\Models;
 
+use App\Support\Auditable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Credit extends Model
 {
+    use Auditable;
+
+    public const AUDIT_MODULO = 'Crédito';
+
     /** Tasa de mora fija por cuota: 5% de la cuota, ÷7 semanal / ÷30 mensual */
     public const TASA_MORA_PCT = 5;
 

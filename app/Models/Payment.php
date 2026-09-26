@@ -2,11 +2,16 @@
 
 namespace App\Models;
 
+use App\Support\Auditable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Payment extends Model
 {
+    use Auditable;
+
+    public const AUDIT_MODULO = 'Pago';
+
     protected $fillable = [
         'credit_id', 'installment_id', 'modo', 'tipo',
         'documento', 'nro_recibo', 'fecha', 'hora', 'monto',
@@ -32,5 +37,11 @@ class Payment extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** Texto corto para la descripción de auditoría. */
+    public function auditNombre(): ?string
+    {
+        return trim("{$this->tipo} {$this->monto}");
     }
 }

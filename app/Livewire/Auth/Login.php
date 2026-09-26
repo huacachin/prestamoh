@@ -57,6 +57,9 @@ class Login extends Component
             $this->remember
         )) {
             RateLimiter::hit($this->throttleKey(), 60); // 60s por intento fallido
+            // 25/09: el intento fallido también queda en la base (antes solo en el archivo audit-*.log).
+            Audit::log('Intento de inicio de sesión fallido', null, ['username' => (string) $this->username]);
+
             throw ValidationException::withMessages([
                 'username' => __('auth.failed'),
             ]);

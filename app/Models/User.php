@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Auditable;
 use App\Support\PermisosVista;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -10,6 +11,14 @@ use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
+    use Auditable;
+
+    public const AUDIT_MODULO = 'Usuario';
+
+    public const AUDIT_EXCLUIR = ['remember_token'];
+
+    public const AUDIT_ENMASCARAR = ['password'];
+
     use HasFactory, HasRoles, Notifiable {
         assignRole as protected spatieAssignRole;
         syncRoles as protected spatieSyncRoles;
@@ -75,5 +84,11 @@ class User extends Authenticatable
         }
 
         return $resultado;
+    }
+
+    /** Texto corto para la descripción de auditoría. */
+    public function auditNombre(): ?string
+    {
+        return $this->username;
     }
 }

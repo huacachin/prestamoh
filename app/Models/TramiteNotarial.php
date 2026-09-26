@@ -2,12 +2,17 @@
 
 namespace App\Models;
 
+use App\Support\Auditable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TramiteNotarial extends Model
 {
+    use Auditable;
+
+    public const AUDIT_MODULO = 'Trámite notarial';
+
     protected $table = 'tramites_notariales';
 
     /** Días en el mismo estado intermedio a partir de los cuales el trámite se considera varado */
@@ -130,5 +135,11 @@ class TramiteNotarial extends Model
             'estado' => $nuevoEstado,
             'estado_desde' => $fecha,
         ]));
+    }
+
+    /** Texto corto para la descripción de auditoría. */
+    public function auditNombre(): ?string
+    {
+        return $this->descripcion ?: (self::TIPOS[$this->tipo] ?? $this->tipo);
     }
 }

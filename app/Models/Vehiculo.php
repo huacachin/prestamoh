@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Auditable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -18,6 +19,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  */
 class Vehiculo extends Model
 {
+    use Auditable;
+
+    public const AUDIT_MODULO = 'Vehículo';
+
     protected $table = 'vehiculos';
 
     public const ESTADOS = [
@@ -100,5 +105,11 @@ class Vehiculo extends Model
     public function descripcion(): string
     {
         return trim("{$this->placa} — {$this->marca} {$this->modelo}");
+    }
+
+    /** Texto corto para la descripción de auditoría. */
+    public function auditNombre(): ?string
+    {
+        return $this->placa;
     }
 }

@@ -2,12 +2,17 @@
 
 namespace App\Models;
 
+use App\Support\Auditable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PapeletaRecurso extends Model
 {
+    use Auditable;
+
+    public const AUDIT_MODULO = 'Recurso de papeleta';
+
     protected $table = 'papeleta_recursos';
 
     /** Días de anticipación con que un recurso pendiente entra a la campana legal */
@@ -81,5 +86,11 @@ class PapeletaRecurso extends Model
         return $q->where('resultado', 'pendiente')
             ->whereNotNull('plazo_vence')
             ->where('plazo_vence', '<=', now()->addDays($dias)->toDateString());
+    }
+
+    /** Texto corto para la descripción de auditoría. */
+    public function auditNombre(): ?string
+    {
+        return $this->nro_tramite ?: (self::TIPOS[$this->tipo] ?? $this->tipo);
     }
 }

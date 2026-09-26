@@ -2,12 +2,17 @@
 
 namespace App\Models;
 
+use App\Support\Auditable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class MassDeletion extends Model
 {
+    use Auditable;
+
+    public const AUDIT_MODULO = 'Cobro por lotes';
+
     protected $fillable = [
         'credit_id',
         'amount',

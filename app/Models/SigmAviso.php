@@ -2,11 +2,16 @@
 
 namespace App\Models;
 
+use App\Support\Auditable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SigmAviso extends Model
 {
+    use Auditable;
+
+    public const AUDIT_MODULO = 'Aviso SIGM';
+
     protected $table = 'sigm_avisos';
 
     /** Tasa registral por aviso electrónico en el SIGM (S/) */
@@ -61,5 +66,11 @@ class SigmAviso extends Model
     public function registradoPor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'registrado_por');
+    }
+
+    /** Texto corto para la descripción de auditoría. */
+    public function auditNombre(): ?string
+    {
+        return $this->nro_formulario ?: $this->folio;
     }
 }

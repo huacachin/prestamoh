@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Auditable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -14,6 +15,10 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  */
 class ClientEmpresa extends Model
 {
+    use Auditable;
+
+    public const AUDIT_MODULO = 'Empresa del cliente';
+
     protected $table = 'client_empresas';
 
     protected $fillable = [

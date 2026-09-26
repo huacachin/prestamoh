@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Auditable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -10,6 +11,10 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Client extends Model
 {
+    use Auditable;
+
+    public const AUDIT_MODULO = 'Cliente';
+
     /** % del capital declarado que se puede prestar (línea de crédito informativa) */
     public const LINEA_CREDITO_PCT = 25;
 
@@ -111,5 +116,11 @@ class Client extends Model
     public function scopeActive($q)
     {
         return $q->where('status', 'active');
+    }
+
+    /** Texto corto para la descripción de auditoría. */
+    public function auditNombre(): ?string
+    {
+        return trim(($this->apellido_pat ?? '').' '.($this->apellido_mat ?? '').' '.($this->nombre ?? ''));
     }
 }

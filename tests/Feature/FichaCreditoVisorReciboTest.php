@@ -51,8 +51,8 @@ class FichaCreditoVisorReciboTest extends TestCase
             ->assertSeeHtml('id="modal-recibo"')
             ->assertSeeHtml('allow="clipboard-write"')
             ->assertSeeHtml('function abrirRecibo(url)')
-            // 26/09: botón al reporte de pagos filtrado a este cliente (igual que el cronograma).
+            // 26/09: botón al reporte de pagos filtrado a ESTE crédito (igual que el cronograma).
             ->assertSee('Reporte de pagos')
-            ->assertSeeHtml('cliente='.$client->id);
+            ->assertSeeHtml('credito='.$credit->id);
     }
 }

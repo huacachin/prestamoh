@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Auditable;
 use App\Support\Garantias;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +12,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Garantia extends Model
 {
+    use Auditable;
+
+    public const AUDIT_MODULO = 'Garantía';
+
     protected $table = 'garantias';
 
     /** Días de anticipación con que una garantía vigente aparece "por renovar" */

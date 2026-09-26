@@ -2,12 +2,19 @@
 
 namespace App\Models;
 
+use App\Support\Auditable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Contrato extends Model
 {
+    use Auditable;
+
+    public const AUDIT_MODULO = 'Contrato';
+
+    public const AUDIT_EXCLUIR = ['datos_snapshot', 'sha256'];
+
     protected $table = 'contratos';
 
     public const ESTADOS = [
@@ -56,5 +63,11 @@ class Contrato extends Model
     public function adjuntos(): MorphMany
     {
         return $this->morphMany(LegalAdjunto::class, 'adjuntable');
+    }
+
+    /** Texto corto para la descripción de auditoría. */
+    public function auditNombre(): ?string
+    {
+        return $this->numero;
     }
 }

@@ -2,12 +2,18 @@
 
 namespace App\Models;
 
+use App\Support\Auditable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class PlazoJudicial extends Model
 {
+    use Auditable;
+
+    public const AUDIT_MODULO = 'Plazo judicial';
+
     protected $table = 'plazos_judiciales';
 
     /** Días de anticipación con que un plazo pendiente entra a la campana legal */
@@ -43,5 +49,11 @@ class PlazoJudicial extends Model
     {
         return $q->whereNull('cumplido_at')
             ->where('fecha_vencimiento', '<=', now()->addDays($dias)->toDateString());
+    }
+
+    /** Texto corto para la descripción de auditoría. */
+    public function auditNombre(): ?string
+    {
+        return Str::limit((string) $this->descripcion, 60);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Audit;
 use Illuminate\Http\Request;
 
 /**
@@ -12,6 +13,7 @@ class AuthController extends Controller
 {
     public function logout(Request $request)
     {
+        Audit::log('Cerró sesión'); // antes del logout, para que quede el usuario
         auth()->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

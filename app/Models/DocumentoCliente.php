@@ -2,11 +2,18 @@
 
 namespace App\Models;
 
+use App\Support\Auditable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DocumentoCliente extends Model
 {
+    use Auditable;
+
+    public const AUDIT_MODULO = 'Documento';
+
+    public const AUDIT_EXCLUIR = ['snapshot', 'sha256'];
+
     protected $table = 'documentos_cliente';
 
     public const TIPOS = [
@@ -59,5 +66,11 @@ class DocumentoCliente extends Model
     public function nombreArchivo(): string
     {
         return "{$this->tipo}-credito-{$this->credit_id}-v{$this->version}";
+    }
+
+    /** Texto corto para la descripción de auditoría. */
+    public function auditNombre(): ?string
+    {
+        return $this->correlativo ?: $this->nombreArchivo();
     }
 }

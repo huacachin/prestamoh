@@ -32,6 +32,56 @@ class Audit
             $logger->withProperties($props);
         }
 
+        // El contexto (IP, navegador, usuario, ruta) lo añade GuardarActividad a
+        // todo registro del log, sea manual o automático (trait Auditable).
         $logger->log($descripcion);
+    }
+
+    /**
+     * Nombre de la ruta; en las peticiones de Livewire (todas van a
+     * livewire.update) se guarda la página desde la que se hizo la acción.
+     */
+    private static function rutaDePeticion($request): ?string
+    {
+        if (! $request) {
+            return null;
+        }
+        $nombre = $request->route()?->getName();
+        if ($nombre === null || str_contains($nombre, 'livewire')) {
+            $pagina = parse_url((string) $request->header('referer'), PHP_URL_PATH);
+            if ($pagina) {
+                return 'página '.$pagina;
+            }
+        }
+
+        return $nombre ?? $request->path();
+    }
+
+    /**
+     * Contexto de la petición que acompaña a cada registro (25/09, traído de
+     * newtaxivan): IP, navegador, ruta y una copia del usuario con su rol, para
+     * que el registro se entienda aunque el usuario cambie o se borre después.
+     *
+     * @return array{ip: ?string, agente: ?string, ruta: ?string, usuario: ?array{id: int, username: ?string, nombre: ?string, rol: ?string}}
+     */
+    public static function contexto(): array
+    {
+        $usuario = auth()->user();
+        $enConsola = app()->runningInConsole() && ! app()->runningUnitTests();
+        $request = $enConsola ? null : request();
+
+        return [
+            'ip' => $request?->ip(),
+            'agente' => $request ? mb_substr((string) $request->userAgent(), 0, 200) : null,
+            'ruta' => $enConsola
+                ? 'consola: '.(($_SERVER['argv'][1] ?? '') ?: 'artisan')
+                : self::rutaDePeticion($request),
+            'usuario' => $usuario ? [
+                'id' => $usuario->id,
+                'username' => $usuario->username ?? null,
+                'nombre' => $usuario->name ?? null,
+                'rol' => method_exists($usuario, 'getRoleNames') ? ($usuario->getRoleNames()->first() ?? null) : null,
+            ] : null,
+        ];
     }
 }

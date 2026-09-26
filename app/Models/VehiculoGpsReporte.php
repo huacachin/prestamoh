@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Auditable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -15,6 +16,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class VehiculoGpsReporte extends Model
 {
+    use Auditable;
+
+    public const AUDIT_MODULO = 'Reporte GPS';
+
     /** Etiquetas sugeridas para los puntos del reporte avanzado. */
     public const ETIQUETAS = ['Donde se queda', 'Intermedio', 'Punto de llegada'];
 
@@ -154,5 +159,11 @@ class VehiculoGpsReporte extends Model
         }
 
         return implode("\n", $l);
+    }
+
+    /** Texto corto para la descripción de auditoría. */
+    public function auditNombre(): ?string
+    {
+        return trim($this->placa.' '.$this->fecha?->format('d/m/Y H:i'));
     }
 }

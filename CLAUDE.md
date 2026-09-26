@@ -92,6 +92,19 @@ clients/credits/installments/payments; reglas de `caja=4`), el comando
 orquestador `legal:poblar {carpeta} --dry-run`, las claves de idempotencia,
 los números de referencia de la corrida validada y el runbook completo.
 
+## Auditoría
+
+Dos vías, ambas en `activity_log` con `log_name = 'auditoria'` (spatie/activitylog v5):
+- **Automática por modelo**: trait `App\Support\Auditable` (constantes `AUDIT_MODULO`,
+  `AUDIT_EXCLUIR`, `AUDIT_ENMASCARAR`, método `auditNombre()`). Registra created/updated/deleted
+  con `attribute_changes` (fila completa o solo lo que cambió, con valor anterior y nuevo).
+  No cubre escrituras por `DB::table` ni updates masivos.
+- **Manual**: `Audit::log('Verbo …', $modelo, $props)` para acciones de negocio (cobros, anulaciones…).
+  El verbo inicial clasifica la acción en el visor.
+- A todo registro `App\Support\Auditoria\GuardarActividad` le añade `properties.contexto`
+  (IP, navegador, ruta, usuario con rol) y nunca tumba la operación si falla el insert.
+- Etiquetas del visor en `config/auditoria.php`. Visor: `/audit` (solo director).
+
 ## Legacy Reference
 Legacy PHP code in `/Users/antony/projects/_legacy-prestamo/`
 - `sistema/` — Backend PHP files
