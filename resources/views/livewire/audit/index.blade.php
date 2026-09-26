@@ -84,12 +84,18 @@
                     <div class="table-responsive tableFixHead">
                         <table class="table table-bordered table-striped table-hover table-sm">
                             <thead class="bg-primary">
+                                {{-- Mismas columnas que el listado de newtaxivan (26/09): la acción va en
+                                     su propia columna como badge, separada de la descripción. --}}
                                 <tr>
-                                    <th style="width:150px;">Fecha / Hora</th>
-                                    <th style="width:180px;">Usuario</th>
-                                    <th>Acción</th>
-                                    <th style="width:160px;">Afectado</th>
-                                    <th style="width:70px;" class="text-center">Ver</th>
+                                    <th style="width:50px;" class="text-center">Nº</th>
+                                    <th style="width:140px;">Fecha / Hora</th>
+                                    <th style="width:170px;">Usuario</th>
+                                    <th style="width:100px;">Rol</th>
+                                    <th style="width:105px;" class="text-center">Acción</th>
+                                    <th style="width:130px;">Módulo</th>
+                                    <th style="width:90px;">Registro</th>
+                                    <th>Descripción</th>
+                                    <th style="width:60px;" class="text-center">Ver</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -101,6 +107,7 @@
                                     $conCambios = $log->attribute_changes?->isNotEmpty();
                                 @endphp
                                 <tr>
+                                    <td class="text-center text-muted">{{ $logs->firstItem() + $loop->index }}</td>
                                     <td class="text-nowrap">{{ $log->created_at?->format('d/m/Y H:i') }}</td>
                                     <td>
                                         @if($log->causer)
@@ -115,30 +122,40 @@
                                         @endif
                                     </td>
                                     <td>
+                                        @php $rol = $log->user_role ?? ($log->causer && method_exists($log->causer, 'getRoleNames') ? $log->causer->getRoleNames()->first() : null); @endphp
+                                        @if($rol)<span class="badge bg-light text-dark border">{{ $rol }}</span>@else<span class="text-muted">—</span>@endif
+                                    </td>
+                                    <td class="text-center">
                                         @if($tipoAccion)
-                                            <span class="badge bg-{{ \App\Livewire\Audit\Index::ACCIONES[$tipoAccion]['badge'] }} me-1">
+                                            <span class="badge bg-{{ \App\Livewire\Audit\Index::ACCIONES[$tipoAccion]['badge'] }}">
                                                 {{ \App\Livewire\Audit\Index::ACCIONES[$tipoAccion]['label'] }}
                                             </span>
-                                        @endif
-                                        {{ $log->description }}
-                                        @if($conCambios)
-                                            <i class="ti ti-list-details text-primary ms-1" title="Tiene detalle de campos (antes / después)"></i>
                                         @endif
                                     </td>
                                     <td class="text-nowrap">
                                         @if($log->subject_type)
+                                            {{ $log->module ?? $this->etiquetaModulo($log->subject_type) }}
+                                        @else
+                                            <span class="text-muted">—</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-nowrap">
+                                        @if($log->subject_id)
                                             @if($urlFicha)
                                                 <a href="{{ $urlFicha }}" target="_blank" rel="noopener" title="Abrir ficha en pestaña nueva">
-                                                    {{ $this->etiquetaModulo($log->subject_type) }}
-                                                    @if($log->subject_id) <span class="text-muted">#{{ $log->subject_id }}</span> @endif
-                                                    <i class="ti ti-external-link f-s-12"></i>
+                                                    #{{ $log->subject_id }} <i class="ti ti-external-link f-s-12"></i>
                                                 </a>
                                             @else
-                                                {{ $this->etiquetaModulo($log->subject_type) }}
-                                                @if($log->subject_id) <span class="text-muted">#{{ $log->subject_id }}</span> @endif
+                                                #{{ $log->subject_id }}
                                             @endif
                                         @else
                                             <span class="text-muted">—</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        {{ $log->description }}
+                                        @if($conCambios)
+                                            <i class="ti ti-list-details text-primary ms-1" title="Tiene detalle de campos (antes / después)"></i>
                                         @endif
                                     </td>
                                     <td class="text-center">
@@ -151,7 +168,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="py-4 text-center text-muted">No hay registros de auditoría para el filtro seleccionado</td>
+                                    <td colspan="9" class="py-4 text-center text-muted">No hay registros de auditoría para el filtro seleccionado</td>
                                 </tr>
                             @endforelse
                             </tbody>
