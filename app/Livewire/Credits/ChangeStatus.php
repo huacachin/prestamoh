@@ -85,11 +85,11 @@ class ChangeStatus extends Component
         }
 
         // Legacy: UPDATE cab_cuentacorriente SET situacion='Cancelado', estado=0, fechacan=$fecha WHERE id=...
-        $credit->update([
+        $credit->sinAuditoriaAutomatica(fn () => $credit->update([
             'situacion' => 'Cancelado',
             'estado' => 0,
             'fecha_cancelacion' => $this->fecha,
-        ]);
+        ]));
 
         Audit::log("Anuló (canceló) el crédito #{$credit->id} con fecha {$this->fecha}", $credit);
 

@@ -4,7 +4,6 @@ namespace App\Livewire\Legal\Vehiculos;
 
 use App\Models\Client;
 use App\Models\Vehiculo;
-use App\Support\Audit;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -294,11 +293,9 @@ class Index extends Component
         if ($this->editingId) {
             $vehiculo = Vehiculo::findOrFail($this->editingId);
             $vehiculo->update($data);
-            Audit::log("Editó el vehículo {$vehiculo->placa}", $vehiculo);
             $mensaje = 'Vehículo actualizado correctamente';
         } else {
             $vehiculo = Vehiculo::create($data);
-            Audit::log("Creó el vehículo {$vehiculo->placa}", $vehiculo);
             $mensaje = 'Vehículo registrado correctamente';
         }
 

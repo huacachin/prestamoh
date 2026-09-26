@@ -67,8 +67,6 @@ class Edit extends Component
                 'factor_egreso' => $this->factor_egreso ?: 0,
             ]);
 
-            \App\Support\Audit::log("Editó el concepto {$this->code} - {$this->name}", $this->concept);
-
             session()->flash('concept_success', 'Concepto actualizado correctamente.');
             $this->redirectRoute('settings.concepts.index');
         } catch (ValidationException $e) {

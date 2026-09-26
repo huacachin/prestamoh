@@ -4,7 +4,6 @@ namespace App\Livewire\Users;
 
 use App\Models\Headquarter;
 use App\Models\User;
-use App\Support\Audit;
 use Database\Seeders\RoleSetupSeeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -118,8 +117,6 @@ class Create extends Component
                 $user->syncRoles([$roleName]);
             }
         }
-
-        Audit::log("Creó el usuario {$user->username} ({$user->name})", $user);
 
         session()->flash('user_success', 'Usuario creado correctamente.');
 

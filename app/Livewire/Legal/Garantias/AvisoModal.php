@@ -5,7 +5,6 @@ namespace App\Livewire\Legal\Garantias;
 use App\Models\Garantia;
 use App\Models\SigmAviso;
 use App\Services\Legal\CajaLegal;
-use App\Support\Audit;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -177,14 +176,6 @@ class AvisoModal extends Component
 
         // La garantía recalcula su estado y vigencia a partir del historial
         $garantia->sincronizarConAvisos();
-
-        $tipoLabel = SigmAviso::TIPOS[$aviso->tipo] ?? $aviso->tipo;
-        Audit::log(
-            "Registró aviso SIGM de {$tipoLabel} — formulario ".($aviso->nro_formulario ?? 's/n')
-            ." (garantía #{$garantia->id})",
-            $aviso,
-            ['garantia_id' => $garantia->id, 'tipo' => $aviso->tipo, 'folio' => $aviso->folio, 'expense_id' => $aviso->expense_id]
-        );
 
         $this->dispatch('aviso-registrado');
         $this->dispatch('successAlert', ['message' => 'Aviso SIGM registrado correctamente.']);

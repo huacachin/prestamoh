@@ -6,7 +6,6 @@ use App\Models\Client;
 use App\Models\Vehiculo;
 use App\Models\VehiculoGpsReporte;
 use App\Models\VehiculoGpsReporteFoto;
-use App\Support\Audit;
 use App\Support\Miniatura;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
@@ -263,8 +262,6 @@ class GpsVehiculos extends Component
         ]);
         $fotos = $this->guardarFotos($reporte, $this->files);
 
-        Audit::log("Registró un reporte de GPS del vehículo {$vehiculo->placa} de ".$this->client->fullName().($fotos ? " con {$fotos} foto(s)" : ''), $this->client);
-
         $this->cancelar();
         $this->verId = $reporte->id;
         $this->msgType = 'ok';
@@ -314,7 +311,6 @@ class GpsVehiculos extends Component
 
         $n = $this->guardarFotos($reporte, $this->fotosExtra);
         $this->fotosExtra = [];
-        Audit::log("Adjuntó {$n} foto(s) al reporte de GPS #{$reporte->id} del vehículo {$reporte->placa}", $this->client);
         $this->msgType = 'ok';
         $this->msg = $n === 1 ? 'Foto adjuntada al reporte.' : "{$n} fotos adjuntadas al reporte.";
     }
@@ -357,7 +353,6 @@ class GpsVehiculos extends Component
             }
         }
         $r->delete();
-        Audit::log("Eliminó el reporte de GPS #{$id} del vehículo {$r->placa} de ".$this->client->fullName(), $this->client);
         if ($this->verId === $id) {
             $this->verId = null;
         }

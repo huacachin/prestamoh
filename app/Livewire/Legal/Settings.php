@@ -3,7 +3,6 @@
 namespace App\Livewire\Legal;
 
 use App\Models\LegalSetting;
-use App\Support\Audit;
 use Livewire\Component;
 
 /**
@@ -128,8 +127,6 @@ class Settings extends Component
 
                 return;
             }
-
-            Audit::log('Editó la configuración del Área Legal', null, ['claves' => $modificadas]);
 
             $this->cargar();
             $this->dispatch('successAlert', ['message' => 'Configuración legal guardada correctamente.']);

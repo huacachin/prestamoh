@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\Auth\Login;
+use App\Models\ActivityLog as Activity;
 use App\Models\Client;
 use App\Models\Headquarter;
 use App\Models\User;
@@ -11,7 +12,6 @@ use Database\Seeders\PermissionCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
-use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -74,6 +74,19 @@ class AuditoriaAutomaticaTest extends TestCase
         $this->assertSame('deleted', $borrado->event);
         $this->assertStringStartsWith("Eliminó Cliente #{$c->id}", $borrado->description);
         $this->assertSame('45000001', $borrado->attribute_changes['old']['documento'], 'el borrado guarda la fila completa');
+
+        // Columnas propias con la estructura de newtaxivan (26/09).
+        $this->assertSame('Cliente', $editado->module);
+        $this->assertSame(['nombre' => 'ROSA'], $editado->old_data);
+        $this->assertSame(['nombre' => 'ROSA MARIA'], $editado->new_data);
+        $this->assertSame(['nombre'], $editado->changed_fields);
+        $this->assertSame('Auditor Test', $editado->user_name);
+        $this->assertSame('director', $editado->user_role);
+        $this->assertNull($creado->old_data);
+        $this->assertSame('ROSA', $creado->new_data['nombre']);
+        $this->assertNull($creado->changed_fields);
+        $this->assertSame('45000001', $borrado->old_data['documento']);
+        $this->assertNull($borrado->new_data);
     }
 
     public function test_la_contrasena_se_enmascara_y_el_remember_token_no_se_guarda(): void
@@ -91,6 +104,8 @@ class AuditoriaAutomaticaTest extends TestCase
         $this->assertSame('••••••', $editado->attribute_changes['attributes']['password']);
         $this->assertSame('••••••', $editado->attribute_changes['old']['password']);
         $this->assertSame("Editó Usuario #{$u->id} (nuevo-user)", $editado->description);
+        $this->assertSame('••••••', $editado->new_data['password'], 'la columna new_data también sale enmascarada');
+        $this->assertSame('Usuario', $editado->module);
     }
 
     public function test_todo_registro_lleva_el_contexto_de_la_peticion(): void
@@ -114,6 +129,11 @@ class AuditoriaAutomaticaTest extends TestCase
         $this->assertSame('auditor', $ctx['usuario']['username']);
         $this->assertSame('Auditor Test', $ctx['usuario']['nombre']);
         $this->assertSame('director', $ctx['usuario']['rol']);
+        $this->assertSame('10.9.8.7', $salida->ip_address);
+        $this->assertSame('NavegadorPrueba/1.0', $salida->user_agent);
+        $this->assertSame('Auditor Test', $salida->user_name);
+        $this->assertSame('director', $salida->user_role);
+        $this->assertNull($salida->module, 'sin subject no hay módulo');
 
         // Y un Audit::log manual conserva sus propiedades de negocio junto al contexto.
         $this->actingAs($this->user); // el logout de arriba cerró la sesión

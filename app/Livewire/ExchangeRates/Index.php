@@ -72,8 +72,6 @@ class Index extends Component
             'venta' => (string) $this->venta,
         ]);
 
-        \App\Support\Audit::log("Actualizó el tipo de cambio {$this->fecha} (compra {$this->compra} / venta {$this->venta})", $rate);
-
         $this->origen = ExchangeRateService::DE_BD;
         $this->saved = true;
         $this->dispatch('successAlert', ['message' => 'Se actualizó el Tipo de Cambio con éxito']);

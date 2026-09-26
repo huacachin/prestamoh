@@ -55,7 +55,7 @@ class GeneradorContrato
             );
             Storage::disk('public')->put($path, $binario);
 
-            $contrato = Contrato::create([
+            $contrato = new Contrato([
                 'garantia_id' => $garantia->id,
                 'credit_id' => $garantia->credit_id,
                 'client_id' => $garantia->client_id,
@@ -69,6 +69,7 @@ class GeneradorContrato
                 'sha256' => hash('sha256', $binario),
                 'generado_por' => auth()->id(),
             ]);
+            $contrato->sinAuditoriaAutomatica(fn () => $contrato->save());
 
             Audit::log("Generó el contrato {$numero} v{$version} (garantía #{$garantia->id})", $contrato, [
                 'sha256' => $contrato->sha256,

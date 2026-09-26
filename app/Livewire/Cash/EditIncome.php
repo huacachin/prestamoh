@@ -126,8 +126,6 @@ class EditIncome extends Component
             $subidas = $this->files !== [] ? $this->storeIncomeAttachments($this->income, $this->files) : 0;
             $this->files = [];
 
-            Audit::log("Editó el ingreso #{$this->income->id} (monto {$this->total})".($subidas ? ", subió {$subidas} imagen(es)" : ''), $this->income);
-
             session()->flash('cash_success', 'Ingreso actualizado correctamente.'.($subidas ? " {$subidas} ".($subidas === 1 ? 'imagen subida.' : 'imágenes subidas.') : ''));
             $this->redirectRoute('cash.incomes');
         } catch (ValidationException $e) {
@@ -160,8 +158,9 @@ class EditIncome extends Component
         // Espejo caja 3 (legacy ingresos-modificar2.php): el borrado elimina ingreso Y ingreso3.
         // (Nota: el legacy NO sincroniza caja3 al EDITAR un ingreso, por eso update() no la toca.)
         Income::where('caja', 3)->where('parent_id', $id)->delete();
-        Income::findOrFail($id)->delete();
-        Audit::log("Eliminó el ingreso #{$id}");
+        $income = Income::findOrFail($id);
+        $income->sinAuditoriaAutomatica(fn () => $income->delete());
+        Audit::log("Eliminó el ingreso #{$id}", $income);
         session()->flash('cash_success', 'Ingreso eliminado correctamente.');
         $this->redirectRoute('cash.incomes');
     }

@@ -127,8 +127,6 @@ class Edit extends Component
             'situacion' => $this->situacion,
         ]);
 
-        Audit::log("Editó el crédito #{$this->credit->id}", $this->credit);
-
         session()->flash('credit_success', 'Crédito actualizado correctamente.');
 
         return redirect()->route('credits.show', $this->creditId);
@@ -169,7 +167,7 @@ class Edit extends Component
             return;
         }
 
-        $credit->update(['situacion' => 'Eliminado']);
+        $credit->sinAuditoriaAutomatica(fn () => $credit->update(['situacion' => 'Eliminado']));
         Audit::log("Eliminó el crédito #{$id}", $credit);
         session()->flash('credit_success', 'Crédito eliminado.');
         $this->redirectRoute('credits.index');

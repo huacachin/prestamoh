@@ -72,12 +72,12 @@ class Activate extends Component
             return;
         }
 
-        $credit->update([
+        $credit->sinAuditoriaAutomatica(fn () => $credit->update([
             'refinanciado' => false,
             'estado' => 1,
             'situacion' => 'Activo',
             'fecha_cancelacion' => null,
-        ]);
+        ]));
 
         Audit::log("Re-activó el crédito #{$credit->id}", $credit);
 

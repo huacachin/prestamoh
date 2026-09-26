@@ -99,7 +99,7 @@ final class EliminadorCredito
                 $resumen
             );
 
-            if ($credit->delete() !== true) {
+            if ($credit->sinAuditoriaAutomatica(fn () => $credit->delete()) !== true) {
                 throw new \RuntimeException("No se pudo borrar el crédito #{$credit->id}");
             }
 

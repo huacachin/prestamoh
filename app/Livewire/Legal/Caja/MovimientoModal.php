@@ -3,7 +3,6 @@
 namespace App\Livewire\Legal\Caja;
 
 use App\Services\Legal\CajaLegal;
-use App\Support\Audit;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -116,12 +115,6 @@ class MovimientoModal extends Component
 
             return;
         }
-
-        Audit::log(
-            'Registró '.$this->tipo.' de la Caja Legal: '.$this->motivo.' S/ '.number_format($monto, 2),
-            $movimiento,
-            ['tipo' => $this->tipo, 'fecha' => $this->fecha, 'monto' => $monto],
-        );
 
         $etiqueta = $this->tipo === 'ingreso' ? 'Ingreso' : 'Egreso';
         $this->dispatch('successAlert', ['message' => "{$etiqueta} de la Caja Legal registrado: S/ ".number_format($monto, 2).'.']);

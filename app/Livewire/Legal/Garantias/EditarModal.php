@@ -3,7 +3,6 @@
 namespace App\Livewire\Legal\Garantias;
 
 use App\Models\Garantia;
-use App\Support\Audit;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -125,12 +124,6 @@ class EditarModal extends Component
                 $v->update(['valor' => $valor]);
             }
         }
-
-        Audit::log("Editó la garantía #{$garantia->id} (monto máximo/parámetros)", $garantia, [
-            'monto_gravamen' => $this->montoGravamen,
-            'gps' => $this->gps,
-            'custodia' => $this->custodia,
-        ]);
 
         $this->dispatch('garantia-editada');
         $this->dispatch('successAlert', ['message' => 'Garantía actualizada.']);

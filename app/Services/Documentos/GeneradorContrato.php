@@ -411,7 +411,7 @@ class GeneradorContrato
             $path = "documentos/cliente-{$client->id}/contrato-credito-{$credit->id}-v{$version}.pdf";
             Storage::disk('public')->put($path, $contenido);
 
-            $doc = DocumentoCliente::create([
+            $doc = new DocumentoCliente([
                 'client_id' => $client->id,
                 'credit_id' => $credit->id,
                 'tipo' => 'contrato',
@@ -423,6 +423,7 @@ class GeneradorContrato
                 'estado' => 'emitido',
                 'generado_por' => auth()->id(),
             ]);
+            $doc->sinAuditoriaAutomatica(fn () => $doc->save());
 
             $nombreModelo = ModelosContrato::get($modelo)['nombre'];
             Audit::log("Generó el Contrato v{$version} del crédito #{$credit->id} (modelo {$nombreModelo})", $doc);

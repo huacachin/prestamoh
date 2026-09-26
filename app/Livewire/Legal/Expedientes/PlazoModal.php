@@ -5,8 +5,6 @@ namespace App\Livewire\Legal\Expedientes;
 use App\Models\ExpedienteJudicial;
 use App\Models\PlazoJudicial;
 use App\Models\User;
-use App\Support\Audit;
-use Carbon\Carbon;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -92,13 +90,6 @@ class PlazoModal extends Component
             'fecha_vencimiento' => $this->fechaVencimiento,
             'responsable_id' => $this->responsableId,
         ]);
-
-        Audit::log(
-            "Registró plazo del expediente {$expediente->nro_expediente}: \"{$plazo->descripcion}\""
-            .' (vence '.Carbon::parse($this->fechaVencimiento)->format('d/m/Y').')',
-            $plazo,
-            ['expediente_id' => $expediente->id, 'responsable_id' => $this->responsableId]
-        );
 
         $this->dispatch('plazo-registrado');
         $this->dispatch('successAlert', ['message' => 'Plazo registrado correctamente.']);

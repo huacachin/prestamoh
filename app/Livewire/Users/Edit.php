@@ -4,7 +4,6 @@ namespace App\Livewire\Users;
 
 use App\Models\Headquarter;
 use App\Models\User;
-use App\Support\Audit;
 use Database\Seeders\RoleSetupSeeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -143,8 +142,6 @@ class Edit extends Component
             $roleName = collect($this->roles)->firstWhere('id', $this->selectedRoleId)?->name;
         }
         $this->user->syncRoles($roleName ? [$roleName] : []);
-
-        Audit::log("Editó el usuario {$this->user->username} ({$this->user->name})", $this->user);
 
         session()->flash('user_success', 'Usuario actualizado correctamente.');
 

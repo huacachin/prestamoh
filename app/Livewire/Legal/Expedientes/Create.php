@@ -7,7 +7,6 @@ use App\Models\Credit;
 use App\Models\ExpedienteJudicial;
 use App\Models\Garantia;
 use App\Models\User;
-use App\Support\Audit;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
@@ -322,26 +321,6 @@ class Create extends Component
 
             return [$principal, $cautelar];
         });
-
-        Audit::log("Registró el expediente judicial {$principal->nro_expediente}", $principal, [
-            'cuaderno' => 'principal',
-            'client_id' => $principal->client_id,
-            'credit_id' => $principal->credit_id,
-            'garantia_id' => $principal->garantia_id,
-            'via' => $principal->via,
-            'materia' => $principal->materia,
-            'monto_pretension' => $principal->monto_pretension,
-            'asesor_responsable_id' => $principal->asesor_responsable_id,
-        ]);
-
-        if ($cautelar) {
-            Audit::log("Registró el expediente judicial {$cautelar->nro_expediente}", $cautelar, [
-                'cuaderno' => 'cautelar',
-                'expediente_padre_id' => $principal->id,
-                'forma_medida' => $cautelar->forma_medida,
-                'bien_descripcion' => $cautelar->bien_descripcion,
-            ]);
-        }
 
         session()->flash('legal_success', $cautelar
             ? "Expediente {$principal->nro_expediente} registrado junto con su cuaderno cautelar {$cautelar->nro_expediente}."

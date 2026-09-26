@@ -5,8 +5,6 @@ namespace App\Livewire\Legal\Expedientes;
 use App\Models\ActuacionJudicial;
 use App\Models\ExpedienteJudicial;
 use App\Models\PlazoJudicial;
-use App\Support\Audit;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -133,16 +131,6 @@ class ActuacionModal extends Component
                 'responsable_id' => auth()->id(),
             ]);
         }
-
-        Audit::log(
-            "Registró actuación en el expediente {$expediente->nro_expediente}: ".Str::limit($actuacion->sumilla, 80),
-            $actuacion,
-            [
-                'expediente_id' => $expediente->id,
-                'tipo' => $actuacion->tipo,
-                'genera_plazo' => $this->generaPlazo,
-            ]
-        );
 
         $this->dispatch('actuacion-registrada');
         $this->dispatch('successAlert', ['message' => 'Actuación registrada correctamente.']);

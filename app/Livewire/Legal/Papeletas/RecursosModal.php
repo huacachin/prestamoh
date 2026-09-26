@@ -151,18 +151,6 @@ class RecursosModal extends Component
             $papeleta->update(['estado' => 'en_recurso']);
         }
 
-        $tipoLabel = PapeletaRecurso::TIPOS[$recurso->tipo] ?? $recurso->tipo;
-        $entidadLabel = Papeleta::ENTIDADES[$papeleta->entidad] ?? $papeleta->entidad;
-        Audit::log(
-            "Registró recurso {$tipoLabel} de la papeleta {$entidadLabel} {$papeleta->nro_papeleta}",
-            $recurso,
-            [
-                'papeleta_id' => $papeleta->id,
-                'plazo_vence' => $recurso->plazo_vence?->toDateString(),
-                'estado_papeleta' => $papeleta->estado,
-            ],
-        );
-
         $this->cargarCabecera($papeleta);
         $this->limpiarFormulario();
 
@@ -226,10 +214,10 @@ class RecursosModal extends Component
             return;
         }
 
-        $recurso->update([
+        $recurso->sinAuditoriaAutomatica(fn () => $recurso->update([
             'resultado' => $this->resolucionResultado,
             'resuelto_at' => $this->resolucionFecha,
-        ]);
+        ]));
 
         $tipoLabel = PapeletaRecurso::TIPOS[$recurso->tipo] ?? $recurso->tipo;
         $resultadoLabel = PapeletaRecurso::RESULTADOS[$this->resolucionResultado] ?? $this->resolucionResultado;

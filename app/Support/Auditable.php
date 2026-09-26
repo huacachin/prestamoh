@@ -57,6 +57,21 @@ trait Auditable
         return trim("{$verbo} ".static::auditModulo()." #{$this->getKey()}".($nombre !== '' ? " ({$nombre})" : ''));
     }
 
+    /**
+     * Ejecuta un guardado SIN la fila automática, para cuando el código ya deja
+     * un Audit::log con el verbo de negocio (Anuló, Desactivó, Generó…) y la fila
+     * "Editó X" saldría duplicada (26/09).
+     */
+    public function sinAuditoriaAutomatica(callable $fn): mixed
+    {
+        $this->disableLogging();
+        try {
+            return $fn();
+        } finally {
+            $this->enableLogging();
+        }
+    }
+
     public static function auditModulo(): string
     {
         return static::auditConstante('AUDIT_MODULO', class_basename(static::class));

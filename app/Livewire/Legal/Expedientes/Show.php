@@ -47,7 +47,7 @@ class Show extends Component
         }
 
         $anterior = $expediente->estadoLabel();
-        $expediente->update(['estado' => $estado]);
+        $expediente->sinAuditoriaAutomatica(fn () => $expediente->update(['estado' => $estado]));
 
         Audit::log(
             "Cambió el expediente {$expediente->nro_expediente} a {$expediente->estadoLabel()}",
@@ -107,12 +107,6 @@ class Show extends Component
             'fecha_inicio' => now()->toDateString(),
         ]);
 
-        Audit::log(
-            "Creó el cuaderno cautelar {$cautelar->nro_expediente} del expediente {$expediente->nro_expediente}",
-            $cautelar,
-            ['expediente_padre_id' => $expediente->id]
-        );
-
         $this->dispatch('successAlert', ['message' => "Cuaderno cautelar {$cautelar->nro_expediente} creado."]);
     }
 
@@ -129,7 +123,7 @@ class Show extends Component
             return;
         }
 
-        $plazo->update(['cumplido_at' => now()]);
+        $plazo->sinAuditoriaAutomatica(fn () => $plazo->update(['cumplido_at' => now()]));
 
         Audit::log(
             "Marcó cumplido el plazo \"{$plazo->descripcion}\" del expediente {$plazo->expediente->nro_expediente}",

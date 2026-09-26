@@ -8,10 +8,12 @@ use Livewire\Component;
 class Opening extends Component
 {
     public string $fechaera = '';
+
     public $solesm = '';
 
     // Para edición inline (SuperUsuario)
     public $editingId = null;
+
     public $editingValue = '';
 
     public function mount(): void
@@ -22,11 +24,12 @@ class Opening extends Component
     public function save(): void
     {
         $user = auth()->user();
-        $canBypassDate    = $user->can('caja.bypass-fecha-anterior');
+        $canBypassDate = $user->can('caja.bypass-fecha-anterior');
         $canEditHistorico = $user->can('caja.editar-historico');
 
-        if ($this->solesm === '' || !is_numeric($this->solesm)) {
+        if ($this->solesm === '' || ! is_numeric($this->solesm)) {
             $this->addError('solesm', 'Debe ingresar un importe válido.');
+
             return;
         }
 
@@ -34,8 +37,9 @@ class Opening extends Component
         $fecha = $this->fechaera ?: now()->format('Y-m-d');
         $hora = now()->format('H:i');
 
-        if (!$canBypassDate && $fecha > now()->format('Y-m-d')) {
+        if (! $canBypassDate && $fecha > now()->format('Y-m-d')) {
             $this->addError('fechaera', 'No se puede aperturar caja con fecha futura.');
+
             return;
         }
 
@@ -48,26 +52,25 @@ class Opening extends Component
             ->first();
 
         if ($existing) {
-            if (!$canEditHistorico) {
+            if (! $canEditHistorico) {
                 $this->addError('solesm', 'Ya existe apertura de Soles para este mes en tu sede. No tienes permiso para sobrescribirla.');
+
                 return;
             }
 
             $existing->update(['saldo_inicial' => $importe]);
-            \App\Support\Audit::log("Actualizó apertura de caja ({$fecha}) a {$importe}", $existing);
             $this->dispatch('successAlert', ['message' => 'Se actualizó la caja con éxito']);
         } else {
             $opening = CashOpening::create([
-                'fecha'          => $fecha,
-                'hora'           => $hora,
-                'saldo_inicial'  => $importe,
-                'saldo_final'    => 0,
-                'estado'         => 'abierto',
-                'moneda'         => 'Soles',
-                'user_id'        => $user->id,
+                'fecha' => $fecha,
+                'hora' => $hora,
+                'saldo_inicial' => $importe,
+                'saldo_final' => 0,
+                'estado' => 'abierto',
+                'moneda' => 'Soles',
+                'user_id' => $user->id,
                 'headquarter_id' => $hqId,
             ]);
-            \App\Support\Audit::log("Aperturó caja ({$fecha}) con {$importe}", $opening);
             $this->dispatch('successAlert', ['message' => 'Se aperturó la caja con éxito']);
         }
 
@@ -100,13 +103,15 @@ class Opening extends Component
 
     public function updateInline(int $id): void
     {
-        if (!auth()->user()?->can('caja.editar-historico')) {
+        if (! auth()->user()?->can('caja.editar-historico')) {
             $this->addError('editingValue', 'No autorizado.');
+
             return;
         }
 
-        if (!is_numeric($this->editingValue)) {
+        if (! is_numeric($this->editingValue)) {
             $this->addError('editingValue', 'Importe inválido.');
+
             return;
         }
 

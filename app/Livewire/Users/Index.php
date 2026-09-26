@@ -29,7 +29,7 @@ class Index extends Component
             abort(403);
         }
 
-        $user->update(['status' => 'inactive']);
+        $user->sinAuditoriaAutomatica(fn () => $user->update(['status' => 'inactive']));
         Audit::log("Desactivó el usuario {$user->username} ({$user->name})", $user);
         $this->dispatch('successAlert', ['message' => 'Usuario desactivado correctamente']);
     }
@@ -41,7 +41,7 @@ class Index extends Component
         }
 
         $user = User::findOrFail($id);
-        $user->update(['status' => 'active']);
+        $user->sinAuditoriaAutomatica(fn () => $user->update(['status' => 'active']));
         Audit::log("Reactivó el usuario {$user->username} ({$user->name})", $user);
         $this->dispatch('successAlert', ['message' => 'Usuario reactivado correctamente']);
     }

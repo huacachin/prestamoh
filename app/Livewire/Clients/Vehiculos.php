@@ -198,11 +198,9 @@ class Vehiculos extends Component
         if ($this->editandoId) {
             $v = Vehiculo::where('client_id', $this->clientId)->findOrFail($this->editandoId);
             $v->update($datos);
-            Audit::log("Editó el vehículo {$this->placa} del cliente ".$this->client->fullName(), $this->client);
             $this->msg = "Vehículo {$this->placa} actualizado.";
         } else {
             Vehiculo::create($datos);
-            Audit::log("Agregó el vehículo {$this->placa} al cliente ".$this->client->fullName(), $this->client);
             $this->msg = "Vehículo {$this->placa} agregado.";
         }
 
@@ -217,7 +215,6 @@ class Vehiculos extends Component
         $placa = $v->placa;
         $v->delete();
 
-        Audit::log("Eliminó el vehículo {$placa} del cliente ".$this->client->fullName(), $this->client);
         $this->msgType = 'ok';
         $this->msg = "Vehículo {$placa} eliminado.";
         $this->limpiarFormulario();

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Audit;
 
+use App\Models\ActivityLog as Activity;
 use App\Models\Client;
 use App\Models\Credit;
 use App\Models\ExpedienteJudicial;
@@ -14,7 +15,6 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
-use Spatie\Activitylog\Models\Activity;
 
 /**
  * Visor del módulo de Auditoría (acceso solo rol director, vía route role:director).
@@ -217,12 +217,16 @@ class Index extends Component
         $contexto = is_array($props['contexto'] ?? null) ? $props['contexto'] : [];
         unset($props['contexto']);
         $cambios = collect($a->attribute_changes ?? [])->toArray();
-        $nuevos = is_array($cambios['attributes'] ?? null) ? $cambios['attributes'] : null;
-        $viejos = is_array($cambios['old'] ?? null) ? $cambios['old'] : null;
+        $nuevos = is_array($a->new_data) ? $a->new_data : (is_array($cambios['attributes'] ?? null) ? $cambios['attributes'] : null);
+        $viejos = is_array($a->old_data) ? $a->old_data : (is_array($cambios['old'] ?? null) ? $cambios['old'] : null);
 
         // Usuario: la copia guardada en el contexto manda (sobrevive a cambios o
         // borrados del usuario); si no está, el causer.
+        // 26/09: primero las columnas propias (estructura newtaxivan), luego el contexto JSON.
         $ctxUsuario = is_array($contexto['usuario'] ?? null) ? $contexto['usuario'] : null;
+        if ($a->user_name !== null) {
+            $ctxUsuario = ['nombre' => $a->user_name, 'username' => $ctxUsuario['username'] ?? ($a->causer->username ?? null), 'rol' => $a->user_role];
+        }
         $usuario = $ctxUsuario ? [
             'nombre' => $ctxUsuario['nombre'] ?? null,
             'username' => $ctxUsuario['username'] ?? null,
@@ -286,8 +290,8 @@ class Index extends Component
             'accion_badge' => $accion ? self::ACCIONES[$accion]['badge'] : null,
             'descripcion' => $a->description,
             'usuario' => $usuario,
-            'ip' => $contexto['ip'] ?? null,
-            'navegador' => $contexto['agente'] ?? null,
+            'ip' => $a->ip_address ?? $contexto['ip'] ?? null,
+            'navegador' => $a->user_agent ?? $contexto['agente'] ?? null,
             'ruta' => $contexto['ruta'] ?? null,
             'modulo' => $this->etiquetaModulo($tipo),
             'subject_id' => $a->subject_id,

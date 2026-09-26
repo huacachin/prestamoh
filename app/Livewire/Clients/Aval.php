@@ -5,7 +5,6 @@ namespace App\Livewire\Clients;
 use App\Models\Client;
 use App\Models\ClientAval;
 use App\Services\Factiliza;
-use App\Support\Audit;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -173,8 +172,6 @@ class Aval extends Component
             'telefono' => $this->telefono,
         ]);
 
-        Audit::log("Agregó un aval al cliente #{$this->clientId}", $aval);
-
         $this->resetCamposAval();
         $this->dni = '';
         $this->dniMsg = null;
@@ -198,8 +195,7 @@ class Aval extends Component
         if (! $this->puedeEditar) {
             return;
         }
-        ClientAval::where('client_id', $this->clientId)->where('id', $id)->delete();
-        Audit::log("Eliminó el aval #{$id}");
+        ClientAval::where('client_id', $this->clientId)->find($id)?->delete();
         // El custom.js ya muestra "Eliminado!" — no dispatcheamos successAlert para no duplicar.
     }
 

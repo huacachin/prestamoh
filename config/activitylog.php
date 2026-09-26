@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Support\Auditoria\GuardarActividad;
 use Spatie\Activitylog\Actions\CleanActivityLogAction;
 use Spatie\Activitylog\Models\Activity;
@@ -40,7 +41,7 @@ return [
      * It should implement the Spatie\Activitylog\Contracts\Activity interface
      * and extend Illuminate\Database\Eloquent\Model.
      */
-    'activity_model' => Activity::class,
+    'activity_model' => ActivityLog::class, // 26/09: columnas propias (estructura newtaxivan) con casts
 
     /*
      * These attributes will be excluded from logging for all models.

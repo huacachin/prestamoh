@@ -148,7 +148,7 @@ class Index extends Component
     /** Avanza el estado (ya validado) registrando auditoría y aviso. */
     private function ejecutarTransicion(TramiteNotarial $tramite, string $nuevoEstado): void
     {
-        $tramite->avanzarA($nuevoEstado);
+        $tramite->sinAuditoriaAutomatica(fn () => $tramite->avanzarA($nuevoEstado));
 
         $label = TramiteNotarial::ESTADOS[$nuevoEstado] ?? $nuevoEstado;
         Audit::log("Cambió el trámite notarial #{$tramite->id} a {$label}", $tramite, [
@@ -385,7 +385,6 @@ class Index extends Component
             $tramite->update($data);
             $this->sincronizarEgresoLegal($tramite);
 
-            Audit::log("Editó el trámite notarial #{$tramite->id}", $tramite);
             $mensaje = 'Trámite notarial actualizado correctamente.';
         } else {
             $data['garantia_id'] = $this->garantia_id;
@@ -399,13 +398,6 @@ class Index extends Component
             $tramite = TramiteNotarial::create($data);
             $this->sincronizarEgresoLegal($tramite);
 
-            $tipoLabel = TramiteNotarial::TIPOS[$tramite->tipo] ?? $tramite->tipo;
-            $estadoLabel = TramiteNotarial::ESTADOS[$tramite->estado] ?? $tramite->estado;
-            Audit::log(
-                "Registró el trámite notarial #{$tramite->id} ({$tipoLabel}) en «{$estadoLabel}»",
-                $tramite,
-                ['garantia_id' => $tramite->garantia_id, 'client_id' => $tramite->client_id, 'notaria' => $tramite->notaria],
-            );
             $mensaje = 'Trámite notarial registrado correctamente.';
         }
 

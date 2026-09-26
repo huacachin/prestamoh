@@ -3,7 +3,6 @@
 namespace App\Livewire\Clients;
 
 use App\Models\Client;
-use App\Support\Audit;
 use App\Support\Coordenadas;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -76,8 +75,6 @@ class Gps extends Component
         $this->client->update($campos);
         $this->client->refresh();
 
-        Audit::log('Registró coordenadas ('.self::TIPOS[$tipo].') del cliente '.$this->client->fullName(), $this->client);
-
         $this->pegado[$tipo] = '';
         $this->msgType = 'ok';
         $this->msg = 'Coordenadas de '.self::TIPOS[$tipo].' guardadas.';
@@ -96,8 +93,6 @@ class Gps extends Component
 
         $this->client->update($campos);
         $this->client->refresh();
-
-        Audit::log('Borró las coordenadas ('.self::TIPOS[$tipo].') del cliente '.$this->client->fullName(), $this->client);
 
         $this->msgType = 'ok';
         $this->msg = 'Coordenadas de '.self::TIPOS[$tipo].' borradas.';

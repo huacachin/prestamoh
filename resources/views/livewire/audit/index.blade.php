@@ -96,7 +96,7 @@
                             @forelse($logs as $log)
                                 @php
                                     $tipoAccion = $this->clasificar($log->description, $log->event);
-                                    $ctxUsuario = $log->properties['contexto']['usuario'] ?? null;
+                                    $ctxUsuario = $log->user_name !== null ? ['nombre' => $log->user_name, 'username' => null] : ($log->properties['contexto']['usuario'] ?? null);
                                     $urlFicha = \App\Livewire\Audit\Index::urlFicha($log->subject_type, $log->subject_id);
                                     $conCambios = $log->attribute_changes?->isNotEmpty();
                                 @endphp

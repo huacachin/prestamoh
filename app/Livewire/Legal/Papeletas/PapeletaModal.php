@@ -4,7 +4,6 @@ namespace App\Livewire\Legal\Papeletas;
 
 use App\Models\Papeleta;
 use App\Models\Vehiculo;
-use App\Support\Audit;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -225,28 +224,14 @@ class PapeletaModal extends Component
             'nota' => $this->nota !== '' ? $this->nota : null,
         ];
 
-        $entidadLabel = Papeleta::ENTIDADES[$this->entidad] ?? $this->entidad;
-
         if ($this->editingId) {
             $papeleta = Papeleta::findOrFail($this->editingId);
             $data['requiere_revision'] = $this->requiere_revision;
             $papeleta->update($data);
-
-            Audit::log("Editó la papeleta {$entidadLabel} {$papeleta->nro_papeleta}", $papeleta, [
-                'vehiculo_id' => $papeleta->vehiculo_id,
-                'estado' => $papeleta->estado,
-                'monto' => $papeleta->monto,
-            ]);
             $mensaje = 'Papeleta actualizada correctamente.';
         } else {
             $data['registrado_por'] = auth()->id();
-            $papeleta = Papeleta::create($data);
-
-            Audit::log("Registró la papeleta {$entidadLabel} {$papeleta->nro_papeleta}", $papeleta, [
-                'vehiculo_id' => $papeleta->vehiculo_id,
-                'estado' => $papeleta->estado,
-                'monto' => $papeleta->monto,
-            ]);
+            Papeleta::create($data);
             $mensaje = 'Papeleta registrada correctamente.';
         }
 

@@ -374,8 +374,6 @@ class Documentos extends Component
             $doc = app(GeneradorAnexo1::class)
                 ->generar($client, $credit, $vehiculo, $this->overrides($vehiculo));
 
-            Audit::log("Generó el Anexo 1 v{$doc->version} del crédito #{$credit->id} ({$client->fullName()})", $doc);
-
             $this->htmlPreview = '';
             $this->dispatch('anexo1-modal-close');
             $this->dispatch('successAlert', ['message' => "Anexo 1 v{$doc->version} generado."]);
@@ -862,12 +860,18 @@ class Documentos extends Component
             return;
         }
 
-        if ($vigente !== null) {
-            $vigente->update(['vigente' => false]);
-            Audit::log("Cambio de representante legal de {$client->fullName()}: {$vigente->nombre} → {$datos['nombre']}", $client);
+        $nuevo = $empresa->representantes()->make($datos);
+        if ($vigente === null) {
+            $nuevo->save();
+
+            return;
         }
 
-        $empresa->representantes()->create($datos);
+        // Cambio de titular del poder: lo narra la fila manual de abajo, así que
+        // el cierre del anterior y el alta del nuevo van sin fila automática.
+        $vigente->sinAuditoriaAutomatica(fn () => $vigente->update(['vigente' => false]));
+        $nuevo->sinAuditoriaAutomatica(fn () => $nuevo->save());
+        Audit::log("Cambio de representante legal de {$client->fullName()}: {$vigente->nombre} → {$datos['nombre']}", $client);
     }
 
     /** Nombre "humano" de un modelo para la lista (fallback: la clave tal cual). */
@@ -1279,7 +1283,7 @@ class Documentos extends Component
             return;
         }
 
-        $doc->update(['estado' => 'anulado']);
+        $doc->sinAuditoriaAutomatica(fn () => $doc->update(['estado' => 'anulado']));
         Audit::log("Anuló el documento {$doc->tipoLabel()} v{$doc->version} del crédito #{$doc->credit_id}", $doc);
 
         $this->dispatch('successAlert', ['message' => "{$doc->tipoLabel()} v{$doc->version} anulado."]);

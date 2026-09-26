@@ -102,7 +102,12 @@ Dos vías, ambas en `activity_log` con `log_name = 'auditoria'` (spatie/activity
 - **Manual**: `Audit::log('Verbo …', $modelo, $props)` para acciones de negocio (cobros, anulaciones…).
   El verbo inicial clasifica la acción en el visor.
 - A todo registro `App\Support\Auditoria\GuardarActividad` le añade `properties.contexto`
-  (IP, navegador, ruta, usuario con rol) y nunca tumba la operación si falla el insert.
+  (IP, navegador, ruta, usuario con rol), rellena las columnas propias con la estructura de
+  newtaxivan (`user_name`, `user_role`, `module`, `old_data`, `new_data`, `changed_fields`,
+  `ip_address`, `user_agent`; modelo `App\Models\ActivityLog`) y nunca tumba la operación si
+  falla el insert. Equivalencias: user_id = causer_id, action = event, record_id = subject_id.
+- Cuando un `Audit::log` de negocio acompaña a un guardado del mismo modelo, envolver el
+  guardado con `$modelo->sinAuditoriaAutomatica(fn () => ...)` para no duplicar la fila.
 - Etiquetas del visor en `config/auditoria.php`. Visor: `/audit` (solo director).
 
 ## Legacy Reference

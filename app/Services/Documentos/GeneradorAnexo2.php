@@ -171,7 +171,7 @@ class GeneradorAnexo2
             $path = "documentos/cliente-{$client->id}/anexo2-credito-{$credit->id}-v{$version}.pdf";
             Storage::disk('public')->put($path, $contenido);
 
-            $doc = DocumentoCliente::create([
+            $doc = new DocumentoCliente([
                 'client_id' => $client->id,
                 'credit_id' => $credit->id,
                 'tipo' => 'anexo2',
@@ -183,6 +183,7 @@ class GeneradorAnexo2
                 'estado' => 'emitido',
                 'generado_por' => auth()->id(),
             ]);
+            $doc->sinAuditoriaAutomatica(fn () => $doc->save());
 
             Audit::log("Generó el Anexo 2 v{$version} del crédito #{$credit->id} ({$snapshot['cliente']['nombre']})", $doc);
 

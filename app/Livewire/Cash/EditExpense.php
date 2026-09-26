@@ -147,8 +147,6 @@ class EditExpense extends Component
                     ]);
             }
 
-            Audit::log("Editó el egreso #{$this->expense->id} (monto {$this->total})".($subidas ? ", subió {$subidas} imagen(es)" : ''), $this->expense);
-
             session()->flash('cash_success', 'Egreso actualizado correctamente.'.($subidas ? " {$subidas} ".($subidas === 1 ? 'imagen subida.' : 'imágenes subidas.') : ''));
             $this->redirectRoute('cash.expenses');
         } catch (ValidationException $e) {
@@ -180,8 +178,9 @@ class EditExpense extends Component
 
         // Espejo caja 3 (legacy gastos-modificar22.php): el borrado elimina entrada Y entrada3.
         Expense::where('caja', 3)->where('parent_id', $id)->delete();
-        Expense::findOrFail($id)->delete();
-        Audit::log("Eliminó el egreso #{$id}");
+        $expense = Expense::findOrFail($id);
+        $expense->sinAuditoriaAutomatica(fn () => $expense->delete());
+        Audit::log("Eliminó el egreso #{$id}", $expense);
         session()->flash('cash_success', 'Egreso eliminado correctamente.');
         $this->redirectRoute('cash.expenses');
     }

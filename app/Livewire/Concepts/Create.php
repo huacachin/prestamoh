@@ -66,8 +66,6 @@ class Create extends Component
                 'factor_egreso' => $this->factor_egreso ?: 0,
             ]);
 
-            \App\Support\Audit::log("Creó el concepto {$this->code} - {$this->name}", $concept);
-
             session()->flash('concept_success', 'Concepto creado correctamente.');
             $this->redirectRoute('settings.concepts.index');
         } catch (ValidationException $e) {

@@ -6,7 +6,6 @@ use App\Models\Client;
 use App\Models\Credit;
 use App\Models\Garantia;
 use App\Models\Vehiculo;
-use App\Support\Audit;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
@@ -343,15 +342,6 @@ class Create extends Component
 
             return $garantia;
         });
-
-        Audit::log('Creó la garantía del crédito N° '.$this->creditId, $garantia, [
-            'tipo_persona' => $this->tipo_persona,
-            'codeudor_client_id' => $this->codeudorId,
-            'monto_gravamen' => $this->monto_gravamen,
-            'gps' => $this->gps,
-            'custodia' => $this->custodia,
-            'vehiculos' => collect($this->vehiculos)->pluck('placa')->all(),
-        ]);
 
         session()->flash('legal_success', "Garantía N° {$garantia->id} del crédito N° {$this->creditId} registrada en constitución.");
 
