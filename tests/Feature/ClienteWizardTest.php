@@ -351,7 +351,7 @@ class ClienteWizardTest extends TestCase
             'Gar. Hip.M-Ejecución' => Garantias::HIPOTECARIA,
             'Gar. Hip.S-Ejecución' => Garantias::HIPOTECARIA,
             'Alq.Ven.D.' => Garantias::OTRA,
-            'Alquiler V.S' => Garantias::OTRA,
+            'Alq.Ven.S.' => Garantias::OTRA,
         ];
 
         foreach (TiposCredito::OPCIONES as $opcion) {

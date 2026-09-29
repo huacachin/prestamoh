@@ -25,7 +25,7 @@ class TiposCredito
         'Gar. Hip.M',
         'Gar. Hip.S',
         'Alq.Ven.D.',
-        'Alquiler V.S', // pedido 02/09; Garantias lo clasifica "otra", igual que Alq.Ven.D.
+        'Alq.Ven.S.', // pedido 02/09 (29/09: se llama como el legacy); Garantias lo clasifica "otra", igual que Alq.Ven.D.
         'Cred. Vehicular',
         // En ejecución (05/09). Llevan la garantía DELANTE a propósito: así
         // Garantias (que clasifica por prefijo) les sigue dando el
