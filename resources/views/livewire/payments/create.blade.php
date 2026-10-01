@@ -342,9 +342,20 @@
                                 Cancelado
                                 @if($cancelDisabled)
                                     <small class="text-muted">
-                                        (se habilita al cubrir capital + interés a la fecha: {{ number_format($cancelarHoy, 2) }})
+                                        (se habilita al cubrir capital + {{ $cancelUltimaCuota ? 'interés completo' : 'interés a la fecha' }}: {{ number_format($cancelarHoy, 2) }})
                                     </small>
                                 @endif
+                            </label>
+                        </div>
+                        <div class="form-check form-switch">
+                            {{-- Interés completo (30/09): al cancelar cobra el interés de TODO el
+                                 cronograma y el mínimo pasa a ser el cronograma entero. Es el
+                                 mismo flag que "Cancelar hasta la última cuota" de la tarjeta. --}}
+                            <input class="form-check-input" type="checkbox" role="switch"
+                                   wire:model.live="cancelUltimaCuota" id="interesCompleto">
+                            <label class="form-check-label fw-semibold ms-1" for="interesCompleto" style="color:#b8860b;">
+                                Interés completo
+                                <small class="text-muted">(al cancelar cobra todo el cronograma: {{ number_format($cancelarTodo, 2) }})</small>
                             </label>
                         </div>
                     </div>
@@ -836,9 +847,11 @@
                                 <div class="alert alert-warning py-1 px-2 mt-2 mb-0 small text-center" style="color:#000;">
                                     <i class="ti ti-alert-triangle"></i> Este cobro <strong>cancela</strong> el crédito.
                                     @if(($preview['monto_tecleado'] ?? null) !== null)
-                                        {{-- Modo estricto (09/09): el excedente NO se cobra como interés. --}}
+                                        {{-- Modo estricto (09/09): el excedente NO se cobra como interés.
+                                             Con interés completo (30/09) el ajuste es hacia arriba: el
+                                             mínimo es el cronograma entero. --}}
                                         <div class="mt-1">
-                                            Solo se cobra lo necesario para cancelar hoy:
+                                            {{ ($preview['hasta_ultima_cuota'] ?? false) ? 'Con interés completo se cobra el cronograma entero:' : 'Solo se cobra lo necesario para cancelar hoy:' }}
                                             <strong>S/ {{ number_format($preview['monto'], 2) }}</strong>
                                             (tecleaste S/ {{ number_format($preview['monto_tecleado'], 2) }}).
                                         </div>
@@ -1014,6 +1027,23 @@
                                     </label>
                                 </div>
                             </div>
+                            @php $sMontoCompleto = (float) ($preview['monto_interes_completo'] ?? 0); @endphp
+                            @if(($preview['cubre_total'] ?? false) && $decisionTotal !== 'no' && ($sUltima || $sCondonaSi > 0.001))
+                                {{-- Interés completo (30/09): antes del primer vencimiento el interés a
+                                     la fecha es 0 y "solo lo necesario" condona el período entero; aquí
+                                     el cajero puede cobrar el cronograma completo sin salir del modal.
+                                     Marcarla antes de responder la pregunta vale como "Sí, cancelar". --}}
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="checkbox" id="decInteresCompleto"
+                                           wire:model.live="cancelUltimaCuota">
+                                    <label class="form-check-label small fw-semibold" for="decInteresCompleto" style="color:#b8860b;">
+                                        Cobrar el interés completo del cronograma
+                                        {{ $sUltima
+                                            ? '(total S/ '.number_format($sMontoSi, 2).')'
+                                            : '(+ S/ '.number_format(max(0, $sMontoCompleto - $sMontoSi), 2).' → total S/ '.number_format($sMontoCompleto, 2).')' }}
+                                    </label>
+                                </div>
+                            @endif
                             @if($decisionTotal === '')
                                 <div class="small text-muted mt-1">
                                     Elige una opción para poder cobrar.
@@ -1267,9 +1297,18 @@
                             @if(!$cancelUltimaCuota && $sim['dias_adelanto'] > 0 && $descuentoInt > 0)
                                 <div class="rounded p-2 mt-2 small" style="background:#e7f4ea; color:#1e7b34;">
                                     <i class="ti ti-discount-2 f-s-12"></i>
-                                    Te adelantas <b>{{ $sim['dias_adelanto'] }} {{ $sim['dias_adelanto'] === 1 ? 'día' : 'días' }}</b>
-                                    a la última cuota ({{ \Carbon\Carbon::parse($sim['ultima_venc'])->format('d/m/Y') }}):
-                                    descuento de interés <b>{{ number_format($descuentoInt, 2) }}</b>
+                                    @if($sim['cuotas_vencidas'] === 0 && $sim['int_cancelar'] <= 0.001)
+                                        {{-- Antes del primer vencimiento no hay interés devengado (30/09):
+                                             el "descuento" es el período entero, no los días de adelanto. --}}
+                                        Aún no vence ninguna cuota: el sistema no cuenta interés devengado,
+                                        así que cancelar hoy cuesta solo el capital y se condona
+                                        <b>{{ number_format($descuentoInt, 2) }}</b> de interés.
+                                        Para cobrarlo, marca <b>Interés completo</b>.
+                                    @else
+                                        Te adelantas <b>{{ $sim['dias_adelanto'] }} {{ $sim['dias_adelanto'] === 1 ? 'día' : 'días' }}</b>
+                                        a la última cuota ({{ \Carbon\Carbon::parse($sim['ultima_venc'])->format('d/m/Y') }}):
+                                        descuento de interés <b>{{ number_format($descuentoInt, 2) }}</b>
+                                    @endif
                                 </div>
                             @endif
 
@@ -1305,7 +1344,7 @@
                                     <input class="form-check-input" type="checkbox" role="switch"
                                            id="cancelUltimaCuota" wire:model.live="cancelUltimaCuota">
                                     <label class="form-check-label small fw-semibold" for="cancelUltimaCuota">
-                                        Cancelar hasta la última cuota
+                                        Interés completo (cancelar hasta la última cuota)
                                     </label>
                                 </div>
                             </div>

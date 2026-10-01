@@ -667,11 +667,15 @@ class Create extends Component
         }
 
         // Gate servidor del switch Cancelado (espejo del disabled del front):
-        // el monto debe cubrir al menos capital pendiente + interés a la fecha.
+        // el monto debe cubrir al menos capital pendiente + interés a la fecha;
+        // con "Interés completo" (30/09, pedido de Antony) el mínimo es el
+        // cronograma entero.
         if ($this->cancel) {
-            $cancelarHoy = $this->deudaCalcs()['cancelar_cap_int'];
-            if ($cancelarHoy - (float) $this->monto > 0.01) {
-                return 'Para cancelar debes cubrir capital pendiente + interés a la fecha ('.number_format($cancelarHoy, 2).').';
+            $necesario = $this->necesarioParaCancelar();
+            if ($necesario - (float) $this->monto > 0.01) {
+                return $this->cancelUltimaCuota
+                    ? 'Con interés completo debes cubrir capital pendiente + interés de todo el cronograma ('.number_format($necesario, 2).').'
+                    : 'Para cancelar debes cubrir capital pendiente + interés a la fecha ('.number_format($necesario, 2).').';
             }
         }
 
@@ -734,6 +738,7 @@ class Create extends Component
         if ($this->decisionTotal === 'si') {
             $this->cancel = true;
             $this->ajustarMontoAlCancelar();
+            $this->subirMontoAInteresCompleto();
         } elseif ($this->decisionTotal === 'no') {
             $this->cancel = false;
             $this->restaurarMontoTecleado();
@@ -781,6 +786,59 @@ class Create extends Component
             : (float) $d['int_cancelar'];
 
         return round((float) $d['cap_pendiente_total'] + $int + (float) $d['exc_hoy'], 2);
+    }
+
+    /**
+     * "Interés completo" (30/09, pedido de Antony, caso 29377): antes del primer
+     * vencimiento el interés a la fecha es 0, así que cancelar "solo lo
+     * necesario" condona el período entero. Con el switch (el mismo
+     * $cancelUltimaCuota de la tarjeta) el mínimo para cancelar es el cronograma
+     * completo: si el monto está por debajo, sube a esa cifra —el cajero lo ve
+     * en la vista previa antes de cobrar— y lo tecleado se guarda para el aviso.
+     * Sin "Cancelado" el switch solo cambia la cotización.
+     */
+    private function subirMontoAInteresCompleto(): void
+    {
+        if (! $this->cancel || ! $this->cancelUltimaCuota || ! is_numeric($this->monto)) {
+            return;
+        }
+
+        $necesario = $this->necesarioParaCancelar();
+        if ($necesario - (float) $this->monto > 0.01) {
+            $this->montoTecleado = (string) $this->monto;
+            $this->monto = number_format($necesario, 2, '.', '');
+        }
+    }
+
+    /**
+     * El switch se puede tocar en el modal de confirmación o junto a
+     * "Cancelado": al marcarlo vuelve lo tecleado y sube al cronograma entero;
+     * al desmarcarlo vuelve lo tecleado y el modo estricto recorta otra vez.
+     * La vista previa, si está abierta, se rehace delante del cajero.
+     */
+    public function updatedCancelUltimaCuota(): void
+    {
+        // Desde el modal, marcarlo antes de responder "¿Cancelar el crédito?"
+        // vale como "Sí": cobrar el cronograma entero es cancelar.
+        if ($this->cancelUltimaCuota && $this->preview && $this->decisionTotal === '' && $this->cubreTotalidad()) {
+            $this->decisionTotal = 'si';
+            $this->cancel = true;
+        }
+
+        if (! $this->cancel) {
+            return;
+        }
+
+        $this->restaurarMontoTecleado();
+        if ($this->cancelUltimaCuota) {
+            $this->subirMontoAInteresCompleto();
+        } else {
+            $this->ajustarMontoAlCancelar();
+        }
+
+        if ($this->preview) {
+            $this->preview = $this->construirPreview();
+        }
     }
 
     /**
@@ -1241,7 +1299,9 @@ class Create extends Component
 
         Audit::log(
             "Registró pago de {$this->monto} en el crédito #{$this->credit->id}".($this->cancel ? ' (canceló el crédito)' : '')
-            .($this->cancel && $this->montoTecleado !== null ? " — ajustado desde {$this->montoTecleado}: solo lo necesario para cancelar" : '')
+            .($this->cancel && $this->montoTecleado !== null
+                ? " — ajustado desde {$this->montoTecleado}: ".($this->cancelUltimaCuota ? 'cronograma completo (interés completo)' : 'solo lo necesario para cancelar')
+                : '')
                 .($this->metodoPago === 'deposito' ? ' vía depósito ('.$this->depCanal.')' : ''),
             $this->credit,
             ['monto' => $this->monto, 'fecha' => $this->fecpag]
@@ -1472,6 +1532,10 @@ class Create extends Component
             // ambas mostraban 'condona' (la del monto vigente), que es la de
             // "No" y quedaba falsa para "Sí" en cuanto el modo estricto recorta.
             'monto_si_cancela' => $necesarioCancelar,
+            // Lo que costaría cancelar con "Interés completo" (cronograma entero:
+            // capital + todo el interés pendiente + excedente vencido), para
+            // ofrecerlo en el modal cuando cancelar hoy condonaría interés.
+            'monto_interes_completo' => round((float) $dc['saldo_credito'] + (float) $dc['exc_hoy'], 2),
             'monto_si_vigente' => $montoVigente,
             'condona_si_cancela' => $condonaSi,
             'queda_si_vigente' => $quedaNo,
@@ -1821,11 +1885,15 @@ class Create extends Component
         // (que resta esa parte) y el tooltip de la fila Totales.
         $reparto = $this->credit ? MoraPagada::porCuota($this->credit) : [];
         $moraCelda = $this->credit ? MoraPagada::mostradaPorCuota($this->credit, $reparto) : [];
+        $dHoy = $this->deudaCalcs();
 
         return view('livewire.payments.create', [
             'calcs' => $this->buildCalcs(),
             'sim' => $this->deudaCalcs($alSim),    // a la fecha simulada: tarjetas
-            'cancelarHoy' => $this->deudaCalcs()['cancelar_cap_int'], // gate del switch Cancelado
+            // Gate del switch Cancelado: capital + interés a la fecha, o el
+            // cronograma entero con "Interés completo" (30/09).
+            'cancelarHoy' => $this->necesarioParaCancelar(),
+            'cancelarTodo' => round((float) $dHoy['saldo_credito'] + (float) $dHoy['exc_hoy'], 2),
             'fecsimMin' => $fecsimMin,
             'moraExon' => $this->credit ? MoraExonerada::porCuota($this->credit, $moraCelda) : [],
             'recibos' => $this->recibosPorCuota(),
