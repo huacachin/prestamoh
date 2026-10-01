@@ -18,56 +18,60 @@
         <div class="col-xl-12">
             <div class="card shadow-sm">
                 <div class="card-body pb-2">
-                    {{-- Filtros --}}
-                    <form wire:submit.prevent="search">
+                    {{-- Filtros (01/10): formulario GET normal, sin wire:model.live. Un mes en
+                         Detalle son ~2 MB de HTML / ~9,000 celdas; cada cambio de select
+                         re-renderizaba todo y Livewire lo morfeaba en el DOM (y "Consultar"
+                         repetía la petición), lo que colgaba las PCs de pocos recursos.
+                         Ahora solo "Consultar" dispara, y recarga la página: parsear HTML
+                         nuevo es mucho más barato que diffear el existente. Las propiedades
+                         #[Url] del componente se hidratan de la query string. --}}
+                    @php
+                        $filtros = ['mes' => $selemes, 'anio' => $selecano, 'tipo' => $seletipl];
+                    @endphp
+                    <form method="GET" action="{{ route('reports.cash-general-1') }}">
+                        @if($vista === 'resumen')
+                            <input type="hidden" name="vista" value="resumen">
+                        @endif
                         <div class="row g-2 align-items-end mb-2">
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small"><b>Mes</b></label>
-                                <select class="form-select form-select-sm" wire:model.live="selemes">
-                                    <option value="01">Enero</option>
-                                    <option value="02">Febrero</option>
-                                    <option value="03">Marzo</option>
-                                    <option value="04">Abril</option>
-                                    <option value="05">Mayo</option>
-                                    <option value="06">Junio</option>
-                                    <option value="07">Julio</option>
-                                    <option value="08">Agosto</option>
-                                    <option value="09">Septiembre</option>
-                                    <option value="10">Octubre</option>
-                                    <option value="11">Noviembre</option>
-                                    <option value="12">Diciembre</option>
+                                <select class="form-select form-select-sm" name="mes">
+                                    @foreach(['01' => 'Enero', '02' => 'Febrero', '03' => 'Marzo', '04' => 'Abril', '05' => 'Mayo', '06' => 'Junio', '07' => 'Julio', '08' => 'Agosto', '09' => 'Septiembre', '10' => 'Octubre', '11' => 'Noviembre', '12' => 'Diciembre'] as $m => $nombreMes)
+                                        <option value="{{ $m }}" @selected((int) $selemes === (int) $m)>{{ $nombreMes }}</option>
+                                    @endforeach
                                 </select>
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small"><b>Año</b></label>
-                                <select class="form-select form-select-sm" wire:model.live="selecano">
+                                <select class="form-select form-select-sm" name="anio">
                                     @for($y = (int) date('Y') - 5; $y <= (int) date('Y') + 2; $y++)
-                                        <option value="{{ $y }}">{{ $y }}</option>
+                                        <option value="{{ $y }}" @selected((int) $selecano === $y)>{{ $y }}</option>
                                     @endfor
                                 </select>
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small"><b>Tipo</b></label>
-                                <select class="form-select form-select-sm" wire:model.live="seletipl">
-                                    <option value="0000">Todos</option>
-                                    <option value="4">Diario</option>
-                                    <option value="1">Semanal</option>
-                                    <option value="3">Mensual</option>
+                                <select class="form-select form-select-sm" name="tipo">
+                                    @foreach(['0000' => 'Todos', '4' => 'Diario', '1' => 'Semanal', '3' => 'Mensual'] as $t => $nombreTipo)
+                                        {{-- (string) en ambos lados: PHP vuelve enteros las claves '4','1','3' y Livewire hidrata ?tipo=1 como int. --}}
+                                        <option value="{{ $t }}" @selected((string) $seletipl === (string) $t)>{{ $nombreTipo }}</option>
+                                    @endforeach
                                 </select>
                             </div>
                             <div class="col-md-6 d-flex gap-2 flex-wrap">
                                 <button type="submit" class="btn btn-sm btn-primary">
                                     <i class="ti ti-search f-s-12"></i> Consultar
                                 </button>
+                                {{-- Resumen/Detalle también navegan (cambiar de vista era otro morph de 2 MB). --}}
                                 <div class="btn-group" role="group" aria-label="Vista">
-                                    <button type="button" wire:click="$set('vista', 'resumen')"
-                                            class="btn btn-sm {{ $vista === 'resumen' ? 'btn-dark' : 'btn-outline-dark' }}">
+                                    <a href="{{ route('reports.cash-general-1', $filtros + ['vista' => 'resumen']) }}"
+                                       class="btn btn-sm {{ $vista === 'resumen' ? 'btn-dark' : 'btn-outline-dark' }}">
                                         <i class="ti ti-layout-list f-s-12"></i> Resumen
-                                    </button>
-                                    <button type="button" wire:click="$set('vista', 'detalle')"
-                                            class="btn btn-sm {{ $vista === 'detalle' ? 'btn-dark' : 'btn-outline-dark' }}">
+                                    </a>
+                                    <a href="{{ route('reports.cash-general-1', $filtros) }}"
+                                       class="btn btn-sm {{ $vista === 'detalle' ? 'btn-dark' : 'btn-outline-dark' }}">
                                         <i class="ti ti-table f-s-12"></i> Detalle
-                                    </button>
+                                    </a>
                                 </div>
                                 @if($vista === 'detalle')
                                 <x-scroll-bottom-btn scrollable="#tabla-caja-1" />
@@ -169,9 +173,11 @@
                                     $esMejor = $mejorDia && $day['date'] === $mejorDia['date'];
                                 @endphp
                                 <div class="col-12 col-sm-6 col-lg-4 col-xxl-3">
-                                    <div class="caja1-card h-100 p-2 {{ $esMejor ? 'caja1-card--mejor' : '' }} {{ $finde ? 'caja1-card--finde' : '' }}"
-                                         wire:click="verDia('{{ $day['date'] }}')"
-                                         title="Click para ver el detalle de este día">
+                                    {{-- Enlace al detalle del día (01/10): antes era wire:click="verDia" y
+                                         morfeaba el detalle completo; ahora carga la página con ?dia=. --}}
+                                    <a href="{{ route('reports.cash-general-1', $filtros + ['dia' => $day['date']]) }}"
+                                       class="caja1-card h-100 p-2 d-block text-reset text-decoration-none {{ $esMejor ? 'caja1-card--mejor' : '' }} {{ $finde ? 'caja1-card--finde' : '' }}"
+                                       title="Click para ver el detalle de este día">
 
                                         {{-- Cabecera: día + badges --}}
                                         <div class="d-flex justify-content-between align-items-center">
@@ -214,7 +220,7 @@
                                                 Neto {{ $neto >= 0 ? '+' : '' }}{{ number_format($neto, 2) }}
                                             </span>
                                         </div>
-                                    </div>
+                                    </a>
                                 </div>
                             @empty
                                 <div class="col-12 py-3 text-muted text-center">Sin movimientos para el periodo seleccionado</div>
@@ -530,10 +536,16 @@
                     zoom: { enabled: false },
                     animations: { speed: 500 },
                     events: {
-                        // Click en una columna → detalle de ese día
+                        // Click en una columna → detalle de ese día. Navega (01/10):
+                        // antes despachaba un evento de Livewire y el detalle
+                        // completo del mes se morfeaba en el DOM.
                         dataPointSelection: (e, ctx, cfg) => {
                             const date = data.dates[cfg.dataPointIndex];
-                            if (date) Livewire.dispatch('caja1-ver-dia', { date });
+                            if (!date) return;
+                            const u = new URL(window.location.href);
+                            u.searchParams.delete('vista');
+                            u.searchParams.set('dia', date);
+                            window.location.href = u.toString();
                         },
                     },
                 },
@@ -578,29 +590,26 @@
                 }, 250);
             });
 
-            // Re-pintar el gráfico después de cada actualización de Livewire
-            // (cambio de mes/tipo o toggle resumen/detalle).
-            Livewire.hook('commit', ({ succeed }) => {
-                succeed(() => setTimeout(buildCaja1Chart, 60));
-            });
         });
 
+        // El gráfico se pinta una sola vez: desde el 01/10 los filtros y el
+        // cambio de vista recargan la página (ya no hay actualizaciones de Livewire).
         if (document.readyState !== 'loading') setTimeout(buildCaja1Chart, 60);
         else document.addEventListener('DOMContentLoaded', () => setTimeout(buildCaja1Chart, 60));
 
         // ── Tooltips Bootstrap (ícono ⓘ de interés por cuota, vista detalle) ──
-        function initCaja1Tooltips() {
+        // Bajo demanda (01/10): antes se instanciaba uno por cada ícono de la
+        // tabla al cargar; ahora se crea al pasar el mouse (o enfocar) y desde
+        // ahí Bootstrap lo gestiona solo.
+        function tooltipBajoDemanda(e) {
             if (typeof bootstrap === 'undefined') return;
-            document.querySelectorAll('#printme [data-bs-toggle="tooltip"]')
-                .forEach(el => bootstrap.Tooltip.getOrCreateInstance(el));
+            const el = e.target.closest('#printme [data-bs-toggle="tooltip"]');
+            if (!el || el.dataset.tipListo) return;
+            el.dataset.tipListo = '1';
+            bootstrap.Tooltip.getOrCreateInstance(el).show();
         }
-        document.addEventListener('livewire:init', () => {
-            Livewire.hook('commit', ({ succeed }) => {
-                succeed(() => setTimeout(initCaja1Tooltips, 60));
-            });
-        });
-        if (document.readyState !== 'loading') initCaja1Tooltips();
-        else document.addEventListener('DOMContentLoaded', initCaja1Tooltips);
+        document.addEventListener('mouseover', tooltipBajoDemanda, { passive: true });
+        document.addEventListener('focusin', tooltipBajoDemanda, { passive: true });
 
     })();
 </script>

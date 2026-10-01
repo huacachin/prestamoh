@@ -6,7 +6,6 @@ use App\Models\Credit;
 use App\Services\CajaDailyService;
 use App\Support\FechaLarga;
 use Carbon\Carbon;
-use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
@@ -47,16 +46,13 @@ class CashGeneral1 extends Component
         }
     }
 
-    public function search() {}
-
-    /** Desde la vista resumen (tarjeta o columna del gráfico): cambia a detalle y desplaza hasta el día elegido. */
-    #[On('caja1-ver-dia')]
-    public function verDia(string $date): void
-    {
-        $this->vista = 'detalle';
-        $this->dispatch('scroll-to-day', date: $date);
-    }
-
+    /**
+     * 01/10: este componente ya no recibe actualizaciones de Livewire. Los
+     * filtros son un formulario GET, Resumen/Detalle y el clic en un día son
+     * enlaces (?vista=, ?dia=) y las propiedades #[Url] se hidratan al cargar.
+     * Motivo: un mes en Detalle son ~2 MB de HTML (~9,000 celdas) y morfearlo
+     * en el DOM con cada select .live colgaba las PCs de pocos recursos.
+     */
     public function render()
     {
         $year = (int) $this->selecano;
