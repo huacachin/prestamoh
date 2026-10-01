@@ -14,6 +14,7 @@ use App\Services\Documentos\Ocr\LectorDeVoucher;
 use App\Services\Documentos\Ocr\VoucherIlegible;
 use App\Services\Factiliza;
 use App\Support\Audit;
+use App\Support\ConSubidaDeArchivos;
 use App\Support\Documentos\BancosVoucher;
 use App\Support\Documentos\DomicilioLegal;
 use App\Support\Documentos\ModelosContrato;
@@ -26,7 +27,6 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use Livewire\Component;
-use Livewire\WithFileUploads;
 
 /**
  * Apartado "Documentos" del cliente: historial de documentos emitidos
@@ -44,7 +44,7 @@ use Livewire\WithFileUploads;
  */
 class Documentos extends Component
 {
-    use WithFileUploads;
+    use ConSubidaDeArchivos;
 
     public int $clientId;
 

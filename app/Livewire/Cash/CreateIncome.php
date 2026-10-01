@@ -5,13 +5,13 @@ namespace App\Livewire\Cash;
 use App\Livewire\Cash\Concerns\SavesIncomeAttachments;
 use App\Models\Concept;
 use App\Models\Income;
+use App\Support\ConSubidaDeArchivos;
 use Livewire\Component;
-use Livewire\WithFileUploads;
 
 class CreateIncome extends Component
 {
+    use ConSubidaDeArchivos;
     use SavesIncomeAttachments;
-    use WithFileUploads;
 
     public string $modo = '';        // 'Fijos' | 'Otros' (paso 1)
 

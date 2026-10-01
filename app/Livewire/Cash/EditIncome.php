@@ -6,16 +6,16 @@ use App\Livewire\Cash\Concerns\SavesIncomeAttachments;
 use App\Models\Concept;
 use App\Models\Income;
 use App\Support\Audit;
+use App\Support\ConSubidaDeArchivos;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
-use Livewire\WithFileUploads;
 
 class EditIncome extends Component
 {
+    use ConSubidaDeArchivos;
     use SavesIncomeAttachments;
-    use WithFileUploads;
 
     public Income $income;
 

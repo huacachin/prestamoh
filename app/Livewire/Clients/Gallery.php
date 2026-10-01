@@ -4,15 +4,15 @@ namespace App\Livewire\Clients;
 
 use App\Models\Client;
 use App\Models\ClientAttachment;
+use App\Support\ConSubidaDeArchivos;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Attributes\On;
 use Livewire\Component;
-use Livewire\WithFileUploads;
 
 class Gallery extends Component
 {
-    use WithFileUploads;
+    use ConSubidaDeArchivos;
 
     public Client $client;
 

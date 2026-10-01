@@ -6,13 +6,13 @@ use App\Models\Client;
 use App\Models\Vehiculo;
 use App\Models\VehiculoGpsReporte;
 use App\Models\VehiculoGpsReporteFoto;
+use App\Support\ConSubidaDeArchivos;
 use App\Support\Miniatura;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
-use Livewire\WithFileUploads;
 
 /**
  * Reportes de GPS de los vehículos del cliente (26/09/2026), debajo de la
@@ -23,7 +23,7 @@ use Livewire\WithFileUploads;
  */
 class GpsVehiculos extends Component
 {
-    use WithFileUploads;
+    use ConSubidaDeArchivos;
 
     #[Locked]
     public int $clientId;

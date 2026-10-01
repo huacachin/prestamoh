@@ -7,11 +7,11 @@ use App\Models\Client;
 use App\Models\Garantia;
 use App\Services\Legal\GeneradorContrato;
 use App\Services\Legal\ValidacionContratoException;
+use App\Support\ConSubidaDeArchivos;
 use App\Support\Legal\BancosVoucher;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
-use Livewire\WithFileUploads;
 
 /**
  * Formulario de EMISIÓN del contrato de garantía mobiliaria (Área Legal — FASE 2).
@@ -28,7 +28,7 @@ use Livewire\WithFileUploads;
  */
 class Form extends Component
 {
-    use WithFileUploads;
+    use ConSubidaDeArchivos;
 
     public int $garantiaId;
 

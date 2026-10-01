@@ -5,15 +5,15 @@ namespace App\Livewire\Cash;
 use App\Livewire\Cash\Concerns\SavesIncomeAttachments;
 use App\Models\Income;
 use App\Models\IncomeAttachment;
+use App\Support\ConSubidaDeArchivos;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\On;
 use Livewire\Component;
-use Livewire\WithFileUploads;
 
 class IncomeGallery extends Component
 {
+    use ConSubidaDeArchivos;
     use SavesIncomeAttachments;
-    use WithFileUploads;
 
     public Income $income;
 

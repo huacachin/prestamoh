@@ -5,13 +5,13 @@ namespace App\Livewire\Cash;
 use App\Livewire\Cash\Concerns\SavesExpenseAttachments;
 use App\Models\Concept;
 use App\Models\Expense;
+use App\Support\ConSubidaDeArchivos;
 use Livewire\Component;
-use Livewire\WithFileUploads;
 
 class CreateExpense extends Component
 {
+    use ConSubidaDeArchivos;
     use SavesExpenseAttachments;
-    use WithFileUploads;
 
     public string $modo = '';        // 'Fijos' | 'Otros' (paso 1)
 

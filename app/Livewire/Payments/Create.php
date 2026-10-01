@@ -11,6 +11,7 @@ use App\Models\Payment;
 use App\Services\Payments\MotorPagos;
 use App\Services\Printing\TicketPrinter;
 use App\Support\Audit;
+use App\Support\ConSubidaDeArchivos;
 use App\Support\MoraExonerada;
 use App\Support\MoraPagada;
 use App\Support\RecibosCuota;
@@ -18,12 +19,11 @@ use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
-use Livewire\WithFileUploads;
 
 class Create extends Component
 {
+    use ConSubidaDeArchivos;
     use SavesExpenseAttachments;
-    use WithFileUploads;
 
     public ?Credit $credit = null;
 

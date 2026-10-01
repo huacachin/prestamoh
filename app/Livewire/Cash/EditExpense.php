@@ -6,16 +6,16 @@ use App\Livewire\Cash\Concerns\SavesExpenseAttachments;
 use App\Models\Concept;
 use App\Models\Expense;
 use App\Support\Audit;
+use App\Support\ConSubidaDeArchivos;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
-use Livewire\WithFileUploads;
 
 class EditExpense extends Component
 {
+    use ConSubidaDeArchivos;
     use SavesExpenseAttachments;
-    use WithFileUploads;
 
     public Expense $expense;
 

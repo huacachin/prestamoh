@@ -5,15 +5,15 @@ namespace App\Livewire\Cash;
 use App\Livewire\Cash\Concerns\SavesExpenseAttachments;
 use App\Models\Expense;
 use App\Models\ExpenseAttachment;
+use App\Support\ConSubidaDeArchivos;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\On;
 use Livewire\Component;
-use Livewire\WithFileUploads;
 
 class ExpenseGallery extends Component
 {
+    use ConSubidaDeArchivos;
     use SavesExpenseAttachments;
-    use WithFileUploads;
 
     public Expense $expense;
 
