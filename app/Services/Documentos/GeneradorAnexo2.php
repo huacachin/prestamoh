@@ -36,14 +36,39 @@ use Illuminate\Support\Facades\Storage;
  */
 class GeneradorAnexo2
 {
+    /**
+     * Vouchers del desembolso (obs. 5.1 del Área Legal, 29/09): hasta dos
+     * operaciones que entre las dos suman el monto. $datos['vouchers'] trae la
+     * lista; sin ella, el voucher único de siempre viaja en las claves de
+     * primer nivel (banco, modalidad, transcripcion, monto, imagen_path).
+     *
+     * @return list<array{banco: string, modalidad: string, transcripcion: string, monto: string, imagen_path: ?string}>
+     */
+    public static function vouchersDe(array $datos): array
+    {
+        $lista = isset($datos['vouchers']) && is_array($datos['vouchers']) && $datos['vouchers'] !== []
+            ? array_values($datos['vouchers'])
+            : [$datos];
+
+        return array_map(fn (array $v) => [
+            'banco' => trim((string) ($v['banco'] ?? '')),
+            'modalidad' => trim((string) ($v['modalidad'] ?? '')),
+            'transcripcion' => trim((string) ($v['transcripcion'] ?? '')),
+            'monto' => trim((string) ($v['monto'] ?? '')),
+            'imagen_path' => filled($v['imagen_path'] ?? null) ? $v['imagen_path'] : null,
+        ], $lista);
+    }
+
     /** Arma el snapshot del Anexo 2 según el contrato de datos. */
     public static function construirSnapshot(Client $client, Credit $credit, array $datos): array
     {
-        $banco = trim((string) ($datos['banco'] ?? ''));
-        $modalidad = trim((string) ($datos['modalidad'] ?? ''));
-        $campos = $datos['campos'] ?? [];
+        $vouchers = self::vouchersDe($datos);
+        // El primero sigue en las claves de siempre: los lectores viejos del
+        // snapshot (y los documentos ya emitidos) no cambian.
+        $banco = $vouchers[0]['banco'];
+        $modalidad = $vouchers[0]['modalidad'];
 
-        return [
+        $snapshot = [
             'marca' => config('documentos.marca'),
             'fecha' => filled($datos['fecha'] ?? null) ? $datos['fecha'] : now()->format('d/m/Y'),
             'cliente' => [
@@ -65,9 +90,26 @@ class GeneradorAnexo2
             // BancosVoucher::transcripcion() y salía un documento distinto al
             // que el área firma. Los snapshots viejos (pares label/valor) se
             // siguen renderizando a su manera en la vista.
-            'transcripcion' => trim((string) ($datos['transcripcion'] ?? '')),
-            'imagen_path' => filled($datos['imagen_path'] ?? null) ? $datos['imagen_path'] : null,
+            'transcripcion' => $vouchers[0]['transcripcion'],
+            'imagen_path' => $vouchers[0]['imagen_path'],
         ];
+
+        // Obs. 5.1: con DOS vouchers va la lista completa; la plantilla pinta
+        // cada uno con su foto y su línea DETALLES, apilados como el maestro
+        // del área. Con uno, el snapshot es exactamente el de siempre.
+        if (count($vouchers) > 1) {
+            $snapshot['vouchers'] = array_map(fn (array $v) => [
+                'banco' => $v['banco'],
+                'modalidad' => $v['modalidad'],
+                'titulo' => BancosVoucher::titulo($v['banco'], $v['modalidad']),
+                'banco_legal' => BancosVoucher::nombreLegal($v['banco']),
+                'transcripcion' => $v['transcripcion'],
+                'imagen_path' => $v['imagen_path'],
+                'monto' => self::parsearMonto($v['monto']),
+            ], $vouchers);
+        }
+
+        return $snapshot;
     }
 
     /**
@@ -79,40 +121,59 @@ class GeneradorAnexo2
      */
     public static function validar(Client $client, Credit $credit, array $datos = []): array
     {
-        $banco = trim((string) ($datos['banco'] ?? ''));
-        $modalidad = trim((string) ($datos['modalidad'] ?? ''));
+        $vouchers = self::vouchersDe($datos);
+        $dos = count($vouchers) > 1;
 
-        if (! BancosVoucher::esComboValido($banco, $modalidad)) {
-            return ["La combinación banco/modalidad '{$banco}/{$modalidad}' no está en el catálogo de vouchers."];
+        foreach ($vouchers as $v) {
+            if (! BancosVoucher::esComboValido($v['banco'], $v['modalidad'])) {
+                return ["La combinación banco/modalidad '{$v['banco']}/{$v['modalidad']}' no está en el catálogo de vouchers."];
+            }
         }
 
         $errores = [];
+        $suma = 0.0;
+        $montosOk = true;
 
-        if (trim((string) ($datos['transcripcion'] ?? '')) === '') {
-            $errores[] = 'Falta la transcripción del voucher: es el cuerpo de la constancia.';
+        foreach ($vouchers as $k => $v) {
+            $cual = $dos ? ' '.($k + 1) : '';
+
+            if ($v['transcripcion'] === '') {
+                $errores[] = "Falta la transcripción del voucher{$cual}: es el cuerpo de la constancia.";
+            }
+
+            // ─── Cuadre del monto: la constancia debe reproducir el desembolso ───
+            // Se compara el monto declarado del voucher (o la SUMA de los dos,
+            // obs. 5.1) contra credit->importe. En BBVA hay que escribir el
+            // IMPORTE ABONADO, no el PAGADO (que suma el ITF): el ITF no es
+            // parte del desembolso que recibió el deudor.
+            if ($v['monto'] === '') {
+                $errores[] = "Falta el monto del voucher{$cual}: es lo que cuadra la constancia contra el crédito.";
+                $montosOk = false;
+            } else {
+                $monto = self::parsearMonto($v['monto']);
+                if ($monto === null) {
+                    $errores[] = "El monto del voucher{$cual} ('{$v['monto']}') no se puede interpretar como un número.";
+                    $montosOk = false;
+                } else {
+                    $suma += $monto;
+                }
+            }
         }
 
-        // ─── Cuadre del monto: la constancia debe reproducir el desembolso ───
-        // Se compara el monto declarado del voucher contra credit->importe. En
-        // BBVA hay que escribir el IMPORTE ABONADO, no el PAGADO (que suma el
-        // ITF): el ITF no es parte del desembolso que recibió el deudor.
-        $montoTexto = trim((string) ($datos['monto'] ?? ''));
-        if ($montoTexto === '') {
-            $errores[] = 'Falta el monto del voucher: es lo que cuadra la constancia contra el crédito.';
-        } else {
-            $montoVoucher = self::parsearMonto($montoTexto);
-
-            if ($montoVoucher === null) {
-                $errores[] = "El monto del voucher ('{$montoTexto}') no se puede interpretar como un número.";
-            } else {
-                $montoCredito = round((float) $credit->importe, 2);
-                if (abs($montoVoucher - $montoCredito) > 0.01) {
-                    $errores[] = sprintf(
+        if ($montosOk) {
+            $montoCredito = round((float) $credit->importe, 2);
+            if (abs($suma - $montoCredito) > 0.01) {
+                $errores[] = $dos
+                    ? sprintf(
+                        'La suma de los dos vouchers (S/ %s) no coincide con el monto del crédito (S/ %s) — entre los dos deben reproducir el desembolso exacto.',
+                        number_format($suma, 2),
+                        number_format($montoCredito, 2)
+                    )
+                    : sprintf(
                         'El monto del voucher (S/ %s) no coincide con el monto del crédito (S/ %s) — la constancia debe reproducir el desembolso exacto.',
-                        number_format($montoVoucher, 2),
+                        number_format($suma, 2),
                         number_format($montoCredito, 2)
                     );
-                }
             }
         }
 

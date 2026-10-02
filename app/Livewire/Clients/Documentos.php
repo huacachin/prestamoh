@@ -226,6 +226,29 @@ class Documentos extends Component
     /** Foto del comprobante bancario (upload temporal de Livewire, opcional). */
     public $comprobante = null;
 
+    /**
+     * Obs. 5.1 del Área Legal (29/09): el desembolso pudo salir en DOS
+     * operaciones (p. ej. BCP + Compartamos). El segundo voucher tiene sus
+     * propios campos —misma lectura automática— y entre los dos montos deben
+     * sumar el importe del crédito. El contrato no cambia: sigue citando el
+     * banco del desembolso elegido al emitirlo.
+     */
+    public bool $anexo2DosVouchers = false;
+
+    public string $anexo2Banco2 = '';
+
+    public string $anexo2Modalidad2 = '';
+
+    public string $anexo2Transcripcion2 = '';
+
+    public string $anexo2Monto2 = '';
+
+    public string $anexo2Dudas2 = '';
+
+    public string $anexo2Beneficiario2 = '';
+
+    public $comprobante2 = null;
+
     public string $htmlPreviewAnexo2 = '';
 
     protected function rules(): array
@@ -649,7 +672,8 @@ class Documentos extends Component
         }
 
         // Ídem para el Anexo 2 (el comprobante no invalida: la previa nunca lo incluye)
-        $propsAnexo2 = ['anexo2CreditoId', 'anexo2Banco', 'anexo2Modalidad', 'anexo2Transcripcion', 'anexo2Monto', 'fechaAnexo2'];
+        $propsAnexo2 = ['anexo2CreditoId', 'anexo2Banco', 'anexo2Modalidad', 'anexo2Transcripcion', 'anexo2Monto', 'fechaAnexo2',
+            'anexo2DosVouchers', 'anexo2Banco2', 'anexo2Modalidad2', 'anexo2Transcripcion2', 'anexo2Monto2'];
         if (in_array($raiz, $propsAnexo2, true)) {
             $this->htmlPreviewAnexo2 = '';
         }
@@ -948,10 +972,62 @@ class Documentos extends Component
         $this->anexo2Beneficiario = '';
         $this->fechaAnexo2 = now()->format('Y-m-d');
         $this->comprobante = null;
+        $this->anexo2DosVouchers = false;
+        $this->limpiarSegundoVoucherAnexo2();
         $this->htmlPreviewAnexo2 = '';
         $this->resetErrorBag();
 
         $this->dispatch('anexo2-modal-open');
+    }
+
+    /** Obs. 5.1: abre el bloque del segundo voucher (dos operaciones). */
+    public function agregarSegundoVoucherAnexo2(): void
+    {
+        $this->anexo2DosVouchers = true;
+        $this->htmlPreviewAnexo2 = '';
+    }
+
+    /** Cierra el bloque del segundo voucher y descarta lo que tuviera. */
+    public function quitarSegundoVoucherAnexo2(): void
+    {
+        $this->anexo2DosVouchers = false;
+        $this->limpiarSegundoVoucherAnexo2();
+        $this->htmlPreviewAnexo2 = '';
+        $this->resetErrorBag();
+    }
+
+    private function limpiarSegundoVoucherAnexo2(): void
+    {
+        $this->anexo2Banco2 = '';
+        $this->anexo2Modalidad2 = '';
+        $this->anexo2Transcripcion2 = '';
+        $this->anexo2Monto2 = '';
+        $this->anexo2Dudas2 = '';
+        $this->anexo2Beneficiario2 = '';
+        $this->comprobante2 = null;
+    }
+
+    /** Segundo voucher: misma validación y misma lectura automática que el primero. */
+    public function updatedComprobante2(): void
+    {
+        try {
+            $this->validateOnly('comprobante2', $this->reglasAnexo2(), $this->mensajesAnexo2());
+        } catch (ValidationException $e) {
+            $this->comprobante2 = null;
+
+            throw $e;
+        }
+
+        if (! $this->comprobante2 || ! config('services.anthropic.habilitado')) {
+            return;
+        }
+
+        try {
+            $this->leerVoucher(2);
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('errorAlert', ['message' => 'La foto se subió, pero no se pudo leer automáticamente. Transcríbela a mano.']);
+        }
     }
 
     /**
@@ -1031,24 +1107,31 @@ class Documentos extends Component
         [$client, $credit] = $seleccion;
 
         $path = null;
+        $path2 = null;
 
         try {
             if ($this->comprobante) {
                 $path = $this->comprobante->store("documentos/cliente-{$this->clientId}", 'public');
             }
+            if ($this->anexo2DosVouchers && $this->comprobante2) {
+                $path2 = $this->comprobante2->store("documentos/cliente-{$this->clientId}", 'public');
+            }
 
             // El Audit del Anexo 2 lo registra el propio servicio (patrón del generador).
-            $doc = GeneradorAnexo2::generar($client, $credit, $this->datosAnexo2($path));
+            $doc = GeneradorAnexo2::generar($client, $credit, $this->datosAnexo2($path, $path2));
 
             $this->comprobante = null;
+            $this->comprobante2 = null;
             $this->htmlPreviewAnexo2 = '';
             $this->dispatch('anexo2-modal-close');
             $this->dispatch('successAlert', ['message' => "Anexo 2 v{$doc->version} generado."]);
         } catch (InvalidArgumentException $e) {
             $this->limpiarComprobanteFallido($path);
+            $this->limpiarComprobanteFallido($path2);
             $this->dispatch('errorAlert', ['message' => $e->getMessage()]);
         } catch (\Throwable $e) {
             $this->limpiarComprobanteFallido($path);
+            $this->limpiarComprobanteFallido($path2);
             report($e);
             $this->dispatch('errorAlert', ['message' => 'No se pudo generar el documento: '.$e->getMessage()]);
         }
@@ -1076,18 +1159,38 @@ class Documentos extends Component
             return null;
         }
 
+        if ($this->anexo2DosVouchers && ! BancosVoucher::esComboValido($this->anexo2Banco2, $this->anexo2Modalidad2)) {
+            $this->dispatch('errorAlert', ['message' => 'La lectura no identificó el banco y la modalidad del voucher 2: sube una foto más nítida o léelo de nuevo.']);
+
+            return null;
+        }
+
         return [$client, $credit];
     }
 
     /** $datos con el contrato de claves que espera GeneradorAnexo2. */
-    private function datosAnexo2(?string $imagenPath): array
+    private function datosAnexo2(?string $imagenPath, ?string $imagenPath2 = null): array
     {
-        return [
+        $vouchers = [[
             'banco' => $this->anexo2Banco,
             'modalidad' => $this->anexo2Modalidad,
             'transcripcion' => trim($this->anexo2Transcripcion),
             'monto' => trim($this->anexo2Monto),
             'imagen_path' => $imagenPath,
+        ]];
+        if ($this->anexo2DosVouchers) {
+            $vouchers[] = [
+                'banco' => $this->anexo2Banco2,
+                'modalidad' => $this->anexo2Modalidad2,
+                'transcripcion' => trim($this->anexo2Transcripcion2),
+                'monto' => trim($this->anexo2Monto2),
+                'imagen_path' => $imagenPath2,
+            ];
+        }
+
+        // El primero también en primer nivel (contrato de claves de siempre).
+        return $vouchers[0] + [
+            'vouchers' => $vouchers,
             'fecha' => Carbon::parse($this->fechaAnexo2)->format('d/m/Y'),
         ];
     }
@@ -1098,15 +1201,19 @@ class Documentos extends Component
      * y esto va a un documento que se firma. Si falla, se transcribe a mano
      * como siempre — la pantalla sigue sirviendo sin la API.
      */
-    public function leerVoucher(): void
+    public function leerVoucher(int $n = 1): void
     {
+        // $n = 2 lee el segundo voucher (obs. 5.1): mismos pasos, campos con sufijo "2".
+        $s = $n === 2 ? '2' : '';
+        $archivo = $n === 2 ? $this->comprobante2 : $this->comprobante;
+
         if (! config('services.anthropic.habilitado')) {
             $this->dispatch('errorAlert', ['message' => 'La lectura automática no está configurada.']);
 
             return;
         }
 
-        if (! $this->comprobante) {
+        if (! $archivo) {
             $this->dispatch('errorAlert', ['message' => 'Sube primero la foto del voucher.']);
 
             return;
@@ -1116,7 +1223,7 @@ class Documentos extends Component
         // selectores se quitaron); no viaja pista alguna, así "Leer de nuevo"
         // siempre puede corregir una identificación anterior.
         try {
-            $leido = app(LectorDeVoucher::class)->leer((string) $this->comprobante->getRealPath(), '', '');
+            $leido = app(LectorDeVoucher::class)->leer((string) $archivo->getRealPath(), '', '');
         } catch (VoucherIlegible $e) {
             $this->dispatch('errorAlert', ['message' => $e->getMessage().' Transcríbelo a mano.']);
 
@@ -1130,27 +1237,29 @@ class Documentos extends Component
         // Con "DETALLES:" delante (15/09, pedido del área): así lo que se ve en
         // el formulario es literalmente lo que sale impreso. La plantilla no lo
         // duplica — si ya viene, lo quita antes de poner el suyo en negrita.
-        $this->anexo2Transcripcion = 'DETALLES: '.mb_strtoupper($leido['transcripcion']);
-        $this->anexo2Dudas = $leido['dudas'];
-        $this->anexo2Beneficiario = trim((string) ($leido['beneficiario'] ?? ''));
+        $this->{'anexo2Transcripcion'.$s} = 'DETALLES: '.mb_strtoupper($leido['transcripcion']);
+        $this->{'anexo2Dudas'.$s} = $leido['dudas'];
+        $this->{'anexo2Beneficiario'.$s} = trim((string) ($leido['beneficiario'] ?? ''));
         if ($leido['monto'] !== '') {
-            $this->anexo2Monto = $leido['monto'];
+            $this->{'anexo2Monto'.$s} = $leido['monto'];
         }
 
         $bancoLeido = (string) ($leido['banco'] ?? '');
         $modalidadLeida = (string) ($leido['modalidad'] ?? '');
         // Lo que identificó la lectura manda (el banco aunque la modalidad
         // no); si no identificó nada, queda vacío y el aviso pide otra foto.
-        $this->anexo2Banco = array_key_exists($bancoLeido, BancosVoucher::BANCOS) ? $bancoLeido : '';
-        $this->anexo2Modalidad = BancosVoucher::esComboValido($bancoLeido, $modalidadLeida) ? $modalidadLeida : '';
-        $formatoOk = BancosVoucher::esComboValido($this->anexo2Banco, $this->anexo2Modalidad);
+        $banco = array_key_exists($bancoLeido, BancosVoucher::BANCOS) ? $bancoLeido : '';
+        $modalidad = BancosVoucher::esComboValido($bancoLeido, $modalidadLeida) ? $modalidadLeida : '';
+        $this->{'anexo2Banco'.$s} = $banco;
+        $this->{'anexo2Modalidad'.$s} = $modalidad;
+        $formatoOk = BancosVoucher::esComboValido($banco, $modalidad);
 
-        Audit::log("Leyó el voucher del Anexo 2 con {$leido['modelo']} (crédito #{$this->anexo2CreditoId})"
-            .($formatoOk ? ': '.BancosVoucher::titulo($this->anexo2Banco, $this->anexo2Modalidad) : ': formato no identificado'));
+        Audit::log('Leyó el voucher'.($n === 2 ? ' 2' : '')." del Anexo 2 con {$leido['modelo']} (crédito #{$this->anexo2CreditoId})"
+            .($formatoOk ? ': '.BancosVoucher::titulo($banco, $modalidad) : ': formato no identificado'));
 
-        $formato = $formatoOk ? BancosVoucher::titulo($this->anexo2Banco, $this->anexo2Modalidad) : null;
+        $formato = $formatoOk ? BancosVoucher::titulo($banco, $modalidad) : null;
         $this->dispatch('successAlert', ['message' => match (true) {
-            $formato === null && $this->anexo2Banco !== '' => 'Voucher leído: reconocí el banco pero no la modalidad. Sube una foto más nítida o léelo de nuevo.',
+            $formato === null && $banco !== '' => 'Voucher leído: reconocí el banco pero no la modalidad. Sube una foto más nítida o léelo de nuevo.',
             $formato === null => 'Voucher leído, pero no reconocí el banco y la modalidad: sube una foto más nítida o léelo de nuevo.',
             $leido['dudas'] !== '' => "Voucher leído ({$formato}), con dudas señaladas. Revísalas antes de generar.",
             default => "Voucher leído ({$formato}). Revísalo antes de generar.",
@@ -1206,14 +1315,25 @@ class Documentos extends Component
         // (GeneradorAnexo2::validar): así el aviso en pantalla y el bloqueo
         // real nunca se contradicen ("12.000,00" y "12,000.00" valen igual).
         $importe = $this->importeCreditoAnexo2();
-        $montoTexto = trim($this->anexo2Monto);
+        // Obs. 5.1: con dos vouchers lo que cuadra es la SUMA de los dos montos.
+        $textos = [trim($this->anexo2Monto)];
+        if ($this->anexo2DosVouchers) {
+            $textos[] = trim($this->anexo2Monto2);
+        }
         $montoOk = null;
-        if ($importe !== null && $montoTexto !== '') {
-            $monto = GeneradorAnexo2::parsearMonto($montoTexto);
-            $montoOk = $monto !== null && abs($monto - $importe) <= 0.01;
+        $suma = null;
+        if ($importe !== null && ! in_array('', $textos, true)) {
+            $montos = array_map(fn ($t) => GeneradorAnexo2::parsearMonto($t), $textos);
+            if (! in_array(null, $montos, true)) {
+                $suma = round(array_sum($montos), 2);
+                $montoOk = abs($suma - $importe) <= 0.01;
+            } else {
+                $montoOk = false;
+            }
         }
 
-        return ['monto' => $montoOk, 'beneficiario' => $this->beneficiarioCuadra($client)];
+        return ['monto' => $montoOk, 'beneficiario' => $this->beneficiarioCuadra($client)]
+            + ($this->anexo2DosVouchers ? ['suma' => $suma] : []);
     }
 
     /**
@@ -1291,6 +1411,12 @@ class Documentos extends Component
             'anexo2Monto' => ['required', 'string'],
             'fechaAnexo2' => ['required', 'date', 'before_or_equal:today'],
             'comprobante' => ['nullable', 'image', 'max:4096'],
+            // Obs. 5.1: el segundo voucher solo cuenta si está abierto.
+            'anexo2Banco2' => [Rule::requiredIf($this->anexo2DosVouchers), 'nullable', Rule::in(array_keys(BancosVoucher::BANCOS))],
+            'anexo2Modalidad2' => [Rule::requiredIf($this->anexo2DosVouchers), 'nullable', Rule::in(array_keys(BancosVoucher::MODALIDADES))],
+            'anexo2Transcripcion2' => [Rule::requiredIf($this->anexo2DosVouchers), 'nullable', 'string', 'min:20'],
+            'anexo2Monto2' => [Rule::requiredIf($this->anexo2DosVouchers), 'nullable', 'string'],
+            'comprobante2' => ['nullable', 'image', 'max:4096'],
         ];
     }
 
@@ -1310,6 +1436,15 @@ class Documentos extends Component
             'fechaAnexo2.before_or_equal' => 'La fecha del documento no puede ser futura.',
             'comprobante.image' => 'El comprobante debe ser una imagen (JPG, PNG, WEBP…).',
             'comprobante.max' => 'La imagen del comprobante debe pesar máximo 4 MB.',
+            'anexo2Banco2.required' => 'La lectura no identificó el banco del voucher 2.',
+            'anexo2Banco2.in' => 'Banco del voucher 2 no válido.',
+            'anexo2Modalidad2.required' => 'La lectura no identificó la modalidad del voucher 2.',
+            'anexo2Modalidad2.in' => 'Modalidad del voucher 2 no válida.',
+            'anexo2Transcripcion2.required' => 'Transcribe el voucher 2: también va en la constancia.',
+            'anexo2Transcripcion2.min' => 'La transcripción del voucher 2 parece incompleta.',
+            'anexo2Monto2.required' => 'Indica el monto del voucher 2.',
+            'comprobante2.image' => 'El comprobante 2 debe ser una imagen (JPG, PNG, WEBP…).',
+            'comprobante2.max' => 'La imagen del comprobante 2 debe pesar máximo 4 MB.',
         ];
     }
 
@@ -2037,6 +2172,7 @@ class Documentos extends Component
         $camposAnexo2 = BancosVoucher::esComboValido($this->anexo2Banco, $this->anexo2Modalidad)
             ? BancosVoucher::campos($this->anexo2Banco, $this->anexo2Modalidad)
             : [];
+        $formato2Ok = $this->anexo2DosVouchers && BancosVoucher::esComboValido($this->anexo2Banco2, $this->anexo2Modalidad2);
 
         return view('livewire.clients.documentos', [
             'client' => $client,
@@ -2062,6 +2198,7 @@ class Documentos extends Component
             'tituloVoucherAnexo2' => $camposAnexo2 !== []
                 ? BancosVoucher::titulo($this->anexo2Banco, $this->anexo2Modalidad)
                 : '',
+            'tituloVoucherAnexo2b' => $formato2Ok ? BancosVoucher::titulo($this->anexo2Banco2, $this->anexo2Modalidad2) : '',
             'montoDesembolsoAnexo2' => $this->importeCreditoAnexo2(),
             // 18/09: cotejos automáticos del voucher leído (monto vs desembolso,
             // beneficiario vs cliente), a la vista ANTES de generar.

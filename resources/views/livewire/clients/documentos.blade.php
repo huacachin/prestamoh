@@ -1003,11 +1003,12 @@
              modal: null,
              abierto: false,
              aviso: '',
-             subir(archivo) {
+             // ref: 'archivoVoucher' (primero) o 'archivoVoucher2' (segundo, obs. 5.1).
+             subir(archivo, ref = 'archivoVoucher') {
                  // Sin créditos activos el modal no tiene formulario (ni
                  // input): pegar ahí no debe hacer nada, y menos pagar una
                  // lectura que no se va a usar.
-                 if (! archivo || ! this.$refs.archivoVoucher) { return; }
+                 if (! archivo || ! this.$refs[ref]) { return; }
                  if (! (archivo.type || '').startsWith('image/')) {
                      this.aviso = 'Eso no es una imagen: pega o arrastra la foto del voucher (JPG o PNG).';
                      return;
@@ -1020,9 +1021,17 @@
                  // pantalla se quedaba muda los segundos que tarda la lectura.
                  const dt = new DataTransfer();
                  dt.items.add(archivo);
-                 const input = this.$refs.archivoVoucher;
+                 const input = this.$refs[ref];
                  input.files = dt.files;
                  input.dispatchEvent(new Event('change', { bubbles: true }));
+             },
+             // Al pegar: la primera zona que aún no tenga foto; si las dos la
+             // tienen, la última visible (se reemplaza).
+             destinoPegado() {
+                 for (const ref of ['archivoVoucher', 'archivoVoucher2']) {
+                     if (this.$refs[ref] && ! this.$root.querySelector('[data-preview="' + ref + '"]')) { return ref; }
+                 }
+                 return this.$refs.archivoVoucher2 ? 'archivoVoucher2' : 'archivoVoucher';
              },
              pegar(evento) {
                  if (! this.abierto) { return; }
@@ -1035,7 +1044,7 @@
                  const enTexto = ['INPUT', 'TEXTAREA'].includes((document.activeElement || {}).tagName);
                  if (enTexto && (datos.getData ? datos.getData('text/plain') : '')) { return; }
                  evento.preventDefault();
-                 this.subir(item.getAsFile());
+                 this.subir(item.getAsFile(), this.destinoPegado());
              },
          }"
          x-init="modal = bootstrap.Modal.getOrCreateInstance($el);
@@ -1118,14 +1127,19 @@
                                     <input type="text" class="form-control form-control-sm"
                                            wire:model.blur="anexo2Monto" placeholder="10,000.00">
                                     @if($montoDesembolsoAnexo2 !== null)
-                                        {{-- 18/09: el cotejo con el desembolso se ve ANTES de generar. --}}
+                                        {{-- 18/09: el cotejo con el desembolso se ve ANTES de generar.
+                                             Con dos vouchers (obs. 5.1) lo que cuadra es la SUMA de los dos. --}}
+                                        @php
+                                            $sumaTxt = $anexo2DosVouchers && ($chequeosAnexo2['suma'] ?? null) !== null
+                                                ? ' (suma de los dos vouchers: S/ '.number_format($chequeosAnexo2['suma'], 2).')' : '';
+                                        @endphp
                                         <div class="form-text" style="font-size:10px;">
                                             @if(($chequeosAnexo2['monto'] ?? null) === true)
-                                                <span class="text-success"><i class="ti ti-check"></i> Coincide con el desembolso: S/ {{ number_format($montoDesembolsoAnexo2, 2) }}</span>
+                                                <span class="text-success"><i class="ti ti-check"></i> Coincide con el desembolso: S/ {{ number_format($montoDesembolsoAnexo2, 2) }}{{ $sumaTxt }}</span>
                                             @elseif(($chequeosAnexo2['monto'] ?? null) === false)
-                                                <span class="text-danger"><i class="ti ti-alert-triangle"></i> No coincide con el desembolso: S/ {{ number_format($montoDesembolsoAnexo2, 2) }}</span>
+                                                <span class="text-danger"><i class="ti ti-alert-triangle"></i> No coincide con el desembolso: S/ {{ number_format($montoDesembolsoAnexo2, 2) }}{{ $sumaTxt }}</span>
                                             @else
-                                                Debe coincidir con el desembolso: S/ {{ number_format($montoDesembolsoAnexo2, 2) }}
+                                                {{ $anexo2DosVouchers ? 'La suma de los dos vouchers debe coincidir' : 'Debe coincidir' }} con el desembolso: S/ {{ number_format($montoDesembolsoAnexo2, 2) }}
                                             @endif
                                         </div>
                                     @endif
@@ -1219,13 +1233,94 @@
                                 </div>
                                 @if($comprobante && ! $errors->has('comprobante'))
                                     <div class="col-md-6 text-center">
-                                        <img src="{{ $comprobante->temporaryUrl() }}" alt="Comprobante subido"
+                                        <img src="{{ $comprobante->temporaryUrl() }}" alt="Comprobante subido" data-preview="archivoVoucher"
                                              class="border rounded" style="max-height:160px; max-width:100%;">
                                         <div class="form-text" style="font-size:10px;">Se embeberá al generar (la vista previa no la incluye).</div>
                                     </div>
                                 @endif
                             </div>
                         </div>
+
+                        {{-- ── Obs. 5.1 (Área Legal, 29/09): segundo voucher cuando el desembolso
+                             salió en dos operaciones; entre los dos deben sumar el importe. ── --}}
+                        @if(! $anexo2DosVouchers)
+                            <button type="button" class="btn btn-sm btn-outline-success mt-3" wire:click="agregarSegundoVoucherAnexo2">
+                                <i class="ti ti-plus"></i> Agregar segundo voucher (desembolso en dos operaciones)
+                            </button>
+                        @else
+                            <div class="mt-3 border rounded p-2" style="background:#fcfcfa;" wire:key="anexo2-voucher-2">
+                                <div class="d-flex justify-content-between align-items-center border-bottom pb-1 mb-2">
+                                    <span class="fw-bold small text-uppercase">Voucher 2</span>
+                                    <button type="button" class="btn btn-xs btn-outline-danger py-0 px-1"
+                                            wire:click="quitarSegundoVoucherAnexo2" title="Quitar el segundo voucher">
+                                        <i class="ti ti-x"></i> Quitar
+                                    </button>
+                                </div>
+                                <div class="small mb-2" wire:key="anexo2-formato2-{{ $anexo2Banco2 }}-{{ $anexo2Modalidad2 }}">
+                                    @if($tituloVoucherAnexo2b !== '')
+                                        <span class="text-muted">Formato del voucher 2:</span>
+                                        <span class="badge bg-light text-dark border">{{ $tituloVoucherAnexo2b }}</span>
+                                    @elseif($anexo2Transcripcion2 !== '' || $comprobante2)
+                                        <div class="alert alert-warning py-1 px-2 mb-0" style="color:#000;">
+                                            <i class="ti ti-alert-triangle"></i> No reconocí el banco ni la modalidad del voucher 2: sube una foto más nítida o léelo de nuevo.
+                                        </div>
+                                    @endif
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-md-4">
+                                        <label class="form-label small mb-1">Monto del voucher 2 *</label>
+                                        <input type="text" class="form-control form-control-sm" wire:model.blur="anexo2Monto2" placeholder="5,000.00">
+                                        @error('anexo2Monto2') <span class="title-modules small">{{ $message }}</span> @enderror
+                                    </div>
+                                    <div class="col-md-8">
+                                        <label class="form-label small mb-1">Transcripción del voucher 2 *</label>
+                                        <textarea class="form-control form-control-sm" rows="4" wire:model.blur="anexo2Transcripcion2"
+                                                  placeholder="Copia lo que dice el segundo voucher, en su orden, separando cada dato con punto y coma."></textarea>
+                                        @error('anexo2Transcripcion2') <span class="title-modules small">{{ $message }}</span> @enderror
+                                        @if($anexo2Dudas2 !== '')
+                                            <div class="alert alert-warning py-1 px-2 mt-2 mb-0 small" style="color:#000;">
+                                                <i class="ti ti-alert-triangle"></i> <strong>Revisa estos datos:</strong> {{ $anexo2Dudas2 }}
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-start mt-1">
+                                    <div class="col-md-6">
+                                        <div class="border border-success rounded p-3 text-center small @error('comprobante2') border-danger @enderror"
+                                             style="border-style: dashed !important; cursor: pointer; border-width: 2px !important; background: #e6f7ea;"
+                                             x-on:click="$refs.archivoVoucher2.click()"
+                                             x-on:dragover.prevent="$el.style.background = '#c8ecd2'"
+                                             x-on:dragleave.prevent="$el.style.background = '#e6f7ea'"
+                                             x-on:drop.prevent="$el.style.background = '#e6f7ea'; subir(($event.dataTransfer.files || [])[0], 'archivoVoucher2')">
+                                            <input type="file" accept="image/*" class="d-none" x-ref="archivoVoucher2"
+                                                   x-on:click.stop wire:model="comprobante2">
+                                            <div wire:loading.remove wire:target="comprobante2,leerVoucher">
+                                                <i class="ti ti-clipboard-plus"></i>
+                                                <b>Pega la imagen (Ctrl+V)</b>, arrástrala aquí o haz clic para elegirla.
+                                                <div class="text-muted" style="font-size:10px;">Foto del segundo voucher. Máx. 4 MB.</div>
+                                            </div>
+                                            <div wire:loading wire:target="comprobante2,leerVoucher" class="text-muted">
+                                                <i class="ti ti-loader"></i> Subiendo y leyendo el voucher 2…
+                                            </div>
+                                        </div>
+                                        @error('comprobante2') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                                        @if(config('services.anthropic.habilitado') && $comprobante2)
+                                            <button type="button" class="btn btn-sm btn-outline-dark mt-2" wire:click="leerVoucher(2)"
+                                                    wire:loading.attr="disabled" wire:target="leerVoucher,comprobante2">
+                                                <span wire:loading.remove wire:target="leerVoucher"><i class="ti ti-scan"></i> Leer de nuevo</span>
+                                                <span wire:loading wire:target="leerVoucher"><i class="ti ti-loader"></i> Leyendo…</span>
+                                            </button>
+                                        @endif
+                                    </div>
+                                    @if($comprobante2 && ! $errors->has('comprobante2'))
+                                        <div class="col-md-6 text-center">
+                                            <img src="{{ $comprobante2->temporaryUrl() }}" alt="Comprobante 2 subido" data-preview="archivoVoucher2"
+                                                 class="border rounded" style="max-height:160px; max-width:100%;">
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        @endif
 
                         {{-- Vista previa (render 'previa' del snapshot; la foto sale como recuadro placeholder) --}}
                         @if($htmlPreviewAnexo2 !== '')
@@ -1244,7 +1339,7 @@
                     <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="button" class="btn btn-sm btn-outline-dark"
                             wire:click="previsualizarAnexo2" wire:loading.attr="disabled"
-                            wire:target="previsualizarAnexo2,generarAnexo2,comprobante"
+                            wire:target="previsualizarAnexo2,generarAnexo2,comprobante,comprobante2"
                             @disabled($creditosActivos->isEmpty())>
                         <i class="ti ti-eye"></i>
                         <span wire:loading.remove wire:target="previsualizarAnexo2">Vista previa</span>
@@ -1252,7 +1347,7 @@
                     </button>
                     <button type="button" class="btn btn-sm btn-info"
                             wire:click="generarAnexo2" wire:loading.attr="disabled"
-                            wire:target="previsualizarAnexo2,generarAnexo2,comprobante"
+                            wire:target="previsualizarAnexo2,generarAnexo2,comprobante,comprobante2"
                             @disabled($creditosActivos->isEmpty())>
                         <i class="ti ti-file-check"></i>
                         <span wire:loading.remove wire:target="generarAnexo2">Generar</span>

@@ -22,28 +22,38 @@
     <div class="anexo-titulo">ANEXO 2</div>
     <div class="anexo-subtitulo">CONSTANCIA DE ENTREGA DEL MONTO DE LA OBLIGACIÓN PRINCIPAL</div>
 
+    {{-- Obs. 5.1 (Área Legal, 29/09): hasta DOS vouchers apilados, cada uno con
+         su foto y su línea DETALLES, como el maestro de dos operaciones. Los
+         snapshots viejos no traen 'vouchers': se tratan como uno solo. Con dos,
+         las fotos van más chicas para que quepan en la hoja. --}}
+    @php
+        $vouchers = (isset($d['vouchers']) && is_array($d['vouchers']) && $d['vouchers'] !== []) ? array_values($d['vouchers']) : [$d];
+        $cajaAlto = count($vouchers) > 1 ? 300 : 420;
+    @endphp
+    @foreach ($vouchers as $v)
     {{-- La imagen va ARRIBA, como en el maestro: el voucher es el documento y
          la transcripción lo acompaña. --}}
-    @if (filled($d['imagen_path'] ?? null))
+    @if (filled($v['imagen_path'] ?? null))
         @php
             $src = match ($medio) {
-                'pdf' => \Illuminate\Support\Facades\Storage::disk('public')->path($d['imagen_path']),
-                'word' => url('/storage/'.$d['imagen_path']),
-                default => '/storage/'.$d['imagen_path'], // previa (iframe srcdoc)
+                'pdf' => \Illuminate\Support\Facades\Storage::disk('public')->path($v['imagen_path']),
+                'word' => url('/storage/'.$v['imagen_path']),
+                default => '/storage/'.$v['imagen_path'], // previa (iframe srcdoc)
             };
 
             // Word (16/09): NO soporta max-width ni max-height, así que pintaba
             // el voucher a su tamaño natural — una foto de celular ocupaba tres
             // hojas y salía cortada por la derecha. Las medidas ya escaladas se
             // calculan aquí y se emiten como ATRIBUTOS del <img>, que es lo
-            // único que Word respeta. Misma caja que el PDF: 320 x 420 px.
+            // único que Word respeta. Misma caja que el PDF: 320 x 420 px
+            // (320 x 300 cuando son dos vouchers).
             $anchoWord = 320;
             $altoWord = null;
             if ($medio === 'word') {
-                $ruta = \Illuminate\Support\Facades\Storage::disk('public')->path($d['imagen_path']);
+                $ruta = \Illuminate\Support\Facades\Storage::disk('public')->path($v['imagen_path']);
                 $tam = is_file($ruta) ? @getimagesize($ruta) : false;
                 if ($tam && $tam[0] > 0 && $tam[1] > 0) {
-                    $escala = min(320 / $tam[0], 420 / $tam[1], 1);
+                    $escala = min(320 / $tam[0], $cajaAlto / $tam[1], 1);
                     $anchoWord = (int) round($tam[0] * $escala);
                     $altoWord = (int) round($tam[1] * $escala);
                 }
@@ -57,6 +67,8 @@
                     width="{{ $anchoWord }}"
                     @if ($altoWord) height="{{ $altoWord }}" @endif
                     style="width: {{ $anchoWord }}px;@if ($altoWord) height: {{ $altoWord }}px;@endif"
+                @elseif (count($vouchers) > 1)
+                    style="max-height: {{ $cajaAlto }}px;"
                 @endif
             >
         </div>
@@ -70,7 +82,7 @@
         // La transcripción es LITERAL (texto del voucher, tal como se ve).
         // Los snapshots viejos la traían como pares label/valor: se siguen
         // renderizando a su manera para que un documento ya emitido no cambie.
-        $t = $d['transcripcion'] ?? '';
+        $t = $v['transcripcion'] ?? '';
         $detalles = is_array($t)
             ? collect($t)->map(fn (array $c) => $c['label'].': '.$c['valor'])->implode('; ')
             : trim((string) $t);
@@ -86,6 +98,10 @@
     @if ($detalles !== '')
         <p class="detalles"><strong>DETALLES:</strong> {{ $detalles }}.</p>
     @endif
+    @if (! $loop->last)
+        <div style="height: 14pt;"></div>
+    @endif
+    @endforeach
 
 </body>
 </html>
