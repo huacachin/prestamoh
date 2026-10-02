@@ -87,7 +87,7 @@
                 </div>
             @else
                 <div class="table-responsive">
-                    <table class="table table-sm table-bordered table-striped table-hover align-middle" style="font-size:11px;">
+                    <table class="table table-sm table-bordered table-hover align-middle" style="font-size:11px;">
                         <thead class="bg-primary">
                             <tr>
                                 <th class="text-center">N°</th>
@@ -102,9 +102,16 @@
                             </tr>
                         </thead>
                         <tbody>
+                        {{-- N° por CRÉDITO (02/10): contrato, anexo 1 y anexo 2 de un mismo crédito
+                             comparten número, asignado por orden de aparición (la lista va por id
+                             descendente y los documentos de un crédito pueden intercalarse). El
+                             zebra alterna por crédito, no por fila, para que el grupo se lea junto. --}}
+                        @php $numPorCredito = []; @endphp
                         @foreach($documentos as $doc)
                             @php
                                 $anulado = $doc->estado === 'anulado';
+                                $numPorCredito[$doc->credit_id] ??= count($numPorCredito) + 1;
+                                $numCredito = $numPorCredito[$doc->credit_id];
                                 $badgeTipo = match ($doc->tipo) {
                                     'anexo1' => 'bg-primary',
                                     'contrato' => 'bg-dark',
@@ -112,8 +119,8 @@
                                     default => 'bg-secondary',
                                 };
                             @endphp
-                            <tr style="{{ $anulado ? 'opacity:.55;' : '' }}">
-                                <td class="text-center">{{ $loop->iteration }}</td>
+                            <tr class="{{ $numCredito % 2 === 0 ? 'table-light' : '' }}" style="{{ $anulado ? 'opacity:.55;' : '' }}">
+                                <td class="text-center fw-bold">{{ $numCredito }}</td>
                                 <td>
                                     <span class="badge {{ $badgeTipo }}"
                                           style="font-size:10px; {{ $anulado ? 'text-decoration: line-through;' : '' }}">
