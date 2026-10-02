@@ -85,7 +85,7 @@
                                         @endforeach
                                     </select>
                                 @else
-                                    {{-- .blur: al salir del campo se propone el monto del último egreso con ese motivo (02/10) --}}
+                                    {{-- .live.blur: al salir del campo se recalcula la lista de montos previos del Monto (02/10) --}}
                                     <input type="text" name="reason" autocomplete="on"
                                            class="form-control form-control-sm @error('reason') is-invalid @enderror"
                                            wire:model.live.blur="reason"
@@ -96,7 +96,7 @@
 
                             <div class="col-md-4">
                                 <label class="form-label mb-0 small fw-semibold">Detalle (*)</label>
-                                {{-- .blur: con el detalle escrito, la propuesta de monto se afina al último egreso igual (02/10) --}}
+                                {{-- .live.blur: con el detalle escrito, la lista del Monto pone primero los de ese mismo detalle (02/10) --}}
                                 <input type="text" name="detail" autocomplete="on"
                                        class="form-control form-control-sm @error('detail') is-invalid @enderror"
                                        wire:model.live.blur="detail"
@@ -106,11 +106,21 @@
 
                             <div class="col-md-1">
                                 <label class="form-label mb-0 small fw-semibold">Monto (*)</label>
+                                {{-- list=: desplegable nativo con los montos usados antes para este motivo
+                                     (02/10, Antony), como las sugerencias del navegador en A y Detalle, pero
+                                     sacadas del historial de la caja. No rellena nada solo. --}}
                                 <input type="number" step="0.01" min="0.01" name="total" autocomplete="off"
                                        class="form-control form-control-sm @error('total') is-invalid @enderror"
                                        wire:model.defer="total"
+                                       list="montos-previos"
                                        placeholder="0.00"
-                                       style="background:yellow;">
+                                       style="background:yellow;"
+                                       title="Montos usados antes{{ $reason !== '' ? ' para «'.$reason.'»' : '' }}: abre la lista con ▼ o empieza a escribir">
+                                <datalist id="montos-previos">
+                                    @foreach($montosSugeridos as $m)
+                                        <option value="{{ $m }}"></option>
+                                    @endforeach
+                                </datalist>
                             </div>
 
                             {{-- Campos exclusivos del legacy de gastos --}}
@@ -131,12 +141,6 @@
                                        placeholder="Nombre del responsable"
                                        maxlength="255">
                             </div>
-                            {{-- De dónde salió el monto propuesto (02/10): el usuario puede cambiarlo sin más. --}}
-                            @if($origenPropuesta !== '')
-                                <div class="col-12 small text-muted" style="font-size:11px;">
-                                    <i class="ti ti-bulb"></i> Monto propuesto: S/ {{ $montoPropuesto }} — {{ $origenPropuesta }}. Puedes cambiarlo.
-                                </div>
-                            @endif
                             {{-- Adjuntos (imágenes) — mismo paso --}}
                             <div class="col-12 mt-2">
                                 <label class="form-label mb-0 small fw-semibold">
