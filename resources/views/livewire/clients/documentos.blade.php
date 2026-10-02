@@ -87,9 +87,10 @@
                 </div>
             @else
                 <div class="table-responsive">
-                    <table class="table table-sm table-bordered table-hover align-middle" style="font-size:11px;">
+                    <table class="table table-sm table-bordered table-striped table-hover align-middle" style="font-size:11px;">
                         <thead class="bg-primary">
                             <tr>
+                                <th class="text-center">N°</th>
                                 <th>Tipo</th>
                                 <th class="text-center">Crédito</th>
                                 <th class="text-center">Versión</th>
@@ -112,6 +113,7 @@
                                 };
                             @endphp
                             <tr style="{{ $anulado ? 'opacity:.55;' : '' }}">
+                                <td class="text-center">{{ $loop->iteration }}</td>
                                 <td>
                                     <span class="badge {{ $badgeTipo }}"
                                           style="font-size:10px; {{ $anulado ? 'text-decoration: line-through;' : '' }}">
