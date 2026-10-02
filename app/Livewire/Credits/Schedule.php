@@ -6,7 +6,9 @@ use App\Models\Credit;
 use App\Support\MoraPagada;
 use App\Support\RecibosCuota;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\URL;
 use Livewire\Component;
 
 class Schedule extends Component
@@ -42,9 +44,11 @@ class Schedule extends Component
         $pays = DB::table('payments')
             ->where('credit_id', $creditId)
             ->whereRaw("(detalle IS NULL OR RIGHT(detalle, 3) <> 'Gat')")
-            ->select('fecha', 'hora', 'monto', 'documento')
+            ->select('id', 'fecha', 'hora', 'monto', 'documento', 'tipo', 'installment_id', 'detalle')
             ->orderBy('fecha')->orderBy('hora')->orderBy('id')
             ->get();
+
+        $abonos = $this->abonosPorCuota($installments, $pays);
 
         // Pagos capital/interés agrupados por EVENTO (misma fecha+hora = un
         // pago registrado en ventanilla). La mora NO se cuelga por fecha
@@ -293,6 +297,82 @@ class Schedule extends Component
             // 17/09: la celda de cada cuota muestra SU parte del reparto (antes
             // pintaba importe_mora, que carga todo el cobro en la primera cuota).
             'moraCelda' => $moraCelda,
+            // 02/10: abonos desglosados debajo de las cuotas pagadas en varias veces.
+            'abonos' => $abonos,
         ]);
+    }
+
+    /**
+     * Abonos por cuota (02/10, Antony: "en semanal está desglosado los pagos
+     * pero en mensual no"). Cuando una cuota se pagó en varios abonos —lo
+     * normal en el mensual de una sola cuota— debajo de su fila se desglosa
+     * cada pago: fecha, hora, capital / interés / excedente, monto, el saldo
+     * que iba quedando y su recibo. Se arma con lo que cada fila de caja dice
+     * de su cuota (installment_id o el "n/N" del detalle), no con el FIFO, para
+     * que sea el desglose de ventanilla. Solo se desglosa la cuota con dos o
+     * más abonos de verdad (≥ S/ 1): el centavo que un pago semanal deja caer
+     * en la cuota siguiente no cuenta.
+     *
+     * @return array<int, list<array{fecha: string, hora: ?string, cap: float, int: float, exc: float, monto: float, saldo: float, recibo: ?string}>> por installment_id
+     */
+    private function abonosPorCuota(Collection $installments, Collection $pays): array
+    {
+        $idPorNum = $installments->pluck('id', 'num_cuota')->map(fn ($v) => (int) $v)->all();
+
+        $porCuota = []; // installment_id => ['fecha|hora' => evento]
+        foreach ($pays as $p) {
+            if (strtoupper(substr($p->documento ?? '', 0, 4)) === 'MORA') {
+                continue;
+            }
+            $insId = $p->installment_id ? (int) $p->installment_id : null;
+            if ($insId === null && preg_match('/(\d+)\s*\/\s*\d+/', (string) $p->detalle, $m)) {
+                $insId = $idPorNum[(int) $m[1]] ?? null;
+            }
+            if ($insId === null || ! in_array($insId, $idPorNum, true)) {
+                continue;
+            }
+            $f = $p->fecha ? Carbon::parse($p->fecha)->format('Y-m-d') : '';
+            $k = $f.'|'.(string) $p->hora;
+            if (! isset($porCuota[$insId][$k])) {
+                $porCuota[$insId][$k] = ['fecha' => $f, 'hora' => $p->hora, 'cap' => 0.0, 'int' => 0.0, 'exc' => 0.0, 'monto' => 0.0, 'payment_id' => (int) $p->id];
+            }
+            $campo = match (strtoupper((string) $p->tipo)) {
+                'INTERES' => 'int', 'EXCEDENTE' => 'exc', default => 'cap',
+            };
+            $porCuota[$insId][$k][$campo] += (float) $p->monto;
+            $porCuota[$insId][$k]['monto'] += (float) $p->monto;
+        }
+
+        $abonos = [];
+        $paymentIds = [];
+        foreach ($porCuota as $insId => $eventos) {
+            if (count(array_filter($eventos, fn ($e) => $e['monto'] >= 1)) < 2) {
+                continue;
+            }
+            ksort($eventos); // 'Y-m-d|H:i:s' ordena en el tiempo
+            $ins = $installments->firstWhere('id', $insId);
+            $total = (float) $ins->importe_cuota + (float) $ins->importe_interes + (float) $ins->importe_excedente;
+            $acum = 0.0;
+            foreach ($eventos as $e) {
+                $acum += $e['monto'];
+                $e['saldo'] = round(max(0, $total - $acum), 2);
+                $e['recibo'] = null;
+                $abonos[$insId][] = $e;
+                $paymentIds[] = $e['payment_id'];
+            }
+        }
+
+        // Recibo de cada abono: el cobro (mass_deletion) al que pertenece su fila de caja.
+        if ($paymentIds !== []) {
+            $mdPorPago = DB::table('mass_deletion_details')->whereIn('payment_id', $paymentIds)->pluck('mass_deletion_id', 'payment_id');
+            foreach ($abonos as $insId => $lista) {
+                foreach ($lista as $i => $e) {
+                    $md = $mdPorPago[$e['payment_id']] ?? null;
+                    $abonos[$insId][$i]['recibo'] = $md ? URL::signedRoute('recibo.publico', ['massDeletionId' => (int) $md]) : null;
+                }
+            }
+        }
+
+        return $abonos;
     }
 }

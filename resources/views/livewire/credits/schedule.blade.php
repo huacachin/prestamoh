@@ -190,6 +190,40 @@
                                     @endif
                                 </td>
                             </tr>
+                            {{-- 02/10 (Antony): cuota pagada en varios abonos (mensual de 1 cuota, pagos
+                                 parciales) → un renglón por abono, con lo que fue quedando de saldo. --}}
+                            @php $abonosCuota = $abonos[$row['installment_id']] ?? []; @endphp
+                            @foreach($abonosCuota as $i => $ab)
+                                <tr class="fila-abono" style="background-color:#f8f9fa; color:#555; font-size:10px;">
+                                    <td class="text-center" style="white-space:nowrap;">↳ abono {{ $i + 1 }}/{{ count($abonosCuota) }}</td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                    @if($tieneExc)
+                                        <td></td>
+                                    @endif
+                                    <td class="text-end">{{ number_format($ab['cap'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($ab['int'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($ab['monto'], 2) }}</td>
+                                    <td class="text-end">{{ number_format($ab['saldo'], 2) }}</td>
+                                    <td></td>
+                                    <td class="text-center"><span class="badge bg-light text-dark border">Abono</span></td>
+                                    <td style="white-space:nowrap;">
+                                        {{ $ab['fecha'] }}
+                                        @if($ab['hora'])
+                                            <small>{{ $ab['hora'] }}</small>
+                                        @endif
+                                    </td>
+                                    <td class="text-center" style="white-space:nowrap;">
+                                        @if($ab['recibo'])
+                                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1"
+                                                    title="Ver recibo de este abono" onclick="abrirRecibo(@js($ab['recibo']))">
+                                                <i class="ti ti-eye"></i>
+                                            </button>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
                         @endforeach
 
                         {{-- Pagos OTROS (fuera del cronograma) --}}
