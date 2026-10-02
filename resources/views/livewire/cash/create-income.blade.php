@@ -85,9 +85,10 @@
                                         @endforeach
                                     </select>
                                 @else
+                                    {{-- .live.blur: al salir del campo se recalcula la lista de montos previos del Monto (02/10) --}}
                                     <input type="text" name="reason" autocomplete="on"
                                            class="form-control form-control-sm @error('reason') is-invalid @enderror"
-                                           wire:model.defer="reason"
+                                           wire:model.live.blur="reason"
                                            placeholder="Motivo libre (proveedor, ej. 'Recarga teléfono')"
                                            maxlength="255">
                                 @endif
@@ -112,20 +113,30 @@
 
                             <div class="col-md-{{ $usaCantidad ? 6 : 8 }}">
                                 <label class="form-label mb-0 small fw-semibold">Detalle (*)</label>
+                                {{-- .live.blur: con el detalle escrito, la lista del Monto pone primero los de ese mismo detalle (02/10) --}}
                                 <input type="text" name="detail" autocomplete="on"
                                        class="form-control form-control-sm @error('detail') is-invalid @enderror"
-                                       wire:model.defer="detail"
+                                       wire:model.live.blur="detail"
                                        placeholder="Descripción del ingreso"
                                        maxlength="500">
                             </div>
 
                             <div class="col-md-1">
                                 <label class="form-label mb-0 small fw-semibold">Monto (*)</label>
-                                <input type="number" step="0.01" min="0.01" name="total" autocomplete="off"
+                                {{-- Igual que egresos (02/10): texto numérico con la lista de montos usados antes
+                                     para este motivo (datalist); con type=number Chrome no abre la lista. --}}
+                                <input type="text" inputmode="decimal" name="total" autocomplete="off"
                                        class="form-control form-control-sm @error('total') is-invalid @enderror"
                                        wire:model.defer="total"
+                                       list="montos-previos-ingreso"
                                        placeholder="0.00"
-                                       style="background:yellow;">
+                                       style="background:yellow;"
+                                       title="Montos usados antes{{ $reason !== '' ? ' para «'.$reason.'»' : '' }}: abre la lista con ▼ o empieza a escribir">
+                                <datalist id="montos-previos-ingreso">
+                                    @foreach($montosSugeridos as $m)
+                                        <option value="{{ $m }}"></option>
+                                    @endforeach
+                                </datalist>
                                 @if($usaCantidad && $precio_unitario > 0)
                                     <small class="text-muted" style="font-size:10px;">
                                         Auto: {{ $cantidad }} × {{ number_format((float)$precio_unitario, 2) }}. Editable.

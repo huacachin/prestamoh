@@ -271,6 +271,43 @@ class CreateIncome extends Component
             ->orderBy('name')
             ->get();
 
-        return view('livewire.cash.create-income', compact('concepts'));
+        return view('livewire.cash.create-income', [
+            'concepts' => $concepts,
+            // Lista desplegable del Monto (datalist), igual que en egresos: se recalcula al salir de "A" y de "Detalle".
+            'montosSugeridos' => $this->modo !== '' ? $this->montosSugeridos() : [],
+        ]);
+    }
+
+    /**
+     * Montos usados antes, para la lista desplegable del campo Monto (02/10,
+     * Antony, igual que en egresos): los de la caja operativa (1) con el mismo
+     * motivo, del más reciente al más viejo y sin repetir; con el detalle
+     * escrito, primero los de ese mismo detalle; sin motivo, los últimos de la
+     * caja. Nada se rellena solo (salvo cantidad × precio de los conceptos con
+     * factor, como Sunarp).
+     *
+     * @return list<string>
+     */
+    public function montosSugeridos(int $max = 12): array
+    {
+        $reason = trim($this->reason);
+        $detail = trim($this->detail);
+
+        $base = Income::query()->where('caja', 1)->where('total', '>', 0)
+            ->when($reason !== '', fn ($q) => $q->where('reason', $reason))
+            ->orderByDesc('date')->orderByDesc('id');
+
+        $montos = collect();
+        if ($reason !== '' && $detail !== '') {
+            $montos = (clone $base)->whereRaw('LOWER(TRIM(detail)) = ?', [mb_strtolower($detail)])->limit(100)->pluck('total');
+        }
+        $montos = $montos->concat((clone $base)->limit(300)->pluck('total'));
+
+        return $montos
+            ->map(fn ($t) => number_format((float) $t, 2, '.', ''))
+            ->unique()
+            ->take($max)
+            ->values()
+            ->all();
     }
 }
