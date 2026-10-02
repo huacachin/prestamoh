@@ -228,10 +228,9 @@
 
                                 {{-- 18/09 (pedido de Antony): fuera el cuadro "Detalle / % / S/"
                                      de distribución que colgaba debajo del Total General. Mismo
-                                     criterio que en /reports/cash-statistics el 05/09: se retira
-                                     de la PANTALLA y el cálculo se queda en el componente, porque
-                                     el Excel homologado al legacy (exportCancelled) consume
-                                     `distribution` y ahí sí tiene que seguir saliendo. --}}
+                                     criterio que en /reports/cash-statistics el 05/09. Desde el
+                                     02/10 tampoco va en el Excel (exports/cancelled); el cálculo
+                                     sigue en el componente solo por `distribution_base`. --}}
                             </tbody>
                         </table>
                     </div>

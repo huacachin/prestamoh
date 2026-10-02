@@ -89,40 +89,9 @@
                 <td class="num" colspan="3" align="center" style="vertical-align:middle;">{{ number_format(($totals['canceinte'] ?? 0) + ($totals['cancemora'] ?? 0) + ($totals['total_gat'] ?? 0), 2, '.', '') }}</td>
             </tr>
 
-            {{-- Separador + tabla de distribucion --}}
-            <tr><td colspan="20"></td></tr>
-            <tr>
-                <th {!! $hd !!} colspan="5">Detalle</th>
-                <th {!! $hd !!}>%</th>
-                <th {!! $hd !!}>S/</th>
-                <th {!! $hd !!}>%</th>
-                <th {!! $hd !!}>S/</th>
-                <th {!! $hd !!}>%</th>
-                <th {!! $hd !!} colspan="2">S/</th>
-            </tr>
-            @foreach($distribution ?? [] as $d)
-                @if(($d['label'] ?? '') === 'Total')
-                    <tr bgcolor="#CEE7FF">
-                        <td colspan="5" style="text-align:center;vertical-align:middle;">Total</td>
-                        <td style="text-align:center;vertical-align:middle;"><b>{{ $d['pct1'] }}</b></td>
-                        <td class="num" style="text-align:center;vertical-align:middle;">{{ number_format($d['val1'], 2, '.', '') }}</td>
-                        <td style="text-align:center;vertical-align:middle;"><b>{{ $d['pct2'] }}</b></td>
-                        <td class="num" style="text-align:center;vertical-align:middle;">{{ number_format($d['val2'], 2, '.', '') }}</td>
-                        <td style="text-align:center;vertical-align:middle;"><b>{{ $d['pct3'] }}</b></td>
-                        <td class="num" style="text-align:center;vertical-align:middle;" colspan="2">{{ number_format($d['val3'], 2, '.', '') }}</td>
-                    </tr>
-                @else
-                    <tr>
-                        <td colspan="5" {!! $cell !!}>{{ $d['label'] }}</td>
-                        <td {!! $cell !!}><b>{{ $d['pct1'] }}</b></td>
-                        <td class="num" {!! $cell !!}>{{ number_format($d['val1'], 2, '.', '') }}</td>
-                        <td {!! $cell !!}><b>{{ $d['pct2'] }}</b></td>
-                        <td class="num" {!! $cell !!}>{{ number_format($d['val2'], 2, '.', '') }}</td>
-                        <td {!! $cell !!}><b>{{ $d['pct3'] }}</b></td>
-                        <td class="num" {!! $cell !!} colspan="2">{{ number_format($d['val3'], 2, '.', '') }}</td>
-                    </tr>
-                @endif
-            @endforeach
+            {{-- 02/10 (Antony): fuera también aquí el cuadro "Detalle / % / S/" de
+                 distribución, como se quitó de la pantalla el 18/09. Además salía
+                 solo la cabecera, porque exportCancelled nunca le pasó `distribution`. --}}
         </tbody>
     </table>
 @endsection
