@@ -23,6 +23,15 @@ class CreateExpense extends Component
 
     public $total = '';
 
+    /**
+     * Monto propuesto por el sistema (02/10, Antony) y de dónde salió, para el
+     * aviso bajo el campo. Si el usuario escribe otro monto, la propuesta ya
+     * no se vuelve a pisar.
+     */
+    public string $montoPropuesto = '';
+
+    public string $origenPropuesta = '';
+
     public string $document_type = '';
 
     public string $in_charge = '';
@@ -54,25 +63,71 @@ class CreateExpense extends Component
     {
         $this->reason = '';
         $this->total = '';
+        $this->montoPropuesto = '';
+        $this->origenPropuesta = '';
         $this->resetErrorBag();
     }
 
-    /**
-     * Al cambiar el concepto en modo Fijos, propone el monto desde factor_egreso
-     * (legacy cargaconcepto.php). Queda editable: el factor es solo una sugerencia.
-     */
+    /** Al cambiar el motivo (select de Fijos o texto de Otros) se propone el monto. */
     public function updatedReason(): void
     {
-        if ($this->modo !== 'Fijos' || $this->reason === '') {
+        $this->proponerMonto();
+    }
+
+    /** Al salir del detalle, la propuesta se afina al último egreso con ese mismo detalle. */
+    public function updatedDetail(): void
+    {
+        $this->proponerMonto();
+    }
+
+    /**
+     * Propone el monto (02/10, Antony): el factor del concepto fijo si lo tiene
+     * (legacy cargaconcepto.php; hoy todos están en 0) y, si no, el ÚLTIMO
+     * egreso de caja registrado con el mismo motivo, afinado por detalle cuando
+     * ya hubo uno igual. Nunca pisa un monto escrito a mano: solo rellena si el
+     * campo está vacío o todavía trae la propuesta anterior.
+     */
+    private function proponerMonto(): void
+    {
+        if ((string) $this->total !== '' && (string) $this->total !== $this->montoPropuesto) {
             return;
         }
-        $concept = Concept::where('type', 'egreso')
-            ->where('status', 'active')
-            ->where('name', $this->reason)
-            ->first();
+        $propuesta = $this->buscarPropuesta();
+        $this->total = $propuesta['monto'] ?? '';
+        $this->montoPropuesto = $propuesta['monto'] ?? '';
+        $this->origenPropuesta = $propuesta['origen'] ?? '';
+    }
 
-        $factor = $concept ? (float) $concept->factor_egreso : 0;
-        $this->total = $factor > 0 ? number_format($factor, 2, '.', '') : '';
+    /** @return array{monto: string, origen: string}|null */
+    private function buscarPropuesta(): ?array
+    {
+        $reason = trim($this->reason);
+        if ($reason === '') {
+            return null;
+        }
+
+        if ($this->modo === 'Fijos') {
+            $factor = (float) (Concept::where('type', 'egreso')->where('status', 'active')->where('name', $reason)->value('factor_egreso') ?? 0);
+            if ($factor > 0) {
+                return ['monto' => number_format($factor, 2, '.', ''), 'origen' => "monto fijo del concepto «{$reason}»"];
+            }
+        }
+
+        // Solo la caja operativa (1): ni el espejo de caja 3 ni la caja legal (4).
+        $base = Expense::query()->where('caja', 1)->where('reason', $reason)->where('total', '>', 0)
+            ->orderByDesc('date')->orderByDesc('id');
+        $detail = trim($this->detail);
+        $ultimo = $detail !== '' ? (clone $base)->whereRaw('LOWER(TRIM(detail)) = ?', [mb_strtolower($detail)])->first() : null;
+        $conDetalle = $ultimo !== null;
+        $ultimo ??= $base->first();
+        if (! $ultimo) {
+            return null;
+        }
+
+        return [
+            'monto' => number_format((float) $ultimo->total, 2, '.', ''),
+            'origen' => 'último egreso de «'.$reason.($conDetalle ? ' · '.trim($ultimo->detail) : '').'» del '.$ultimo->date?->format('d/m/Y'),
+        ];
     }
 
     protected function rules(): array
@@ -130,6 +185,8 @@ class CreateExpense extends Component
         $this->date = now()->format('Y-m-d');
         $this->detail = '';
         $this->total = '';
+        $this->montoPropuesto = '';
+        $this->origenPropuesta = '';
         $this->document_type = '';
         $this->in_charge = '';
         $this->files = [];

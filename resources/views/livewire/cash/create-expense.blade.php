@@ -85,9 +85,10 @@
                                         @endforeach
                                     </select>
                                 @else
+                                    {{-- .blur: al salir del campo se propone el monto del último egreso con ese motivo (02/10) --}}
                                     <input type="text" name="reason" autocomplete="on"
                                            class="form-control form-control-sm @error('reason') is-invalid @enderror"
-                                           wire:model.defer="reason"
+                                           wire:model.blur="reason"
                                            placeholder="Motivo libre (proveedor, ej. 'Recarga teléfono')"
                                            maxlength="255">
                                 @endif
@@ -95,9 +96,10 @@
 
                             <div class="col-md-4">
                                 <label class="form-label mb-0 small fw-semibold">Detalle (*)</label>
+                                {{-- .blur: con el detalle escrito, la propuesta de monto se afina al último egreso igual (02/10) --}}
                                 <input type="text" name="detail" autocomplete="on"
                                        class="form-control form-control-sm @error('detail') is-invalid @enderror"
-                                       wire:model.defer="detail"
+                                       wire:model.blur="detail"
                                        placeholder="Descripción del egreso"
                                        maxlength="500">
                             </div>
@@ -129,6 +131,12 @@
                                        placeholder="Nombre del responsable"
                                        maxlength="255">
                             </div>
+                            {{-- De dónde salió el monto propuesto (02/10): el usuario puede cambiarlo sin más. --}}
+                            @if($origenPropuesta !== '')
+                                <div class="col-12 small text-muted" style="font-size:11px;">
+                                    <i class="ti ti-bulb"></i> Monto propuesto: S/ {{ $montoPropuesto }} — {{ $origenPropuesta }}. Puedes cambiarlo.
+                                </div>
+                            @endif
                             {{-- Adjuntos (imágenes) — mismo paso --}}
                             <div class="col-12 mt-2">
                                 <label class="form-label mb-0 small fw-semibold">
