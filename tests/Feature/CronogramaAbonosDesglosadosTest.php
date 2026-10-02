@@ -85,9 +85,13 @@ class CronogramaAbonosDesglosadosTest extends TestCase
 
         $html = $comp->html();
         $this->assertSame(3, substr_count($html, 'class="fila-abono"'));
-        $this->assertStringContainsString('↳ abono 1/3', $html);
+        $this->assertStringContainsString('>1.1</td>', $html); // numeración n.k, como una fila más
+        $this->assertStringContainsString('>1.3</td>', $html);
         $this->assertStringContainsString('<small>09:51:05</small>', $html);
-        $this->assertStringContainsString('Ver recibo de este abono', $html);
+        $this->assertSame(2, substr_count($html, 'title="Ver recibo" onclick="abrirRecibo('), 'dos botones de recibo: el de la cuota (su último cobro) y el del abono 2');
+        // Domingo en rojo / sábado en verde y amarillo si fue tarde, igual que las cuotas del semanal.
+        $this->assertSame(['green', 'green', 'green'], array_column($abonos, 'color')); // 22/08, 05/09 y 19/09 de 2026 son sábados
+        $this->assertSame([false, false, false], array_column($abonos, 'tarde'));
     }
 
     public function test_el_centavo_que_cae_en_la_cuota_siguiente_no_desglosa_y_una_cuota_de_un_solo_pago_tampoco(): void

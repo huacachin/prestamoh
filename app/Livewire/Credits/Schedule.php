@@ -352,11 +352,18 @@ class Schedule extends Component
             ksort($eventos); // 'Y-m-d|H:i:s' ordena en el tiempo
             $ins = $installments->firstWhere('id', $insId);
             $total = (float) $ins->importe_cuota + (float) $ins->importe_interes + (float) $ins->importe_excedente;
+            $venc = $ins->fecha_vencimiento ? Carbon::parse($ins->fecha_vencimiento)->format('Y-m-d') : '';
             $acum = 0.0;
             foreach ($eventos as $e) {
                 $acum += $e['monto'];
                 $e['saldo'] = round(max(0, $total - $acum), 2);
                 $e['recibo'] = null;
+                // Mismo formato que la fila de la cuota: domingo rojo, sábado verde, tarde en amarillo.
+                $dow = $e['fecha'] !== '' ? Carbon::parse($e['fecha'])->dayOfWeek : null;
+                $e['color'] = match ($dow) {
+                    Carbon::SUNDAY => 'red', Carbon::SATURDAY => 'green', default => '',
+                };
+                $e['tarde'] = $e['fecha'] !== '' && $venc !== '' && $e['fecha'] > $venc;
                 $abonos[$insId][] = $e;
                 $paymentIds[] = $e['payment_id'];
             }
