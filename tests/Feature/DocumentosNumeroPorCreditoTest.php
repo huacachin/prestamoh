@@ -55,15 +55,15 @@ class DocumentosNumeroPorCreditoTest extends TestCase
         ]);
     }
 
-    /** @return list<array{num: string, credito: string, clase: string}> filas en el orden de la tabla */
+    /** @return list<array{num: string, credito: string, gris: bool}> filas en el orden de la tabla */
     private function filas(string $html): array
     {
         preg_match_all(
-            '/<tr class="([a-z-]*)" style="[^"]*">\s*<td class="text-center fw-bold">(\d+)<\/td>.*?<td class="text-center">#(\d+)<\/td>/s',
+            '/<tr style="([^"]*)">\s*<td class="text-center fw-bold">(\d+)<\/td>.*?<td class="text-center">#(\d+)<\/td>/s',
             $html, $m, PREG_SET_ORDER
         );
 
-        return array_map(fn ($f) => ['num' => $f[2], 'credito' => $f[3], 'clase' => $f[1]], $m);
+        return array_map(fn ($f) => ['num' => $f[2], 'credito' => $f[3], 'gris' => str_contains($f[1], '#e9ecef')], $m);
     }
 
     public function test_los_documentos_de_un_mismo_credito_comparten_numero_y_el_zebra_va_por_credito(): void
@@ -83,8 +83,8 @@ class DocumentosNumeroPorCreditoTest extends TestCase
         $this->assertSame(['1', '2', '1', '2'], array_column($filas, 'num'));
         $this->assertSame([(string) $b->id, (string) $a->id, (string) $b->id, (string) $a->id], array_column($filas, 'credito'));
 
-        // Zebra por crédito: el grupo 2 lleva table-light, el 1 no.
-        $this->assertSame(['', 'table-light', '', 'table-light'], array_column($filas, 'clase'));
+        // Zebra por crédito: el grupo 2 va en gris (fondo explícito), el 1 en blanco.
+        $this->assertSame([false, true, false, true], array_column($filas, 'gris'));
         $this->assertStringNotContainsString('table-striped', $html);
     }
 

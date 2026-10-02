@@ -119,7 +119,9 @@
                                     default => 'bg-secondary',
                                 };
                             @endphp
-                            <tr class="{{ $numCredito % 2 === 0 ? 'table-light' : '' }}" style="{{ $anulado ? 'opacity:.55;' : '' }}">
+                            {{-- Gris explícito para el grupo par: table-light casi no se distinguía del blanco.
+                                 Bootstrap pinta las celdas con --bs-table-bg, así que se fija la variable en la fila. --}}
+                            <tr style="{{ $numCredito % 2 === 0 ? '--bs-table-bg:#e9ecef; background-color:#e9ecef;' : '' }} {{ $anulado ? 'opacity:.55;' : '' }}">
                                 <td class="text-center fw-bold">{{ $numCredito }}</td>
                                 <td>
                                     <span class="badge {{ $badgeTipo }}"
