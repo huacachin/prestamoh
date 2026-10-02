@@ -13,11 +13,17 @@ class VehiculoGpsReporteFoto extends Model
 
     public const AUDIT_MODULO = 'Foto de reporte GPS';
 
-    protected $fillable = ['reporte_id', 'path', 'thumb_path', 'original_name', 'mime', 'size'];
+    protected $fillable = ['reporte_id', 'client_attachment_id', 'path', 'thumb_path', 'original_name', 'mime', 'size'];
 
     public function reporte(): BelongsTo
     {
         return $this->belongsTo(VehiculoGpsReporte::class, 'reporte_id');
+    }
+
+    /** Adjunto de la ficha del que se copió (02/10), si vino de ahí. */
+    public function adjunto(): BelongsTo
+    {
+        return $this->belongsTo(ClientAttachment::class, 'client_attachment_id');
     }
 
     public function url(): string

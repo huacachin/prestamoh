@@ -3,6 +3,7 @@
 namespace App\Livewire\Clients;
 
 use App\Models\Client;
+use App\Models\ClientAttachment;
 use App\Models\Vehiculo;
 use App\Models\VehiculoGpsReporte;
 use App\Models\VehiculoGpsReporteFoto;
@@ -89,8 +90,132 @@ class GpsVehiculos extends Component
             'domicilio_personalizado' => false,
             // El primer punto sin etiqueta: sale en el formato corto. Al agregar más, cada uno trae la suya.
             'puntos' => [$this->puntoVacio('')],
+            // Adjuntos de la ficha elegidos para este reporte (02/10): se copian al guardar.
+            'adjuntos' => [],
         ];
         $this->mostrarForm = true;
+    }
+
+    // ═══ Fotos desde la pestaña Adjuntos del cliente (02/10, Antony) ═══
+
+    /** Modal "Elegir de Adjuntos": abierto o no, y los ids marcados. */
+    public bool $mostrarAdjuntos = false;
+
+    public array $adjuntosSel = [];
+
+    /** Adjuntos (imágenes) de la ficha del cliente, del más nuevo al más viejo. */
+    public function adjuntosCliente(): Collection
+    {
+        return ClientAttachment::where('client_id', $this->clientId)->orderByDesc('id')->get();
+    }
+
+    /** Ids de adjuntos ya copiados al reporte abierto (para marcarlos en el modal). */
+    public function adjuntosYaAnexados(): array
+    {
+        if (! $this->verId) {
+            return [];
+        }
+
+        return VehiculoGpsReporteFoto::where('reporte_id', $this->verId)
+            ->whereNotNull('client_attachment_id')
+            ->pluck('client_attachment_id')->map(fn ($id) => (int) $id)->all();
+    }
+
+    public function abrirAdjuntos(): void
+    {
+        abort_unless($this->puedeEditar, 403, 'No tienes permiso para adjuntar fotos.');
+        // En el formulario se parte de lo ya elegido; sobre un reporte guardado, de cero.
+        $this->adjuntosSel = $this->mostrarForm ? array_values($this->form['adjuntos'] ?? []) : [];
+        $this->mostrarAdjuntos = true;
+        $this->dispatch('adjuntos-modal-open');
+    }
+
+    public function cerrarAdjuntos(): void
+    {
+        $this->mostrarAdjuntos = false;
+        $this->adjuntosSel = [];
+        $this->dispatch('adjuntos-modal-close');
+    }
+
+    /**
+     * "Anexar seleccionadas": en el formulario quedan elegidas (se copian al
+     * guardar, junto con las fotos subidas); sobre un reporte guardado se
+     * copian al instante.
+     */
+    public function confirmarAdjuntos(): void
+    {
+        abort_unless($this->puedeEditar, 403, 'No tienes permiso para adjuntar fotos.');
+        $validos = $this->adjuntosCliente()->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $ids = array_values(array_unique(array_intersect(array_map('intval', $this->adjuntosSel), $validos)));
+
+        if ($this->mostrarForm) {
+            $this->form['adjuntos'] = $ids;
+        } elseif ($this->verId) {
+            $reporte = VehiculoGpsReporte::where('client_id', $this->clientId)->find($this->verId);
+            if ($reporte) {
+                $n = $this->copiarAdjuntos($reporte, $ids);
+                $this->msgType = 'ok';
+                $this->msg = match (true) {
+                    $n === 0 => 'Esas fotos ya estaban en el reporte.',
+                    $n === 1 => 'Foto anexada al reporte desde Adjuntos.',
+                    default => "{$n} fotos anexadas al reporte desde Adjuntos.",
+                };
+            }
+        }
+
+        $this->cerrarAdjuntos();
+    }
+
+    /** Quita un adjunto elegido en el formulario (antes de guardar). */
+    public function quitarAdjuntoForm(int $id): void
+    {
+        $this->form['adjuntos'] = array_values(array_filter($this->form['adjuntos'] ?? [], fn ($a) => (int) $a !== $id));
+    }
+
+    /**
+     * Copia adjuntos de la ficha al reporte como fotos propias (archivo y
+     * miniatura en la carpeta del reporte): el reporte no depende de que el
+     * adjunto siga existiendo, ni la ficha de lo que pase con el reporte.
+     * Un adjunto ya copiado no se repite.
+     */
+    private function copiarAdjuntos(VehiculoGpsReporte $reporte, array $ids): int
+    {
+        if ($ids === []) {
+            return 0;
+        }
+        $disco = Storage::disk('public');
+        $yaAnexados = VehiculoGpsReporteFoto::where('reporte_id', $reporte->id)
+            ->whereNotNull('client_attachment_id')->pluck('client_attachment_id')->map(fn ($id) => (int) $id)->all();
+        $adjuntos = ClientAttachment::where('client_id', $this->clientId)->whereIn('id', $ids)->orderBy('id')->get();
+
+        $n = 0;
+        foreach ($adjuntos as $att) {
+            if (in_array((int) $att->id, $yaAnexados, true) || ! $att->path || ! $disco->exists($att->path)) {
+                continue;
+            }
+            $ext = strtolower(pathinfo($att->path, PATHINFO_EXTENSION) ?: 'jpg');
+            $nombre = Str::uuid()->toString().'.'.$ext;
+            $carpeta = "gps/reportes/{$reporte->id}";
+            $disco->copy($att->path, "{$carpeta}/{$nombre}");
+
+            $thumb = "{$carpeta}/thumbs/{$nombre}";
+            $ok = ($att->thumb_path && $disco->exists($att->thumb_path))
+                ? $disco->copy($att->thumb_path, $thumb)
+                : Miniatura::crear($disco->path("{$carpeta}/{$nombre}"), $disco->path($thumb), 400);
+
+            VehiculoGpsReporteFoto::create([
+                'reporte_id' => $reporte->id,
+                'client_attachment_id' => $att->id,
+                'path' => "{$carpeta}/{$nombre}",
+                'thumb_path' => $ok ? $thumb : null,
+                'original_name' => $att->original_name ?: $att->filename,
+                'mime' => $att->mime,
+                'size' => $att->size,
+            ]);
+            $n++;
+        }
+
+        return $n;
     }
 
     /** Enlace de Google Maps de la ubicación de Casa registrada en la pestaña (o ''). */
@@ -163,6 +288,8 @@ class GpsVehiculos extends Component
     public function cancelar(): void
     {
         $this->mostrarForm = false;
+        $this->mostrarAdjuntos = false;
+        $this->adjuntosSel = [];
         $this->form = [];
         $this->files = [];
         $this->resetErrorBag();
@@ -222,6 +349,8 @@ class GpsVehiculos extends Component
             'form.domicilio_link' => 'nullable|string|max:500',
             'form.domicilio_personalizado' => 'boolean',
             'form.puntos' => 'required|array|min:1',
+            'form.adjuntos' => 'nullable|array',
+            'form.adjuntos.*' => 'integer',
             'form.puntos.*.titulo' => 'nullable|string|max:60',
             'form.puntos.*.etiqueta' => 'nullable|string|max:60',
             'form.puntos.*.etiqueta_otra' => 'nullable|string|max:60',
@@ -267,6 +396,8 @@ class GpsVehiculos extends Component
             'registrado_por' => auth()->id(),
         ]);
         $fotos = $this->guardarFotos($reporte, $this->files);
+        // Y las elegidas de la pestaña Adjuntos (02/10): se copian al reporte.
+        $this->copiarAdjuntos($reporte, array_map('intval', $this->form['adjuntos'] ?? []));
 
         $this->cancelar();
         $this->verId = $reporte->id;
@@ -384,6 +515,8 @@ class GpsVehiculos extends Component
             'vehiculos' => $this->vehiculos(),
             'placas' => $placas,
             'reporteVer' => $this->verId ? VehiculoGpsReporte::with('fotos')->where('client_id', $this->clientId)->find($this->verId) : null,
+            // Fotos de la pestaña Adjuntos, para el botón "Elegir de Adjuntos" y su modal (02/10).
+            'adjuntosCliente' => $this->puedeEditar ? $this->adjuntosCliente() : collect(),
         ]);
     }
 }

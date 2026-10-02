@@ -225,13 +225,31 @@
                         <div class="bg-white rounded">
                             @include('livewire.cash.partials.zona-imagenes')
                         </div>
-                        <div class="small text-muted mt-1">Se suben al guardar el reporte. Después también puedes arrastrar más fotos sobre el reporte guardado.</div>
+                        {{-- O elegirlas de la pestaña Adjuntos del cliente (02/10): se copian al guardar. --}}
+                        @php $adjuntosForm = collect($form['adjuntos'] ?? [])->map(fn ($id) => (int) $id); $adjuntosElegidos = $adjuntosCliente->whereIn('id', $adjuntosForm->all()); @endphp
+                        <div class="d-flex align-items-center flex-wrap gap-2 mt-2">
+                            <button type="button" class="btn btn-sm btn-outline-primary" wire:click="abrirAdjuntos" @disabled($adjuntosCliente->isEmpty())
+                                    title="{{ $adjuntosCliente->isEmpty() ? 'El cliente no tiene fotos en Adjuntos' : 'Elegir fotos ya guardadas en la pestaña Adjuntos' }}">
+                                <i class="ti ti-photo-search"></i> Elegir de Adjuntos ({{ $adjuntosCliente->count() }})
+                            </button>
+                            @foreach($adjuntosElegidos as $att)
+                                <div class="position-relative" wire:key="adj-form-{{ $att->id }}" title="{{ $att->original_name }}">
+                                    <img src="{{ $att->thumbUrl() }}" alt="" class="rounded border" style="width:56px; height:56px; object-fit:cover; background:#fff;">
+                                    <button type="button" class="btn btn-danger position-absolute" style="top:-6px; right:-6px; padding:0 5px; font-size:10px; line-height:1.4;"
+                                            wire:click="quitarAdjuntoForm({{ $att->id }})" title="Quitar">
+                                        <i class="ti ti-x"></i>
+                                    </button>
+                                </div>
+                            @endforeach
+                        </div>
+                        <div class="small text-muted mt-1">Se suben al guardar el reporte. Después también puedes arrastrar más fotos sobre el reporte guardado o elegirlas de Adjuntos.</div>
                     </div>
 
+                    @php $nFotosForm = count($files) + $adjuntosElegidos->count(); @endphp
                     <div class="d-grid d-sm-flex gap-2">
                         <button type="button" class="btn btn-dark" wire:click="guardar" wire:loading.attr="disabled" wire:target="guardar,files,removeFile">
                             <i class="ti ti-device-floppy"></i>
-                            <span wire:loading.remove wire:target="guardar">Guardar y generar el mensaje{{ ! empty($files) ? ' con '.count($files).(count($files) === 1 ? ' foto' : ' fotos') : '' }}</span>
+                            <span wire:loading.remove wire:target="guardar">Guardar y generar el mensaje{{ $nFotosForm > 0 ? ' con '.$nFotosForm.($nFotosForm === 1 ? ' foto' : ' fotos') : '' }}</span>
                             <span wire:loading wire:target="guardar">Guardando…</span>
                         </button>
                         <button type="button" class="btn btn-outline-secondary" wire:click="cancelar">Cancelar</button>
@@ -313,8 +331,66 @@
                         <div class="bg-white rounded">
                             @include('livewire.cash.partials.zona-imagenes', ['modelo' => 'fotosExtra', 'quitar' => 'removeFotoExtra'])
                         </div>
+                        {{-- O copiar fotos de la pestaña Adjuntos (02/10): se anexan al instante. --}}
+                        <button type="button" class="btn btn-sm btn-outline-primary mt-2" wire:click="abrirAdjuntos" @disabled($adjuntosCliente->isEmpty())
+                                title="{{ $adjuntosCliente->isEmpty() ? 'El cliente no tiene fotos en Adjuntos' : 'Elegir fotos ya guardadas en la pestaña Adjuntos' }}">
+                            <i class="ti ti-photo-search"></i> Elegir de Adjuntos ({{ $adjuntosCliente->count() }})
+                        </button>
                         <div class="small text-muted mt-1"><span wire:loading wire:target="fotosExtra">Subiendo fotos…</span><span wire:loading.remove wire:target="fotosExtra">Las fotos que arrastres aquí se guardan al instante.</span></div>
                     @endif
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- ═══ Modal "Elegir de Adjuntos" (02/10): las fotos de la pestaña Adjuntos del
+         cliente, con casilla; se copian al reporte (al guardar, o al instante si el
+         reporte ya existe). Las ya anexadas se muestran marcadas y sin casilla. ═══ --}}
+    @if($puedeEditar)
+        <div class="modal fade" id="gpsAdjuntosModal" tabindex="-1" aria-hidden="true" wire:ignore.self
+             x-data="{ modal: null }"
+             x-init="modal = bootstrap.Modal.getOrCreateInstance($el);
+                     $el.addEventListener('hidden.bs.modal', () => { if ($wire.mostrarAdjuntos) { $wire.cerrarAdjuntos(); } });"
+             x-on:adjuntos-modal-open.window="modal.show()"
+             x-on:adjuntos-modal-close.window="modal.hide()">
+            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header py-2">
+                        <h6 class="modal-title mb-0"><i class="ti ti-photo-search"></i> Elegir fotos de Adjuntos</h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body">
+                        @php $yaAnexados = $this->adjuntosYaAnexados(); @endphp
+                        @if($adjuntosCliente->isEmpty())
+                            <div class="text-muted small">El cliente no tiene fotos en la pestaña Adjuntos.</div>
+                        @else
+                            <div class="small text-muted mb-2">
+                                Marca las fotos que van en este reporte. Se copian al reporte: borrarlas después de Adjuntos no lo afecta.
+                            </div>
+                            <div class="d-flex flex-wrap gap-2">
+                                @foreach($adjuntosCliente as $att)
+                                    @php $anexada = in_array((int) $att->id, $yaAnexados, true); @endphp
+                                    <label class="position-relative border rounded p-1 {{ $anexada ? 'opacity-50' : '' }}" style="cursor:{{ $anexada ? 'default' : 'pointer' }};"
+                                           wire:key="adj-modal-{{ $att->id }}" title="{{ $att->original_name }}{{ $anexada ? ' · ya anexada' : '' }}">
+                                        <img src="{{ $att->thumbUrl() }}" alt="" class="rounded" style="width:120px; height:120px; object-fit:cover; background:#fff; display:block;">
+                                        @if($anexada)
+                                            <span class="badge bg-success position-absolute" style="top:6px; left:6px; font-size:9px;"><i class="ti ti-check"></i> ya anexada</span>
+                                        @else
+                                            <input class="form-check-input position-absolute" type="checkbox" value="{{ $att->id }}" wire:model="adjuntosSel"
+                                                   style="top:6px; left:6px; width:1.2rem; height:1.2rem;">
+                                        @endif
+                                    </label>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+                    <div class="modal-footer py-2">
+                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-sm btn-primary" wire:click="confirmarAdjuntos" wire:loading.attr="disabled" wire:target="confirmarAdjuntos"
+                                @disabled($adjuntosCliente->isEmpty())>
+                            <i class="ti ti-check"></i> Anexar seleccionadas
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -378,22 +454,20 @@
                             @endforeach
                         </td>
                         <td class="text-center">
-                            @if($r->fotos->isEmpty())
-                                <span class="text-muted">—</span>
+                            {{-- Como en ingresos/egresos (02/10): cámara + contador que abre la galería;
+                                 sin fotos, la cámara apagada abre el reporte para subirlas. --}}
+                            @if($r->fotos->isNotEmpty())
+                                <a href="#" @click.prevent="openLightbox({{ \Illuminate\Support\Js::from($r->galeria()) }}, 0)"
+                                   title="Ver fotos ({{ $r->fotos->count() }})" style="cursor: zoom-in;">
+                                    <i class="ti ti-camera f-s-16 text-info"></i>
+                                    <span class="badge bg-info" style="font-size:9px; padding:1px 4px;">{{ $r->fotos->count() }}</span>
+                                </a>
+                            @elseif($puedeEditar)
+                                <a href="#" wire:click.prevent="ver({{ $r->id }})" title="Sin fotos · abrir el reporte para subirlas">
+                                    <i class="ti ti-camera f-s-16 text-muted"></i>
+                                </a>
                             @else
-                                @php $galeria = \Illuminate\Support\Js::from($r->galeria()); @endphp
-                                <div class="d-flex flex-wrap justify-content-center gap-1">
-                                    @foreach($r->fotos->take(3) as $foto)
-                                        <a href="{{ $foto->url() }}" @click.prevent="openLightbox({{ $galeria }}, {{ $loop->index }})"
-                                           title="{{ $foto->original_name }} · ver galería ({{ $r->fotos->count() }})" style="cursor: zoom-in;">
-                                            <img src="{{ $foto->thumbUrl() }}" alt="" class="rounded border" style="width:34px; height:34px; object-fit:cover; background:#fff;">
-                                        </a>
-                                    @endforeach
-                                    @if($r->fotos->count() > 3)
-                                        <a href="#" class="badge bg-secondary align-self-center text-decoration-none" @click.prevent="openLightbox({{ $galeria }}, 3)"
-                                           title="Ver las {{ $r->fotos->count() }} fotos">+{{ $r->fotos->count() - 3 }}</a>
-                                    @endif
-                                </div>
+                                <i class="ti ti-camera f-s-16 text-muted" title="Sin fotos"></i>
                             @endif
                         </td>
                         <td class="text-center">{{ $r->registradoPor?->username ?? $r->registradoPor?->name ?? '—' }}</td>

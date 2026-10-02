@@ -107,7 +107,7 @@ class VehiculoGpsReporte extends Model
 
         return $this->fotos->map(fn (VehiculoGpsReporteFoto $f) => [
             'url' => $f->url(),
-            'name' => $pie.' · '.$f->original_name,
+            'name' => $pie.' · '.$f->original_name.($f->client_attachment_id ? ' (de Adjuntos)' : ''),
         ])->values()->all();
     }
 
