@@ -128,8 +128,8 @@ class EgresoUltimoMontoTest extends TestCase
 
         Livewire::test(CreateExpense::class)
             ->set('modo', 'Otros') // el formulario solo se pinta con el tipo elegido
-            ->assertSeeHtml('wire:model.blur="detail"')
-            ->assertSeeHtml('wire:model.blur="reason"')
+            ->assertSeeHtml('wire:model.live.blur="detail"')
+            ->assertSeeHtml('wire:model.live.blur="reason"')
             ->set('reason', 'Recarga teléfono')
             ->assertSet('total', '30.00')
             ->assertSet('origenPropuesta', 'último egreso de «Recarga teléfono» del 10/09/2026')

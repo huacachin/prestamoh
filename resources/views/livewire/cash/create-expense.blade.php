@@ -88,7 +88,7 @@
                                     {{-- .blur: al salir del campo se propone el monto del último egreso con ese motivo (02/10) --}}
                                     <input type="text" name="reason" autocomplete="on"
                                            class="form-control form-control-sm @error('reason') is-invalid @enderror"
-                                           wire:model.blur="reason"
+                                           wire:model.live.blur="reason"
                                            placeholder="Motivo libre (proveedor, ej. 'Recarga teléfono')"
                                            maxlength="255">
                                 @endif
@@ -99,7 +99,7 @@
                                 {{-- .blur: con el detalle escrito, la propuesta de monto se afina al último egreso igual (02/10) --}}
                                 <input type="text" name="detail" autocomplete="on"
                                        class="form-control form-control-sm @error('detail') is-invalid @enderror"
-                                       wire:model.blur="detail"
+                                       wire:model.live.blur="detail"
                                        placeholder="Descripción del egreso"
                                        maxlength="500">
                             </div>
