@@ -109,7 +109,10 @@
                                 {{-- list=: desplegable nativo con los montos usados antes para este motivo
                                      (02/10, Antony), como las sugerencias del navegador en A y Detalle, pero
                                      sacadas del historial de la caja. No rellena nada solo. --}}
-                                <input type="number" step="0.01" min="0.01" name="total" autocomplete="off"
+                                {{-- type=text (no number): en Chrome la lista del datalist se abre al hacer clic y filtra
+                                     al escribir, igual que las sugerencias de A/Detalle; con type=number las flechas
+                                     mueven el número y la lista no aparece. El servidor valida que sea numérico > 0. --}}
+                                <input type="text" inputmode="decimal" name="total" autocomplete="off"
                                        class="form-control form-control-sm @error('total') is-invalid @enderror"
                                        wire:model.defer="total"
                                        list="montos-previos"
