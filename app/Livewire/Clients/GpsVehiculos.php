@@ -111,7 +111,11 @@ class GpsVehiculos extends Component
 
     private function puntoVacio(string $etiqueta = ''): array
     {
-        return ['etiqueta' => $etiqueta, 'etiqueta_otra' => '', 'estadia_desde' => '', 'estadia_hasta' => '', 'direccion' => '', 'link' => ''];
+        return [
+            // Título editable (02/10): "Ubicación de vehículo" por defecto.
+            'titulo' => VehiculoGpsReporte::TITULO_PUNTO,
+            'etiqueta' => $etiqueta, 'etiqueta_otra' => '', 'estadia_desde' => '', 'estadia_hasta' => '', 'direccion' => '', 'link' => '',
+        ];
     }
 
     /** Etiqueta final de un punto: la elegida en la lista o la escrita en "Otra". */
@@ -181,6 +185,7 @@ class GpsVehiculos extends Component
     private function datosDesdeForm(string $placa): array
     {
         $puntos = array_map(fn ($p) => [
+            'titulo' => trim((string) ($p['titulo'] ?? '')) ?: VehiculoGpsReporte::TITULO_PUNTO,
             'etiqueta' => $this->etiquetaDe($p),
             'estadia_desde' => ($p['estadia_desde'] ?? '') ?: null,
             'estadia_hasta' => ($p['estadia_hasta'] ?? '') ?: null,
@@ -217,6 +222,7 @@ class GpsVehiculos extends Component
             'form.domicilio_link' => 'nullable|string|max:500',
             'form.domicilio_personalizado' => 'boolean',
             'form.puntos' => 'required|array|min:1',
+            'form.puntos.*.titulo' => 'nullable|string|max:60',
             'form.puntos.*.etiqueta' => 'nullable|string|max:60',
             'form.puntos.*.etiqueta_otra' => 'nullable|string|max:60',
             'form.puntos.*.estadia_desde' => $hora, 'form.puntos.*.estadia_hasta' => $hora,

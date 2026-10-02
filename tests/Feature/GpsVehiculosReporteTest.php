@@ -81,26 +81,33 @@ class GpsVehiculosReporteTest extends TestCase
             ->assertHasNoErrors();
 
         $r = VehiculoGpsReporte::where('client_id', $this->client->id)->firstOrFail();
+        // Negritas con asteriscos, como WhatsApp (02/10, captura del área): título,
+        // nombre, placa y rótulos; expediente, horas, direcciones y enlaces en normal.
         $esperado = implode("\n", [
-            '📍 REPORTE DE GPS – VEHÍCULO EN GARANTÍA',
-            '👤 Cliente: '.$this->client->fullName(),
-            '🚗 Placa: ALP837',
+            '📍 *REPORTE DE GPS – VEHÍCULO EN GARANTÍA*',
+            '👤 Cliente: *'.$this->client->fullName().'*',
+            '🚗 Placa: *ALP837*',
             '📄 Expediente: 1299',
             '',
-            '⏰ Inicio de ruta: 6:30 a.m. – 7:40 a.m.',
-            '⏰ Fin de ruta: 11:00 p.m. – 1:30 a.m.',
+            '⏰ *Inicio de ruta:* 6:30 a.m. – 7:40 a.m.',
+            '⏰ *Fin de ruta:* 11:00 p.m. – 1:30 a.m.',
             '',
-            '📍 Ubicación de vehículo:',
+            '📍 *Ubicación de vehículo:*',
             'Las Lúcumas, Carabayllo 15319',
-            '🔗 Link de ubicación de vehículo en Google Maps:',
+            '🔗 *Link de ubicación de vehículo en Google Maps:*',
             'https://maps.app.goo.gl/cmxi6j2wpeJEvNWe7',
             '',
-            '📍 Ubicación de domicilio:',
+            '📍 *Ubicación de domicilio:*',
             'Mz. G Lt. 5 Proviv. El Paraiso de Carabayllo',
-            '🔗 Link de ubicación de domicilio en Google Maps:',
+            '🔗 *Link de ubicación de domicilio en Google Maps:*',
             'https://maps.app.goo.gl/FqEVUPpdh4sr56ub7',
         ]);
         $this->assertSame($esperado, $r->texto());
+        // En pantalla se ve en negrita, y lo que se copia conserva los asteriscos.
+        $this->assertStringContainsString('<b>REPORTE DE GPS – VEHÍCULO EN GARANTÍA</b>', $r->textoHtml());
+        $this->assertStringContainsString('🚗 Placa: <b>ALP837</b>', $r->textoHtml());
+        $this->assertStringNotContainsString('*', $r->textoHtml());
+        $this->assertSame('Ubicación de vehículo', $r->puntos[0]['titulo']);
         $comp->assertSee('Copiar texto')->assertSee('ALP837')->assertSee('Las Lúcumas, Carabayllo 15319');
     }
 
@@ -127,9 +134,9 @@ class GpsVehiculosReporteTest extends TestCase
         $r = VehiculoGpsReporte::where('client_id', $this->client->id)->firstOrFail();
         $this->assertCount(3, $r->puntos);
         $texto = $r->texto();
-        $this->assertStringContainsString("📍 Ubicación de vehículo (Donde se queda):\n⏱️ Horario aproximado de estadía: 2:30 a.m. – 7:00 a.m.\n→ Carretera Federico Basadre, Huipoca (Aguaytia)\n🔗 Link de ubicación de vehículo en Google Maps:\nhttps://www.google.com/maps?q=-9.052531,-75.52533", $texto);
-        $this->assertStringContainsString('📍 Ubicación de vehículo (Punto de llegada):', $texto);
-        $this->assertStringContainsString('⏰ Inicio de ruta: 2:30 a.m. – 3:50 p.m.', $texto);
+        $this->assertStringContainsString("📍 *Ubicación de vehículo (Donde se queda):*\n⏱️ *Horario aproximado de estadía:* 2:30 a.m. – 7:00 a.m.\n→ Carretera Federico Basadre, Huipoca (Aguaytia)\n🔗 *Link de ubicación de vehículo en Google Maps:*\nhttps://www.google.com/maps?q=-9.052531,-75.52533", $texto);
+        $this->assertStringContainsString('📍 *Ubicación de vehículo (Punto de llegada):*', $texto);
+        $this->assertStringContainsString('⏰ *Inicio de ruta:* 2:30 a.m. – 3:50 p.m.', $texto);
     }
 
     public function test_la_vista_previa_se_arma_mientras_se_escribe_y_el_domicilio_sale_de_la_ficha(): void
@@ -143,14 +150,26 @@ class GpsVehiculosReporteTest extends TestCase
             ->set('form.puntos.0.direccion', 'Av. Los Talleres 100');
 
         $previa = $comp->instance()->vistaPrevia();
-        $this->assertStringContainsString('📍 Ubicación de vehículo (Taller):', $previa);
-        $this->assertStringContainsString("📍 Ubicación de domicilio:\nMz. G Lt. 5 Proviv. El Paraiso, Carabayllo", $previa, 'sin personalizar, el domicilio sale de la ficha');
+        $this->assertStringContainsString('📍 *Ubicación de vehículo (Taller):*', $previa);
+        $this->assertStringContainsString("📍 *Ubicación de domicilio:*\nMz. G Lt. 5 Proviv. El Paraiso, Carabayllo", $previa, 'sin personalizar, el domicilio sale de la ficha');
+
+        // Título del punto editable (02/10): cambia el rótulo y el del enlace.
+        $comp->set('form.puntos.0.titulo', 'Ubicación de la moto')
+            ->set('form.puntos.0.link', 'https://maps.app.goo.gl/moto1');
+        $previa = $comp->instance()->vistaPrevia();
+        $this->assertStringContainsString('📍 *Ubicación de la moto (Taller):*', $previa);
+        $this->assertStringContainsString('🔗 *Link de ubicación de la moto en Google Maps:*', $previa);
+        $comp->assertSee('Título del punto');
         $this->assertStringContainsString('https://maps.google.com/?q=-11.8600000,-77.0300000', $previa, 'y el enlace, de la ubicación de Casa');
         $comp->assertSee('Así saldrá el mensaje')->assertSee('Enlace de Casa registrado');
 
         $comp->call('guardar')->assertHasNoErrors();
         $r = VehiculoGpsReporte::firstOrFail();
         $this->assertSame('Taller', $r->puntos[0]['etiqueta']);
+        $this->assertSame('Ubicación de la moto', $r->puntos[0]['titulo']);
+        // Un reporte guardado antes del título (sin la clave) sale con el de siempre.
+        $r->puntos = [['etiqueta' => '', 'direccion' => 'Av. Vieja 1', 'link' => '']];
+        $this->assertStringContainsString("📍 *Ubicación de vehículo:*\nAv. Vieja 1", $r->texto());
         $this->assertSame('Mz. G Lt. 5 Proviv. El Paraiso, Carabayllo', $r->domicilio_direccion);
     }
 
@@ -284,12 +303,12 @@ class GpsVehiculosReporteTest extends TestCase
         $this->assertStringNotContainsString('Fin de ruta', $texto);
         $this->assertStringNotContainsString('Link de ubicación', $texto);
         $this->assertStringNotContainsString('Horario aproximado', $texto);
-        $this->assertStringEndsWith("📍 Ubicación de domicilio:\nMz. G Lt. 5", $texto);
-        $this->assertStringContainsString("📄 Expediente: 1299\n\n📍 Ubicación de vehículo:\nPunto X\n\n📍 Ubicación de domicilio:", $texto);
+        $this->assertStringEndsWith("📍 *Ubicación de domicilio:*\nMz. G Lt. 5", $texto);
+        $this->assertStringContainsString("📄 Expediente: 1299\n\n📍 *Ubicación de vehículo:*\nPunto X\n\n📍 *Ubicación de domicilio:*", $texto);
 
         // Solo el inicio: sale esa línea y no la del fin.
         $r->update(['inicio_desde' => '06:00', 'inicio_hasta' => '07:00']);
-        $this->assertStringContainsString("\n\n⏰ Inicio de ruta: 6:00 a.m. – 7:00 a.m.\n\n📍 Ubicación de vehículo:", $r->fresh()->texto());
+        $this->assertStringContainsString("\n\n⏰ *Inicio de ruta:* 6:00 a.m. – 7:00 a.m.\n\n📍 *Ubicación de vehículo:*", $r->fresh()->texto());
         $this->assertStringNotContainsString('Fin de ruta', $r->fresh()->texto());
     }
 

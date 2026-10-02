@@ -23,6 +23,13 @@ class VehiculoGpsReporte extends Model
     /** Etiquetas sugeridas para los puntos del reporte avanzado. */
     public const ETIQUETAS = ['Donde se queda', 'Intermedio', 'Punto de llegada'];
 
+    /**
+     * Título por defecto de cada punto (02/10, Antony): editable en el
+     * formulario ("Ubicación de la moto", "Ubicación del cliente"…). Los
+     * reportes guardados sin 'titulo' siguen saliendo con este.
+     */
+    public const TITULO_PUNTO = 'Ubicación de vehículo';
+
     protected $fillable = [
         'client_id', 'vehiculo_id', 'placa', 'fecha',
         'inicio_desde', 'inicio_hasta', 'fin_desde', 'fin_hasta',
@@ -104,13 +111,19 @@ class VehiculoGpsReporte extends Model
         ])->values()->all();
     }
 
+    /**
+     * Texto del reporte, listo para pegar en WhatsApp. Las negritas van con
+     * asteriscos (*…*), que es como WhatsApp las entiende (02/10, Antony,
+     * según la captura del área): título, nombre del cliente, placa y los
+     * rótulos; direcciones, enlaces, horas y expediente en normal.
+     */
     public function texto(): string
     {
         $c = $this->client;
         $l = [
-            '📍 REPORTE DE GPS – VEHÍCULO EN GARANTÍA',
-            '👤 Cliente: '.($c?->fullName() ?? ''),
-            '🚗 Placa: '.$this->placa,
+            '📍 *REPORTE DE GPS – VEHÍCULO EN GARANTÍA*',
+            '👤 Cliente: *'.($c?->fullName() ?? '').'*',
+            '🚗 Placa: *'.$this->placa.'*',
             '📄 Expediente: '.($c?->expediente ?? ''),
             '',
         ];
@@ -121,44 +134,57 @@ class VehiculoGpsReporte extends Model
         $fin = self::rango($this->fin_desde, $this->fin_hasta);
         if ($inicio !== '' || $fin !== '') {
             if ($inicio !== '') {
-                $l[] = '⏰ Inicio de ruta: '.$inicio;
+                $l[] = '⏰ *Inicio de ruta:* '.$inicio;
             }
             if ($fin !== '') {
-                $l[] = '⏰ Fin de ruta: '.$fin;
+                $l[] = '⏰ *Fin de ruta:* '.$fin;
             }
             $l[] = '';
         }
 
         foreach ($this->puntos ?? [] as $p) {
+            // Título editable por punto (02/10); el enlace lo repite en minúscula inicial.
+            $titulo = trim((string) ($p['titulo'] ?? '')) ?: self::TITULO_PUNTO;
+            $tituloLink = mb_strtolower(mb_substr($titulo, 0, 1)).mb_substr($titulo, 1);
             $etiqueta = trim((string) ($p['etiqueta'] ?? ''));
             $estadia = self::rango($p['estadia_desde'] ?? null, $p['estadia_hasta'] ?? null);
             $link = trim((string) ($p['link'] ?? ''));
             if ($etiqueta !== '' || $estadia !== '') {
-                $l[] = '📍 Ubicación de vehículo'.($etiqueta !== '' ? " ({$etiqueta})" : '').':';
+                $l[] = '📍 *'.$titulo.($etiqueta !== '' ? " ({$etiqueta})" : '').':*';
                 if ($estadia !== '') {
-                    $l[] = '⏱️ Horario aproximado de estadía: '.$estadia;
+                    $l[] = '⏱️ *Horario aproximado de estadía:* '.$estadia;
                 }
                 $l[] = '→ '.trim((string) ($p['direccion'] ?? ''));
             } else {
-                $l[] = '📍 Ubicación de vehículo:';
+                $l[] = '📍 *'.$titulo.':*';
                 $l[] = trim((string) ($p['direccion'] ?? ''));
             }
             if ($link !== '') {
-                $l[] = '🔗 Link de ubicación de vehículo en Google Maps:';
+                $l[] = '🔗 *Link de '.$tituloLink.' en Google Maps:*';
                 $l[] = $link;
             }
             $l[] = '';
         }
 
-        $l[] = '📍 Ubicación de domicilio:';
+        $l[] = '📍 *Ubicación de domicilio:*';
         $l[] = trim((string) $this->domicilio_direccion);
         $domLink = trim((string) $this->domicilio_link);
         if ($domLink !== '') {
-            $l[] = '🔗 Link de ubicación de domicilio en Google Maps:';
+            $l[] = '🔗 *Link de ubicación de domicilio en Google Maps:*';
             $l[] = $domLink;
         }
 
         return implode("\n", $l);
+    }
+
+    /**
+     * El mismo texto para mostrarlo en pantalla como se verá en WhatsApp:
+     * escapado y con las negritas *…* convertidas en <b>. Lo que se copia
+     * sigue siendo texto() (con los asteriscos).
+     */
+    public function textoHtml(): string
+    {
+        return preg_replace('/\*([^*\n]+)\*/u', '<b>$1</b>', e($this->texto()));
     }
 
     /** Texto corto para la descripción de auditoría. */

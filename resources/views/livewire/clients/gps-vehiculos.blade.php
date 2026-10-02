@@ -117,7 +117,14 @@
                                     @endif
                                 </div>
                                 <div class="row g-2 mb-2">
-                                    <div class="col-6 col-md-4">
+                                    {{-- Título del punto (02/10): sale en el mensaje como "📍 *Título (etiqueta):*". --}}
+                                    <div class="col-12 col-md-4">
+                                        <label class="form-label mb-0 small">Título del punto</label>
+                                        <input type="text" class="form-control form-control-sm" maxlength="60"
+                                               wire:model.live.debounce.500ms="form.puntos.{{ $i }}.titulo"
+                                               placeholder="{{ \App\Models\VehiculoGpsReporte::TITULO_PUNTO }}">
+                                    </div>
+                                    <div class="col-6 col-md-3">
                                         <label class="form-label mb-0 small">¿Qué punto es?</label>
                                         <select class="form-select form-select-sm" wire:model.live="form.puntos.{{ $i }}.etiqueta">
                                             <option value="">Sin etiqueta (formato corto)</option>
@@ -235,7 +242,8 @@
                 <div class="col-12 col-xl-5">
                     <div class="border rounded p-2 h-100" style="background:#f4faf6; position:sticky; top:90px;">
                         <div class="small fw-semibold mb-1"><i class="ti ti-message-2"></i> Así saldrá el mensaje</div>
-                        <pre class="mb-0 small bg-white border rounded p-2" style="white-space:pre-wrap; font-family:inherit; min-height:200px;">{{ $this->vistaPrevia() }}</pre>
+                        {{-- Negritas como en WhatsApp (los *…* del texto se ven en negrita aquí). --}}
+                        <pre class="mb-0 small bg-white border rounded p-2" style="white-space:pre-wrap; font-family:inherit; min-height:200px;">{!! preg_replace('/\*([^*\n]+)\*/u', '<b>$1</b>', e($this->vistaPrevia())) !!}</pre>
                         <div class="small text-muted mt-1">Se actualiza mientras escribes. Al guardar tendrás el botón "Copiar texto".</div>
                     </div>
                 </div>
@@ -258,7 +266,10 @@
             </div>
             <div class="row g-2">
                 <div class="col-12 col-xl-7">
-                    <pre x-ref="texto" class="mb-0 small bg-white border rounded p-2" style="white-space:pre-wrap; font-family:inherit;">{{ $reporteVer->texto() }}</pre>
+                    {{-- En pantalla, las negritas como en WhatsApp; lo que se COPIA es el texto
+                         con asteriscos (x-ref="texto", oculto), que WhatsApp convierte en negrita. --}}
+                    <pre class="mb-0 small bg-white border rounded p-2" style="white-space:pre-wrap; font-family:inherit;">{!! $reporteVer->textoHtml() !!}</pre>
+                    <pre x-ref="texto" class="d-none">{{ $reporteVer->texto() }}</pre>
                     {{-- Abrir cada ubicación en Google Maps (pestaña nueva) --}}
                     <div class="d-flex flex-wrap gap-2 mt-2">
                         @foreach($reporteVer->puntos ?? [] as $n => $p)
