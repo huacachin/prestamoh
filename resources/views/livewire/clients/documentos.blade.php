@@ -25,6 +25,10 @@
             background-color: #198754 !important;
             border-color: #198754 !important;
         }
+        /* Obs. 1.1: estado de cada crédito en el Anexo 1. */
+        .credito-vigente { background-color: #fff3cd; }
+        .credito-contratado { font-weight: 700; }
+        .credito-anterior { color: #c0392b; }
     </style>
     @unless($embebido)
     <div class="row">
@@ -233,16 +237,24 @@
                         <div class="row g-2">
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold mb-1">Crédito *</label>
-                                <select class="form-select form-select-sm @error('creditoId') is-invalid @enderror"
-                                        wire:model.live="creditoId">
-                                    <option value="">— Selecciona el crédito —</option>
-                                    @foreach($creditosActivos as $c)
-                                        <option value="{{ $c->id }}">
-                                            #{{ $c->id }} — S/ {{ number_format((float) $c->importe, 2) }} — {{ $c->cuotas }} cuotas ({{ $c->tipoPlanillaLabel() }})
-                                        </option>
+                                {{-- Obs. 1.1 (Área Legal, 29/09): un <select> no pinta sus opciones en
+                                     Mac/Safari, así que es una lista: amarillo = el más reciente sin
+                                     contrato (el que toca), negrita = ya con contrato, rojo = anteriores. --}}
+                                <div class="border rounded p-1 @error('creditoId') border-danger @enderror" style="background:#fcfcfa; max-height:150px; overflow:auto;">
+                                    @foreach($creditosAnexo1 as $item)
+                                        @php $c = $item['credit']; @endphp
+                                        <label class="d-flex align-items-center gap-2 small px-2 py-1 rounded credito-{{ $item['estado'] }}"
+                                               style="cursor:pointer;" wire:key="anx-cred-{{ $c->id }}">
+                                            <input class="form-check-input mt-0" type="radio" name="creditoAnexo1"
+                                                   value="{{ $c->id }}" wire:model.live="creditoId">
+                                            <span>#{{ $c->id }} — S/ {{ number_format((float) $c->importe, 2) }} — {{ $c->cuotas }} cuotas ({{ $c->tipoPlanillaLabel() }})</span>
+                                            <span class="badge ms-auto {{ ['vigente' => 'bg-warning text-dark', 'contratado' => 'bg-dark', 'anterior' => 'bg-danger'][$item['estado']] }}" style="font-size:9px;">
+                                                {{ ['vigente' => 'Vigente del día', 'contratado' => 'Con contrato', 'anterior' => 'Anterior'][$item['estado']] }}
+                                            </span>
+                                        </label>
                                     @endforeach
-                                </select>
-                                @error('creditoId') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                </div>
+                                @error('creditoId') <div class="text-danger small">{{ $message }}</div> @enderror
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold mb-1">Fecha del documento</label>
@@ -551,9 +563,15 @@
                                                                    wire:model.blur="contratoVehiculos.{{ $i }}.fecha_acta">
                                                             @error('contratoVehiculos.'.$i.'.fecha_acta') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                                         </div>
+                                                        {{-- Obs. 3.2: solo se teclea el número; el año va fijo (del acta, o el de hoy)
+                                                             y el valor impreso sigue siendo "0373-2026", como la maestra. --}}
                                                         <div class="col-3">
-                                                            <input type="text" class="form-control form-control-sm campo-elegir" placeholder="Kardex (ej. 0373-2026)"
-                                                                   wire:model.blur="contratoVehiculos.{{ $i }}.kardex">
+                                                            <div class="input-group input-group-sm">
+                                                                <input type="text" class="form-control form-control-sm campo-elegir" placeholder="N° kardex"
+                                                                       title="Número del kardex (el año se agrega solo)"
+                                                                       wire:model.blur="contratoVehiculos.{{ $i }}.kardex_num">
+                                                                <span class="input-group-text" style="font-size:11px;">-{{ \App\Livewire\Clients\Documentos::anioKardex($slot) }}</span>
+                                                            </div>
                                                         </div>
                                                         {{-- Obs. 3.4: notario de catálogo (en el orden del área) u "Otro" con texto. --}}
                                                         <div class="col-6">
@@ -702,7 +720,8 @@
                                             <div class="d-flex justify-content-between align-items-center mb-1">
                                                 <span class="small fw-semibold">
                                                     Deudor {{ $i + 1 }}
-                                                    @if($i === 0) <span class="text-muted fw-normal">(ficha del cliente — todo editable)</span> @endif
+                                                    {{-- Obs. 2.3 (Área Legal, 29/09): sin edición; lo que falte se corrige en la ficha. --}}
+                                                    <span class="text-muted fw-normal">(datos de la ficha — se corrigen en la ficha del cliente)</span>
                                                 </span>
                                                 @if($i === 1 && $codeudorClientId)
                                                     <span class="badge bg-primary d-inline-flex align-items-center gap-1" style="font-size:10px;">
@@ -734,7 +753,7 @@
                                                         </div>
                                                     @endif
                                                     <div class="form-text" style="font-size:10px;">
-                                                        Vincula un cliente registrado o escribe los datos manualmente abajo.
+                                                        Vincula un cliente registrado: sus datos salen de su ficha.
                                                     </div>
                                                 </div>
                                             @endif
@@ -742,20 +761,20 @@
                                             <div class="row g-2">
                                                 <div class="col-md-6">
                                                     <label class="form-label small mb-1">Nombre completo *</label>
-                                                    <input type="text" class="form-control form-control-sm @error('deudores.'.$i.'.nombre') is-invalid @enderror"
-                                                           wire:model.blur="deudores.{{ $i }}.nombre">
+                                                    <input type="text" class="form-control form-control-sm bg-light @error('deudores.'.$i.'.nombre') is-invalid @enderror"
+                                                           wire:model.blur="deudores.{{ $i }}.nombre" readonly>
                                                     @error('deudores.'.$i.'.nombre') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                                 </div>
                                                 <div class="col-md-3">
                                                     <label class="form-label small mb-1">DNI *</label>
-                                                    <input type="text" class="form-control form-control-sm @error('deudores.'.$i.'.dni') is-invalid @enderror"
-                                                           wire:model.blur="deudores.{{ $i }}.dni">
+                                                    <input type="text" class="form-control form-control-sm bg-light @error('deudores.'.$i.'.dni') is-invalid @enderror"
+                                                           wire:model.blur="deudores.{{ $i }}.dni" readonly>
                                                     @error('deudores.'.$i.'.dni') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                                 </div>
                                                 <div class="col-md-3">
                                                     <label class="form-label small mb-1">Sexo *</label>
-                                                    <select class="form-select form-select-sm @error('deudores.'.$i.'.sexo') is-invalid @enderror"
-                                                            wire:model.live="deudores.{{ $i }}.sexo">
+                                                    <select class="form-select form-select-sm bg-light @error('deudores.'.$i.'.sexo') is-invalid @enderror"
+                                                            wire:model.live="deudores.{{ $i }}.sexo" disabled>
                                                         <option value="M">Masculino (EL DEUDOR)</option>
                                                         <option value="F">Femenino (LA DEUDORA)</option>
                                                     </select>
@@ -763,15 +782,15 @@
                                                 </div>
                                                 <div class="col-md-3">
                                                     <label class="form-label small mb-1">Nacionalidad</label>
-                                                    <input type="text" class="form-control form-control-sm" wire:model.blur="deudores.{{ $i }}.nacionalidad">
+                                                    <input type="text" class="form-control form-control-sm bg-light" wire:model.blur="deudores.{{ $i }}.nacionalidad" readonly>
                                                 </div>
                                                 <div class="col-md-3">
                                                     <label class="form-label small mb-1">Ocupación</label>
-                                                    <input type="text" class="form-control form-control-sm" wire:model.blur="deudores.{{ $i }}.ocupacion">
+                                                    <input type="text" class="form-control form-control-sm bg-light" wire:model.blur="deudores.{{ $i }}.ocupacion" readonly>
                                                 </div>
                                                 <div class="col-md-3">
                                                     <label class="form-label small mb-1">Estado civil</label>
-                                                    <select class="form-select form-select-sm" wire:model.live="deudores.{{ $i }}.estado_civil">
+                                                    <select class="form-select form-select-sm bg-light" wire:model.live="deudores.{{ $i }}.estado_civil" disabled>
                                                         <option value="">—</option>
                                                         @foreach($estadosCiviles as $valor => $etiqueta)
                                                             <option value="{{ $valor }}">{{ $etiqueta }}</option>
@@ -780,14 +799,30 @@
                                                 </div>
                                                 <div class="col-md-3">
                                                     <label class="form-label small mb-1">Correo</label>
-                                                    <input type="email" class="form-control form-control-sm @error('deudores.'.$i.'.correo') is-invalid @enderror"
-                                                           wire:model.blur="deudores.{{ $i }}.correo">
+                                                    <input type="email" class="form-control form-control-sm bg-light @error('deudores.'.$i.'.correo') is-invalid @enderror"
+                                                           wire:model.blur="deudores.{{ $i }}.correo" readonly>
                                                     @error('deudores.'.$i.'.correo') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                                 </div>
                                                 <div class="col-12">
                                                     <label class="form-label small mb-1">Domicilio</label>
-                                                    <input type="text" class="form-control form-control-sm" wire:model.blur="deudores.{{ $i }}.domicilio">
+                                                    <input type="text" class="form-control form-control-sm bg-light" wire:model.blur="deudores.{{ $i }}.domicilio" readonly>
                                                 </div>
+                                                @php
+                                                    // Lo que el contrato cita y la ficha no tiene: se avisa aquí, se corrige allá.
+                                                    $etiquetasDeudor = ['nacionalidad' => 'nacionalidad', 'ocupacion' => 'ocupación', 'estado_civil' => 'estado civil', 'domicilio' => 'domicilio', 'correo' => 'correo'];
+                                                    $faltanDeudor = collect($etiquetasDeudor)->filter(fn ($et, $campo) => trim((string) ($d[$campo] ?? '')) === '')->values();
+                                                    $fichaDeudorId = $i === 0 ? $clientId : $codeudorClientId;
+                                                @endphp
+                                                @if($faltanDeudor->isNotEmpty() && $fichaDeudorId)
+                                                    <div class="col-12">
+                                                        <div class="alert alert-warning py-1 px-2 mb-0 small" style="color:#000;">
+                                                            <i class="ti ti-alert-triangle"></i>
+                                                            Faltan en la ficha: <b>{{ $faltanDeudor->implode(', ') }}</b>.
+                                                            <a href="{{ route('clients.edit', $fichaDeudorId) }}" target="_blank" rel="noopener">Completar en la ficha</a>
+                                                            y volver a abrir este contrato.
+                                                        </div>
+                                                    </div>
+                                                @endif
                                             </div>
                                         </div>
                                     @endforeach
@@ -1047,10 +1082,12 @@
                                 @error('anexo2CreditoId') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label small fw-semibold mb-1">Fecha del documento *</label>
-                                <input type="date" class="form-control form-control-sm @error('fechaAnexo2') is-invalid @enderror"
-                                       wire:model.live="fechaAnexo2" max="{{ now()->format('Y-m-d') }}">
-                                @error('fechaAnexo2') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                <label class="form-label small fw-semibold mb-1">Fecha del documento</label>
+                                {{-- Como el Anexo 1 y el contrato (obs. 1.2 / 2.4): siempre la fecha del día. --}}
+                                <input type="text" class="form-control form-control-sm bg-light" readonly
+                                       value="{{ $fechaAnexo2 ? \Carbon\Carbon::parse($fechaAnexo2)->format('d/m/Y') : now()->format('d/m/Y') }}">
+                                <div class="form-text" style="font-size:10px;">Siempre la fecha del día.</div>
+                                @error('fechaAnexo2') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                             </div>
                             {{-- 21/09 (Antony): fuera los selectores de banco y modalidad.
                                  Los identifica la lectura del voucher y se muestran solo

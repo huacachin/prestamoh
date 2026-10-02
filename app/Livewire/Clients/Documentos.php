@@ -291,7 +291,10 @@ class Documentos extends Component
         $creditos = $this->creditosActivos();
         $vehiculos = $this->vehiculosCliente();
 
-        $this->creditoId = $creditos->count() === 1 ? $creditos->first()->id : null;
+        // Obs. 1.1 del Área Legal (02/10): se preselecciona el crédito "vigente"
+        // (el más reciente sin contrato); si todos tienen contrato, solo cuando hay uno.
+        $vigente = collect($this->creditosAnexo1())->firstWhere('estado', 'vigente');
+        $this->creditoId = $vigente['credit']->id ?? ($creditos->count() === 1 ? $creditos->first()->id : null);
         // Se preseleccionan todos: lo habitual es anexar la garantía completa;
         // desmarcar es más rápido que buscar y marcar uno por uno.
         $this->anexoVehiculos = $vehiculos->pluck('id')->all();
@@ -523,9 +526,40 @@ class Documentos extends Component
     {
         return [
             'vehiculo_id' => null, 'es_futuro' => false, 'fecha_acta' => '',
+            // kardex: el valor completo "0373-2026" (como lo imprime la maestra);
+            // kardex_num: solo el número que teclea el asesor (obs. 3.2, el año va fijo).
             // notario: uno del catálogo (Notarios::LISTA) u OTRO; notario_otro: el texto en ese caso.
-            'kardex' => '', 'notario' => '', 'notario_otro' => '',
+            'kardex' => '', 'kardex_num' => '', 'notario' => '', 'notario_otro' => '',
         ];
+    }
+
+    /**
+     * Obs. 3.2 del Área Legal (29/09): el asesor teclea solo el NÚMERO del
+     * kardex y el año va fijo; el valor completo sigue siendo "número-año"
+     * ("0373-2026"), que es como lo imprime la maestra a.1.4 y los goldens.
+     */
+    private function sincronizarKardex(int $i): void
+    {
+        if (! isset($this->contratoVehiculos[$i])) {
+            return;
+        }
+        $slot = $this->contratoVehiculos[$i];
+        $num = preg_replace('/\D+/', '', (string) ($slot['kardex_num'] ?? ''));
+        $this->contratoVehiculos[$i]['kardex'] = $num === '' ? '' : $num.'-'.self::anioKardex($slot);
+    }
+
+    /** Año del kardex: el de la fecha del acta si está puesta; si no, el de hoy. */
+    public static function anioKardex(array $slot): string
+    {
+        $fecha = trim((string) ($slot['fecha_acta'] ?? ''));
+
+        return preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha) ? substr($fecha, 0, 4) : now()->format('Y');
+    }
+
+    /** Número de un kardex guardado "0373-2026" (precarga del campo del número). */
+    private static function numeroDeKardex(string $kardex): string
+    {
+        return preg_match('/^(\d+)-\d{4}$/', trim($kardex), $m) ? $m[1] : '';
     }
 
     /**
@@ -599,6 +633,11 @@ class Documentos extends Component
     /** Cualquier cambio de datos del contrato invalida su vista previa. */
     public function updated($name): void
     {
+        // Obs. 3.2: el kardex se arma solo (número tecleado + año del acta).
+        if (preg_match('/^contratoVehiculos\.(\d+)\.(kardex_num|fecha_acta)$/', (string) $name, $m)) {
+            $this->sincronizarKardex((int) $m[1]);
+        }
+
         $raiz = explode('.', (string) $name)[0];
         $propsContrato = [
             'modeloContrato', 'contratoCreditoId', 'contratoVehiculos', 'deudores',
@@ -1355,6 +1394,37 @@ class Documentos extends Component
     }
 
     /**
+     * Créditos activos para el Anexo 1 con su estado para el color (obs. 1.1
+     * del Área Legal, 29/09): 'vigente' = el más reciente sin contrato
+     * emitido (amarillo: es el que toca contratar), 'contratado' = ya tiene
+     * contrato (negrita), 'anterior' = créditos previos sin contrato (rojo).
+     *
+     * @return list<array{credit: Credit, estado: string}>
+     */
+    private function creditosAnexo1(): array
+    {
+        $conContrato = DocumentoCliente::where('client_id', $this->clientId)
+            ->where('tipo', 'contrato')->where('estado', '!=', 'anulado')
+            ->pluck('credit_id')->map(fn ($id) => (int) $id)->all();
+
+        $vigenteAsignado = false;
+        $lista = [];
+        foreach ($this->creditosActivos() as $credit) { // id desc: el primero es el más reciente
+            if (in_array((int) $credit->id, $conContrato, true)) {
+                $estado = 'contratado';
+            } elseif (! $vigenteAsignado) {
+                $estado = 'vigente';
+                $vigenteAsignado = true;
+            } else {
+                $estado = 'anterior';
+            }
+            $lista[] = ['credit' => $credit, 'estado' => $estado];
+        }
+
+        return $lista;
+    }
+
+    /**
      * Vehículos elegibles para el contrato: los del titular, los que comparte
      * como copropietario y — con codeudor anexado — también los del codeudor.
      * Es lo que permite emitir a.3.x con el vehículo a nombre del codeudor,
@@ -1488,6 +1558,7 @@ class Documentos extends Component
                 'es_futuro' => $esFuturo,
                 'fecha_acta' => (string) ($previo['fecha_acta'] ?? ''),
                 'kardex' => (string) ($previo['kardex'] ?? ''),
+                'kardex_num' => (string) ($previo['kardex_num'] ?? self::numeroDeKardex((string) ($previo['kardex'] ?? ''))),
                 'notario' => (string) ($previo['notario'] ?? ''),
                 'notario_otro' => (string) ($previo['notario_otro'] ?? ''),
             ];
@@ -1790,6 +1861,7 @@ class Documentos extends Component
             'contratoVehiculos.*.vehiculo_id' => ['required', 'integer'],
             'contratoVehiculos.*.fecha_acta' => ['nullable', 'date'],
             'contratoVehiculos.*.kardex' => ['nullable', 'string', 'max:20'],
+            'contratoVehiculos.*.kardex_num' => ['nullable', 'string', 'max:10'],
             'contratoVehiculos.*.notario' => ['nullable', 'string', 'max:120'],
             'contratoVehiculos.*.notario_otro' => ['nullable', 'string', 'max:120'],
         ];
@@ -1971,6 +2043,7 @@ class Documentos extends Component
             'documentos' => $documentos,
             'documentosAnulados' => $anulados,
             'creditosActivos' => $this->creditosActivos(),
+            'creditosAnexo1' => $this->creditosAnexo1(),
             'vehiculos' => $this->vehiculosCliente(),
             // 18/09: los codeudores que saldrían en el Anexo 1 (copropietarios
             // de los vehículos MARCADOS), para mostrarlos en el modal.

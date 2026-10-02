@@ -114,7 +114,7 @@ class ObservacionesLegalBloqueATest extends TestCase
 
         $c->set('contratoVehiculos.0.es_futuro', true)
             ->assertSeeHtml('color: #198754;">Bien futuro');    // encendido: verde
-        foreach (['contratoVehiculos.0.fecha_acta', 'contratoVehiculos.0.kardex', 'contratoVehiculos.0.notario'] as $wire) {
+        foreach (['contratoVehiculos.0.fecha_acta', 'contratoVehiculos.0.kardex_num', 'contratoVehiculos.0.notario'] as $wire) {
             $this->assertCampoElegir($c, $wire);                 // obs. 3.1
         }
 
