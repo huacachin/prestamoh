@@ -271,17 +271,96 @@
 
     {{-- ═══ Detalle del reporte: texto para copiar, enlaces a Maps y fotos ═══ --}}
     @if($reporteVer)
-        <div class="border rounded p-2 mb-3" style="background:#f4faf6;" x-data="{ copiado: false }">
+        {{-- Para WhatsApp (02/10, Antony): el portapapeles solo lleva UNA imagen por copia y
+             WhatsApp Web al pegar toma la imagen o el texto, nunca ambos. Por eso:
+             · "Copiar" en cada foto → Ctrl+V en el chat (la 2.ª se pega sobre la vista previa)
+               y luego "Copiar texto" → Ctrl+V en el pie de foto;
+             · "Descargar fotos" como respaldo (se arrastran juntas desde Descargas);
+             · "Compartir" (Web Share: celular / WhatsApp de Windows) manda texto + fotos de una.
+             La clave incluye las fotos: si cambian, el bloque se recrea y Alpine parte fresco. --}}
+        @php $descargas = \Illuminate\Support\Js::from($reporteVer->descargas()); @endphp
+        <div class="border rounded p-2 mb-3" style="background:#f4faf6;"
+             wire:key="detalle-{{ $reporteVer->id }}-{{ $reporteVer->fotos->pluck('id')->implode('-') }}"
+             x-data="{
+                copiado: false,
+                estado: {},
+                compartible: false,
+                aviso: '',
+                fotos: {{ $descargas }},
+                cache: {},
+                init() {
+                    try {
+                        const prueba = new File([new Blob(['x'])], 'x.jpg', { type: 'image/jpeg' });
+                        this.compartible = !! (navigator.share && (this.fotos.length === 0 || (navigator.canShare && navigator.canShare({ files: [prueba] }))));
+                    } catch (e) { this.compartible = false; }
+                    // Donde se puede compartir (celular), las fotos se precargan para que el
+                    // gesto del usuario no caduque esperando la descarga.
+                    if (this.compartible) { this.fotos.forEach(f => this.blob(f.url).catch(() => null)); }
+                },
+                avisar(texto) { this.aviso = texto; setTimeout(() => this.aviso = '', 6000); },
+                blob(url) {
+                    return this.cache[url] ??= fetch(url, { credentials: 'same-origin' }).then(r => { if (! r.ok) throw new Error(r.status); return r.blob(); });
+                },
+                // La imagen como PNG (lo único que el portapapeles acepta), tope 1920 px: WhatsApp igual la comprime.
+                async png(url) {
+                    const img = await new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = url; });
+                    const escala = Math.min(1, 1920 / Math.max(img.naturalWidth, img.naturalHeight));
+                    const c = document.createElement('canvas');
+                    c.width = Math.round(img.naturalWidth * escala); c.height = Math.round(img.naturalHeight * escala);
+                    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+                    return await new Promise((ok, ko) => c.toBlob(b => b ? ok(b) : ko(new Error('png')), 'image/png'));
+                },
+                marcar(id, valor) { this.estado = { ...this.estado, [id]: valor }; setTimeout(() => { this.estado = { ...this.estado, [id]: null }; }, 2500); },
+                async copiarFoto(id, url) {
+                    if (! navigator.clipboard?.write || ! window.ClipboardItem) {
+                        this.marcar(id, 'error'); this.avisar('Este navegador no copia imágenes: usa Descargar fotos.'); return;
+                    }
+                    try {
+                        await navigator.clipboard.write([new ClipboardItem({ 'image/png': this.png(url) })]);
+                        this.marcar(id, 'ok');
+                    } catch (e) { this.marcar(id, 'error'); this.avisar('No se pudo copiar la foto: usa Descargar fotos.'); }
+                },
+                descargarFotos() {
+                    // Un <a download> por foto, espaciados: el navegador pide permiso una sola vez para varias descargas.
+                    this.fotos.forEach((f, i) => setTimeout(() => {
+                        const a = document.createElement('a'); a.href = f.url; a.download = f.nombre; a.rel = 'noopener';
+                        document.body.appendChild(a); a.click(); a.remove();
+                    }, i * 400));
+                },
+                async compartir() {
+                    try {
+                        const files = await Promise.all(this.fotos.map(async f => new File([await this.blob(f.url)], f.nombre, { type: f.mime })));
+                        const datos = { text: this.$refs.texto.textContent };
+                        if (files.length) { datos.files = files; }
+                        await navigator.share(datos);
+                    } catch (e) {
+                        if (e && e.name === 'AbortError') return;
+                        this.avisar('No se pudo compartir desde este equipo: usa Copiar o Descargar fotos.');
+                    }
+                },
+             }">
             <div class="d-flex justify-content-between align-items-center gap-2 mb-1 flex-wrap">
                 <span class="fw-semibold small"><i class="ti ti-message-2"></i> Reporte del {{ $reporteVer->fecha->format('d/m/Y H:i') }} · {{ $reporteVer->placa }}</span>
-                <div class="d-flex gap-2">
+                <div class="d-flex gap-2 flex-wrap">
                     <button type="button" class="btn btn-sm btn-success"
                             x-on:click="navigator.clipboard.writeText($refs.texto.textContent).then(() => { copiado = true; setTimeout(() => copiado = false, 2000) })">
                         <i class="ti ti-copy"></i> <span x-text="copiado ? '¡Copiado!' : 'Copiar texto'">Copiar texto</span>
                     </button>
+                    @if($reporteVer->fotos->isNotEmpty())
+                        <button type="button" class="btn btn-sm btn-outline-success" x-on:click="descargarFotos()"
+                                title="Baja las {{ $reporteVer->fotos->count() }} fotos a Descargas para arrastrarlas juntas al chat (el navegador pide permiso una vez)">
+                            <i class="ti ti-download"></i> Descargar fotos ({{ $reporteVer->fotos->count() }})
+                        </button>
+                    @endif
+                    {{-- Solo donde el navegador sabe compartir archivos (celular, WhatsApp de Windows). --}}
+                    <button type="button" class="btn btn-sm btn-success" x-show="compartible" x-cloak x-on:click="compartir()"
+                            title="Abre el menú de compartir del equipo con el texto y las fotos: elige WhatsApp">
+                        <i class="ti ti-share"></i> Compartir
+                    </button>
                     <button type="button" class="btn btn-sm btn-outline-secondary" wire:click="ver({{ $reporteVer->id }})">Cerrar</button>
                 </div>
             </div>
+            <div class="alert alert-warning py-1 px-2 small mb-1" x-show="aviso" x-cloak x-text="aviso"></div>
             <div class="row g-2">
                 <div class="col-12 col-xl-7">
                     {{-- En pantalla, las negritas como en WhatsApp; lo que se COPIA es el texto
@@ -316,6 +395,13 @@
                                        title="{{ $foto->original_name }} · ver en grande" style="cursor: zoom-in;">
                                         <img src="{{ $foto->thumbUrl() }}" alt="" class="rounded border" style="width:110px; height:110px; object-fit:cover; background:#fff;">
                                     </a>
+                                    {{-- Copia ESTA foto al portapapeles para pegarla en WhatsApp Web (Ctrl+V). --}}
+                                    <button type="button" class="btn btn-light border position-absolute shadow-sm" style="bottom:2px; left:2px; padding:0 6px; font-size:10px; line-height:18px;"
+                                            x-on:click="copiarFoto({{ $foto->id }}, {{ Js::from($foto->url()) }})"
+                                            :class="{ 'btn-success text-white': estado[{{ $foto->id }}] === 'ok', 'btn-danger text-white': estado[{{ $foto->id }}] === 'error' }"
+                                            title="Copiar la foto para pegarla en WhatsApp (Ctrl+V)">
+                                        <i class="ti ti-copy"></i> <span x-text="estado[{{ $foto->id }}] === 'ok' ? '¡Copiada!' : (estado[{{ $foto->id }}] === 'error' ? 'No se pudo' : 'Copiar')">Copiar</span>
+                                    </button>
                                     @if($puedeEditar)
                                         <button type="button" class="btn btn-danger position-absolute" style="top:2px; right:2px; padding:0 6px; font-size:10px; line-height:18px;"
                                                 wire:click="eliminarFoto({{ $foto->id }})" data-confirmar="¿Quitar esta foto del reporte?" title="Quitar foto">
@@ -324,6 +410,10 @@
                                     @endif
                                 </div>
                             @endforeach
+                        </div>
+                        <div class="small text-muted mb-2" style="line-height:1.35;">
+                            <i class="ti ti-brand-whatsapp"></i> <b>En WhatsApp Web:</b> «Copiar» en una foto → Ctrl+V en el chat; «Copiar» en la otra → Ctrl+V sobre la vista previa;
+                            «Copiar texto» → Ctrl+V en el pie de foto. En el celular, «Compartir» lo manda todo de una.
                         </div>
                     @endif
                     @if($puedeEditar)

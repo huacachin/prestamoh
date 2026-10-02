@@ -178,6 +178,26 @@ class VehiculoGpsReporte extends Model
     }
 
     /**
+     * Fotos del reporte para copiarlas, descargarlas o compartirlas desde el
+     * navegador (02/10): url, mime y un nombre de archivo que diga de qué
+     * reporte vienen ("ALP837_20261002_1030_1.jpg"), que es como quedan en
+     * Descargas o en el teléfono.
+     *
+     * @return list<array{id: int, url: string, mime: string, nombre: string}>
+     */
+    public function descargas(): array
+    {
+        $base = preg_replace('/[^A-Za-z0-9]+/', '', (string) $this->placa).'_'.$this->fecha?->format('Ymd_Hi');
+
+        return $this->fotos->values()->map(fn (VehiculoGpsReporteFoto $f, int $i) => [
+            'id' => (int) $f->id,
+            'url' => $f->url(),
+            'mime' => $f->mime ?: 'image/jpeg',
+            'nombre' => $base.'_'.($i + 1).'.'.(strtolower(pathinfo($f->path, PATHINFO_EXTENSION)) ?: 'jpg'),
+        ])->all();
+    }
+
+    /**
      * El mismo texto para mostrarlo en pantalla como se verá en WhatsApp:
      * escapado y con las negritas *…* convertidas en <b>. Lo que se copia
      * sigue siendo texto() (con los asteriscos).
