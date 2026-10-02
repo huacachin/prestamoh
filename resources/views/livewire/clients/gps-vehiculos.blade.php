@@ -342,7 +342,14 @@
             <div class="d-flex justify-content-between align-items-center gap-2 mb-1 flex-wrap">
                 <span class="fw-semibold small"><i class="ti ti-message-2"></i> Reporte del {{ $reporteVer->fecha->format('d/m/Y H:i') }} · {{ $reporteVer->placa }}</span>
                 <div class="d-flex gap-2 flex-wrap">
-                    <button type="button" class="btn btn-sm btn-success"
+                    {{-- Mismo enlace que los comprobantes pero SIN número (02/10, Antony): WhatsApp
+                         no deja apuntar a un grupo, así que se abre con el texto puesto y pide
+                         elegir el chat (grupos incluidos). Las fotos van aparte (Copiar / Compartir). --}}
+                    <a href="https://api.whatsapp.com/send?text={{ rawurlencode($reporteVer->texto()) }}" target="_blank" rel="noopener"
+                       class="btn btn-sm btn-success" title="Abre WhatsApp con el texto listo; eliges el grupo o contacto y lo mandas">
+                        <i class="ti ti-brand-whatsapp"></i> Enviar por WhatsApp
+                    </a>
+                    <button type="button" class="btn btn-sm btn-outline-success"
                             x-on:click="navigator.clipboard.writeText($refs.texto.textContent).then(() => { copiado = true; setTimeout(() => copiado = false, 2000) })">
                         <i class="ti ti-copy"></i> <span x-text="copiado ? '¡Copiado!' : 'Copiar texto'">Copiar texto</span>
                     </button>
@@ -412,8 +419,8 @@
                             @endforeach
                         </div>
                         <div class="small text-muted mb-2" style="line-height:1.35;">
-                            <i class="ti ti-brand-whatsapp"></i> <b>En WhatsApp Web:</b> «Copiar» en una foto → Ctrl+V en el chat; «Copiar» en la otra → Ctrl+V sobre la vista previa;
-                            «Copiar texto» → Ctrl+V en el pie de foto. En el celular, «Compartir» lo manda todo de una.
+                            <i class="ti ti-brand-whatsapp"></i> <b>En la PC:</b> «Enviar por WhatsApp» → eliges el grupo (el texto queda escrito) → «Copiar» en una foto → Ctrl+V en el chat
+                            (el texto pasa a ser el pie) → «Copiar» en la otra → Ctrl+V sobre la vista previa → Enviar. En el celular, «Compartir» lo manda todo de una.
                         </div>
                     @endif
                     @if($puedeEditar)

@@ -97,9 +97,27 @@ class GpsCopiarCompartirFotosTest extends TestCase
         $this->assertStringContainsString('ALP837_20261002_1030_2.jpg', $html);
         // El bloque se recrea si cambian las fotos (clave con sus ids) y la guía para WhatsApp Web está.
         $this->assertStringContainsString('wire:key="detalle-'.$r->id.'-'.$a->id.'-'.$b->id.'"', $html);
-        $this->assertStringContainsString('En WhatsApp Web:', $html);
+        $this->assertStringContainsString('En la PC:', $html);
         // Copiar texto sigue igual.
         $this->assertStringContainsString('Copiar texto', $html);
+    }
+
+    public function test_enviar_por_whatsapp_abre_el_enlace_sin_numero_con_el_texto_del_reporte(): void
+    {
+        $r = $this->mundo();
+
+        $html = Livewire::test(GpsVehiculos::class, ['id' => $this->client->id])->call('ver', $r->id)->html();
+
+        // Mismo enlace que los comprobantes pero sin phone=: WhatsApp pide elegir el chat (grupos incluidos).
+        $this->assertStringContainsString(
+            '<a href="https://api.whatsapp.com/send?text='.rawurlencode($r->texto()).'" target="_blank" rel="noopener"',
+            $html,
+        );
+        $this->assertStringNotContainsString('api.whatsapp.com/send?phone=', $html);
+        $this->assertStringContainsString('Enviar por WhatsApp', $html);
+        // El texto va con sus negritas (*…*) y saltos codificados, listo para pegarse tal cual.
+        $this->assertStringContainsString(rawurlencode('*REPORTE DE GPS – VEHÍCULO EN GARANTÍA*'), $html);
+        $this->assertStringContainsString('%0A', $html);
     }
 
     public function test_sin_fotos_no_hay_descargar_pero_compartir_sigue_para_mandar_el_texto(): void
