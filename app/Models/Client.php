@@ -100,6 +100,24 @@ class Client extends Model
         return $this->hasOne(ClientEmpresa::class);
     }
 
+    /**
+     * ¿Es persona jurídica? Por tipo de documento (RUC) O por la forma del
+     * número: 11 dígitos que empiezan en 10 ó 20 es un RUC aunque la ficha
+     * diga DNI. La migración del legacy puso 'DNI' a TODOS los clientes
+     * (MigrateLegacyData), así que las empresas migradas quedaron como
+     * personas naturales y el wizard de contratos no activaba el modelo a.4
+     * ni pedía al gerente general (02/10/2026, caso Gestion Energetica JM).
+     * `clientes:normalizar-ruc` corrige las fichas; esto es la red de seguridad.
+     */
+    public function esPersonaJuridica(): bool
+    {
+        if (mb_strtoupper(trim((string) $this->tipo_documento)) === 'RUC') {
+            return true;
+        }
+
+        return (bool) preg_match('/^(10|20)\d{9}$/', trim((string) $this->documento));
+    }
+
     /** Vehículos donde este cliente es COPROPIETARIO (no titular). */
     public function vehiculosCompartidos(): BelongsToMany
     {

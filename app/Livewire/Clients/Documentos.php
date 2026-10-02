@@ -539,7 +539,7 @@ class Documentos extends Component
     private function resolverModeloContrato(): void
     {
         $client = Client::find($this->clientId);
-        $esEmpresa = mb_strtoupper(trim((string) $client?->tipo_documento)) === 'RUC';
+        $esEmpresa = (bool) $client?->esPersonaJuridica();
 
         if ($esEmpresa) {
             $this->garantiaContrato = 'gps';
@@ -1912,7 +1912,7 @@ class Documentos extends Component
             $client = Client::find($this->clientId);
             $aplicables = ModelosContrato::aplicables(
                 sexo: $client?->sexo,
-                juridica: mb_strtoupper(trim((string) $client?->tipo_documento)) === 'RUC',
+                juridica: (bool) $client?->esPersonaJuridica(),
                 conCodeudor: $this->codeudorClientId !== null,
             );
         } catch (\Throwable) {
@@ -1973,7 +1973,7 @@ class Documentos extends Component
             'codeudoresAnexo1' => $this->codeudoresDelAnexo1(),
             'modelosAgrupados' => $this->modelosAgrupados(),
             'presetContrato' => $presetContrato,
-            'esEmpresaContrato' => mb_strtoupper(trim((string) $client->tipo_documento)) === 'RUC',
+            'esEmpresaContrato' => $client->esPersonaJuridica(),
             // El depósito a tercero solo existe con UN bien presente.
             'puedeTerceroContrato' => count($this->contratoVehiculos) === 1
                 && $this->garantiaContrato !== 'custodia'
