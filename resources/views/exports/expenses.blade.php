@@ -8,6 +8,11 @@
     $valor1 = $sumdiario + $dm2;
     $valor2 = $summensu + $dm2;
     $valor3 = $valor1 + $valor2;
+
+    // Montos como NÚMERO (02/10): valor crudo + formato de Excel, para que se
+    // puedan sumar (ver exports/layout). Se ve igual que antes: "1,234.50".
+    $num = "mso-number-format:'#,##0.00';";
+    $n = fn ($v) => number_format((float) $v, 2, '.', '');
 @endphp
 
 @section('content')
@@ -34,7 +39,7 @@
                     <th style="border-style:dotted solid dotted solid;text-align:center;font-weight:100;{{ $st }}">{{ $e->user?->username ?? $e->user?->name ?? '' }}</th>
                     <th style="border-style:dotted solid dotted solid;text-align:center;font-weight:100;{{ $st }}">{{ $e->reason }}</th>
                     <th style="border-style:dotted solid dotted solid;text-align:center;font-weight:100;{{ $st }}">{{ $e->detail }}</th>
-                    <th style="border-style:dotted solid dotted solid;text-align:center;font-weight:100;{{ $st }}">{{ number_format($e->total, 2) }}</th>
+                    <th class="num" style="border-style:dotted solid dotted solid;text-align:center;font-weight:100;{{ $st }}{!! $num !!}">{{ $n($e->total) }}</th>
                     <th style="border-style:dotted solid dotted solid;text-align:center;font-weight:100;{{ $st }}">{{ $e->document_type }}</th>
                     <th style="border-style:dotted solid dotted solid;text-align:center;font-weight:100;{{ $st }}">{{ $e->in_charge }}</th>
                 </tr>
@@ -45,17 +50,17 @@
             <tr bgcolor="#CEE7FF">
                 <th colspan="4" rowspan="3" align="center"><b>Total</b></th>
                 <td></td>
-                <td align="right"><b>{{ number_format($total, 2) }}</b></td>
+                <td class="num" align="right" style="{!! $num !!}"><b>{{ $n($total) }}</b></td>
                 <td></td>
                 <td></td>
             </tr>
-            <tr bgcolor="#CEE7FF"><td align="center"><b>Fijos</b></td><td><b><font color="red">{{ number_format($tofijo, 2) }}</font></b></td><td></td><td></td></tr>
-            <tr bgcolor="#CEE7FF"><td align="center"><font color="red"><b>Otros</b></font></td><td><b>{{ number_format($totros, 2) }}</b></td><td></td><td></td></tr>
+            <tr bgcolor="#CEE7FF"><td align="center"><b>Fijos</b></td><td class="num" style="{!! $num !!}"><b><font color="red">{{ $n($tofijo) }}</font></b></td><td></td><td></td></tr>
+            <tr bgcolor="#CEE7FF"><td align="center"><font color="red"><b>Otros</b></font></td><td class="num" style="{!! $num !!}"><b>{{ $n($totros) }}</b></td><td></td><td></td></tr>
             <tr><td colspan="8"><b>&nbsp;</b></td></tr>
-            <tr bgcolor="#CEE7FF"><td colspan="4"><b></b></td><td align="center"><b>Diario</b></td><td colspan="2" align="center"><b>{{ number_format($sumdiario, 2) }}</b></td><td><b>{{ number_format($valor1, 2) }}</b></td></tr>
-            <tr bgcolor="#CEE7FF"><td colspan="4"><b></b></td><td align="center"><b>Mensual</b></td><td colspan="2" align="center"><b>{{ number_format($summensu, 2) }}</b></td><td><b>{{ number_format($valor2, 2) }}</b></td></tr>
-            <tr bgcolor="#CEE7FF"><td colspan="4"><b></b></td><td align="center"><b>D.M</b></td><td><b>{{ number_format($sumdm, 2) }}</b></td><td><b>{{ number_format($dm2, 2) }}</b></td><td></td></tr>
-            <tr bgcolor="#CEE7FF"><td colspan="4"><b></b></td><td align="center"><b>Fijos</b></td><td colspan="2"><b></b></td><td><b><font color="red">{{ number_format($valor3, 2) }}</font></b></td></tr>
+            <tr bgcolor="#CEE7FF"><td colspan="4"><b></b></td><td align="center"><b>Diario</b></td><td class="num" colspan="2" align="center" style="{!! $num !!}"><b>{{ $n($sumdiario) }}</b></td><td class="num" style="{!! $num !!}"><b>{{ $n($valor1) }}</b></td></tr>
+            <tr bgcolor="#CEE7FF"><td colspan="4"><b></b></td><td align="center"><b>Mensual</b></td><td class="num" colspan="2" align="center" style="{!! $num !!}"><b>{{ $n($summensu) }}</b></td><td class="num" style="{!! $num !!}"><b>{{ $n($valor2) }}</b></td></tr>
+            <tr bgcolor="#CEE7FF"><td colspan="4"><b></b></td><td align="center"><b>D.M</b></td><td class="num" style="{!! $num !!}"><b>{{ $n($sumdm) }}</b></td><td class="num" style="{!! $num !!}"><b>{{ $n($dm2) }}</b></td><td></td></tr>
+            <tr bgcolor="#CEE7FF"><td colspan="4"><b></b></td><td align="center"><b>Fijos</b></td><td colspan="2"><b></b></td><td class="num" style="{!! $num !!}"><b><font color="red">{{ $n($valor3) }}</font></b></td></tr>
         </tbody>
     </table>
 @endsection
