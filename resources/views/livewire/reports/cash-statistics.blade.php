@@ -56,7 +56,19 @@
                     <div id="printme">
                         {{-- TABLA PRINCIPAL --}}
                         <div id="tabla-mensual" class="table-responsive" style="max-height: 70vh; overflow: auto;">
-                            <table class="table table-bordered table-striped table-hover table-nowrap">
+                            <style>
+                                /* Domingos en rosado sobre las CELDAS: la cebra de Bootstrap pinta los <td>
+                                   (box-shadow con --bs-table-bg-type), así que el fondo puesto en el <tr>
+                                   quedaba tapado en las filas impares (02/10, Antony). Mismo arreglo que
+                                   .fila-vencida en morosos (25/09). El hover de esas filas va por CSS porque
+                                   el onmouseover del <tr> ya no puede pintar encima. */
+                                .caja-estadistica-dias > tbody > tr.fila-domingo > td {
+                                    background-color: #ffe5e5 !important;
+                                    --bs-table-bg-type: transparent; --bs-table-accent-bg: transparent; box-shadow: none;
+                                }
+                                .caja-estadistica-dias > tbody > tr.fila-domingo:hover > td { background-color: #CCFF66 !important; }
+                            </style>
+                            <table class="table table-bordered table-striped table-hover table-nowrap caja-estadistica-dias">
                                 <thead class="bg-primary text-center" style="position: sticky; top: 0; z-index: 2;">
                                     <tr>
                                         <th rowspan="5" class="align-middle">Fecha</th>
@@ -96,7 +108,11 @@
                                 </thead>
                                 <tbody>
                                 @foreach($rows as $r)
-                                    <tr style="{{ $r['is_sunday'] ? 'background-color:#ffe5e5;' : '' }}"
+                                    {{-- Domingo en rosado sobre las CELDAS (.fila-domingo, estilo más abajo): la cebra de
+                                         Bootstrap pinta los <td>, así que el fondo del <tr> quedaba tapado en las filas
+                                         impares (02/10, Antony). El hover de esas filas también va por CSS. --}}
+                                    <tr class="{{ $r['is_sunday'] ? 'fila-domingo' : '' }}"
+                                        style="{{ $r['is_sunday'] ? 'background-color:#ffe5e5;' : '' }}"
                                         onmouseover="this.style.backgroundColor='#CCFF66'"
                                         onmouseout="this.style.backgroundColor='{{ $r['is_sunday'] ? '#ffe5e5' : '' }}'">
                                         <td class="text-center">{{ $r['day'] }}/{{ str_pad($month,2,'0',STR_PAD_LEFT) }}/{{ $year }}</td>

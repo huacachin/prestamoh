@@ -64,6 +64,23 @@ class CajaEstadisticaLinksTest extends TestCase
         $this->assertStringContainsString('reports/cash-general-1?mes=08&amp;anio=2026&amp;dia=2026-08-15', $html);
     }
 
+    /**
+     * 02/10 (Antony): algunos domingos rosados quedaban tapados por la cebra.
+     * Septiembre 2026 tiene 4 domingos (6, 13, 20 y 27): cada uno lleva la
+     * clase que pinta las CELDAS por encima de la cebra.
+     */
+    public function test_los_domingos_pintan_sus_celdas_por_encima_de_la_cebra(): void
+    {
+        $html = Livewire::test(CashStatistics::class)
+            ->set('month', '09')->set('year', '2026')
+            ->html();
+
+        $this->assertSame(4, substr_count($html, 'class="fila-domingo"'), 'un domingo por fila de domingo');
+        $this->assertStringContainsString('.caja-estadistica-dias > tbody > tr.fila-domingo > td {', $html);
+        $this->assertStringContainsString('--bs-table-bg-type: transparent; --bs-table-accent-bg: transparent; box-shadow: none;', $html);
+        $this->assertStringContainsString('table-striped table-hover table-nowrap caja-estadistica-dias', $html);
+    }
+
     public function test_capital_del_mes_y_utilidad2_linkean_a_sus_reportes(): void
     {
         $html = Livewire::test(CashStatistics::class)
