@@ -249,14 +249,20 @@ class Edit extends Component
             'nombre' => $this->puedeEditarIdentidad ? $this->nombre : $this->client->nombre,
             'documento' => $this->puedeEditarIdentidad ? $this->documento : $this->client->documento,
 
+            // Obs. 6.1 del Área Legal (29/09): sexo, nacimiento y nacionalidad
+            // van con la identidad (solo SuperUsuario); la vista los bloquea y
+            // aquí se ignora lo que llegue de todos modos.
+            'fecha_nacimiento' => $this->puedeEditarIdentidad ? $this->fecha_nacimiento : $this->client->fecha_nacimiento,
+            'sexo' => $this->puedeEditarIdentidad ? $this->sexo : $this->client->sexo,
+            'nacionalidad' => $this->puedeEditarIdentidad
+                ? (filled($this->nacionalidad) ? $this->nacionalidad : null)
+                : $this->client->nacionalidad,
+
             // Resto editables por todos (excepto Asesor que ni siquiera ve el botón)
-            'fecha_nacimiento' => $this->fecha_nacimiento,
-            'sexo' => $this->sexo,
             'direccion' => $this->direccion,
             'distrito' => $this->distrito,
             'provincia' => $this->provincia,
             'departamento' => $this->departamento,
-            'nacionalidad' => filled($this->nacionalidad) ? $this->nacionalidad : null,
             'email' => trim($this->email) ?: null,
             'ocupacion' => $this->ocupacion,
             'estado_civil' => $this->estado_civil,

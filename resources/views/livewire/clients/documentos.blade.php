@@ -9,6 +9,22 @@
             border-color: #e6a6a0 !important;
             background-color: #fff7f6 !important;
         }
+        /* Observaciones del Área Legal (29/09): lo que el asesor ELIGE o puede
+           cambiar va en amarillo, para distinguirlo de lo que viene fijo. */
+        .campo-elegir {
+            background-color: #fff3cd !important;
+            border-color: #ffd54f !important;
+        }
+        /* Toggle "Bien futuro": rojo apagado, verde encendido (obs. 2.2). */
+        .switch-futuro {
+            background-color: #dc3545 !important;
+            border-color: #dc3545 !important;
+            --bs-form-switch-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e");
+        }
+        .switch-futuro:checked {
+            background-color: #198754 !important;
+            border-color: #198754 !important;
+        }
     </style>
     @unless($embebido)
     <div class="row">
@@ -229,10 +245,12 @@
                                 @error('creditoId') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label small fw-semibold mb-1">Fecha del documento *</label>
-                                <input type="date" class="form-control form-control-sm @error('fechaDoc') is-invalid @enderror"
-                                       wire:model.live="fechaDoc" max="{{ now()->format('Y-m-d') }}">
-                                @error('fechaDoc') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                <label class="form-label small fw-semibold mb-1">Fecha del documento</label>
+                                {{-- Obs. 1.2 (Área Legal, 29/09): siempre la fecha del día en que se genera; ya no se edita. --}}
+                                <input type="text" class="form-control form-control-sm bg-light" readonly
+                                       value="{{ $fechaDoc ? \Carbon\Carbon::parse($fechaDoc)->format('d/m/Y') : now()->format('d/m/Y') }}">
+                                <div class="form-text" style="font-size:10px;">Siempre la fecha del día.</div>
+                                @error('fechaDoc') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                             </div>
                             {{-- Varios vehículos por anexo (28/08): uno por fila, con su
                                  valor. Sin marcar ninguno el anexo sale sin vehículos. --}}
@@ -263,20 +281,25 @@
                                                     </div>
                                                 </div>
                                                 <div class="col-12 col-sm-5">
+                                                    {{-- Obs. 1.3 (Área Legal, 29/09): el valor viene de la ficha del
+                                                         vehículo y ya no se edita aquí (evita borrados por error). --}}
                                                     <div class="input-group input-group-sm">
                                                         <span class="input-group-text" style="font-size:11px;">Valor S/</span>
-                                                        <input type="number" step="0.01" min="0"
-                                                               class="form-control form-control-sm @error('anexoValores.'.$v->id) is-invalid @enderror"
-                                                               wire:model.live="anexoValores.{{ $v->id }}"
-                                                               @disabled(! in_array($v->id, $anexoVehiculos))
-                                                               placeholder="0.00">
+                                                        <input type="text" class="form-control form-control-sm bg-light" readonly
+                                                               value="{{ ($anexoValores[$v->id] ?? '') !== '' ? number_format((float) $anexoValores[$v->id], 2) : '' }}"
+                                                               placeholder="sin valor en la ficha">
                                                     </div>
+                                                    @if(in_array($v->id, $anexoVehiculos) && ($anexoValores[$v->id] ?? '') === '')
+                                                        <div class="text-danger" style="font-size:10px;">
+                                                            <i class="ti ti-alert-triangle"></i> Sin valor: cárgalo en la pestaña Vehículos.
+                                                        </div>
+                                                    @endif
                                                 </div>
                                             </div>
                                         @endforeach
                                     </div>
                                     <div class="form-text" style="font-size:10px;">
-                                        El valor es opcional y se guarda en la ficha de cada vehículo.
+                                        El valor es el de la ficha de cada vehículo; se corrige en la pestaña Vehículos.
                                     </div>
                                 @endif
                             </div>
@@ -386,7 +409,7 @@
                             <div class="row g-2 align-items-end">
                                 <div class="col-md-3">
                                     <label class="form-label small fw-semibold mb-1">Garantía *</label>
-                                    <select class="form-select form-select-sm" wire:model.live="garantiaContrato"
+                                    <select class="form-select form-select-sm campo-elegir" wire:model.live="garantiaContrato"
                                             @if($esEmpresaContrato) disabled title="La empresa solo tiene modelos con GPS" @endif>
                                         <option value="gps">Con GPS</option>
                                         <option value="sin_gps">Sin GPS</option>
@@ -395,7 +418,7 @@
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label small fw-semibold mb-1">Destino del depósito *</label>
-                                    <select class="form-select form-select-sm" wire:model.live="destinoContrato"
+                                    <select class="form-select form-select-sm campo-elegir" wire:model.live="destinoContrato"
                                             @if($garantiaContrato === 'custodia') disabled title="La custodia solo existe con depósito al deudor" @endif>
                                         @if($esEmpresaContrato)
                                             <option value="propio">Cuenta de la empresa</option>
@@ -459,7 +482,7 @@
                                 <div class="row g-2">
                                     <div class="col-md-6">
                                         <label class="form-label small fw-semibold mb-1">Crédito *</label>
-                                        <select class="form-select form-select-sm @error('contratoCreditoId') is-invalid @enderror"
+                                        <select class="form-select form-select-sm campo-elegir @error('contratoCreditoId') is-invalid @enderror"
                                                 wire:model.live="contratoCreditoId">
                                             <option value="">— Selecciona el crédito —</option>
                                             @foreach($creditosActivos as $c)
@@ -493,9 +516,10 @@
                                                         {{-- ¿Ya está inscrito a nombre del deudor? (Guía §5, decisión 4).
                                                              En el mixto el vehículo 1 pasa a ser el futuro solo. --}}
                                                         <div class="form-check form-switch mb-0">
-                                                            <input class="form-check-input" type="checkbox" role="switch"
+                                                            <input class="form-check-input switch-futuro" type="checkbox" role="switch"
                                                                    id="futuro-{{ $i }}" wire:model.live="contratoVehiculos.{{ $i }}.es_futuro">
-                                                            <label class="form-check-label small text-muted" for="futuro-{{ $i }}">Bien futuro</label>
+                                                            <label class="form-check-label small fw-semibold" for="futuro-{{ $i }}"
+                                                                   style="color: {{ $slot['es_futuro'] ? '#198754' : '#dc3545' }};">Bien futuro</label>
                                                         </div>
                                                     @endif
                                                     @if(count($contratoVehiculos) > 1)
@@ -506,7 +530,7 @@
                                                     @endif
                                                 </div>
                                                 </div>
-                                                <select class="form-select form-select-sm @error('contratoVehiculos.'.$i.'.vehiculo_id') is-invalid @enderror"
+                                                <select class="form-select form-select-sm campo-elegir @error('contratoVehiculos.'.$i.'.vehiculo_id') is-invalid @enderror"
                                                         wire:model.live="contratoVehiculos.{{ $i }}.vehiculo_id">
                                                     <option value="">— Selecciona el vehículo —</option>
                                                     @foreach($vehiculos as $v)
@@ -520,19 +544,37 @@
                                                          cita la cláusula de declaración jurada. La FECHA es la
                                                          "fecha de transferencia" que exige la guía del área. --}}
                                                     <div class="row g-1 mt-1">
+                                                        {{-- Obs. 3.1 (29/09): los tres van en amarillo (se eligen). --}}
                                                         <div class="col-3">
-                                                            <input type="date" class="form-control form-control-sm @error('contratoVehiculos.'.$i.'.fecha_acta') is-invalid @enderror"
+                                                            <input type="date" class="form-control form-control-sm campo-elegir @error('contratoVehiculos.'.$i.'.fecha_acta') is-invalid @enderror"
                                                                    title="Fecha de la transferencia vehicular"
                                                                    wire:model.blur="contratoVehiculos.{{ $i }}.fecha_acta">
                                                             @error('contratoVehiculos.'.$i.'.fecha_acta') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                                         </div>
                                                         <div class="col-3">
-                                                            <input type="text" class="form-control form-control-sm" placeholder="Kardex (ej. 0373-2026)"
+                                                            <input type="text" class="form-control form-control-sm campo-elegir" placeholder="Kardex (ej. 0373-2026)"
                                                                    wire:model.blur="contratoVehiculos.{{ $i }}.kardex">
                                                         </div>
-                                                        <div class="col-3">
-                                                            <input type="text" class="form-control form-control-sm" placeholder="Notario"
-                                                                   wire:model.blur="contratoVehiculos.{{ $i }}.notario">
+                                                        {{-- Obs. 3.4: notario de catálogo (en el orden del área) u "Otro" con texto. --}}
+                                                        <div class="col-6">
+                                                            <div class="row g-1">
+                                                                <div class="{{ ($slot['notario'] ?? '') === \App\Support\Documentos\Notarios::OTRO ? 'col-6' : 'col-12' }}">
+                                                                    <select class="form-select form-select-sm campo-elegir"
+                                                                            wire:model.live="contratoVehiculos.{{ $i }}.notario">
+                                                                        <option value="">— Notario —</option>
+                                                                        @foreach(\App\Support\Documentos\Notarios::LISTA as $notario)
+                                                                            <option value="{{ $notario }}">{{ $notario }}</option>
+                                                                        @endforeach
+                                                                        <option value="{{ \App\Support\Documentos\Notarios::OTRO }}">Otro notario…</option>
+                                                                    </select>
+                                                                </div>
+                                                                @if(($slot['notario'] ?? '') === \App\Support\Documentos\Notarios::OTRO)
+                                                                    <div class="col-6">
+                                                                        <input type="text" class="form-control form-control-sm campo-elegir" placeholder="Nombre del notario"
+                                                                               wire:model.blur="contratoVehiculos.{{ $i }}.notario_otro">
+                                                                    </div>
+                                                                @endif
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 @endif
@@ -764,49 +806,47 @@
                                 @endif
 
                                 <div class="row g-2">
+                                    {{-- Obs. 2.4 (Área Legal, 29/09): valor del bien, monto máximo, cuota y
+                                         fecha ya no se editan: salen de la ficha de los vehículos, del
+                                         cronograma y del día. El banco sí se elige (obs. 2.5: amarillo). --}}
                                     <div class="col-md-3">
                                         <label class="form-label small mb-1">Valor del bien (S/)</label>
                                         <input type="number" step="0.01" min="0"
-                                               class="form-control form-control-sm @error('valorBien') is-invalid @enderror"
-                                               wire:model.live="valorBien" placeholder="0.00">
+                                               class="form-control form-control-sm bg-light @error('valorBien') is-invalid @enderror"
+                                               wire:model.live="valorBien" placeholder="0.00" readonly>
                                         @error('valorBien') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                                        <div class="form-text" style="font-size:10px;">Default: valor en ficha del (los) vehículo(s).</div>
+                                        <div class="form-text" style="font-size:10px;">Valor en ficha del (los) vehículo(s); se corrige en la pestaña Vehículos.</div>
                                     </div>
                                     <div class="col-md-3">
                                         <label class="form-label small mb-1">Monto máximo (S/)</label>
                                         <input type="number" step="0.01" min="0"
-                                               class="form-control form-control-sm @error('montoMaximo') is-invalid @enderror"
-                                               wire:model.live="montoMaximo" placeholder="0.00">
+                                               class="form-control form-control-sm bg-light @error('montoMaximo') is-invalid @enderror"
+                                               wire:model.live="montoMaximo" placeholder="0.00" readonly>
                                         @error('montoMaximo') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                         @if($totalCronograma !== null)
                                             <div class="form-text" style="font-size:10px;">
-                                                Total real del cronograma: S/ {{ number_format($totalCronograma, 2) }}
+                                                Cuota × cuotas del cronograma (total real: S/ {{ number_format($totalCronograma, 2) }})
                                             </div>
                                         @endif
                                     </div>
                                     <div class="col-md-3">
                                         <label class="form-label small mb-1">Cuota (S/)</label>
-                                        <div class="input-group input-group-sm">
-                                            <input type="number" step="0.01" min="0"
-                                                   class="form-control @error('cuotaContrato') is-invalid @enderror"
-                                                   wire:model.live="cuotaContrato" @readonly(! $editarCuota)>
-                                            <button class="btn btn-outline-secondary" type="button" wire:click="$toggle('editarCuota')"
-                                                    title="{{ $editarCuota ? 'Bloquear la cuota' : 'Editar la cuota (default: la del cronograma)' }}">
-                                                <i class="ti {{ $editarCuota ? 'ti-lock-open' : 'ti-pencil' }}"></i>
-                                            </button>
-                                        </div>
+                                        <input type="number" step="0.01" min="0"
+                                               class="form-control form-control-sm bg-light @error('cuotaContrato') is-invalid @enderror"
+                                               wire:model.live="cuotaContrato" readonly>
                                         @error('cuotaContrato') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
-                                        <div class="form-text" style="font-size:10px;">Default: cuota del cronograma (moda).</div>
+                                        <div class="form-text" style="font-size:10px;">Cuota del cronograma.</div>
                                     </div>
                                     <div class="col-md-3">
-                                        <label class="form-label small mb-1">Fecha del contrato *</label>
-                                        <input type="date" class="form-control form-control-sm @error('fechaContrato') is-invalid @enderror"
-                                               wire:model.live="fechaContrato">
-                                        @error('fechaContrato') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                        <label class="form-label small mb-1">Fecha del contrato</label>
+                                        <input type="text" class="form-control form-control-sm bg-light" readonly
+                                               value="{{ $fechaContrato ? \Carbon\Carbon::parse($fechaContrato)->format('d/m/Y') : now()->format('d/m/Y') }}">
+                                        @error('fechaContrato') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                                        <div class="form-text" style="font-size:10px;">Siempre la fecha del día.</div>
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label small mb-1">Banco del desembolso *</label>
-                                        <select class="form-select form-select-sm @error('bancoDesembolso') is-invalid @enderror"
+                                        <select class="form-select form-select-sm campo-elegir @error('bancoDesembolso') is-invalid @enderror"
                                                 wire:model.live="bancoDesembolso">
                                             <option value="">— Selecciona el banco —</option>
                                             @foreach($bancosDesembolso as $clave => $nombreLegal)
@@ -846,7 +886,8 @@
                                                     <div class="col-md-3">
                                                         <label class="form-label small mb-1">DNI *</label>
                                                         <div class="input-group input-group-sm">
-                                                            <input type="text" class="form-control form-control-sm @error('tercero.dni') is-invalid @enderror"
+                                                            {{-- Obs. 4.1 (29/09): DNI y cuenta del tercero en amarillo. --}}
+                                                            <input type="text" class="form-control form-control-sm campo-elegir @error('tercero.dni') is-invalid @enderror"
                                                                    wire:model.blur="tercero.dni">
                                                             <button type="button" class="btn btn-danger" wire:click="consultarDocTercero"
                                                                     wire:loading.attr="disabled" wire:target="consultarDocTercero" title="Consultar DNI">
@@ -862,7 +903,7 @@
                                                          exigía y nunca llegaba al contrato: pedía el banco dos veces. --}}
                                                     <div class="col-md-3">
                                                         <label class="form-label small mb-1">N° de cuenta o CCI</label>
-                                                        <input type="text" class="form-control form-control-sm" wire:model.blur="tercero.cuenta">
+                                                        <input type="text" class="form-control form-control-sm campo-elegir" wire:model.blur="tercero.cuenta">
                                                     </div>
                                                 </div>
                                             </div>

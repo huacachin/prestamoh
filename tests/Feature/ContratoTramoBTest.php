@@ -16,6 +16,8 @@ use App\Support\Documentos\Nacionalidades;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
@@ -145,6 +147,12 @@ class ContratoTramoBTest extends TestCase
             'tipo_documento' => 'DNI', 'documento' => '46781303', 'sexo' => 'F',
             'direccion' => 'CALLE VIEJA', 'headquarter_id' => $this->sede->id, 'status' => 'active',
         ]);
+
+        // 02/10 (obs. 6.1 del Área Legal): la nacionalidad va con la identidad
+        // y solo la edita quien tiene el permiso; este test sigue probando la
+        // normalización, así que se lo damos.
+        $this->user->givePermissionTo(Permission::findOrCreate('clientes.editar-identidad', 'web'));
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         Livewire::test(Edit::class, ['id' => $c->id])
             ->set('distrito', 'ATE')

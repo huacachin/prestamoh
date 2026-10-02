@@ -85,7 +85,7 @@
                 @unless($puedeEditarIdentidad)
                     <div class="alert alert-info py-1 px-2 mb-2" style="font-size:11px;">
                         <i class="ti ti-info-circle"></i>
-                        Apellidos, nombres y documento solo pueden ser editados por SuperUsuario.
+                        Apellidos, nombres, documento, sexo, nacimiento y nacionalidad solo pueden ser editados por SuperUsuario.
                     </div>
                 @endunless
 
@@ -139,16 +139,23 @@
                         </div>
                     @endunless
 
+                    {{-- Obs. 6.1 del Área Legal (29/09): sexo, nacimiento y nacionalidad
+                         se bloquean como la identidad (solo SuperUsuario). --}}
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">Sexo</label>
-                        <select class="form-select form-select-sm" wire:model.defer="sexo">
+                        <select class="form-select form-select-sm @unless($puedeEditarIdentidad) bg-light @endunless" wire:model.defer="sexo"
+                                @unless($puedeEditarIdentidad) disabled @endunless>
                             <option value="F">Femenino</option>
                             <option value="M">Masculino</option>
                         </select>
                     </div>
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">Nacimiento</label>
-                        <input type="text" autocomplete="off" name="fecha_nacimiento" class="form-control form-control-sm dates" wire:model.defer="fecha_nacimiento">
+                        @if($puedeEditarIdentidad)
+                            <input type="text" autocomplete="off" name="fecha_nacimiento" class="form-control form-control-sm dates" wire:model.defer="fecha_nacimiento">
+                        @else
+                            <input type="text" class="form-control form-control-sm bg-light" value="{{ $fecha_nacimiento }}" readonly>
+                        @endif
                     </div>
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">DNI / RUC</label>
@@ -174,7 +181,7 @@
                         {{-- No flexiona: el contrato dice PERUANO / VENEZOLANO
                              tanto para deudor como para deudora. --}}
                         <select class="form-select form-select-sm select2-simple @error('nacionalidad') is-invalid @enderror"
-                                wire:model.defer="nacionalidad">
+                                wire:model.defer="nacionalidad" @unless($puedeEditarIdentidad) disabled @endunless>
                             @foreach(\App\Support\Documentos\Nacionalidades::paraValor($nacionalidad) as $opcion)
                                 <option value="{{ $opcion }}">{{ $opcion }}</option>
                             @endforeach
