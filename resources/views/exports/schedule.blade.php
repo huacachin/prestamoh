@@ -25,7 +25,9 @@
 
         return $d === Carbon::SUNDAY ? 'color:red;' : ($d === Carbon::SATURDAY ? 'color:green;' : '');
     };
-    $n2 = fn ($v) => number_format((float) $v, 2);
+    // Valor crudo (02/10): las celdas de monto llevan class="num" y Excel las
+    // pinta "1,234.50" y las puede sumar (ver exports/layout).
+    $n2 = fn ($v) => number_format((float) $v, 2, '.', '');
 
     $cuotas = collect($rows);
     $totCap = $cuotas->sum('capital');
@@ -63,7 +65,7 @@
             <td><b>N&deg; Exp.</b></td>
             <td align="left" colspan="3">{{ $credit->client?->expediente }}</td>
             <td><b>Capital </b></td>
-            <td colspan="3" align="left">{{ $n2($credit->importe) }}</td>
+            <td class="num" colspan="3" align="left">{{ $n2($credit->importe) }}</td>
         </tr>
         <tr>
             <td><b>N&deg; Cred.</b></td>
@@ -91,26 +93,26 @@
             <tr>
                 <th {!! $c !!}>{{ $row['n'] }}</th>
                 <th {!! $c !!}>{{ $row['periodo'] }}</th>
-                <th {!! $c !!}>{{ $n2($row['capital']) }}</th>
-                <th {!! $c !!}>{{ $n2($row['interes']) }}</th>
-                <th {!! $c !!}>{{ $n2($row['capital'] + $row['interes'] + $row['excedente']) }}</th>
-                <th {!! $c !!}>{{ $n2($row['mora']) }}</th>
-                <th {!! $c !!}>{{ $n2($row['pagado']) }}</th>
+                <th class="num" {!! $c !!}>{{ $n2($row['capital']) }}</th>
+                <th class="num" {!! $c !!}>{{ $n2($row['interes']) }}</th>
+                <th class="num" {!! $c !!}>{{ $n2($row['capital'] + $row['interes'] + $row['excedente']) }}</th>
+                <th class="num" {!! $c !!}>{{ $n2($row['mora']) }}</th>
+                <th class="num" {!! $c !!}>{{ $n2($row['pagado']) }}</th>
                 <th {!! $c !!}>@if($row['pagado'] >= 0.01){{ $row['fecha_pago'] }}@endif</th>
             </tr>
         @endforeach
         {{-- Bloque Total del cronograma (Total | capital | interés | total | mora | pagado, y debajo mora+pagado) --}}
         <tr>
             <th {!! $sol !!} colspan="2" rowspan="2"><b>Total</b></th>
-            <th {!! $sol !!} rowspan="2"><b>{{ $n2($totCap) }}</b></th>
-            <th {!! $sol !!} rowspan="2"><b>{{ $n2($totInt) }}</b></th>
-            <th {!! $sol !!} rowspan="2"><b>{{ $n2($totCap + $totInt + $totExc) }}</b></th>
-            <th {!! $sol !!}><b>{{ $n2($totMora) }}</b></th>
-            <th {!! $sol !!}><b>{{ $n2($totPag) }}</b></th>
+            <th class="num" {!! $sol !!} rowspan="2"><b>{{ $n2($totCap) }}</b></th>
+            <th class="num" {!! $sol !!} rowspan="2"><b>{{ $n2($totInt) }}</b></th>
+            <th class="num" {!! $sol !!} rowspan="2"><b>{{ $n2($totCap + $totInt + $totExc) }}</b></th>
+            <th class="num" {!! $sol !!}><b>{{ $n2($totMora) }}</b></th>
+            <th class="num" {!! $sol !!}><b>{{ $n2($totPag) }}</b></th>
             <th {!! $sol !!}></th>
         </tr>
         <tr>
-            <td {!! $sol !!} colspan="2"><b>{{ $n2($totMora + $totPag) }}</b></td>
+            <td class="num" {!! $sol !!} colspan="2"><b>{{ $n2($totMora + $totPag) }}</b></td>
             <td {!! $sol !!}></td>
         </tr>
         {{-- Pagos fuera del cronograma (mismas filas que en la pantalla) --}}
@@ -122,27 +124,27 @@
                 <td {!! $c !!}><b>0.00</b></td>
                 <td {!! $c !!}><b>0.00</b></td>
                 <td {!! $c !!}><b>0.00</b></td>
-                <td {!! $c !!}><b>{{ $row['mora'] > 0 ? $n2($row['mora']) : '' }}</b></td>
-                <td {!! $c !!}><b>{{ $n2($row['pagado']) }}</b></td>
+                <td class="num" {!! $c !!}><b>{{ $row['mora'] > 0 ? $n2($row['mora']) : '' }}</b></td>
+                <td class="num" {!! $c !!}><b>{{ $n2($row['pagado']) }}</b></td>
                 <td {!! $c !!}><b>{{ $row['fecha_pago'] }}</b></td>
             </tr>
         @endforeach
         {{-- Pie: Totales de los pagos fuera del cronograma y Saldo, fórmulas del legacy --}}
         <tr>
             <th {!! $sol !!} colspan="5" rowspan="3"><b>Totales</b></th>
-            <th {!! $sol !!}><b>{{ $n2($otrosMora) }}</b></th>
-            <th {!! $sol !!}><b>{{ $n2($otrosPag) }}</b></th>
+            <th class="num" {!! $sol !!}><b>{{ $n2($otrosMora) }}</b></th>
+            <th class="num" {!! $sol !!}><b>{{ $n2($otrosPag) }}</b></th>
             <th {!! $sol !!} rowspan="3"></th>
         </tr>
         <tr>
-            <td {!! $sol !!} colspan="2"><b>{{ $n2($otrosPag + $otrosMora) }}</b></td>
+            <td class="num" {!! $sol !!} colspan="2"><b>{{ $n2($otrosPag + $otrosMora) }}</b></td>
         </tr>
         <tr>
-            <td {!! $sol !!} colspan="2"><b>{{ $n2($totalPagadoMas) }}</b></td>
+            <td class="num" {!! $sol !!} colspan="2"><b>{{ $n2($totalPagadoMas) }}</b></td>
         </tr>
         <tr>
             <td {!! $sol !!} colspan="5"><font color="red"><b>Saldo</b></font></td>
-            <td {!! $sol !!} colspan="2"><font color="red"><b>{{ $n2($saldoLegacy) }}</b></font></td>
+            <td class="num" {!! $sol !!} colspan="2"><font color="red"><b>{{ $n2($saldoLegacy) }}</b></font></td>
             <td {!! $sol !!}></td>
         </tr>
         </tbody>

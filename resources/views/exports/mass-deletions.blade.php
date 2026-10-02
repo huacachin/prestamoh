@@ -34,7 +34,7 @@
                     <td {!! $cell !!}>{{ \App\Support\Usernames::de($r->advisor) }}</td>
                     <td {!! $cell !!}>{{ $cliente }}</td>
                     <td {!! $cell !!}>{{ $r->credit_id }}</td>
-                    <td {!! $cell !!}>{{ number_format($r->amount, 2) }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($r->amount, 2, '.', '') }}</td>
                 </tr>
             @empty
                 <tr><td colspan="8" {!! $cell !!}>Sin resultados</td></tr>
@@ -43,7 +43,7 @@
         <tr bgcolor="#CEE7FF">
             <td style="text-align:center;"><b>Total</b></td>
             <td></td><td></td><td></td><td></td><td></td><td></td>
-            <td style="text-align:center;"><b>{{ number_format($totalSum, 2) }}</b></td>
+            <td class="num" style="text-align:center;"><b>{{ number_format($totalSum, 2, '.', '') }}</b></td>
         </tr>
     </table>
 @endsection

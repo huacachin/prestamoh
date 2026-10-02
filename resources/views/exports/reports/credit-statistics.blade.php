@@ -60,20 +60,20 @@
                     @foreach($sec['rates'] as $rate)
                         @php $cell = $row['rates'][(string) $rate]; @endphp
                         <td {!! $celln !!}>{{ $fmt($cell['cap']) }}</td>
-                        <td {!! $red !!}>{{ $cell['int'] != 0 ? number_format($cell['int'], 2) : '' }}</td>
+                        <td class="num" {!! $red !!}>{{ $cell['int'] != 0 ? number_format($cell['int'], 2, '.', '') : '' }}</td>
                     @endforeach
-                    <td {!! $red !!}>{{ number_format($row['total_int'], 2) }}</td>
+                    <td class="num" {!! $red !!}>{{ number_format($row['total_int'], 2, '.', '') }}</td>
                 </tr>
             @endforeach
                 <tr>
                     <td {!! $grisc !!}>Total</td>
-                    <td {!! $gris !!}>{{ number_format($sec['totals']['ingresos'], 2) }}</td>
-                    <td {!! $gris !!}>{{ number_format($sec['totals']['egresos'], 2) }}</td>
+                    <td class="num" {!! $gris !!}>{{ number_format($sec['totals']['ingresos'], 2, '.', '') }}</td>
+                    <td class="num" {!! $gris !!}>{{ number_format($sec['totals']['egresos'], 2, '.', '') }}</td>
                     @foreach($sec['rates'] as $rate)
-                        <td {!! $gris !!}>{{ number_format($sec['totals']['rates_cap'][(string) $rate], 2) }}</td>
-                        <td {!! $grisr !!}>{{ number_format($sec['totals']['rates_int'][(string) $rate], 2) }}</td>
+                        <td class="num" {!! $gris !!}>{{ number_format($sec['totals']['rates_cap'][(string) $rate], 2, '.', '') }}</td>
+                        <td class="num" {!! $grisr !!}>{{ number_format($sec['totals']['rates_int'][(string) $rate], 2, '.', '') }}</td>
                     @endforeach
-                    <td {!! $grisr !!}>{{ number_format($sec['totals']['total_inter'], 2) }}</td>
+                    <td class="num" {!! $grisr !!}>{{ number_format($sec['totals']['total_inter'], 2, '.', '') }}</td>
                 </tr>
             </tbody>
         </table>

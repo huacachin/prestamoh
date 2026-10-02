@@ -47,39 +47,39 @@
                     <td {!! $c !!}>{{ round($r['renov'], 0) }}</td>
                     <td {!! $c !!}>{{ $r['canc'] }}</td>
                     <td {!! $c !!}>{{ $r['total'] }}</td>
-                    <td {!! $c !!}>{{ number_format($r['capital'], 2) }}</td>
-                    <td {!! $c !!}>{{ number_format($r['imp_cobrar'], 2) }}</td>
+                    <td class="num izq" {!! $c !!}>{{ number_format($r['capital'], 2, '.', '') }}</td>
+                    <td class="num izq" {!! $c !!}>{{ number_format($r['imp_cobrar'], 2, '.', '') }}</td>
                     <td {!! $c !!}>{{ $r['cob_cnt'] }}</td>
-                    <td {!! $c !!}>{{ number_format($r['cob_imp'], 2) }}</td>
+                    <td class="num izq" {!! $c !!}>{{ number_format($r['cob_imp'], 2, '.', '') }}</td>
                     <td {!! $c !!}>{{ number_format($r['noc_cnt'], 0) }}</td>
-                    <td {!! $c !!}>{{ number_format($r['noc_imp'], 2) }}</td>
+                    <td class="num izq" {!! $c !!}>{{ number_format($r['noc_imp'], 2, '.', '') }}</td>
                 </tr>
             @endforeach
 
             <tr bgcolor="#CEE7FF">
                 <th colspan="2" rowspan="2" align="center">Total</th>
-                <td>{{ number_format($tot['nuevo'], 2) }}</td>
-                <td>{{ number_format($tot['renov'], 2) }}</td>
-                <td>{{ number_format($tot['canc'], 2) }}</td>
-                <td>{{ number_format($tot['total'], 2) }}</td>
-                <td>{{ number_format($tot['capital'], 2) }}</td>
-                <td>{{ number_format($tot['imp_cobrar'], 2) }}</td>
-                <td>{{ number_format($tot['cob_cnt'], 2) }}</td>
-                <td>{{ number_format($tot['cob_imp'], 2) }}</td>
-                <td>{{ number_format($tot['noc_cnt'], 2) }}</td>
-                <td>{{ number_format($tot['noc_imp'], 2) }}</td>
+                <td class="num izq">{{ number_format($tot['nuevo'], 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($tot['renov'], 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($tot['canc'], 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($tot['total'], 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($tot['capital'], 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($tot['imp_cobrar'], 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($tot['cob_cnt'], 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($tot['cob_imp'], 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($tot['noc_cnt'], 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($tot['noc_imp'], 2, '.', '') }}</td>
             </tr>
             <tr bgcolor="#CEE7FF">
-                <td>{{ number_format($avg['nuevo'], 2) }}</td>
-                <td>{{ number_format($avg['renov'], 2) }}</td>
-                <td>{{ number_format($avg['canc'], 2) }}</td>
-                <td>{{ number_format($avg['total'], 2) }}</td>
-                <td>{{ number_format($avg['capital'], 2) }}</td>
-                <td>{{ number_format($avg['imp_cobrar'], 2) }}</td>
-                <td>{{ number_format($avg['cob_cnt'], 2) }}</td>
-                <td>{{ number_format($avg['cob_imp'], 2) }}</td>
-                <td>{{ number_format($avg['noc_cnt'], 2) }}</td>
-                <td>{{ number_format($avg['noc_imp'], 2) }}</td>
+                <td class="num izq">{{ number_format($avg['nuevo'], 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($avg['renov'], 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($avg['canc'], 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($avg['total'], 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($avg['capital'], 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($avg['imp_cobrar'], 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($avg['cob_cnt'], 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($avg['cob_imp'], 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($avg['noc_cnt'], 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($avg['noc_imp'], 2, '.', '') }}</td>
             </tr>
         </tbody>
     </table>
@@ -119,43 +119,43 @@
                 <tr>
                     <td {!! $cell !!}>{{ $row['n'] }}</td>
                     <td {!! $cell !!}>{{ $row['mes'] }}</td>
-                    <td {!! $cell !!}>{{ number_format($row['nuevo'], 2) }}</td>
-                    <td {!! $cell !!}>{{ number_format($row['renov'], 2) }}</td>
-                    <td {!! $cell !!}>{{ number_format($row['canc'], 2) }}</td>
-                    <td {!! $cell !!}>{{ number_format($row['total'], 2) }}</td>
-                    <td {!! $cell !!}>{{ number_format($row['capital'], 2) }}</td>
-                    <td {!! $cell !!}>{{ number_format($row['imp_cobrar'], 2) }}</td>
-                    <td {!! $cell !!}>{{ number_format($row['cob_cnt'], 2) }}</td>
-                    <td {!! $cell !!}>{{ number_format($row['cob_imp'], 2) }}</td>
-                    <td {!! $cell !!}>{{ number_format($row['noc_cnt'], 2) }}</td>
-                    <td {!! $cell !!}>{{ number_format($row['noc_imp'], 2) }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($row['nuevo'], 2, '.', '') }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($row['renov'], 2, '.', '') }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($row['canc'], 2, '.', '') }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($row['total'], 2, '.', '') }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($row['capital'], 2, '.', '') }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($row['imp_cobrar'], 2, '.', '') }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($row['cob_cnt'], 2, '.', '') }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($row['cob_imp'], 2, '.', '') }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($row['noc_cnt'], 2, '.', '') }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($row['noc_imp'], 2, '.', '') }}</td>
                 </tr>
             @endforeach
 
             <tr bgcolor="#CEE7FF">
                 <th colspan="2" rowspan="2">Totales</th>
-                <td>{{ number_format($mtot['nuevo'] ?? 0, 2) }}</td>
-                <td>{{ number_format($mtot['renov'] ?? 0, 2) }}</td>
-                <td>{{ number_format($mtot['canc'] ?? 0, 2) }}</td>
-                <td>{{ number_format($mtot['total'] ?? 0, 2) }}</td>
-                <td>{{ number_format($mtot['capital'] ?? 0, 2) }}</td>
-                <td>{{ number_format($mtot['imp_cobrar'] ?? 0, 2) }}</td>
-                <td>{{ number_format($mtot['cob_cnt'] ?? 0, 2) }}</td>
-                <td>{{ number_format($mtot['cob_imp'] ?? 0, 2) }}</td>
-                <td>{{ number_format($mtot['noc_cnt'] ?? 0, 2) }}</td>
-                <td>{{ number_format($mtot['noc_imp'] ?? 0, 2) }}</td>
+                <td class="num izq">{{ number_format($mtot['nuevo'] ?? 0, 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($mtot['renov'] ?? 0, 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($mtot['canc'] ?? 0, 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($mtot['total'] ?? 0, 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($mtot['capital'] ?? 0, 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($mtot['imp_cobrar'] ?? 0, 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($mtot['cob_cnt'] ?? 0, 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($mtot['cob_imp'] ?? 0, 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($mtot['noc_cnt'] ?? 0, 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($mtot['noc_imp'] ?? 0, 2, '.', '') }}</td>
             </tr>
             <tr bgcolor="#CEE7FF">
-                <td>{{ number_format($mavg['nuevo'] ?? 0, 2) }}</td>
-                <td>{{ number_format($mavg['renov'] ?? 0, 2) }}</td>
-                <td>{{ number_format($mavg['canc'] ?? 0, 2) }}</td>
-                <td>{{ number_format($mavg['total'] ?? 0, 2) }}</td>
-                <td>{{ number_format($mavg['capital'] ?? 0, 2) }}</td>
-                <td>{{ number_format($mavg['imp_cobrar'] ?? 0, 2) }}</td>
-                <td>{{ number_format($mavg['cob_cnt'] ?? 0, 2) }}</td>
-                <td>{{ number_format($mavg['cob_imp'] ?? 0, 2) }}</td>
-                <td>{{ number_format($mavg['noc_cnt'] ?? 0, 2) }}</td>
-                <td>{{ number_format($mavg['noc_imp'] ?? 0, 2) }}</td>
+                <td class="num izq">{{ number_format($mavg['nuevo'] ?? 0, 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($mavg['renov'] ?? 0, 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($mavg['canc'] ?? 0, 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($mavg['total'] ?? 0, 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($mavg['capital'] ?? 0, 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($mavg['imp_cobrar'] ?? 0, 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($mavg['cob_cnt'] ?? 0, 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($mavg['cob_imp'] ?? 0, 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($mavg['noc_cnt'] ?? 0, 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($mavg['noc_imp'] ?? 0, 2, '.', '') }}</td>
             </tr>
         </tbody>
     </table>

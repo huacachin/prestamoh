@@ -43,11 +43,11 @@
                     <td {!! $cell !!}>{{ $r['cuotas'] }}</td>
                     <td {!! $cell !!} class="txt">{{ $r['dni'] }}</td>
                     <td style="border-style:dotted solid dotted solid;vertical-align:middle;">{{ $r['cliente'] }}</td>
-                    <td {!! $cell !!}>{{ number_format($r['capital'], 2) }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($r['capital'], 2, '.', '') }}</td>
                     <td {!! $cell !!}>{{ number_format($r['interes_pct'], 0) }}</td>
-                    <td {!! $cell !!}>{{ number_format($r['interes'], 2) }}</td>
-                    <td {!! $cell !!}>{{ number_format($r['apagar'], 2) }}</td>
-                    <td {!! $cell !!}>{{ number_format($r['cuota'], 2) }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($r['interes'], 2, '.', '') }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($r['apagar'], 2, '.', '') }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($r['cuota'], 2, '.', '') }}</td>
                     @foreach($r['days'] as $d)
                         @php
                             $st = 'border-style:dotted solid dotted solid;text-align:center;vertical-align:middle;';
@@ -59,26 +59,26 @@
                             {{ \Carbon\Carbon::parse($d['fecha'])->format('d/m/Y') }}<br>{{ number_format($d['monto'], 2) }}
                         </td>
                     @endforeach
-                    <td {!! $cell !!}>{{ number_format($r['pagado'], 2) }}</td>
-                    <td {!! $cell !!}>{{ number_format($r['mora'], 2) }}</td>
-                    <td {!! $cell !!}>{{ number_format($r['otros'], 2) }}</td>
-                    <td {!! $cell !!}>{{ number_format($r['saldo'], 2) }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($r['pagado'], 2, '.', '') }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($r['mora'], 2, '.', '') }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($r['otros'], 2, '.', '') }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($r['saldo'], 2, '.', '') }}</td>
                 </tr>
             @endforeach
 
             {{-- Fila de totales --}}
             <tr>
                 <td colspan="7" align="center">Total</td>
-                <td>{{ number_format($tot['capital'], 2) }}</td>
+                <td class="num izq">{{ number_format($tot['capital'], 2, '.', '') }}</td>
                 <td></td>
-                <td>{{ number_format($tot['interes'], 2) }}</td>
-                <td>{{ number_format($tot['apagar'], 2) }}</td>
-                <td>{{ number_format($tot['cuota'], 2) }}</td>
+                <td class="num izq">{{ number_format($tot['interes'], 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($tot['apagar'], 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($tot['cuota'], 2, '.', '') }}</td>
                 <td colspan="32"></td>
-                <td>{{ number_format($tot['pagado'], 2) }}</td>
-                <td>{{ number_format($tot['mora'], 2) }}</td>
-                <td>{{ number_format($tot['otros'], 2) }}</td>
-                <td>{{ number_format($tot['saldo'], 2) }}</td>
+                <td class="num izq">{{ number_format($tot['pagado'], 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($tot['mora'], 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($tot['otros'], 2, '.', '') }}</td>
+                <td class="num izq">{{ number_format($tot['saldo'], 2, '.', '') }}</td>
             </tr>
 
             {{-- Subtotal MORA --}}
@@ -87,16 +87,16 @@
                 <td style="background-color:red;color:white;text-align:center;">MORA</td>
                 <td style="background-color:#005F8C;color:white;text-align:center;">{{ $sub['mora']['n'] }}</td>
                 <td style="background-color:#005F8C;color:white;text-align:center;" colspan="3">TOTAL MORA</td>
-                <td style="background-color:yellow;color:red;"><b>{{ number_format($sub['mora']['capital'], 2) }}</b></td>
+                <td class="num izq" style="background-color:yellow;color:red;"><b>{{ number_format($sub['mora']['capital'], 2, '.', '') }}</b></td>
                 <td style="background-color:yellow;"></td>
-                <td style="background-color:yellow;"><b>{{ number_format($sub['mora']['interes'], 2) }}</b></td>
-                <td style="background-color:yellow;color:red;"><b>{{ number_format($sub['mora']['interes'] + $sub['mora']['capital'], 2) }}</b></td>
-                <td style="background-color:yellow;"><b>{{ number_format($sub['mora']['cuota'], 2) }}</b></td>
+                <td class="num izq" style="background-color:yellow;"><b>{{ number_format($sub['mora']['interes'], 2, '.', '') }}</b></td>
+                <td class="num izq" style="background-color:yellow;color:red;"><b>{{ number_format($sub['mora']['interes'] + $sub['mora']['capital'], 2, '.', '') }}</b></td>
+                <td class="num izq" style="background-color:yellow;"><b>{{ number_format($sub['mora']['cuota'], 2, '.', '') }}</b></td>
                 <td style="background-color:yellow;" colspan="32"></td>
-                <td style="background-color:yellow;"><b>{{ number_format($sub['mora']['pagado'], 2) }}</b></td>
-                <td style="background-color:yellow;"><b>{{ number_format($sub['mora']['mora'], 2) }}</b></td>
-                <td style="background-color:yellow;"><b>{{ number_format($sub['mora']['otros'], 2) }}</b></td>
-                <td style="background-color:yellow;color:red;"><b>{{ number_format($sub['mora']['saldo'], 2) }}</b></td>
+                <td class="num izq" style="background-color:yellow;"><b>{{ number_format($sub['mora']['pagado'], 2, '.', '') }}</b></td>
+                <td class="num izq" style="background-color:yellow;"><b>{{ number_format($sub['mora']['mora'], 2, '.', '') }}</b></td>
+                <td class="num izq" style="background-color:yellow;"><b>{{ number_format($sub['mora']['otros'], 2, '.', '') }}</b></td>
+                <td class="num izq" style="background-color:yellow;color:red;"><b>{{ number_format($sub['mora']['saldo'], 2, '.', '') }}</b></td>
             </tr>
 
             {{-- Subtotal ACTIVOS --}}
@@ -105,34 +105,34 @@
                 <td style="background-color:green;color:white;text-align:center;">ACTIVOS</td>
                 <td style="background-color:#005F8C;color:white;text-align:center;">{{ $sub['activo']['n'] }}</td>
                 <td style="background-color:#005F8C;color:white;text-align:center;" colspan="3">TOTAL ACTIVOS</td>
-                <td style="background-color:yellow;color:red;"><b>{{ number_format($sub['activo']['capital'], 2) }}</b></td>
+                <td class="num izq" style="background-color:yellow;color:red;"><b>{{ number_format($sub['activo']['capital'], 2, '.', '') }}</b></td>
                 <td style="background-color:yellow;"></td>
-                <td style="background-color:yellow;"><b>{{ number_format($sub['activo']['interes'], 2) }}</b></td>
-                <td style="background-color:yellow;color:red;"><b>{{ number_format($sub['activo']['interes'] + $sub['activo']['capital'], 2) }}</b></td>
-                <td style="background-color:yellow;"><b>{{ number_format($sub['activo']['cuota'], 2) }}</b></td>
+                <td class="num izq" style="background-color:yellow;"><b>{{ number_format($sub['activo']['interes'], 2, '.', '') }}</b></td>
+                <td class="num izq" style="background-color:yellow;color:red;"><b>{{ number_format($sub['activo']['interes'] + $sub['activo']['capital'], 2, '.', '') }}</b></td>
+                <td class="num izq" style="background-color:yellow;"><b>{{ number_format($sub['activo']['cuota'], 2, '.', '') }}</b></td>
                 <td style="background-color:yellow;" colspan="32"></td>
-                <td style="background-color:yellow;"><b>{{ number_format($sub['activo']['pagado'], 2) }}</b></td>
-                <td style="background-color:yellow;"><b>{{ number_format($sub['activo']['mora'], 2) }}</b></td>
-                <td style="background-color:yellow;"><b>{{ number_format($sub['activo']['otros'], 2) }}</b></td>
-                <td style="background-color:yellow;color:red;"><b>{{ number_format($sub['activo']['saldo'], 2) }}</b></td>
+                <td class="num izq" style="background-color:yellow;"><b>{{ number_format($sub['activo']['pagado'], 2, '.', '') }}</b></td>
+                <td class="num izq" style="background-color:yellow;"><b>{{ number_format($sub['activo']['mora'], 2, '.', '') }}</b></td>
+                <td class="num izq" style="background-color:yellow;"><b>{{ number_format($sub['activo']['otros'], 2, '.', '') }}</b></td>
+                <td class="num izq" style="background-color:yellow;color:red;"><b>{{ number_format($sub['activo']['saldo'], 2, '.', '') }}</b></td>
             </tr>
 
             {{-- Subtotal TOTAL --}}
             <tr>
                 <td style="color:blue;text-align:center;" colspan="2"><b>100.00%</b></td>
                 <td style="background-color:#005F8C;color:white;text-align:center;">TOTAL</td>
-                <td style="background-color:#005F8C;color:white;text-align:center;">{{ number_format($sub['activo']['n'] + $sub['mora']['n'], 2) }}</td>
+                <td class="num" style="background-color:#005F8C;color:white;text-align:center;">{{ number_format($sub['activo']['n'] + $sub['mora']['n'], 2, '.', '') }}</td>
                 <td style="background-color:#005F8C;color:white;text-align:center;" colspan="3">TOTAL</td>
-                <td style="background-color:yellow;color:red;"><b>{{ number_format($sub['mora']['capital'] + $sub['activo']['capital'], 2) }}</b></td>
+                <td class="num izq" style="background-color:yellow;color:red;"><b>{{ number_format($sub['mora']['capital'] + $sub['activo']['capital'], 2, '.', '') }}</b></td>
                 <td style="background-color:yellow;"></td>
-                <td style="background-color:yellow;"><b>{{ number_format($sub['mora']['interes'] + $sub['activo']['interes'], 2) }}</b></td>
-                <td style="background-color:yellow;color:red;"><b>{{ number_format($sub['mora']['interes'] + $sub['mora']['capital'] + $sub['activo']['interes'] + $sub['activo']['capital'], 2) }}</b></td>
-                <td style="background-color:yellow;"><b>{{ number_format($sub['mora']['cuota'] + $sub['activo']['cuota'], 2) }}</b></td>
+                <td class="num izq" style="background-color:yellow;"><b>{{ number_format($sub['mora']['interes'] + $sub['activo']['interes'], 2, '.', '') }}</b></td>
+                <td class="num izq" style="background-color:yellow;color:red;"><b>{{ number_format($sub['mora']['interes'] + $sub['mora']['capital'] + $sub['activo']['interes'] + $sub['activo']['capital'], 2, '.', '') }}</b></td>
+                <td class="num izq" style="background-color:yellow;"><b>{{ number_format($sub['mora']['cuota'] + $sub['activo']['cuota'], 2, '.', '') }}</b></td>
                 <td style="background-color:yellow;" colspan="32"></td>
-                <td style="background-color:yellow;"><b>{{ number_format($sub['mora']['pagado'] + $sub['activo']['pagado'], 2) }}</b></td>
-                <td style="background-color:yellow;"><b>{{ number_format($sub['mora']['mora'] + $sub['activo']['mora'], 2) }}</b></td>
-                <td style="background-color:yellow;"><b>{{ number_format($sub['mora']['otros'] + $sub['activo']['otros'], 2) }}</b></td>
-                <td style="background-color:yellow;color:red;"><b>{{ number_format($sub['mora']['saldo'] + $sub['activo']['saldo'], 2) }}</b></td>
+                <td class="num izq" style="background-color:yellow;"><b>{{ number_format($sub['mora']['pagado'] + $sub['activo']['pagado'], 2, '.', '') }}</b></td>
+                <td class="num izq" style="background-color:yellow;"><b>{{ number_format($sub['mora']['mora'] + $sub['activo']['mora'], 2, '.', '') }}</b></td>
+                <td class="num izq" style="background-color:yellow;"><b>{{ number_format($sub['mora']['otros'] + $sub['activo']['otros'], 2, '.', '') }}</b></td>
+                <td class="num izq" style="background-color:yellow;color:red;"><b>{{ number_format($sub['mora']['saldo'] + $sub['activo']['saldo'], 2, '.', '') }}</b></td>
             </tr>
         </tbody>
     </table>

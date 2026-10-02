@@ -5,11 +5,16 @@
     $hd  = "style='text-align:center;background-color:#5bc0de;'";
     $cel = "style='text-align:center;'";
     $cmo = "style='text-align:center;color:red;'";
+    // Celdas de MONTO (02/10): como número para que Excel pueda sumarlas
+    // (class num → mso-number-format del layout); misma pinta "1,234.50".
+    $celN = "class='num' style='text-align:center;'";
+    $cmoN = "class='num' style='text-align:center;color:red;'";
+    $raw = fn ($v) => number_format((float) $v, 2, '.', '');
 
     // Un bloque de 12 meses: cabecera + Pagar/Mora + valores.
     //  $startMonth = primer mes del bloque (1,13,25,37,49).
     //  $weekly     = true → INTERES SEMANAL, false → INTERES MENSUAL.
-    $block = function (int $startMonth, bool $weekly) use ($capital, $interes, $hd, $cel, $cmo) {
+    $block = function (int $startMonth, bool $weekly) use ($capital, $interes, $hd, $cel, $cmo, $celN, $cmoN, $raw) {
         $out  = "<table border='1' width='98%' style='border-collapse:collapse;margin-top:5px;'>";
         // Fila 1: cabecera
         $out .= "<thead><tr><th colspan='2' {$hd}>Monto</th>";
@@ -23,7 +28,7 @@
         }
         $out .= "</tr></thead><tbody><tr>";
         // Fila valores: Monto + 12 meses (Pagar / Mora)
-        $out .= "<td colspan='2' {$cel}>" . number_format($capital, 2) . "</td>";
+        $out .= "<td colspan='2' {$celN}>" . $raw($capital) . "</td>";
         for ($i = 1; $i <= 12; $i++) {
             $m = $startMonth + $i - 1;
             if ($weekly) {
@@ -33,8 +38,8 @@
                 $pag = $m > 0 ? $capital / $m + ($capital * $interes) / 100 : 0;
             }
             $mora = $pag * $interes / 100 / 30 * 2;
-            $out .= "<td {$cel}>" . number_format($pag, 2) . "</td>";
-            $out .= "<td {$cmo}>" . number_format($mora, 2) . "</td>";
+            $out .= "<td {$celN}>" . $raw($pag) . "</td>";
+            $out .= "<td {$cmoN}>" . $raw($mora) . "</td>";
         }
         $out .= "</tr></tbody></table>";
 
@@ -53,7 +58,7 @@
                 <td style="text-align:left;"><b>{{ $nombre }}</b></td>
                 <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
                 <td style="text-align:left;width:70px;"><b>Importe : </b></td>
-                <td style="text-align:left;"><b>{{ number_format($capital, 2) }}</b></td>
+                <td class="num" style="text-align:left;"><b>{{ number_format($capital, 2, '.', '') }}</b></td>
                 <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
                 <td style="text-align:left;width:70px;"><b>Interes : </b></td>
                 <td style="text-align:left;"><b>{{ rtrim(rtrim(number_format($interes, 2), '0'), '.') }}%</b></td>

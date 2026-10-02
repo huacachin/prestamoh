@@ -58,7 +58,7 @@ class CronogramaExcelLegacyTest extends TestCase
 
         // Cabecera como el legacy.
         foreach (['Reporte de Pago', '<b>Cliente </b>', $client->fullName(), '<b>Asesor </b>', 'Asesor Uno', '<b>Dni </b>', '45000001',
-            '<b>Tasa % </b>', '10.00', '<b>N&deg; Exp.</b>', '9051', '<b>Capital </b>', '1,000.00',
+            '<b>Tasa % </b>', '10.00', '<b>N&deg; Exp.</b>', '9051', '<b>Capital </b>', '1000.00',
             '<b>N&deg; Cred.</b>', $credit->id.' - <b>03/08/2026</b>', '<b>Moneda </b>', 'Soles'] as $texto) {
             $this->assertStringContainsString($texto, $xls, "falta: {$texto}");
         }
@@ -76,7 +76,7 @@ class CronogramaExcelLegacyTest extends TestCase
         $this->assertMatchesRegularExpression('~>1</th>\s*<th[^>]*>2026-08-08</th>\s*<th[^>]*>250\.00</th>\s*<th[^>]*>25\.00</th>\s*<th[^>]*>275\.00</th>\s*<th[^>]*>0\.00</th>\s*<th[^>]*>275\.00</th>\s*<th[^>]*>2026-08-08</th>~', $xls);
         $this->assertMatchesRegularExpression('~>3</th>\s*<th[^>]*>2026-08-17</th>(?:\s*<th[^>]*>[^<]*</th>){5}\s*<th[^>]*></th>~', $xls);
         // Bloque Total: capital 1,000 / interés 100 / total 1,100 / mora 0 / pagado 275 y mora+pagado 275.
-        $this->assertMatchesRegularExpression('~<b>Total</b></th>\s*<th[^>]*><b>1,000\.00</b></th>\s*<th[^>]*><b>100\.00</b></th>\s*<th[^>]*><b>1,100\.00</b></th>\s*<th[^>]*><b>0\.00</b></th>\s*<th[^>]*><b>275\.00</b></th>~', $xls);
+        $this->assertMatchesRegularExpression('~<b>Total</b></th>\s*<th[^>]*><b>1000\.00</b></th>\s*<th[^>]*><b>100\.00</b></th>\s*<th[^>]*><b>1100\.00</b></th>\s*<th[^>]*><b>0\.00</b></th>\s*<th[^>]*><b>275\.00</b></th>~', $xls);
         // Pie: Totales de pagos fuera del cronograma (0) y Saldo = 1,100 - 275 = 825.
         $this->assertStringContainsString('<b>Totales</b>', $xls);
         $this->assertMatchesRegularExpression('~<b>Saldo</b></font></td>\s*<td[^>]*><font color="red"><b>825\.00</b></font>~', $xls);

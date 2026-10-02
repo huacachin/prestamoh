@@ -87,16 +87,16 @@
                     <td {!! $rc !!}>{{ $r['f_vcto'] }}</td>
                     <td {!! $rc !!}>{{ $r['f_pago'] }}</td>
                     <td {!! $rc !!}>{{ $r['f_cancelado'] }}</td>
-                    <td {!! $rc !!}>{{ number_format($r['capital'], 2) }}</td>
+                    <td class="num" {!! $rc !!}>{{ number_format($r['capital'], 2, '.', '') }}</td>
                     <td {!! $rc !!}>{{ number_format($r['pct'], 2) }}</td>
-                    <td {!! $rc !!}>{{ number_format($r['interes'], 2) }}</td>
+                    <td class="num" {!! $rc !!}>{{ number_format($r['interes'], 2, '.', '') }}</td>
                     <td {!! $rc !!}>{{ $r['cuotas'] }}</td>
-                    <td {!! $rc !!}>{{ number_format($r['total'], 2) }}</td>
-                    <td {!! $rc !!}>{{ number_format($r['capital_r'], 2) }}</td>
-                    <td {!! $rc !!}>{{ number_format($r['interes_g'], 2) }}</td>
+                    <td class="num" {!! $rc !!}>{{ number_format($r['total'], 2, '.', '') }}</td>
+                    <td class="num" {!! $rc !!}>{{ number_format($r['capital_r'], 2, '.', '') }}</td>
+                    <td class="num" {!! $rc !!}>{{ number_format($r['interes_g'], 2, '.', '') }}</td>
                     <td {!! $rc !!}>{{ $r['mora'] }}</td>
-                    <td {!! $rc !!}>{{ number_format($r['total_gan'], 2) }}</td>
-                    <td {!! $rc !!}>{{ number_format($r['saldo'], 2) }}</td>
+                    <td class="num" {!! $rc !!}>{{ number_format($r['total_gan'], 2, '.', '') }}</td>
+                    <td class="num" {!! $rc !!}>{{ number_format($r['saldo'], 2, '.', '') }}</td>
                     <td {!! $rc !!}>{{ $r['s'] }}</td>
                     <td {!! $rc !!}>{{ $r['mxd'] }}</td>
                     <td {!! $rc !!}>{{ $r['dias'] }}</td>
@@ -109,17 +109,17 @@
             <tr bgcolor="#CEE7FF">
                 <td {!! $tot !!}><b>Total</b></td>
                 <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-                <td {!! $tot !!}>{{ number_format($totom, 2) }}</td>
+                <td class="num" {!! $tot !!}>{{ number_format($totom, 2, '.', '') }}</td>
                 <td></td>
-                <td {!! $tot !!}>{{ number_format($tdm, 2) }}</td>
+                <td class="num" {!! $tot !!}>{{ number_format($tdm, 2, '.', '') }}</td>
                 <td></td>
-                <td {!! $tot !!}>{{ number_format($total1, 2) }}</td>
-                <td {!! $tot !!}>{{ number_format($mmay, 2) }}</td>
-                <td {!! $tot !!}>{{ number_format($imintc, 2) }}</td>
-                <td {!! $tot !!}>{{ number_format($moramora, 2) }}</td>
-                <td {!! $tot !!}>{{ number_format($total2, 2) }}</td>
-                <td {!! $tot !!}>{{ number_format($total3, 2) }}</td>
-                <td {!! $tot !!}>{{ number_format($montomorxdia, 2) }}</td>
+                <td class="num" {!! $tot !!}>{{ number_format($total1, 2, '.', '') }}</td>
+                <td class="num" {!! $tot !!}>{{ number_format($mmay, 2, '.', '') }}</td>
+                <td class="num" {!! $tot !!}>{{ number_format($imintc, 2, '.', '') }}</td>
+                <td class="num" {!! $tot !!}>{{ number_format($moramora, 2, '.', '') }}</td>
+                <td class="num" {!! $tot !!}>{{ number_format($total2, 2, '.', '') }}</td>
+                <td class="num" {!! $tot !!}>{{ number_format($total3, 2, '.', '') }}</td>
+                <td class="num" {!! $tot !!}>{{ number_format($montomorxdia, 2, '.', '') }}</td>
                 <td></td><td></td><td></td>
             </tr>
         </tbody>

@@ -45,13 +45,13 @@
                     <td {!! $cell !!}>{{ $c->user?->username ?? $c->user?->name ?? $c->usuario }}</td>
                     <td {!! $cell !!}>{{ $c->id }}</td>
                     <td style="border-style:dotted solid dotted solid;">{{ $nombre }}</td>
-                    <td {!! $cell !!}>{{ number_format($c->importe, 2) }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($c->importe, 2, '.', '') }}</td>
                     <td {!! $cell !!}>{{ (int) $c->interes == (float) $c->interes ? (int) $c->interes : number_format($c->interes, 2) }}</td>
-                    <td {!! $cell !!}>{{ number_format($inter, 2) }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($inter, 2, '.', '') }}</td>
                     <td {!! $cell !!}>{{ $c->cuotas }}</td>
-                    <td {!! $cell !!}>{{ number_format($total, 2) }}</td>
-                    <td {!! $cell !!}>{{ number_format($pago, 2) }}</td>
-                    <td {!! $cell !!}>{{ number_format($saldo, 2) }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($total, 2, '.', '') }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($pago, 2, '.', '') }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($saldo, 2, '.', '') }}</td>
                     <td {!! $cell !!}>{{ $cli?->asesor?->username ?? $cli?->asesor?->name ?? '' }}</td>
                     <td {!! $cell !!}>{{ $tcLabels[(int) $c->tipo_planilla] ?? '' }}</td>
                 </tr>
@@ -61,13 +61,13 @@
 
             <tr bgcolor="#CEE7FF">
                 <td colspan="5" style="text-align:center;"><b>TOTALES:</b></td>
-                <td style="text-align:center;"><b>{{ number_format($sumtotal, 2) }}</b></td>
+                <td class="num" style="text-align:center;"><b>{{ number_format($sumtotal, 2, '.', '') }}</b></td>
                 <td></td>
-                <td style="text-align:center;"><b>{{ number_format($suminter, 2) }}</b></td>
+                <td class="num" style="text-align:center;"><b>{{ number_format($suminter, 2, '.', '') }}</b></td>
                 <td></td>
-                <td style="text-align:center;"><b>{{ number_format($sumtotax, 2) }}</b></td>
-                <td style="text-align:center;"><b>{{ number_format($sumpagos, 2) }}</b></td>
-                <td style="text-align:center;"><b>{{ number_format($sumsaldo, 2) }}</b></td>
+                <td class="num" style="text-align:center;"><b>{{ number_format($sumtotax, 2, '.', '') }}</b></td>
+                <td class="num" style="text-align:center;"><b>{{ number_format($sumpagos, 2, '.', '') }}</b></td>
+                <td class="num" style="text-align:center;"><b>{{ number_format($sumsaldo, 2, '.', '') }}</b></td>
                 <td colspan="2"></td>
             </tr>
         </tbody>

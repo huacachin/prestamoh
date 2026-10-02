@@ -51,14 +51,14 @@
                     <td {!! $cell !!}>{{ $r['codigo'] }}</td>
                     <td class="txt" {!! $cell !!}>{{ $r['dni'] }}</td>
                     <td {!! $cell !!}>{{ $r['nombre'] }} <font color="red">{{ $r['cod_rem'] }}</font></td>
-                    <td {!! $cell !!}>{{ number_format($r['capital'], 2) }}</td>
-                    <td {!! $cell !!}>{{ number_format($r['r_capital'], 2) }}</td>
-                    <td {!! $cell !!}>{{ number_format($r['capital_neto'], 2) }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($r['capital'], 2, '.', '') }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($r['r_capital'], 2, '.', '') }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($r['capital_neto'], 2, '.', '') }}</td>
                     <td {!! $cell !!}>{!! $r['detalles'] !!}</td>
                     <td {!! $cell !!}>{{ $r['interes_pct'] }}</td>
                     <td {!! $cell !!}>{{ $r['interes_s'] }}</td>
                     <td {!! $cell !!}>{{ round($r['mora'], 2) }}</td>
-                    <td {!! $cell !!}>{{ number_format($r['total'], 2) }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($r['total'], 2, '.', '') }}</td>
                     <td {!! $cell !!}>{{ $r['mxd'] > 0 ? $r['mxd'] : '' }}</td>
                     <td {!! $cell !!}>{{ $r['mora_s'] > 0 ? $r['mora_s'] : '' }}</td>
                     <td {!! $cell !!}>{{ $r['dias'] }}</td>
@@ -75,18 +75,18 @@
             {{-- Total General (2 filas) --}}
             <tr bgcolor="#f0f0f0">
                 <td colspan="6" rowspan="2" align="center" style="vertical-align:middle;">Total General</td>
-                <td rowspan="2" align="center" style="vertical-align:middle;">{{ number_format($totals['cancecapi'] ?? 0, 2) }}</td>
-                <td rowspan="2" align="center" style="vertical-align:middle;">{{ number_format($totals['canceinteg'] ?? 0, 2) }}</td>
-                <td rowspan="2" align="center" style="vertical-align:middle;">{{ number_format($totals['todf1'] ?? 0, 2) }}</td>
+                <td class="num" rowspan="2" align="center" style="vertical-align:middle;">{{ number_format($totals['cancecapi'] ?? 0, 2, '.', '') }}</td>
+                <td class="num" rowspan="2" align="center" style="vertical-align:middle;">{{ number_format($totals['canceinteg'] ?? 0, 2, '.', '') }}</td>
+                <td class="num" rowspan="2" align="center" style="vertical-align:middle;">{{ number_format($totals['todf1'] ?? 0, 2, '.', '') }}</td>
                 <td rowspan="2" colspan="2" style="vertical-align:middle;"></td>
-                <td align="center" style="vertical-align:middle;">{{ number_format($totals['canceinte'] ?? 0, 2) }}</td>
-                <td align="center" style="vertical-align:middle;">{{ number_format($totals['cancemora'] ?? 0, 2) }}</td>
-                <td align="center" rowspan="2" style="vertical-align:middle;">{{ number_format($totals['totGP'] ?? 0, 2) }}</td>
-                <td rowspan="2" style="vertical-align:middle;">{{ number_format($totals['montomorxdia'] ?? 0, 2) }}</td>
+                <td class="num" align="center" style="vertical-align:middle;">{{ number_format($totals['canceinte'] ?? 0, 2, '.', '') }}</td>
+                <td class="num" align="center" style="vertical-align:middle;">{{ number_format($totals['cancemora'] ?? 0, 2, '.', '') }}</td>
+                <td class="num" align="center" rowspan="2" style="vertical-align:middle;">{{ number_format($totals['totGP'] ?? 0, 2, '.', '') }}</td>
+                <td class="num izq" rowspan="2" style="vertical-align:middle;">{{ number_format($totals['montomorxdia'] ?? 0, 2, '.', '') }}</td>
                 <td rowspan="2" colspan="7" style="vertical-align:middle;"></td>
             </tr>
             <tr bgcolor="#f0f0f0">
-                <td colspan="3" align="center" style="vertical-align:middle;">{{ number_format(($totals['canceinte'] ?? 0) + ($totals['cancemora'] ?? 0) + ($totals['total_gat'] ?? 0), 2) }}</td>
+                <td class="num" colspan="3" align="center" style="vertical-align:middle;">{{ number_format(($totals['canceinte'] ?? 0) + ($totals['cancemora'] ?? 0) + ($totals['total_gat'] ?? 0), 2, '.', '') }}</td>
             </tr>
 
             {{-- Separador + tabla de distribucion --}}
@@ -105,21 +105,21 @@
                     <tr bgcolor="#CEE7FF">
                         <td colspan="5" style="text-align:center;vertical-align:middle;">Total</td>
                         <td style="text-align:center;vertical-align:middle;"><b>{{ $d['pct1'] }}</b></td>
-                        <td style="text-align:center;vertical-align:middle;">{{ number_format($d['val1'], 2) }}</td>
+                        <td class="num" style="text-align:center;vertical-align:middle;">{{ number_format($d['val1'], 2, '.', '') }}</td>
                         <td style="text-align:center;vertical-align:middle;"><b>{{ $d['pct2'] }}</b></td>
-                        <td style="text-align:center;vertical-align:middle;">{{ number_format($d['val2'], 2) }}</td>
+                        <td class="num" style="text-align:center;vertical-align:middle;">{{ number_format($d['val2'], 2, '.', '') }}</td>
                         <td style="text-align:center;vertical-align:middle;"><b>{{ $d['pct3'] }}</b></td>
-                        <td style="text-align:center;vertical-align:middle;" colspan="2">{{ number_format($d['val3'], 2) }}</td>
+                        <td class="num" style="text-align:center;vertical-align:middle;" colspan="2">{{ number_format($d['val3'], 2, '.', '') }}</td>
                     </tr>
                 @else
                     <tr>
                         <td colspan="5" {!! $cell !!}>{{ $d['label'] }}</td>
                         <td {!! $cell !!}><b>{{ $d['pct1'] }}</b></td>
-                        <td {!! $cell !!}>{{ number_format($d['val1'], 2) }}</td>
+                        <td class="num" {!! $cell !!}>{{ number_format($d['val1'], 2, '.', '') }}</td>
                         <td {!! $cell !!}><b>{{ $d['pct2'] }}</b></td>
-                        <td {!! $cell !!}>{{ number_format($d['val2'], 2) }}</td>
+                        <td class="num" {!! $cell !!}>{{ number_format($d['val2'], 2, '.', '') }}</td>
                         <td {!! $cell !!}><b>{{ $d['pct3'] }}</b></td>
-                        <td {!! $cell !!} colspan="2">{{ number_format($d['val3'], 2) }}</td>
+                        <td class="num" {!! $cell !!} colspan="2">{{ number_format($d['val3'], 2, '.', '') }}</td>
                     </tr>
                 @endif
             @endforeach

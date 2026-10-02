@@ -73,52 +73,52 @@
         @foreach($rows as $r)
             <tr>
                 <td {!! $r['is_sunday'] ? $domc : $cellc !!}>{{ $r['day'] }}/{{ str_pad($month, 2, '0', STR_PAD_LEFT) }}/{{ $year }}</td>
-                <td {!! $celln !!}>{{ number_format($r['capital_t'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['capital_cobrado'], 2) }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['capital_t'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['capital_cobrado'], 2, '.', '') }}</td>
                 <td {!! $cellc !!}>{{ $r['mensual_n'] ?: '' }}</td>
-                <td {!! $celln !!}>{{ number_format($r['mensual_s'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['mensual_mora'], 2) }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['mensual_s'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['mensual_mora'], 2, '.', '') }}</td>
                 <td {!! $cellc !!}>{{ $r['semanal_n'] ?: '' }}</td>
-                <td {!! $celln !!}>{{ number_format($r['semanal_s'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['semanal_mora'], 2) }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['semanal_s'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['semanal_mora'], 2, '.', '') }}</td>
                 <td {!! $cellc !!}>{{ $r['diario_n'] ?: '' }}</td>
-                <td {!! $celln !!}>{{ number_format($r['diario_s'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['diario_mora'], 2) }}</td>
-                <td {!! $red !!}>{{ number_format($r['total_credito'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['otros_ing'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['otros_egr'], 2) }}</td>
-                <td {!! $red !!}>{{ number_format($r['utilidad_caja3'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['ing_fijos'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['ing_otros'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['ing_total'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['egr_fijos'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['egr_otros'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['egr_total'], 2) }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['diario_s'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['diario_mora'], 2, '.', '') }}</td>
+                <td class="num" {!! $red !!}>{{ number_format($r['total_credito'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['otros_ing'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['otros_egr'], 2, '.', '') }}</td>
+                <td class="num" {!! $red !!}>{{ number_format($r['utilidad_caja3'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['ing_fijos'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['ing_otros'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['ing_total'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['egr_fijos'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['egr_otros'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['egr_total'], 2, '.', '') }}</td>
             </tr>
         @endforeach
             <tr>
                 <td {!! $totc !!}><b>Total</b></td>
-                <td {!! $tot !!}><b>{{ number_format($totals['capital_t'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($totals['capital_cobrado'], 2) }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($totals['capital_t'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($totals['capital_cobrado'], 2, '.', '') }}</b></td>
                 <td {!! $totc !!}><b>{{ $totals['mensual_n'] }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($totals['mensual_s'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($totals['mensual_mora'], 2) }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($totals['mensual_s'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($totals['mensual_mora'], 2, '.', '') }}</b></td>
                 <td {!! $totc !!}><b>{{ $totals['semanal_n'] }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($totals['semanal_s'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($totals['semanal_mora'], 2) }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($totals['semanal_s'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($totals['semanal_mora'], 2, '.', '') }}</b></td>
                 <td {!! $totc !!}><b>{{ $totals['diario_n'] }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($totals['diario_s'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($totals['diario_mora'], 2) }}</b></td>
-                <td {!! $totr !!}><b>{{ number_format($totals['total_credito'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($totals['otros_ing'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($totals['otros_egr'], 2) }}</b></td>
-                <td {!! $totr !!}><b>{{ number_format($totals['utilidad_caja3'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($totals['ing_fijos'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($totals['ing_otros'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($totals['ing_total'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($totals['egr_fijos'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($totals['egr_otros'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($totals['egr_total'], 2) }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($totals['diario_s'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($totals['diario_mora'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $totr !!}><b>{{ number_format($totals['total_credito'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($totals['otros_ing'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($totals['otros_egr'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $totr !!}><b>{{ number_format($totals['utilidad_caja3'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($totals['ing_fijos'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($totals['ing_otros'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($totals['ing_total'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($totals['egr_fijos'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($totals['egr_otros'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($totals['egr_total'], 2, '.', '') }}</b></td>
             </tr>
         </tbody>
     </table>
@@ -169,76 +169,76 @@
         @foreach($monthRowsData as $r)
             <tr>
                 <td {!! $cellc !!}><b>{{ $r['mes_nombre'] }}</b></td>
-                <td {!! $celln !!}>{{ number_format($r['capineto'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['capital'], 2) }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['capineto'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['capital'], 2, '.', '') }}</td>
                 <td {!! $cellc !!}>{{ $r['n1'] ?: '' }}</td>
-                <td {!! $celln !!}>{{ number_format($r['mensual'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['mora3'], 2) }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['mensual'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['mora3'], 2, '.', '') }}</td>
                 <td {!! $cellc !!}>{{ $r['n2'] ?: '' }}</td>
-                <td {!! $celln !!}>{{ number_format($r['semanal'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['mora1'], 2) }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['semanal'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['mora1'], 2, '.', '') }}</td>
                 <td {!! $cellc !!}>{{ $r['n3'] ?: '' }}</td>
-                <td {!! $celln !!}>{{ number_format($r['diario'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['mora4'], 2) }}</td>
-                <td {!! $red !!}>{{ number_format($r['total'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['otros2'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['egresov'], 2) }}</td>
-                <td {!! $red !!}>{{ number_format($r['utilidad2'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['fijoi'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['otrosi'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['ingT'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['fijoe'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['otrose'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['egrT'], 2) }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['diario'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['mora4'], 2, '.', '') }}</td>
+                <td class="num" {!! $red !!}>{{ number_format($r['total'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['otros2'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['egresov'], 2, '.', '') }}</td>
+                <td class="num" {!! $red !!}>{{ number_format($r['utilidad2'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['fijoi'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['otrosi'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['ingT'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['fijoe'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['otrose'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['egrT'], 2, '.', '') }}</td>
             </tr>
         @endforeach
             <tr>
                 <td {!! $totc !!}><b>Total</b></td>
-                <td {!! $tot !!}><b>{{ number_format($monthTotals['capineto_sum'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($monthTotals['capital'], 2) }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($monthTotals['capineto_sum'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($monthTotals['capital'], 2, '.', '') }}</b></td>
                 <td {!! $totc !!}><b>{{ $monthTotals['n1'] }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($monthTotals['mensual'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($monthTotals['mora3'], 2) }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($monthTotals['mensual'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($monthTotals['mora3'], 2, '.', '') }}</b></td>
                 <td {!! $totc !!}><b>{{ $monthTotals['n2'] }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($monthTotals['semanal'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($monthTotals['mora1'], 2) }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($monthTotals['semanal'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($monthTotals['mora1'], 2, '.', '') }}</b></td>
                 <td {!! $totc !!}><b>{{ $monthTotals['n3'] }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($monthTotals['diario'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($monthTotals['mora4'], 2) }}</b></td>
-                <td {!! $totr !!}><b>{{ number_format($monthTotals['total'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($monthTotals['otros2'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($monthTotals['egresov'], 2) }}</b></td>
-                <td {!! $totr !!}><b>{{ number_format($monthTotals['utilidad2'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($monthTotals['fijoi'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($monthTotals['otrosi'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($monthTotals['fijoi'] + $monthTotals['otrosi'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($monthTotals['fijoe'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($monthTotals['otrose'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($monthTotals['fijoe'] + $monthTotals['otrose'], 2) }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($monthTotals['diario'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($monthTotals['mora4'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $totr !!}><b>{{ number_format($monthTotals['total'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($monthTotals['otros2'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($monthTotals['egresov'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $totr !!}><b>{{ number_format($monthTotals['utilidad2'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($monthTotals['fijoi'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($monthTotals['otrosi'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($monthTotals['fijoi'] + $monthTotals['otrosi'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($monthTotals['fijoe'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($monthTotals['otrose'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($monthTotals['fijoe'] + $monthTotals['otrose'], 2, '.', '') }}</b></td>
             </tr>
             <tr>
                 <td {!! $grisc !!}><b>Promedio</b></td>
-                <td {!! $gris !!}>{{ number_format($monthTotals['capineto_sum'] / $monthsCount, 2) }}</td>
-                <td {!! $gris !!}>{{ number_format($monthTotals['capital'] / $monthsCount, 2) }}</td>
+                <td class="num" {!! $gris !!}>{{ number_format($monthTotals['capineto_sum'] / $monthsCount, 2, '.', '') }}</td>
+                <td class="num" {!! $gris !!}>{{ number_format($monthTotals['capital'] / $monthsCount, 2, '.', '') }}</td>
                 <td {!! $grisc !!}>{{ number_format($monthTotals['n1'] / $monthsCount, 0) }}</td>
-                <td {!! $gris !!}>{{ number_format($monthTotals['mensual'] / $monthsCount, 2) }}</td>
-                <td {!! $gris !!}>{{ number_format($monthTotals['mora3'] / $monthsCount, 2) }}</td>
+                <td class="num" {!! $gris !!}>{{ number_format($monthTotals['mensual'] / $monthsCount, 2, '.', '') }}</td>
+                <td class="num" {!! $gris !!}>{{ number_format($monthTotals['mora3'] / $monthsCount, 2, '.', '') }}</td>
                 <td {!! $grisc !!}>{{ number_format($monthTotals['n2'] / $monthsCount, 0) }}</td>
-                <td {!! $gris !!}>{{ number_format($monthTotals['semanal'] / $monthsCount, 2) }}</td>
-                <td {!! $gris !!}>{{ number_format($monthTotals['mora1'] / $monthsCount, 2) }}</td>
+                <td class="num" {!! $gris !!}>{{ number_format($monthTotals['semanal'] / $monthsCount, 2, '.', '') }}</td>
+                <td class="num" {!! $gris !!}>{{ number_format($monthTotals['mora1'] / $monthsCount, 2, '.', '') }}</td>
                 <td {!! $grisc !!}>{{ number_format($monthTotals['n3'] / $monthsCount, 0) }}</td>
-                <td {!! $gris !!}>{{ number_format($monthTotals['diario'] / $monthsCount, 2) }}</td>
-                <td {!! $gris !!}>{{ number_format($monthTotals['mora4'] / $monthsCount, 2) }}</td>
-                <td {!! $grisr !!}>{{ number_format($monthTotals['total'] / $monthsCount, 2) }}</td>
-                <td {!! $gris !!}>{{ number_format($monthTotals['otros2'] / $monthsCount, 2) }}</td>
-                <td {!! $gris !!}>{{ number_format($monthTotals['egresov'] / $monthsCount, 2) }}</td>
-                <td {!! $grisr !!}>{{ number_format($monthTotals['utilidad2'] / $monthsCount, 2) }}</td>
-                <td {!! $gris !!}>{{ number_format($monthTotals['fijoi'] / $monthsCount, 2) }}</td>
-                <td {!! $gris !!}>{{ number_format($monthTotals['otrosi'] / $monthsCount, 2) }}</td>
-                <td {!! $gris !!}>{{ number_format(($monthTotals['fijoi'] + $monthTotals['otrosi']) / $monthsCount, 2) }}</td>
-                <td {!! $gris !!}>{{ number_format($monthTotals['fijoe'] / $monthsCount, 2) }}</td>
-                <td {!! $gris !!}>{{ number_format($monthTotals['otrose'] / $monthsCount, 2) }}</td>
-                <td {!! $gris !!}>{{ number_format(($monthTotals['fijoe'] + $monthTotals['otrose']) / $monthsCount, 2) }}</td>
+                <td class="num" {!! $gris !!}>{{ number_format($monthTotals['diario'] / $monthsCount, 2, '.', '') }}</td>
+                <td class="num" {!! $gris !!}>{{ number_format($monthTotals['mora4'] / $monthsCount, 2, '.', '') }}</td>
+                <td class="num" {!! $grisr !!}>{{ number_format($monthTotals['total'] / $monthsCount, 2, '.', '') }}</td>
+                <td class="num" {!! $gris !!}>{{ number_format($monthTotals['otros2'] / $monthsCount, 2, '.', '') }}</td>
+                <td class="num" {!! $gris !!}>{{ number_format($monthTotals['egresov'] / $monthsCount, 2, '.', '') }}</td>
+                <td class="num" {!! $grisr !!}>{{ number_format($monthTotals['utilidad2'] / $monthsCount, 2, '.', '') }}</td>
+                <td class="num" {!! $gris !!}>{{ number_format($monthTotals['fijoi'] / $monthsCount, 2, '.', '') }}</td>
+                <td class="num" {!! $gris !!}>{{ number_format($monthTotals['otrosi'] / $monthsCount, 2, '.', '') }}</td>
+                <td class="num" {!! $gris !!}>{{ number_format(($monthTotals['fijoi'] + $monthTotals['otrosi']) / $monthsCount, 2, '.', '') }}</td>
+                <td class="num" {!! $gris !!}>{{ number_format($monthTotals['fijoe'] / $monthsCount, 2, '.', '') }}</td>
+                <td class="num" {!! $gris !!}>{{ number_format($monthTotals['otrose'] / $monthsCount, 2, '.', '') }}</td>
+                <td class="num" {!! $gris !!}>{{ number_format(($monthTotals['fijoe'] + $monthTotals['otrose']) / $monthsCount, 2, '.', '') }}</td>
             </tr>
         </tbody>
     </table>
@@ -289,52 +289,52 @@
         @foreach($yearRowsData as $r)
             <tr>
                 <td {!! $cellc !!}><b>{{ $r['idano'] }}</b></td>
-                <td {!! $celln !!}>{{ number_format($r['capineto'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['capital'], 2) }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['capineto'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['capital'], 2, '.', '') }}</td>
                 <td {!! $cellc !!}>{{ $r['n1'] ?: '' }}</td>
-                <td {!! $celln !!}>{{ number_format($r['mensual'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['mora3'], 2) }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['mensual'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['mora3'], 2, '.', '') }}</td>
                 <td {!! $cellc !!}>{{ $r['n2'] ?: '' }}</td>
-                <td {!! $celln !!}>{{ number_format($r['semanal'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['mora1'], 2) }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['semanal'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['mora1'], 2, '.', '') }}</td>
                 <td {!! $cellc !!}>{{ $r['n3'] ?: '' }}</td>
-                <td {!! $celln !!}>{{ number_format($r['diario'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['mora4'], 2) }}</td>
-                <td {!! $red !!}>{{ number_format($r['total'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['otros2'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['egresov'], 2) }}</td>
-                <td {!! $red !!}>{{ number_format($r['utilidad2'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['fijoi'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['otrosi'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['ingT'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['fijoe'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['otrose'], 2) }}</td>
-                <td {!! $celln !!}>{{ number_format($r['egrT'], 2) }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['diario'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['mora4'], 2, '.', '') }}</td>
+                <td class="num" {!! $red !!}>{{ number_format($r['total'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['otros2'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['egresov'], 2, '.', '') }}</td>
+                <td class="num" {!! $red !!}>{{ number_format($r['utilidad2'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['fijoi'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['otrosi'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['ingT'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['fijoe'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['otrose'], 2, '.', '') }}</td>
+                <td class="num" {!! $celln !!}>{{ number_format($r['egrT'], 2, '.', '') }}</td>
             </tr>
         @endforeach
             <tr>
                 <td {!! $totc !!}><b>Total</b></td>
-                <td {!! $tot !!}><b>{{ number_format($yearTotals['capineto'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($yearTotals['capital'], 2) }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($yearTotals['capineto'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($yearTotals['capital'], 2, '.', '') }}</b></td>
                 <td {!! $totc !!}><b>{{ $yearTotals['n1'] }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($yearTotals['mensual'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($yearTotals['mora3'], 2) }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($yearTotals['mensual'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($yearTotals['mora3'], 2, '.', '') }}</b></td>
                 <td {!! $totc !!}><b>{{ $yearTotals['n2'] }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($yearTotals['semanal'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($yearTotals['mora1'], 2) }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($yearTotals['semanal'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($yearTotals['mora1'], 2, '.', '') }}</b></td>
                 <td {!! $totc !!}><b>{{ $yearTotals['n3'] }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($yearTotals['diario'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($yearTotals['mora4'], 2) }}</b></td>
-                <td {!! $totr !!}><b>{{ number_format($yearTotals['total'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($yearTotals['otros2'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($yearTotals['egresov'], 2) }}</b></td>
-                <td {!! $totr !!}><b>{{ number_format($yearTotals['utilidad2'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($yearTotals['fijoi'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($yearTotals['otrosi'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($yearTotals['fijoi'] + $yearTotals['otrosi'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($yearTotals['fijoe'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($yearTotals['otrose'], 2) }}</b></td>
-                <td {!! $tot !!}><b>{{ number_format($yearTotals['fijoe'] + $yearTotals['otrose'], 2) }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($yearTotals['diario'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($yearTotals['mora4'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $totr !!}><b>{{ number_format($yearTotals['total'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($yearTotals['otros2'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($yearTotals['egresov'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $totr !!}><b>{{ number_format($yearTotals['utilidad2'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($yearTotals['fijoi'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($yearTotals['otrosi'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($yearTotals['fijoi'] + $yearTotals['otrosi'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($yearTotals['fijoe'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($yearTotals['otrose'], 2, '.', '') }}</b></td>
+                <td class="num" {!! $tot !!}><b>{{ number_format($yearTotals['fijoe'] + $yearTotals['otrose'], 2, '.', '') }}</b></td>
             </tr>
         </tbody>
     </table>

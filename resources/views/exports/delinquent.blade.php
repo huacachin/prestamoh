@@ -54,14 +54,14 @@
                     <td class="txt" {!! $cell !!}>{{ $r['dni'] }}</td>
                     <td {!! $cell !!}>{{ $r['cliente'] }}</td>
                     <td {!! $cell !!}><font color="red">{{ $r['cod_rem'] }}</font></td>
-                    <td {!! $cell !!}>{{ number_format($r['cuota'], 2) }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($r['cuota'], 2, '.', '') }}</td>
                     <td {!! $tcSt !!} style="border-style:dotted solid dotted solid;text-align:center;"><b>{{ $r['tc_label'] }}{{ $r['tc_label'] !== '' ? '.' : '' }}</b></td>
                     <td {!! $cell !!}>{{ $pctTxt }}</td>
-                    <td {!! $cell !!}>{{ number_format($r['interes_monto'], 2) }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($r['interes_monto'], 2, '.', '') }}</td>
                     <td {!! $cell !!}>{{ $r['cuotas'] }}</td>
-                    <td {!! $cell !!}>{{ number_format($r['total'], 2) }}</td>
-                    <td {!! $cell !!}>{{ number_format($r['pago'], 2) }}</td>
-                    <td {!! $cell !!}>{{ number_format($r['saldo'], 2) }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($r['total'], 2, '.', '') }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($r['pago'], 2, '.', '') }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($r['saldo'], 2, '.', '') }}</td>
                     <td {!! $cell !!}>{{ $r['fecha_cred'] }}</td>
                     <td {!! $cell !!}>{{ $r['fecha_venc'] }}</td>
                     <td {!! $cell !!}>{{ $r['celular'] }}</td>
@@ -78,13 +78,13 @@
                 <td></td>
                 <td colspan="4" style="color:#000;"><b>Total Soles</b></td>
                 <td></td>
-                <td style="color:#0000FF;"><b>{{ number_format($totals['cuota'] ?? 0, 2) }}</b></td>
+                <td class="num izq" style="color:#0000FF;"><b>{{ number_format($totals['cuota'] ?? 0, 2, '.', '') }}</b></td>
                 <td colspan="2"></td>
-                <td style="color:#0000FF;"><b>{{ number_format($totals['interes'] ?? 0, 2) }}</b></td>
+                <td class="num izq" style="color:#0000FF;"><b>{{ number_format($totals['interes'] ?? 0, 2, '.', '') }}</b></td>
                 <td colspan="1"></td>
-                <td style="color:#0000FF;"><b>{{ number_format($totals['total'] ?? 0, 2) }}</b></td>
-                <td style="color:#0000FF;"><b>{{ number_format($totals['pago'] ?? 0, 2) }}</b></td>
-                <td style="color:#0000FF;"><b>{{ number_format($totals['saldo'] ?? 0, 2) }}</b></td>
+                <td class="num izq" style="color:#0000FF;"><b>{{ number_format($totals['total'] ?? 0, 2, '.', '') }}</b></td>
+                <td class="num izq" style="color:#0000FF;"><b>{{ number_format($totals['pago'] ?? 0, 2, '.', '') }}</b></td>
+                <td class="num izq" style="color:#0000FF;"><b>{{ number_format($totals['saldo'] ?? 0, 2, '.', '') }}</b></td>
                 <td colspan="6"></td>
             </tr>
             {{-- Total Dolares --}}
@@ -92,13 +92,13 @@
                 <td></td>
                 <td colspan="4" style="color:#000;"><b>Total Dolares</b></td>
                 <td></td>
-                <td style="color:#0000FF;"><b>{{ number_format(($totals['cuota'] ?? 0) / $tc, 2) }}</b></td>
+                <td class="num izq" style="color:#0000FF;"><b>{{ number_format(($totals['cuota'] ?? 0) / $tc, 2, '.', '') }}</b></td>
                 <td colspan="2"></td>
-                <td style="color:#0000FF;"><b>{{ number_format(($totals['interes'] ?? 0) / $tc, 2) }}</b></td>
+                <td class="num izq" style="color:#0000FF;"><b>{{ number_format(($totals['interes'] ?? 0) / $tc, 2, '.', '') }}</b></td>
                 <td colspan="1"></td>
-                <td style="color:#0000FF;"><b>{{ number_format(($totals['total'] ?? 0) / $tc, 2) }}</b></td>
-                <td style="color:#0000FF;"><b>{{ number_format(($totals['pago'] ?? 0) / $tc, 2) }}</b></td>
-                <td style="color:#0000FF;"><b>{{ number_format(($totals['saldo'] ?? 0) / $tc, 2) }}</b></td>
+                <td class="num izq" style="color:#0000FF;"><b>{{ number_format(($totals['total'] ?? 0) / $tc, 2, '.', '') }}</b></td>
+                <td class="num izq" style="color:#0000FF;"><b>{{ number_format(($totals['pago'] ?? 0) / $tc, 2, '.', '') }}</b></td>
+                <td class="num izq" style="color:#0000FF;"><b>{{ number_format(($totals['saldo'] ?? 0) / $tc, 2, '.', '') }}</b></td>
                 <td colspan="6"></td>
             </tr>
         </tbody>

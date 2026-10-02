@@ -31,7 +31,7 @@
                     <td {!! $cell !!}>{{ $r['asesor'] }}</td>
                     <td {!! $cell !!}>{{ $r['cliente'] }}</td>
                     <td {!! $cell !!}>{{ $r['detalle'] }}</td>
-                    <td {!! $cell !!}>{{ number_format($r['monto'], 2) }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($r['monto'], 2, '.', '') }}</td>
                 </tr>
             @endforeach
 
@@ -40,31 +40,31 @@
                 <th colspan="5" rowspan="6" align="center"><b>Total</b></th>
                 <td><b></b></td>
                 <td><b></b></td>
-                <td align="right"><b>{{ number_format($totals['total'] ?? 0, 2) }}</b></td>
+                <td class="num" align="right"><b>{{ number_format($totals['total'] ?? 0, 2, '.', '') }}</b></td>
             </tr>
             <tr>
                 <td align="center"><b>Fijos</b></td>
-                <td align="center"><b>{{ number_format($totals['fijos'] ?? 0, 2) }}</b></td>
+                <td class="num" align="center"><b>{{ number_format($totals['fijos'] ?? 0, 2, '.', '') }}</b></td>
                 <td></td>
             </tr>
             <tr>
                 <td align="center"><font color="red"><b>Otros</b></font></td>
-                <td align="center"><b>{{ number_format($totals['otros'] ?? 0, 2) }}</b></td>
+                <td class="num" align="center"><b>{{ number_format($totals['otros'] ?? 0, 2, '.', '') }}</b></td>
                 <td></td>
             </tr>
             <tr>
                 <td align="center"><b>Capital</b></td>
-                <td align="center"><b>{{ number_format($totals['capital'] ?? 0, 2) }}</b></td>
+                <td class="num" align="center"><b>{{ number_format($totals['capital'] ?? 0, 2, '.', '') }}</b></td>
                 <td></td>
             </tr>
             <tr>
                 <td align="center"><b>Interes</b></td>
-                <td align="center"><b>{{ number_format($totals['interes'] ?? 0, 2) }}</b></td>
+                <td class="num" align="center"><b>{{ number_format($totals['interes'] ?? 0, 2, '.', '') }}</b></td>
                 <td></td>
             </tr>
             <tr>
                 <td align="center"><b>Mora</b></td>
-                <td align="center"><b>{{ number_format($totals['mora'] ?? 0, 2) }}</b></td>
+                <td class="num" align="center"><b>{{ number_format($totals['mora'] ?? 0, 2, '.', '') }}</b></td>
                 <td></td>
             </tr>
         </tbody>

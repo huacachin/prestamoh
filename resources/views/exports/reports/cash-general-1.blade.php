@@ -67,10 +67,10 @@
                                 <td {!! $pintIng !!} {!! $cell !!}>{{ $ing['cliente'] }}</td>
                                 <td {!! $pintIng !!} {!! $cell !!}>{{ $ing['detalle'] }}</td>
                                 <td {!! $pintIng !!} {!! $cell !!}>{{ $ing['nro_cuotas'] }}</td>
-                                <td {!! $pintIng !!} {!! $cell !!}><font color="blue">{{ number_format($ing['total'], 2) }}</font></td>
-                                <td {!! $pintIng !!} {!! $cell !!}><font color="blue">{{ number_format($ing['capital'], 2) }}</font></td>
-                                <td {!! $pintIng !!} {!! $cell !!}><font color="blue">{{ number_format($ing['interes'], 2) }}</font></td>
-                                <td {!! $pintIng !!} {!! $cell !!}><font color="blue">{{ number_format($ing['mora'], 2) }}</font></td>
+                                <td class="num" {!! $pintIng !!} {!! $cell !!}><font color="blue">{{ number_format($ing['total'], 2, '.', '') }}</font></td>
+                                <td class="num" {!! $pintIng !!} {!! $cell !!}><font color="blue">{{ number_format($ing['capital'], 2, '.', '') }}</font></td>
+                                <td class="num" {!! $pintIng !!} {!! $cell !!}><font color="blue">{{ number_format($ing['interes'], 2, '.', '') }}</font></td>
+                                <td class="num" {!! $pintIng !!} {!! $cell !!}><font color="blue">{{ number_format($ing['mora'], 2, '.', '') }}</font></td>
                                 <td {!! $pintIng !!} {!! $cell !!}>{{ $ing['asesor'] }}</td>
                                 <td {!! $pintIng !!} {!! $cell !!}>{{ $tcLabels[$ing['tipo_planilla']] ?? '' }}</td>
                             @else
@@ -81,9 +81,9 @@
                             @if($egr)
                                 <td {!! $pintEgr !!} {!! $cell !!}>{{ $egr['credit_id'] }}</td>
                                 <td {!! $pintEgr !!} {!! $cell !!}>{{ $egr['cliente'] }}@if($egr['cod_rem'])<font color="red" size="1"> ({{ $egr['cod_rem'] }})</font>@endif</td>
-                                <td {!! $pintEgr !!} {!! $cell !!}><font color="blue">{{ number_format($egr['monto'], 2) }}</font></td>
+                                <td class="num" {!! $pintEgr !!} {!! $cell !!}><font color="blue">{{ number_format($egr['monto'], 2, '.', '') }}</font></td>
                                 <td {!! $cell !!}><font color="red">@if((int) $egr['interes_pct'] == (float) $egr['interes_pct']){{ (int) $egr['interes_pct'] }}@else{{ $egr['interes_pct'] }}@endif</font></td>
-                                <td {!! $pintEgr !!} {!! $cell !!}><font color="blue">{{ number_format($egr['interes_monto'], 2) }}</font></td>
+                                <td class="num" {!! $pintEgr !!} {!! $cell !!}><font color="blue">{{ number_format($egr['interes_monto'], 2, '.', '') }}</font></td>
                                 <td {!! $pintEgr !!} {!! $cell !!}>{{ $egr['usuario'] }}</td>
                                 <td {!! $pintEgr !!} {!! $cell !!}>{{ $egr['asesor'] }}</td>
                                 <td {!! $pintEgr !!} {!! $cell !!}>{{ $tcLabels[$egr['tipo_planilla']] ?? '' }}</td>
@@ -98,14 +98,14 @@
                 <tr bgcolor="#F0F0F0">
                     <td></td>
                     <td colspan="4"><b>SUB TOTAL</b></td>
-                    <td><b>{{ number_format($day['sub_ingresos'], 2) }}</b></td>
-                    <td><b>{{ number_format($day['sub_capital'], 2) }}</b></td>
-                    <td><b>{{ number_format($day['sub_interes'], 2) }}</b></td>
-                    <td><b>{{ number_format($day['sub_mora'], 2) }}</b></td>
+                    <td class="num izq"><b>{{ number_format($day['sub_ingresos'], 2, '.', '') }}</b></td>
+                    <td class="num izq"><b>{{ number_format($day['sub_capital'], 2, '.', '') }}</b></td>
+                    <td class="num izq"><b>{{ number_format($day['sub_interes'], 2, '.', '') }}</b></td>
+                    <td class="num izq"><b>{{ number_format($day['sub_mora'], 2, '.', '') }}</b></td>
                     <td></td><td></td><td></td><td></td>
-                    <td><b>{{ number_format($day['sub_egresos'], 2) }}</b></td>
+                    <td class="num izq"><b>{{ number_format($day['sub_egresos'], 2, '.', '') }}</b></td>
                     <td></td>
-                    <td><b>{{ number_format($day['sub_egresos_interes'], 2) }}</b></td>
+                    <td class="num izq"><b>{{ number_format($day['sub_egresos_interes'], 2, '.', '') }}</b></td>
                     <td></td><td></td><td></td>
                 </tr>
                 {{-- TOTAL del día --}}
@@ -113,7 +113,7 @@
                     <td></td>
                     <td colspan="5"><b>TOTAL</b></td>
                     <td></td>
-                    <td style="text-align:center;"><b>{{ number_format($day['sub_ingresos'] + $day['sub_mora'], 2) }}</b></td>
+                    <td class="num" style="text-align:center;"><b>{{ number_format($day['sub_ingresos'] + $day['sub_mora'], 2, '.', '') }}</b></td>
                     <td colspan="11"></td>
                 </tr>
             @empty
@@ -128,17 +128,17 @@
                     <td {!! $cell !!}></td>
                     <td {!! $cell !!}></td>
                     <td {!! $cell !!}><b>Sub Total General</b></td>
-                    <td {!! $cell !!}><font color="blue"><b>{{ number_format($Tcpi, 2) }}</b></font></td>
-                    <td {!! $cell !!}><font color="blue"><b>{{ number_format($Tcpi2, 2) }}</b></font></td>
-                    <td {!! $cell !!}><font color="blue"><b>{{ number_format($Tint, 2) }}</b></font></td>
-                    <td {!! $cell !!}><font color="blue"><b>{{ number_format($Tmor4, 2) }}</b></font></td>
+                    <td class="num" {!! $cell !!}><font color="blue"><b>{{ number_format($Tcpi, 2, '.', '') }}</b></font></td>
+                    <td class="num" {!! $cell !!}><font color="blue"><b>{{ number_format($Tcpi2, 2, '.', '') }}</b></font></td>
+                    <td class="num" {!! $cell !!}><font color="blue"><b>{{ number_format($Tint, 2, '.', '') }}</b></font></td>
+                    <td class="num" {!! $cell !!}><font color="blue"><b>{{ number_format($Tmor4, 2, '.', '') }}</b></font></td>
                     <td {!! $cell !!}></td>
                     <td {!! $cell !!}></td>
                     <td {!! $cell !!}></td>
                     <td {!! $cell !!}></td>
-                    <td {!! $cell !!}><b>{{ number_format($toff, 2) }}</b></td>
+                    <td class="num" {!! $cell !!}><b>{{ number_format($toff, 2, '.', '') }}</b></td>
                     <td {!! $cell !!}></td>
-                    <td {!! $cell !!}><b>{{ number_format($toff2, 2) }}</b></td>
+                    <td class="num" {!! $cell !!}><b>{{ number_format($toff2, 2, '.', '') }}</b></td>
                     <td {!! $cell !!}></td>
                     <td {!! $cell !!}></td>
                     <td {!! $cell !!}></td>
@@ -146,7 +146,7 @@
                 {{-- TOTAL GENERAL --}}
                 <tr>
                     <td {!! $cell !!} colspan="5"><b><font size="2">REPORTE GENERAL </font><font color="red" size="2">CAJA 1 - </font><font size="2">TOTAL</font> <font color="red" size="2">GENERAL</font></b></td>
-                    <td {!! $cell !!}><b><font color="red">{{ number_format($toff1, 2) }}</font></b></td>
+                    <td class="num" {!! $cell !!}><b><font color="red">{{ number_format($toff1, 2, '.', '') }}</font></b></td>
                     <td {!! $cell !!}></td>
                     <td {!! $cell !!}></td>
                     <td {!! $cell !!}></td>
@@ -154,9 +154,9 @@
                     <td {!! $cell !!}></td>
                     <td {!! $cell !!}></td>
                     <td {!! $cell !!}></td>
-                    <td {!! $cell !!}><font color="red"><b>{{ number_format($toff, 2) }}</b></font></td>
+                    <td class="num" {!! $cell !!}><font color="red"><b>{{ number_format($toff, 2, '.', '') }}</b></font></td>
                     <td {!! $cell !!}></td>
-                    <td {!! $cell !!}><font color="red"><b>{{ number_format($toff2, 2) }}</b></font></td>
+                    <td class="num" {!! $cell !!}><font color="red"><b>{{ number_format($toff2, 2, '.', '') }}</b></font></td>
                     <td {!! $cell !!}></td>
                     <td {!! $cell !!}></td>
                     <td {!! $cell !!}></td>

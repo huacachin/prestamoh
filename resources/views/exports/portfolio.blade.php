@@ -57,14 +57,14 @@
                     <td class="txt" {!! $cell !!}>{{ $r['dni'] }}</td>
                     <td {!! $cell !!}>{{ $r['cliente'] }}</td>
                     <td {!! $cell !!}><font color="red">{{ $r['cod_rem'] }}</font></td>
-                    <td {!! $cell !!}>{{ number_format($r['capital'], 2) }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($r['capital'], 2, '.', '') }}</td>
                     <td {!! $tcSt !!} style="border-style:dotted solid dotted solid;text-align:center;"><b>{{ $r['tc_label'] }}{{ $r['tc_label'] !== '' ? '.' : '' }}</b></td>
                     <td {!! $cell !!}>{{ $pctTxt }}</td>
-                    <td {!! $cell !!}>{{ number_format($r['interes_monto'], 2) }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($r['interes_monto'], 2, '.', '') }}</td>
                     <td {!! $cell !!}>{{ $r['cuotas'] }}</td>
-                    <td {!! $cell !!}>{{ number_format($r['total'], 2) }}</td>
-                    <td {!! $cell !!}>{{ number_format($r['pago'], 2) }}</td>
-                    <td {!! $cell !!}>{{ number_format($r['saldo'], 2) }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($r['total'], 2, '.', '') }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($r['pago'], 2, '.', '') }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($r['saldo'], 2, '.', '') }}</td>
                     <td {!! $cell !!}>{{ $r['fecha_cred'] }}</td>
                     <td {!! $cell !!}>{{ $r['fecha_venc'] }}</td>
                     <td {!! $cell !!}>{{ $r['fecha_ult_pago'] }}</td>
@@ -82,13 +82,13 @@
                 <td></td>
                 <td colspan="4" style="color:#000;"><b>Total Soles</b></td>
                 <td></td>
-                <td style="color:#0000FF;"><b>{{ number_format($totals['capital'] ?? 0, 2) }}</b></td>
+                <td class="num izq" style="color:#0000FF;"><b>{{ number_format($totals['capital'] ?? 0, 2, '.', '') }}</b></td>
                 <td colspan="2"></td>
-                <td style="color:#0000FF;"><b>{{ number_format($totals['interes'] ?? 0, 2) }}</b></td>
+                <td class="num izq" style="color:#0000FF;"><b>{{ number_format($totals['interes'] ?? 0, 2, '.', '') }}</b></td>
                 <td colspan="1"></td>
-                <td style="color:#0000FF;"><b>{{ number_format($totals['total'] ?? 0, 2) }}</b></td>
-                <td style="color:#0000FF;"><b>{{ number_format($totals['pago'] ?? 0, 2) }}</b></td>
-                <td style="color:#0000FF;"><b>{{ number_format($totals['saldo'] ?? 0, 2) }}</b></td>
+                <td class="num izq" style="color:#0000FF;"><b>{{ number_format($totals['total'] ?? 0, 2, '.', '') }}</b></td>
+                <td class="num izq" style="color:#0000FF;"><b>{{ number_format($totals['pago'] ?? 0, 2, '.', '') }}</b></td>
+                <td class="num izq" style="color:#0000FF;"><b>{{ number_format($totals['saldo'] ?? 0, 2, '.', '') }}</b></td>
                 <td colspan="7"></td>
             </tr>
             {{-- Total Dolares --}}
@@ -96,13 +96,13 @@
                 <td></td>
                 <td colspan="4" style="color:#000;"><b>Total Dolares</b></td>
                 <td></td>
-                <td style="color:#0000FF;"><b>{{ number_format(($totals['capital'] ?? 0) / $tc, 2) }}</b></td>
+                <td class="num izq" style="color:#0000FF;"><b>{{ number_format(($totals['capital'] ?? 0) / $tc, 2, '.', '') }}</b></td>
                 <td colspan="2"></td>
-                <td style="color:#0000FF;"><b>{{ number_format(($totals['interes'] ?? 0) / $tc, 2) }}</b></td>
+                <td class="num izq" style="color:#0000FF;"><b>{{ number_format(($totals['interes'] ?? 0) / $tc, 2, '.', '') }}</b></td>
                 <td colspan="1"></td>
-                <td style="color:#0000FF;"><b>{{ number_format(($totals['total'] ?? 0) / $tc, 2) }}</b></td>
-                <td style="color:#0000FF;"><b>{{ number_format(($totals['pago'] ?? 0) / $tc, 2) }}</b></td>
-                <td style="color:#0000FF;"><b>{{ number_format(($totals['saldo'] ?? 0) / $tc, 2) }}</b></td>
+                <td class="num izq" style="color:#0000FF;"><b>{{ number_format(($totals['total'] ?? 0) / $tc, 2, '.', '') }}</b></td>
+                <td class="num izq" style="color:#0000FF;"><b>{{ number_format(($totals['pago'] ?? 0) / $tc, 2, '.', '') }}</b></td>
+                <td class="num izq" style="color:#0000FF;"><b>{{ number_format(($totals['saldo'] ?? 0) / $tc, 2, '.', '') }}</b></td>
                 <td colspan="7"></td>
             </tr>
 
@@ -112,13 +112,13 @@
                 <td style="background-color:red;color:white;text-align:center;">MORA</td>
                 <td style="background-color:#005F8C;color:white;text-align:center;">{{ $m['mora_count'] ?? 0 }}</td>
                 <td style="background-color:#005F8C;color:white;text-align:center;" colspan="3">TOTAL MORA</td>
-                <td style="background-color:yellow;color:red;"><b>{{ number_format($m['mora_capital'] ?? 0, 2) }}</b></td>
+                <td class="num izq" style="background-color:yellow;color:red;"><b>{{ number_format($m['mora_capital'] ?? 0, 2, '.', '') }}</b></td>
                 <td style="background-color:yellow;" colspan="2"></td>
-                <td style="background-color:yellow;"><b>{{ number_format($m['mora_interes'] ?? 0, 2) }}</b></td>
+                <td class="num izq" style="background-color:yellow;"><b>{{ number_format($m['mora_interes'] ?? 0, 2, '.', '') }}</b></td>
                 <td style="background-color:yellow;"></td>
-                <td style="background-color:yellow;color:red;"><b>{{ number_format($m['mora_total'] ?? 0, 2) }}</b></td>
+                <td class="num izq" style="background-color:yellow;color:red;"><b>{{ number_format($m['mora_total'] ?? 0, 2, '.', '') }}</b></td>
                 <td style="background-color:yellow;"></td>
-                <td style="background-color:yellow;color:red;"><b>{{ number_format($m['mora_saldo'] ?? 0, 2) }}</b></td>
+                <td class="num izq" style="background-color:yellow;color:red;"><b>{{ number_format($m['mora_saldo'] ?? 0, 2, '.', '') }}</b></td>
                 <td style="background-color:yellow;" colspan="7"></td>
             </tr>
             {{-- ACTIVOS --}}
@@ -127,13 +127,13 @@
                 <td style="background-color:green;color:white;text-align:center;">ACTIVOS</td>
                 <td style="background-color:#005F8C;color:white;text-align:center;">{{ $m['activos_count'] ?? 0 }}</td>
                 <td style="background-color:#005F8C;color:white;text-align:center;" colspan="3">TOTAL ACTIVOS</td>
-                <td style="background-color:yellow;color:red;"><b>{{ number_format($m['activos_capital'] ?? 0, 2) }}</b></td>
+                <td class="num izq" style="background-color:yellow;color:red;"><b>{{ number_format($m['activos_capital'] ?? 0, 2, '.', '') }}</b></td>
                 <td style="background-color:yellow;" colspan="2"></td>
-                <td style="background-color:yellow;"><b>{{ number_format($m['activos_interes'] ?? 0, 2) }}</b></td>
+                <td class="num izq" style="background-color:yellow;"><b>{{ number_format($m['activos_interes'] ?? 0, 2, '.', '') }}</b></td>
                 <td style="background-color:yellow;"></td>
-                <td style="background-color:yellow;color:red;"><b>{{ number_format($m['activos_total'] ?? 0, 2) }}</b></td>
+                <td class="num izq" style="background-color:yellow;color:red;"><b>{{ number_format($m['activos_total'] ?? 0, 2, '.', '') }}</b></td>
                 <td style="background-color:yellow;"></td>
-                <td style="background-color:yellow;color:red;"><b>{{ number_format($m['activos_saldo'] ?? 0, 2) }}</b></td>
+                <td class="num izq" style="background-color:yellow;color:red;"><b>{{ number_format($m['activos_saldo'] ?? 0, 2, '.', '') }}</b></td>
                 <td style="background-color:yellow;" colspan="7"></td>
             </tr>
             {{-- TOTAL --}}
@@ -142,13 +142,13 @@
                 <td style="background-color:#005F8C;color:white;text-align:center;">TOTAL</td>
                 <td style="background-color:#005F8C;color:white;text-align:center;">{{ number_format($m['total_count'] ?? 0, 0) }}</td>
                 <td style="background-color:#005F8C;color:white;text-align:center;" colspan="3">TOTAL</td>
-                <td style="background-color:yellow;color:red;"><b>{{ number_format($m['total_capital'] ?? 0, 2) }}</b></td>
+                <td class="num izq" style="background-color:yellow;color:red;"><b>{{ number_format($m['total_capital'] ?? 0, 2, '.', '') }}</b></td>
                 <td style="background-color:yellow;" colspan="2"></td>
-                <td style="background-color:yellow;"><b>{{ number_format($m['total_interes'] ?? 0, 2) }}</b></td>
+                <td class="num izq" style="background-color:yellow;"><b>{{ number_format($m['total_interes'] ?? 0, 2, '.', '') }}</b></td>
                 <td style="background-color:yellow;"></td>
-                <td style="background-color:yellow;color:red;"><b>{{ number_format($m['total_total'] ?? 0, 2) }}</b></td>
+                <td class="num izq" style="background-color:yellow;color:red;"><b>{{ number_format($m['total_total'] ?? 0, 2, '.', '') }}</b></td>
                 <td style="background-color:yellow;"></td>
-                <td style="background-color:yellow;color:red;"><b>{{ number_format($m['total_saldo'] ?? 0, 2) }}</b></td>
+                <td class="num izq" style="background-color:yellow;color:red;"><b>{{ number_format($m['total_saldo'] ?? 0, 2, '.', '') }}</b></td>
                 <td style="background-color:yellow;" colspan="7"></td>
             </tr>
         </tbody>
@@ -200,41 +200,41 @@
         <tr>
             <td style="border-style:dotted solid dotted solid;text-align:center;color:blue;">Semanal</td>
             <td {!! $cell !!}>{{ number_format($tt['sempo'] ?? 0, 0) }}</td>
-            <th {!! $cell !!} rowspan="2">{{ number_format($totsem + $totmen, 2) }}</th>
-            <td {!! $cell !!}>{{ number_format($totsem, 2) }}</td>
-            <td {!! $cell !!}>{{ number_format($tis, 2) }}</td>
-            <td {!! $cell !!}>{{ number_format($tis / 2, 2) }}</td>
-            <td {!! $cell !!}>{{ number_format($tis / 3, 2) }}</td>
-            <td {!! $cell !!}>{{ number_format($tis / 4, 2) }}</td>
+            <th class="num" {!! $cell !!} rowspan="2">{{ number_format($totsem + $totmen, 2, '.', '') }}</th>
+            <td class="num" {!! $cell !!}>{{ number_format($totsem, 2, '.', '') }}</td>
+            <td class="num" {!! $cell !!}>{{ number_format($tis, 2, '.', '') }}</td>
+            <td class="num" {!! $cell !!}>{{ number_format($tis / 2, 2, '.', '') }}</td>
+            <td class="num" {!! $cell !!}>{{ number_format($tis / 3, 2, '.', '') }}</td>
+            <td class="num" {!! $cell !!}>{{ number_format($tis / 4, 2, '.', '') }}</td>
         </tr>
         <tr>
             <td style="border-style:dotted solid dotted solid;text-align:center;color:red;"><b style="color:red;">Mensual</b></td>
             <td {!! $cell !!}>{{ number_format($tt['mempo'] ?? 0, 0) }}</td>
-            <td {!! $cell !!}>{{ number_format($totmen, 2) }}</td>
-            <td {!! $cell !!}>{{ number_format($tim, 2) }}</td>
-            <td {!! $cell !!}>{{ number_format($tim / 2, 2) }}</td>
-            <td {!! $cell !!}>{{ number_format($tim / 3, 2) }}</td>
-            <td {!! $cell !!}>{{ number_format($tim / 4, 2) }}</td>
+            <td class="num" {!! $cell !!}>{{ number_format($totmen, 2, '.', '') }}</td>
+            <td class="num" {!! $cell !!}>{{ number_format($tim, 2, '.', '') }}</td>
+            <td class="num" {!! $cell !!}>{{ number_format($tim / 2, 2, '.', '') }}</td>
+            <td class="num" {!! $cell !!}>{{ number_format($tim / 3, 2, '.', '') }}</td>
+            <td class="num" {!! $cell !!}>{{ number_format($tim / 4, 2, '.', '') }}</td>
         </tr>
         <tr>
             <td {!! $cell !!}><b>Diario</b></td>
             <td {!! $cell !!}>{{ number_format($tt['dempo'] ?? 0, 0) }}</td>
-            <td {!! $cell !!}>{{ number_format($totdia, 2) }}</td>
-            <td {!! $cell !!}>{{ number_format($totdia, 2) }}</td>
-            <td {!! $cell !!}>{{ number_format($tid, 2) }}</td>
-            <td {!! $cell !!}>{{ number_format($tid / 2, 2) }}</td>
-            <td {!! $cell !!}>{{ number_format($tid / 3, 2) }}</td>
-            <td {!! $cell !!}>{{ number_format($tid / 4, 2) }}</td>
+            <td class="num" {!! $cell !!}>{{ number_format($totdia, 2, '.', '') }}</td>
+            <td class="num" {!! $cell !!}>{{ number_format($totdia, 2, '.', '') }}</td>
+            <td class="num" {!! $cell !!}>{{ number_format($tid, 2, '.', '') }}</td>
+            <td class="num" {!! $cell !!}>{{ number_format($tid / 2, 2, '.', '') }}</td>
+            <td class="num" {!! $cell !!}>{{ number_format($tid / 3, 2, '.', '') }}</td>
+            <td class="num" {!! $cell !!}>{{ number_format($tid / 4, 2, '.', '') }}</td>
         </tr>
         <tr style="background-color:#CEE7FF;">
             <td style="text-align:center;"><b>Total</b></td>
             <td style="text-align:center;"><b>{{ number_format(($tt['sempo'] ?? 0) + ($tt['mempo'] ?? 0) + ($tt['dempo'] ?? 0), 0) }}</b></td>
-            <td style="text-align:center;"><b>{{ number_format($total1, 2) }}</b></td>
-            <td style="text-align:center;"><b>{{ number_format($total1, 2) }}</b></td>
-            <td style="text-align:center;"><b>{{ number_format($totinterez, 2) }}</b></td>
-            <td style="text-align:center;"><b>{{ number_format($totinterez / 2, 2) }}</b></td>
-            <td style="text-align:center;"><b>{{ number_format($totinterez / 3, 2) }}</b></td>
-            <td style="text-align:center;"><b>{{ number_format($totinterez / 4, 2) }}</b></td>
+            <td class="num" style="text-align:center;"><b>{{ number_format($total1, 2, '.', '') }}</b></td>
+            <td class="num" style="text-align:center;"><b>{{ number_format($total1, 2, '.', '') }}</b></td>
+            <td class="num" style="text-align:center;"><b>{{ number_format($totinterez, 2, '.', '') }}</b></td>
+            <td class="num" style="text-align:center;"><b>{{ number_format($totinterez / 2, 2, '.', '') }}</b></td>
+            <td class="num" style="text-align:center;"><b>{{ number_format($totinterez / 3, 2, '.', '') }}</b></td>
+            <td class="num" style="text-align:center;"><b>{{ number_format($totinterez / 4, 2, '.', '') }}</b></td>
         </tr>
     </table>
     <br>
@@ -265,19 +265,19 @@
             <tr>
                 <td {!! $cell !!}>{{ $b['porce'] }}</td>
                 <td {!! $cell !!}>{{ $b['ncount'] }}</td>
-                <td {!! $cell !!}>{{ number_format($b['capital'], 2) }}</td>
-                <td {!! $cell !!}>{{ number_format($b['interes'], 2) }}</td>
-                <td {!! $cell !!}>{{ number_format($b['pago'], 2) }}</td>
-                <td {!! $cell !!}>{{ number_format($b['total'], 2) }}</td>
+                <td class="num" {!! $cell !!}>{{ number_format($b['capital'], 2, '.', '') }}</td>
+                <td class="num" {!! $cell !!}>{{ number_format($b['interes'], 2, '.', '') }}</td>
+                <td class="num" {!! $cell !!}>{{ number_format($b['pago'], 2, '.', '') }}</td>
+                <td class="num" {!! $cell !!}>{{ number_format($b['total'], 2, '.', '') }}</td>
             </tr>
         @endforeach
         <tr style="background-color:#CEE7FF;">
             <td style="text-align:center;"><b>Total</b></td>
             <td style="text-align:center;"><b>{{ $newcu }}</b></td>
-            <td style="text-align:center;"><b>{{ number_format($newprez, 2) }}</b></td>
-            <td style="text-align:center;"><b>{{ number_format($nintx, 2) }}</b></td>
-            <td style="text-align:center;"><b>{{ number_format($nxpago, 2) }}</b></td>
-            <td style="text-align:center;"><b>{{ number_format($ntot, 2) }}</b></td>
+            <td class="num" style="text-align:center;"><b>{{ number_format($newprez, 2, '.', '') }}</b></td>
+            <td class="num" style="text-align:center;"><b>{{ number_format($nintx, 2, '.', '') }}</b></td>
+            <td class="num" style="text-align:center;"><b>{{ number_format($nxpago, 2, '.', '') }}</b></td>
+            <td class="num" style="text-align:center;"><b>{{ number_format($ntot, 2, '.', '') }}</b></td>
         </tr>
     </table>
 @endsection

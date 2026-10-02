@@ -32,7 +32,7 @@
                     <td {!! $cell !!}>{{ $c->id }}</td>
                     <td style="border-style:dotted solid dotted solid;">{{ $nombre }}</td>
                     <td {!! $cell !!}>{{ $c->moneda }}</td>
-                    <td {!! $cell !!}>{{ number_format($c->importe, 2) }}</td>
+                    <td class="num" {!! $cell !!}>{{ number_format($c->importe, 2, '.', '') }}</td>
                     <td {!! $cell !!}>{{ number_format($c->interes, 0) }}</td>
                     <td {!! $cell !!}>{{ $c->cuotas }}</td>
                 </tr>
@@ -42,7 +42,7 @@
 
             <tr bgcolor="#CEE7FF">
                 <td colspan="5" style="text-align:center;"><b>Totales</b></td>
-                <td style="text-align:center;"><b>{{ number_format($sumCapital, 2) }}</b></td>
+                <td class="num" style="text-align:center;"><b>{{ number_format($sumCapital, 2, '.', '') }}</b></td>
                 <td colspan="2"></td>
             </tr>
         </tbody>

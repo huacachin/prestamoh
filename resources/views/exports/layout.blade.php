@@ -14,6 +14,10 @@
            valor crudo (1234.50) y Excel lo pinta "1,234.50". El estilo va también
            inline en cada celda de monto, que es lo que Excel respeta sin falta. */
         td.num, th.num { mso-number-format: "#,##0.00"; }
+        /* Una celda sin alineación explícita se veía a la izquierda (texto); como
+           número Excel la pondría a la derecha. Para que no varíe nada, se deja
+           a la izquierda. (El estilo inline del tag, si lo hay, manda.) */
+        td.izq, th.izq { text-align: left; }
     </style>
 </head>
 <body>

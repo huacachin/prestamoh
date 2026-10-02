@@ -36,21 +36,21 @@
                         <td {!! $cellc !!}><b>{{ $item['fecha'] }}</b></td>
                         <td {!! $cell !!}>{{ $item['cliente'] }}</td>
                         <td {!! $cell !!}>{{ $item['detalle'] }}</td>
-                        <td {!! $cellr !!}>@if($item['ingreso'] > 0)<font color="#0000FF">{{ number_format($item['ingreso'], 2) }}</font>@endif</td>
-                        <td {!! $cellr !!}>@if($item['egreso'] > 0)<font color="#FF0000">{{ number_format($item['egreso'], 2) }}</font>@endif</td>
+                        <td class="num" {!! $cellr !!}>@if($item['ingreso'] > 0)<font color="#0000FF">{{ number_format($item['ingreso'], 2, '.', '') }}</font>@endif</td>
+                        <td class="num" {!! $cellr !!}>@if($item['egreso'] > 0)<font color="#FF0000">{{ number_format($item['egreso'], 2, '.', '') }}</font>@endif</td>
                     </tr>
                 @endforeach
                 {{-- TOTAL y SALDO en celeste #CEE7FF, como el legacy (el TOTAL iba en gris). --}}
                 <tr bgcolor="#CEE7FF">
                     <td {!! $sol !!}></td><td {!! $sol !!}></td><td {!! $sol !!}></td>
                     <td {!! $sol !!}><b>TOTAL</b></td>
-                    <td {!! $solr !!}><b><font color="#0000FF">{{ number_format($day['total_ingreso'], 2) }}</font></b></td>
-                    <td {!! $solr !!}><b><font color="#FF0000">{{ number_format($day['total_egreso'], 2) }}</font></b></td>
+                    <td class="num izq" {!! $solr !!}><b><font color="#0000FF">{{ number_format($day['total_ingreso'], 2, '.', '') }}</font></b></td>
+                    <td class="num izq" {!! $solr !!}><b><font color="#FF0000">{{ number_format($day['total_egreso'], 2, '.', '') }}</font></b></td>
                 </tr>
                 <tr bgcolor="#CEE7FF">
                     <td {!! $sol !!}></td><td {!! $sol !!}></td><td {!! $sol !!}></td>
                     <td {!! $sol !!}><b>SALDO <font color="#FF0000">FINAL-INICIAL</font></b></td>
-                    <td {!! $solr !!}><b><font color="#0000FF">{{ number_format($day['saldo'], 2) }}</font></b></td>
+                    <td class="num izq" {!! $solr !!}><b><font color="#0000FF">{{ number_format($day['saldo'], 2, '.', '') }}</font></b></td>
                     <td {!! $sol !!}></td>
                 </tr>
             @empty
@@ -60,8 +60,8 @@
             @if(count($report['days']) > 0)
                 <tr bgcolor="#CEE7FF">
                     <td {!! $sol !!} colspan="4"><b>REPORTE GENERAL <font color="#FF0000">CAJA 3 - </font>TOTAL <font color="#FF0000">GENERAL</font></b></td>
-                    <td {!! $solr !!}><b><font color="#0000FF">{{ number_format($report['total_ingresos'], 2) }}</font></b></td>
-                    <td {!! $solr !!}><b><font color="#FF0000">{{ number_format($report['total_egresos'], 2) }}</font></b></td>
+                    <td class="num izq" {!! $solr !!}><b><font color="#0000FF">{{ number_format($report['total_ingresos'], 2, '.', '') }}</font></b></td>
+                    <td class="num izq" {!! $solr !!}><b><font color="#FF0000">{{ number_format($report['total_egresos'], 2, '.', '') }}</font></b></td>
                 </tr>
             @endif
         </tbody>
@@ -84,24 +84,24 @@
                     <td {!! $cellc !!}><b>{{ ++$sCount }}</b></td>
                     <td {!! $cell !!}><b>INTERES</b></td>
                     <td {!! $cellr !!}><font color="#0000FF">0.00</font></td>
-                    <td {!! $cellr !!}><font color="#0000FF">{{ number_format($report['total_interes'], 2) }}</font></td>
-                    <td {!! $cellr !!} rowspan="2">{{ number_format($report['total_interes'] + $report['total_mora'], 2) }}</td>
+                    <td class="num" {!! $cellr !!}><font color="#0000FF">{{ number_format($report['total_interes'], 2, '.', '') }}</font></td>
+                    <td class="num" {!! $cellr !!} rowspan="2">{{ number_format($report['total_interes'] + $report['total_mora'], 2, '.', '') }}</td>
                 </tr>
                 <tr>
                     <td {!! $cellc !!}><b>{{ ++$sCount }}</b></td>
                     <td {!! $cell !!}><b>MORA</b></td>
                     <td {!! $cellr !!}><font color="#0000FF">0.00</font></td>
-                    <td {!! $cellr !!}><font color="#0000FF">{{ number_format($report['total_mora'], 2) }}</font></td>
+                    <td class="num" {!! $cellr !!}><font color="#0000FF">{{ number_format($report['total_mora'], 2, '.', '') }}</font></td>
                 </tr>
                 @foreach($report['by_advisor'] as $row)
                     @php $advisorIdx++; @endphp
                     <tr>
                         <td {!! $cellc !!}><b>{{ ++$sCount }}</b></td>
                         <td {!! $cell !!}><b>{{ trim(($row->aa ?? '') . ' ' . ($row->asesores ?? '')) }}</b></td>
-                        <td {!! $cellr !!}><font color="#0000FF">{{ number_format($row->tm ?? 0, 2) }}</font></td>
-                        <td {!! $cellr !!}><font color="#0000FF">{{ number_format($row->gm, 2) }}</font></td>
+                        <td class="num" {!! $cellr !!}><font color="#0000FF">{{ number_format($row->tm ?? 0, 2, '.', '') }}</font></td>
+                        <td class="num" {!! $cellr !!}><font color="#0000FF">{{ number_format($row->gm, 2, '.', '') }}</font></td>
                         @if($advisorIdx === 1)
-                            <td {!! $cellr !!} rowspan="{{ max(1, $advisorCount) }}">{{ number_format($report['total_advisor'], 2) }}</td>
+                            <td class="num" {!! $cellr !!} rowspan="{{ max(1, $advisorCount) }}">{{ number_format($report['total_advisor'], 2, '.', '') }}</td>
                         @endif
                     </tr>
                 @endforeach
@@ -111,7 +111,7 @@
                     <td {!! $cell !!}></td>
                     <td {!! $cell !!}><b>Total General</b></td>
                     <td {!! $cellr !!}><b><font color="#0000FF">0.00</font></b></td>
-                    <td {!! $cellc !!} colspan="2"><b><font color="#0000FF">{{ number_format($report['total_resumen'], 2) }}</font></b></td>
+                    <td class="num" {!! $cellc !!} colspan="2"><b><font color="#0000FF">{{ number_format($report['total_resumen'], 2, '.', '') }}</font></b></td>
                 </tr>
             </tfoot>
         </table>
