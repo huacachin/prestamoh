@@ -1,17 +1,28 @@
 <div class="container-fluid"
      x-data="{
         open: false, idx: 0, items: [], manageUrl: '',
-        openLightbox(items, manageUrl) {
+        // Fila 'congelada' (02/10, Antony): al abrir las fotos, la fila conserva el
+        // color de hover aunque el visor se cierre; se suelta con un clic en
+        // cualquier otro lado (fuera del visor y de la cámara).
+        selectedId: null,
+        openLightbox(items, manageUrl, rowId = null) {
             if (! items || ! items.length) return;
             this.items = items;
             this.manageUrl = manageUrl || '';
             this.idx = 0;
             this.open = true;
+            if (rowId !== null) this.selectedId = rowId;
+        },
+        deselect(e) {
+            if (this.selectedId === null) return;
+            if (e.target.closest('.huac-lb') || e.target.closest('[data-foto-fila]')) return;
+            this.selectedId = null;
         },
         close() { this.open = false; },
         next() { this.idx = (this.idx + 1) % this.items.length; },
         prev() { this.idx = (this.idx - 1 + this.items.length) % this.items.length; },
      }"
+     @click.window="deselect($event)"
      @keydown.escape.window="open && close()"
      @keydown.arrow-right.window="open && next()"
      @keydown.arrow-left.window="open && prev()">
@@ -143,6 +154,7 @@
                                 @endphp
                                 <tr style="background-color: {{ $rowBg }}; {{ $rowColor }}"
                                     data-bg="{{ $rowBg }}"
+                                    :class="{ 'fila-sel': selectedId === {{ $expense->id }} }"
                                     onmouseover="this.style.backgroundColor='#CCFF66'"
                                     onmouseout="this.style.backgroundColor=this.getAttribute('data-bg')">
                                     <td class="text-center">
@@ -158,8 +170,8 @@
                                             {{-- Tiene fotos → abre el lightbox inline. Los items se pasan
                                                  inline (no en un mapa de x-data) para que Livewire los
                                                  regenere frescos en cada render/filtro. --}}
-                                            <a href="#"
-                                               @click.prevent="openLightbox({{ \Illuminate\Support\Js::from($galleries[$expense->id]['items']) }}, {{ \Illuminate\Support\Js::from($galleries[$expense->id]['manageUrl']) }})"
+                                            <a href="#" data-foto-fila
+                                               @click.prevent="openLightbox({{ \Illuminate\Support\Js::from($galleries[$expense->id]['items']) }}, {{ \Illuminate\Support\Js::from($galleries[$expense->id]['manageUrl']) }}, {{ $expense->id }})"
                                                title="Ver adjuntos ({{ $expense->attachments_count ?? 0 }})"
                                                style="cursor: zoom-in;">
                                                 <i class="ti ti-camera f-s-16 text-info"></i>
@@ -242,6 +254,9 @@
                     <style>
                         /* Colores legacy (gastos.php): cabecera azul/gris, filas blanco/#F2F2EC */
                         .expenses-legacy thead th { color: #fff; }
+                        /* Fila con las fotos abiertas (02/10): se queda con el color de hover
+                           (!important gana al background inline que restaura el mouseout). */
+                        .expenses-legacy tbody tr.fila-sel { background-color: #CCFF66 !important; }
                         /* Homologado al legacy (gastos.php + ideasweb.css .texto/.tableM): fuente
                            Tahoma compacta — filas 12px, cabecera 10px mayúsculas. Con los anchos en %
                            esto reproduce el ancho de texto del sistema viejo y evita el salto a 2
