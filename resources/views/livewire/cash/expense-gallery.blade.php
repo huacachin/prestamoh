@@ -47,7 +47,13 @@
             @unless($puedeEditar)
                 <div class="alert alert-info py-1 px-2 mb-2" style="font-size:11px;">
                     <i class="ti ti-info-circle"></i>
-                    Solo puedes ver los adjuntos. No tienes permiso para subir o eliminar en este egreso.
+                    @if($puedeEliminar)
+                        Puedes eliminar los adjuntos de este egreso porque es de hoy; subir, solo en los tuyos.
+                    @elseif($eliminaSoloHoy)
+                        Solo puedes ver los adjuntos: eliminar es solo para egresos de hoy.
+                    @else
+                        Solo puedes ver los adjuntos. No tienes permiso para subir o eliminar en este egreso.
+                    @endif
                 </div>
             @endunless
 

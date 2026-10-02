@@ -58,15 +58,27 @@ class ExpenseGallery extends Component
 
         $user = auth()->user();
 
-        // Quien puede editar el histórico (admin/director/etc.) maneja también la galería completa.
-        // Operadores de caja sin ese permiso solo pueden adjuntar a sus propios egresos y nunca eliminar.
+        // Quien puede editar el histórico (director) maneja la galería completa.
+        // El resto solo adjunta a sus propios egresos; y quien tiene caja.eliminar
+        // sin histórico (administrador, 02/10 Antony: "el rol de Licet sí puede
+        // eliminar adjuntos pero solo del mismo día") borra adjuntos únicamente
+        // de los egresos de HOY, sean de quien sean.
         if ($user?->can('caja.editar-historico')) {
             $this->puedeEditar = true;
             $this->puedeEliminar = $user->can('caja.eliminar');
         } else {
             $this->puedeEditar = $this->expense->user_id === $user?->id;
-            $this->puedeEliminar = false;
+            $this->puedeEliminar = (bool) $user?->can('caja.eliminar') && $this->esDeHoy();
+            $this->eliminaSoloHoy = (bool) $user?->can('caja.eliminar');
         }
+    }
+
+    /** Si eliminar está limitado a los movimientos del día (administrador). */
+    public bool $eliminaSoloHoy = false;
+
+    private function esDeHoy(): bool
+    {
+        return $this->expense->date?->toDateString() === now()->toDateString();
     }
 
     public function save()

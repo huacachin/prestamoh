@@ -58,13 +58,25 @@ class IncomeGallery extends Component
 
         $user = auth()->user();
 
+        // Director: galería completa. El resto adjunta solo a sus propios ingresos;
+        // quien tiene caja.eliminar sin histórico (administrador, 02/10 Antony)
+        // borra adjuntos únicamente de los ingresos de HOY, sean de quien sean.
         if ($user?->can('caja.editar-historico')) {
             $this->puedeEditar = true;
             $this->puedeEliminar = $user->can('caja.eliminar');
         } else {
             $this->puedeEditar = $this->income->user_id === $user?->id;
-            $this->puedeEliminar = false;
+            $this->puedeEliminar = (bool) $user?->can('caja.eliminar') && $this->esDeHoy();
+            $this->eliminaSoloHoy = (bool) $user?->can('caja.eliminar');
         }
+    }
+
+    /** Si eliminar está limitado a los movimientos del día (administrador). */
+    public bool $eliminaSoloHoy = false;
+
+    private function esDeHoy(): bool
+    {
+        return $this->income->date?->toDateString() === now()->toDateString();
     }
 
     public function save()

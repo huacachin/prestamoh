@@ -48,7 +48,13 @@
             @unless($puedeEditar)
                 <div class="alert alert-info py-1 px-2 mb-2" style="font-size:11px;">
                     <i class="ti ti-info-circle"></i>
-                    Solo puedes ver los adjuntos. No tienes permiso para subir o eliminar en este ingreso.
+                    @if($puedeEliminar)
+                        Puedes eliminar los adjuntos de este ingreso porque es de hoy; subir, solo en los tuyos.
+                    @elseif($eliminaSoloHoy)
+                        Solo puedes ver los adjuntos: eliminar es solo para ingresos de hoy.
+                    @else
+                        Solo puedes ver los adjuntos. No tienes permiso para subir o eliminar en este ingreso.
+                    @endif
                 </div>
             @endunless
 
