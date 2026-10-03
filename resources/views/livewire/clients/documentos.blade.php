@@ -1040,7 +1040,9 @@
              // tienen, la última visible (se reemplaza).
              destinoPegado() {
                  for (const ref of ['archivoVoucher', 'archivoVoucher2']) {
-                     if (this.$refs[ref] && ! this.$root.querySelector('[data-preview="' + ref + '"]')) { return ref; }
+                     // OJO: sin comillas dobles aquí dentro —el x-data va entre comillas dobles y el
+                     // navegador cortaba el atributo— (03/10). El valor es un identificador CSS válido.
+                     if (this.$refs[ref] && ! this.$root.querySelector('[data-preview=' + ref + ']')) { return ref; }
                  }
                  return this.$refs.archivoVoucher2 ? 'archivoVoucher2' : 'archivoVoucher';
              },

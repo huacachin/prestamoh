@@ -110,6 +110,28 @@ class Anexo2DosVouchersTest extends TestCase
         $this->assertSame(1, substr_count(GeneradorAnexo2::previsualizar($this->client, $this->credit, $uno), 'DETALLES:</strong>'));
     }
 
+    /**
+     * 03/10: una comilla doble dentro del x-data (que va entre comillas dobles)
+     * cortaba el atributo en el navegador, Alpine no inicializaba el modal y
+     * "Generar Anexo 2" no respondía. Se lee el atributo como lo hace el
+     * navegador (DOMDocument) y tiene que llegar entero.
+     */
+    public function test_el_x_data_del_modal_llega_entero_al_navegador(): void
+    {
+        $html = $this->modal()->html();
+
+        $dom = new \DOMDocument;
+        libxml_use_internal_errors(true);
+        $dom->loadHTML('<?xml encoding="utf-8" ?>'.$html);
+        libxml_clear_errors();
+        $xData = $dom->getElementById('anexo2Modal')?->getAttribute('x-data') ?? '';
+
+        $this->assertStringContainsString('destinoPegado()', $xData);
+        $this->assertStringContainsString('pegar(evento)', $xData, 'el x-data se cortó antes del final');
+        $this->assertStringNotContainsString('"', $xData, 'ninguna comilla doble dentro del x-data');
+        $this->assertStringContainsString("querySelector('[data-preview=' + ref + ']')", $xData);
+    }
+
     public function test_el_modal_abre_el_segundo_voucher_cuadra_la_suma_y_lo_quita(): void
     {
         $c = $this->modal();
