@@ -6,6 +6,7 @@ use App\Livewire\Audit\Index as AuditIndex;
 use App\Models\User;
 use App\Support\Audit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
@@ -70,6 +71,28 @@ class PaginacionAuditTest extends TestCase
         $this->assertStringContainsString('table-sm" style="min-width:1100px;">', $html);
         // Fecha, Usuario, Rol, Acción, Módulo y Registro van en una línea; la descripción es la que parte.
         $this->assertGreaterThanOrEqual(6, substr_count(explode('<tbody>', $html)[1], 'class="text-nowrap"') + substr_count(explode('<tbody>', $html)[1], 'class="text-center text-nowrap"'));
+    }
+
+    /**
+     * 02/10 (Antony): "esa paginación tampoco es responsive". En celular
+     * (< 576 px) va una lista compacta —primera, vecinas de la actual y
+     * última— y la tira completa queda para pantallas anchas.
+     */
+    public function test_en_celular_el_paginador_es_compacto_y_en_ancho_va_la_tira_completa(): void
+    {
+        $this->mundo(self::POR_PAGINA + 1);
+        $html = Livewire::test(AuditIndex::class)->html();
+        $this->assertStringContainsString('<ul class="lw-pager-compact d-flex d-sm-none">', $html);
+        $this->assertStringContainsString('<ul class="lw-pager-list d-none d-sm-flex">', $html);
+
+        // Página 4 de 113: ‹ 1 … 3 4 5 … 113 ›
+        $pag = new LengthAwarePaginator(range(1, 30), 3390, 30, 4);
+        $vista = $pag->links('livewire::bootstrap')->toHtml();
+        preg_match('/<ul class="lw-pager-compact[^>]*>(.*?)<\/ul>/s', $vista, $m);
+        preg_match_all('/<(?:button|span)[^>]*class="lw-page[^"]*"[^>]*>(.*?)<\/(?:button|span)>/s', $m[1], $p);
+        $pastillas = array_map(fn ($x) => trim(strip_tags($x)), $p[1]);
+        $this->assertSame(['', '1', '…', '3', '4', '5', '…', '113', ''], $pastillas, 'flechas vacías (icono), páginas y puntos');
+        $this->assertStringContainsString('<span class="lw-page is-active">4</span>', $m[1]);
     }
 
     public function test_con_una_sola_pagina_no_hay_paginador_arriba_ni_abajo(): void

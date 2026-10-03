@@ -115,8 +115,8 @@
     }
     .lw-pager-info { font-size: 12px; color: #8a93a2; }
     .lw-pager-info b { color: #46505e; font-weight: 600; }
-    .lw-pager-list {
-        display: flex; align-items: center; gap: 6px;
+    .lw-pager-list, .lw-pager-compact {
+        display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
         list-style: none; margin: 0; padding: 0;
     }
     .lw-page {
@@ -137,6 +137,10 @@
     @media (max-width: 575px) {
         .lw-pager { justify-content: center; }
         .lw-pager-info { width: 100%; text-align: center; }
+        /* 02/10: en celular va la lista compacta (bootstrap.blade.php); las
+           pastillas un poco más chicas para que ‹ 1 … 3 4 5 … 113 › quepa en 360 px. */
+        .lw-pager-compact { justify-content: center; width: 100%; }
+        .lw-pager-compact .lw-page { min-width: 30px; height: 30px; padding: 0 7px; font-size: 12px; }
     }
 
 </style>

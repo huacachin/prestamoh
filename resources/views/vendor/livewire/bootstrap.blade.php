@@ -35,7 +35,39 @@ $scrollIntoViewJsSnippet = ($scrollTo !== false)
                 Mostrando <b>{{ $paginator->firstItem() }}</b>–<b>{{ $paginator->lastItem() }}</b> de <b>{{ $paginator->total() }}</b> registros
             </span>
 
-            <ul class="lw-pager-list">
+            {{-- 02/10 (Antony): en celular la tira completa (1 … 10 … 112 113) no cabe. Esta
+                 lista compacta —primera, vecinas de la actual y última— se ve solo bajo 576 px;
+                 la completa, de 576 px en adelante. --}}
+            @php
+                $cur = $paginator->currentPage();
+                $last = $paginator->lastPage();
+                $compactas = collect([1, $cur - 1, $cur, $cur + 1, $last])
+                    ->filter(fn ($p) => $p >= 1 && $p <= $last)->unique()->sort()->values();
+            @endphp
+            <ul class="lw-pager-compact d-flex d-sm-none">
+                @if ($paginator->onFirstPage())
+                    <li><span class="lw-page is-nav is-disabled" aria-hidden="true"><i class="ti ti-chevron-left"></i></span></li>
+                @else
+                    <li><button type="button" class="lw-page is-nav" title="Anterior" wire:click="previousPage('{{ $paginator->getPageName() }}')" x-on:click="{{ $scrollIntoViewJsSnippet }}" wire:loading.attr="disabled"><i class="ti ti-chevron-left"></i></button></li>
+                @endif
+                @foreach ($compactas as $i => $page)
+                    @if ($i > 0 && $page - $compactas[$i - 1] > 1)
+                        <li><span class="lw-page is-dots">…</span></li>
+                    @endif
+                    @if ($page == $cur)
+                        <li wire:key="paginator-c-{{ $paginator->getPageName() }}-page-{{ $page }}" aria-current="page"><span class="lw-page is-active">{{ $page }}</span></li>
+                    @else
+                        <li wire:key="paginator-c-{{ $paginator->getPageName() }}-page-{{ $page }}"><button type="button" class="lw-page" wire:click="gotoPage({{ $page }}, '{{ $paginator->getPageName() }}')" x-on:click="{{ $scrollIntoViewJsSnippet }}">{{ $page }}</button></li>
+                    @endif
+                @endforeach
+                @if ($paginator->hasMorePages())
+                    <li><button type="button" class="lw-page is-nav" title="Siguiente" wire:click="nextPage('{{ $paginator->getPageName() }}')" x-on:click="{{ $scrollIntoViewJsSnippet }}" wire:loading.attr="disabled"><i class="ti ti-chevron-right"></i></button></li>
+                @else
+                    <li><span class="lw-page is-nav is-disabled" aria-hidden="true"><i class="ti ti-chevron-right"></i></span></li>
+                @endif
+            </ul>
+
+            <ul class="lw-pager-list d-none d-sm-flex">
                 {{-- Anterior --}}
                 @if ($paginator->onFirstPage())
                     <li><span class="lw-page is-nav is-disabled" aria-hidden="true"><i class="ti ti-chevron-left"></i></span></li>
