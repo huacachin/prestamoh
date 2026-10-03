@@ -55,6 +55,23 @@ class PaginacionAuditTest extends TestCase
         $this->assertSame(2, substr_count($comp->html(), 'lw-pager-list'), 'en la página 2 siguen los dos paginadores');
     }
 
+    /**
+     * 02/10 (Antony): "debe ser responsive, se junta todo el texto". La tabla
+     * lleva ancho mínimo (scroll horizontal del .table-responsive en pantallas
+     * angostas) y las columnas cortas no parten el texto.
+     */
+    public function test_la_tabla_tiene_ancho_minimo_y_las_columnas_cortas_no_parten_el_texto(): void
+    {
+        $this->mundo(1);
+
+        $html = Livewire::test(AuditIndex::class)->html();
+
+        $this->assertStringContainsString('<div class="table-responsive tableFixHead">', $html);
+        $this->assertStringContainsString('table-sm" style="min-width:1100px;">', $html);
+        // Fecha, Usuario, Rol, Acción, Módulo y Registro van en una línea; la descripción es la que parte.
+        $this->assertGreaterThanOrEqual(6, substr_count(explode('<tbody>', $html)[1], 'class="text-nowrap"') + substr_count(explode('<tbody>', $html)[1], 'class="text-center text-nowrap"'));
+    }
+
     public function test_con_una_sola_pagina_no_hay_paginador_arriba_ni_abajo(): void
     {
         $this->mundo(2);

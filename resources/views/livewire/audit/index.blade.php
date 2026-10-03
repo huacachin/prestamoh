@@ -81,8 +81,12 @@
                             {{ $logs->links() }}
                         </div>
                     @endif
+                    {{-- 02/10 (Antony): responsive. Con la tabla al 100 % del ancho, en pantallas
+                         angostas las columnas se aplastaban y el texto se apilaba letra a letra;
+                         con un ancho mínimo la tabla conserva sus columnas y el contenedor
+                         (.table-responsive) da scroll horizontal. --}}
                     <div class="table-responsive tableFixHead">
-                        <table class="table table-bordered table-striped table-hover table-sm">
+                        <table class="table table-bordered table-striped table-hover table-sm" style="min-width:1100px;">
                             <thead class="bg-primary">
                                 {{-- Mismas columnas que el listado de newtaxivan (26/09): la acción va en
                                      su propia columna como badge, separada de la descripción. --}}
@@ -109,7 +113,7 @@
                                 <tr>
                                     <td class="text-center text-muted">{{ $logs->firstItem() + $loop->index }}</td>
                                     <td class="text-nowrap">{{ $log->created_at?->format('d/m/Y H:i') }}</td>
-                                    <td>
+                                    <td class="text-nowrap">
                                         @if($log->causer)
                                             {{ $log->causer->name }}
                                             <small class="text-muted">({{ $log->causer->username }})</small>
@@ -121,11 +125,11 @@
                                             <span class="text-muted">—</span>
                                         @endif
                                     </td>
-                                    <td>
+                                    <td class="text-nowrap">
                                         @php $rol = $log->user_role ?? ($log->causer && method_exists($log->causer, 'getRoleNames') ? $log->causer->getRoleNames()->first() : null); @endphp
                                         @if($rol)<span class="badge bg-light text-dark border">{{ $rol }}</span>@else<span class="text-muted">—</span>@endif
                                     </td>
-                                    <td class="text-center">
+                                    <td class="text-center text-nowrap">
                                         @if($tipoAccion)
                                             <span class="badge bg-{{ \App\Livewire\Audit\Index::ACCIONES[$tipoAccion]['badge'] }}">
                                                 {{ \App\Livewire\Audit\Index::ACCIONES[$tipoAccion]['label'] }}
