@@ -16,7 +16,7 @@
 
     <div class="row table-section">
         <div class="col-xl-12">
-            <div class="card shadow-sm">
+            <div class="card shadow-sm" data-captura>
                 <div class="card-body">
                     <div class="row g-3 align-items-end">
                         {{-- Tipo --}}
@@ -75,7 +75,7 @@
                                     @if($bloqueado) disabled @endif
                                     @if($saldoSel > 0.01) title="El crédito tiene saldo pendiente: no se puede re-activar" @endif
                                     data-confirmar="¿Está seguro de Re-Activar este Préstamo?"
-                                    wire:click="activate">
+                                    x-on:click="$captura('activate')">
                                 <i class="ti ti-refresh f-s-14"></i> Confirmar Re-Activar
                             </button>
                         </div>

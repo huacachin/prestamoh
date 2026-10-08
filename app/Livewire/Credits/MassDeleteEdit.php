@@ -7,12 +7,15 @@ use App\Models\CreditInstallment;
 use App\Models\Expense;
 use App\Models\MassDeletion;
 use App\Models\Payment;
+use App\Support\Auditoria\ConCapturaDeAuditoria;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 
 class MassDeleteEdit extends Component
 {
+    use ConCapturaDeAuditoria;
+
     public MassDeletion $record;
 
     public function mount(int $id): void

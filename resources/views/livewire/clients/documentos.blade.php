@@ -205,7 +205,7 @@
                                     @if(! $anulado)
                                         <button type="button" class="btn btn-xs btn-outline-danger"
                                                 style="padding: 2px 8px; font-size: 10px;"
-                                                wire:click="anular({{ $doc->id }})"
+                                                x-on:click="$captura('anular', {{ $doc->id }})"
                                                 data-confirmar="¿Anular {{ $doc->tipoLabel() }} v{{ $doc->version }} del crédito #{{ $doc->credit_id }}? Quedará tachado, pero sus descargas seguirán disponibles."
                                                 title="Anular documento">
                                             <i class="ti ti-ban"></i> Anular
@@ -382,7 +382,7 @@
                         <span wire:loading wire:target="previsualizar">Generando previa…</span>
                     </button>
                     <button type="button" class="btn btn-sm btn-success"
-                            wire:click="generar" wire:loading.attr="disabled" wire:target="previsualizar,generar"
+                            x-on:click="$captura('generar')" wire:loading.attr="disabled" wire:target="previsualizar,generar"
                             @disabled($creditosActivos->isEmpty())>
                         <i class="ti ti-file-check"></i>
                         <span wire:loading.remove wire:target="generar">Generar</span>
@@ -991,7 +991,7 @@
                         <span wire:loading wire:target="previsualizarContrato">Generando previa…</span>
                     </button>
                     <button type="button" class="btn btn-sm btn-dark"
-                            wire:click="generarContrato" wire:loading.attr="disabled"
+                            x-on:click="$captura('generarContrato')" wire:loading.attr="disabled"
                             wire:target="previsualizarContrato,generarContrato"
                             @disabled($creditosActivos->isEmpty() || empty($modelosAgrupados))>
                         <i class="ti ti-file-check"></i>
@@ -1359,7 +1359,7 @@
                         <span wire:loading wire:target="previsualizarAnexo2">Generando previa…</span>
                     </button>
                     <button type="button" class="btn btn-sm btn-info"
-                            wire:click="generarAnexo2" wire:loading.attr="disabled"
+                            x-on:click="$captura('generarAnexo2')" wire:loading.attr="disabled"
                             wire:target="previsualizarAnexo2,generarAnexo2,comprobante,comprobante2"
                             @disabled($creditosActivos->isEmpty())>
                         <i class="ti ti-file-check"></i>

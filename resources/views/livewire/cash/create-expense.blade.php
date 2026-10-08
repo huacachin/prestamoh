@@ -19,7 +19,7 @@
 
     <div class="row table-section">
         <div class="col-xl-12">
-            <div class="card shadow-sm">
+            <div class="card shadow-sm" data-captura>
                 <div class="card-body">
 
                     @if ($errors->any())
@@ -241,7 +241,7 @@
                         <div class="d-flex flex-column align-items-center gap-1 mt-3">
                             <div class="d-flex gap-2 justify-content-center flex-wrap">
                                 <button type="button" class="btn btn-sm btn-dark"
-                                        wire:click="save"
+                                        x-on:click="$captura('save')"
                                         wire:loading.attr="disabled" wire:target="save,files">
                                     <i class="ti ti-device-floppy"></i>
                                     <span wire:loading.remove wire:target="save">Guardar</span>

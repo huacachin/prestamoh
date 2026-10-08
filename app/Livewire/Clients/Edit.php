@@ -6,6 +6,7 @@ use App\Models\Client;
 use App\Models\Credit;
 use App\Models\User;
 use App\Support\Audit;
+use App\Support\Auditoria\ConCapturaDeAuditoria;
 use App\Support\Documentos\Nacionalidades;
 use App\Support\Ubigeo;
 use Livewire\Attributes\On;
@@ -14,6 +15,8 @@ use Livewire\Component;
 
 class Edit extends Component
 {
+    use ConCapturaDeAuditoria;
+
     public Client $client;
 
     public int $clientId;

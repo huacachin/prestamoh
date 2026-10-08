@@ -5,11 +5,13 @@ namespace App\Livewire\Cash;
 use App\Livewire\Cash\Concerns\SavesIncomeAttachments;
 use App\Models\Concept;
 use App\Models\Income;
+use App\Support\Auditoria\ConCapturaDeAuditoria;
 use App\Support\ConSubidaDeArchivos;
 use Livewire\Component;
 
 class CreateIncome extends Component
 {
+    use ConCapturaDeAuditoria;
     use ConSubidaDeArchivos;
     use SavesIncomeAttachments;
 

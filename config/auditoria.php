@@ -215,4 +215,17 @@ return [
             'responsable_id' => 'Responsable', 'requiere_revision' => 'Requiere revisión',
         ],
     ],
+
+    /*
+     * Capturas de pantalla de las acciones importantes (08/10/2026): el
+     * navegador fotografía el formulario/modal al confirmar y la foto se cuelga
+     * de las filas de auditoría de esa petición (properties.captura). Van al
+     * disco privado y las sirve solo el director desde el visor. El comando
+     * auditoria:purgar-capturas borra las de más de 'dias' días.
+     */
+    'capturas' => [
+        'disco' => 'local',
+        'dias' => 180,
+        'max_bytes' => 1_500_000,
+    ],
 ];

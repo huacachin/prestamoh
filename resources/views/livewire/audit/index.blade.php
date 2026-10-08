@@ -161,6 +161,9 @@
                                         @if($conCambios)
                                             <i class="ti ti-list-details text-primary ms-1" title="Tiene detalle de campos (antes / después)"></i>
                                         @endif
+                                        @if(is_string($log->properties['captura'] ?? null))
+                                            <i class="ti ti-camera text-info ms-1" title="Tiene captura de pantalla"></i>
+                                        @endif
                                     </td>
                                     <td class="text-center">
                                         <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2"
@@ -292,6 +295,18 @@
                                     </tbody>
                                 </table>
                             </div>
+                        @endif
+
+                        {{-- 08/10: captura de pantalla tomada al confirmar la acción (solo formularios importantes) --}}
+                        @if($detalle['captura'])
+                            <h6 class="mb-1" style="font-size:13px;"><i class="ti ti-camera"></i> Pantalla al confirmar</h6>
+                            @if($detalle['captura_existe'])
+                                <a href="{{ $detalle['captura_url'] }}" target="_blank" rel="noopener" title="Abrir la captura en pestaña nueva">
+                                    <img src="{{ $detalle['captura_url'] }}" alt="Captura de pantalla de la acción" class="img-fluid border rounded mb-2" style="max-height:420px;">
+                                </a>
+                            @else
+                                <div class="text-muted small mb-2"><i class="ti ti-camera-off"></i> La captura ya fue purgada (se conservan {{ config('auditoria.capturas.dias') }} días).</div>
+                            @endif
                         @endif
 
                         @if(count($detalle['propiedades']))

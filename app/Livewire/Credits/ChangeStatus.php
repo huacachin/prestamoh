@@ -4,11 +4,14 @@ namespace App\Livewire\Credits;
 
 use App\Models\Credit;
 use App\Support\Audit;
+use App\Support\Auditoria\ConCapturaDeAuditoria;
 use Carbon\Carbon;
 use Livewire\Component;
 
 class ChangeStatus extends Component
 {
+    use ConCapturaDeAuditoria;
+
     public string $tipoe = 'Credito';
 
     public string $fecha = '';

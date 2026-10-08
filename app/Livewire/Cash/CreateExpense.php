@@ -5,11 +5,13 @@ namespace App\Livewire\Cash;
 use App\Livewire\Cash\Concerns\SavesExpenseAttachments;
 use App\Models\Concept;
 use App\Models\Expense;
+use App\Support\Auditoria\ConCapturaDeAuditoria;
 use App\Support\ConSubidaDeArchivos;
 use Livewire\Component;
 
 class CreateExpense extends Component
 {
+    use ConCapturaDeAuditoria;
     use ConSubidaDeArchivos;
     use SavesExpenseAttachments;
 

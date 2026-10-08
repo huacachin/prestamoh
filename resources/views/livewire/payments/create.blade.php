@@ -1064,13 +1064,13 @@
                         </button>
                         <div class="d-flex gap-2">
                             <button type="button" class="btn btn-sm btn-outline-primary"
-                                    wire:click="pagar(false)"
+                                    x-on:click="$captura('pagar', false)"
                                     @disabled($faltaDecidir)
                                     wire:loading.attr="disabled" wire:target="pagar">
                                 Cobrar
                             </button>
                             <button type="button" class="btn btn-sm btn-primary"
-                                    wire:click="pagar(true)"
+                                    x-on:click="$captura('pagar', true)"
                                     @disabled($faltaDecidir)
                                     wire:loading.attr="disabled" wire:target="pagar">
                                 <i class="ti ti-printer"></i>

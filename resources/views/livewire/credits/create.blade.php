@@ -16,7 +16,7 @@
         </div>
     </div>
 
-    <form wire:submit.prevent="save">
+    <form x-on:submit.prevent="$captura('save')" data-captura>
 
         @if ($errors->any())
             <div class="alert alert-danger py-2 px-3 mb-2" style="font-size:12px;">

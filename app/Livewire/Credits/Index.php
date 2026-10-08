@@ -7,6 +7,7 @@ use App\Models\CreditInstallment;
 use App\Models\User;
 use App\Services\Credits\CreditoNoEliminableException;
 use App\Services\Credits\EliminadorCredito;
+use App\Support\Auditoria\ConCapturaDeAuditoria;
 use Illuminate\Pagination\AbstractPaginator;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -14,6 +15,7 @@ use Livewire\WithPagination;
 
 class Index extends Component
 {
+    use ConCapturaDeAuditoria;
     use WithPagination;
 
     protected $paginationTheme = 'bootstrap';

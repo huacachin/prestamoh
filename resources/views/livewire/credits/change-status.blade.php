@@ -16,7 +16,7 @@
 
     <div class="row table-section">
         <div class="col-xl-12">
-            <div class="card shadow-sm">
+            <div class="card shadow-sm" data-captura>
                 <div class="card-body">
                     <div class="row g-3 align-items-end">
                         {{-- Tipo --}}
@@ -95,7 +95,7 @@
                                     @if($bloqueado) disabled @endif
                                     @if($saldoSel > 0.01) title="El crédito tiene saldo pendiente: no se puede cancelar" @endif
                                     data-confirmar="¿Está seguro de cambiar el estado del crédito a Cancelado?"
-                                    wire:click="changeStatus">
+                                    x-on:click="$captura('changeStatus')">
                                 <i class="ti ti-refresh f-s-14"></i> Cambiar Estado
                             </button>
                         </div>
