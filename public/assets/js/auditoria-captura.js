@@ -46,6 +46,9 @@
             logging: false,
             backgroundColor: '#ffffff',
             ignoreElements: e => e.classList && (e.classList.contains('modal-backdrop') || e.classList.contains('swal2-container')),
+            // El botón pulsado está deshabilitado mientras se fotografía (anti doble clic):
+            // en la copia que se dibuja se lo deja normal para que no salga gris.
+            onclone: doc => doc.querySelectorAll('[data-capturando]').forEach(b => { b.disabled = false; b.style.cursor = ''; }),
         });
         return canvas.toDataURL('image/jpeg', CALIDAD);
     }
@@ -64,23 +67,24 @@
 
     function registrar() {
         window.Alpine.magic('captura', (el) => async (metodo, ...args) => {
+            // Livewire.find(id) devuelve directamente el $wire del componente.
             const raiz = el.closest('[wire\\:id]');
-            const componente = raiz && window.Livewire ? window.Livewire.find(raiz.getAttribute('wire:id')) : null;
-            if (!componente) {
+            const wire = raiz && window.Livewire ? window.Livewire.find(raiz.getAttribute('wire:id')) : null;
+            if (!wire) {
                 console.warn('[auditoría] $captura fuera de un componente Livewire');
                 return;
             }
             const boton = el.tagName === 'BUTTON' ? el : null;
-            if (boton) { boton.disabled = true; boton.style.cursor = 'progress'; }
+            if (boton) { boton.disabled = true; boton.style.cursor = 'progress'; boton.dataset.capturando = '1'; }
             let foto = null;
             try {
                 foto = await window.CapturaAuditoria.tomar(el);
             } finally {
-                if (boton) { boton.disabled = false; boton.style.cursor = ''; }
+                if (boton) { boton.disabled = false; boton.style.cursor = ''; delete boton.dataset.capturando; }
             }
             // $set(..., false): deja el valor listo sin disparar petición; viaja con la llamada.
-            if (foto) componente.$wire.$set('capturaAuditoria', foto, false);
-            return componente.$wire.$call(metodo, ...args);
+            if (foto) wire.$set('capturaAuditoria', foto, false);
+            return wire.$call(metodo, ...args);
         });
     }
 
