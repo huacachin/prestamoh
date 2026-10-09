@@ -200,7 +200,7 @@
         <div class="sim-ventanas">
             <template x-for="v in ventanas" :key="v.id">
                 <div x-data="ventanaLibre({ x: v.x, y: v.y, w: 440 })" class="card shadow sim-ventana"
-                     :style="'z-index:' + v.z" x-on:pointerdown="alFrente(v)">
+                     :style="{ zIndex: v.z }" x-on:pointerdown="alFrente(v)">
                     <div class="card-header d-flex justify-content-between align-items-center py-2 sim-ventana-cabecera"
                          style="background:#009bdc; color:#fff;"
                          x-on:pointerdown="iniciarArrastre($event)" x-on:pointermove="arrastrar($event)"

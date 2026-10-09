@@ -202,9 +202,11 @@
                 this.aplicar();
             },
 
+            // $root y no $el: desde los x-on:pointer* de la cabecera, $el sería la cabecera;
+            // $root es siempre la ventana (el elemento con x-data).
             aplicar() {
-                this.$el.style.left = this.geo.x + 'px';
-                this.$el.style.top = this.geo.y + 'px';
+                this.$root.style.left = this.geo.x + 'px';
+                this.$root.style.top = this.geo.y + 'px';
             },
 
             iniciarArrastre(e) { Arrastre.iniciar(this, e); },

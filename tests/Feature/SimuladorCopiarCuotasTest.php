@@ -43,7 +43,7 @@ class SimuladorCopiarCuotasTest extends TestCase
         $this->assertStringContainsString('<template x-for="v in ventanas" :key="v.id">', $html);
         $this->assertStringContainsString('x-data="ventanaLibre({ x: v.x, y: v.y, w: 440 })" class="card shadow sim-ventana"', $html);
         $this->assertStringContainsString('x-on:pointerdown="iniciarArrastre($event)" x-on:pointermove="arrastrar($event)"', $html, 'se arrastra desde la cabecera');
-        $this->assertStringContainsString(':style="\'z-index:\' + v.z" x-on:pointerdown="alFrente(v)"', $html, 'la que se toca pasa al frente');
+        $this->assertStringContainsString(':style="{ zIndex: v.z }" x-on:pointerdown="alFrente(v)"', $html, 'la que se toca pasa al frente');
         $this->assertStringContainsString('Detalle de Pago · Mes <span x-text="v.meses"></span>', $html);
         $this->assertStringContainsString('x-on:click.prevent="cerrar(v.id)"', $html);
         $this->assertStringContainsString('x-on:keydown.escape.window="cerrarUltima()"', $html);
