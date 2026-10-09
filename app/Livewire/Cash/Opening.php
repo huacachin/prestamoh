@@ -11,10 +11,12 @@ class Opening extends Component
 
     public $solesm = '';
 
-    // Para edición inline (SuperUsuario)
-    public $editingId = null;
-
-    public $editingValue = '';
+    /**
+     * 10/10 (Antony): true en celular (lo fija Alpine al cargar) para pintar SOLO
+     * las tarjetas; en escritorio solo la tabla. Antes iban las dos listas
+     * siempre (123 aperturas × 2 = 350 KB por respuesta).
+     */
+    public bool $movil = false;
 
     public function mount(): void
     {
@@ -83,47 +85,36 @@ class Opening extends Component
         $this->solesm = '';
     }
 
-    public function startEdit(int $id): void
-    {
-        if (!auth()->user()?->can('caja.editar-historico')) {
-            return;
-        }
-        $opening = CashOpening::find($id);
-        if ($opening) {
-            $this->editingId = $id;
-            $this->editingValue = $opening->saldo_inicial;
-        }
-    }
-
-    public function cancelEdit(): void
-    {
-        $this->editingId = null;
-        $this->editingValue = '';
-    }
-
-    public function updateInline(int $id): void
+    /**
+     * Edición en línea del importe. 10/10 (Antony): el input se abre y se cierra
+     * en el navegador (Alpine: editando / valor), sin viaje al servidor; antes
+     * startEdit/cancelEdit redibujaban la pantalla entera por cada clic y en
+     * producción tardaban 2-3 s en mostrar el input. Solo Guardar llega aquí,
+     * con el valor como parámetro; el permiso se sigue validando en el servidor.
+     */
+    public function updateInline(int $id, $valor = null): void
     {
         if (! auth()->user()?->can('caja.editar-historico')) {
-            $this->addError('editingValue', 'No autorizado.');
+            $this->dispatch('errorAlert', ['message' => 'No autorizado.']);
 
             return;
         }
 
-        if (! is_numeric($this->editingValue)) {
-            $this->addError('editingValue', 'Importe inválido.');
+        $valor = is_string($valor) ? str_replace(',', '', trim($valor)) : $valor;
+        if ($valor === null || $valor === '' || ! is_numeric($valor)) {
+            $this->dispatch('errorAlert', ['message' => 'Importe inválido.']);
 
             return;
         }
 
         $opening = CashOpening::find($id);
         if ($opening) {
-            $opening->update(['saldo_inicial' => (float) $this->editingValue]);
+            $opening->update(['saldo_inicial' => (float) $valor]);
             $this->dispatch('successAlert', ['message' => 'Se actualizó la caja con éxito']);
         }
 
-        $this->editingId = null;
-        $this->editingValue = '';
-        $this->resetErrorBag();
+        // Cierra el input de esa fila en el navegador.
+        $this->dispatch('apertura-guardada', id: $id);
     }
 
     public function render()
@@ -135,12 +126,12 @@ class Opening extends Component
         $currentMonth = CashOpening::whereYear('fecha', date('Y'))
             ->whereMonth('fecha', date('m'))
             ->where('moneda', 'Soles')
-            ->when(!$crossHQ, fn ($q) => $q->where('headquarter_id', $hqId))
+            ->when(! $crossHQ, fn ($q) => $q->where('headquarter_id', $hqId))
             ->orderBy('id')
             ->first();
 
         $history = CashOpening::where('moneda', 'Soles')
-            ->when(!$crossHQ, fn ($q) => $q->where('headquarter_id', $hqId))
+            ->when(! $crossHQ, fn ($q) => $q->where('headquarter_id', $hqId))
             ->with(['user:id,name,username', 'headquarter:id,name'])
             ->orderByDesc('fecha')
             ->orderByDesc('id')
@@ -148,9 +139,9 @@ class Opening extends Component
 
         return view('livewire.cash.opening', [
             'currentMonth' => $currentMonth,
-            'history'      => $history,
-            'puedeEditar'  => $user->can('caja.editar-historico'),
-            'horaActual'   => now()->format('H:i'),
+            'history' => $history,
+            'puedeEditar' => $user->can('caja.editar-historico'),
+            'horaActual' => now()->format('H:i'),
         ]);
     }
 }

@@ -1,4 +1,10 @@
-<div class="container-fluid">    <div class="row">
+{{-- 10/10 (Antony): la edición del importe se abre y se cierra en el navegador (editando/valor);
+     solo Guardar va al servidor. $movil lo fija Alpine al cargar: se pinta una sola lista. --}}
+<div class="container-fluid"
+     x-data="{ editando: null, valor: '' }"
+     x-init="if (window.matchMedia('(max-width: 767.98px)').matches) $wire.set('movil', true)"
+     x-on:apertura-guardada.window="editando = null">
+    <div class="row">
         <div class="col-sm-6">
             <h4 class="main-title title-modules" style="color:red;">APERTURA DE CAJA</h4>
         </div>
@@ -99,7 +105,8 @@
 
                     <hr>
 
-                    {{-- Histórico Desktop con sticky header --}}
+                    {{-- Histórico Desktop con sticky header (solo en escritorio: ver $movil) --}}
+                    @unless($movil)
                     <div class="d-none d-md-flex justify-content-end mb-1">
                         <x-scroll-bottom-btn scrollable="#tabla-apertura" />
                     </div>
@@ -121,18 +128,20 @@
                             </thead>
                             <tbody>
                             @forelse($history as $row)
-                                <tr onmouseover="this.style.backgroundColor='#CCFF66'"
+                                <tr wire:key="apertura-{{ $row->id }}"
+                                    onmouseover="this.style.backgroundColor='#CCFF66'"
                                     onmouseout="this.style.backgroundColor=''">
                                     <td class="text-center">{{ $loop->iteration }}</td>
                                     <td class="text-center">{{ $row->fecha?->format('d/m/Y') }}</td>
                                     <td class="text-center">{{ $row->hora ?: '-' }}</td>
                                     <td>{{ $row->user?->username ?? $row->user?->name ?? '-' }}</td>
                                     <td class="text-end">
-                                        @if($puedeEditar && $editingId === $row->id)
-                                            <input type="number" step="0.01" name="editingValue" autocomplete="off" class="form-control form-control-sm"
-                                                   wire:model="editingValue"
-                                                   wire:keydown.enter="updateInline({{ $row->id }})"
-                                                   wire:keydown.escape="cancelEdit">
+                                        @if($puedeEditar)
+                                            <input type="number" step="0.01" autocomplete="off" class="form-control form-control-sm"
+                                                   x-show="editando === {{ $row->id }}" x-cloak x-model="valor" x-ref="importe{{ $row->id }}"
+                                                   x-on:keydown.enter.prevent="$wire.updateInline({{ $row->id }}, valor)"
+                                                   x-on:keydown.escape="editando = null">
+                                            <span class="fw-bold" x-show="editando !== {{ $row->id }}">{{ number_format($row->saldo_inicial, 2) }}</span>
                                         @else
                                             <span class="fw-bold">{{ number_format($row->saldo_inicial, 2) }}</span>
                                         @endif
@@ -140,22 +149,25 @@
                                     <td class="text-center">{{ $row->moneda }}</td>
                                     @if($puedeEditar)
                                         <td class="text-center text-nowrap">
-                                            @if($editingId === $row->id)
+                                            <span x-show="editando === {{ $row->id }}" x-cloak>
                                                 <button class="btn btn-xs btn-success" style="padding: 2px 8px; font-size: 10px;"
-                                                        wire:click="updateInline({{ $row->id }})">
-                                                    <i class="ti ti-check"></i> Guardar
+                                                        x-on:click="$wire.updateInline({{ $row->id }}, valor)"
+                                                        wire:loading.attr="disabled" wire:target="updateInline">
+                                                    <i class="ti ti-check"></i>
+                                                    <span wire:loading.remove wire:target="updateInline">Guardar</span>
+                                                    <span wire:loading wire:target="updateInline">Guardando…</span>
                                                 </button>
                                                 <button class="btn btn-xs btn-secondary" style="padding: 2px 8px; font-size: 10px;"
-                                                        wire:click="cancelEdit">
+                                                        x-on:click="editando = null" title="Cancelar (Esc)">
                                                     <i class="ti ti-x"></i>
                                                 </button>
-                                            @else
-                                                <button class="btn btn-xs btn-primary" style="padding: 2px 8px; font-size: 10px;"
-                                                        wire:click="startEdit({{ $row->id }})"
-                                                        title="Editar importe">
-                                                    <i class="ti ti-edit"></i> Editar
-                                                </button>
-                                            @endif
+                                            </span>
+                                            <button class="btn btn-xs btn-primary" style="padding: 2px 8px; font-size: 10px;"
+                                                    x-show="editando !== {{ $row->id }}"
+                                                    x-on:click="editando = {{ $row->id }}; valor = '{{ $row->saldo_inicial }}'; $nextTick(() => $refs['importe{{ $row->id }}'].focus())"
+                                                    title="Editar importe">
+                                                <i class="ti ti-edit"></i> Editar
+                                            </button>
                                         </td>
                                     @endif
                                 </tr>
@@ -176,11 +188,13 @@
                             </tfoot>
                         </table>
                     </div>
+                    @endunless
 
-                    {{-- Cards Mobile --}}
+                    {{-- Cards Mobile (solo en celular: ver $movil). Antes el Editar de aquí no abría nada. --}}
+                    @if($movil)
                     <div class="d-md-none">
                         @forelse($history as $row)
-                            <div class="card mb-2 shadow-sm">
+                            <div class="card mb-2 shadow-sm" wire:key="apertura-m-{{ $row->id }}">
                                 <div class="card-body p-3">
                                     <div class="d-flex justify-content-between align-items-start mb-1">
                                         <h6 class="mb-0">{{ $row->fecha?->format('d/m/Y') }} - {{ $row->hora ?: '-' }}</h6>
@@ -191,8 +205,20 @@
                                         <div class="col-6 text-end"><b>S/</b> {{ number_format($row->saldo_inicial, 2) }}</div>
                                     </div>
                                     @if($puedeEditar)
+                                        <div class="input-group input-group-sm mt-2" x-show="editando === {{ $row->id }}" x-cloak>
+                                            <input type="number" step="0.01" autocomplete="off" class="form-control"
+                                                   x-model="valor" x-ref="importe{{ $row->id }}"
+                                                   x-on:keydown.enter.prevent="$wire.updateInline({{ $row->id }}, valor)"
+                                                   x-on:keydown.escape="editando = null">
+                                            <button class="btn btn-success" x-on:click="$wire.updateInline({{ $row->id }}, valor)"
+                                                    wire:loading.attr="disabled" wire:target="updateInline">
+                                                <i class="ti ti-check"></i>
+                                            </button>
+                                            <button class="btn btn-secondary" x-on:click="editando = null"><i class="ti ti-x"></i></button>
+                                        </div>
                                         <button class="btn btn-xs btn-primary w-100 mt-2" style="font-size: 10px;"
-                                                wire:click="startEdit({{ $row->id }})">
+                                                x-show="editando !== {{ $row->id }}"
+                                                x-on:click="editando = {{ $row->id }}; valor = '{{ $row->saldo_inicial }}'; $nextTick(() => $refs['importe{{ $row->id }}'].focus())">
                                             <i class="ti ti-edit"></i> Editar
                                         </button>
                                     @endif
@@ -202,6 +228,7 @@
                             <div class="text-center text-muted py-4">No hay aperturas registradas</div>
                         @endforelse
                     </div>
+                    @endif
                 </div>
             </div>
         </div>
