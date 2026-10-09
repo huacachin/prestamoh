@@ -14,8 +14,8 @@ use Livewire\Component;
 /**
  * Reportes de GPS de los vehículos del cliente, en la pestaña GPS debajo de
  * las direcciones. Simplificado el 09/10/2026 (Antony): placa, coordenadas
- * (pegadas o desde el enlace de Google Maps, como en Casa/Negocio), fecha de
- * registro y una descripción. Nada más.
+ * (pegadas o desde el enlace de Google Maps, como en Casa/Negocio) y una
+ * descripción; la fecha de registro se pone sola al guardar. Nada más.
  */
 class GpsVehiculos extends Component
 {
@@ -30,7 +30,7 @@ class GpsVehiculos extends Component
 
     public bool $mostrarForm = false;
 
-    /** @var array{vehiculo_id?: string, fecha?: string, coordenadas?: string, descripcion?: string} */
+    /** @var array{vehiculo_id?: string, coordenadas?: string, descripcion?: string} */
     public array $form = [];
 
     public ?string $msg = null;
@@ -61,9 +61,9 @@ class GpsVehiculos extends Component
 
         $this->resetErrorBag();
         $this->msg = null;
+        // La fecha de registro no se digita: es el momento en que se guarda.
         $this->form = [
             'vehiculo_id' => $vehiculos->count() === 1 ? (string) $vehiculos->first()->id : '',
-            'fecha' => now()->format('Y-m-d\TH:i'),
             'coordenadas' => '',
             'descripcion' => '',
         ];
@@ -81,7 +81,6 @@ class GpsVehiculos extends Component
     {
         return [
             'form.vehiculo_id' => 'required|integer',
-            'form.fecha' => 'required|date',
             'form.coordenadas' => 'required|string|max:500',
             'form.descripcion' => 'nullable|string|max:1000',
         ];
@@ -91,8 +90,6 @@ class GpsVehiculos extends Component
     {
         return [
             'form.vehiculo_id.required' => 'Elige la placa.',
-            'form.fecha.required' => 'La fecha de registro es obligatoria.',
-            'form.fecha.date' => 'La fecha de registro no es válida.',
             'form.coordenadas.required' => 'Pega las coordenadas del vehículo (o el enlace de Google Maps).',
             'form.descripcion.max' => 'La descripción admite hasta 1000 caracteres.',
         ];
@@ -123,7 +120,7 @@ class GpsVehiculos extends Component
             'client_id' => $this->clientId,
             'vehiculo_id' => $vehiculo->id,
             'placa' => $vehiculo->placa,
-            'fecha' => $this->form['fecha'],
+            'fecha' => now(),
             'latitud' => $lat,
             'longitud' => $lng,
             'descripcion' => trim((string) ($this->form['descripcion'] ?? '')) ?: null,

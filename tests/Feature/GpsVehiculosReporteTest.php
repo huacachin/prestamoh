@@ -19,9 +19,9 @@ use Tests\TestCase;
 
 /**
  * 09/10/2026 (Antony, ficha 1469): el reporte de GPS de vehículos, en la
- * pestaña GPS del cliente, se simplifica a placa, coordenadas, fecha de
- * registro y una descripción. Fuera los puntos del recorrido, horarios,
- * domicilio, fotos y el texto para WhatsApp.
+ * pestaña GPS del cliente, se simplifica a placa, coordenadas y una
+ * descripción; la fecha de registro se pone sola al guardar. Fuera los puntos
+ * del recorrido, horarios, domicilio, fotos y el texto para WhatsApp.
  */
 class GpsVehiculosReporteTest extends TestCase
 {
@@ -58,25 +58,26 @@ class GpsVehiculosReporteTest extends TestCase
         ]);
     }
 
-    public function test_el_formulario_solo_pide_placa_fecha_coordenadas_y_descripcion_y_guarda(): void
+    public function test_el_formulario_solo_pide_placa_coordenadas_y_descripcion_y_la_fecha_de_registro_se_pone_sola(): void
     {
         $this->mundo();
         $comp = Livewire::test(GpsVehiculos::class, ['id' => $this->client->id])
             ->call('nuevo')
             ->assertSet('mostrarForm', true)
             ->assertSet('form.vehiculo_id', (string) $this->vehiculo->id); // único vehículo: elegido solo
-        $this->assertSame(['vehiculo_id', 'fecha', 'coordenadas', 'descripcion'], array_keys($comp->get('form')));
+        $this->assertSame(['vehiculo_id', 'coordenadas', 'descripcion'], array_keys($comp->get('form')), 'la fecha de registro no se digita');
 
         $html = $comp->html();
-        $this->assertStringContainsString('Fecha de registro *', $html);
+        $this->assertStringNotContainsString('Fecha de registro *', $html, 'sin campo de fecha en el formulario');
+        $this->assertStringNotContainsString('datetime-local', $html);
         $this->assertStringContainsString('wire:model="form.coordenadas"', $html);
         $this->assertStringContainsString('wire:model="form.descripcion"', $html);
         foreach (['Horario', 'Punto 1', 'Domicilio', 'Fotos', 'Adjuntos', 'zona-imagenes', 'WhatsApp', 'Así saldrá el mensaje', 'form.puntos', 'filtroPlaca', '_lightbox'] as $viejo) {
             $this->assertStringNotContainsString($viejo, $html, "ya no va: {$viejo}");
         }
 
-        $comp->set('form.fecha', '2026-10-09T08:30')
-            ->set('form.coordenadas', '-12.014431, -76.824936')
+        Carbon::setTestNow('2026-10-09 08:30:00'); // la fecha de registro es el momento de guardar
+        $comp->set('form.coordenadas', '-12.014431, -76.824936')
             ->set('form.descripcion', '  Parado frente al mercado de Huaycán  ')
             ->call('guardar')
             ->assertHasNoErrors()
@@ -113,6 +114,7 @@ class GpsVehiculosReporteTest extends TestCase
         foreach (['ver', 'agregarPunto', 'abrirAdjuntos', 'eliminarFoto', 'vistaPrevia', 'updatedFotosExtra'] as $metodo) {
             $this->assertFalse(method_exists(GpsVehiculos::class, $metodo), "método {$metodo}");
         }
+        Carbon::setTestNow();
     }
 
     public function test_acepta_el_enlace_de_google_maps_y_rechaza_lo_que_no_son_coordenadas(): void
@@ -127,11 +129,10 @@ class GpsVehiculosReporteTest extends TestCase
         $comp->set('form.coordenadas', 'por el mercado')->call('guardar')->assertHasErrors(['form.coordenadas']);
         $this->assertStringContainsString('Formato inválido. Pega las coordenadas como: -12.014431, -76.824936', $comp->html());
         $comp->set('form.coordenadas', '')->call('guardar')->assertHasErrors(['form.coordenadas' => 'required']);
-        $comp->set('form.coordenadas', '-12.1, -77.1')->set('form.fecha', '')->call('guardar')->assertHasErrors(['form.fecha' => 'required']);
         $this->assertSame(0, VehiculoGpsReporte::count());
 
         // Enlace corto de Maps: se resuelve una sola vez y se lee el pin.
-        $comp->set('form.fecha', '2026-10-09T09:00')->set('form.coordenadas', 'https://maps.app.goo.gl/abc')->call('guardar')->assertHasNoErrors();
+        $comp->set('form.coordenadas', 'https://maps.app.goo.gl/abc')->call('guardar')->assertHasNoErrors();
         $r = VehiculoGpsReporte::firstOrFail();
         $this->assertEqualsWithDelta(-12.0631527, (float) $r->latitud, 0.0000001);
         $this->assertEqualsWithDelta(-77.0501364, (float) $r->longitud, 0.0000001);

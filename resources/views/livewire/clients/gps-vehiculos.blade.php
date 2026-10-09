@@ -15,11 +15,11 @@
         <div class="alert {{ $msgType === 'ok' ? 'alert-success' : 'alert-danger' }} py-2 mb-2 small">{{ $msg }}</div>
     @endif
 
-    {{-- ═══ Formulario: placa, fecha de registro, coordenadas y descripción ═══ --}}
+    {{-- ═══ Formulario: placa, coordenadas y descripción (la fecha de registro se pone sola) ═══ --}}
     @if($mostrarForm)
         <div class="border rounded p-3 mb-3" style="background:#fcfcfa;">
             <div class="row g-2">
-                <div class="col-6 col-md-3">
+                <div class="col-12 col-md-3">
                     <label class="form-label mb-0 small">Placa *</label>
                     <select class="form-select form-select-sm @error('form.vehiculo_id') is-invalid @enderror" wire:model="form.vehiculo_id">
                         @if($vehiculos->count() !== 1)<option value="">-- Elegir --</option>@endif
@@ -29,12 +29,7 @@
                     </select>
                     @error('form.vehiculo_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
-                <div class="col-6 col-md-3">
-                    <label class="form-label mb-0 small">Fecha de registro *</label>
-                    <input type="datetime-local" class="form-control form-control-sm @error('form.fecha') is-invalid @enderror" wire:model="form.fecha">
-                    @error('form.fecha') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                </div>
-                <div class="col-12 col-md-6">
+                <div class="col-12 col-md-9">
                     <label class="form-label mb-0 small">Coordenadas * <span class="text-muted">(o el enlace de Google Maps)</span></label>
                     <input type="text" class="form-control form-control-sm @error('form.coordenadas') is-invalid @enderror"
                            wire:model="form.coordenadas" wire:keydown.enter="guardar" autocomplete="off"
