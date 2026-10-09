@@ -11,8 +11,7 @@
         close() { this.open = false; },
         next() { this.idx = (this.idx + 1) % this.items.length; },
         prev() { this.idx = (this.idx - 1 + this.items.length) % this.items.length; },
-     }"
-     @keydown.escape.window="open && close()">
+     }">
     <div class="row">
         <div class="col-sm-6">
             <h4 class="main-title title-modules" style="color:red;">AUDITORÍA</h4>

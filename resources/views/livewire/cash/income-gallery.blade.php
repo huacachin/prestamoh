@@ -109,10 +109,7 @@
                         close() { this.open = false; },
                         next()  { this.idx = (this.idx + 1) % this.items.length; },
                         prev()  { this.idx = (this.idx - 1 + this.items.length) % this.items.length; },
-                     }"
-                     @keydown.escape.window="open && close()"
-                     @keydown.arrow-right.window="open && next()"
-                     @keydown.arrow-left.window="open && prev()">
+                     }">
 
                     <div class="row g-2">
                         @foreach($attachments as $i => $att)

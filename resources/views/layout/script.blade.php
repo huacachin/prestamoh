@@ -481,6 +481,10 @@ document.addEventListener('click', function (e) {
 <script src="{{ asset('assets/js/html2canvas.min.js') }}"></script>
 <script src="{{ asset('assets/js/auditoria-captura.js') }}?v={{ filemtime(public_path('assets/js/auditoria-captura.js')) }}"></script>
 
+{{-- Ventanas flotantes arrastrables (10/10): `visorFlotante` (partial _lightbox) y
+     `modalFlotante` (modales de Bootstrap, p. ej. la confirmación del cobro). --}}
+<script src="{{ asset('assets/js/ventanas-flotantes.js') }}?v={{ filemtime(public_path('assets/js/ventanas-flotantes.js')) }}"></script>
+
 {{-- Eliminar solo de 6:00 a 11:00 para quien no es director (09/10): el script deshabilita
      los botones en pantalla y se reevalúa solo; el servidor rechaza igual. --}}
 @auth

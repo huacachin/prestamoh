@@ -22,10 +22,7 @@
         next() { this.idx = (this.idx + 1) % this.items.length; },
         prev() { this.idx = (this.idx - 1 + this.items.length) % this.items.length; },
      }"
-     @click.window="deselect($event)"
-     @keydown.escape.window="open && close()"
-     @keydown.arrow-right.window="open && next()"
-     @keydown.arrow-left.window="open && prev()">
+     @click.window="deselect($event)">
     <div class="row">
         <div class="col-sm-6">
             <h4 class="main-title title-modules" style="color:red;">EGRESOS</h4>

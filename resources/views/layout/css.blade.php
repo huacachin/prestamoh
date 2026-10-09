@@ -143,6 +143,21 @@
         .lw-pager-compact .lw-page { min-width: 30px; height: 30px; padding: 0 7px; font-size: 12px; }
     }
 
+    /* 10/10: modal de Bootstrap como VENTANA FLOTANTE en escritorio (modalFlotante en
+       assets/js/ventanas-flotantes.js): la capa no tapa ni bloquea la página, el
+       diálogo se posiciona fijo donde el JS lo deja y se arrastra desde la cabecera. */
+    .modal.modal-flotante { pointer-events: none; }
+    .modal.modal-flotante .modal-dialog {
+        pointer-events: auto; position: fixed; margin: 0; display: block; min-height: 0;
+        width: min(420px, calc(100vw - 32px));
+        /* sin el translate(0,-50px) de la animación de entrada: la posición es la que guarda el JS */
+        transform: none !important; transition: none;
+    }
+    .modal.modal-flotante .modal-content { box-shadow: 0 14px 48px rgba(0,0,0,.35); }
+    .modal.modal-flotante .modal-header { cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none; }
+    .modal.modal-flotante .modal-header:active { cursor: grabbing; }
+    body.con-modal-flotante { overflow: visible !important; padding-right: 0 !important; }
+
 </style>
 @vite(['public/assets/scss/style.scss'])
 @livewireStyles

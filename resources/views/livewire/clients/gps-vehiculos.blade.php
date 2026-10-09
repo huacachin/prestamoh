@@ -13,10 +13,7 @@
         close() { this.open = false; },
         next() { this.idx = (this.idx + 1) % this.items.length; },
         prev() { this.idx = (this.idx - 1 + this.items.length) % this.items.length; },
-     }"
-     @keydown.escape.window="open && close()"
-     @keydown.arrow-right.window="open && next()"
-     @keydown.arrow-left.window="open && prev()">
+     }">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
         <h6 class="mb-0" style="color:red;">
             Reportes de GPS de los vehículos

@@ -782,14 +782,18 @@
              La impresión sale por ESC/POS a la ticketera; NUNCA por el diálogo
              del navegador, que está instalada con driver PostScript y en ese
              camino escupe la página renderizada como texto basura. --}}
+        {{-- 10/10 (Antony): en escritorio es una VENTANA FLOTANTE (modalFlotante,
+             assets/js/ventanas-flotantes.js): sin fondo, la pantalla de cobro sigue
+             viva debajo y se arrastra desde la cabecera; recuerda dónde la dejaste. --}}
         <div class="modal fade" id="ticketModal" tabindex="-1" aria-hidden="true" wire:ignore.self
-             x-data="{ modal: null }"
-             x-init="modal = bootstrap.Modal.getOrCreateInstance($el)"
+             x-data="modalFlotante('cobro')"
              x-on:ticket-confirm.window="modal.show()"
              x-on:ticket-close.window="modal.hide()">
-            <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
+            <div class="modal-dialog modal-dialog-centered" style="max-width:420px;" x-ref="dialogo">
                 <div class="modal-content">
-                    <div class="modal-header py-2">
+                    <div class="modal-header py-2"
+                         x-on:pointerdown="iniciarArrastre($event)" x-on:pointermove="arrastrar($event)"
+                         x-on:pointerup="soltar($event)" x-on:pointercancel="soltar($event)">
                         <h6 class="modal-title mb-0">Confirmar cobro</h6>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                     </div>
