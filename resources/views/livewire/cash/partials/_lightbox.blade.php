@@ -78,7 +78,7 @@
     .huac-lb--flotante { background: transparent; pointer-events: none; padding: 0; display: block; }
     .huac-lb--flotante .huac-lb__ventana { position: fixed; pointer-events: auto;
         max-width: none; max-height: none; min-width: 260px; min-height: 180px;
-        resize: both; border: 1px solid rgba(255,255,255,.15); }
+        resize: both; border: 1px solid rgba(255,255,255,.15); transition: none !important; }
     .huac-lb--flotante .huac-lb__cabecera { cursor: grab; }
     .huac-lb--flotante .huac-lb__cabecera:active { cursor: grabbing; }
 </style>

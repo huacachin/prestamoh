@@ -262,7 +262,8 @@
     /* Celdas compactas (el legacy usa celdas chicas) */
     .sim-table > :not(caption) > * > * { padding: 2px 6px !important; }
     /* Ventanitas de detalle: fijas, varias a la vez, arrastrables desde la cabecera */
-    .sim-ventana { position: fixed; width: 440px; max-width: 95vw; margin: 0; }
+    /* transition: none → el tema anima toda .card (--app-transition) y la ventana iba detrás del mouse */
+    .sim-ventana { position: fixed; width: 440px; max-width: 95vw; margin: 0; transition: none !important; }
     .sim-ventana-cabecera { cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none; }
     .sim-ventana-cabecera:active { cursor: grabbing; }
     @media print {
