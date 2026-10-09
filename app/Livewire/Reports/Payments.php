@@ -95,11 +95,9 @@ class Payments extends Component
             $term = $this->compra;
             switch ($this->tipo) {
                 case '1':
-                    $base->whereHas('credit.client', function ($q) use ($term) {
-                        $q->where('nombre', 'like', "%{$term}%")
-                            ->orWhere('apellido_pat', 'like', "%{$term}%")
-                            ->orWhere('apellido_mat', 'like', "%{$term}%");
-                    });
+                    // 10/10 (Antony): palabra por palabra sobre el nombre completo, así
+                    // "Torres Tapia Vda de Puma Julia Isabel" (o "Julia Torres") también encuentra.
+                    $base->whereHas('credit.client', fn ($q) => $q->nombreContiene($term));
                     break;
                 case '2':
                     $base->where('detalle', 'like', "%{$term}%");

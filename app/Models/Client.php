@@ -136,6 +136,23 @@ class Client extends Model
         return $q->where('status', 'active');
     }
 
+    /**
+     * Búsqueda por nombre como la teclea la gente (10/10/2026, Antony): cada
+     * palabra del texto tiene que estar en el nombre completo, en cualquier
+     * orden. "Torres Tapia Vda de Puma Julia Isabel", "Julia Torres" o "Torres"
+     * encuentran a la misma persona; buscar el texto entero contra nombre,
+     * apellido paterno y materno por separado no servía para nombres completos.
+     */
+    public function scopeNombreContiene($q, string $texto)
+    {
+        $palabras = preg_split('/\s+/', trim($texto), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        foreach ($palabras as $palabra) {
+            $q->whereRaw("CONCAT_WS(' ', nombre, apellido_pat, apellido_mat) LIKE ?", ['%'.addcslashes($palabra, '%_\\').'%']);
+        }
+
+        return $q;
+    }
+
     /** Texto corto para la descripción de auditoría. */
     public function auditNombre(): ?string
     {
