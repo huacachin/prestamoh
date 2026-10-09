@@ -142,7 +142,11 @@ class AuditoriaCapturaTest extends TestCase
         $comp->assertSeeHtml('Pantalla al confirmar')->assertSeeHtml('alt="Captura de pantalla de la acción"');
         // La ruta no sale como "propiedad" cruda, y la lista marca la fila con la cámara.
         $this->assertSame([], array_filter($detalle['propiedades'], fn ($p) => $p['campo'] === 'Captura'));
-        $comp->assertSeeHtml('title="Tiene captura de pantalla"');
+        // En la misma tabla: botón cámara que abre el lightbox con la captura de esa fila.
+        $comp->assertSeeHtml('title="Ver captura de pantalla"')
+            ->assertSeeHtml('@click.prevent="openLightbox(')
+            ->assertSeeHtml('class="huac-lb"');
+        $this->assertStringContainsString('/audit/captura/'.$fila->id, $comp->html());
 
         // Si la captura ya se purgó, el visor lo dice y la ruta da 404.
         Storage::disk('local')->delete($fila->properties['captura']);
