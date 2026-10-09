@@ -173,18 +173,19 @@ class PersonasRelacionadasTest extends TestCase
 
     // ── 2 · No ensucian listado ni export ─────────────────────────────────
 
-    public function test_el_listado_los_excluye_por_defecto_y_los_muestra_al_pedirlos(): void
+    /** 10/10 (Antony): clientes y personas relacionadas en la MISMA lista, sin el filtro "Ver". */
+    public function test_el_listado_muestra_clientes_y_relacionados_juntos(): void
     {
         $titular = $this->titular();
         $rel = Client::create($this->formularioCopro() + [
             'es_relacionado' => true, 'headquarter_id' => $this->sede->id, 'status' => 'active',
         ]);
 
-        $porDefecto = Livewire::test(Index::class);
-        $porDefecto->assertSee($titular->nombre)->assertDontSee('MARIA');
-
-        $relacionados = Livewire::test(Index::class)->set('verRelacionados', 'si');
-        $relacionados->assertSee('MARIA')->assertDontSee('TITULAR');
+        $lista = Livewire::test(Index::class);
+        $lista->assertSee($titular->nombre)->assertSee('MARIA')
+            ->assertSee('Copropietario:')->assertSee('Titular:')
+            ->assertDontSee('Personas relacionadas');
+        $this->assertFalse(property_exists(Index::class, 'verRelacionados'), 'el filtro Ver ya no existe');
     }
 
     public function test_el_export_no_los_incluye(): void

@@ -231,6 +231,10 @@ class Create extends Component
         }
 
         DB::transaction(function () {
+            // 10/10: una persona relacionada (copropietario) que saca su propio crédito
+            // pasa a titular: recibe expediente y deja de ser relacionada.
+            Client::find($this->codigod)?->promoverATitular();
+
             $pid = (int) $this->codpre_;
             $fechaBase = Carbon::parse($this->fechad);
 

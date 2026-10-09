@@ -42,10 +42,10 @@
 
     {{-- 10/10 (Antony): la persona relacionada queda referenciada al préstamo en el que
          es copropietaria (Client::copropiedades: exacto por el contrato, o por el vehículo). --}}
-    @if($client->es_relacionado)
-        @php $copropiedades = $client->copropiedades(); @endphp
+    @php $copropiedades = $client->es_relacionado || $client->vehiculosCompartidos()->exists() ? $client->copropiedades() : collect(); @endphp
+    @if($client->es_relacionado || $copropiedades->isNotEmpty())
         <div class="alert alert-info py-2 mb-2 small copropietario-en">
-            <div class="fw-semibold"><i class="ti ti-users"></i> Persona relacionada · copropietaria en:</div>
+            <div class="fw-semibold"><i class="ti ti-users"></i> {{ $client->es_relacionado ? 'Persona relacionada · copropietaria en:' : 'Copropietaria en:' }}</div>
             @forelse($copropiedades as $c)
                 <div>
                     @if($c['placas']) vehículo {{ implode(', ', $c['placas']) }} de @else codeudora de @endif

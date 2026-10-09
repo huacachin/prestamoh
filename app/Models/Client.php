@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Audit;
 use App\Support\Auditable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class Client extends Model
 {
@@ -183,6 +185,42 @@ class Client extends Model
         $c = $this->copropiedades()->first();
 
         return $c ? ['titular' => $c['titular'], 'credit' => $c['credit'], 'placas' => $c['placas'], 'exacto' => $c['exacto']] : null;
+    }
+
+    /**
+     * 10/10/2026 (Antony): "si el cliente copropietario llegara a tener un
+     * préstamo por sí solo". La persona relacionada pasa a TITULAR en el acto:
+     * recibe el siguiente expediente del correlativo de clientes, deja de ser
+     * relacionada (en el listado sale como un cliente más, con sus propios
+     * datos) y conserva sus vínculos de copropietaria. Lo llama Credits\Create
+     * al registrar su primer crédito; el alta normal de cliente ya hacía lo
+     * mismo con el documento repetido. Devuelve el expediente asignado.
+     */
+    public function promoverATitular(): ?string
+    {
+        if (! $this->es_relacionado) {
+            return null;
+        }
+
+        return DB::transaction(function () {
+            $correl = (int) (DB::table('correlativos')->where('tipo', 'Cliente')->lockForUpdate()->value('correl') ?? 0);
+            $expediente = filled($this->expediente) ? (string) $this->expediente : (string) ($correl + 1);
+            $usuario = auth()->user();
+
+            $this->sinAuditoriaAutomatica(fn () => $this->update([
+                'es_relacionado' => false,
+                'expediente' => $expediente,
+                'fecha_registro' => $this->fecha_registro ?? now()->toDateString(),
+                'usuario' => $this->usuario ?? ($usuario->username ?? $usuario->name ?? null),
+                'asesor_id' => $this->asesor_id ?? $usuario?->id,
+            ]));
+            if ((int) $expediente > $correl) {
+                DB::table('correlativos')->updateOrInsert(['tipo' => 'Cliente'], ['correl' => (int) $expediente, 'updated_at' => now()]);
+            }
+            Audit::log("Pasó a titular con el expediente {$expediente} (era persona relacionada) al registrar su primer crédito", $this, ['expediente' => $expediente]);
+
+            return $expediente;
+        });
     }
 
     public function vehiculosCompartidos(): BelongsToMany
