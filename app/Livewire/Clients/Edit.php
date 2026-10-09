@@ -4,14 +4,13 @@ namespace App\Livewire\Clients;
 
 use App\Models\Client;
 use App\Models\Credit;
-use App\Models\DocumentoCliente;
 use App\Models\User;
 use App\Support\Audit;
 use App\Support\Auditoria\ConCapturaDeAuditoria;
 use App\Support\ConReglasDeEliminacion;
 use App\Support\Documentos\Nacionalidades;
 use App\Support\Ubigeo;
-use Illuminate\Support\Collection;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -335,41 +334,126 @@ class Edit extends Component
         $this->redirectRoute('clients.index');
     }
 
-    /**
-     * 10/10 (Antony): resumen de la ficha a la vista en cualquier pestaña:
-     * vehículos (con sus copropietarios), contratos emitidos y la lista de
-     * copropietarios con los vehículos a los que pertenecen. Si la persona es
-     * a su vez copropietaria de otros, también se indica.
-     *
-     * @return array{vehiculos: Collection, contratos: int, contratosAnulados: int, ultimoContrato: ?DocumentoCliente, copropietarios: Collection, copropiedades: Collection}
-     */
-    public function resumen(): array
-    {
-        $vehiculos = $this->client->vehiculos()->with('copropietarios')->orderBy('placa')->get();
+    // ── Copropietarios (10/10, Antony): acordeón en la pestaña Datos con un formulario
+    //    para editar SOLO los datos que piden los documentos (contrato / anexos). ──
 
-        $copropietarios = collect();
-        foreach ($vehiculos as $v) {
-            foreach ($v->copropietarios as $p) {
-                $fila = $copropietarios->get($p->id, ['persona' => $p, 'placas' => []]);
-                $fila['placas'][] = $v->placa;
-                $copropietarios->put($p->id, $fila);
+    /** Copropietario con el formulario abierto (null = ninguno). */
+    public ?int $coproAbierto = null;
+
+    /** @var array<string, mixed> */
+    public array $coproForm = [];
+
+    public const COPRO_CAMPOS = [
+        'tipo_documento', 'documento', 'nombre', 'apellido_pat', 'apellido_mat', 'sexo', 'nacionalidad',
+        'ocupacion', 'estado_civil', 'direccion', 'distrito', 'provincia', 'departamento', 'email', 'celular1',
+    ];
+
+    /** Abre (o cierra, si ya estaba abierto) el formulario de ese copropietario con sus datos. */
+    public function abrirCopro(int $id): void
+    {
+        if ($this->coproAbierto === $id) {
+            $this->cancelarCopro();
+
+            return;
+        }
+        $persona = $this->copropietario($id);
+        if (! $persona) {
+            return;
+        }
+        $this->coproForm = collect(self::COPRO_CAMPOS)->mapWithKeys(fn ($c) => [$c => (string) ($persona->{$c} ?? '')])->all();
+        $this->coproForm['nacionalidad'] = Nacionalidades::normalizar($this->coproForm['nacionalidad'] ?: 'PERUANO');
+        // Fichas migradas traen otra caja ("Lima", "Transportista"): se ajustan a las claves de los selects.
+        $this->coproForm['provincia'] = mb_strtoupper($this->coproForm['provincia']);
+        $this->coproForm['ocupacion'] = mb_strtolower($this->coproForm['ocupacion']);
+        $this->coproForm['estado_civil'] = mb_strtolower($this->coproForm['estado_civil']);
+        foreach (['provincia' => Create::PROVINCIAS, 'ocupacion' => Create::OCUPACIONES, 'estado_civil' => Create::ESTADOS_CIVILES] as $campo => $opciones) {
+            if (! array_key_exists($this->coproForm[$campo], $opciones)) {
+                $this->coproForm[$campo] = array_key_first($opciones);
             }
         }
+        $this->coproAbierto = $id;
+        $this->resetErrorBag();
+    }
 
-        $contratos = DocumentoCliente::where('client_id', $this->clientId)->where('tipo', 'contrato');
+    public function cancelarCopro(): void
+    {
+        $this->coproAbierto = null;
+        $this->coproForm = [];
+        $this->resetErrorBag();
+    }
 
-        return [
-            'vehiculos' => $vehiculos,
-            'contratos' => (clone $contratos)->where('estado', '!=', 'anulado')->count(),
-            'contratosAnulados' => (clone $contratos)->where('estado', 'anulado')->count(),
-            'ultimoContrato' => (clone $contratos)->where('estado', '!=', 'anulado')->with('credit')->orderByDesc('id')->first(),
-            'copropietarios' => $copropietarios->values(),
-            'copropiedades' => $this->client->vehiculosCompartidos()->exists() ? $this->client->copropiedades() : collect(),
-        ];
+    public function guardarCopro(): void
+    {
+        if (! $this->puedeGuardar) {
+            $this->dispatch('errorAlert', ['message' => 'No tienes permiso para guardar.']);
+
+            return;
+        }
+        $persona = $this->coproAbierto ? $this->copropietario($this->coproAbierto) : null;
+        if (! $persona) {
+            $this->cancelarCopro();
+
+            return;
+        }
+        // Identidad: la edita quien tiene el permiso, o cualquiera si es persona relacionada
+        // (alta rápida); si es un cliente titular, se respeta lo que tiene en su ficha.
+        $identidad = $this->puedeEditarIdentidad || $persona->es_relacionado;
+        if (! $identidad) {
+            foreach (['tipo_documento', 'documento', 'nombre', 'apellido_pat', 'apellido_mat', 'sexo', 'nacionalidad'] as $c) {
+                $this->coproForm[$c] = (string) ($persona->{$c} ?? '');
+            }
+        }
+        $this->coproForm['documento'] = trim((string) ($this->coproForm['documento'] ?? ''));
+        $this->coproForm['nacionalidad'] = Nacionalidades::normalizar((string) ($this->coproForm['nacionalidad'] ?? ''));
+
+        $this->validate([
+            'coproForm.tipo_documento' => 'required|in:DNI,CE,RUC',
+            'coproForm.documento' => ['required', 'string', 'min:8', 'max:12', Rule::unique('clients', 'documento')->ignore($persona->id)],
+            'coproForm.nombre' => 'required|string|max:200',
+            'coproForm.apellido_pat' => 'required|string|max:100',
+            'coproForm.apellido_mat' => 'nullable|string|max:100',
+            'coproForm.sexo' => 'required|in:M,F',
+            'coproForm.nacionalidad' => 'required|in:'.implode(',', Nacionalidades::OPCIONES),
+            'coproForm.ocupacion' => 'required|in:'.implode(',', array_keys(Create::OCUPACIONES)),
+            'coproForm.estado_civil' => 'required|in:'.implode(',', array_keys(Create::ESTADOS_CIVILES)),
+            'coproForm.direccion' => 'required|string|max:255',
+            'coproForm.distrito' => 'required|string|max:100',
+            'coproForm.provincia' => 'required|in:'.implode(',', array_keys(Create::PROVINCIAS)),
+            'coproForm.departamento' => 'nullable|string|max:100',
+            'coproForm.email' => 'required|email|max:150',
+            'coproForm.celular1' => 'required|string|max:20',
+        ], [], [
+            'coproForm.documento' => 'documento', 'coproForm.nombre' => 'nombres', 'coproForm.apellido_pat' => 'apellido paterno',
+            'coproForm.email' => 'correo', 'coproForm.celular1' => 'celular', 'coproForm.direccion' => 'dirección',
+            'coproForm.distrito' => 'distrito', 'coproForm.provincia' => 'provincia',
+        ]);
+
+        $datos = $this->coproForm;
+        $datos['apellido_mat'] = $datos['apellido_mat'] ?: null;
+        $datos['distrito'] = mb_strtoupper(trim($datos['distrito']));
+        $datos['departamento'] = mb_strtoupper(trim($datos['departamento'] ?: 'LIMA'));
+        $datos['email'] = trim($datos['email']);
+        $datos['celular1'] = trim($datos['celular1']);
+
+        $persona->sinAuditoriaAutomatica(fn () => $persona->update($datos));
+        Audit::log("Editó los datos de {$persona->fresh()->fullName()} (copropietario) desde la ficha del cliente #{$this->clientId}", $persona, ['cambios' => $datos]);
+
+        $this->cancelarCopro();
+        $this->dispatch('successAlert', ['message' => 'Datos del copropietario guardados.']);
+    }
+
+    private function copropietario(int $id): ?Client
+    {
+        return $this->client->vehiculos()->with('copropietarios')->get()
+            ->flatMap(fn ($v) => $v->copropietarios)
+            ->firstWhere('id', $id);
     }
 
     public function render()
     {
-        return view('livewire.clients.edit', ['resumen' => $this->resumen()]);
+        return view('livewire.clients.edit', [
+            'copropietarios' => $this->client->copropietariosConPlacas(),
+            'copropiedades' => $this->client->vehiculosCompartidos()->exists() ? $this->client->copropiedades() : collect(),
+        ]);
     }
 }

@@ -19,16 +19,6 @@
     <div class="card shadow-sm">
         <div class="card-body">
 
-            {{-- 10/10 (Antony): resumen de la ficha en una sola línea discreta bajo las pestañas
-                 ("tiene que combinar más"): vehículos con sus placas, contratos y copropietarios.
-                 Los conteos van también como globitos en las pestañas. --}}
-            @php
-                $ultimo = $resumen['ultimoContrato'];
-                $nVeh = $resumen['vehiculos']->count();
-                $nCopro = $resumen['copropietarios']->count();
-                $conteos = ['vehiculos' => $nVeh, 'documentos' => $resumen['contratos']];
-            @endphp
-
             {{-- ════════ Pestañas (compactas: píldoras pequeñas) ════════ --}}
             @php
                 $tabs = [
@@ -55,64 +45,10 @@
                     <button type="button"
                             class="btn btn-sm py-1 px-2 {{ $tab === $clave ? 'btn-dark' : 'btn-link text-muted text-decoration-none' }}"
                             wire:click="$set('tab', '{{ $clave }}')">
-                        <i class="ti {{ $icono }} f-s-14"></i> {{ $titulo }}@if(!empty($conteos[$clave])) <span class="badge rounded-pill {{ $tab === $clave ? 'bg-light text-dark' : 'bg-secondary' }}">{{ $conteos[$clave] }}</span>@endif
+                        <i class="ti {{ $icono }} f-s-14"></i> {{ $titulo }}
                     </button>
                 @endforeach
             </div>
-            <div class="resumen-cliente resumen-linea mt-2 mb-2">
-                <span class="resumen-seg">
-                    <a href="#" class="resumen-titulo" wire:click.prevent="$set('tab', 'vehiculos')"><i class="ti ti-car"></i> <b>{{ $nVeh }}</b> vehículo{{ $nVeh === 1 ? '' : 's' }}</a>
-                    @if($nVeh === 0)
-                        <span class="text-muted">ninguno</span>
-                    @else
-                        @foreach($resumen['vehiculos'] as $v)
-                            <span class="resumen-chip">{{ $v->placa }}@if($v->marca) <em>{{ $v->marca }}</em>@endif</span>
-                        @endforeach
-                    @endif
-                </span>
-                <span class="resumen-sep"></span>
-                <span class="resumen-seg">
-                    <a href="#" class="resumen-titulo" wire:click.prevent="$set('tab', 'documentos')"><i class="ti ti-file-text"></i> <b>{{ $resumen['contratos'] }}</b> contrato{{ $resumen['contratos'] === 1 ? '' : 's' }}</a>
-                    @if($resumen['contratosAnulados'])
-                        <span class="resumen-chip resumen-chip-rojo">{{ $resumen['contratosAnulados'] }} anulado{{ $resumen['contratosAnulados'] === 1 ? '' : 's' }}</span>
-                    @endif
-                    @if($ultimo)
-                        <span>último v{{ $ultimo->version }} · {{ $ultimo->created_at?->format('d/m/Y') }}@if($ultimo->credit_id) · crédito #{{ $ultimo->credit_id }}@endif</span>
-                    @elseif($resumen['contratos'] === 0)
-                        <span class="text-muted">ninguno</span>
-                    @endif
-                </span>
-                <span class="resumen-sep"></span>
-                <span class="resumen-seg">
-                    <a href="#" class="resumen-titulo" wire:click.prevent="$set('tab', 'datos')"
-                       x-on:click="setTimeout(() => document.querySelector('.seccion-copropietarios')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 350)"><i class="ti ti-users"></i> <b>{{ $nCopro }}</b> copropietario{{ $nCopro === 1 ? '' : 's' }}</a>
-                    @if($nCopro === 0)
-                        <span class="text-muted">ninguno</span>
-                    @else
-                        @foreach($resumen['copropietarios'] as $c)
-                            <a href="{{ route('clients.edit', $c['persona']->id) }}" class="resumen-chip">{{ $c['persona']->fullName() }}</a>
-                        @endforeach
-                    @endif
-                </span>
-            </div>
-            <style>
-                /* Línea de resumen: discreta, del mismo gris que las píldoras de las pestañas. */
-                .resumen-linea { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px;
-                    font-size: 11px; color: #6c757d; background: #f8f9fa; border: 1px solid #eef0f2;
-                    border-radius: 6px; padding: 4px 10px; }
-                .resumen-seg { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
-                .resumen-titulo { color: #495057; text-decoration: none; white-space: nowrap; margin-right: 2px; }
-                .resumen-titulo:hover { color: #0d6efd; }
-                .resumen-titulo b { color: #212529; font-size: 12px; }
-                .resumen-chip { display: inline-block; font-size: 10.5px; color: #495057; background: #fff;
-                    border: 1px solid #e3e6ea; border-radius: 999px; padding: 0 6px; white-space: nowrap; text-decoration: none; }
-                a.resumen-chip:hover { border-color: #0d6efd; color: #0d6efd; }
-                .resumen-chip em { font-style: normal; color: #868e96; }
-                .resumen-chip-rojo { background: #fde8e8; border-color: #f5c2c7; color: #b02a37; font-weight: 600; }
-                .resumen-sep { width: 1px; height: 14px; background: #dee2e6; }
-                .tabs-cliente .badge { font-size: 9px; padding: 2px 5px; vertical-align: middle; }
-                @media (max-width: 575.98px) { .resumen-sep { display: none; } }
-            </style>
 
             {{-- ════════ Vehículos ════════ --}}
             @if($tab === 'vehiculos')
@@ -409,48 +345,141 @@
 
                 <hr class="my-2" style="border-color:#e8e2d5;">
 
-                {{-- ════════ Copropietarios (10/10, Antony: debajo de Dirección Principal, a lo ancho, con su dirección) ════════ --}}
+                {{-- ════════ Copropietarios (10/10, Antony): acordeón con el nombre de cada uno y, al pulsar +,
+                     el formulario para editar SOLO los datos que piden los documentos (contrato/anexos). ════════ --}}
                 <h6 class="mb-1 seccion-copropietarios" style="color:red;">Copropietarios</h6>
-                @if($resumen['copropietarios']->isEmpty())
+                @if($copropietarios->isEmpty())
                     <div class="small mb-2"><span class="text-muted">ninguno</span>
                         <a href="#" class="ms-1" wire:click.prevent="$set('tab', 'vehiculos')">agregar desde Vehículos</a>
                     </div>
                 @else
-                    <div class="table-responsive mb-2">
-                        <table class="table table-sm table-bordered align-middle mb-0 tabla-copropietarios" style="font-size:12px;">
-                            <thead class="bg-primary">
-                                <tr>
-                                    <th>Apellidos y Nombres</th>
-                                    <th class="text-center" width="110">DNI</th>
-                                    <th class="text-center" width="120">Celular</th>
-                                    <th>Dirección</th>
-                                    <th>Vehículos</th>
-                                    <th class="text-center" width="90"></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($resumen['copropietarios'] as $c)
-                                    <tr>
-                                        <td class="fw-semibold">{{ $c['persona']->fullName() }}</td>
-                                        <td class="text-center">{{ $c['persona']->documento }}</td>
-                                        <td class="text-center">{{ $c['persona']->celular1 ?: '—' }}</td>
-                                        <td>{{ trim($c['persona']->direccion.($c['persona']->distrito ? ', '.$c['persona']->distrito : '')) ?: '—' }}</td>
-                                        <td>{{ implode(', ', $c['placas']) }}</td>
-                                        <td class="text-center">
-                                            <a href="{{ route('clients.edit', $c['persona']->id) }}" class="btn btn-xs btn-primary" style="padding: 2px 8px; font-size: 10px;">
-                                                <i class="ti ti-user"></i> Ficha
-                                            </a>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+                    {{-- Enter dentro del acordeón no debe enviar el formulario del titular --}}
+                    <div class="acordeon-copro mb-2" x-on:keydown.enter.prevent>
+                        @foreach($copropietarios as $c)
+                            @php $p = $c['persona']; $abierto = $coproAbierto === $p->id; @endphp
+                            <div class="border rounded mb-1" wire:key="copro-{{ $p->id }}">
+                                <div class="d-flex align-items-center gap-2 px-2 py-1 copro-cabecera" style="background:#f8f9fa; cursor:pointer;"
+                                     wire:click="abrirCopro({{ $p->id }})">
+                                    <button type="button" class="btn btn-xs {{ $abierto ? 'btn-dark' : 'btn-outline-dark' }}" style="padding: 0 6px; font-size: 11px; line-height: 18px;"
+                                            title="{{ $abierto ? 'Cerrar' : 'Editar datos para los documentos' }}">
+                                        <i class="ti {{ $abierto ? 'ti-minus' : 'ti-plus' }}"></i>
+                                    </button>
+                                    <b class="small">{{ $p->fullName() }}</b>
+                                    <span class="small text-muted">{{ $p->tipo_documento }} {{ $p->documento }} · {{ count($c['placas']) === 1 ? 'vehículo' : 'vehículos' }} {{ implode(', ', $c['placas']) }}</span>
+                                    <a href="{{ route('clients.edit', $p->id) }}" class="ms-auto small" wire:click.stop title="Ficha completa">ficha</a>
+                                </div>
+                                @if($abierto)
+                                    @php $identidad = $puedeEditarIdentidad || $p->es_relacionado; @endphp
+                                    <div class="p-2 border-top" style="background:#fcfcfa;">
+                                        @unless($identidad)
+                                            <div class="small text-muted mb-1"><i class="ti ti-lock"></i> Es cliente titular: su documento, nombres, sexo y nacionalidad se editan desde su ficha (identidad).</div>
+                                        @endunless
+                                        <div class="row g-2">
+                                            <div class="col-6 col-md-3">
+                                                <label class="form-label mb-0 small fw-semibold">Documento *</label>
+                                                <div class="input-group input-group-sm">
+                                                    <select class="form-select form-select-sm" style="max-width:4.8rem;" wire:model="coproForm.tipo_documento" @disabled(! $identidad)>
+                                                        <option value="DNI">DNI</option>
+                                                        <option value="CE">CE</option>
+                                                        <option value="RUC">RUC</option>
+                                                    </select>
+                                                    <input type="text" class="form-control form-control-sm @error('coproForm.documento') is-invalid @enderror" wire:model="coproForm.documento" @disabled(! $identidad)>
+                                                </div>
+                                                @error('coproForm.documento') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                                            </div>
+                                            <div class="col-6 col-md-3">
+                                                <label class="form-label mb-0 small fw-semibold">Ap. paterno *</label>
+                                                <input type="text" class="form-control form-control-sm @error('coproForm.apellido_pat') is-invalid @enderror" wire:model="coproForm.apellido_pat" @disabled(! $identidad)>
+                                                @error('coproForm.apellido_pat') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                            </div>
+                                            <div class="col-6 col-md-3">
+                                                <label class="form-label mb-0 small fw-semibold">Ap. materno</label>
+                                                <input type="text" class="form-control form-control-sm" wire:model="coproForm.apellido_mat" @disabled(! $identidad)>
+                                            </div>
+                                            <div class="col-6 col-md-3">
+                                                <label class="form-label mb-0 small fw-semibold">Nombres *</label>
+                                                <input type="text" class="form-control form-control-sm @error('coproForm.nombre') is-invalid @enderror" wire:model="coproForm.nombre" @disabled(! $identidad)>
+                                                @error('coproForm.nombre') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                            </div>
+                                            <div class="col-6 col-md-2">
+                                                <label class="form-label mb-0 small fw-semibold">Sexo *</label>
+                                                <select class="form-select form-select-sm" wire:model="coproForm.sexo" @disabled(! $identidad)>
+                                                    <option value="M">Masculino</option>
+                                                    <option value="F">Femenino</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-6 col-md-2">
+                                                <label class="form-label mb-0 small fw-semibold">Nacionalidad *</label>
+                                                <select class="form-select form-select-sm" wire:model="coproForm.nacionalidad" @disabled(! $identidad)>
+                                                    @foreach(\App\Support\Documentos\Nacionalidades::OPCIONES as $op)
+                                                        <option value="{{ $op }}">{{ $op }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div class="col-6 col-md-2">
+                                                <label class="form-label mb-0 small fw-semibold">Ocupación *</label>
+                                                <select class="form-select form-select-sm @error('coproForm.ocupacion') is-invalid @enderror" wire:model="coproForm.ocupacion">
+                                                    @foreach(\App\Livewire\Clients\Create::OCUPACIONES as $v => $et)
+                                                        <option value="{{ $v }}">{{ $et }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div class="col-6 col-md-2">
+                                                <label class="form-label mb-0 small fw-semibold">Estado civil *</label>
+                                                <select class="form-select form-select-sm @error('coproForm.estado_civil') is-invalid @enderror" wire:model="coproForm.estado_civil">
+                                                    @foreach(\App\Livewire\Clients\Create::ESTADOS_CIVILES as $v => $et)
+                                                        <option value="{{ $v }}">{{ $et }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div class="col-6 col-md-2">
+                                                <label class="form-label mb-0 small fw-semibold">Celular / WhatsApp *</label>
+                                                <input type="text" inputmode="tel" maxlength="20" class="form-control form-control-sm @error('coproForm.celular1') is-invalid @enderror" wire:model="coproForm.celular1" placeholder="987654321">
+                                                @error('coproForm.celular1') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                            </div>
+                                            <div class="col-12 col-md-4">
+                                                <label class="form-label mb-0 small fw-semibold">Correo *</label>
+                                                <input type="email" class="form-control form-control-sm @error('coproForm.email') is-invalid @enderror" wire:model="coproForm.email" placeholder="persona@correo.com">
+                                                @error('coproForm.email') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                            </div>
+                                            <div class="col-12 col-md-4">
+                                                <label class="form-label mb-0 small fw-semibold">Dirección *</label>
+                                                <input type="text" class="form-control form-control-sm @error('coproForm.direccion') is-invalid @enderror" wire:model="coproForm.direccion">
+                                                @error('coproForm.direccion') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                            </div>
+                                            <div class="col-6 col-md-2">
+                                                <label class="form-label mb-0 small fw-semibold">Distrito *</label>
+                                                <input type="text" class="form-control form-control-sm text-uppercase @error('coproForm.distrito') is-invalid @enderror" wire:model="coproForm.distrito">
+                                                @error('coproForm.distrito') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                            </div>
+                                            <div class="col-6 col-md-2">
+                                                <label class="form-label mb-0 small fw-semibold">Provincia *</label>
+                                                <select class="form-select form-select-sm @error('coproForm.provincia') is-invalid @enderror" wire:model="coproForm.provincia">
+                                                    @foreach(\App\Livewire\Clients\Create::PROVINCIAS as $v => $et)
+                                                        <option value="{{ $v }}">{{ $et }}</option>
+                                                    @endforeach
+                                                </select>
+                                                @error('coproForm.provincia') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                            </div>
+                                        </div>
+                                        <div class="d-flex gap-2 mt-2">
+                                            <button type="button" class="btn btn-sm btn-dark" wire:click="guardarCopro" wire:loading.attr="disabled" wire:target="guardarCopro">
+                                                <i class="ti ti-device-floppy"></i>
+                                                <span wire:loading.remove wire:target="guardarCopro">Guardar copropietario</span>
+                                                <span wire:loading wire:target="guardarCopro">Guardando…</span>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" wire:click="cancelarCopro">Cancelar</button>
+                                        </div>
+                                    </div>
+                                @endif
+                            </div>
+                        @endforeach
                     </div>
                 @endif
-                @if($resumen['copropiedades']->isNotEmpty())
+                @if($copropiedades->isNotEmpty())
                     <div class="small mb-2">
                         <i class="ti ti-user-check"></i> <b>Es copropietario en:</b>
-                        {{ $resumen['copropiedades']->map(fn ($c) => ($c['placas'] ? implode(', ', $c['placas']).' de ' : 'contrato de ').$c['titular']->fullName())->implode(' · ') }}
+                        {{ $copropiedades->map(fn ($c) => ($c['placas'] ? implode(', ', $c['placas']).' de ' : 'contrato de ').$c['titular']->fullName())->implode(' · ') }}
                     </div>
                 @endif
 
