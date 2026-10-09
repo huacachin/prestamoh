@@ -258,7 +258,7 @@ class EliminarFueraDeHorarioTest extends TestCase
         $vehiculo = Vehiculo::create(['client_id' => $cliente->id, 'placa' => 'ALP-837', 'marca' => 'TOYOTA', 'modelo' => 'HIACE', 'valor' => 20000]);
         $reporte = VehiculoGpsReporte::create([
             'client_id' => $cliente->id, 'vehiculo_id' => $vehiculo->id, 'placa' => 'ALP-837', 'fecha' => '2026-10-08 10:30',
-            'puntos' => [['direccion' => 'Las Lúcumas', 'link' => '']], 'registrado_por' => $this->user->id,
+            'latitud' => -12.014431, 'longitud' => -76.824936, 'descripcion' => 'Las Lúcumas', 'registrado_por' => $this->user->id,
         ]);
         VehiculoGpsReporte::whereKey($reporte->id)->update(['created_at' => $ayer]);
         Livewire::test(GpsVehiculos::class, ['id' => $cliente->id])

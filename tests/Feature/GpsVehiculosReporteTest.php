@@ -9,19 +9,19 @@ use App\Models\Headquarter;
 use App\Models\User;
 use App\Models\Vehiculo;
 use App\Models\VehiculoGpsReporte;
-use App\Models\VehiculoGpsReporteFoto;
+use Carbon\Carbon;
 use Database\Seeders\PermissionCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * 26/09/2026: reportes de GPS de los vehículos en garantía, en la pestaña GPS
- * del cliente debajo de Casa. Un solo formulario: uno o varios puntos con
- * etiqueta y horario de estadía, más fotos. El texto sale con el formato
- * exacto que manda el área (corto si el punto no lleva etiqueta ni horario).
+ * 09/10/2026 (Antony, ficha 1469): el reporte de GPS de vehículos, en la
+ * pestaña GPS del cliente, se simplifica a placa, coordenadas, fecha de
+ * registro y una descripción. Fuera los puntos del recorrido, horarios,
+ * domicilio, fotos y el texto para WhatsApp.
  */
 class GpsVehiculosReporteTest extends TestCase
 {
@@ -42,297 +42,139 @@ class GpsVehiculosReporteTest extends TestCase
         $this->user->givePermissionTo('clientes');
 
         $this->client = Client::create([
-            'expediente' => '1299', 'nombre' => 'WILDER BENIGNO', 'apellido_pat' => 'ROQUE', 'apellido_mat' => 'JANCACHAGUA',
-            'tipo_documento' => 'DNI', 'documento' => '41234567', 'sexo' => 'M',
-            'direccion' => 'Mz. G Lt. 5 Proviv. El Paraiso', 'distrito' => 'Carabayllo',
-            'latitud' => '-11.860000', 'longitud' => '-77.030000',
+            'expediente' => '1469', 'nombre' => 'WILDER BENIGNO', 'apellido_pat' => 'ROQUE', 'apellido_mat' => 'JANCACHAGUA',
+            'tipo_documento' => 'DNI', 'documento' => '41234567', 'sexo' => 'M', 'direccion' => 'Mz. G Lt. 5', 'distrito' => 'Carabayllo',
             'headquarter_id' => $sede->id, 'asesor_id' => $this->user->id, 'status' => 'active',
         ]);
         $this->vehiculo = Vehiculo::create(['client_id' => $this->client->id, 'placa' => 'ALP837', 'marca' => 'TOYOTA', 'modelo' => 'HIACE', 'valor' => 20000]);
-        Storage::fake('public');
     }
 
     private function reporte(array $extra = []): VehiculoGpsReporte
     {
         return VehiculoGpsReporte::create($extra + [
             'client_id' => $this->client->id, 'vehiculo_id' => $this->vehiculo->id, 'placa' => 'ALP837',
-            'fecha' => now()->format('Y-m-d H:i'), 'puntos' => [['direccion' => 'Punto X', 'link' => '']], 'registrado_por' => $this->user->id,
+            'fecha' => now()->format('Y-m-d H:i'), 'latitud' => -12.014431, 'longitud' => -76.824936,
+            'descripcion' => 'Frente al mercado', 'registrado_por' => $this->user->id,
         ]);
     }
 
-    public function test_un_solo_punto_sin_etiqueta_sale_en_el_formato_corto_con_lo_prellenado(): void
+    public function test_el_formulario_solo_pide_placa_fecha_coordenadas_y_descripcion_y_guarda(): void
     {
         $this->mundo();
-
         $comp = Livewire::test(GpsVehiculos::class, ['id' => $this->client->id])
             ->call('nuevo')
-            ->assertSet('form.vehiculo_id', (string) $this->vehiculo->id) // única placa: ya elegida
-            ->assertSet('form.puntos.0.etiqueta', '')
-            ->assertSet('form.domicilio_direccion', 'Mz. G Lt. 5 Proviv. El Paraiso, Carabayllo')
-            ->assertSet('form.domicilio_link', 'https://maps.google.com/?q=-11.8600000,-77.0300000') // la BD guarda 7 decimales
-            ->set('form.inicio_desde', '06:30')->set('form.inicio_hasta', '07:40')
-            ->set('form.fin_desde', '23:00')->set('form.fin_hasta', '01:30')
-            ->set('form.puntos.0.direccion', 'Las Lúcumas, Carabayllo 15319')
-            ->set('form.puntos.0.link', 'https://maps.app.goo.gl/cmxi6j2wpeJEvNWe7')
-            ->set('form.domicilio_personalizado', true)
-            ->set('form.domicilio_direccion', 'Mz. G Lt. 5 Proviv. El Paraiso de Carabayllo')
-            ->set('form.domicilio_link', 'https://maps.app.goo.gl/FqEVUPpdh4sr56ub7')
-            ->call('guardar')
-            ->assertHasNoErrors();
+            ->assertSet('mostrarForm', true)
+            ->assertSet('form.vehiculo_id', (string) $this->vehiculo->id); // único vehículo: elegido solo
+        $this->assertSame(['vehiculo_id', 'fecha', 'coordenadas', 'descripcion'], array_keys($comp->get('form')));
 
-        $r = VehiculoGpsReporte::where('client_id', $this->client->id)->firstOrFail();
-        // Negritas con asteriscos, como WhatsApp (02/10, captura del área): título,
-        // nombre, placa y rótulos; expediente, horas, direcciones y enlaces en normal.
-        $esperado = implode("\n", [
-            '📍 *REPORTE DE GPS – VEHÍCULO EN GARANTÍA*',
-            '👤 Cliente: *'.$this->client->fullName().'*',
-            '🚗 Placa: *ALP837*',
-            '📄 Expediente: 1299',
-            '',
-            '⏰ *Inicio de ruta:* 6:30 a.m. – 7:40 a.m.',
-            '⏰ *Fin de ruta:* 11:00 p.m. – 1:30 a.m.',
-            '',
-            '📍 *Ubicación de vehículo:*',
-            'Las Lúcumas, Carabayllo 15319',
-            '🔗 *Link de ubicación de vehículo en Google Maps:*',
-            'https://maps.app.goo.gl/cmxi6j2wpeJEvNWe7',
-            '',
-            '📍 *Ubicación de domicilio:*',
-            'Mz. G Lt. 5 Proviv. El Paraiso de Carabayllo',
-            '🔗 *Link de ubicación de domicilio en Google Maps:*',
-            'https://maps.app.goo.gl/FqEVUPpdh4sr56ub7',
-        ]);
-        $this->assertSame($esperado, $r->texto());
-        // En pantalla se ve en negrita, y lo que se copia conserva los asteriscos.
-        $this->assertStringContainsString('<b>REPORTE DE GPS – VEHÍCULO EN GARANTÍA</b>', $r->textoHtml());
-        $this->assertStringContainsString('🚗 Placa: <b>ALP837</b>', $r->textoHtml());
-        $this->assertStringNotContainsString('*', $r->textoHtml());
-        $this->assertSame('Ubicación de vehículo', $r->puntos[0]['titulo']);
-        $comp->assertSee('Copiar texto')->assertSee('ALP837')->assertSee('Las Lúcumas, Carabayllo 15319');
-    }
-
-    public function test_varios_puntos_llevan_etiqueta_y_horario_de_estadia_en_el_formato_largo(): void
-    {
-        $this->mundo();
-
-        Livewire::test(GpsVehiculos::class, ['id' => $this->client->id])
-            ->call('nuevo')
-            ->call('agregarPunto') // al agregar, el primero pasa a "Donde se queda"
-            ->call('agregarPunto')
-            ->assertSet('form.puntos.0.etiqueta', 'Donde se queda')
-            ->assertSet('form.puntos.1.etiqueta', 'Intermedio')
-            ->assertSet('form.puntos.2.etiqueta', 'Punto de llegada')
-            ->set('form.inicio_desde', '02:30')->set('form.inicio_hasta', '15:50')
-            ->set('form.puntos.0.estadia_desde', '02:30')->set('form.puntos.0.estadia_hasta', '07:00')
-            ->set('form.puntos.0.direccion', 'Carretera Federico Basadre, Huipoca (Aguaytia)')
-            ->set('form.puntos.0.link', 'https://www.google.com/maps?q=-9.052531,-75.52533')
-            ->set('form.puntos.1.direccion', 'Carretera Federico Basadre, Huipoca (Huipoca)')
-            ->set('form.puntos.2.direccion', 'Pe-5Na, Codo Del Pozuzo')
-            ->call('guardar')
-            ->assertHasNoErrors();
-
-        $r = VehiculoGpsReporte::where('client_id', $this->client->id)->firstOrFail();
-        $this->assertCount(3, $r->puntos);
-        $texto = $r->texto();
-        $this->assertStringContainsString("📍 *Ubicación de vehículo (Donde se queda):*\n⏱️ *Horario aproximado de estadía:* 2:30 a.m. – 7:00 a.m.\n→ Carretera Federico Basadre, Huipoca (Aguaytia)\n🔗 *Link de ubicación de vehículo en Google Maps:*\nhttps://www.google.com/maps?q=-9.052531,-75.52533", $texto);
-        $this->assertStringContainsString('📍 *Ubicación de vehículo (Punto de llegada):*', $texto);
-        $this->assertStringContainsString('⏰ *Inicio de ruta:* 2:30 a.m. – 3:50 p.m.', $texto);
-    }
-
-    public function test_la_vista_previa_se_arma_mientras_se_escribe_y_el_domicilio_sale_de_la_ficha(): void
-    {
-        $this->mundo();
-
-        $comp = Livewire::test(GpsVehiculos::class, ['id' => $this->client->id])
-            ->call('nuevo')
-            ->set('form.puntos.0.etiqueta', 'Otra')
-            ->set('form.puntos.0.etiqueta_otra', 'Taller')
-            ->set('form.puntos.0.direccion', 'Av. Los Talleres 100');
-
-        $previa = $comp->instance()->vistaPrevia();
-        $this->assertStringContainsString('📍 *Ubicación de vehículo (Taller):*', $previa);
-        $this->assertStringContainsString("📍 *Ubicación de domicilio:*\nMz. G Lt. 5 Proviv. El Paraiso, Carabayllo", $previa, 'sin personalizar, el domicilio sale de la ficha');
-
-        // Título del punto editable (02/10): cambia el rótulo y el del enlace.
-        $comp->set('form.puntos.0.titulo', 'Ubicación de la moto')
-            ->set('form.puntos.0.link', 'https://maps.app.goo.gl/moto1');
-        $previa = $comp->instance()->vistaPrevia();
-        $this->assertStringContainsString('📍 *Ubicación de la moto (Taller):*', $previa);
-        $this->assertStringContainsString('🔗 *Link de ubicación de la moto en Google Maps:*', $previa);
-        $comp->assertSee('Título del punto');
-        $this->assertStringContainsString('https://maps.google.com/?q=-11.8600000,-77.0300000', $previa, 'y el enlace, de la ubicación de Casa');
-        $comp->assertSee('Así saldrá el mensaje')->assertSee('Enlace de Casa registrado');
-
-        $comp->call('guardar')->assertHasNoErrors();
-        $r = VehiculoGpsReporte::firstOrFail();
-        $this->assertSame('Taller', $r->puntos[0]['etiqueta']);
-        $this->assertSame('Ubicación de la moto', $r->puntos[0]['titulo']);
-        // Un reporte guardado antes del título (sin la clave) sale con el de siempre.
-        $r->puntos = [['etiqueta' => '', 'direccion' => 'Av. Vieja 1', 'link' => '']];
-        $this->assertStringContainsString("📍 *Ubicación de vehículo:*\nAv. Vieja 1", $r->texto());
-        $this->assertSame('Mz. G Lt. 5 Proviv. El Paraiso, Carabayllo', $r->domicilio_direccion);
-    }
-
-    public function test_las_fotos_se_suben_al_guardar_y_se_pueden_arrastrar_despues_sobre_el_reporte(): void
-    {
-        $this->mundo();
-
-        // Al guardar: dos fotos con el reporte.
-        $comp = Livewire::test(GpsVehiculos::class, ['id' => $this->client->id])
-            ->call('nuevo')
-            ->set('form.puntos.0.direccion', 'Cochera Los Cedros')
-            ->set('files', [UploadedFile::fake()->image('cochera.jpg', 800, 600), UploadedFile::fake()->image('placa.png', 400, 300)])
-            ->call('guardar')
-            ->assertHasNoErrors();
-
-        $r = VehiculoGpsReporte::firstOrFail();
-        $this->assertCount(2, $r->fotos);
-        foreach ($r->fotos as $f) {
-            Storage::disk('public')->assertExists($f->path);
-            $this->assertNotNull($f->thumb_path, 'cada foto lleva miniatura');
-            Storage::disk('public')->assertExists($f->thumb_path);
+        $html = $comp->html();
+        $this->assertStringContainsString('Fecha de registro *', $html);
+        $this->assertStringContainsString('wire:model="form.coordenadas"', $html);
+        $this->assertStringContainsString('wire:model="form.descripcion"', $html);
+        foreach (['Horario', 'Punto 1', 'Domicilio', 'Fotos', 'Adjuntos', 'zona-imagenes', 'WhatsApp', 'Así saldrá el mensaje', 'form.puntos', 'filtroPlaca', '_lightbox'] as $viejo) {
+            $this->assertStringNotContainsString($viejo, $html, "ya no va: {$viejo}");
         }
-        $this->assertStringStartsWith("gps/reportes/{$r->id}/", $r->fotos[0]->path);
-        $comp->assertSee('Fotos (2)');
 
-        // Las miniaturas abren la galería tipo lightbox (panel y tabla), no una pestaña nueva.
-        $galeria = $r->galeria();
-        $this->assertCount(2, $galeria);
-        $this->assertSame($r->fotos[0]->url(), $galeria[0]['url']);
-        $this->assertStringEndsWith(' · cochera.jpg', $galeria[0]['name']);
-        $this->assertStringStartsWith('ALP837 · ', $galeria[0]['name']);
-        $comp->assertSeeHtml('openLightbox(')
-            ->assertSeeHtml(', 1)"') // la segunda miniatura abre en la foto 1
-            ->assertSeeHtml('class="huac-lb"')
-            ->assertDontSeeHtml('target="_blank" rel="noopener" title="cochera.jpg"');
+        $comp->set('form.fecha', '2026-10-09T08:30')
+            ->set('form.coordenadas', '-12.014431, -76.824936')
+            ->set('form.descripcion', '  Parado frente al mercado de Huaycán  ')
+            ->call('guardar')
+            ->assertHasNoErrors()
+            ->assertSet('mostrarForm', false)
+            ->assertSet('msgType', 'ok')
+            ->assertSet('msg', 'Reporte de GPS del vehículo ALP837 guardado.');
 
-        // Después, arrastrada sobre el reporte abierto: se guarda al instante, sin botón.
-        $comp->set('fotosExtra', [UploadedFile::fake()->image('extra.jpg')]);
-        $this->assertCount(3, $r->fresh()->fotos);
-        $comp->assertSet('fotosExtra', [])->assertSee('Fotos (3)');
+        $r = VehiculoGpsReporte::firstOrFail();
+        $this->assertSame([$this->client->id, $this->vehiculo->id, 'ALP837', $this->user->id], [$r->client_id, $r->vehiculo_id, $r->placa, $r->registrado_por]);
+        $this->assertSame('2026-10-09 08:30', $r->fecha->format('Y-m-d H:i'));
+        $this->assertEqualsWithDelta(-12.014431, (float) $r->latitud, 0.0000001);
+        $this->assertEqualsWithDelta(-76.824936, (float) $r->longitud, 0.0000001);
+        $this->assertSame('Parado frente al mercado de Huaycán', $r->descripcion);
+        $this->assertSame('-12.014431, -76.824936', $r->coordenadas());
+        $this->assertSame('https://maps.google.com/?q=-12.014431,-76.824936', $r->enlaceMaps());
 
-        // Quitar una foto borra fila y archivos; eliminar el reporte borra todas.
-        $foto = $r->fresh()->fotos->first();
-        $comp->call('eliminarFoto', $foto->id);
-        Storage::disk('public')->assertMissing($foto->path);
-        $this->assertCount(2, $r->fresh()->fotos);
+        // La tabla: fecha, placa, coordenadas con su Maps, descripción y quién.
+        $html = $comp->html();
+        $this->assertStringContainsString('09/10/2026 <span class="text-muted">08:30</span>', $html);
+        $this->assertStringContainsString('ALP837', $html);
+        $this->assertStringContainsString('<span class="font-monospace">-12.014431, -76.824936</span>', $html);
+        $this->assertStringContainsString('href="https://maps.google.com/?q=-12.014431,-76.824936" target="_blank"', $html);
+        $this->assertStringContainsString('Parado frente al mercado de Huaycán', $html);
+        $this->assertStringContainsString('gps-veh-tester', $html);
 
-        $rutas = $r->fresh()->fotos->pluck('path')->all();
-        $comp->call('eliminar', $r->id);
-        $this->assertSame(0, VehiculoGpsReporteFoto::count());
-        foreach ($rutas as $ruta) {
-            Storage::disk('public')->assertMissing($ruta);
+        // Lo demás se fue de verdad: ni fotos, ni puntos, ni texto para WhatsApp.
+        $this->assertFalse(Schema::hasTable('vehiculo_gps_reporte_fotos'));
+        foreach (['puntos', 'inicio_desde', 'fin_hasta', 'domicilio_direccion', 'domicilio_link'] as $columna) {
+            $this->assertFalse(Schema::hasColumn('vehiculo_gps_reportes', $columna), "columna {$columna}");
+        }
+        foreach (['texto', 'fotos', 'galeria', 'descargas', 'maps', 'hora12'] as $metodo) {
+            $this->assertFalse(method_exists(VehiculoGpsReporte::class, $metodo), "método {$metodo}");
+        }
+        foreach (['ver', 'agregarPunto', 'abrirAdjuntos', 'eliminarFoto', 'vistaPrevia', 'updatedFotosExtra'] as $metodo) {
+            $this->assertFalse(method_exists(GpsVehiculos::class, $metodo), "método {$metodo}");
         }
     }
 
-    public function test_cada_direccion_tiene_su_boton_a_google_maps_en_pestaña_nueva(): void
+    public function test_acepta_el_enlace_de_google_maps_y_rechaza_lo_que_no_son_coordenadas(): void
     {
-        $this->assertSame('https://maps.app.goo.gl/abc', VehiculoGpsReporte::maps('https://maps.app.goo.gl/abc', 'x'));
-        $this->assertSame('https://maps.app.goo.gl/abc', VehiculoGpsReporte::maps('maps.app.goo.gl/abc'));
-        $this->assertSame('https://www.google.com/maps/search/?api=1&query=Las%20L%C3%BAcumas%2C%20Carabayllo', VehiculoGpsReporte::maps('', 'Las Lúcumas, Carabayllo'));
-        $this->assertNull(VehiculoGpsReporte::maps('', ''));
-
         $this->mundo();
-        $r = $this->reporte([
-            'domicilio_direccion' => 'Mz. G Lt. 5', 'domicilio_link' => 'https://maps.app.goo.gl/dom',
-            'puntos' => [
-                ['etiqueta' => 'Donde se queda', 'direccion' => 'Huipoca', 'link' => 'https://maps.app.goo.gl/p1'],
-                ['etiqueta' => 'Punto de llegada', 'direccion' => 'Codo del Pozuzo', 'link' => ''],
-            ],
+        Http::fake([
+            'maps.app.goo.gl/*' => Http::response('', 302, ['Location' => 'https://www.google.com/maps/place/x/@-12.0631,-77.0527,17z/data=!3m1!4b1!4m6!3m5!8m2!3d-12.0631527!4d-77.0501364']),
         ]);
+        $comp = Livewire::test(GpsVehiculos::class, ['id' => $this->client->id])->call('nuevo');
 
-        $comp = Livewire::test(GpsVehiculos::class, ['id' => $this->client->id]);
-        // En la fila: cada punto con su Maps y el domicilio, en pestaña nueva.
-        $comp->assertSeeHtml('href="https://maps.app.goo.gl/p1" target="_blank"')
-            ->assertSeeHtml('https://www.google.com/maps/search/?api=1&amp;query=Codo%20del%20Pozuzo')
-            ->assertSeeHtml('href="https://maps.app.goo.gl/dom" target="_blank"');
-        // En el panel: un botón por punto y el domicilio.
-        $comp->call('ver', $r->id)
-            ->assertSee('Donde se queda en Maps')
-            ->assertSee('Punto de llegada en Maps')
-            ->assertSee('Domicilio en Maps');
-        // En el formulario: el botón Maps del punto sigue al enlace escrito.
-        $comp->call('nuevo')
-            ->set('form.puntos.0.link', 'https://maps.app.goo.gl/nuevo')
-            ->assertSeeHtml('href="https://maps.app.goo.gl/nuevo" target="_blank"');
+        // Texto cualquiera: aviso de formato, como en Casa/Negocio.
+        $comp->set('form.coordenadas', 'por el mercado')->call('guardar')->assertHasErrors(['form.coordenadas']);
+        $this->assertStringContainsString('Formato inválido. Pega las coordenadas como: -12.014431, -76.824936', $comp->html());
+        $comp->set('form.coordenadas', '')->call('guardar')->assertHasErrors(['form.coordenadas' => 'required']);
+        $comp->set('form.coordenadas', '-12.1, -77.1')->set('form.fecha', '')->call('guardar')->assertHasErrors(['form.fecha' => 'required']);
+        $this->assertSame(0, VehiculoGpsReporte::count());
+
+        // Enlace corto de Maps: se resuelve una sola vez y se lee el pin.
+        $comp->set('form.fecha', '2026-10-09T09:00')->set('form.coordenadas', 'https://maps.app.goo.gl/abc')->call('guardar')->assertHasNoErrors();
+        $r = VehiculoGpsReporte::firstOrFail();
+        $this->assertEqualsWithDelta(-12.0631527, (float) $r->latitud, 0.0000001);
+        $this->assertEqualsWithDelta(-77.0501364, (float) $r->longitud, 0.0000001);
+        $this->assertNull($r->descripcion, 'la descripción es opcional');
+        Http::assertSentCount(1);
     }
 
-    public function test_la_tabla_va_del_ultimo_registrado_hacia_abajo_y_filtra_por_placa(): void
+    public function test_la_tabla_va_del_ultimo_registrado_hacia_abajo_y_el_analista_de_cartera_propia_solo_mira(): void
     {
         $this->mundo();
         $otro = Vehiculo::create(['client_id' => $this->client->id, 'placa' => 'AWI775', 'marca' => 'HYUNDAI', 'modelo' => 'H1', 'valor' => 25000]);
-        $crear = fn (Vehiculo $v, string $fecha, string $dir) => $this->reporte([
-            'vehiculo_id' => $v->id, 'placa' => $v->placa, 'fecha' => $fecha, 'puntos' => [['direccion' => $dir, 'link' => '']],
-        ]);
+        $this->reporte(['fecha' => now()->format('Y-m-d H:i'), 'descripcion' => 'Primero registrado ALP']);
+        $this->reporte(['vehiculo_id' => $otro->id, 'placa' => 'AWI775', 'fecha' => now()->subDay()->format('Y-m-d H:i'), 'descripcion' => 'Segundo registrado AWI']);
+        $this->reporte(['fecha' => now()->subDays(2)->format('Y-m-d H:i'), 'descripcion' => 'Tercero registrado ALP']);
+
         // Manda el orden de registro, no la fecha del reporte: el último registrado va arriba.
-        $crear($this->vehiculo, now()->format('Y-m-d H:i'), 'Primero registrado ALP');
-        $crear($otro, now()->subDay()->format('Y-m-d H:i'), 'Segundo registrado AWI');
-        $crear($this->vehiculo, now()->subDays(2)->format('Y-m-d H:i'), 'Tercero registrado ALP');
-
-        $comp = Livewire::test(GpsVehiculos::class, ['id' => $this->client->id]);
-        $comp->assertSeeInOrder(['Tercero registrado ALP', 'Segundo registrado AWI', 'Primero registrado ALP'])
-            ->assertSee('Todas (2)');
-
-        $comp->set('filtroPlaca', 'AWI775')
-            ->assertSee('Segundo registrado AWI')
-            ->assertDontSee('Primero registrado ALP')
-            ->assertDontSee('Tercero registrado ALP')
-            ->set('filtroPlaca', '')
-            ->assertSee('Primero registrado ALP');
-    }
-
-    public function test_sin_direccion_del_vehiculo_no_guarda(): void
-    {
-        $this->mundo();
-
         Livewire::test(GpsVehiculos::class, ['id' => $this->client->id])
-            ->call('nuevo')
-            ->call('guardar')
-            ->assertHasErrors(['form.puntos.0.direccion']);
-
-        $this->assertSame(0, VehiculoGpsReporte::count());
-    }
-
-    public function test_sin_horario_ni_enlace_el_mensaje_no_lleva_rotulos_vacios(): void
-    {
-        $this->mundo();
-        $r = $this->reporte(['domicilio_direccion' => 'Mz. G Lt. 5', 'domicilio_link' => '']);
-
-        $texto = $r->texto();
-        $this->assertStringNotContainsString('Inicio de ruta', $texto);
-        $this->assertStringNotContainsString('Fin de ruta', $texto);
-        $this->assertStringNotContainsString('Link de ubicación', $texto);
-        $this->assertStringNotContainsString('Horario aproximado', $texto);
-        $this->assertStringEndsWith("📍 *Ubicación de domicilio:*\nMz. G Lt. 5", $texto);
-        $this->assertStringContainsString("📄 Expediente: 1299\n\n📍 *Ubicación de vehículo:*\nPunto X\n\n📍 *Ubicación de domicilio:*", $texto);
-
-        // Solo el inicio: sale esa línea y no la del fin.
-        $r->update(['inicio_desde' => '06:00', 'inicio_hasta' => '07:00']);
-        $this->assertStringContainsString("\n\n⏰ *Inicio de ruta:* 6:00 a.m. – 7:00 a.m.\n\n📍 *Ubicación de vehículo:*", $r->fresh()->texto());
-        $this->assertStringNotContainsString('Fin de ruta', $r->fresh()->texto());
-    }
-
-    public function test_horas_en_formato_del_area(): void
-    {
-        $this->assertSame('6:30 a.m.', VehiculoGpsReporte::hora12('06:30'));
-        $this->assertSame('11:00 p.m.', VehiculoGpsReporte::hora12('23:00'));
-        $this->assertSame('12:15 a.m.', VehiculoGpsReporte::hora12('00:15'));
-        $this->assertSame('12:05 p.m.', VehiculoGpsReporte::hora12('12:05'));
-        $this->assertSame('', VehiculoGpsReporte::hora12(null));
-        $this->assertSame('6:30 a.m.', VehiculoGpsReporte::rango('06:30', null));
-    }
-
-    public function test_la_pestaña_gps_incluye_la_tabla_y_el_analista_de_cartera_propia_solo_mira(): void
-    {
-        $this->mundo();
-        $this->reporte();
+            ->assertSeeInOrder(['Tercero registrado ALP', 'Segundo registrado AWI', 'Primero registrado ALP'])
+            ->assertSee('Nuevo reporte')
+            ->assertSeeHtml('wire:click="eliminar(');
 
         Livewire::test(Gps::class, ['id' => $this->client->id])->assertSeeLivewire('clients.gps-vehiculos');
 
         $this->user->givePermissionTo('clientes.scope-propio');
         Livewire::test(GpsVehiculos::class, ['id' => $this->client->id])
             ->assertSet('puedeEditar', false)
-            ->assertSee('Punto X')
-            ->assertDontSee('Nuevo reporte');
+            ->assertSee('Primero registrado ALP')
+            ->assertDontSee('Nuevo reporte')
+            ->assertDontSeeHtml('wire:click="eliminar(');
+    }
+
+    public function test_eliminar_quita_el_reporte_dentro_de_las_reglas_de_eliminacion(): void
+    {
+        $this->mundo();
+        // Dentro de la ventana (6–11) y creado hoy: quien no es director también puede.
+        Carbon::setTestNow(now()->setTime(9, 0));
+        $r = $this->reporte();
+
+        Livewire::test(GpsVehiculos::class, ['id' => $this->client->id])
+            ->call('eliminar', $r->id)
+            ->assertSet('msg', 'Reporte eliminado.')
+            ->assertSee('Aún no hay reportes de GPS');
+        $this->assertNull($r->fresh());
+        Carbon::setTestNow();
     }
 }

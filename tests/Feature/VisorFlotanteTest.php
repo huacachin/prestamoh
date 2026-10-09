@@ -81,7 +81,7 @@ class VisorFlotanteTest extends TestCase
             $this->assertStringNotContainsString('"open && next()"', $otro, $ruta);
             $this->assertStringContainsString('!escribiendo($event) && next()', $otro, $ruta);
         }
-        foreach (['clients/gps-vehiculos', 'audit/index', 'cash/expense-gallery', 'cash/income-gallery', 'clients/gallery'] as $vista) {
+        foreach (['audit/index', 'cash/expense-gallery', 'cash/income-gallery', 'clients/gallery'] as $vista) {
             $fuente = file_get_contents(resource_path("views/livewire/{$vista}.blade.php"));
             $this->assertStringNotContainsString('@keydown.', $fuente, "{$vista}: los atajos ya no van en la raíz");
             $this->assertStringContainsString("@include('livewire.cash.partials._lightbox')", $fuente, $vista);

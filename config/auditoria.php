@@ -32,7 +32,6 @@ use App\Models\TramiteNotarial;
 use App\Models\User;
 use App\Models\Vehiculo;
 use App\Models\VehiculoGpsReporte;
-use App\Models\VehiculoGpsReporteFoto;
 
 /*
  * Etiquetas del visor de auditoría (25/09, traído de newtaxivan).
@@ -75,7 +74,6 @@ return [
         PapeletaRecurso::class => 'Recurso de papeleta',
         LegalSetting::class => 'Configuración legal',
         VehiculoGpsReporte::class => 'Reporte GPS',
-        VehiculoGpsReporteFoto::class => 'Foto de reporte GPS',
         // Adjuntos
         ClientAttachment::class => 'Adjunto de cliente',
         IncomeAttachment::class => 'Adjunto de ingreso',
