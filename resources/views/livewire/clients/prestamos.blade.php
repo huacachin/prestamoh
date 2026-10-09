@@ -1,18 +1,28 @@
-<div>
+{{-- El alta vive oculta desde que se abre la pestaña; "Nuevo préstamo" solo la
+     muestra (Alpine, fade in), sin pedir nada al servidor. Se cierra con
+     Cancelar (evento del botón) o al guardar (evento Livewire `prestamo-creado`). --}}
+<div x-data="{ abierto: false }"
+     x-on:prestamo-creado.window="abierto = false"
+     x-on:prestamo-cancelado="abierto = false">
+    <style>
+        .alta-prestamo { background: #fffdf5; }
+    </style>
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
         <h6 class="mb-0" style="color:red;">
             Préstamos <span class="text-muted small fw-normal">({{ $conteo }})</span>
         </h6>
-        @if($puedeCrear && ! $nuevo)
-            <button type="button" class="btn btn-sm btn-success" wire:click="abrirNuevo">
+        @if($puedeCrear)
+            <button type="button" class="btn btn-sm btn-success" x-show="! abierto"
+                    x-on:click="abierto = true; setTimeout(() => $refs.alta.querySelector('input[name=impopres]')?.focus(), 320)">
                 <i class="ti ti-plus"></i> Nuevo préstamo
             </button>
         @endif
     </div>
 
     {{-- ════════ Alta de crédito, aquí mismo (el formulario de /credits/create/{id}) ════════ --}}
-    @if($nuevo)
-        <div class="border rounded p-2 mb-3 alta-prestamo" style="background:#fffdf5;">
+    @if($puedeCrear)
+        <div class="border rounded p-2 mb-3 alta-prestamo" x-ref="alta" style="display:none;"
+             x-show="abierto" x-transition.opacity.duration.300ms>
             <div class="d-flex justify-content-between align-items-center mb-1">
                 <span class="fw-semibold small" style="color:red;"><i class="ti ti-plus"></i> Nuevo préstamo para {{ $client->fullName() }}</span>
             </div>

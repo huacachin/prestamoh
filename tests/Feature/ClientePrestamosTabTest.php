@@ -88,7 +88,7 @@ class ClientePrestamosTabTest extends TestCase
         $html = $comp->html();
         // Cabecera con conteo, botón de alta y la tabla (sin el eliminado ni los créditos de otros).
         $this->assertStringContainsString('Préstamos <span class="text-muted small fw-normal">(2 · 1 activo)</span>', $html);
-        $this->assertStringContainsString('wire:click="abrirNuevo"', $html);
+        $this->assertStringContainsString('x-on:click="abierto = true;', $html, 'el botón abre con Alpine, sin viaje al servidor');
         $this->assertStringContainsString(route('credits.show', 29001), $html);
         $this->assertStringContainsString(route('credits.show', 28001), $html);
         $this->assertStringNotContainsString(route('credits.show', 27001), $html, 'los eliminados no se listan');
@@ -104,7 +104,9 @@ class ClientePrestamosTabTest extends TestCase
         $this->assertStringNotContainsString(route('payments.create', 28001), $html, 'un cancelado no se cobra');
         $this->assertStringContainsString('badge bg-success" style="font-size:9px;">Activo', $html);
         $this->assertStringContainsString('badge bg-secondary" style="font-size:9px;">Cancelado', $html);
-        $this->assertStringNotContainsString('wire:model.defer="codpre_"', $html, 'el formulario no sale hasta pulsar Nuevo préstamo');
+        // El formulario ya está montado, oculto, con fade in al abrir.
+        $this->assertMatchesRegularExpression('/<div class="border rounded p-2 mb-3 alta-prestamo" x-ref="alta" style="display:none;"\s+x-show="abierto" x-transition\.opacity\.duration\.300ms>/', $html);
+        $this->assertStringContainsString('wire:model.defer="codpre_"', $html);
     }
 
     public function test_nuevo_prestamo_abre_el_alta_en_la_misma_pestana_y_al_guardar_la_tabla_muestra_el_credito(): void
@@ -113,16 +115,18 @@ class ClientePrestamosTabTest extends TestCase
         $comp = Livewire::test(Prestamos::class, ['id' => $this->client->id]);
         $this->assertStringContainsString('aún no tiene préstamos', $comp->html());
 
-        $comp->call('abrirNuevo')->assertSet('nuevo', true);
         $html = $comp->html();
+        // El formulario de /credits/create está dentro de la pestaña, oculto hasta el clic (Alpine) y sin cabecera.
         $this->assertStringContainsString('Nuevo préstamo para '.$this->client->fullName(), $html);
         $this->assertStringContainsString('wire:model.defer="codpre_"', $html, 'el formulario de /credits/create está dentro de la pestaña');
         $this->assertStringNotContainsString('NUEVO PRÉSTAMO</h4>', $html, 'sin la cabecera de la página completa');
         $this->assertStringContainsString('value="41849995" readonly', $html, 'el DNI queda fijo al cliente de la ficha');
-        $this->assertStringContainsString("wire:click=\"\$dispatch('prestamo-cancelado')\"", $html);
-        $this->assertStringNotContainsString('wire:click="abrirNuevo"', $html, 'el botón se esconde mientras el formulario está abierto');
+        $this->assertStringContainsString("x-on:click=\"\$dispatch('prestamo-cancelado')\"", $html, 'Cancelar oculta sin viaje al servidor');
+        $this->assertStringContainsString('x-on:prestamo-cancelado="abierto = false"', $html);
+        $this->assertStringContainsString('x-on:prestamo-creado.window="abierto = false"', $html, 'al guardar se cierra solo');
+        $this->assertStringContainsString('x-show="! abierto"', $html, 'el botón se esconde mientras el formulario está abierto');
 
-        // El alta embebida guarda sin redirigir y avisa a la pestaña.
+        // El alta embebida guarda sin redirigir, avisa a la pestaña y queda limpia para otro crédito.
         $alta = Livewire::test(Create::class, ['clientId' => $this->client->id, 'embebido' => true])
             ->assertSet('codigoc', '41849995')
             ->assertSet('codpre_', 29501)
@@ -131,32 +135,38 @@ class ClientePrestamosTabTest extends TestCase
             ->assertHasNoErrors()
             ->assertNoRedirect()
             ->assertDispatched('successAlert')
-            ->assertDispatched('prestamo-creado', id: 29501);
+            ->assertDispatched('prestamo-creado', id: 29501)
+            ->assertSet('codpre_', 29502)
+            ->assertSet('impopres', null)
+            ->assertSet('seletipl', '')
+            ->assertSet('cuot', null)
+            ->assertSet('codigoc', '41849995')
+            ->assertSet('nomasesores', 'asesor-pre');
         $this->assertSame(1, Credit::where('id', 29501)->where('client_id', $this->client->id)->where('situacion', 'Activo')->count());
 
-        // La pestaña recibe el aviso: cierra el formulario y pinta la fila nueva resaltada.
-        $comp->dispatch('prestamo-creado', id: 29501)->assertSet('nuevo', false)->assertSet('recienCreado', 29501);
+        // La pestaña recibe el aviso y pinta la fila nueva resaltada.
+        $comp->dispatch('prestamo-creado', id: 29501)->assertSet('recienCreado', 29501);
         $html = $comp->html();
         $this->assertStringContainsString('(1 · 1 activo)', $html);
         $this->assertMatchesRegularExpression('/<tr class="table-success fila-nueva" wire:key="prestamo-29501">/', $html);
         $this->assertStringContainsString('>nuevo</span>', $html);
-        $this->assertStringContainsString('wire:click="abrirNuevo"', $html, 'vuelve el botón');
 
         // La ficha también se entera: el Estado del cliente deja de editarse.
         Livewire::test(Edit::class, ['id' => $this->client->id])->assertSet('tieneCreditosVigentes', true);
         Livewire::test(Edit::class, ['id' => $this->otro->id])->assertSet('tieneCreditosVigentes', false)
             ->dispatch('prestamo-creado', id: 29501)->assertSet('tieneCreditosVigentes', true);
 
-        // Cancelar cierra sin guardar.
-        $comp->call('abrirNuevo')->assertSet('nuevo', true)->dispatch('prestamo-cancelado')->assertSet('nuevo', false);
-        $this->assertSame(1, Credit::where('client_id', $this->client->id)->count());
+        // Un segundo crédito desde el mismo formulario ya limpio: siguiente correlativo.
+        $alta->set('seletipl', '3')->set('impopres', 300)->set('inte', 10)->call('save')
+            ->assertHasNoErrors()->assertDispatched('prestamo-creado', id: 29502)->assertSet('codpre_', 29503);
+        $this->assertSame(2, Credit::where('client_id', $this->client->id)->count());
 
         // La página completa /credits/create sigue redirigiendo a la ficha del crédito.
         Livewire::test(Create::class, ['clientId' => $this->client->id])
             ->set('seletipl', '1')->set('impopres', 500)->set('cuot', 4)->set('inte', 10)->set('nomasesores', 'asesor-pre')
             ->call('save')
             ->assertHasNoErrors()
-            ->assertRedirect(route('credits.show', 29502));
+            ->assertRedirect(route('credits.show', 29503));
     }
 
     public function test_el_analista_ve_la_lista_pero_no_el_boton_de_nuevo_prestamo(): void
@@ -167,7 +177,8 @@ class ClientePrestamosTabTest extends TestCase
         $comp = Livewire::test(Prestamos::class, ['id' => $this->client->id]);
         $html = $comp->html();
         $this->assertStringContainsString(route('credits.show', 29001), $html);
-        $this->assertStringNotContainsString('wire:click="abrirNuevo"', $html);
-        $comp->call('abrirNuevo')->assertSet('nuevo', false)->assertDispatched('errorAlert');
+        $this->assertStringNotContainsString('Nuevo préstamo', $html);
+        $this->assertStringNotContainsString('credits.create', $html, 'el alta ni se monta: Credits\Create aborta con 403 para el analista');
+        $this->assertStringNotContainsString('wire:model.defer="codpre_"', $html);
     }
 }

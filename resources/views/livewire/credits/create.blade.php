@@ -153,7 +153,8 @@
                         <span wire:loading wire:target="save">Guardando…</span>
                     </button>
                     @if($embebido)
-                        <button type="button" class="btn btn-sm btn-secondary" wire:click="$dispatch('prestamo-cancelado')">
+                        {{-- Evento del navegador (Alpine): la pestaña lo oculta sin viaje al servidor. --}}
+                        <button type="button" class="btn btn-sm btn-secondary" x-on:click="$dispatch('prestamo-cancelado')">
                             <i class="ti ti-x"></i> Cancelar
                         </button>
                     @else

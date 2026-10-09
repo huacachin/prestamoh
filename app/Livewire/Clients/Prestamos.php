@@ -11,17 +11,16 @@ use Livewire\Component;
 
 /**
  * Pestaña "Préstamos" de /clients/{id}/edit (10/10/2026, Antony, ficha 27):
- * lista los créditos del cliente y el botón "Nuevo préstamo" abre el mismo
- * formulario de /credits/create/{id} AQUÍ, dentro de la pestaña. Al guardar,
- * el alta avisa con el evento `prestamo-creado`, el formulario se cierra y la
- * tabla se vuelve a pintar con el crédito nuevo resaltado.
+ * lista los créditos del cliente y el botón "Nuevo préstamo" muestra el mismo
+ * formulario de /credits/create/{id} AQUÍ, dentro de la pestaña. El formulario
+ * se monta oculto junto con la pestaña y se abre/cierra solo con Alpine (sin
+ * viaje al servidor ni morph de la tabla: con 100+ créditos tardaba). Al
+ * guardar, el alta avisa con el evento `prestamo-creado`, el formulario se
+ * cierra y la tabla se vuelve a pintar con el crédito nuevo resaltado.
  */
 class Prestamos extends Component
 {
     public int $clientId;
-
-    /** true = se muestra el formulario de alta en lugar del botón. */
-    public bool $nuevo = false;
 
     /** Crédito recién guardado desde esta pestaña: su fila sale resaltada. */
     public ?int $recienCreado = null;
@@ -40,27 +39,9 @@ class Prestamos extends Component
         $this->puedeCrear = $this->puedeVerCreditos && ! ($user?->can('clientes.scope-propio') ?? false);
     }
 
-    public function abrirNuevo(): void
-    {
-        if (! $this->puedeCrear) {
-            $this->dispatch('errorAlert', ['message' => 'Tu rol no permite registrar préstamos.']);
-
-            return;
-        }
-        $this->recienCreado = null;
-        $this->nuevo = true;
-    }
-
-    #[On('prestamo-cancelado')]
-    public function cerrarNuevo(): void
-    {
-        $this->nuevo = false;
-    }
-
     #[On('prestamo-creado')]
     public function alCrearPrestamo(int $id): void
     {
-        $this->nuevo = false;
         $this->recienCreado = $id;
     }
 

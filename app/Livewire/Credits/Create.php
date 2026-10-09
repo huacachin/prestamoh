@@ -488,6 +488,7 @@ class Create extends Component
         if ($this->embebido) {
             $this->dispatch('successAlert', ['message' => 'Crédito #'.$this->codpre_.' creado.']);
             $this->dispatch('prestamo-creado', id: (int) $this->codpre_);
+            $this->reiniciarParaOtroCredito();
 
             return null;
         }
@@ -495,6 +496,23 @@ class Create extends Component
         session()->flash('credit_success', 'Crédito #'.$this->codpre_.' creado.');
 
         return redirect()->route('credits.show', $this->codpre_);
+    }
+
+    /**
+     * Embebido: el formulario sigue montado (oculto) después de guardar, así
+     * que queda limpio y con el siguiente correlativo para otro crédito del
+     * mismo cliente. Se conserva el asesor, que casi siempre se repite.
+     */
+    private function reiniciarParaOtroCredito(): void
+    {
+        $this->reset('impopres', 'cuot', 'inte', 'seletipl', 'glosa', 'gat', 'moracc', 'moraii', 'morai', 'morac', 'dniMsg', 'dniMsgType');
+        $this->resetValidation();
+        $hoy = Carbon::today();
+        $this->fechar = $hoy->format('Y-m-d');
+        $this->fechad = $hoy->format('Y-m-d');
+        $this->selecano = $hoy->format('Y');
+        $this->selecmes = $hoy->format('m');
+        $this->codpre_ = (int) (DB::table('correlativos')->where('tipo', 'Credito')->value('correl') ?? 0) + 1;
     }
 
     public function render()
