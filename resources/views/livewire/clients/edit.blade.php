@@ -19,35 +19,83 @@
     <div class="card shadow-sm">
         <div class="card-body">
 
-            {{-- 10/10 (Antony): resumen de la ficha —vehículos, contratos y copropietarios con
-                 sus vehículos— a la vista en cualquier pestaña. --}}
-            <div class="resumen-cliente border rounded px-2 py-2 mb-2 small" style="background:#fcfcfa;">
-                <div class="d-flex flex-wrap gap-3">
-                    <div>
-                        <i class="ti ti-car"></i> <b>Vehículos:</b>
+            {{-- 10/10 (Antony): resumen de la ficha a la vista en cualquier pestaña, en tarjetas
+                 como las de la pantalla de cobro: vehículos, contratos y copropietarios. --}}
+            @php
+                $ultimo = $resumen['ultimoContrato'];
+                $nCopro = $resumen['copropietarios']->count();
+            @endphp
+            <div class="resumen-cliente resumen-band mb-2">
+                <div class="resumen-kpi" style="--kpi: {{ $resumen['vehiculos']->isNotEmpty() ? '#0d6efd' : '#adb5bd' }};">
+                    <div class="resumen-top">
+                        <span><i class="ti ti-car"></i> Vehículos</span>
+                        <a href="#" class="resumen-link" wire:click.prevent="$set('tab', 'vehiculos')">ver <i class="ti ti-chevron-right"></i></a>
+                    </div>
+                    <div class="resumen-val">{{ $resumen['vehiculos']->count() }}</div>
+                    <div class="resumen-pie">
                         @if($resumen['vehiculos']->isEmpty())
                             <span class="text-muted">ninguno</span>
                         @else
-                            {{ $resumen['vehiculos']->count() }} ·
-                            {{ $resumen['vehiculos']->map(fn ($v) => $v->placa.($v->marca ? ' ('.$v->marca.')' : ''))->implode(', ') }}
+                            @foreach($resumen['vehiculos'] as $v)
+                                <span class="resumen-chip"><b>{{ $v->placa }}</b>{{ $v->marca ? ' · '.$v->marca : '' }}</span>
+                            @endforeach
                         @endif
-                        <a href="#" class="ms-1" wire:click.prevent="$set('tab', 'vehiculos')">ver</a>
                     </div>
-                    <div>
-                        <i class="ti ti-file-text"></i> <b>Contratos:</b>
-                        @if($resumen['contratos'] === 0)
-                            <span class="text-muted">ninguno{{ $resumen['contratosAnulados'] ? " ({$resumen['contratosAnulados']} anulado".($resumen['contratosAnulados'] === 1 ? '' : 's').')' : '' }}</span>
-                        @else
-                            {{ $resumen['contratos'] }} emitido{{ $resumen['contratos'] === 1 ? '' : 's' }}@if($resumen['contratosAnulados']) ({{ $resumen['contratosAnulados'] }} anulado{{ $resumen['contratosAnulados'] === 1 ? '' : 's' }})@endif
-                            @if($resumen['ultimoContrato'])
-                                · último: v{{ $resumen['ultimoContrato']->version }} del {{ $resumen['ultimoContrato']->created_at?->format('d/m/Y') }}
-                                @if($resumen['ultimoContrato']->credit_id) (crédito #{{ $resumen['ultimoContrato']->credit_id }}) @endif
-                            @endif
+                </div>
+                <div class="resumen-kpi" style="--kpi: {{ $resumen['contratos'] > 0 ? '#2eb85c' : '#adb5bd' }};">
+                    <div class="resumen-top">
+                        <span><i class="ti ti-file-text"></i> Contratos</span>
+                        <a href="#" class="resumen-link" wire:click.prevent="$set('tab', 'documentos')">ver <i class="ti ti-chevron-right"></i></a>
+                    </div>
+                    <div class="resumen-val">
+                        {{ $resumen['contratos'] }}
+                        <small class="resumen-sub">emitido{{ $resumen['contratos'] === 1 ? '' : 's' }}</small>
+                        @if($resumen['contratosAnulados'])
+                            <span class="resumen-chip resumen-chip-rojo">{{ $resumen['contratosAnulados'] }} anulado{{ $resumen['contratosAnulados'] === 1 ? '' : 's' }}</span>
                         @endif
-                        <a href="#" class="ms-1" wire:click.prevent="$set('tab', 'documentos')">ver</a>
+                    </div>
+                    <div class="resumen-pie">
+                        @if($ultimo)
+                            último: <b>v{{ $ultimo->version }}</b> · {{ $ultimo->created_at?->format('d/m/Y') }}@if($ultimo->credit_id) · crédito #{{ $ultimo->credit_id }}@endif
+                        @else
+                            <span class="text-muted">ninguno</span>
+                        @endif
+                    </div>
+                </div>
+                <div class="resumen-kpi" style="--kpi: {{ $nCopro > 0 ? '#6f42c1' : '#adb5bd' }};">
+                    <div class="resumen-top">
+                        <span><i class="ti ti-users"></i> Copropietarios</span>
+                        <a href="#" class="resumen-link" wire:click.prevent="$set('tab', 'datos')"
+                           x-on:click="setTimeout(() => document.querySelector('.seccion-copropietarios')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 350)">ver <i class="ti ti-chevron-right"></i></a>
+                    </div>
+                    <div class="resumen-val">{{ $nCopro }}</div>
+                    <div class="resumen-pie">
+                        @if($nCopro === 0)
+                            <span class="text-muted">ninguno</span>
+                        @else
+                            @foreach($resumen['copropietarios'] as $c)
+                                <span class="resumen-chip">{{ $c['persona']->fullName() }}</span>
+                            @endforeach
+                        @endif
                     </div>
                 </div>
             </div>
+            <style>
+                /* Tarjetas del resumen: mismo lenguaje que las de la pantalla de cobro (saldo-kpi). */
+                .resumen-band { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+                @media (max-width: 767.98px) { .resumen-band { grid-template-columns: 1fr; } }
+                .resumen-kpi { border: 1px solid #e9ecef; border-left: 4px solid var(--kpi, #adb5bd); border-radius: 8px;
+                    padding: 6px 10px; background: #fff; min-width: 0; }
+                .resumen-top { display: flex; justify-content: space-between; align-items: center; gap: 6px;
+                    font-size: 10.5px; font-weight: 600; color: #6c757d; text-transform: uppercase; letter-spacing: .3px; }
+                .resumen-link { font-size: 10.5px; font-weight: 400; color: #0d6efd; text-transform: none; letter-spacing: 0; white-space: nowrap; }
+                .resumen-val { font-size: 1.35rem; font-weight: 700; line-height: 1.2; color: var(--kpi, #212529); font-variant-numeric: tabular-nums; }
+                .resumen-sub { font-size: .75rem; font-weight: 500; color: #6c757d; }
+                .resumen-pie { font-size: 10.5px; color: #868e96; margin-top: 2px; line-height: 1.6; }
+                .resumen-chip { display: inline-block; font-size: 10.5px; color: #495057; background: #f1f3f5;
+                    border-radius: 999px; padding: 0 7px; margin: 0 3px 2px 0; white-space: nowrap; }
+                .resumen-chip-rojo { background: #fde8e8; color: #b02a37; vertical-align: middle; font-weight: 600; }
+            </style>
 
             {{-- ════════ Pestañas (compactas: píldoras pequeñas) ════════ --}}
             @php
