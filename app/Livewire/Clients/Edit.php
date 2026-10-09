@@ -321,6 +321,16 @@ class Edit extends Component
         ]);
     }
 
+    /**
+     * 10/10: se registró un préstamo desde la pestaña Préstamos de esta misma
+     * ficha. El cliente ya tiene crédito vigente: el Estado deja de editarse.
+     */
+    #[On('prestamo-creado')]
+    public function alCrearPrestamo(int $id): void
+    {
+        $this->tieneCreditosVigentes = true;
+    }
+
     #[On('register_destroy')]
     public function destroy(int $id): void
     {

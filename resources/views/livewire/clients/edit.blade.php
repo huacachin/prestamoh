@@ -23,6 +23,7 @@
             @php
                 $tabs = [
                     'datos' => ['Datos', 'ti-user'],
+                    'prestamos' => ['Préstamos', 'ti-cash'],
                     'vehiculos' => ['Vehículos', 'ti-car'],
                     'documentos' => ['Documentos', 'ti-file-text'],
                     'adjuntos' => ['Adjuntos', 'ti-photo'],
@@ -49,6 +50,11 @@
                     </button>
                 @endforeach
             </div>
+
+            {{-- ════════ Préstamos (10/10: lista + alta en la misma pestaña) ════════ --}}
+            @if($tab === 'prestamos')
+                <livewire:clients.prestamos :id="$clientId" :key="'pre-'.$clientId" />
+            @endif
 
             {{-- ════════ Vehículos ════════ --}}
             @if($tab === 'vehiculos')

@@ -1,4 +1,7 @@
-<div class="container-fluid">
+{{-- $embebido: dentro de la pestaña Préstamos de /clients/{id}/edit se omiten
+     cabecera y card, el DNI queda fijo y Cancelar cierra el formulario. --}}
+<div @class(['container-fluid' => ! $embebido])>
+    @unless($embebido)
     <div class="row">
         <div class="col-sm-6">
             <h4 class="main-title title-modules" style="color:red;">NUEVO PRÉSTAMO</h4>
@@ -15,6 +18,7 @@
             </ul>
         </div>
     </div>
+    @endunless
 
     <form x-on:submit.prevent="$captura('save')" data-captura>
 
@@ -26,16 +30,20 @@
             </div>
         @endif
 
-        <div class="card shadow-sm">
-            <div class="card-body">
+        <div @class(['card shadow-sm' => ! $embebido])>
+            <div @class(['card-body' => ! $embebido])>
                 <div class="row g-2">
 
                     {{-- ─── Cliente ─── --}}
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">DNI</label>
-                        <input type="text" name="codigoc" autocomplete="off" class="form-control form-control-sm @error('codigoc') is-invalid @enderror @error('codigod') is-invalid @enderror"
-                               wire:model.live.debounce.500ms="codigoc"
-                               style="background-color:yellow;" maxlength="11" required>
+                        @if($embebido)
+                            <input type="text" class="form-control form-control-sm bg-light" value="{{ $codigoc }}" readonly>
+                        @else
+                            <input type="text" name="codigoc" autocomplete="off" class="form-control form-control-sm @error('codigoc') is-invalid @enderror @error('codigod') is-invalid @enderror"
+                                   wire:model.live.debounce.500ms="codigoc"
+                                   style="background-color:yellow;" maxlength="11" required>
+                        @endif
                     </div>
                     <div class="col-md-4">
                         <label class="form-label mb-0 small fw-semibold">Nombre del Cliente</label>
@@ -144,9 +152,15 @@
                         <span wire:loading.remove wire:target="save">Aceptar</span>
                         <span wire:loading wire:target="save">Guardando…</span>
                     </button>
-                    <a href="{{ route('credits.index') }}" class="btn btn-sm btn-secondary">
-                        <i class="ti ti-x"></i> Cancelar
-                    </a>
+                    @if($embebido)
+                        <button type="button" class="btn btn-sm btn-secondary" wire:click="$dispatch('prestamo-cancelado')">
+                            <i class="ti ti-x"></i> Cancelar
+                        </button>
+                    @else
+                        <a href="{{ route('credits.index') }}" class="btn btn-sm btn-secondary">
+                            <i class="ti ti-x"></i> Cancelar
+                        </a>
+                    @endif
                 </div>
             </div>
         </div>

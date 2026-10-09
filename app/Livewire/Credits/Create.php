@@ -64,8 +64,17 @@ class Create extends Component
 
     public bool $morac = false; // Mora Capital (mora2)
 
-    public function mount(?int $clientId = null)
+    /**
+     * true = el formulario vive dentro de la pestaña Préstamos de la ficha del
+     * cliente (10/10/2026): sin cabecera, el DNI queda fijo y al guardar no se
+     * redirige a la ficha del crédito, sino que se avisa con `prestamo-creado`
+     * para que la tabla de la pestaña se vuelva a pintar.
+     */
+    public bool $embebido = false;
+
+    public function mount(?int $clientId = null, bool $embebido = false)
     {
+        $this->embebido = $embebido;
         // Analista (scope-propio): solo ve/paga SUS créditos — no crea ni edita
         abort_if(auth()->user()?->can('clientes.scope-propio') ?? false, 403,
             'Tu rol no permite esta acción.');
@@ -475,6 +484,13 @@ class Create extends Component
         });
 
         Audit::log('Creó el crédito #'.$this->codpre_);
+
+        if ($this->embebido) {
+            $this->dispatch('successAlert', ['message' => 'Crédito #'.$this->codpre_.' creado.']);
+            $this->dispatch('prestamo-creado', id: (int) $this->codpre_);
+
+            return null;
+        }
 
         session()->flash('credit_success', 'Crédito #'.$this->codpre_.' creado.');
 
