@@ -136,9 +136,16 @@ class VisorFlotanteTest extends TestCase
         $this->assertStringContainsString("window.Alpine.data('visorFlotante', visorFlotante)", $js);
         $this->assertStringContainsString("window.Alpine.data('modalFlotante', modalFlotante)", $js);
         $this->assertStringContainsString("matchMedia('(min-width: 768px)')", $js, 'en celular sigue a pantalla completa');
-        $this->assertStringContainsString("clave: 'huac.visor-flotante'", $js, 'posición y tamaño recordados');
-        $this->assertStringContainsString("clave: 'huac.ventana.' + (clave || 'modal')", $js, 'cada modal recuerda su sitio');
+        // Antony (10/10): "que siempre levante al centro, no al lado derecho". Solo el visor recuerda su tamaño.
+        $this->assertStringContainsString('x: Math.max(0, Math.round((window.innerWidth - w) / 2))', $js);
+        $this->assertStringContainsString('y: Math.max(MARGEN, Math.round((window.innerHeight - h) / 2))', $js);
+        $this->assertStringContainsString("const CLAVE_VISOR = 'huac.visor-flotante';   // solo tamaño {w, h}", $js);
+        $this->assertSame(1, substr_count($js, 'localStorage.setItem('), 'solo se guarda el tamaño del visor, ninguna posición');
+        $modal = substr($js, strpos($js, 'function modalFlotante'), strpos($js, 'function registrar') - strpos($js, 'function modalFlotante'));
+        $this->assertStringNotContainsString('localStorage', $modal, 'el modal no recuerda posición: siempre al centro');
+        $this->assertStringContainsString("this.\$el.style.display = 'block';", $modal, 'se mide el diálogo para centrarlo en vertical');
         $this->assertStringContainsString('setPointerCapture(e.pointerId)', $js, 'el arrastre no se pierde al salir de la cabecera');
+        $this->assertStringContainsString("document.body.classList.add('arrastrando-ventana')", $js, 'los iframes no se quedan con el puntero');
         $this->assertStringContainsString("e.target.closest('button, a, input, select, textarea')", $js, 'los botones de la cabecera no arrastran');
         $this->assertStringContainsString("['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName)", $js, 'flechas solo si no se escribe');
         $this->assertStringContainsString('new ResizeObserver', $js, 'el tamaño redimensionado por la esquina también se guarda');
@@ -169,5 +176,25 @@ class VisorFlotanteTest extends TestCase
         $this->assertStringContainsString('transform: none !important; transition: none;', $html, 'sin el translate de la animación de entrada: la posición es la guardada');
         $this->assertStringContainsString('.modal.modal-flotante .modal-header { cursor: grab;', $html);
         $this->assertStringContainsString('body.con-modal-flotante { overflow: visible !important; padding-right: 0 !important; }', $html);
+        $this->assertStringContainsString('body.arrastrando-ventana iframe { pointer-events: none; }', $html);
+    }
+
+    /** "Ver recibo" (/payments/create, ficha del crédito y cronograma): el mismo modal, ahora partial y flotante. */
+    public function test_el_modal_del_recibo_es_uno_solo_compartido_y_flotante(): void
+    {
+        $partial = file_get_contents(resource_path('views/livewire/payments/partials/_modal-recibo.blade.php'));
+        $this->assertStringContainsString('<div class="modal fade" id="modal-recibo" tabindex="-1" wire:ignore x-data="modalFlotante(\'recibo\')">', $partial);
+        $this->assertStringContainsString('<div class="modal-dialog modal-dialog-centered" style="max-width:430px;" x-ref="dialogo">', $partial);
+        $this->assertStringContainsString('x-on:pointerdown="iniciarArrastre($event)" x-on:pointermove="arrastrar($event)"', $partial);
+        $this->assertStringContainsString('<iframe id="iframe-recibo" src="about:blank" allow="clipboard-write"', $partial);
+        $this->assertStringContainsString('function abrirRecibo(url)', $partial, 'los botones onclick="abrirRecibo(...)" siguen igual');
+        $this->assertStringContainsString("document.getElementById('iframe-recibo').src = 'about:blank';", $partial, 'al cerrar se descarga el iframe');
+
+        foreach (['payments/create', 'credits/show', 'credits/schedule'] as $vista) {
+            $fuente = file_get_contents(resource_path("views/livewire/{$vista}.blade.php"));
+            $this->assertSame(1, substr_count($fuente, "@include('livewire.payments.partials._modal-recibo')"), $vista);
+            $this->assertStringNotContainsString('id="modal-recibo"', $fuente, "{$vista}: sin copia propia del modal");
+            $this->assertStringNotContainsString('function abrirRecibo', $fuente, "{$vista}: la función vive en el partial");
+        }
     }
 }

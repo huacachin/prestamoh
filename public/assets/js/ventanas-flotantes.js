@@ -2,26 +2,30 @@
  * Ventanas flotantes arrastrables (10/10/2026, pedido de Antony).
  *
  * Dos componentes Alpine que comparten el arrastre (Pointer Events: mouse y
- * dedo), el límite a la pantalla y la posición recordada en localStorage:
+ * dedo) y el límite a la pantalla. Siempre se abren AL CENTRO (Antony: "que
+ * siempre levante al centro, no al lado derecho"); solo el visor recuerda el
+ * tamaño al que se dejó.
  *
  *  - `visorFlotante`: el visor de vouchers/fotos del partial
  *    livewire/cash/partials/_lightbox.blade.php. Se anida dentro del x-data que
  *    ya tiene el contrato del visor (open / idx / items / close / next / prev).
  *    En escritorio no hay fondo oscuro, la ventana se arrastra desde la
- *    cabecera, se redimensiona por la esquina (resize nativo de CSS) y recuerda
- *    posición y tamaño. Atajos: Esc cierra; ← → cambian de foto salvo que se
- *    esté escribiendo en un campo (la página de abajo está activa).
+ *    cabecera y se redimensiona por la esquina (resize nativo de CSS). Atajos:
+ *    Esc cierra; ← → cambian de foto salvo que se esté escribiendo en un campo
+ *    (la página de abajo está activa).
  *
- *  - `modalFlotante('clave')`: un modal de Bootstrap (p. ej. la confirmación
- *    del cobro en /payments/create) que en escritorio se abre SIN fondo ni
- *    bloqueo de la página y se arrastra desde su .modal-header. Bootstrap sigue
- *    mandando (modal.show()/hide(), data-bs-dismiss, eventos): solo cambian
- *    backdrop/focus y la posición del .modal-dialog (x-ref="dialogo").
+ *  - `modalFlotante('clave')`: un modal de Bootstrap (la confirmación del cobro
+ *    en /payments/create, el recibo en payments/partials/_modal-recibo) que en
+ *    escritorio se abre SIN fondo ni bloqueo de la página y se arrastra desde
+ *    su .modal-header. Bootstrap sigue mandando (modal.show()/hide(),
+ *    data-bs-dismiss, eventos): solo cambian backdrop/focus y la posición del
+ *    .modal-dialog (x-ref="dialogo").
  *
  * En celular (< 768 px) todo se comporta como siempre: a pantalla completa /
  * modal centrado con fondo.
  */
 (function () {
+    const CLAVE_VISOR = 'huac.visor-flotante';   // solo tamaño {w, h}
     const MIN_ANCHO = 260;
     const MIN_ALTO = 180;
     const MARGEN = 16;
@@ -30,26 +34,32 @@
 
     const limitar = (v, min, max) => Math.min(Math.max(v, min), Math.max(min, max));
     const esEscritorio = () => window.matchMedia('(min-width: 768px)').matches;
+    const centrado = (w, h) => ({
+        x: Math.max(0, Math.round((window.innerWidth - w) / 2)),
+        y: Math.max(MARGEN, Math.round((window.innerHeight - h) / 2)),
+    });
 
-    function leer(clave) {
+    function leerTamano() {
         try {
-            const g = JSON.parse(localStorage.getItem(clave) || 'null');
+            const g = JSON.parse(localStorage.getItem(CLAVE_VISOR) || 'null');
             return g && typeof g === 'object' ? g : null;
         } catch (e) { return null; }
     }
 
-    function guardar(clave, geo) {
-        try { localStorage.setItem(clave, JSON.stringify(geo)); } catch (e) { /* privado / lleno */ }
+    function guardarTamano(w, h) {
+        try { localStorage.setItem(CLAVE_VISOR, JSON.stringify({ w, h })); } catch (e) { /* privado / lleno */ }
     }
 
     // Arrastre compartido. `c` es el componente: usa c.flotante, c.geo {x,y,w,h},
-    // c.arrastre, c.aplicar() y c.clave.
+    // c.arrastre y c.aplicar().
     const Arrastre = {
         iniciar(c, e) {
             if (!c.flotante || !c.geo || e.button !== 0 || e.target.closest('button, a, input, select, textarea')) return;
             e.preventDefault();
             c.arrastre = { id: e.pointerId, dx: e.clientX - c.geo.x, dy: e.clientY - c.geo.y };
             try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) { /* nada */ }
+            // los iframes (recibo) no deben quedarse con el puntero a mitad del arrastre
+            document.body.classList.add('arrastrando-ventana');
         },
         mover(c, e) {
             if (!c.arrastre || e.pointerId !== c.arrastre.id) return;
@@ -61,13 +71,12 @@
             if (!c.arrastre) return;
             try { e.currentTarget.releasePointerCapture(c.arrastre.id); } catch (err) { /* nada */ }
             c.arrastre = null;
-            guardar(c.clave, c.geo);
+            document.body.classList.remove('arrastrando-ventana');
         },
     };
 
     function visorFlotante() {
         return {
-            clave: 'huac.visor-flotante',
             flotante: false,
             geo: null,        // { x, y, w, h } de la ventana en escritorio
             arrastre: null,   // { id, dx, dy } mientras se arrastra
@@ -77,9 +86,9 @@
                 this.$watch('open', (abierto) => { if (abierto) this.alAbrir(); });
                 this.$nextTick(() => {
                     if (!window.ResizeObserver || !this.$refs.ventana) return;
-                    // Redimensionado por la esquina: persistir el tamaño nuevo.
+                    // Redimensionado por la esquina: recordar el tamaño nuevo.
                     new ResizeObserver(() => {
-                        if (this.flotante && this.open && !this.arrastre) this.leerTamano();
+                        if (this.flotante && this.open && !this.arrastre) this.recordarTamano();
                     }).observe(this.$refs.ventana);
                 });
             },
@@ -92,12 +101,10 @@
                     v.style.cssText = '';
                     return;
                 }
-                const g = this.geo || leer(this.clave) || {};
+                const g = leerTamano() || {};
                 const w = limitar(g.w || 460, MIN_ANCHO, window.innerWidth - 2 * MARGEN);
                 const h = limitar(g.h || Math.min(Math.round(window.innerHeight * 0.8), 640), MIN_ALTO, window.innerHeight - 2 * MARGEN);
-                const x = limitar(typeof g.x === 'number' ? g.x : window.innerWidth - w - MARGEN, 0, window.innerWidth - w);
-                const y = limitar(typeof g.y === 'number' ? g.y : 72, 0, window.innerHeight - h);
-                this.geo = { x, y, w, h };
+                this.geo = Object.assign({ w, h }, centrado(w, h));
                 this.aplicar();
                 try { v.focus({ preventScroll: true }); } catch (e) { /* nada */ }
             },
@@ -115,13 +122,13 @@
             arrastrar(e) { Arrastre.mover(this, e); },
             soltar(e) { Arrastre.soltar(this, e); },
 
-            leerTamano() {
+            recordarTamano() {
                 const r = this.$refs.ventana.getBoundingClientRect();
                 if (!r.width || !r.height) return;
                 const w = Math.round(r.width), h = Math.round(r.height);
                 if (this.geo && w === this.geo.w && h === this.geo.h) return;
                 this.geo = Object.assign({}, this.geo || {}, { w, h });
-                guardar(this.clave, this.geo);
+                guardarTamano(w, h);
             },
 
             // Con la página viva debajo, las flechas no deben pelearse con lo que se escribe.
@@ -134,7 +141,7 @@
 
     function modalFlotante(clave) {
         return {
-            clave: 'huac.ventana.' + (clave || 'modal'),
+            clave: clave || 'modal',
             modal: null,
             flotante: false,
             geo: null,
@@ -151,14 +158,15 @@
                 el.addEventListener('hidden.bs.modal', () => document.body.classList.remove('con-modal-flotante'));
             },
 
+            // Al centro de la pantalla. Se mide el diálogo con el modal ya en display:block
+            // (Bootstrap lo pone igual un instante después) para centrarlo también en vertical.
             colocar() {
                 const d = this.$refs.dialogo;
                 if (!d) return;
-                const g = this.geo || leer(this.clave) || {};
-                const w = Math.min(parseInt(d.style.maxWidth, 10) || 420, window.innerWidth - 2 * MARGEN);
-                const x = limitar(typeof g.x === 'number' ? g.x : window.innerWidth - w - MARGEN, 0, window.innerWidth - w);
-                const y = limitar(typeof g.y === 'number' ? g.y : 72, 0, window.innerHeight - 3 * CABECERA);
-                this.geo = { x, y, w, h: 0 };
+                this.$el.style.display = 'block';
+                const w = d.offsetWidth || Math.min(parseInt(d.style.maxWidth, 10) || 420, window.innerWidth - 2 * MARGEN);
+                const h = d.offsetHeight || 3 * CABECERA;
+                this.geo = Object.assign({ w, h }, centrado(w, h));
                 this.aplicar();
             },
 

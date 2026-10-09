@@ -149,7 +149,7 @@
     .modal.modal-flotante { pointer-events: none; }
     .modal.modal-flotante .modal-dialog {
         pointer-events: auto; position: fixed; margin: 0; display: block; min-height: 0;
-        width: min(420px, calc(100vw - 32px));
+        width: calc(100vw - 32px); /* el max-width de cada diálogo (420/430 px) pone el tope */
         /* sin el translate(0,-50px) de la animación de entrada: la posición es la que guarda el JS */
         transform: none !important; transition: none;
     }
@@ -157,6 +157,8 @@
     .modal.modal-flotante .modal-header { cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none; }
     .modal.modal-flotante .modal-header:active { cursor: grabbing; }
     body.con-modal-flotante { overflow: visible !important; padding-right: 0 !important; }
+    /* mientras se arrastra, los iframes (recibo) no se quedan con el puntero */
+    body.arrastrando-ventana iframe { pointer-events: none; }
 
 </style>
 @vite(['public/assets/scss/style.scss'])
