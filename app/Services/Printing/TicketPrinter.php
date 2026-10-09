@@ -385,9 +385,10 @@ final class TicketPrinter
     }
 
     /**
-     * Como row(), pero si el valor no cabe al lado del rótulo baja a la línea
-     * siguiente, partido por palabras al ancho del papel y alineado a la
-     * derecha (08/10, para nombres largos de cliente/cobrador).
+     * Como row(), pero si el valor no cabe al lado del rótulo se parte por
+     * palabras: el primer tramo va en la misma línea que el rótulo y los
+     * siguientes debajo, todos alineados a la derecha (09/10, Antony: "Cliente
+     * y el nombre en la misma línea"; antes se recortaba con "…").
      */
     public function rowAbajo(string $left, string $right, int $width): string
     {
@@ -396,8 +397,10 @@ final class TicketPrinter
         if (mb_strlen($left) + 1 + mb_strlen($right) <= $width) {
             return $this->row($left, $right, $width);
         }
-        $out = $left."\n";
-        foreach (explode("\n", wordwrap($right, $width, "\n", true)) as $linea) {
+        $anchoValor = max(8, $width - mb_strlen($left) - 1);
+        $tramos = explode("\n", wordwrap($right, $anchoValor, "\n", true));
+        $out = $this->row($left, array_shift($tramos), $width);
+        foreach ($tramos as $linea) {
             $out .= str_pad($linea, $width, ' ', STR_PAD_LEFT)."\n";
         }
 

@@ -50,9 +50,8 @@
             gap: 4mm;
         }
         .row > span:last-child { text-align: right; white-space: nowrap; }
-        /* 08/10 (Antony): el nombre no se sale del ticket; si no cabe baja a la línea siguiente. */
-        .row-abajo { flex-wrap: wrap; }
-        .row-abajo > span:last-child { flex: 1 0 auto; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+        /* 09/10 (Antony): el nombre arranca junto al rótulo y, si no cabe, sigue debajo sin salirse. */
+        .row-abajo > span:last-child { flex: 1 1 auto; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
 
         .total { font-size: 15px; font-weight: bold; }
 

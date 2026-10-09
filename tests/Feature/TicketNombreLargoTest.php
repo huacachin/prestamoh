@@ -20,16 +20,19 @@ class TicketNombreLargoTest extends TestCase
         // Cabe: misma línea, valor a la derecha.
         $this->assertSame('Cliente:'.str_repeat(' ', 32 - 8 - 11).'ROQUE JANCA'."\n", $p->rowAbajo('Cliente:', 'ROQUE JANCA', 32));
 
-        // No cabe: rótulo solo, y el nombre debajo partido por palabras, cada línea a la derecha.
+        // No cabe: el primer tramo del nombre va en la MISMA línea que el rótulo y el resto
+        // debajo, cada línea alineada a la derecha, sin recortar nada.
         $salida = $p->rowAbajo('Cliente:', 'GESTION ENERGETICA Y OPERACIONES TECNOLOGICAS JM S.A.C', 32);
         $lineas = explode("\n", rtrim($salida, "\n"));
-        $this->assertSame('Cliente:', $lineas[0]);
+        $this->assertStringStartsWith('Cliente: ', $lineas[0]);
+        $this->assertSame('GESTION ENERGETICA Y', trim(substr($lineas[0], 8)), 'el primer tramo va junto al rótulo');
         $this->assertGreaterThanOrEqual(3, count($lineas));
-        foreach (array_slice($lineas, 1) as $l) {
-            $this->assertSame(32, mb_strlen($l), 'cada línea rellena el ancho por la izquierda');
-            $this->assertMatchesRegularExpression('/^ *\S.*\S$/', $l, 'alineada a la derecha');
+        foreach ($lineas as $l) {
+            $this->assertSame(32, mb_strlen($l), 'cada línea llena el ancho');
+            $this->assertMatchesRegularExpression('/\S$/', $l, 'alineada a la derecha');
         }
-        $this->assertSame('GESTION ENERGETICA Y OPERACIONES TECNOLOGICAS JM S.A.C', trim(preg_replace('/\s+/', ' ', implode(' ', array_slice($lineas, 1)))));
+        $texto = trim(preg_replace('/\s+/', ' ', substr($lineas[0], 8).' '.implode(' ', array_slice($lineas, 1))));
+        $this->assertSame('GESTION ENERGETICA Y OPERACIONES TECNOLOGICAS JM S.A.C', $texto);
         $this->assertStringNotContainsString('...', $salida);
     }
 
@@ -37,16 +40,15 @@ class TicketNombreLargoTest extends TestCase
     {
         $modal = file_get_contents(resource_path('views/livewire/payments/create.blade.php'));
         $this->assertStringContainsString('<div class="tp-row tp-abajo"><span>Cliente:</span>', $modal);
-        $this->assertStringContainsString('.ticket-preview .tp-abajo { flex-wrap: wrap; }', $modal);
-        $this->assertStringContainsString('.ticket-preview .tp-abajo > span:last-child { flex: 1 0 auto; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }', $modal);
+        $this->assertStringContainsString('.ticket-preview .tp-abajo > span:last-child { flex: 1 1 auto; min-width: 0; white-space: normal; overflow-wrap: anywhere; }', $modal);
+        $this->assertStringNotContainsString('.tp-abajo { flex-wrap: wrap; }', $modal, 'el nombre no baja entero: arranca junto al rótulo');
 
         $recibo = file_get_contents(resource_path('views/payments/ticket.blade.php'));
         $this->assertStringContainsString('<div class="row row-abajo"><span>Cliente:</span>', $recibo);
-        $this->assertStringContainsString('.row-abajo > span:last-child { flex: 1 0 auto; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }', $recibo);
+        $this->assertStringContainsString('.row-abajo > span:last-child { flex: 1 1 auto; min-width: 0; white-space: normal; overflow-wrap: anywhere; }', $recibo);
 
         $pdf = file_get_contents(resource_path('views/payments/ticket-pdf.blade.php'));
-        $this->assertStringContainsString("@if(mb_strlen(\$t['cliente']) > 24)", $pdf);
-        $this->assertStringContainsString('<td colspan="2" class="der abajo">', $pdf);
+        $this->assertStringContainsString('<tr><td style="white-space:nowrap; padding-right:6pt;">Cliente:</td><td class="der abajo">', $pdf);
         $this->assertStringContainsString('table.fila td.abajo { white-space: normal; word-wrap: break-word; }', $pdf);
     }
 }

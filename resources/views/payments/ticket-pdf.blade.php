@@ -58,13 +58,8 @@
         <tr><td>Pago:</td><td class="der">{{ $t['metodo'] }}</td></tr>
     @endif
     @if($t['cliente'])
-        {{-- 08/10 (Antony): el nombre largo baja a su propia fila (sin flex en dompdf) y ahí parte. --}}
-        @if(mb_strlen($t['cliente']) > 24)
-            <tr><td colspan="2">Cliente:</td></tr>
-            <tr><td colspan="2" class="der abajo">{{ $t['cliente'] }}</td></tr>
-        @else
-            <tr><td>Cliente:</td><td class="der">{{ $t['cliente'] }}</td></tr>
-        @endif
+        {{-- 09/10 (Antony): el nombre va junto al rótulo y, si es largo, parte dentro de su celda. --}}
+        <tr><td style="white-space:nowrap; padding-right:6pt;">Cliente:</td><td class="der abajo">{{ $t['cliente'] }}</td></tr>
     @endif
     @if($t['documento'])
         <tr><td>Doc:</td><td class="der">{{ $t['documento'] }}</td></tr>

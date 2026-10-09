@@ -1098,10 +1098,9 @@
             /* La lista de cuotas SÍ se parte: con tramos sueltos (19-25,27,30-40)
                una sola línea se saldría del modal. */
             .ticket-preview .tp-wrap > span:last-child { white-space: normal; word-break: break-word; }
-            /* 08/10 (Antony): el nombre del cliente no se sale del ticket. Si cabe, va en la
-               misma línea; si no, baja a la línea siguiente alineado a la derecha y ahí parte. */
-            .ticket-preview .tp-abajo { flex-wrap: wrap; }
-            .ticket-preview .tp-abajo > span:last-child { flex: 1 0 auto; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+            /* 09/10 (Antony): el nombre del cliente arranca en la misma línea que el rótulo y,
+               si no cabe, sigue debajo (alineado a la derecha), sin salirse del ticket. */
+            .ticket-preview .tp-abajo > span:last-child { flex: 1 1 auto; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
             .ticket-preview .tp-total { font-size: 13px; font-weight: bold; }
             .ticket-preview .tp-sep { border-top: 1px dashed #000; margin: 4px 0; }
             .ticket-preview .tp-sep-dbl { border-top: 3px double #000; margin: 4px 0; }
