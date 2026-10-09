@@ -7,11 +7,12 @@ use App\Models\Income;
 use App\Models\IncomeAttachment;
 use App\Support\ConReglasDeEliminacion;
 use App\Support\ConSubidaDeArchivos;
+use App\Support\SinHorarioDeEliminacion;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
-class IncomeGallery extends Component
+class IncomeGallery extends Component implements SinHorarioDeEliminacion
 {
     use ConReglasDeEliminacion;
     use ConSubidaDeArchivos;

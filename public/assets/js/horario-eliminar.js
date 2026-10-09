@@ -7,7 +7,9 @@
  * de eliminar (delete*, destroy, eliminar*, borrar, anular, questionDelete,
  * también vía $captura('delete', …)) cuando el reloj está fuera de la ventana
  * o cuando su data-creado (lo pinta @creadoEl con la fecha del registro) no es
- * hoy; sin data-creado solo aplica el horario. Se reevalúa cada 30 s y tras
+ * hoy; sin data-creado solo aplica el horario; con data-sin-horario (adjuntos
+ * de ingresos y egresos, 09/10) no aplica el horario, solo el mismo día. Se
+ * reevalúa cada 30 s y tras
  * cada actualización de Livewire, así que una página abierta desde las 10:55
  * se bloquea sola a las 11:00 sin recargar. El servidor rechaza igual la
  * acción (ConReglasDeEliminacion en cada método): esto es solo la señal.
@@ -34,9 +36,10 @@
         return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     }
 
-    // Por qué está bloqueado este botón ahora, o null si puede usarse.
+    // Por qué está bloqueado este botón ahora, o null si puede usarse. Con
+    // data-sin-horario (adjuntos de ingresos y egresos) solo cuenta el mismo día.
     function motivo(el, ventanaCerrada, fechaHoy) {
-        if (ventanaCerrada) return cfg.mensaje;
+        if (ventanaCerrada && !el.hasAttribute('data-sin-horario')) return cfg.mensaje;
         if (!cfg.mismoDia || !el.hasAttribute('data-creado')) return null;
         const creado = el.getAttribute('data-creado');
         if (creado === '') return cfg.mensajeSinFecha;

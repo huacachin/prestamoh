@@ -4,6 +4,7 @@ namespace App\Livewire\Hooks;
 
 use App\Support\Audit;
 use App\Support\HorarioEliminacion;
+use App\Support\SinHorarioDeEliminacion;
 use Livewire\ComponentHook;
 
 /**
@@ -25,6 +26,11 @@ class BloquearEliminacionFueraDeHorario extends ComponentHook
 {
     public function call($method, $params, $returnEarly, $metadata, $componentContext): void
     {
+        // Las galerías de adjuntos de caja eliminan a cualquier hora (SinHorarioDeEliminacion);
+        // su regla del mismo día la aplica el propio método con ConReglasDeEliminacion.
+        if ($this->component instanceof SinHorarioDeEliminacion) {
+            return;
+        }
         if (! HorarioEliminacion::esMetodoDeEliminar((string) $method) || ! HorarioEliminacion::bloqueado()) {
             return;
         }

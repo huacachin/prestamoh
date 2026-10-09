@@ -7,11 +7,12 @@ use App\Models\Expense;
 use App\Models\ExpenseAttachment;
 use App\Support\ConReglasDeEliminacion;
 use App\Support\ConSubidaDeArchivos;
+use App\Support\SinHorarioDeEliminacion;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
-class ExpenseGallery extends Component
+class ExpenseGallery extends Component implements SinHorarioDeEliminacion
 {
     use ConReglasDeEliminacion;
     use ConSubidaDeArchivos;

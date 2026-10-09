@@ -25,6 +25,10 @@ use Illuminate\Support\HtmlString;
  * Qué cuenta como eliminar: los métodos Livewire que empiezan por delete,
  * destroy, eliminar, borrar, anular o questionDelete (el mismo criterio en PHP
  * y en el JS).
+ *
+ * Excepción a la ventana horaria (09/10/2026, Antony): lo que implementa
+ * SinHorarioDeEliminacion —los adjuntos de ingresos y egresos— se elimina a
+ * cualquier hora, siempre el mismo día y con el permiso de siempre.
  */
 final class HorarioEliminacion
 {
@@ -118,7 +122,7 @@ final class HorarioEliminacion
         if (self::esDirector($usuario)) {
             return null;
         }
-        if (self::bloqueado($usuario, $ahora)) {
+        if (! self::sinHorario($registro) && self::bloqueado($usuario, $ahora)) {
             return self::mensaje();
         }
         if (! self::mismoDiaActivo()) {
@@ -137,6 +141,16 @@ final class HorarioEliminacion
         return (bool) preg_match(self::METODOS, $metodo);
     }
 
+    /**
+     * Lo que se elimina a cualquier hora (09/10/2026: los adjuntos de ingresos y
+     * egresos, que el administrador borra el mismo día). Solo salta la ventana
+     * horaria; la regla del mismo día sigue igual.
+     */
+    public static function sinHorario(mixed $registro): bool
+    {
+        return $registro instanceof SinHorarioDeEliminacion;
+    }
+
     public static function mensaje(): string
     {
         return sprintf('Eliminar solo está habilitado de %d:00 a %d:00 de la mañana (hora de Lima). Fuera de ese horario, pídeselo al director.', self::desde(), self::hasta());
@@ -152,12 +166,16 @@ final class HorarioEliminacion
         return 'Este dato no tiene fecha de registro: solo el director puede eliminarlo.';
     }
 
-    /** Atributo para el botón de eliminar (directiva @creadoEl): la fecha que lee horario-eliminar.js. */
+    /**
+     * Atributos para el botón de eliminar (directiva @creadoEl): la fecha que lee
+     * horario-eliminar.js y, si el registro se elimina a cualquier hora,
+     * data-sin-horario para que el JS no lo apague fuera de la ventana.
+     */
     public static function atributoCreado(mixed $registro): HtmlString
     {
         $fecha = self::creadoEl($registro)?->setTimezone(config('app.timezone', 'America/Lima'))->toDateString() ?? '';
 
-        return new HtmlString('data-creado="'.e($fecha).'"');
+        return new HtmlString('data-creado="'.e($fecha).'"'.(self::sinHorario($registro) ? ' data-sin-horario="1"' : ''));
     }
 
     /** Lo que necesita horario-eliminar.js para deshabilitar los botones en pantalla. */
