@@ -19,83 +19,15 @@
     <div class="card shadow-sm">
         <div class="card-body">
 
-            {{-- 10/10 (Antony): resumen de la ficha a la vista en cualquier pestaña, en tarjetas
-                 como las de la pantalla de cobro: vehículos, contratos y copropietarios. --}}
+            {{-- 10/10 (Antony): resumen de la ficha en una sola línea discreta bajo las pestañas
+                 ("tiene que combinar más"): vehículos con sus placas, contratos y copropietarios.
+                 Los conteos van también como globitos en las pestañas. --}}
             @php
                 $ultimo = $resumen['ultimoContrato'];
+                $nVeh = $resumen['vehiculos']->count();
                 $nCopro = $resumen['copropietarios']->count();
+                $conteos = ['vehiculos' => $nVeh, 'documentos' => $resumen['contratos']];
             @endphp
-            <div class="resumen-cliente resumen-band mb-2">
-                <div class="resumen-kpi" style="--kpi: {{ $resumen['vehiculos']->isNotEmpty() ? '#0d6efd' : '#adb5bd' }};">
-                    <div class="resumen-top">
-                        <span><i class="ti ti-car"></i> Vehículos</span>
-                        <a href="#" class="resumen-link" wire:click.prevent="$set('tab', 'vehiculos')">ver <i class="ti ti-chevron-right"></i></a>
-                    </div>
-                    <div class="resumen-val">{{ $resumen['vehiculos']->count() }}</div>
-                    <div class="resumen-pie">
-                        @if($resumen['vehiculos']->isEmpty())
-                            <span class="text-muted">ninguno</span>
-                        @else
-                            @foreach($resumen['vehiculos'] as $v)
-                                <span class="resumen-chip"><b>{{ $v->placa }}</b>{{ $v->marca ? ' · '.$v->marca : '' }}</span>
-                            @endforeach
-                        @endif
-                    </div>
-                </div>
-                <div class="resumen-kpi" style="--kpi: {{ $resumen['contratos'] > 0 ? '#2eb85c' : '#adb5bd' }};">
-                    <div class="resumen-top">
-                        <span><i class="ti ti-file-text"></i> Contratos</span>
-                        <a href="#" class="resumen-link" wire:click.prevent="$set('tab', 'documentos')">ver <i class="ti ti-chevron-right"></i></a>
-                    </div>
-                    <div class="resumen-val">
-                        {{ $resumen['contratos'] }}
-                        <small class="resumen-sub">emitido{{ $resumen['contratos'] === 1 ? '' : 's' }}</small>
-                        @if($resumen['contratosAnulados'])
-                            <span class="resumen-chip resumen-chip-rojo">{{ $resumen['contratosAnulados'] }} anulado{{ $resumen['contratosAnulados'] === 1 ? '' : 's' }}</span>
-                        @endif
-                    </div>
-                    <div class="resumen-pie">
-                        @if($ultimo)
-                            último: <b>v{{ $ultimo->version }}</b> · {{ $ultimo->created_at?->format('d/m/Y') }}@if($ultimo->credit_id) · crédito #{{ $ultimo->credit_id }}@endif
-                        @else
-                            <span class="text-muted">ninguno</span>
-                        @endif
-                    </div>
-                </div>
-                <div class="resumen-kpi" style="--kpi: {{ $nCopro > 0 ? '#6f42c1' : '#adb5bd' }};">
-                    <div class="resumen-top">
-                        <span><i class="ti ti-users"></i> Copropietarios</span>
-                        <a href="#" class="resumen-link" wire:click.prevent="$set('tab', 'datos')"
-                           x-on:click="setTimeout(() => document.querySelector('.seccion-copropietarios')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 350)">ver <i class="ti ti-chevron-right"></i></a>
-                    </div>
-                    <div class="resumen-val">{{ $nCopro }}</div>
-                    <div class="resumen-pie">
-                        @if($nCopro === 0)
-                            <span class="text-muted">ninguno</span>
-                        @else
-                            @foreach($resumen['copropietarios'] as $c)
-                                <span class="resumen-chip">{{ $c['persona']->fullName() }}</span>
-                            @endforeach
-                        @endif
-                    </div>
-                </div>
-            </div>
-            <style>
-                /* Tarjetas del resumen: mismo lenguaje que las de la pantalla de cobro (saldo-kpi). */
-                .resumen-band { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-                @media (max-width: 767.98px) { .resumen-band { grid-template-columns: 1fr; } }
-                .resumen-kpi { border: 1px solid #e9ecef; border-left: 4px solid var(--kpi, #adb5bd); border-radius: 8px;
-                    padding: 6px 10px; background: #fff; min-width: 0; }
-                .resumen-top { display: flex; justify-content: space-between; align-items: center; gap: 6px;
-                    font-size: 10.5px; font-weight: 600; color: #6c757d; text-transform: uppercase; letter-spacing: .3px; }
-                .resumen-link { font-size: 10.5px; font-weight: 400; color: #0d6efd; text-transform: none; letter-spacing: 0; white-space: nowrap; }
-                .resumen-val { font-size: 1.35rem; font-weight: 700; line-height: 1.2; color: var(--kpi, #212529); font-variant-numeric: tabular-nums; }
-                .resumen-sub { font-size: .75rem; font-weight: 500; color: #6c757d; }
-                .resumen-pie { font-size: 10.5px; color: #868e96; margin-top: 2px; line-height: 1.6; }
-                .resumen-chip { display: inline-block; font-size: 10.5px; color: #495057; background: #f1f3f5;
-                    border-radius: 999px; padding: 0 7px; margin: 0 3px 2px 0; white-space: nowrap; }
-                .resumen-chip-rojo { background: #fde8e8; color: #b02a37; vertical-align: middle; font-weight: 600; }
-            </style>
 
             {{-- ════════ Pestañas (compactas: píldoras pequeñas) ════════ --}}
             @php
@@ -123,10 +55,64 @@
                     <button type="button"
                             class="btn btn-sm py-1 px-2 {{ $tab === $clave ? 'btn-dark' : 'btn-link text-muted text-decoration-none' }}"
                             wire:click="$set('tab', '{{ $clave }}')">
-                        <i class="ti {{ $icono }} f-s-14"></i> {{ $titulo }}
+                        <i class="ti {{ $icono }} f-s-14"></i> {{ $titulo }}@if(!empty($conteos[$clave])) <span class="badge rounded-pill {{ $tab === $clave ? 'bg-light text-dark' : 'bg-secondary' }}">{{ $conteos[$clave] }}</span>@endif
                     </button>
                 @endforeach
             </div>
+            <div class="resumen-cliente resumen-linea mt-2 mb-2">
+                <span class="resumen-seg">
+                    <a href="#" class="resumen-titulo" wire:click.prevent="$set('tab', 'vehiculos')"><i class="ti ti-car"></i> <b>{{ $nVeh }}</b> vehículo{{ $nVeh === 1 ? '' : 's' }}</a>
+                    @if($nVeh === 0)
+                        <span class="text-muted">ninguno</span>
+                    @else
+                        @foreach($resumen['vehiculos'] as $v)
+                            <span class="resumen-chip">{{ $v->placa }}@if($v->marca) <em>{{ $v->marca }}</em>@endif</span>
+                        @endforeach
+                    @endif
+                </span>
+                <span class="resumen-sep"></span>
+                <span class="resumen-seg">
+                    <a href="#" class="resumen-titulo" wire:click.prevent="$set('tab', 'documentos')"><i class="ti ti-file-text"></i> <b>{{ $resumen['contratos'] }}</b> contrato{{ $resumen['contratos'] === 1 ? '' : 's' }}</a>
+                    @if($resumen['contratosAnulados'])
+                        <span class="resumen-chip resumen-chip-rojo">{{ $resumen['contratosAnulados'] }} anulado{{ $resumen['contratosAnulados'] === 1 ? '' : 's' }}</span>
+                    @endif
+                    @if($ultimo)
+                        <span>último v{{ $ultimo->version }} · {{ $ultimo->created_at?->format('d/m/Y') }}@if($ultimo->credit_id) · crédito #{{ $ultimo->credit_id }}@endif</span>
+                    @elseif($resumen['contratos'] === 0)
+                        <span class="text-muted">ninguno</span>
+                    @endif
+                </span>
+                <span class="resumen-sep"></span>
+                <span class="resumen-seg">
+                    <a href="#" class="resumen-titulo" wire:click.prevent="$set('tab', 'datos')"
+                       x-on:click="setTimeout(() => document.querySelector('.seccion-copropietarios')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 350)"><i class="ti ti-users"></i> <b>{{ $nCopro }}</b> copropietario{{ $nCopro === 1 ? '' : 's' }}</a>
+                    @if($nCopro === 0)
+                        <span class="text-muted">ninguno</span>
+                    @else
+                        @foreach($resumen['copropietarios'] as $c)
+                            <a href="{{ route('clients.edit', $c['persona']->id) }}" class="resumen-chip">{{ $c['persona']->fullName() }}</a>
+                        @endforeach
+                    @endif
+                </span>
+            </div>
+            <style>
+                /* Línea de resumen: discreta, del mismo gris que las píldoras de las pestañas. */
+                .resumen-linea { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px;
+                    font-size: 11px; color: #6c757d; background: #f8f9fa; border: 1px solid #eef0f2;
+                    border-radius: 6px; padding: 4px 10px; }
+                .resumen-seg { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+                .resumen-titulo { color: #495057; text-decoration: none; white-space: nowrap; margin-right: 2px; }
+                .resumen-titulo:hover { color: #0d6efd; }
+                .resumen-titulo b { color: #212529; font-size: 12px; }
+                .resumen-chip { display: inline-block; font-size: 10.5px; color: #495057; background: #fff;
+                    border: 1px solid #e3e6ea; border-radius: 999px; padding: 0 6px; white-space: nowrap; text-decoration: none; }
+                a.resumen-chip:hover { border-color: #0d6efd; color: #0d6efd; }
+                .resumen-chip em { font-style: normal; color: #868e96; }
+                .resumen-chip-rojo { background: #fde8e8; border-color: #f5c2c7; color: #b02a37; font-weight: 600; }
+                .resumen-sep { width: 1px; height: 14px; background: #dee2e6; }
+                .tabs-cliente .badge { font-size: 9px; padding: 2px 5px; vertical-align: middle; }
+                @media (max-width: 575.98px) { .resumen-sep { display: none; } }
+            </style>
 
             {{-- ════════ Vehículos ════════ --}}
             @if($tab === 'vehiculos')

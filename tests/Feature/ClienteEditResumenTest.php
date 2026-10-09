@@ -44,10 +44,15 @@ class ClienteEditResumenTest extends TestCase
         $c = $this->cliente('1399', '41001463');
         $html = Livewire::test(Edit::class, ['id' => $c->id])->html();
 
-        $this->assertStringContainsString('resumen-cliente', $html);
-        $this->assertSame(3, substr_count($html, 'class="resumen-kpi"'), 'tres tarjetas: vehículos, contratos, copropietarios');
-        $this->assertSame(4, substr_count($html, '<span class="text-muted">ninguno</span>'), 'las tres tarjetas y la sección de copropietarios');
-        $this->assertSame(3, substr_count($html, '--kpi: #adb5bd;'), 'en gris cuando no hay nada');
+        $this->assertStringContainsString('resumen-linea', $html);
+        $this->assertSame(3, substr_count($html, 'class="resumen-seg"'), 'tres tramos en una línea: vehículos, contratos, copropietarios');
+        $this->assertSame(4, substr_count($html, '<span class="text-muted">ninguno</span>'), 'los tres tramos y la sección de copropietarios');
+        $this->assertStringContainsString('<b>0</b> vehículos', $html);
+        $this->assertStringContainsString('<b>0</b> contratos', $html);
+        $this->assertStringContainsString('<b>0</b> copropietarios', $html);
+        $this->assertStringNotContainsString('badge rounded-pill', $html, 'sin globitos en las pestañas cuando no hay nada');
+        // La línea va DEBAJO de las pestañas.
+        $this->assertLessThan(strpos($html, 'class="resumen-cliente resumen-linea'), strpos($html, 'class="tabs-cliente"'));
         $this->assertStringNotContainsString('Es copropietario en:', $html);
         // La sección de copropietarios va debajo de Dirección Principal y antes de los botones.
         $seccion = strpos($html, 'class="mb-1 seccion-copropietarios"');
@@ -94,18 +99,19 @@ class ClienteEditResumenTest extends TestCase
         // Livewire 4 mete marcas <!--[if BLOCK]><![endif]--> entre los @if: se quitan para leer el texto seguido.
         $html = preg_replace('/<!--.*?-->/s', '', $comp->html());
 
-        // Tarjetas: cifra grande, chips de placas, anulados en rojo, último contrato.
-        $this->assertStringContainsString('<div class="resumen-val">2</div>', $html, 'dos vehículos');
-        $this->assertStringContainsString('<span class="resumen-chip"><b>AWI132</b> · NISSAN</span>', $html);
-        $this->assertStringContainsString('<span class="resumen-chip"><b>BVJ155</b> · TOYOTA</span>', $html);
-        $this->assertLessThan(strpos($html, '<b>BVJ155</b>'), strpos($html, '<b>AWI132</b>'), 'placas ordenadas');
-        $this->assertMatchesRegularExpression('/<div class="resumen-val">\s*2\s*<small class="resumen-sub">emitidos<\/small>/', $html);
+        // Línea de resumen: conteos, chips de placas con marca, anulados en rojo, último contrato, copropietarios.
+        $this->assertStringContainsString('<b>2</b> vehículos', $html);
+        $this->assertStringContainsString('<span class="resumen-chip">AWI132 <em>NISSAN</em></span>', $html);
+        $this->assertStringContainsString('<span class="resumen-chip">BVJ155 <em>TOYOTA</em></span>', $html);
+        $this->assertLessThan(strpos($html, 'BVJ155 <em>'), strpos($html, 'AWI132 <em>'), 'placas ordenadas');
+        $this->assertStringContainsString('<b>2</b> contratos', $html);
         $this->assertStringContainsString('<span class="resumen-chip resumen-chip-rojo">1 anulado</span>', $html);
-        $this->assertStringContainsString('último: <b>v3</b> · '.now()->format('d/m/Y').' · crédito #'.$credit->id, $html);
-        $this->assertStringContainsString('--kpi: #0d6efd;', $html);
-        $this->assertStringContainsString('--kpi: #2eb85c;', $html);
-        $this->assertStringContainsString('--kpi: #6f42c1;', $html);
-        $this->assertStringContainsString('<span class="resumen-chip">Escobar Suma Joselyn</span>', $html, 'copropietarios en la tarjeta');
+        $this->assertStringContainsString('último v3 · '.now()->format('d/m/Y').' · crédito #'.$credit->id, $html);
+        $this->assertStringContainsString('<b>2</b> copropietarios', $html);
+        $this->assertStringContainsString('class="resumen-chip">Escobar Suma Joselyn</a>', $html, 'copropietarios como chips con enlace a su ficha');
+        // Globitos con el conteo en las pestañas Vehículos y Documentos.
+        $this->assertMatchesRegularExpression('/Vehículos\s*<span class="badge rounded-pill[^"]*">2<\/span>/', $html);
+        $this->assertMatchesRegularExpression('/Documentos\s*<span class="badge rounded-pill[^"]*">2<\/span>/', $html);
         // Copropietarios en su sección (tabla ancha): nombre, DNI, celular, vehículos y ficha.
         $this->assertStringContainsString('tabla-copropietarios', $html);
         $this->assertStringContainsString('<td class="fw-semibold">Escobar Suma Joselyn</td>', $html);
@@ -119,8 +125,10 @@ class ClienteEditResumenTest extends TestCase
         $this->assertStringContainsString(route('clients.edit', $copro->id), $html);
         $this->assertStringNotContainsString('<b>Copropietarios:</b>', $html, 'ya no va en la franja de arriba');
 
-        // Las tarjetas de arriba se ven en las otras pestañas.
-        $comp->set('tab', 'gps')->assertSeeHtml('<small class="resumen-sub">emitidos</small>')->assertSeeHtml('<b>AWI132</b> · NISSAN');
+        // La línea de resumen se ve en las otras pestañas.
+        $gps = preg_replace('/<!--.*?-->/s', '', $comp->set('tab', 'gps')->html());
+        $this->assertStringContainsString('<b>2</b> contratos', $gps);
+        $this->assertStringContainsString('AWI132 <em>NISSAN</em>', $gps);
 
         // La ficha de la copropietaria indica de quién es copropietaria.
         Livewire::test(Edit::class, ['id' => $copro->id])
