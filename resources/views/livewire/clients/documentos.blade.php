@@ -110,8 +110,8 @@
                     <table class="table table-sm table-bordered table-hover align-middle" style="font-size:11px;">
                         <thead class="bg-primary">
                             <tr>
-                                <th class="text-center">#</th>
                                 <th class="text-center">N°</th>
+                                <th class="text-center">#</th>
                                 <th>Tipo</th>
                                 <th class="text-center">Crédito</th>
                                 <th class="text-center">Versión</th>
@@ -152,10 +152,10 @@
                             {{-- Gris explícito para el grupo par: table-light casi no se distinguía del blanco.
                                  Bootstrap pinta las celdas con --bs-table-bg, así que se fija la variable en la fila. --}}
                             <tr style="{{ $numCredito % 2 === 0 ? '--bs-table-bg:#e9ecef; background-color:#e9ecef;' : '' }} {{ $anulado ? 'opacity:.55;' : '' }}">
-                                <td class="text-center text-muted">{{ $fila }}</td>
                                 @if($k === 0)
                                     <td class="text-center fw-bold align-middle" rowspan="{{ $filasCredito->count() }}">{{ $numCredito }}</td>
                                 @endif
+                                <td class="text-center text-muted">{{ $fila }}</td>
                                 <td>
                                     <span class="badge {{ $badgeTipo }}"
                                           style="font-size:10px; {{ $anulado ? 'text-decoration: line-through;' : '' }}">

@@ -69,14 +69,14 @@ class DocumentosNumeroPorCreditoTest extends TestCase
         // Livewire 4 envuelve los @if con marcas <!--[if BLOCK]><![endif]-->: se saltan.
         $hueco = '(?:\s|<!--.*?-->)*';   // la marca lleva un ">" dentro: no vale [^>]*
         preg_match_all(
-            '/<tr style="([^"]*)">'.$hueco.'<td class="text-center text-muted">(\d+)<\/td>'.$hueco.'(?:<td class="text-center fw-bold align-middle" rowspan="(\d+)">(\d+)<\/td>'.$hueco.')?<td>\s*<span class="badge[^>]*>\s*([^<]+?)\s*<\/span>.*?<td class="text-center">#(\d+)<\/td>/s',
+            '/<tr style="([^"]*)">'.$hueco.'(?:<td class="text-center fw-bold align-middle" rowspan="(\d+)">(\d+)<\/td>'.$hueco.')?<td class="text-center text-muted">(\d+)<\/td>'.$hueco.'<td>\s*<span class="badge[^>]*>\s*([^<]+?)\s*<\/span>.*?<td class="text-center">#(\d+)<\/td>/s',
             $html, $m, PREG_SET_ORDER
         );
 
         return array_map(fn ($f) => [
-            'fila' => $f[2],
-            'num' => $f[4] !== '' ? $f[4] : null,
-            'rowspan' => $f[3] !== '' ? $f[3] : null,
+            'fila' => $f[4],
+            'num' => $f[3] !== '' ? $f[3] : null,
+            'rowspan' => $f[2] !== '' ? $f[2] : null,
             'tipo' => $f[5],
             'credito' => $f[6],
             'gris' => str_contains($f[1], '#e9ecef'),
@@ -112,7 +112,8 @@ class DocumentosNumeroPorCreditoTest extends TestCase
         // Zebra por crédito: el grupo 2 (par) en gris, el 1 en blanco.
         $this->assertSame([false, false, true, true], array_column($filas, 'gris'));
         $this->assertStringNotContainsString('table-striped', $html);
-        $this->assertStringContainsString('<th class="text-center">#</th>', $html);
+        // N° (por crédito) primero y # (por fila) después.
+        $this->assertStringContainsString('<th class="text-center">N°</th>'."\n".'                                <th class="text-center">#</th>', $html);
     }
 
     public function test_con_un_solo_credito_hay_una_sola_celda_con_el_1_para_todas_sus_filas(): void
