@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Livewire\Clients\Gps;
 use App\Models\Client;
+use App\Models\ClientUbicacion;
 use App\Models\User;
 use App\Support\Audit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -12,11 +13,12 @@ use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
 /**
- * 10/10/2026 (Antony, ficha 173): pestaña GPS organizada. Una dirección más
- * (Negocio) aparte de Casa; si la dirección ya tiene coordenadas el campo va
- * bloqueado hasta pulsar "Modificar"; y cada cambio sale en una tablita
- * (dirección, antes, después, quién, cuándo) debajo de las direcciones y antes
- * de las ubicaciones de los vehículos.
+ * 10/10/2026 (Antony, ficha 173): pestaña GPS organizada. Casa, Negocio y
+ * cuantas direcciones más haga falta, con nombre propio ("tiene que haber la
+ * posibilidad de agregar más direcciones"); si la dirección ya tiene
+ * coordenadas el campo va bloqueado hasta pulsar "Modificar"; y cada cambio
+ * sale en una tablita (dirección, antes, después, quién, cuándo) debajo de
+ * las direcciones y antes de las ubicaciones de los vehículos.
  */
 class GpsDireccionesEHistorialTest extends TestCase
 {
@@ -40,29 +42,75 @@ class GpsDireccionesEHistorialTest extends TestCase
         $c = $this->cliente();
         $html = Livewire::test(Gps::class, ['id' => $c->id])->html();
 
-        // Sin coordenadas: campo libre y Guardar a la vista, sin botón Modificar.
-        $this->assertSame(2, substr_count($html, ':disabled="false && !modificando"'), 'Casa y Negocio libres');
+        // Sin coordenadas: campo a la vista y Guardar, sin botón Modificar.
+        $this->assertSame(2, substr_count($html, '<div class="input-group input-group-sm">'), 'Casa y Negocio con el campo libre');
         $this->assertStringNotContainsString('Modificar', $html);
-        $this->assertSame(2, substr_count($html, 'x-show="true"'));
 
         $c->update(['latitud' => -12.1, 'longitud' => -76.9]);
         $html = Livewire::test(Gps::class, ['id' => $c->id])->html();
 
-        // Casa con coordenadas: bloqueada, con Modificar; Negocio sigue libre.
-        $this->assertSame(1, substr_count($html, ':disabled="true && !modificando"'));
-        $this->assertSame(1, substr_count($html, ':disabled="false && !modificando"'));
-        $this->assertStringContainsString('x-on:click="modificando = true; $nextTick(() => $refs.campo.focus())"', $html);
+        // Casa con coordenadas: el campo solo sale al pulsar Modificar; Negocio sigue libre.
+        $this->assertStringContainsString("<div class=\"input-group input-group-sm\" x-show=\"modificando === 'casa'\" x-cloak>", $html);
+        $this->assertSame(1, substr_count($html, '<div class="input-group input-group-sm">'));
+        // El formulario de "Agregar dirección" se oculta con !important (d-flex de Bootstrap lo pisaba).
+        $this->assertStringContainsString('x-show.important="agregando" x-cloak', $html);
+        $this->assertStringContainsString("x-on:click=\"modificando = 'casa'; \$nextTick(() => \$refs['campo-casa'].focus())\"", $html);
         $this->assertStringContainsString('<i class="ti ti-pencil"></i> Modificar', $html);
-        $this->assertStringContainsString('x-show="modificando"', $html, 'Guardar solo cuando se está modificando');
-        $this->assertStringContainsString("x-on:click=\"modificando = false; \$wire.set('pegado.casa', '', false)\"", $html, 'Cancelar vuelve a bloquear sin viaje');
-        $this->assertStringContainsString("x-on:gps-guardado.window=\"if (\$event.detail.tipo === 'casa') modificando = false\"", $html);
+        $this->assertStringContainsString("x-on:click=\"modificando = null; \$wire.set('pegado.casa', '', false)\">Cancelar", $html, 'Cancelar vuelve a bloquear sin viaje');
+        $this->assertStringContainsString('x-on:gps-guardado.window="modificando = null; agregando = false"', $html);
         $this->assertStringContainsString('Las coordenadas ya están registradas: pulsa Modificar si hay que cambiarlas.', $html);
 
-        // Al guardar, el servidor avisa para que el navegador vuelva a bloquear ESA dirección.
+        // Al guardar, el servidor avisa para que el navegador vuelva a bloquear.
         Livewire::test(Gps::class, ['id' => $c->id])
             ->set('pegado.casa', '-12.2, -76.8')
             ->call('guardar', 'casa')
-            ->assertDispatched('gps-guardado', tipo: 'casa');
+            ->assertDispatched('gps-guardado', clave: 'casa');
+    }
+
+    public function test_se_agregan_direcciones_con_nombre_propio_y_se_editan_y_borran_como_las_fijas(): void
+    {
+        $c = $this->cliente();
+        $comp = Livewire::test(Gps::class, ['id' => $c->id]);
+        $comp->assertSee('Agregar dirección');
+
+        // Nombre y coordenadas obligatorios; el nombre no puede repetir Casa/Negocio ni otra adicional.
+        $comp->set('nuevaNombre', '')->set('nuevaCoordenadas', '')->call('agregar')->assertHasErrors(['nuevaNombre', 'nuevaCoordenadas']);
+        $comp->set('nuevaNombre', 'casa')->set('nuevaCoordenadas', '-12.0, -77.0')->call('agregar')->assertHasErrors(['nuevaNombre']);
+        $comp->set('nuevaNombre', 'Taller')->set('nuevaCoordenadas', 'por el mercado')->call('agregar')->assertHasErrors(['nuevaCoordenadas']);
+        $this->assertSame(0, ClientUbicacion::count());
+
+        $comp->set('nuevaNombre', '  Taller  ')->set('nuevaCoordenadas', 'https://www.google.com/maps/@-12.0464,-77.0428,17z')->call('agregar')
+            ->assertHasNoErrors()
+            ->assertSet('nuevaNombre', '')
+            ->assertSet('msgType', 'ok');
+        $u = ClientUbicacion::sole();
+        $this->assertSame(['Taller', $c->id, $this->user->id], [$u->nombre, $u->client_id, $u->user_id]);
+        $this->assertEqualsWithDelta(-12.0464, (float) $u->latitud, 0.0001);
+        $comp->assertDispatched('gps-guardado', clave: "u:{$u->id}");
+
+        // Repetido (sin distinguir mayúsculas): no.
+        $comp->set('nuevaNombre', 'TALLER')->set('nuevaCoordenadas', '-12.0, -77.0')->call('agregar')->assertHasErrors(['nuevaNombre']);
+
+        // En la lista, con su fila, el campo bloqueado y Modificar; se edita y se borra con la misma clave.
+        $html = $comp->html();
+        $this->assertStringContainsString('wire:key="dir-u:'.$u->id.'"', $html);
+        $this->assertStringContainsString("x-on:click=\"modificando = 'u:{$u->id}'; \$nextTick(() => \$refs['campo-u:{$u->id}'].focus())\"", $html);
+        $this->assertStringContainsString("wire:click=\"borrar('u:{$u->id}')\" data-creado=\"".now()->toDateString().'"', $html, 'la dirección adicional sí tiene fecha de registro');
+        $this->assertStringContainsString('data-confirmar="¿Eliminar la dirección Taller?"', $html);
+
+        $comp->set("pegado.u:{$u->id}", '-12.5, -77.5')->call('guardar', "u:{$u->id}")->assertSet('msgType', 'ok');
+        $this->assertEqualsWithDelta(-12.5, (float) $u->fresh()->latitud, 0.0001);
+
+        $comp->call('borrar', "u:{$u->id}")->assertSet('msg', 'Dirección Taller eliminada.');
+        $this->assertNull($u->fresh());
+
+        // Y todo quedó en la tablita, con el nombre de la dirección.
+        $filas = $comp->instance()->historial();
+        $this->assertSame(['Borró', 'Actualizó', 'Registró'], $filas->pluck('accion')->all());
+        $this->assertSame(['Taller', 'Taller', 'Taller'], $filas->pluck('tipo')->all());
+        $this->assertSame('-12.5, -77.5', $filas[0]['antes']);
+        $this->assertSame('—', $filas[0]['despues']);
+        $this->assertSame('-12.0464, -77.0428', $filas[2]['despues']);
     }
 
     public function test_cada_cambio_queda_en_la_tablita_con_antes_despues_y_quien(): void
@@ -94,6 +142,7 @@ class GpsDireccionesEHistorialTest extends TestCase
         $this->assertStringContainsString('tabla-cambios-gps', $html);
         $this->assertStringContainsString('<td>Actualizó</td>', $html);
         $this->assertStringContainsString('<td class="fw-semibold" style="word-break:break-all;">-12.5, -76.5</td>', $html);
+        $this->assertLessThan(strpos($html, 'tabla-cambios-gps'), strpos($html, 'lista-direcciones-gps'), 'la lista de direcciones va antes de la tablita');
         $this->assertLessThan(strpos($html, 'wire:name="clients.gps-vehiculos"') ?: PHP_INT_MAX, strpos($html, 'tabla-cambios-gps'), 'la tablita va antes de los vehículos');
 
         // Sin filas duplicadas: la auditoría automática del modelo queda apagada en el guardado de esta

@@ -131,6 +131,12 @@ class Client extends Model
         return $this->hasMany(ExpedienteJudicial::class);
     }
 
+    /** Direcciones GPS adicionales (10/10/2026): Casa y Negocio viven en latitud/longitud y latitud2/longitud2; el resto aquí. */
+    public function ubicaciones(): HasMany
+    {
+        return $this->hasMany(ClientUbicacion::class, 'client_id')->orderBy('id');
+    }
+
     public function scopeActive($q)
     {
         return $q->where('status', 'active');
