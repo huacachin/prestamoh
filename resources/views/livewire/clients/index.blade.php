@@ -220,7 +220,9 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <a href="{{ route('credits.create', $client->id) }}" style="color: inherit; text-decoration: none;">
+                                        {{-- 10/10: el DNI también lleva a la ficha (antes abría el alta de crédito);
+                                             cae en la pestaña Préstamos, donde está "Nuevo préstamo". --}}
+                                        <a href="{{ route('clients.edit', ['id' => $client->id, 'tab' => 'prestamos']) }}" style="color: inherit; text-decoration: none;">
                                             {{ $client->documento }}
                                         </a>
                                     </td>
@@ -315,7 +317,7 @@
                                     </div>
                                     <div class="row g-1" style="font-size: 12px;">
                                         <div class="col-6"><b>DNI:</b>
-                                            <a href="{{ route('credits.create', $client->id) }}">{{ $client->documento }}</a>
+                                            <a href="{{ route('clients.edit', ['id' => $client->id, 'tab' => 'prestamos']) }}" style="color: inherit;">{{ $client->documento }}</a>
                                         </div>
                                         <div class="col-6"><b>Exp.:</b> {{ $client->expediente }}</div>
                                         <div class="col-6"><b>Movil:</b> {{ $client->celular1 }}</div>
