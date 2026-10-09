@@ -129,21 +129,37 @@ class Index extends Component
                 });
             }
         }
+        // 10/10 (Antony): las personas relacionadas (copropietarios) no tienen expediente,
+        // zona, giro ni asesor propios: el listado les muestra los del titular del préstamo
+        // (Client::herenciaDeCopropietario) y estos filtros también los buscan por ahí.
+        $relacionados = $this->verRelacionados === 'si';
+        $propioOTitular = function (callable $condicion) use ($query, $relacionados) {
+            if (! $relacionados) {
+                $condicion($query);
+
+                return;
+            }
+            $query->where(function ($q) use ($condicion) {
+                $q->where(fn ($propio) => $condicion($propio))
+                    ->orWhereHas('vehiculosCompartidos.client', fn ($titular) => $condicion($titular))
+                    ->orWhereHas('contratosComoCodeudor.credit.client', fn ($titular) => $condicion($titular));
+            });
+        };
         if (trim($this->nexpediente) !== '') {
-            $query->where('expediente', trim($this->nexpediente));
+            $propioOTitular(fn ($q) => $q->where('expediente', trim($this->nexpediente)));
         }
         if (trim($this->ejecutivo) !== '') {
             if ($this->ejecutivo === 'Ninguno') {
                 $query->whereNull('asesor_id');
             } else {
-                $query->where('asesor_id', $this->ejecutivo);
+                $propioOTitular(fn ($q) => $q->where('asesor_id', $this->ejecutivo));
             }
         }
         if (trim($this->ruta) !== '') {
-            $query->where('zona', 'like', '%'.trim($this->ruta).'%');
+            $propioOTitular(fn ($q) => $q->where('zona', 'like', '%'.trim($this->ruta).'%'));
         }
         if (trim($this->giro) !== '') {
-            $query->where('giro', 'like', '%'.trim($this->giro).'%');
+            $propioOTitular(fn ($q) => $q->where('giro', 'like', '%'.trim($this->giro).'%'));
         }
 
         // Asesores para dropdown: cualquier usuario activo puede ser asesor responsable.

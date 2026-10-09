@@ -414,6 +414,9 @@ class GeneradorContrato
             $doc = new DocumentoCliente([
                 'client_id' => $client->id,
                 'credit_id' => $credit->id,
+                // 10/10: enlace exacto codeudor → préstamo (Client::copropiedades). Solo si el
+                // codeudor tiene ficha; tipeado a mano en el wizard queda en null.
+                'codeudor_client_id' => filled($datos['codeudor_client_id'] ?? null) ? (int) $datos['codeudor_client_id'] : null,
                 'tipo' => 'contrato',
                 'modelo' => $modelo,
                 'version' => $version,

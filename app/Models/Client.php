@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Collection;
 
 class Client extends Model
 {
@@ -119,6 +120,71 @@ class Client extends Model
     }
 
     /** Vehículos donde este cliente es COPROPIETARIO (no titular). */
+    /** Contratos en los que esta persona figura como codeudor (enlace exacto, desde el 10/10/2026). */
+    public function contratosComoCodeudor(): HasMany
+    {
+        return $this->hasMany(DocumentoCliente::class, 'codeudor_client_id');
+    }
+
+    /**
+     * Préstamos en los que esta persona es copropietaria (10/10/2026, Antony):
+     * por cada titular, su ÚLTIMO crédito con contrato emitido. El enlace es
+     * exacto cuando el contrato guardó al codeudor (contratos desde el 10/10);
+     * si no, se deduce por el vehículo compartido → su dueño → su último
+     * contrato. Es lo que rellena Exp./T.Credito/Giro/Asesor de la persona
+     * relacionada en el listado y el bloque "Copropietario en" de su ficha.
+     *
+     * @return Collection<int, array{titular: Client, credit: ?Credit, documento: ?DocumentoCliente, placas: list<string>, exacto: bool}>
+     */
+    public function copropiedades(): Collection
+    {
+        $porTitular = collect();
+
+        $exactos = $this->contratosComoCodeudor()
+            ->where('tipo', 'contrato')->where('estado', '!=', 'anulado')
+            ->with('credit.client.asesor')->orderByDesc('id')->get();
+        foreach ($exactos as $doc) {
+            $titular = $doc->credit?->client;
+            if (! $titular || $porTitular->has($titular->id)) {
+                continue;
+            }
+            $porTitular->put($titular->id, ['titular' => $titular, 'credit' => $doc->credit, 'documento' => $doc, 'placas' => [], 'exacto' => true]);
+        }
+
+        foreach ($this->vehiculosCompartidos()->with('client.asesor')->get() as $v) {
+            $titular = $v->client;
+            if (! $titular) {
+                continue;
+            }
+            if ($porTitular->has($titular->id)) {
+                $fila = $porTitular->get($titular->id);
+                $fila['placas'][] = $v->placa;
+                $porTitular->put($titular->id, $fila);
+
+                continue;
+            }
+            $doc = DocumentoCliente::where('tipo', 'contrato')->where('estado', '!=', 'anulado')
+                ->whereHas('credit', fn ($q) => $q->where('client_id', $titular->id))
+                ->with('credit')->orderByDesc('id')->first();
+            $porTitular->put($titular->id, ['titular' => $titular, 'credit' => $doc?->credit, 'documento' => $doc, 'placas' => [$v->placa], 'exacto' => false]);
+        }
+
+        return $porTitular->values();
+    }
+
+    /**
+     * Lo que el listado muestra en Exp./T.Credito/Giro/Asesor de una persona
+     * relacionada: los datos del titular (y el crédito) de su primera copropiedad.
+     *
+     * @return array{titular: Client, credit: ?Credit, placas: list<string>, exacto: bool}|null
+     */
+    public function herenciaDeCopropietario(): ?array
+    {
+        $c = $this->copropiedades()->first();
+
+        return $c ? ['titular' => $c['titular'], 'credit' => $c['credit'], 'placas' => $c['placas'], 'exacto' => $c['exacto']] : null;
+    }
+
     public function vehiculosCompartidos(): BelongsToMany
     {
         return $this->belongsToMany(Vehiculo::class, 'cliente_vehiculo')

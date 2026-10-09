@@ -357,4 +357,33 @@ class DocumentoContratoTest extends TestCase
 
         $this->assertStringContainsString('24 DE AGOSTO DEL 2026', $html);
     }
+
+    /** 10/10 (Antony): enlace exacto copropietario → préstamo: el contrato guarda al codeudor con ficha. */
+    public function test_generar_guarda_el_codeudor_con_ficha_en_el_contrato(): void
+    {
+        $this->mundo();
+        $this->darPermisoClientes();
+        Storage::fake('public');
+        $codeudor = Client::create([
+            'nombre' => 'MIGUEL', 'apellido_pat' => 'MEJIA', 'apellido_mat' => 'VILLANUEVA', 'tipo_documento' => 'DNI', 'documento' => '41001458',
+            'sexo' => 'M', 'direccion' => 'JR. LOS PINOS 123', 'distrito' => 'ATE', 'provincia' => 'LIMA', 'departamento' => 'LIMA',
+            'celular1' => '999111222', 'email' => 'miguel@example.com', 'es_relacionado' => true, 'headquarter_id' => $this->client->headquarter_id, 'status' => 'active',
+        ]);
+        $this->vehiculo->copropietarios()->attach($codeudor->id, ['rol' => 'copropietario']);
+
+        // Modelo de 2 deudores con el codeudor tomado de su ficha.
+        $doc = $this->generador()->generar($this->client, $this->credit, [$this->vehiculo->id], 'a3', $this->datosWizard('a3') + ['codeudor_client_id' => $codeudor->id]);
+        $this->assertSame($codeudor->id, $doc->codeudor_client_id);
+
+        // Y la persona relacionada queda referenciada EXACTAMENTE a ese crédito.
+        $c = $codeudor->copropiedades();
+        $this->assertCount(1, $c);
+        $this->assertTrue($c[0]['exacto']);
+        $this->assertSame($this->credit->id, $c[0]['credit']->id);
+        $this->assertSame($doc->id, $c[0]['documento']->id);
+
+        // Un modelo de 1 deudor (o codeudor tipeado a mano) deja el enlace en null.
+        $solo = $this->generador()->generar($this->client, $this->credit, [$this->vehiculo->id], 'a2', $this->datosWizard('a2'));
+        $this->assertNull($solo->codeudor_client_id);
+    }
 }

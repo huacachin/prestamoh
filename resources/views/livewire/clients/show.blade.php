@@ -40,6 +40,31 @@
         </div>
     </div>
 
+    {{-- 10/10 (Antony): la persona relacionada queda referenciada al préstamo en el que
+         es copropietaria (Client::copropiedades: exacto por el contrato, o por el vehículo). --}}
+    @if($client->es_relacionado)
+        @php $copropiedades = $client->copropiedades(); @endphp
+        <div class="alert alert-info py-2 mb-2 small copropietario-en">
+            <div class="fw-semibold"><i class="ti ti-users"></i> Persona relacionada · copropietaria en:</div>
+            @forelse($copropiedades as $c)
+                <div>
+                    @if($c['placas']) vehículo {{ implode(', ', $c['placas']) }} de @else codeudora de @endif
+                    <a href="{{ route('clients.show', $c['titular']->id) }}">{{ $c['titular']->fullName() }}</a>
+                    (exp. {{ $c['titular']->expediente ?: '—' }})
+                    @if($c['credit'])
+                        · <a href="{{ route('credits.show', $c['credit']->id) }}">crédito #{{ $c['credit']->id }}</a>
+                        @if($c['documento']) · contrato v{{ $c['documento']->version }} del {{ $c['documento']->created_at?->format('d/m/Y') }} @endif
+                        @unless($c['exacto']) <span class="text-muted">(último crédito con contrato del titular)</span> @endunless
+                    @else
+                        · <span class="text-muted">el titular aún no tiene contrato emitido</span>
+                    @endif
+                </div>
+            @empty
+                <div class="text-muted">Sin vehículos ni contratos vinculados todavía.</div>
+            @endforelse
+        </div>
+    @endif
+
     {{-- Ficha personal --}}
     <div class="card shadow-sm">
         <div class="card-body p-0">
