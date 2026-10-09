@@ -110,6 +110,7 @@
                     <table class="table table-sm table-bordered table-hover align-middle" style="font-size:11px;">
                         <thead class="bg-primary">
                             <tr>
+                                <th class="text-center">#</th>
                                 <th class="text-center">N°</th>
                                 <th>Tipo</th>
                                 <th class="text-center">Crédito</th>
@@ -124,21 +125,22 @@
                         <tbody>
                         {{-- N° por CRÉDITO (02/10): contrato, anexo 1 y anexo 2 de un mismo crédito
                              comparten número y su celda N° va COMBINADA (rowspan), así que las
-                             filas de cada crédito se agrupan: el crédito más reciente arriba (por
-                             su documento más nuevo) y, dentro, del documento más nuevo al más
-                             viejo. El N° cuenta créditos desde el más antiguo (= 1), por eso baja
-                             de arriba hacia abajo. El zebra alterna por crédito. --}}
+                             filas de cada crédito se agrupan. 10/10 (Antony): orden cronológico,
+                             del primero que se hizo al último: el crédito más antiguo arriba
+                             (N° 1) y, dentro, del documento más viejo al más nuevo; la columna #
+                             numera las filas 1, 2, 3… El zebra alterna por crédito. --}}
                         @php
-                            $grupos = $documentos->groupBy('credit_id')->sortByDesc(fn ($docs) => $docs->max('id'))->values();
-                            $totalGrupos = $grupos->count();
+                            $grupos = $documentos->groupBy('credit_id')->sortBy(fn ($docs) => $docs->min('id'))->values();
+                            $fila = 0;
                         @endphp
                         @foreach($grupos as $g => $docsCredito)
                         @php
-                            $numCredito = $totalGrupos - $g;
-                            $filasCredito = $docsCredito->sortByDesc('id')->values();
+                            $numCredito = $g + 1;
+                            $filasCredito = $docsCredito->sortBy('id')->values();
                         @endphp
                         @foreach($filasCredito as $k => $doc)
                             @php
+                                $fila++;
                                 $anulado = $doc->estado === 'anulado';
                                 $badgeTipo = match ($doc->tipo) {
                                     'anexo1' => 'bg-primary',
@@ -150,6 +152,7 @@
                             {{-- Gris explícito para el grupo par: table-light casi no se distinguía del blanco.
                                  Bootstrap pinta las celdas con --bs-table-bg, así que se fija la variable en la fila. --}}
                             <tr style="{{ $numCredito % 2 === 0 ? '--bs-table-bg:#e9ecef; background-color:#e9ecef;' : '' }} {{ $anulado ? 'opacity:.55;' : '' }}">
+                                <td class="text-center text-muted">{{ $fila }}</td>
                                 @if($k === 0)
                                     <td class="text-center fw-bold align-middle" rowspan="{{ $filasCredito->count() }}">{{ $numCredito }}</td>
                                 @endif

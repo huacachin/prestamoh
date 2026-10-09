@@ -14,11 +14,13 @@ use Tests\TestCase;
 
 /**
  * 02/10/2026: la tabla de documentos del cliente lleva una columna N° que
- * cuenta CRÉDITOS, no filas. Las filas de un mismo crédito van juntas (el
- * crédito más reciente arriba, y dentro del documento más nuevo al más
- * viejo) con la celda N° COMBINADA (rowspan). El N° cuenta créditos desde
- * el más antiguo (= 1), así que baja de arriba hacia abajo; el zebra
- * alterna por crédito.
+ * cuenta CRÉDITOS, no filas. Las filas de un mismo crédito van juntas con la
+ * celda N° COMBINADA (rowspan); el zebra alterna por crédito.
+ *
+ * 10/10/2026 (Antony): "se está listando desde el que se hizo último hasta el
+ * que se hizo primero, debe ser al revés, y aumentarle una columna con los
+ * números del 1…". Orden cronológico: el crédito más antiguo arriba (N° 1) y,
+ * dentro, del documento más viejo al más nuevo; columna # con 1, 2, 3…
  */
 class DocumentosNumeroPorCreditoTest extends TestCase
 {
@@ -57,33 +59,34 @@ class DocumentosNumeroPorCreditoTest extends TestCase
     }
 
     /**
-     * Filas en el orden de la tabla: num/rowspan solo en la primera fila de
-     * cada crédito (celda combinada), tipo del documento, crédito y si va en gris.
+     * Filas en el orden de la tabla: # de la fila, num/rowspan solo en la primera
+     * fila de cada crédito (celda combinada), tipo del documento, crédito y si va en gris.
      *
-     * @return list<array{num: ?string, rowspan: ?string, tipo: string, credito: string, gris: bool}>
+     * @return list<array{fila: string, num: ?string, rowspan: ?string, tipo: string, credito: string, gris: bool}>
      */
     private function filas(string $html): array
     {
         // Livewire 4 envuelve los @if con marcas <!--[if BLOCK]><![endif]-->: se saltan.
         $hueco = '(?:\s|<!--.*?-->)*';   // la marca lleva un ">" dentro: no vale [^>]*
         preg_match_all(
-            '/<tr style="([^"]*)">'.$hueco.'(?:<td class="text-center fw-bold align-middle" rowspan="(\d+)">(\d+)<\/td>'.$hueco.')?<td>\s*<span class="badge[^>]*>\s*([^<]+?)\s*<\/span>.*?<td class="text-center">#(\d+)<\/td>/s',
+            '/<tr style="([^"]*)">'.$hueco.'<td class="text-center text-muted">(\d+)<\/td>'.$hueco.'(?:<td class="text-center fw-bold align-middle" rowspan="(\d+)">(\d+)<\/td>'.$hueco.')?<td>\s*<span class="badge[^>]*>\s*([^<]+?)\s*<\/span>.*?<td class="text-center">#(\d+)<\/td>/s',
             $html, $m, PREG_SET_ORDER
         );
 
         return array_map(fn ($f) => [
-            'num' => $f[3] !== '' ? $f[3] : null,
-            'rowspan' => $f[2] !== '' ? $f[2] : null,
-            'tipo' => $f[4],
-            'credito' => $f[5],
+            'fila' => $f[2],
+            'num' => $f[4] !== '' ? $f[4] : null,
+            'rowspan' => $f[3] !== '' ? $f[3] : null,
+            'tipo' => $f[5],
+            'credito' => $f[6],
             'gris' => str_contains($f[1], '#e9ecef'),
         ], $m);
     }
 
-    public function test_los_creditos_van_agrupados_numerados_de_arriba_abajo_y_con_la_celda_combinada(): void
+    public function test_los_creditos_van_agrupados_en_orden_cronologico_numerados_y_con_la_celda_combinada(): void
     {
-        $a = $this->credito();   // el más viejo → N° 1, abajo
-        $b = $this->credito();   // el más reciente → N° 2, arriba
+        $a = $this->credito();   // el más viejo → N° 1, arriba
+        $b = $this->credito();   // el más reciente → N° 2, abajo
         // Intercalados a propósito: contrato A, anexo1 B, anexo1 A, anexo2 B.
         $this->documento($a, 'contrato');
         $this->documento($b, 'anexo1');
@@ -94,20 +97,22 @@ class DocumentosNumeroPorCreditoTest extends TestCase
         $filas = $this->filas($html);
         $this->assertCount(4, $filas);
 
-        // Arriba el crédito B (su documento más nuevo es el último emitido), dentro del
-        // más nuevo al más viejo; después el crédito A. Los intercalados quedan juntos.
-        $this->assertSame([(string) $b->id, (string) $b->id, (string) $a->id, (string) $a->id], array_column($filas, 'credito'));
-        foreach (['Anexo 2', 'Anexo 1', 'Anexo 1', 'Contrato'] as $i => $prefijo) {
+        // Arriba el crédito A (el primero que tuvo documento), dentro del más viejo al
+        // más nuevo; después el crédito B. Los intercalados quedan juntos.
+        $this->assertSame([(string) $a->id, (string) $a->id, (string) $b->id, (string) $b->id], array_column($filas, 'credito'));
+        foreach (['Contrato', 'Anexo 1', 'Anexo 1', 'Anexo 2'] as $i => $prefijo) {
             $this->assertStringStartsWith($prefijo, trim(preg_replace('/\s+/', ' ', $filas[$i]['tipo'])), "fila {$i}");
         }
 
-        // N° descendente (2 arriba, 1 abajo) en una sola celda combinada por crédito.
-        $this->assertSame(['2', null, '1', null], array_column($filas, 'num'));
+        // # corrido 1, 2, 3, 4 y N° ascendente (1 arriba, 2 abajo) en una sola celda combinada por crédito.
+        $this->assertSame(['1', '2', '3', '4'], array_column($filas, 'fila'));
+        $this->assertSame(['1', null, '2', null], array_column($filas, 'num'));
         $this->assertSame(['2', null, '2', null], array_column($filas, 'rowspan'));
 
         // Zebra por crédito: el grupo 2 (par) en gris, el 1 en blanco.
-        $this->assertSame([true, true, false, false], array_column($filas, 'gris'));
+        $this->assertSame([false, false, true, true], array_column($filas, 'gris'));
         $this->assertStringNotContainsString('table-striped', $html);
+        $this->assertStringContainsString('<th class="text-center">#</th>', $html);
     }
 
     public function test_con_un_solo_credito_hay_una_sola_celda_con_el_1_para_todas_sus_filas(): void
@@ -120,6 +125,10 @@ class DocumentosNumeroPorCreditoTest extends TestCase
         $filas = $this->filas(Livewire::test(Documentos::class, ['id' => $this->client->id])->html());
 
         $this->assertCount(3, $filas);
+        $this->assertSame(['1', '2', '3'], array_column($filas, 'fila'));
+        foreach (['Contrato', 'Anexo 1', 'Anexo 2'] as $i => $prefijo) {
+            $this->assertStringStartsWith($prefijo, trim(preg_replace('/\s+/', ' ', $filas[$i]['tipo'])), "fila {$i}: del más viejo al más nuevo");
+        }
         $this->assertSame(['1', null, null], array_column($filas, 'num'));
         $this->assertSame(['3', null, null], array_column($filas, 'rowspan'));
         $this->assertSame([false, false, false], array_column($filas, 'gris'));
