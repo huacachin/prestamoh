@@ -204,14 +204,18 @@
                                     <td class="col-wrap">
                                         {{-- color: inherit, no black: si no, el nombre se queda negro
                                              y tapa el rojo de la fila, que es justo donde se mira. --}}
-                                        <a href="{{ route('clients.edit', $client->id) }}" style="color: inherit; text-decoration: none;">
-                                            {{ $client->apellido_pat }} {{ $client->apellido_mat }} {{ $client->nombre }}
-                                        </a>
                                         @if($copros->isNotEmpty())
-                                            <a href="{{ route('clients.edit', $client->id) }}" class="copro-icono text-primary ms-1" style="text-decoration: none;"
-                                               data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="right" data-bs-custom-class="tip-copro"
-                                               title="{{ \App\Models\Client::textoCopropietarios($copros) }}">
-                                                <i class="ti ti-users"></i>
+                                            {{-- El tooltip sale al pasar por el nombre o por el icono; el icono va del color del nombre. --}}
+                                            <span class="copro-icono" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="right" data-bs-custom-class="tip-copro"
+                                                  title="{{ \App\Models\Client::textoCopropietarios($copros) }}">
+                                                <a href="{{ route('clients.edit', $client->id) }}" style="color: inherit; text-decoration: none;">
+                                                    {{ $client->apellido_pat }} {{ $client->apellido_mat }} {{ $client->nombre }}
+                                                </a>
+                                                <i class="ti ti-users ms-1"></i>
+                                            </span>
+                                        @else
+                                            <a href="{{ route('clients.edit', $client->id) }}" style="color: inherit; text-decoration: none;">
+                                                {{ $client->apellido_pat }} {{ $client->apellido_mat }} {{ $client->nombre }}
                                             </a>
                                         @endif
                                     </td>
@@ -290,14 +294,19 @@
                                 <div class="card-body p-3" style="{{ $sinVigente ? 'color: #FF0000;' : '' }}">
                                     <div class="d-flex justify-content-between align-items-start mb-1">
                                         <h6 class="mb-0">
-                                            <a href="{{ route('clients.edit', $client->id) }}" style="{{ $sinVigente ? 'color: #FF0000;' : 'color: black;' }}">
-                                                {{ $client->apellido_pat }} {{ $client->apellido_mat }} {{ $client->nombre }}
-                                            </a>
                                             @php $copros = $client->copropietariosConPlacas(); @endphp
                                             @if($copros->isNotEmpty())
-                                                <a href="{{ route('clients.edit', $client->id) }}" class="copro-icono text-primary ms-1" style="text-decoration: none;"
-                                                   data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="right" data-bs-custom-class="tip-copro"
-                                                   title="{{ \App\Models\Client::textoCopropietarios($copros) }}"><i class="ti ti-users"></i></a>
+                                                <span class="copro-icono" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="bottom" data-bs-custom-class="tip-copro"
+                                                      title="{{ \App\Models\Client::textoCopropietarios($copros) }}" style="{{ $sinVigente ? 'color: #FF0000;' : 'color: black;' }}">
+                                                    <a href="{{ route('clients.edit', $client->id) }}" style="color: inherit;">
+                                                        {{ $client->apellido_pat }} {{ $client->apellido_mat }} {{ $client->nombre }}
+                                                    </a>
+                                                    <i class="ti ti-users ms-1"></i>
+                                                </span>
+                                            @else
+                                                <a href="{{ route('clients.edit', $client->id) }}" style="{{ $sinVigente ? 'color: #FF0000;' : 'color: black;' }}">
+                                                    {{ $client->apellido_pat }} {{ $client->apellido_mat }} {{ $client->nombre }}
+                                                </a>
                                             @endif
                                         </h6>
                                         <span class="badge bg-secondary">#{{ $loop->iteration }}</span>

@@ -92,10 +92,10 @@ class CopropietarioReferenciadoAlPrestamoTest extends TestCase
             ->assertDontSeeHtml(route('clients.edit', $this->copro->id)) // el nombre solo aparece en el tooltip del titular
             ->assertDontSee('Copropietario:')->assertDontSee('Titular:');
         $html = $comp->html();
-        $this->assertSame(1, substr_count($html, 'class="copro-icono text-primary ms-1"'), 'un icono por titular (solo se pinta la tabla de escritorio; la tarjeta móvil solo con $movil)');
+        $this->assertSame(1, substr_count($html, 'class="copro-icono"'), 'un icono por titular (solo se pinta la tabla de escritorio; la tarjeta móvil solo con $movil)');
         $this->assertStringContainsString('data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="right" data-bs-custom-class="tip-copro"', $html);
         $this->assertStringContainsString('title="&lt;b&gt;Este cliente tiene un copropietario:&lt;/b&gt;&lt;br&gt;Mejia Villanueva Miguel Alcides &lt;small&gt;(B8T492)&lt;/small&gt;"', $html);
-        $this->assertStringContainsString('<i class="ti ti-users"></i>', $html);
+        $this->assertStringContainsString('<i class="ti ti-users ms-1"></i>', $html, 'el icono dentro del mismo contenedor que el nombre, con su color');
 
         // Un segundo copropietario en otro vehículo: el tooltip los pinta a los dos con sus placas.
         $otro = Client::create([
@@ -113,8 +113,8 @@ class CopropietarioReferenciadoAlPrestamoTest extends TestCase
             'expediente' => '162', 'nombre' => 'Sola', 'apellido_pat' => 'Sin', 'apellido_mat' => 'Nadie', 'tipo_documento' => 'DNI', 'documento' => '41001460',
             'sexo' => 'F', 'status' => 'active', 'headquarter_id' => $this->titular->headquarter_id,
         ]);
-        $this->assertSame(1, substr_count(Livewire::test(Index::class)->html(), 'class="copro-icono text-primary ms-1"'), 'solo el titular con copropietarios');
-        $this->assertStringContainsString('class="copro-icono text-primary ms-1"', Livewire::test(Index::class)->set('movil', true)->html(), 'también en la tarjeta móvil');
+        $this->assertSame(1, substr_count(Livewire::test(Index::class)->html(), 'class="copro-icono"'), 'solo el titular con copropietarios');
+        $this->assertStringContainsString('class="copro-icono"', Livewire::test(Index::class)->set('movil', true)->html(), 'también en la tarjeta móvil');
     }
 
     public function test_los_filtros_no_traen_al_copropietario(): void
