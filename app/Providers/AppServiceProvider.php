@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Livewire\Hooks\BloquearEliminacionFueraDeHorario;
 use App\Models\User;
 use App\Services\Documentos\Ocr\LectorDeVoucher;
 use App\Services\Documentos\Ocr\LectorVoucherClaude;
@@ -14,6 +15,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 class AppServiceProvider extends ServiceProvider
@@ -31,6 +33,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Paginator::useBootstrapFive();
+
+        // 09/10: ningún método de eliminar de Livewire corre fuera de 6:00-11:00 si no es director.
+        Livewire::componentHook(BloquearEliminacionFueraDeHorario::class);
 
         // Reemplaza el Gate::before de Spatie (register_permission_check_method=false).
         // Visualización de módulos (checkboxes de /users/{id}/perms): manda el

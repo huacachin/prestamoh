@@ -228,4 +228,16 @@ return [
         'dias' => 180,
         'max_bytes' => 1_500_000,
     ],
+
+    /*
+     * Ventana para ELIMINAR de quien no es director (09/10/2026): solo de
+     * 'desde' a 'hasta' (horas, zona app.timezone). 'activo' en false apaga el
+     * bloqueo (en tests va apagado por phpunit.xml; el test que lo prueba lo
+     * enciende). Ver App\Support\HorarioEliminacion.
+     */
+    'eliminar_horario' => [
+        'activo' => (bool) env('ELIMINAR_HORARIO_ACTIVO', true),
+        'desde' => 6,
+        'hasta' => 11,
+    ],
 ];

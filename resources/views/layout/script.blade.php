@@ -465,3 +465,10 @@ document.addEventListener('click', function (e) {
 {{-- Captura de pantalla para la auditoría (08/10): html2canvas vendorizado + $captura(...) --}}
 <script src="{{ asset('assets/js/html2canvas.min.js') }}"></script>
 <script src="{{ asset('assets/js/auditoria-captura.js') }}?v={{ filemtime(public_path('assets/js/auditoria-captura.js')) }}"></script>
+
+{{-- Eliminar solo de 6:00 a 11:00 para quien no es director (09/10): el script deshabilita
+     los botones en pantalla y se reevalúa solo; el servidor rechaza igual. --}}
+@auth
+<script>window.HorarioEliminacion = @json(\App\Support\HorarioEliminacion::paraJs());</script>
+<script src="{{ asset('assets/js/horario-eliminar.js') }}?v={{ filemtime(public_path('assets/js/horario-eliminar.js')) }}"></script>
+@endauth
