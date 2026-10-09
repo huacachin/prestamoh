@@ -159,7 +159,7 @@
                                         @if($canDelete)
                                             <button class="btn btn-xs btn-danger" style="padding: 2px 8px; font-size: 10px;"
                                                     data-confirmar="¿Está seguro de eliminar este Préstamo? Este proceso no es reversible."
-                                                    x-on:click="$captura('delete', {{ $credit->id }})">
+                                                    x-on:click="$captura('delete', {{ $credit->id }})" @creadoEl($credit)>
                                                 Eliminar
                                             </button>
                                         @endif
@@ -229,7 +229,7 @@
                                     @if($canDelete)
                                         <button class="btn btn-xs btn-danger w-100 mt-2" style="font-size: 10px;"
                                                 data-confirmar="¿Está seguro de eliminar este Préstamo?"
-                                                x-on:click="$captura('delete', {{ $credit->id }})">
+                                                x-on:click="$captura('delete', {{ $credit->id }})" @creadoEl($credit)>
                                             <i class="ti ti-trash"></i> Eliminar
                                         </button>
                                     @endif

@@ -15,6 +15,7 @@ use App\Services\Documentos\Ocr\VoucherIlegible;
 use App\Services\Factiliza;
 use App\Support\Audit;
 use App\Support\Auditoria\ConCapturaDeAuditoria;
+use App\Support\ConReglasDeEliminacion;
 use App\Support\ConSubidaDeArchivos;
 use App\Support\Documentos\BancosVoucher;
 use App\Support\Documentos\DomicilioLegal;
@@ -47,6 +48,7 @@ use Livewire\Component;
 class Documentos extends Component
 {
     use ConCapturaDeAuditoria;
+    use ConReglasDeEliminacion;
     use ConSubidaDeArchivos;
 
     public int $clientId;
@@ -1457,7 +1459,7 @@ class Documentos extends Component
     public function anular(int $docId): void
     {
         $doc = DocumentoCliente::where('client_id', $this->clientId)->find($docId);
-        if (! $doc || $doc->estado === 'anulado') {
+        if (! $doc || $doc->estado === 'anulado' || $this->eliminacionBloqueada($doc)) {
             return;
         }
 

@@ -119,7 +119,7 @@
                             <span wire:loading wire:target="update">Guardando…</span>
                         </button>
                         @can('caja.eliminar')
-                        <button type="button" class="btn btn-sm btn-danger" wire:click="questionDelete({{ $expenseId }})">
+                        <button type="button" class="btn btn-sm btn-danger" wire:click="questionDelete({{ $expenseId }})" @creadoEl($expense)>
                             <i class="ti ti-trash f-s-12"></i> Eliminar
                         </button>
                         @endcan

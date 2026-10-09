@@ -74,7 +74,7 @@
                                     <td class="text-center">
                                         <button type="button" class="btn btn-xs btn-danger"
                                                 style="padding:2px 8px; font-size:10px;"
-                                                wire:click="questionDelete({{ $a->id }})">
+                                                wire:click="questionDelete({{ $a->id }})" @creadoEl($a)>
                                             <i class="ti ti-trash"></i> Eliminar
                                         </button>
                                     </td>

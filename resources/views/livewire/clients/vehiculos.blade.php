@@ -187,7 +187,7 @@
                                         <i class="ti {{ $coproVehiculoId === $v->id ? 'ti-chevron-up' : 'ti-users' }}"></i> Copropietarios ({{ $v->copropietarios->count() }})
                                     </button>
                                     <button type="button" class="btn btn-sm btn-outline-danger py-0"
-                                            wire:click="eliminar({{ $v->id }})"
+                                            wire:click="eliminar({{ $v->id }})" @creadoEl($v)
                                             data-confirmar="¿Eliminar el vehículo {{ $v->placa }}? Esta acción no se puede deshacer."
                                             title="Eliminar vehículo">
                                         <i class="ti ti-trash"></i> Eliminar

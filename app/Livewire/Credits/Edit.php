@@ -5,6 +5,7 @@ namespace App\Livewire\Credits;
 use App\Models\Credit;
 use App\Support\Audit;
 use App\Support\Auditoria\ConCapturaDeAuditoria;
+use App\Support\ConReglasDeEliminacion;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -12,6 +13,7 @@ use Livewire\Component;
 class Edit extends Component
 {
     use ConCapturaDeAuditoria;
+    use ConReglasDeEliminacion;
 
     public Credit $credit;
 
@@ -137,6 +139,9 @@ class Edit extends Component
 
     public function questionDelete(int $id): void
     {
+        if ($this->eliminacionBloqueada($this->credit)) {
+            return;
+        }
         $this->dispatch('questionDelete', [
             'id' => $id,
             'role' => 'crédito',
@@ -157,6 +162,9 @@ class Edit extends Component
         abort_unless($user?->can('creditos.eliminar') ?? false, 403, 'Sin permiso para eliminar créditos.');
 
         $credit = Credit::withCount('payments')->findOrFail($id);
+        if ($this->eliminacionBloqueada($credit)) {
+            return;
+        }
         abort_unless(
             ($user?->can('caja.editar-historico') ?? false)
             || ($credit->fecha_prestamo?->format('Y-m-d') === now()->format('Y-m-d')

@@ -352,7 +352,7 @@
                             <span wire:loading wire:target="update">Guardando…</span>
                         </button>
                         <button type="button" class="btn btn-sm btn-outline-danger"
-                                wire:click="questionDelete({{ $clientId }})">
+                                wire:click="questionDelete({{ $clientId }})" @creadoEl($client)>
                             <i class="ti ti-user-off"></i> Desactivar
                         </button>
                     @endif

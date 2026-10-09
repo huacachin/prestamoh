@@ -411,7 +411,7 @@
                                     </button>
                                     @if($puedeEditar)
                                         <button type="button" class="btn btn-danger position-absolute" style="top:2px; right:2px; padding:0 6px; font-size:10px; line-height:18px;"
-                                                wire:click="eliminarFoto({{ $foto->id }})" data-confirmar="¿Quitar esta foto del reporte?" title="Quitar foto">
+                                                wire:click="eliminarFoto({{ $foto->id }})" @creadoEl($foto) data-confirmar="¿Quitar esta foto del reporte?" title="Quitar foto">
                                             <i class="ti ti-x"></i>
                                         </button>
                                     @endif
@@ -577,7 +577,7 @@
                                 <i class="ti ti-message-2"></i> {{ $verId === $r->id ? 'Cerrar' : 'Ver' }}
                             </button>
                             @if($puedeEditar)
-                                <button type="button" class="btn btn-sm btn-outline-danger py-0" wire:click="eliminar({{ $r->id }})"
+                                <button type="button" class="btn btn-sm btn-outline-danger py-0" wire:click="eliminar({{ $r->id }})" @creadoEl($r)
                                         data-confirmar="¿Eliminar el reporte del {{ $r->fecha->format('d/m/Y H:i') }} del vehículo {{ $r->placa }}?">
                                     <i class="ti ti-trash"></i>
                                 </button>

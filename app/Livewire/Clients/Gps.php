@@ -3,6 +3,7 @@
 namespace App\Livewire\Clients;
 
 use App\Models\Client;
+use App\Support\ConReglasDeEliminacion;
 use App\Support\Coordenadas;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -17,6 +18,8 @@ use Livewire\Component;
  */
 class Gps extends Component
 {
+    use ConReglasDeEliminacion;
+
     /**
      * 26/09 (Antony): solo Casa. La ubicación del negocio se quitó del mapa;
      * lo guardado en latitud2/longitud2 queda en la BD pero ya no se muestra
@@ -84,6 +87,10 @@ class Gps extends Component
     {
         abort_unless($this->puedeEditar, 403, 'No tienes permiso para editar coordenadas.');
         if (! array_key_exists($tipo, self::TIPOS)) {
+            return;
+        }
+        // Las coordenadas no tienen fecha propia de registro: quien no es director no las borra.
+        if ($this->eliminacionBloqueada(null)) {
             return;
         }
 

@@ -240,4 +240,13 @@ return [
         'desde' => 6,
         'hasta' => 11,
     ],
+
+    /*
+     * Regla del mismo día (09/10/2026): quien no es director solo elimina lo
+     * que se registró ese mismo día (created_at); al día siguiente ya no.
+     * ELIMINAR_MISMO_DIA_ACTIVO=false la apaga sin tocar código.
+     */
+    'eliminar_mismo_dia' => [
+        'activo' => (bool) env('ELIMINAR_MISMO_DIA_ACTIVO', true),
+    ],
 ];

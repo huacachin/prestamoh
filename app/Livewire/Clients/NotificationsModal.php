@@ -3,6 +3,7 @@
 namespace App\Livewire\Clients;
 
 use App\Models\Client;
+use App\Support\ConReglasDeEliminacion;
 use App\Support\Garantias;
 use App\Support\NumerosEnLetras;
 use Carbon\Carbon;
@@ -19,6 +20,8 @@ use Livewire\Component;
  */
 class NotificationsModal extends Component
 {
+    use ConReglasDeEliminacion;
+
     public ?int $clientId = null;
 
     public string $clientName = '';
@@ -473,6 +476,11 @@ class NotificationsModal extends Component
 
     public function eliminarCompromiso(int $compId): void
     {
+        $compromiso = DB::table('compromisos_pago')
+            ->where('id', $compId)->where('client_id', $this->clientId)->first();
+        if (! $compromiso || $this->eliminacionBloqueada($compromiso)) {
+            return;
+        }
         DB::table('compromisos_pago')
             ->where('id', $compId)->where('client_id', $this->clientId)->delete();
         $this->dispatch('successAlert', ['message' => 'Compromiso eliminado.']);

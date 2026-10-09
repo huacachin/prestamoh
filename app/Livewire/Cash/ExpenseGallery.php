@@ -5,6 +5,7 @@ namespace App\Livewire\Cash;
 use App\Livewire\Cash\Concerns\SavesExpenseAttachments;
 use App\Models\Expense;
 use App\Models\ExpenseAttachment;
+use App\Support\ConReglasDeEliminacion;
 use App\Support\ConSubidaDeArchivos;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\On;
@@ -12,6 +13,7 @@ use Livewire\Component;
 
 class ExpenseGallery extends Component
 {
+    use ConReglasDeEliminacion;
     use ConSubidaDeArchivos;
     use SavesExpenseAttachments;
 
@@ -120,6 +122,10 @@ class ExpenseGallery extends Component
         if (! $this->puedeEliminar) {
             return;
         }
+        $att = ExpenseAttachment::where('expense_id', $this->expenseId)->find($id);
+        if (! $att || $this->eliminacionBloqueada($att)) {
+            return;
+        }
         // Canal propio: al anidarse en editar egreso, el register_destroy global
         // también lo escucha EditExpense (borraría un EGRESO con el id del adjunto).
         $this->dispatch('questionDelete', ['id' => $id, 'event' => 'attachment_destroy']);
@@ -133,7 +139,7 @@ class ExpenseGallery extends Component
         }
 
         $att = ExpenseAttachment::where('expense_id', $this->expenseId)->find($id);
-        if (! $att) {
+        if (! $att || $this->eliminacionBloqueada($att)) {
             return;
         }
 

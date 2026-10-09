@@ -205,7 +205,7 @@
                                     @if(! $anulado)
                                         <button type="button" class="btn btn-xs btn-outline-danger"
                                                 style="padding: 2px 8px; font-size: 10px;"
-                                                x-on:click="$captura('anular', {{ $doc->id }})"
+                                                x-on:click="$captura('anular', {{ $doc->id }})" @creadoEl($doc)
                                                 data-confirmar="¿Anular {{ $doc->tipoLabel() }} v{{ $doc->version }} del crédito #{{ $doc->credit_id }}? Quedará tachado, pero sus descargas seguirán disponibles."
                                                 title="Anular documento">
                                             <i class="ti ti-ban"></i> Anular

@@ -4,12 +4,15 @@ namespace App\Livewire\Users;
 
 use App\Models\User;
 use App\Support\Audit;
+use App\Support\ConReglasDeEliminacion;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class Index extends Component
 {
+    use ConReglasDeEliminacion;
+
     #[Url(as: 'buscar', except: '')]
     public $search = '';
 
@@ -27,6 +30,9 @@ class Index extends Component
         // Director es el rol super: no se puede desactivar.
         if ($user->hasRole('director')) {
             abort(403);
+        }
+        if ($this->eliminacionBloqueada($user)) {
+            return;
         }
 
         $user->sinAuditoriaAutomatica(fn () => $user->update(['status' => 'inactive']));
@@ -54,6 +60,9 @@ class Index extends Component
     public function questionDelete(int $id): void
     {
         $user = User::find($id);
+        if ($user && $this->eliminacionBloqueada($user)) {
+            return;
+        }
 
         $this->dispatch('questionDelete', [
             'id' => $id,

@@ -5,6 +5,7 @@ namespace App\Livewire\Cash;
 use App\Livewire\Cash\Concerns\SavesIncomeAttachments;
 use App\Models\Income;
 use App\Models\IncomeAttachment;
+use App\Support\ConReglasDeEliminacion;
 use App\Support\ConSubidaDeArchivos;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\On;
@@ -12,6 +13,7 @@ use Livewire\Component;
 
 class IncomeGallery extends Component
 {
+    use ConReglasDeEliminacion;
     use ConSubidaDeArchivos;
     use SavesIncomeAttachments;
 
@@ -116,6 +118,10 @@ class IncomeGallery extends Component
     public function questionDelete(int $id): void
     {
         if (! $this->puedeEliminar) {
+            return;
+        }
+        $att = IncomeAttachment::where('income_id', $this->incomeId)->find($id);
+        if (! $att || $this->eliminacionBloqueada($att)) {
             return;
         }
         // Canal propio: al anidarse en editar ingreso, el register_destroy global

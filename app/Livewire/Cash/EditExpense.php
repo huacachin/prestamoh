@@ -7,6 +7,7 @@ use App\Models\Concept;
 use App\Models\Expense;
 use App\Support\Audit;
 use App\Support\Auditoria\ConCapturaDeAuditoria;
+use App\Support\ConReglasDeEliminacion;
 use App\Support\ConSubidaDeArchivos;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
@@ -16,6 +17,7 @@ use Livewire\Component;
 class EditExpense extends Component
 {
     use ConCapturaDeAuditoria;
+    use ConReglasDeEliminacion;
     use ConSubidaDeArchivos;
     use SavesExpenseAttachments;
 
@@ -160,6 +162,9 @@ class EditExpense extends Component
 
     public function questionDelete(int $id): void
     {
+        if ($this->eliminacionBloqueada($this->expense)) {
+            return;
+        }
         $this->dispatch('questionDelete', ['id' => $id]);
     }
 
@@ -177,6 +182,9 @@ class EditExpense extends Component
             abort(403);
         }
         $this->autorizar();
+        if ($this->eliminacionBloqueada($this->expense)) {
+            return;
+        }
 
         // Espejo caja 3 (legacy gastos-modificar22.php): el borrado elimina entrada Y entrada3.
         Expense::where('caja', 3)->where('parent_id', $id)->delete();

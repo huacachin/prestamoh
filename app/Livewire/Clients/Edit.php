@@ -7,6 +7,7 @@ use App\Models\Credit;
 use App\Models\User;
 use App\Support\Audit;
 use App\Support\Auditoria\ConCapturaDeAuditoria;
+use App\Support\ConReglasDeEliminacion;
 use App\Support\Documentos\Nacionalidades;
 use App\Support\Ubigeo;
 use Livewire\Attributes\On;
@@ -16,6 +17,7 @@ use Livewire\Component;
 class Edit extends Component
 {
     use ConCapturaDeAuditoria;
+    use ConReglasDeEliminacion;
 
     public Client $client;
 
@@ -306,6 +308,9 @@ class Edit extends Component
 
     public function questionDelete(int $id): void
     {
+        if ($this->eliminacionBloqueada($this->client)) {
+            return;
+        }
         $this->dispatch('questionDelete', [
             'id' => $id,
             'role' => 'cliente',
@@ -319,6 +324,9 @@ class Edit extends Component
     public function destroy(int $id): void
     {
         $client = Client::findOrFail($id);
+        if ($this->eliminacionBloqueada($client)) {
+            return;
+        }
         $client->sinAuditoriaAutomatica(fn () => $client->update(['status' => 'inactive']));
         Audit::log("Desactivó el cliente #{$id}");
         session()->flash('client_success', 'Cliente desactivado correctamente.');

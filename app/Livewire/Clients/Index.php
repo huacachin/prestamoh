@@ -5,6 +5,7 @@ namespace App\Livewire\Clients;
 use App\Models\Client;
 use App\Models\Credit;
 use App\Models\User;
+use App\Support\ConReglasDeEliminacion;
 use App\Support\MorosidadClientes;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\On;
@@ -14,6 +15,7 @@ use Livewire\WithPagination;
 
 class Index extends Component
 {
+    use ConReglasDeEliminacion;
     use WithPagination;
 
     protected $paginationTheme = 'bootstrap';
@@ -81,7 +83,11 @@ class Index extends Component
         if (! auth()->user()?->can('clientes.eliminar')) {
             abort(403);
         }
-        Client::findOrFail($id)->update(['status' => 'inactive']);
+        $client = Client::findOrFail($id);
+        if ($this->eliminacionBloqueada($client)) {
+            return;
+        }
+        $client->update(['status' => 'inactive']);
         $this->dispatch('successAlert', ['message' => 'Cliente desactivado correctamente']);
     }
 

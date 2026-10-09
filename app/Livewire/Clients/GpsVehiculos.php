@@ -7,6 +7,7 @@ use App\Models\ClientAttachment;
 use App\Models\Vehiculo;
 use App\Models\VehiculoGpsReporte;
 use App\Models\VehiculoGpsReporteFoto;
+use App\Support\ConReglasDeEliminacion;
 use App\Support\ConSubidaDeArchivos;
 use App\Support\Miniatura;
 use Illuminate\Support\Collection;
@@ -24,6 +25,7 @@ use Livewire\Component;
  */
 class GpsVehiculos extends Component
 {
+    use ConReglasDeEliminacion;
     use ConSubidaDeArchivos;
 
     #[Locked]
@@ -456,7 +458,7 @@ class GpsVehiculos extends Component
     {
         abort_unless($this->puedeEditar, 403, 'No tienes permiso para eliminar fotos.');
         $foto = VehiculoGpsReporteFoto::whereHas('reporte', fn ($q) => $q->where('client_id', $this->clientId))->find($fotoId);
-        if (! $foto) {
+        if (! $foto || $this->eliminacionBloqueada($foto)) {
             return;
         }
         $disco = Storage::disk('public');
@@ -478,7 +480,7 @@ class GpsVehiculos extends Component
     {
         abort_unless($this->puedeEditar, 403, 'No tienes permiso para eliminar reportes.');
         $r = VehiculoGpsReporte::where('client_id', $this->clientId)->find($id);
-        if (! $r) {
+        if (! $r || $this->eliminacionBloqueada($r)) {
             return;
         }
         $disco = Storage::disk('public');

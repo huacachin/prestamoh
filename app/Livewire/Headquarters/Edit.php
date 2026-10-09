@@ -3,12 +3,15 @@
 namespace App\Livewire\Headquarters;
 
 use App\Models\Headquarter;
+use App\Support\ConReglasDeEliminacion;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
 class Edit extends Component
 {
+    use ConReglasDeEliminacion;
+
     public Headquarter $headquarter;
 
     public int $headquarterId;
@@ -41,6 +44,9 @@ class Edit extends Component
 
     public function questionDelete(int $id): void
     {
+        if ($this->eliminacionBloqueada($this->headquarter)) {
+            return;
+        }
         $this->dispatch('questionDelete', ['id' => $id]);
     }
 
@@ -51,7 +57,11 @@ class Edit extends Component
             abort(403);
         }
 
-        Headquarter::findOrFail($id)->delete();
+        $headquarter = Headquarter::findOrFail($id);
+        if ($this->eliminacionBloqueada($headquarter)) {
+            return;
+        }
+        $headquarter->delete();
         session()->flash('headquarter_success', 'Sucursal eliminada correctamente.');
         $this->redirectRoute('settings.headquarters.index');
     }

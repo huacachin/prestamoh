@@ -90,7 +90,7 @@
 
             <div class="mt-3 d-flex gap-2">
                 <button class="btn btn-sm btn-primary" x-on:click="$captura('update')">Guardar cambios</button>
-                <button class="btn btn-sm btn-danger" wire:click="questionDelete({{ $creditId }})">Eliminar</button>
+                <button class="btn btn-sm btn-danger" wire:click="questionDelete({{ $creditId }})" @creadoEl($credit)>Eliminar</button>
                 <a href="{{ route('credits.show', $creditId) }}" class="btn btn-sm btn-secondary">Volver</a>
             </div>
         </div>

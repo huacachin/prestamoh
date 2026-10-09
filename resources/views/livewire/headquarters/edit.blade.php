@@ -71,7 +71,7 @@
                         <button type="button" class="btn btn-sm btn-primary" wire:click="update">
                             Guardar cambios
                         </button>
-                        <button type="button" class="btn btn-sm btn-danger" wire:click="questionDelete({{ $headquarterId }})">
+                        <button type="button" class="btn btn-sm btn-danger" wire:click="questionDelete({{ $headquarterId }})" @creadoEl($headquarter)>
                             Eliminar
                         </button>
                         <a href="{{ route('settings.headquarters.index') }}" class="btn btn-sm btn-secondary">Volver</a>

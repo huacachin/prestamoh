@@ -247,7 +247,7 @@
                                     </span>
                                     @if($puedeEliminar)
                                         <button type="button" class="btn btn-sm btn-link text-danger p-0"
-                                                wire:click="questionDelete({{ $att->id }})"
+                                                wire:click="questionDelete({{ $att->id }})" @creadoEl($att)
                                                 title="Eliminar">
                                             <i class="ti ti-trash"></i>
                                         </button>

@@ -11,6 +11,7 @@ use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
@@ -36,6 +37,9 @@ class AppServiceProvider extends ServiceProvider
 
         // 09/10: ningún método de eliminar de Livewire corre fuera de 6:00-11:00 si no es director.
         Livewire::componentHook(BloquearEliminacionFueraDeHorario::class);
+        // @creadoEl($registro) en el botón de eliminar: data-creado="Y-m-d" para que
+        // horario-eliminar.js aplique la regla del mismo día (ver HorarioEliminacion).
+        Blade::directive('creadoEl', fn (string $expresion) => "<?php echo \\App\\Support\\HorarioEliminacion::atributoCreado({$expresion}); ?>");
 
         // Reemplaza el Gate::before de Spatie (register_permission_check_method=false).
         // Visualización de módulos (checkboxes de /users/{id}/perms): manda el

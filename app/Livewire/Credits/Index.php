@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Credits\CreditoNoEliminableException;
 use App\Services\Credits\EliminadorCredito;
 use App\Support\Auditoria\ConCapturaDeAuditoria;
+use App\Support\ConReglasDeEliminacion;
 use Illuminate\Pagination\AbstractPaginator;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -16,6 +17,7 @@ use Livewire\WithPagination;
 class Index extends Component
 {
     use ConCapturaDeAuditoria;
+    use ConReglasDeEliminacion;
     use WithPagination;
 
     protected $paginationTheme = 'bootstrap';
@@ -65,6 +67,9 @@ class Index extends Component
         if (! $user->can('creditos.eliminar')) {
             $this->dispatch('errorAlert', ['message' => 'No tienes permisos para eliminar créditos.']);
 
+            return;
+        }
+        if ($this->eliminacionBloqueada($credit)) {
             return;
         }
 

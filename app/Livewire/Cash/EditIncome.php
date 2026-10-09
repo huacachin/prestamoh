@@ -7,6 +7,7 @@ use App\Models\Concept;
 use App\Models\Income;
 use App\Support\Audit;
 use App\Support\Auditoria\ConCapturaDeAuditoria;
+use App\Support\ConReglasDeEliminacion;
 use App\Support\ConSubidaDeArchivos;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
@@ -16,6 +17,7 @@ use Livewire\Component;
 class EditIncome extends Component
 {
     use ConCapturaDeAuditoria;
+    use ConReglasDeEliminacion;
     use ConSubidaDeArchivos;
     use SavesIncomeAttachments;
 
@@ -139,6 +141,9 @@ class EditIncome extends Component
 
     public function questionDelete(int $id): void
     {
+        if ($this->eliminacionBloqueada($this->income)) {
+            return;
+        }
         $this->dispatch('questionDelete', ['id' => $id]);
     }
 
@@ -156,6 +161,9 @@ class EditIncome extends Component
             abort(403);
         }
         $this->autorizar();
+        if ($this->eliminacionBloqueada($this->income)) {
+            return;
+        }
 
         // Espejo caja 3 (legacy ingresos-modificar2.php): el borrado elimina ingreso Y ingreso3.
         // (Nota: el legacy NO sincroniza caja3 al EDITAR un ingreso, por eso update() no la toca.)

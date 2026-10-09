@@ -6,6 +6,7 @@ use App\Models\Client;
 use App\Models\Vehiculo;
 use App\Services\Factiliza;
 use App\Support\Audit;
+use App\Support\ConReglasDeEliminacion;
 use App\Support\Documentos\Nacionalidades;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -19,6 +20,8 @@ use Livewire\Component;
  */
 class Vehiculos extends Component
 {
+    use ConReglasDeEliminacion;
+
     #[Locked]
     public int $clientId;
 
@@ -212,6 +215,9 @@ class Vehiculos extends Component
     {
         $this->autorizarEdicion();
         $v = Vehiculo::where('client_id', $this->clientId)->findOrFail($id);
+        if ($this->eliminacionBloqueada($v)) {
+            return;
+        }
         $placa = $v->placa;
         $v->delete();
 

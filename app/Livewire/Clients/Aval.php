@@ -5,11 +5,14 @@ namespace App\Livewire\Clients;
 use App\Models\Client;
 use App\Models\ClientAval;
 use App\Services\Factiliza;
+use App\Support\ConReglasDeEliminacion;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
 class Aval extends Component
 {
+    use ConReglasDeEliminacion;
+
     public Client $client;
 
     public int $clientId;
@@ -186,6 +189,10 @@ class Aval extends Component
         if (! $this->puedeEditar) {
             return;
         }
+        $aval = ClientAval::where('client_id', $this->clientId)->find($id);
+        if (! $aval || $this->eliminacionBloqueada($aval)) {
+            return;
+        }
         $this->dispatch('questionDelete', ['id' => $id]);
     }
 
@@ -195,7 +202,11 @@ class Aval extends Component
         if (! $this->puedeEditar) {
             return;
         }
-        ClientAval::where('client_id', $this->clientId)->find($id)?->delete();
+        $aval = ClientAval::where('client_id', $this->clientId)->find($id);
+        if (! $aval || $this->eliminacionBloqueada($aval)) {
+            return;
+        }
+        $aval->delete();
         // El custom.js ya muestra "Eliminado!" — no dispatcheamos successAlert para no duplicar.
     }
 

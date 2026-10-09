@@ -42,7 +42,7 @@
                             </a>
                             @if($puedeEditar)
                                 <button type="button" class="btn btn-sm btn-outline-danger"
-                                        wire:click="borrar('{{ $tipo }}')"
+                                        wire:click="borrar('{{ $tipo }}')" @creadoEl(null)
                                         data-confirmar="¿Borrar las coordenadas de {{ $titulo }}?">
                                     <i class="ti ti-trash"></i> Borrar
                                 </button>

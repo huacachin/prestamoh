@@ -4,6 +4,7 @@ namespace App\Livewire\Clients;
 
 use App\Models\Client;
 use App\Models\ClientAttachment;
+use App\Support\ConReglasDeEliminacion;
 use App\Support\ConSubidaDeArchivos;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -12,6 +13,7 @@ use Livewire\Component;
 
 class Gallery extends Component
 {
+    use ConReglasDeEliminacion;
     use ConSubidaDeArchivos;
 
     public Client $client;
@@ -120,6 +122,10 @@ class Gallery extends Component
         if (! $this->puedeEliminar) {
             return;
         }
+        $att = ClientAttachment::where('client_id', $this->clientId)->find($id);
+        if (! $att || $this->eliminacionBloqueada($att)) {
+            return;
+        }
         $this->dispatch('questionDelete', ['id' => $id]);
     }
 
@@ -131,7 +137,7 @@ class Gallery extends Component
         }
 
         $att = ClientAttachment::where('client_id', $this->clientId)->find($id);
-        if (! $att) {
+        if (! $att || $this->eliminacionBloqueada($att)) {
             return;
         }
 
