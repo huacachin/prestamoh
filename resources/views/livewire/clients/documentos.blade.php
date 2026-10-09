@@ -128,10 +128,10 @@
                              filas de cada crédito se agrupan. 10/10 (Antony): orden cronológico,
                              del primero que se hizo al último: el crédito más antiguo arriba
                              (N° 1) y, dentro, del documento más viejo al más nuevo; la columna #
-                             numera las filas 1, 2, 3… El zebra alterna por crédito. --}}
+                             numera los documentos de CADA crédito desde 1 (se reinicia por
+                             préstamo). El zebra alterna por crédito. --}}
                         @php
                             $grupos = $documentos->groupBy('credit_id')->sortBy(fn ($docs) => $docs->min('id'))->values();
-                            $fila = 0;
                         @endphp
                         @foreach($grupos as $g => $docsCredito)
                         @php
@@ -140,7 +140,6 @@
                         @endphp
                         @foreach($filasCredito as $k => $doc)
                             @php
-                                $fila++;
                                 $anulado = $doc->estado === 'anulado';
                                 $badgeTipo = match ($doc->tipo) {
                                     'anexo1' => 'bg-primary',
@@ -155,7 +154,7 @@
                                 @if($k === 0)
                                     <td class="text-center fw-bold align-middle" rowspan="{{ $filasCredito->count() }}">{{ $numCredito }}</td>
                                 @endif
-                                <td class="text-center text-muted">{{ $fila }}</td>
+                                <td class="text-center text-muted">{{ $k + 1 }}</td>
                                 <td>
                                     <span class="badge {{ $badgeTipo }}"
                                           style="font-size:10px; {{ $anulado ? 'text-decoration: line-through;' : '' }}">

@@ -20,7 +20,8 @@ use Tests\TestCase;
  * 10/10/2026 (Antony): "se está listando desde el que se hizo último hasta el
  * que se hizo primero, debe ser al revés, y aumentarle una columna con los
  * números del 1…". Orden cronológico: el crédito más antiguo arriba (N° 1) y,
- * dentro, del documento más viejo al más nuevo; columna # con 1, 2, 3…
+ * dentro, del documento más viejo al más nuevo; columna # con 1, 2, 3… que se
+ * reinicia por préstamo ("por cada préstamo el contador de # se debe reiniciar").
  */
 class DocumentosNumeroPorCreditoTest extends TestCase
 {
@@ -104,8 +105,8 @@ class DocumentosNumeroPorCreditoTest extends TestCase
             $this->assertStringStartsWith($prefijo, trim(preg_replace('/\s+/', ' ', $filas[$i]['tipo'])), "fila {$i}");
         }
 
-        // # corrido 1, 2, 3, 4 y N° ascendente (1 arriba, 2 abajo) en una sola celda combinada por crédito.
-        $this->assertSame(['1', '2', '3', '4'], array_column($filas, 'fila'));
+        // # se reinicia por préstamo (1, 2 | 1, 2) y N° ascendente (1 arriba, 2 abajo) en una sola celda combinada por crédito.
+        $this->assertSame(['1', '2', '1', '2'], array_column($filas, 'fila'));
         $this->assertSame(['1', null, '2', null], array_column($filas, 'num'));
         $this->assertSame(['2', null, '2', null], array_column($filas, 'rowspan'));
 
