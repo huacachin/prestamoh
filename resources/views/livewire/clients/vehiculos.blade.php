@@ -24,7 +24,11 @@
             $cls = match($msgType) { 'ok' => 'alert-success', 'warn' => 'alert-warning', default => 'alert-danger' };
             $ico = match($msgType) { 'ok' => 'ti-circle-check', 'warn' => 'ti-alert-triangle', default => 'ti-alert-circle' };
         @endphp
-        <div class="alert {{ $cls }} py-2 mb-2 d-flex align-items-center gap-2">
+        {{-- wire:key por mensaje: cada aviso nuevo es un nodo nuevo y x-init lo trae a la vista
+             (los del panel de copropietarios se armaban aquí arriba, fuera de pantalla). --}}
+        <div class="alert {{ $cls }} py-2 mb-2 d-flex align-items-center gap-2"
+             wire:key="aviso-{{ md5($msgType.'|'.$msg) }}"
+             x-data x-init="$el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })">
             <i class="ti {{ $ico }} f-s-16"></i><span class="small">{{ $msg }}</span>
         </div>
     @endif
@@ -278,15 +282,21 @@
                                                         </button>
                                                     @endforeach
                                                 </div>
+                                            @elseif($coproAvisoTitular)
+                                                <div class="alert alert-warning py-1 px-2 mt-1 mb-1 small d-flex align-items-center gap-1">
+                                                    <i class="ti ti-alert-triangle"></i><span>{{ $coproAvisoTitular }}</span>
+                                                </div>
                                             @elseif(mb_strlen(trim($buscarCopro)) >= 2)
                                                 <div class="small text-muted mt-1">Sin resultados para "{{ $buscarCopro }}".</div>
                                             @endif
 
                                             @unless($coproCreando)
+                                                @unless($coproAvisoTitular)
                                                 <button type="button" class="btn btn-sm btn-outline-success mt-1"
                                                         wire:click="abrirCrearCopro">
                                                     <i class="ti ti-user-plus"></i> No está registrado: crear persona
                                                 </button>
+                                                @endunless
                                                 <button type="button" class="btn btn-sm btn-outline-secondary mt-1" wire:click="cancelarAgregarCopro">
                                                     Cancelar
                                                 </button>
@@ -304,7 +314,7 @@
                                                 </div>
 
                                                 @if($coproDocMsg)
-                                                    <div class="alert alert-info py-1 px-2 mb-2 small">{{ $coproDocMsg }}</div>
+                                                    <div class="alert {{ $coproDocMsgType === 'err' ? 'alert-danger' : 'alert-info' }} py-1 px-2 mb-2 small">{{ $coproDocMsg }}</div>
                                                 @endif
 
                                                 <div class="row g-2">

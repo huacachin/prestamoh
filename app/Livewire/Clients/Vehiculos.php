@@ -95,6 +95,9 @@ class Vehiculos extends Component
 
     public ?string $coproDocMsg = null;
 
+    /** 'err' cuando el aviso del alta rápida es un rechazo (p. ej. el DNI es del titular). */
+    public ?string $coproDocMsgType = null;
+
     /**
      * Campos del alta rápida que llenó la consulta de documento — se pintan
      * EN ROJO (convención de toda la casa: lo que viene de la API se
@@ -290,7 +293,8 @@ class Vehiculos extends Component
 
         if ($clientId === $this->clientId) {
             $this->msgType = 'err';
-            $this->msg = 'El titular ya es dueño del vehículo: elige a otra persona como copropietario.';
+            $this->msg = $this->avisoTitular();
+            $this->dispatch('errorAlert', ['message' => $this->msg]);
 
             return;
         }
@@ -299,6 +303,14 @@ class Vehiculos extends Component
         if (! $copro) {
             $this->msgType = 'err';
             $this->msg = 'El cliente seleccionado no está activo.';
+
+            return;
+        }
+
+        if ($v->copropietarios()->whereKey($clientId)->exists()) {
+            $this->msgType = 'warn';
+            $this->msg = "{$copro->fullName()} ya era copropietario del vehículo {$v->placa}.";
+            $this->cancelarAgregarCopro();
 
             return;
         }
@@ -329,8 +341,34 @@ class Vehiculos extends Component
     public function cancelarCrearCopro(): void
     {
         $this->coproCreando = false;
-        $this->reset('nuevoCopro', 'coproDocMsg', 'autoCopro');
+        $this->reset('nuevoCopro', 'coproDocMsg', 'coproDocMsgType', 'autoCopro');
         $this->resetErrorBag();
+    }
+
+    /**
+     * 10/10 (Antony, caso DNI 71555128 en la ficha 1372): el DNI del propio titular
+     * se rechazaba en silencio por las tres vías (buscador sin resultados,
+     * consulta que cerraba el formulario, "documento ya registrado") y confundía.
+     * Un solo texto para las tres, con el nombre, pegado a donde se está trabajando.
+     */
+    public function avisoTitular(): string
+    {
+        $quien = $this->client->sexo === 'F' ? 'de la titular' : 'del titular';
+
+        return "Ese documento es {$quien}, {$this->client->fullName()}: el copropietario tiene que ser otra persona.";
+    }
+
+    /** true si lo tecleado en el buscador apunta al titular (documento o nombre). */
+    private function buscaAlTitular(string $term): bool
+    {
+        if ($term === '' || mb_strlen($term) < 2) {
+            return false;
+        }
+        $c = $this->client;
+        $nombres = [$c->fullName(), trim("{$c->nombre} {$c->apellido_pat} {$c->apellido_mat}")];
+
+        return str_contains((string) $c->documento, $term)
+            || collect($nombres)->contains(fn ($n) => mb_stripos($n, $term) !== false);
     }
 
     /** Autocompleta la persona desde RENIEC/Migraciones (mismo servicio del alta). */
@@ -345,8 +383,16 @@ class Vehiculos extends Component
         }
 
         // Si ya existe una ficha con ese documento (cliente o relacionado),
-        // no se duplica: se vincula esa directamente.
+        // no se duplica: se vincula esa directamente. Si es la del propio
+        // titular, el aviso se queda pegado al campo (el formulario no se cierra).
         $existente = Client::where('documento', $doc)->first();
+        if ($existente !== null && $existente->id === $this->clientId) {
+            $this->coproDocMsgType = 'err';
+            $this->coproDocMsg = $this->avisoTitular();
+            $this->dispatch('errorAlert', ['message' => $this->coproDocMsg]);
+
+            return;
+        }
         if ($existente !== null) {
             $this->vincularCopro((int) $this->coproVehiculoId, $existente->id);
             $this->cancelarCrearCopro();
@@ -398,6 +444,16 @@ class Vehiculos extends Component
 
         $this->nuevoCopro['documento'] = trim($this->nuevoCopro['documento']);
         $this->nuevoCopro['nacionalidad'] = Nacionalidades::normalizar($this->nuevoCopro['nacionalidad']);
+
+        // Documento repetido: decir de quién es, no el "ya ha sido registrado" genérico.
+        $existente = $this->nuevoCopro['documento'] !== '' ? Client::where('documento', $this->nuevoCopro['documento'])->first() : null;
+        if ($existente !== null) {
+            $this->addError('nuevoCopro.documento', $existente->id === $this->clientId
+                ? $this->avisoTitular()
+                : "Ese documento ya tiene ficha: {$existente->fullName()}. Búscalo arriba en vez de crearlo.");
+
+            return;
+        }
 
         $this->validate([
             'nuevoCopro.tipo_documento' => 'required|in:DNI,CE',
@@ -496,6 +552,9 @@ class Vehiculos extends Component
         return view('livewire.clients.vehiculos', [
             'listado' => Vehiculo::with('copropietarios')->where('client_id', $this->clientId)->orderBy('id')->get(),
             'coproCandidatos' => $candidatos,
+            // Sin resultados porque lo buscado es el propio titular: avisar en vez de ofrecer "crear persona".
+            'coproAvisoTitular' => $this->coproVehiculoId !== null && $candidatos->isEmpty() && $this->buscaAlTitular($term)
+                ? $this->avisoTitular() : null,
         ]);
     }
 }
