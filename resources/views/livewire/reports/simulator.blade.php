@@ -1,7 +1,25 @@
+{{-- 10/10 (Antony): botón Copiar bajo cada columna del Detalle de Pago. Copia al portapapeles
+     "24 Cuotas semanales de 379.20": la cuota redondeada hacia ARRIBA a 0.10 (379.18 → 379.20),
+     el mismo redondeo de la cuota uniforme con el que se arma el cronograma real.
+     OJO: dentro de x-data solo comillas simples (una doble rompe el atributo). --}}
 <div class="container-fluid" x-data="{
-        open: false, monto: 0, meses: 0,
-        openDetalle(m, n) { this.monto = parseFloat(m) || 0; this.meses = parseInt(n) || 0; this.open = true; },
-        fmt(v) { return Number(v).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+        open: false, monto: 0, meses: 0, copiado: '',
+        openDetalle(m, n) { this.monto = parseFloat(m) || 0; this.meses = parseInt(n) || 0; this.copiado = ''; this.open = true; },
+        fmt(v) { return Number(v).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
+        redondear(v) { return Math.ceil(Math.round(v / 0.10 * 1000000) / 1000000) * 0.10; },
+        cuotas(tipo) {
+            const n = tipo === 'mensual' ? this.meses : (tipo === 'semanal' ? 4 * this.meses : 4 * this.meses * 6);
+            const c = tipo === 'mensual' ? this.monto : (tipo === 'semanal' ? this.monto / 4 : this.monto / 4 / 6);
+            const adj = tipo === 'mensual' ? (n === 1 ? 'mensual' : 'mensuales') : (tipo === 'semanal' ? (n === 1 ? 'semanal' : 'semanales') : (n === 1 ? 'diaria' : 'diarias'));
+            return n + ' ' + (n === 1 ? 'Cuota' : 'Cuotas') + ' ' + adj + ' de ' + this.fmt(this.redondear(c));
+        },
+        async copiar(tipo) {
+            const t = this.cuotas(tipo);
+            try { await navigator.clipboard.writeText(t); }
+            catch (e) { const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+            this.copiado = tipo;
+            setTimeout(() => { if (this.copiado === tipo) this.copiado = ''; }, 1500);
+        }
      }">
     <div class="row">
         <div class="col-sm-6">
@@ -200,6 +218,18 @@
                             <td colspan="2"><b x-text="fmt(monto*meses)"></b></td>
                             <td colspan="2"><b x-text="fmt((monto/4)*(4*meses))"></b></td>
                             <td colspan="2"><b x-text="fmt((monto/4/6)*(4*meses*6))"></b></td>
+                        </tr>
+                        {{-- Copiar "N Cuotas … de S/" al portapapeles, una por columna --}}
+                        <tr>
+                            @foreach(['mensual', 'semanal', 'diario'] as $tipo)
+                                <td colspan="2">
+                                    <button type="button" class="btn btn-xs btn-outline-primary copiar-cuotas" style="padding: 2px 8px; font-size: 10px;"
+                                            @click="copiar('{{ $tipo }}')" :title="cuotas('{{ $tipo }}')">
+                                        <i class="ti" :class="copiado === '{{ $tipo }}' ? 'ti-check' : 'ti-copy'"></i>
+                                        <span x-text="copiado === '{{ $tipo }}' ? 'Copiado' : 'Copiar'"></span>
+                                    </button>
+                                </td>
+                            @endforeach
                         </tr>
                     </tbody>
                 </table>
