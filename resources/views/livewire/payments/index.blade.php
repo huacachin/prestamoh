@@ -100,12 +100,12 @@
                                     <td class="text-center">{{ round($credit->interes, 0) }}</td>
                                     <td class="text-center">{{ $credit->cuotas }}</td>
                                     <td class="text-center text-nowrap">
-                                        <a href="{{ route('payments.create', $credit->id) }}"
+                                        <a href="{{ route('payments.create', $credit->id) }}" target="_blank" rel="noopener"
                                            class="btn btn-xs btn-danger" style="padding: 2px 8px; font-size: 10px;">
                                             Masivo
                                         </a>
                                         @if($credit->tipo_planilla == 3 && $credit->cuotas == 1)
-                                            <a href="{{ route('payments.refinance', $credit->id) }}"
+                                            <a href="{{ route('payments.refinance', $credit->id) }}" target="_blank" rel="noopener"
                                                class="btn btn-xs btn-danger" style="padding: 2px 8px; font-size: 10px;">
                                                 Refinanciar
                                             </a>
@@ -150,12 +150,12 @@
                                         <div class="col-6"><b>Cuotas:</b> {{ $credit->cuotas }}</div>
                                     </div>
                                     <div class="d-flex gap-1 mt-2">
-                                        <a href="{{ route('payments.create', $credit->id) }}"
+                                        <a href="{{ route('payments.create', $credit->id) }}" target="_blank" rel="noopener"
                                            class="btn btn-xs btn-danger" style="padding: 2px 8px; font-size: 10px;">
                                             Masivo
                                         </a>
                                         @if($credit->tipo_planilla == 3 && $credit->cuotas == 1)
-                                            <a href="{{ route('payments.refinance', $credit->id) }}"
+                                            <a href="{{ route('payments.refinance', $credit->id) }}" target="_blank" rel="noopener"
                                                class="btn btn-xs btn-danger" style="padding: 2px 8px; font-size: 10px;">
                                                 Refinanciar
                                             </a>
