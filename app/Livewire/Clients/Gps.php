@@ -85,7 +85,7 @@ class Gps extends Component
         $coords = Coordenadas::parse((string) ($this->pegado[$clave] ?? ''));
         if (! $coords) {
             $this->msgType = 'err';
-            $this->msg = 'Formato inválido. Pega las coordenadas como: -12.014431, -76.824936 (o el enlace de Google Maps).';
+            $this->msg = self::mensajeFormato((string) ($this->pegado[$clave] ?? ''));
 
             return;
         }
@@ -125,7 +125,7 @@ class Gps extends Component
                     $fail("Ya hay una dirección llamada {$valor}.");
                 }
             }],
-            'nuevaCoordenadas' => ['required', 'string', fn ($attr, $valor, $fail) => Coordenadas::parse((string) $valor) ?: $fail('Pega las coordenadas como: -12.014431, -76.824936 (o el enlace de Google Maps).')],
+            'nuevaCoordenadas' => ['required', 'string', fn ($attr, $valor, $fail) => Coordenadas::parse((string) $valor) ?: $fail(self::mensajeFormato((string) $valor))],
         ], [], ['nuevaNombre' => 'nombre', 'nuevaCoordenadas' => 'coordenadas']);
 
         [$lat, $lng] = Coordenadas::parse($this->nuevaCoordenadas);
@@ -193,6 +193,16 @@ class Gps extends Component
         }
 
         return $filas;
+    }
+
+    /** Aviso de formato: si era un enlace de Maps que no se pudo leer, dice qué hacer. */
+    public static function mensajeFormato(string $texto): string
+    {
+        if (Coordenadas::esEnlaceDeMaps($texto)) {
+            return 'No pude leer las coordenadas de ese enlace de Google Maps. Abre el punto en Maps, mantén pulsado el pin, copia las coordenadas y pégalas aquí.';
+        }
+
+        return 'Formato inválido. Pega las coordenadas como: -12.014431, -76.824936 (o el enlace de Google Maps).';
     }
 
     /** @return array{lat: ?string, lng: ?string, url: ?string} */
