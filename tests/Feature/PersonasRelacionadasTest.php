@@ -182,13 +182,14 @@ class PersonasRelacionadasTest extends TestCase
         ]);
 
         $lista = Livewire::test(Index::class);
-        $lista->assertSee($titular->nombre)->assertDontSee('MARIA')->assertDontSee('Personas relacionadas')->assertDontSeeHtml('copro-icono');
+        $lista->assertSee($titular->nombre)->assertDontSee('MARIA')->assertDontSee('Personas relacionadas')->assertDontSeeHtml('class="copro-icono');
         $this->assertFalse(property_exists(Index::class, 'verRelacionados'), 'el filtro Ver ya no existe');
 
         $v = Vehiculo::create(['client_id' => $titular->id, 'placa' => 'XYZ789', 'marca' => 'KIA', 'valor' => 9000]);
         $v->copropietarios()->attach($rel->id, ['rol' => 'copropietario']);
-        Livewire::test(Index::class)->assertDontSeeHtml(route('clients.edit', $rel->id))->assertSeeHtml('copro-icono')
-            ->assertSeeHtml('title="Este cliente tiene un copropietario: LOPEZ DIAZ MARIA (XYZ789)"');
+        Livewire::test(Index::class)->assertDontSeeHtml(route('clients.edit', $rel->id))->assertSeeHtml('class="copro-icono')
+            ->assertSeeHtml('data-bs-toggle="tooltip" data-bs-html="true"')
+            ->assertSeeHtml('title="&lt;b&gt;Este cliente tiene un copropietario:&lt;/b&gt;&lt;br&gt;LOPEZ DIAZ MARIA &lt;small&gt;(XYZ789)&lt;/small&gt;"');
     }
 
     public function test_el_export_no_los_incluye(): void

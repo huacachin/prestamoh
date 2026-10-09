@@ -195,13 +195,16 @@ class Client extends Model
         return $porPersona->values();
     }
 
-    /** Texto del tooltip del listado (10/10, Antony): "Este cliente tiene un copropietario: …". */
+    /**
+     * HTML del tooltip Bootstrap del listado (10/10, Antony): "Este cliente
+     * tiene un copropietario:" y debajo cada persona con sus placas.
+     */
     public static function textoCopropietarios(Collection $copros): string
     {
         $n = $copros->count();
-        $lista = $copros->map(fn ($c) => $c['persona']->fullName().' ('.implode(', ', $c['placas']).')')->implode('; ');
+        $lineas = $copros->map(fn ($c) => e($c['persona']->fullName()).' <small>('.e(implode(', ', $c['placas'])).')</small>')->implode('<br>');
 
-        return ($n === 1 ? 'Este cliente tiene un copropietario: ' : "Este cliente tiene {$n} copropietarios: ").$lista;
+        return '<b>'.($n === 1 ? 'Este cliente tiene un copropietario:' : "Este cliente tiene {$n} copropietarios:").'</b><br>'.$lineas;
     }
 
     /**

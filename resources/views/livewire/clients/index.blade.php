@@ -209,6 +209,7 @@
                                         </a>
                                         @if($copros->isNotEmpty())
                                             <a href="{{ route('clients.edit', $client->id) }}" class="copro-icono text-primary ms-1" style="text-decoration: none;"
+                                               data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="right" data-bs-custom-class="tip-copro"
                                                title="{{ \App\Models\Client::textoCopropietarios($copros) }}">
                                                 <i class="ti ti-users"></i>
                                             </a>
@@ -295,6 +296,7 @@
                                             @php $copros = $client->copropietariosConPlacas(); @endphp
                                             @if($copros->isNotEmpty())
                                                 <a href="{{ route('clients.edit', $client->id) }}" class="copro-icono text-primary ms-1" style="text-decoration: none;"
+                                                   data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="right" data-bs-custom-class="tip-copro"
                                                    title="{{ \App\Models\Client::textoCopropietarios($copros) }}"><i class="ti ti-users"></i></a>
                                             @endif
                                         </h6>
@@ -436,4 +438,26 @@
     .moros-chip.is-active .dot { background: #fff; }
     .moros-chip.is-active .n { background: rgba(255, 255, 255, .25); }
 </style>
+<style>
+    /* Tooltip Bootstrap del icono de copropietarios (10/10): texto a la izquierda, una persona por línea. */
+    .tip-copro .tooltip-inner { text-align: left; max-width: 320px; padding: 6px 10px; }
+    .tip-copro .tooltip-inner small { opacity: .8; }
+</style>
+<script>
+    // Tooltip del icono de copropietarios, BAJO DEMANDA (mismo patrón que Caja General 1):
+    // se instancia al pasar el mouse o enfocar, así sobrevive a los morphs de Livewire
+    // (una fila nueva llega sin instancia y se crea al primer hover) y no cuesta nada al cargar.
+    if (!window.__tooltipCoproListo) {
+        window.__tooltipCoproListo = true;
+        const tooltipCopro = (e) => {
+            if (typeof bootstrap === 'undefined') return;
+            const el = e.target.closest('.copro-icono[data-bs-toggle="tooltip"]');
+            if (!el || el.dataset.tipListo) return;
+            el.dataset.tipListo = '1';
+            bootstrap.Tooltip.getOrCreateInstance(el).show();
+        };
+        document.addEventListener('mouseover', tooltipCopro, { passive: true });
+        document.addEventListener('focusin', tooltipCopro, { passive: true });
+    }
+</script>
 </div>

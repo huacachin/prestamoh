@@ -93,7 +93,8 @@ class CopropietarioReferenciadoAlPrestamoTest extends TestCase
             ->assertDontSee('Copropietario:')->assertDontSee('Titular:');
         $html = $comp->html();
         $this->assertSame(1, substr_count($html, 'class="copro-icono text-primary ms-1"'), 'un icono por titular (solo se pinta la tabla de escritorio; la tarjeta móvil solo con $movil)');
-        $this->assertStringContainsString('title="Este cliente tiene un copropietario: Mejia Villanueva Miguel Alcides (B8T492)"', $html);
+        $this->assertStringContainsString('data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="right" data-bs-custom-class="tip-copro"', $html);
+        $this->assertStringContainsString('title="&lt;b&gt;Este cliente tiene un copropietario:&lt;/b&gt;&lt;br&gt;Mejia Villanueva Miguel Alcides &lt;small&gt;(B8T492)&lt;/small&gt;"', $html);
         $this->assertStringContainsString('<i class="ti ti-users"></i>', $html);
 
         // Un segundo copropietario en otro vehículo: el tooltip los pinta a los dos con sus placas.
@@ -105,7 +106,7 @@ class CopropietarioReferenciadoAlPrestamoTest extends TestCase
         $v2->copropietarios()->attach($this->copro->id, ['rol' => 'copropietario']);
         $v2->copropietarios()->attach($otro->id, ['rol' => 'copropietario']);
         $html = Livewire::test(Index::class)->html();
-        $this->assertStringContainsString('title="Este cliente tiene 2 copropietarios: Mejia Villanueva Miguel Alcides (B8T492, T1T779); Perez Lopez Juan (T1T779)"', $html);
+        $this->assertStringContainsString('title="&lt;b&gt;Este cliente tiene 2 copropietarios:&lt;/b&gt;&lt;br&gt;Mejia Villanueva Miguel Alcides &lt;small&gt;(B8T492, T1T779)&lt;/small&gt;&lt;br&gt;Perez Lopez Juan &lt;small&gt;(T1T779)&lt;/small&gt;"', $html);
 
         // Sin copropietarios no hay icono.
         $solo = Client::create([
