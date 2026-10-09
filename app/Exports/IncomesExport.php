@@ -88,11 +88,8 @@ class IncomesExport implements FromCollection, WithCustomStartCell, WithEvents, 
 
         if ($term !== '') {
             match ($this->tipo) {
-                '1' => $payQ->whereHas('credit.client', function ($c) use ($term) {
-                    $c->where('nombre', 'like', "%{$term}%")
-                        ->orWhere('apellido_pat', 'like', "%{$term}%")
-                        ->orWhere('apellido_mat', 'like', "%{$term}%");
-                }),
+                // 10/10: mismo criterio que el listado (Client::nombreContiene, palabra por palabra).
+                '1' => $payQ->whereHas('credit.client', fn ($c) => $c->nombreContiene($term)),
                 '2' => $payQ->where('detalle', 'like', "%{$term}%"),
                 '3' => $payQ->where('asesor', 'like', "%{$term}%"),
                 '4' => $payQ->whereHas('user', fn ($u) => $u->where('username', 'like', "%{$term}%")->orWhere('name', 'like', "%{$term}%")

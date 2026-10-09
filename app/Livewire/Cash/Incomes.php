@@ -93,11 +93,8 @@ class Incomes extends Component
         // Filtro de búsqueda en payments
         if ($term !== '') {
             match ($this->tipo) {
-                '1' => $payQuery->whereHas('credit.client', function ($c) use ($term) {
-                    $c->where('nombre', 'like', "%{$term}%")
-                        ->orWhere('apellido_pat', 'like', "%{$term}%")
-                        ->orWhere('apellido_mat', 'like', "%{$term}%");
-                }),
+                // 10/10: palabra por palabra sobre el nombre completo (Client::nombreContiene).
+                '1' => $payQuery->whereHas('credit.client', fn ($c) => $c->nombreContiene($term)),
                 '2' => $payQuery->where('detalle', 'like', "%{$term}%"),
                 '3' => $payQuery->where('asesor', 'like', "%{$term}%"),
                 '4' => $payQuery->whereHas('user', fn ($u) => // G2: ahora sí busca usuario en payments
