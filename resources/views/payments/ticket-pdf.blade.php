@@ -22,6 +22,7 @@
         table.fila { width: 100%; border-collapse: collapse; }
         table.fila td { padding: 0; vertical-align: top; }
         table.fila td.der { text-align: right; white-space: nowrap; }
+        table.fila td.abajo { white-space: normal; word-wrap: break-word; }
         .total td { font-size: 10.5pt; font-weight: bold; }
         .logo { max-width: 120pt; max-height: 55pt; margin-bottom: 4pt; }
         .pie { margin-top: 5pt; }
@@ -57,7 +58,13 @@
         <tr><td>Pago:</td><td class="der">{{ $t['metodo'] }}</td></tr>
     @endif
     @if($t['cliente'])
-        <tr><td>Cliente:</td><td class="der">{{ $t['cliente'] }}</td></tr>
+        {{-- 08/10 (Antony): el nombre largo baja a su propia fila (sin flex en dompdf) y ahí parte. --}}
+        @if(mb_strlen($t['cliente']) > 24)
+            <tr><td colspan="2">Cliente:</td></tr>
+            <tr><td colspan="2" class="der abajo">{{ $t['cliente'] }}</td></tr>
+        @else
+            <tr><td>Cliente:</td><td class="der">{{ $t['cliente'] }}</td></tr>
+        @endif
     @endif
     @if($t['documento'])
         <tr><td>Doc:</td><td class="der">{{ $t['documento'] }}</td></tr>

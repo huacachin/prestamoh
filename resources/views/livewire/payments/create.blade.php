@@ -814,7 +814,7 @@
                                     <div class="tp-row"><span>Pago:</span><span>{{ $preview['metodo'] }}</span></div>
                                 @endif
                                 @if($preview['cliente'])
-                                    <div class="tp-row"><span>Cliente:</span><span>{{ $preview['cliente'] }}</span></div>
+                                    <div class="tp-row tp-abajo"><span>Cliente:</span><span>{{ $preview['cliente'] }}</span></div>
                                 @endif
                                 @if($preview['documento'])
                                     <div class="tp-row"><span>Doc:</span><span>{{ $preview['documento'] }}</span></div>
@@ -1098,6 +1098,10 @@
             /* La lista de cuotas SÍ se parte: con tramos sueltos (19-25,27,30-40)
                una sola línea se saldría del modal. */
             .ticket-preview .tp-wrap > span:last-child { white-space: normal; word-break: break-word; }
+            /* 08/10 (Antony): el nombre del cliente no se sale del ticket. Si cabe, va en la
+               misma línea; si no, baja a la línea siguiente alineado a la derecha y ahí parte. */
+            .ticket-preview .tp-abajo { flex-wrap: wrap; }
+            .ticket-preview .tp-abajo > span:last-child { flex: 1 0 auto; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
             .ticket-preview .tp-total { font-size: 13px; font-weight: bold; }
             .ticket-preview .tp-sep { border-top: 1px dashed #000; margin: 4px 0; }
             .ticket-preview .tp-sep-dbl { border-top: 3px double #000; margin: 4px 0; }

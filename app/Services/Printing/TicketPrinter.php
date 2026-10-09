@@ -206,8 +206,10 @@ final class TicketPrinter
                 $this->pt($printer, $this->row('Pago:', $t['metodo'], $columns));
             }
 
+            // 08/10 (Antony): el nombre ya no se recorta con "…"; si no cabe al
+            // lado del rótulo, baja a la línea siguiente (igual que en las vistas previas).
             if ($t['cliente']) {
-                $this->pt($printer, $this->row('Cliente:', Str::limit($t['cliente'], $columns - 10), $columns));
+                $this->pt($printer, $this->rowAbajo('Cliente:', $t['cliente'], $columns));
             }
             if ($t['documento']) {
                 $this->pt($printer, $this->row('Doc:', $t['documento'], $columns));
@@ -216,7 +218,7 @@ final class TicketPrinter
             $this->pt($printer, $this->row('Credito:', '#'.$t['credit_id'], $columns));
 
             if ($t['cobrador']) {
-                $this->pt($printer, $this->row('Cobrador:', Str::limit($t['cobrador'], $columns - 10), $columns));
+                $this->pt($printer, $this->rowAbajo('Cobrador:', $t['cobrador'], $columns));
             }
 
             $this->pt($printer, $sep."\n");
@@ -380,6 +382,26 @@ final class TicketPrinter
         $space = max(1, $width - mb_strlen($left) - mb_strlen($right));
 
         return $left.str_repeat(' ', $space).$right."\n";
+    }
+
+    /**
+     * Como row(), pero si el valor no cabe al lado del rótulo baja a la línea
+     * siguiente, partido por palabras al ancho del papel y alineado a la
+     * derecha (08/10, para nombres largos de cliente/cobrador).
+     */
+    public function rowAbajo(string $left, string $right, int $width): string
+    {
+        $left = $this->ascii($left);
+        $right = $this->ascii($right);
+        if (mb_strlen($left) + 1 + mb_strlen($right) <= $width) {
+            return $this->row($left, $right, $width);
+        }
+        $out = $left."\n";
+        foreach (explode("\n", wordwrap($right, $width, "\n", true)) as $linea) {
+            $out .= str_pad($linea, $width, ' ', STR_PAD_LEFT)."\n";
+        }
+
+        return $out;
     }
 
     private function pt(Printer $printer, string $text): void

@@ -50,6 +50,9 @@
             gap: 4mm;
         }
         .row > span:last-child { text-align: right; white-space: nowrap; }
+        /* 08/10 (Antony): el nombre no se sale del ticket; si no cabe baja a la línea siguiente. */
+        .row-abajo { flex-wrap: wrap; }
+        .row-abajo > span:last-child { flex: 1 0 auto; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 
         .total { font-size: 15px; font-weight: bold; }
 
@@ -122,7 +125,7 @@
         <div class="row"><span>Pago:</span><span>{{ $t['metodo'] }}</span></div>
     @endif
     @if($t['cliente'])
-        <div class="row"><span>Cliente:</span><span>{{ $t['cliente'] }}</span></div>
+        <div class="row row-abajo"><span>Cliente:</span><span>{{ $t['cliente'] }}</span></div>
     @endif
     @if($t['documento'])
         <div class="row"><span>Doc:</span><span>{{ $t['documento'] }}</span></div>
