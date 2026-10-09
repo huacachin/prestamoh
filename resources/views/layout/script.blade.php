@@ -43,12 +43,15 @@ document.addEventListener('click', function (e) {
     // del recuadro deja su borde inferior fuera de la ventana cuando el recuadro
     // (650 px) no cabe entero; por eso, además, se baja o sube la PÁGINA hasta
     // que el final (o el inicio) del recuadro quede a la vista.
+    // El scroll interno también va suave (antes era un salto seco por una vieja
+    // nota de compatibilidad; los navegadores actuales animan scrollTo en
+    // contenedores con overflow horizontal + vertical sin problema).
     var verFinalDelRecuadro = function () {
-        el.scrollTop = el.scrollHeight;
+        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
         el.scrollIntoView({ behavior: 'smooth', block: 'end' });
     };
     var verInicioDelRecuadro = function () {
-        el.scrollTop = 0;
+        el.scrollTo({ top: 0, behavior: 'smooth' });
         // 90 px: la cabecera fija (mismo margen que [data-lista] en app.css).
         window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 90, behavior: 'smooth' });
     };
@@ -82,8 +85,6 @@ document.addEventListener('click', function (e) {
             verInicioDelRecuadro();
             setDir('down');
         } else {
-            // scrollTop directo: más compatible que scrollTo({behavior:smooth}) en
-            // contenedores con overflow horizontal + vertical.
             verFinalDelRecuadro();
             setDir('up');
         }

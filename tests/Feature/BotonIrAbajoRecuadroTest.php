@@ -28,13 +28,14 @@ class BotonIrAbajoRecuadroTest extends TestCase
         $html = $this->get(route('cash.incomes'))->assertOk()->getContent();
 
         // Bajar: scroll interno al final + la página hasta el borde inferior del recuadro.
-        $this->assertStringContainsString("el.scrollTop = el.scrollHeight;\n        el.scrollIntoView({ behavior: 'smooth', block: 'end' });", $html);
+        $this->assertStringContainsString("el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });\n        el.scrollIntoView({ behavior: 'smooth', block: 'end' });", $html);
         // Subir: scroll interno al inicio + la página al inicio del recuadro, bajo la cabecera fija.
-        $this->assertStringContainsString("el.scrollTop = 0;\n        // 90 px: la cabecera fija (mismo margen que [data-lista] en app.css).\n        window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 90, behavior: 'smooth' });", $html);
+        $this->assertStringContainsString("el.scrollTo({ top: 0, behavior: 'smooth' });\n        // 90 px: la cabecera fija (mismo margen que [data-lista] en app.css).\n        window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 90, behavior: 'smooth' });", $html);
         // Las dos ramas del handler (dirección fija y toggle) usan esas funciones.
         $this->assertStringContainsString("fija === 'up' ? verInicioDelRecuadro() : verFinalDelRecuadro();", $html);
         $this->assertSame(2, substr_count($html, 'verFinalDelRecuadro();'), 'definición aparte: la llamada en la rama toggle');
         $this->assertStringNotContainsString("el.scrollTop = fija === 'up' ? 0 : el.scrollHeight;", $html, 'ya no mueve solo el scroll interno');
+        $this->assertStringNotContainsString('el.scrollTop = el.scrollHeight;', $html, 'el scroll interno ya no es un salto seco: va suave');
         // Y la pantalla de la captura (ingresos) sigue usando el botón en modo recuadro.
         $this->assertStringContainsString('data-scroll-sel="#incomesTable"', $html);
         $this->assertStringContainsString('data-scroll-cont="1"', $html);
