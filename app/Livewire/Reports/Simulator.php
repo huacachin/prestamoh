@@ -27,6 +27,8 @@ class Simulator extends Component
     {
         $this->validate();
         $this->hasResult = true;
+        // 10/10: las ventanitas de detalle abiertas eran de la simulación anterior; se cierran.
+        $this->dispatch('simulacion-nueva');
     }
 
     public function render()

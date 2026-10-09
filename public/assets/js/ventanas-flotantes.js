@@ -183,9 +183,40 @@
         };
     }
 
+    /**
+     * `ventanaLibre({ x, y, w })`: ventana suelta (position: fixed) que se arrastra
+     * desde el elemento que lleve los x-on:pointer*. Para varias a la vez, p. ej.
+     * los detalles de pago del simulador (10/10): cada una con su x-data.
+     */
+    function ventanaLibre(inicial) {
+        inicial = inicial || {};
+
+        return {
+            flotante: true,
+            geo: { x: inicial.x ?? 80, y: inicial.y ?? 80, w: inicial.w ?? 440, h: 0 },
+            arrastre: null,
+
+            init() {
+                this.geo.x = limitar(this.geo.x, 0, window.innerWidth - Math.min(this.geo.w, window.innerWidth - MARGEN));
+                this.geo.y = limitar(this.geo.y, 0, window.innerHeight - 3 * CABECERA);
+                this.aplicar();
+            },
+
+            aplicar() {
+                this.$el.style.left = this.geo.x + 'px';
+                this.$el.style.top = this.geo.y + 'px';
+            },
+
+            iniciarArrastre(e) { Arrastre.iniciar(this, e); },
+            arrastrar(e) { Arrastre.mover(this, e); },
+            soltar(e) { Arrastre.soltar(this, e); },
+        };
+    }
+
     function registrar() {
         window.Alpine.data('visorFlotante', visorFlotante);
         window.Alpine.data('modalFlotante', modalFlotante);
+        window.Alpine.data('ventanaLibre', ventanaLibre);
     }
 
     if (window.Alpine) {
