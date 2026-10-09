@@ -47,27 +47,6 @@
                         <a href="#" class="ms-1" wire:click.prevent="$set('tab', 'documentos')">ver</a>
                     </div>
                 </div>
-                <div class="mt-1">
-                    <i class="ti ti-users"></i> <b>Copropietarios:</b>
-                    @if($resumen['copropietarios']->isEmpty())
-                        <span class="text-muted">ninguno</span>
-                    @else
-                        <ul class="mb-0 ps-3">
-                            @foreach($resumen['copropietarios'] as $c)
-                                <li>
-                                    <a href="{{ route('clients.edit', $c['persona']->id) }}">{{ $c['persona']->fullName() }}</a>
-                                    <span class="text-muted">— {{ count($c['placas']) === 1 ? 'vehículo' : 'vehículos' }} {{ implode(', ', $c['placas']) }}</span>
-                                </li>
-                            @endforeach
-                        </ul>
-                    @endif
-                </div>
-                @if($resumen['copropiedades']->isNotEmpty())
-                    <div class="mt-1">
-                        <i class="ti ti-user-check"></i> <b>Es copropietario en:</b>
-                        {{ $resumen['copropiedades']->map(fn ($c) => ($c['placas'] ? implode(', ', $c['placas']).' de ' : 'contrato de ').$c['titular']->fullName())->implode(' · ') }}
-                    </div>
-                @endif
             </div>
 
             {{-- ════════ Pestañas (compactas: píldoras pequeñas) ════════ --}}
@@ -264,6 +243,51 @@
                         @error('email') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                 </div>
+
+                <hr class="my-2" style="border-color:#e8e2d5;">
+
+                {{-- ════════ Copropietarios (10/10, Antony: debajo de los datos generales, a lo ancho) ════════ --}}
+                <h6 class="mb-1 seccion-copropietarios" style="color:red;">Copropietarios</h6>
+                @if($resumen['copropietarios']->isEmpty())
+                    <div class="small mb-2"><span class="text-muted">ninguno</span>
+                        <a href="#" class="ms-1" wire:click.prevent="$set('tab', 'vehiculos')">agregar desde Vehículos</a>
+                    </div>
+                @else
+                    <div class="table-responsive mb-2">
+                        <table class="table table-sm table-bordered align-middle mb-0 tabla-copropietarios" style="font-size:12px;">
+                            <thead class="bg-primary">
+                                <tr>
+                                    <th>Apellidos y Nombres</th>
+                                    <th class="text-center" width="110">DNI</th>
+                                    <th class="text-center" width="120">Celular</th>
+                                    <th>Vehículos</th>
+                                    <th class="text-center" width="90"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($resumen['copropietarios'] as $c)
+                                    <tr>
+                                        <td class="fw-semibold">{{ $c['persona']->fullName() }}</td>
+                                        <td class="text-center">{{ $c['persona']->documento }}</td>
+                                        <td class="text-center">{{ $c['persona']->celular1 ?: '—' }}</td>
+                                        <td>{{ implode(', ', $c['placas']) }}</td>
+                                        <td class="text-center">
+                                            <a href="{{ route('clients.edit', $c['persona']->id) }}" class="btn btn-xs btn-primary" style="padding: 2px 8px; font-size: 10px;">
+                                                <i class="ti ti-user"></i> Ficha
+                                            </a>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+                @if($resumen['copropiedades']->isNotEmpty())
+                    <div class="small mb-2">
+                        <i class="ti ti-user-check"></i> <b>Es copropietario en:</b>
+                        {{ $resumen['copropiedades']->map(fn ($c) => ($c['placas'] ? implode(', ', $c['placas']).' de ' : 'contrato de ').$c['titular']->fullName())->implode(' · ') }}
+                    </div>
+                @endif
 
                 <hr class="my-2" style="border-color:#e8e2d5;">
 

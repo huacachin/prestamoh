@@ -45,8 +45,12 @@ class ClienteEditResumenTest extends TestCase
         $html = Livewire::test(Edit::class, ['id' => $c->id])->html();
 
         $this->assertStringContainsString('resumen-cliente', $html);
-        $this->assertSame(3, substr_count($html, '<span class="text-muted">ninguno</span>'), 'vehículos, contratos y copropietarios');
+        $this->assertSame(3, substr_count($html, '<span class="text-muted">ninguno</span>'), 'vehículos, contratos (franja) y copropietarios (sección)');
         $this->assertStringNotContainsString('Es copropietario en:', $html);
+        // La sección de copropietarios va debajo de Datos Personales y antes de Dirección Principal.
+        $this->assertLessThan(strpos($html, 'seccion-copropietarios'), strpos($html, '>Datos Personales<'));
+        $this->assertLessThan(strpos($html, '>Dirección Principal<'), strpos($html, 'seccion-copropietarios'));
+        $this->assertStringContainsString('agregar desde Vehículos', $html);
     }
 
     public function test_con_vehiculos_contratos_y_copropietarios_lo_resume_todo(): void
@@ -91,15 +95,18 @@ class ClienteEditResumenTest extends TestCase
         $this->assertStringContainsString('2 emitidos (1 anulado)', $html);
         $this->assertStringContainsString('último: v3 del '.now()->format('d/m/Y'), $html);
         $this->assertStringContainsString("(crédito #{$credit->id})", $html);
-        // Copropietarios con los vehículos a los que pertenecen.
-        $this->assertStringContainsString('Escobar Suma Joselyn</a>', $html);
-        $this->assertStringContainsString('— vehículos AWI132, BVJ155', $html, 'en el orden de las placas');
-        $this->assertStringContainsString('Solo Uno Pedro</a>', $html);
-        $this->assertStringContainsString('— vehículo AWI132', $html);
+        // Copropietarios en su sección (tabla ancha): nombre, DNI, celular, vehículos y ficha.
+        $this->assertStringContainsString('tabla-copropietarios', $html);
+        $this->assertStringContainsString('<td class="fw-semibold">Escobar Suma Joselyn</td>', $html);
+        $this->assertStringContainsString('<td class="text-center">41001467</td>', $html);
+        $this->assertStringContainsString('<td>AWI132, BVJ155</td>', $html, 'en el orden de las placas');
+        $this->assertStringContainsString('<td class="fw-semibold">Solo Uno Pedro</td>', $html);
+        $this->assertStringContainsString('<td>AWI132</td>', $html);
         $this->assertStringContainsString(route('clients.edit', $copro->id), $html);
+        $this->assertStringNotContainsString('<b>Copropietarios:</b>', $html, 'ya no va en la franja de arriba');
 
-        // Se ve también en las otras pestañas.
-        $comp->set('tab', 'gps')->assertSee('Copropietarios:')->assertSee('2 emitidos');
+        // La franja de arriba (vehículos y contratos) se ve en las otras pestañas.
+        $comp->set('tab', 'gps')->assertSee('2 emitidos')->assertSee('AWI132 (NISSAN)');
 
         // La ficha de la copropietaria indica de quién es copropietaria.
         Livewire::test(Edit::class, ['id' => $copro->id])
