@@ -4,12 +4,14 @@ namespace App\Livewire\Clients;
 
 use App\Models\Client;
 use App\Models\Credit;
+use App\Models\DocumentoCliente;
 use App\Models\User;
 use App\Support\Audit;
 use App\Support\Auditoria\ConCapturaDeAuditoria;
 use App\Support\ConReglasDeEliminacion;
 use App\Support\Documentos\Nacionalidades;
 use App\Support\Ubigeo;
+use Illuminate\Support\Collection;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -333,8 +335,41 @@ class Edit extends Component
         $this->redirectRoute('clients.index');
     }
 
+    /**
+     * 10/10 (Antony): resumen de la ficha a la vista en cualquier pestaña:
+     * vehículos (con sus copropietarios), contratos emitidos y la lista de
+     * copropietarios con los vehículos a los que pertenecen. Si la persona es
+     * a su vez copropietaria de otros, también se indica.
+     *
+     * @return array{vehiculos: Collection, contratos: int, contratosAnulados: int, ultimoContrato: ?DocumentoCliente, copropietarios: Collection, copropiedades: Collection}
+     */
+    public function resumen(): array
+    {
+        $vehiculos = $this->client->vehiculos()->with('copropietarios')->orderBy('placa')->get();
+
+        $copropietarios = collect();
+        foreach ($vehiculos as $v) {
+            foreach ($v->copropietarios as $p) {
+                $fila = $copropietarios->get($p->id, ['persona' => $p, 'placas' => []]);
+                $fila['placas'][] = $v->placa;
+                $copropietarios->put($p->id, $fila);
+            }
+        }
+
+        $contratos = DocumentoCliente::where('client_id', $this->clientId)->where('tipo', 'contrato');
+
+        return [
+            'vehiculos' => $vehiculos,
+            'contratos' => (clone $contratos)->where('estado', '!=', 'anulado')->count(),
+            'contratosAnulados' => (clone $contratos)->where('estado', 'anulado')->count(),
+            'ultimoContrato' => (clone $contratos)->where('estado', '!=', 'anulado')->with('credit')->orderByDesc('id')->first(),
+            'copropietarios' => $copropietarios->values(),
+            'copropiedades' => $this->client->vehiculosCompartidos()->exists() ? $this->client->copropiedades() : collect(),
+        ];
+    }
+
     public function render()
     {
-        return view('livewire.clients.edit');
+        return view('livewire.clients.edit', ['resumen' => $this->resumen()]);
     }
 }

@@ -19,6 +19,57 @@
     <div class="card shadow-sm">
         <div class="card-body">
 
+            {{-- 10/10 (Antony): resumen de la ficha —vehículos, contratos y copropietarios con
+                 sus vehículos— a la vista en cualquier pestaña. --}}
+            <div class="resumen-cliente border rounded px-2 py-2 mb-2 small" style="background:#fcfcfa;">
+                <div class="d-flex flex-wrap gap-3">
+                    <div>
+                        <i class="ti ti-car"></i> <b>Vehículos:</b>
+                        @if($resumen['vehiculos']->isEmpty())
+                            <span class="text-muted">ninguno</span>
+                        @else
+                            {{ $resumen['vehiculos']->count() }} ·
+                            {{ $resumen['vehiculos']->map(fn ($v) => $v->placa.($v->marca ? ' ('.$v->marca.')' : ''))->implode(', ') }}
+                        @endif
+                        <a href="#" class="ms-1" wire:click.prevent="$set('tab', 'vehiculos')">ver</a>
+                    </div>
+                    <div>
+                        <i class="ti ti-file-text"></i> <b>Contratos:</b>
+                        @if($resumen['contratos'] === 0)
+                            <span class="text-muted">ninguno{{ $resumen['contratosAnulados'] ? " ({$resumen['contratosAnulados']} anulado".($resumen['contratosAnulados'] === 1 ? '' : 's').')' : '' }}</span>
+                        @else
+                            {{ $resumen['contratos'] }} emitido{{ $resumen['contratos'] === 1 ? '' : 's' }}@if($resumen['contratosAnulados']) ({{ $resumen['contratosAnulados'] }} anulado{{ $resumen['contratosAnulados'] === 1 ? '' : 's' }})@endif
+                            @if($resumen['ultimoContrato'])
+                                · último: v{{ $resumen['ultimoContrato']->version }} del {{ $resumen['ultimoContrato']->created_at?->format('d/m/Y') }}
+                                @if($resumen['ultimoContrato']->credit_id) (crédito #{{ $resumen['ultimoContrato']->credit_id }}) @endif
+                            @endif
+                        @endif
+                        <a href="#" class="ms-1" wire:click.prevent="$set('tab', 'documentos')">ver</a>
+                    </div>
+                </div>
+                <div class="mt-1">
+                    <i class="ti ti-users"></i> <b>Copropietarios:</b>
+                    @if($resumen['copropietarios']->isEmpty())
+                        <span class="text-muted">ninguno</span>
+                    @else
+                        <ul class="mb-0 ps-3">
+                            @foreach($resumen['copropietarios'] as $c)
+                                <li>
+                                    <a href="{{ route('clients.edit', $c['persona']->id) }}">{{ $c['persona']->fullName() }}</a>
+                                    <span class="text-muted">— {{ count($c['placas']) === 1 ? 'vehículo' : 'vehículos' }} {{ implode(', ', $c['placas']) }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
+                </div>
+                @if($resumen['copropiedades']->isNotEmpty())
+                    <div class="mt-1">
+                        <i class="ti ti-user-check"></i> <b>Es copropietario en:</b>
+                        {{ $resumen['copropiedades']->map(fn ($c) => ($c['placas'] ? implode(', ', $c['placas']).' de ' : 'contrato de ').$c['titular']->fullName())->implode(' · ') }}
+                    </div>
+                @endif
+            </div>
+
             {{-- ════════ Pestañas (compactas: píldoras pequeñas) ════════ --}}
             @php
                 $tabs = [
