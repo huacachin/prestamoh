@@ -16,7 +16,7 @@
         </div>
     </div>
 
-    <form wire:submit.prevent="save">
+    <form x-on:submit.prevent="$captura('save')" data-captura>
         <div class="card shadow-sm">
             <div class="card-body">
                 {{-- Campos traídos por la API (RENIEC/SUNAT/placa): en rojo para

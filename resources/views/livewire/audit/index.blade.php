@@ -1,4 +1,18 @@
-<div class="container-fluid">
+{{-- 08/10: raíz con el visor de capturas (lightbox de caja, partial _lightbox). --}}
+<div class="container-fluid"
+     x-data="{
+        open: false, idx: 0, items: [],
+        openLightbox(items) {
+            if (! items || ! items.length) return;
+            this.items = items;
+            this.idx = 0;
+            this.open = true;
+        },
+        close() { this.open = false; },
+        next() { this.idx = (this.idx + 1) % this.items.length; },
+        prev() { this.idx = (this.idx - 1 + this.items.length) % this.items.length; },
+     }"
+     @keydown.escape.window="open && close()">
     <div class="row">
         <div class="col-sm-6">
             <h4 class="main-title title-modules" style="color:red;">AUDITORÍA</h4>
@@ -99,7 +113,7 @@
                                     <th style="width:130px;">Módulo</th>
                                     <th style="width:90px;">Registro</th>
                                     <th>Descripción</th>
-                                    <th style="width:60px;" class="text-center">Ver</th>
+                                    <th style="width:90px;" class="text-center">Ver</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -162,12 +176,20 @@
                                             <i class="ti ti-list-details text-primary ms-1" title="Tiene detalle de campos (antes / después)"></i>
                                         @endif
                                     </td>
-                                    <td class="text-center">
+                                    <td class="text-center" style="white-space:nowrap;">
                                         <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2"
                                                 wire:click="ver({{ $log->id }})" wire:loading.attr="disabled" wire:target="ver"
                                                 title="Ver detalle del registro">
                                             <i class="ti ti-eye"></i>
                                         </button>
+                                        {{-- 08/10: la captura de pantalla de la acción se abre en el lightbox desde la misma fila --}}
+                                        @if(is_string($log->properties['captura'] ?? null))
+                                            <button type="button" class="btn btn-sm btn-outline-info py-0 px-2 ms-1"
+                                                    @click.prevent="openLightbox({{ \Illuminate\Support\Js::from([['url' => route('audit.captura', $log->id), 'name' => ($log->created_at?->format('d/m/Y H:i') ?? '').' · '.$log->description]]) }})"
+                                                    title="Ver captura de pantalla">
+                                                <i class="ti ti-camera"></i>
+                                            </button>
+                                        @endif
                                     </td>
                                 </tr>
                             @empty
@@ -294,6 +316,19 @@
                             </div>
                         @endif
 
+                        {{-- 08/10: captura de pantalla tomada al confirmar la acción (solo formularios importantes) --}}
+                        @if($detalle['captura'])
+                            <h6 class="mb-1" style="font-size:13px;"><i class="ti ti-camera"></i> Pantalla al confirmar</h6>
+                            @if($detalle['captura_existe'])
+                                <a href="{{ $detalle['captura_url'] }}" title="Ver en grande"
+                                   @click.prevent="openLightbox({{ \Illuminate\Support\Js::from([['url' => $detalle['captura_url'], 'name' => $detalle['fecha'].' · '.$detalle['descripcion']]]) }})" style="cursor: zoom-in;">
+                                    <img src="{{ $detalle['captura_url'] }}" alt="Captura de pantalla de la acción" class="img-fluid border rounded mb-2" style="max-height:420px;">
+                                </a>
+                            @else
+                                <div class="text-muted small mb-2"><i class="ti ti-camera-off"></i> La captura ya fue purgada (se conservan {{ config('auditoria.capturas.dias') }} días).</div>
+                            @endif
+                        @endif
+
                         @if(count($detalle['propiedades']))
                             <h6 class="mb-1" style="font-size:13px;"><i class="ti ti-tags"></i> Propiedades</h6>
                             <div class="table-responsive">
@@ -322,4 +357,7 @@
             </div>
         </div>
     </div>
+
+    {{-- Visor de capturas (mismo partial que caja) --}}
+    @include('livewire.cash.partials._lightbox')
 </div>

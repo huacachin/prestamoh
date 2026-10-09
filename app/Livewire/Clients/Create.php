@@ -7,6 +7,7 @@ use App\Models\ClientEmpresa;
 use App\Models\User;
 use App\Services\Factiliza;
 use App\Support\Audit;
+use App\Support\Auditoria\ConCapturaDeAuditoria;
 use App\Support\Documentos\DomicilioLegal;
 use App\Support\Documentos\Nacionalidades;
 use App\Support\Ubigeo;
@@ -26,6 +27,8 @@ use Livewire\Component;
  */
 class Create extends Component
 {
+    use ConCapturaDeAuditoria;
+
     public const OCUPACIONES = ['dependiente' => 'Dependiente', 'independiente' => 'Independiente', 'transportista' => 'Transportista'];
 
     public const ESTADOS_CIVILES = ['soltero' => 'Soltero(a)', 'casado' => 'Casado(a)', 'viudo' => 'Viudo(a)', 'divorciado' => 'Divorciado(a)'];

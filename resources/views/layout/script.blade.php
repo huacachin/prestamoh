@@ -461,3 +461,7 @@ document.addEventListener('click', function (e) {
 
 @stack('scripts')
 @yield('script')
+
+{{-- Captura de pantalla para la auditoría (08/10): html2canvas vendorizado + $captura(...) --}}
+<script src="{{ asset('assets/js/html2canvas.min.js') }}"></script>
+<script src="{{ asset('assets/js/auditoria-captura.js') }}?v={{ filemtime(public_path('assets/js/auditoria-captura.js')) }}"></script>

@@ -9,6 +9,7 @@ use App\Models\ExpedienteJudicial;
 use App\Models\Garantia;
 use App\Models\User;
 use App\Support\Audit;
+use App\Support\Auditoria\CapturaAuditoria;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Route;
 use Livewire\Attributes\Computed;
@@ -216,6 +217,9 @@ class Index extends Component
         $props = collect($a->properties ?? [])->toArray();
         $contexto = is_array($props['contexto'] ?? null) ? $props['contexto'] : [];
         unset($props['contexto']);
+        // 08/10: captura de pantalla de la acción (ruta privada; la sirve AuditCapturaController).
+        $captura = is_string($props['captura'] ?? null) ? $props['captura'] : null;
+        unset($props['captura']);
         $cambios = collect($a->attribute_changes ?? [])->toArray();
         $nuevos = is_array($a->new_data) ? $a->new_data : (is_array($cambios['attributes'] ?? null) ? $cambios['attributes'] : null);
         $viejos = is_array($a->old_data) ? $a->old_data : (is_array($cambios['old'] ?? null) ? $cambios['old'] : null);
@@ -298,6 +302,9 @@ class Index extends Component
             'subject_url' => self::urlFicha($tipo, $a->subject_id),
             'cambios' => $antesDespues,
             'valores' => $valores,
+            'captura' => $captura,
+            'captura_url' => $captura ? route('audit.captura', $a->id) : null,
+            'captura_existe' => $captura ? CapturaAuditoria::disco()->exists($captura) : false,
             'propiedades' => $propiedades,
         ];
     }

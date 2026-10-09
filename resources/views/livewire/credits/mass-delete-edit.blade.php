@@ -18,7 +18,7 @@
 
     <div class="row">
         <div class="col-xl-12">
-            <div class="card shadow-sm">
+            <div class="card shadow-sm" data-captura>
                 <div class="card-body">
                     {{-- Contexto compacto (no estaba en legacy, agregado para confirmar antes de revertir) --}}
                     <div class="row mb-3" style="font-size: 13px;">
@@ -74,7 +74,7 @@
                         @if(auth()->user()->can('registro.eliminar-masivo.revertir')
                             && (auth()->user()->can('caja.editar-historico') || $esDeHoy))
                             <button type="button"
-                                    wire:click="reverse"
+                                    x-on:click="$captura('reverse')"
                                     data-confirmar="¿Está seguro de revertir esta eliminación masiva? Se restaurarán las cuotas y el crédito."
                                     class="btn btn-sm btn-danger">
                                 <i class="ti ti-trash"></i> Eliminar (revertir)

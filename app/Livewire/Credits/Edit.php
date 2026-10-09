@@ -4,12 +4,15 @@ namespace App\Livewire\Credits;
 
 use App\Models\Credit;
 use App\Support\Audit;
+use App\Support\Auditoria\ConCapturaDeAuditoria;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
 class Edit extends Component
 {
+    use ConCapturaDeAuditoria;
+
     public Credit $credit;
 
     #[Locked]

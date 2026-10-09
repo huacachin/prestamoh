@@ -6,6 +6,7 @@ use App\Models\Client;
 use App\Models\Credit;
 use App\Models\User;
 use App\Support\Audit;
+use App\Support\Auditoria\ConCapturaDeAuditoria;
 use App\Support\CuotaUniforme;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,8 @@ use Livewire\Component;
 
 class Create extends Component
 {
+    use ConCapturaDeAuditoria;
+
     // Cliente
     public string $codigoc = '';     // DNI
 

@@ -11,6 +11,7 @@ use App\Models\Payment;
 use App\Services\Payments\MotorPagos;
 use App\Services\Printing\TicketPrinter;
 use App\Support\Audit;
+use App\Support\Auditoria\ConCapturaDeAuditoria;
 use App\Support\ConSubidaDeArchivos;
 use App\Support\MoraExonerada;
 use App\Support\MoraPagada;
@@ -22,6 +23,7 @@ use Livewire\Component;
 
 class Create extends Component
 {
+    use ConCapturaDeAuditoria;
     use ConSubidaDeArchivos;
     use SavesExpenseAttachments;
 

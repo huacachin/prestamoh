@@ -21,7 +21,7 @@
 
     <div class="row table-section">
         <div class="col-xl-12">
-            <div class="card shadow-sm">
+            <div class="card shadow-sm" data-captura>
                 <div class="card-body">
 
                     @if ($errors->any())
@@ -112,7 +112,7 @@
                     </div>
 
                     <div class="d-flex gap-2 flex-wrap">
-                        <button type="button" class="btn btn-sm btn-primary" wire:click="update"
+                        <button type="button" class="btn btn-sm btn-primary" x-on:click="$captura('update')"
                                 wire:loading.attr="disabled" wire:target="update,files,removeFile">
                             <i class="ti ti-device-floppy f-s-12"></i>
                             <span wire:loading.remove wire:target="update">Guardar cambios{{ ! empty($files) ? ' y subir '.count($files).(count($files) === 1 ? ' imagen' : ' imágenes') : '' }}</span>

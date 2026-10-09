@@ -6,6 +6,7 @@ use App\Livewire\Cash\Concerns\SavesIncomeAttachments;
 use App\Models\Concept;
 use App\Models\Income;
 use App\Support\Audit;
+use App\Support\Auditoria\ConCapturaDeAuditoria;
 use App\Support\ConSubidaDeArchivos;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
@@ -14,6 +15,7 @@ use Livewire\Component;
 
 class EditIncome extends Component
 {
+    use ConCapturaDeAuditoria;
     use ConSubidaDeArchivos;
     use SavesIncomeAttachments;
 

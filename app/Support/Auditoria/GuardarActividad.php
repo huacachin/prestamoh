@@ -26,6 +26,11 @@ class GuardarActividad extends LogActivityAction
         }
         $props = collect($activity->properties ?? [])->toArray();
         $props['contexto'] = Audit::contexto();
+        // 08/10: la captura de pantalla que vino con la acción (si la hubo), una
+        // sola por petición, compartida por todas sus filas.
+        if (CapturaAuditoria::hayPendiente() && ($captura = CapturaAuditoria::ruta()) !== null) {
+            $props['captura'] = $captura;
+        }
         $activity->properties = $props;
     }
 

@@ -14,6 +14,7 @@ use App\Services\Documentos\Ocr\LectorDeVoucher;
 use App\Services\Documentos\Ocr\VoucherIlegible;
 use App\Services\Factiliza;
 use App\Support\Audit;
+use App\Support\Auditoria\ConCapturaDeAuditoria;
 use App\Support\ConSubidaDeArchivos;
 use App\Support\Documentos\BancosVoucher;
 use App\Support\Documentos\DomicilioLegal;
@@ -45,6 +46,7 @@ use Livewire\Component;
  */
 class Documentos extends Component
 {
+    use ConCapturaDeAuditoria;
     use ConSubidaDeArchivos;
 
     public int $clientId;

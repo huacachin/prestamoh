@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AuditCapturaController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CashController;
 use App\Http\Controllers\ClientController;
@@ -52,6 +53,8 @@ Route::middleware('auth')->group(function () {
 
     // Auditoría (solo rol director)
     Route::view('audit', 'audit.index')->name('audit.index')->middleware('role:director');
+    // 08/10: captura de pantalla de una fila de auditoría (disco privado, solo director).
+    Route::get('audit/captura/{id}', AuditCapturaController::class)->name('audit.captura')->middleware('role:director');
 
     // Clientes
     Route::get('clients/ceased', [ClientController::class, 'ceased'])->name('clients.ceased')->middleware('permission:registro.cesados');
