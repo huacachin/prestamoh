@@ -39,10 +39,24 @@ document.addEventListener('click', function (e) {
 
     // 18/09: con data-scroll-dir el botón hace SIEMPRE lo mismo (bajar o
     // subir) y su ícono no cambia. Sin el atributo sigue el toggle de antes.
+    // 09/10 (Antony, caja2.png en la laptop de 13"): mover solo el scroll INTERNO
+    // del recuadro deja su borde inferior fuera de la ventana cuando el recuadro
+    // (650 px) no cabe entero; por eso, además, se baja o sube la PÁGINA hasta
+    // que el final (o el inicio) del recuadro quede a la vista.
+    var verFinalDelRecuadro = function () {
+        el.scrollTop = el.scrollHeight;
+        el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    };
+    var verInicioDelRecuadro = function () {
+        el.scrollTop = 0;
+        // 90 px: la cabecera fija (mismo margen que [data-lista] en app.css).
+        window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 90, behavior: 'smooth' });
+    };
+
     var fija = btn.getAttribute('data-scroll-dir');
     if (fija === 'up' || fija === 'down') {
         if (isCont) {
-            el.scrollTop = fija === 'up' ? 0 : el.scrollHeight;
+            fija === 'up' ? verInicioDelRecuadro() : verFinalDelRecuadro();
         } else if (fija === 'up') {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         } else {
@@ -65,12 +79,12 @@ document.addEventListener('click', function (e) {
     if (isCont) {
         var nearBottom = (el.scrollTop + el.clientHeight) >= (el.scrollHeight - 8);
         if (nearBottom) {
-            el.scrollTop = 0;
+            verInicioDelRecuadro();
             setDir('down');
         } else {
             // scrollTop directo: más compatible que scrollTo({behavior:smooth}) en
             // contenedores con overflow horizontal + vertical.
-            el.scrollTop = el.scrollHeight;
+            verFinalDelRecuadro();
             setDir('up');
         }
     } else {
