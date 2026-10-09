@@ -47,9 +47,9 @@ class ClienteEditResumenTest extends TestCase
         $this->assertStringContainsString('resumen-cliente', $html);
         $this->assertSame(3, substr_count($html, '<span class="text-muted">ninguno</span>'), 'vehículos, contratos (franja) y copropietarios (sección)');
         $this->assertStringNotContainsString('Es copropietario en:', $html);
-        // La sección de copropietarios va debajo de Datos Personales y antes de Dirección Principal.
-        $this->assertLessThan(strpos($html, 'seccion-copropietarios'), strpos($html, '>Datos Personales<'));
-        $this->assertLessThan(strpos($html, '>Dirección Principal<'), strpos($html, 'seccion-copropietarios'));
+        // La sección de copropietarios va debajo de Dirección Principal y antes de los botones.
+        $this->assertLessThan(strpos($html, 'seccion-copropietarios'), strpos($html, '>Dirección Principal<'));
+        $this->assertLessThan(strpos($html, 'Regresar'), strpos($html, 'seccion-copropietarios'));
         $this->assertStringContainsString('agregar desde Vehículos', $html);
     }
 
@@ -61,6 +61,7 @@ class ClienteEditResumenTest extends TestCase
         $copro = Client::create([
             'nombre' => 'Joselyn', 'apellido_pat' => 'Escobar', 'apellido_mat' => 'Suma', 'tipo_documento' => 'DNI', 'documento' => '41001467',
             'sexo' => 'F', 'status' => 'active', 'es_relacionado' => true, 'headquarter_id' => $this->sede->id,
+            'direccion' => 'Jr. Los Pinos 123', 'distrito' => 'Ate', 'celular1' => '999111222',
         ]);
         $otro = Client::create([
             'nombre' => 'Pedro', 'apellido_pat' => 'Solo', 'apellido_mat' => 'Uno', 'tipo_documento' => 'DNI', 'documento' => '41001468',
@@ -99,6 +100,9 @@ class ClienteEditResumenTest extends TestCase
         $this->assertStringContainsString('tabla-copropietarios', $html);
         $this->assertStringContainsString('<td class="fw-semibold">Escobar Suma Joselyn</td>', $html);
         $this->assertStringContainsString('<td class="text-center">41001467</td>', $html);
+        $this->assertStringContainsString('<td class="text-center">999111222</td>', $html);
+        $this->assertStringContainsString('<td>Jr. Los Pinos 123, Ate</td>', $html, 'la dirección del copropietario');
+        $this->assertStringContainsString('<th>Dirección</th>', $html);
         $this->assertStringContainsString('<td>AWI132, BVJ155</td>', $html, 'en el orden de las placas');
         $this->assertStringContainsString('<td class="fw-semibold">Solo Uno Pedro</td>', $html);
         $this->assertStringContainsString('<td>AWI132</td>', $html);
