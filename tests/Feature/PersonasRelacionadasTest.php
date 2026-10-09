@@ -173,8 +173,8 @@ class PersonasRelacionadasTest extends TestCase
 
     // ── 2 · No ensucian listado ni export ─────────────────────────────────
 
-    /** 10/10 (Antony): clientes y personas relacionadas en la MISMA lista, sin el filtro "Ver". */
-    public function test_el_listado_muestra_clientes_y_relacionados_juntos(): void
+    /** 10/10 (Antony): los relacionados NO se listan; el titular con copropietarios lleva el icono con tooltip. */
+    public function test_el_listado_no_lista_relacionados_y_marca_al_titular_con_el_icono(): void
     {
         $titular = $this->titular();
         $rel = Client::create($this->formularioCopro() + [
@@ -182,10 +182,13 @@ class PersonasRelacionadasTest extends TestCase
         ]);
 
         $lista = Livewire::test(Index::class);
-        $lista->assertSee($titular->nombre)->assertSee('MARIA')
-            ->assertSee('Copropietario:')->assertSee('Titular:')
-            ->assertDontSee('Personas relacionadas');
+        $lista->assertSee($titular->nombre)->assertDontSee('MARIA')->assertDontSee('Personas relacionadas')->assertDontSeeHtml('copro-icono');
         $this->assertFalse(property_exists(Index::class, 'verRelacionados'), 'el filtro Ver ya no existe');
+
+        $v = Vehiculo::create(['client_id' => $titular->id, 'placa' => 'XYZ789', 'marca' => 'KIA', 'valor' => 9000]);
+        $v->copropietarios()->attach($rel->id, ['rol' => 'copropietario']);
+        Livewire::test(Index::class)->assertDontSeeHtml(route('clients.edit', $rel->id))->assertSeeHtml('copro-icono')
+            ->assertSeeHtml('title="Este cliente tiene un copropietario: LOPEZ DIAZ MARIA (XYZ789)"');
     }
 
     public function test_el_export_no_los_incluye(): void

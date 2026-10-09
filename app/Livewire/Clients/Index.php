@@ -91,10 +91,12 @@ class Index extends Component
     {
         $user = auth()->user();
 
-        // 10/10 (Antony): clientes y personas relacionadas (copropietarios) en la MISMA lista.
+        // 10/10 (Antony): las personas relacionadas (copropietarios) NO se listan; el titular que
+        // tiene copropietarios lleva un icono al lado del nombre con quiénes son (vehiculos.copropietarios).
         $query = Client::query()
             ->where('status', 'active')
-            ->with(['asesor:id,name,username', 'headquarter:id,name'])
+            ->titulares()
+            ->with(['asesor:id,name,username', 'headquarter:id,name', 'vehiculos:id,client_id,placa', 'vehiculos.copropietarios:id,nombre,apellido_pat,apellido_mat'])
             // attachments ya no se cuenta: el botón Adjuntos salió del listado (28/08)
             ->withCount('avales');
 
@@ -121,31 +123,21 @@ class Index extends Component
                 });
             }
         }
-        // 10/10 (Antony): las personas relacionadas (copropietarios) no tienen expediente,
-        // zona, giro ni asesor propios: el listado les muestra los del titular del préstamo
-        // (Client::herenciaDeCopropietario) y estos filtros también los buscan por ahí.
-        $propioOTitular = function (callable $condicion) use ($query) {
-            $query->where(function ($q) use ($condicion) {
-                $q->where(fn ($propio) => $condicion($propio))
-                    ->orWhereHas('vehiculosCompartidos.client', fn ($titular) => $condicion($titular))
-                    ->orWhereHas('contratosComoCodeudor.credit.client', fn ($titular) => $condicion($titular));
-            });
-        };
         if (trim($this->nexpediente) !== '') {
-            $propioOTitular(fn ($q) => $q->where('expediente', trim($this->nexpediente)));
+            $query->where('expediente', trim($this->nexpediente));
         }
         if (trim($this->ejecutivo) !== '') {
             if ($this->ejecutivo === 'Ninguno') {
                 $query->whereNull('asesor_id');
             } else {
-                $propioOTitular(fn ($q) => $q->where('asesor_id', $this->ejecutivo));
+                $query->where('asesor_id', $this->ejecutivo);
             }
         }
         if (trim($this->ruta) !== '') {
-            $propioOTitular(fn ($q) => $q->where('zona', 'like', '%'.trim($this->ruta).'%'));
+            $query->where('zona', 'like', '%'.trim($this->ruta).'%');
         }
         if (trim($this->giro) !== '') {
-            $propioOTitular(fn ($q) => $q->where('giro', 'like', '%'.trim($this->giro).'%'));
+            $query->where('giro', 'like', '%'.trim($this->giro).'%');
         }
 
         // Asesores para dropdown: cualquier usuario activo puede ser asesor responsable.
@@ -194,12 +186,7 @@ class Index extends Component
         };
 
         // Paginación real: solo se hidratan y renderizan los 100 de la página.
-        // Orden por expediente EFECTIVO: el copropietario (sin expediente propio) va justo
-        // debajo de su titular, con el expediente del dueño del vehículo compartido.
-        $expedienteEfectivo = "COALESCE(NULLIF(clients.expediente, ''), (SELECT t.expediente FROM cliente_vehiculo cv"
-            .' JOIN vehiculos v ON v.id = cv.vehiculo_id JOIN clients t ON t.id = v.client_id'
-            .' WHERE cv.client_id = clients.id ORDER BY cv.id DESC LIMIT 1))';
-        $clients = $query->orderByRaw("CAST({$expedienteEfectivo} AS UNSIGNED) ASC, clients.es_relacionado ASC, clients.id ASC")->paginate(100);
+        $clients = $query->orderByRaw('CAST(expediente AS UNSIGNED) ASC')->paginate(100);
         $pageIds = $clients->pluck('id');
 
         // Estado de créditos de los visibles de la página, para el color del texto:

@@ -175,16 +175,33 @@ class Client extends Model
     }
 
     /**
-     * Lo que el listado muestra en Exp./T.Credito/Giro/Asesor de una persona
-     * relacionada: los datos del titular (y el crédito) de su primera copropiedad.
+     * Copropietarios de los vehículos de este cliente, cada uno con las placas
+     * en las que figura. Usa la relación ya cargada si vino con with()
+     * (listado: 100 filas sin consultas extra).
      *
-     * @return array{titular: Client, credit: ?Credit, placas: list<string>, exacto: bool}|null
+     * @return Collection<int, array{persona: Client, placas: list<string>}>
      */
-    public function herenciaDeCopropietario(): ?array
+    public function copropietariosConPlacas(): Collection
     {
-        $c = $this->copropiedades()->first();
+        $porPersona = collect();
+        foreach ($this->vehiculos as $v) {
+            foreach ($v->copropietarios as $p) {
+                $fila = $porPersona->get($p->id, ['persona' => $p, 'placas' => []]);
+                $fila['placas'][] = $v->placa;
+                $porPersona->put($p->id, $fila);
+            }
+        }
 
-        return $c ? ['titular' => $c['titular'], 'credit' => $c['credit'], 'placas' => $c['placas'], 'exacto' => $c['exacto']] : null;
+        return $porPersona->values();
+    }
+
+    /** Texto del tooltip del listado (10/10, Antony): "Este cliente tiene un copropietario: …". */
+    public static function textoCopropietarios(Collection $copros): string
+    {
+        $n = $copros->count();
+        $lista = $copros->map(fn ($c) => $c['persona']->fullName().' ('.implode(', ', $c['placas']).')')->implode('; ');
+
+        return ($n === 1 ? 'Este cliente tiene un copropietario: ' : "Este cliente tiene {$n} copropietarios: ").$lista;
     }
 
     /**

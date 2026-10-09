@@ -193,41 +193,24 @@
                                     onmouseover="this.style.backgroundColor='#CCFF66'"
                                     onmouseout="this.style.backgroundColor=this.getAttribute('data-bg')">
                                     @php
-                                        // 10/10: la persona relacionada (copropietario sin crédito propio) hereda
-                                        // Exp./T.Credito/Giro/Asesor del titular del préstamo (Client::herenciaDeCopropietario)
-                                        // y se presenta como "Copropietario: …" con su "Titular: …" debajo. En cuanto
-                                        // saque su propio crédito deja de ser relacionada y sale como un cliente más.
-                                        $her = $client->es_relacionado ? $client->herenciaDeCopropietario() : null;
-                                        $titular = $her['titular'] ?? null;
+                                        // 10/10: si el cliente tiene copropietarios (de sus vehículos), un icono de
+                                        // varios usuarios al lado del nombre dice quiénes son al pasar el mouse.
+                                        $copros = $client->copropietariosConPlacas();
                                     @endphp
                                     <td class="text-center">{{ $clients->firstItem() + $loop->index }}</td>
                                     <td class="text-center">{{ $client->fecha_registro?->format('Y-m-d') }}</td>
                                     <td class="text-center">{{ $client->usuario }}</td>
-                                    <td class="text-center">{{ $client->expediente ?: ($titular?->expediente ?? '') }}</td>
+                                    <td class="text-center">{{ $client->expediente }}</td>
                                     <td class="col-wrap">
                                         {{-- color: inherit, no black: si no, el nombre se queda negro
                                              y tapa el rojo de la fila, que es justo donde se mira. --}}
-                                        @if($client->es_relacionado)
-                                            <div class="fila-copropietario">
-                                                <span class="text-muted">Copropietario:</span>
-                                                <a href="{{ route('clients.edit', $client->id) }}" style="color: inherit; text-decoration: none;">
-                                                    {{ $client->apellido_pat }} {{ $client->apellido_mat }} {{ $client->nombre }}
-                                                </a>
-                                            </div>
-                                            <div class="small">
-                                                <span class="text-muted">Titular:</span>
-                                                @if($titular)
-                                                    <a href="{{ route('clients.edit', $titular->id) }}" style="color: inherit;" title="Ficha del titular">{{ $titular->fullName() }}</a>
-                                                    @if($her['credit'])
-                                                        · <a href="{{ route('credits.show', $her['credit']->id) }}" style="color: inherit;" title="{{ $her['exacto'] ? 'Codeudor en el contrato' : 'Último crédito con contrato del titular' }}">crédito #{{ $her['credit']->id }}</a>
-                                                    @endif
-                                                @else
-                                                    <span class="text-muted">sin vehículo vinculado</span>
-                                                @endif
-                                            </div>
-                                        @else
-                                            <a href="{{ route('clients.edit', $client->id) }}" style="color: inherit; text-decoration: none;">
-                                                {{ $client->apellido_pat }} {{ $client->apellido_mat }} {{ $client->nombre }}
+                                        <a href="{{ route('clients.edit', $client->id) }}" style="color: inherit; text-decoration: none;">
+                                            {{ $client->apellido_pat }} {{ $client->apellido_mat }} {{ $client->nombre }}
+                                        </a>
+                                        @if($copros->isNotEmpty())
+                                            <a href="{{ route('clients.edit', $client->id) }}" class="copro-icono text-primary ms-1" style="text-decoration: none;"
+                                               title="{{ \App\Models\Client::textoCopropietarios($copros) }}">
+                                                <i class="ti ti-users"></i>
                                             </a>
                                         @endif
                                     </td>
@@ -237,9 +220,9 @@
                                         </a>
                                     </td>
                                     <td>{{ $client->celular1 }}</td>
-                                    <td class="text-center">{{ $client->zona ?: ($titular?->zona ?? '') }}</td>
-                                    <td class="text-center">{{ $client->giro ?: ($titular?->giro ?? '') }}</td>
-                                    <td class="text-center">{{ $client->asesor?->username ?? $client->asesor?->name ?? $titular?->asesor?->username ?? $titular?->asesor?->name }}</td>
+                                    <td class="text-center">{{ $client->zona }}</td>
+                                    <td class="text-center">{{ $client->giro }}</td>
+                                    <td class="text-center">{{ $client->asesor?->username ?? $client->asesor?->name }}</td>
                                     <td class="text-center text-nowrap">
                                         <a href="{{ route('clients.show', $client->id) }}" target="_blank"
                                            class="btn btn-xs btn-primary" style="padding: 2px 8px; font-size: 10px;">
@@ -306,10 +289,14 @@
                                 <div class="card-body p-3" style="{{ $sinVigente ? 'color: #FF0000;' : '' }}">
                                     <div class="d-flex justify-content-between align-items-start mb-1">
                                         <h6 class="mb-0">
-                                            @if($client->es_relacionado)<span class="text-muted small">Copropietario:</span>@endif
                                             <a href="{{ route('clients.edit', $client->id) }}" style="{{ $sinVigente ? 'color: #FF0000;' : 'color: black;' }}">
                                                 {{ $client->apellido_pat }} {{ $client->apellido_mat }} {{ $client->nombre }}
                                             </a>
+                                            @php $copros = $client->copropietariosConPlacas(); @endphp
+                                            @if($copros->isNotEmpty())
+                                                <a href="{{ route('clients.edit', $client->id) }}" class="copro-icono text-primary ms-1" style="text-decoration: none;"
+                                                   title="{{ \App\Models\Client::textoCopropietarios($copros) }}"><i class="ti ti-users"></i></a>
+                                            @endif
                                         </h6>
                                         <span class="badge bg-secondary">#{{ $loop->iteration }}</span>
                                     </div>
@@ -317,26 +304,11 @@
                                         <div class="col-6"><b>DNI:</b>
                                             <a href="{{ route('credits.create', $client->id) }}">{{ $client->documento }}</a>
                                         </div>
-                                        @php
-                                            $her = $client->es_relacionado ? $client->herenciaDeCopropietario() : null;
-                                            $titular = $her['titular'] ?? null;
-                                        @endphp
-                                        @if($client->es_relacionado)
-                                            <div class="col-12 small">
-                                                <span class="text-muted">Titular:</span>
-                                                @if($titular)
-                                                    <a href="{{ route('clients.edit', $titular->id) }}">{{ $titular->fullName() }}</a>
-                                                    @if($her['credit']) · <a href="{{ route('credits.show', $her['credit']->id) }}">crédito #{{ $her['credit']->id }}</a> @endif
-                                                @else
-                                                    <span class="text-muted">sin vehículo vinculado</span>
-                                                @endif
-                                            </div>
-                                        @endif
-                                        <div class="col-6"><b>Exp.:</b> {{ $client->expediente ?: ($titular?->expediente ?? '') }}</div>
+                                        <div class="col-6"><b>Exp.:</b> {{ $client->expediente }}</div>
                                         <div class="col-6"><b>Movil:</b> {{ $client->celular1 }}</div>
-                                        <div class="col-6"><b>T.Credito:</b> {{ $client->zona ?: ($titular?->zona ?? '') }}</div>
-                                        <div class="col-6"><b>Giro:</b> {{ $client->giro ?: ($titular?->giro ?? '') }}</div>
-                                        <div class="col-6"><b>Asesor:</b> {{ $client->asesor?->username ?? $client->asesor?->name ?? $titular?->asesor?->username ?? $titular?->asesor?->name }}</div>
+                                        <div class="col-6"><b>T.Credito:</b> {{ $client->zona }}</div>
+                                        <div class="col-6"><b>Giro:</b> {{ $client->giro }}</div>
+                                        <div class="col-6"><b>Asesor:</b> {{ $client->asesor?->username ?? $client->asesor?->name }}</div>
                                         <div class="col-6"><b>Fecha:</b> {{ $client->fecha_registro?->format('Y-m-d') }}</div>
                                         <div class="col-6"><b>Usuario:</b> {{ $client->usuario }}</div>
                                     </div>
