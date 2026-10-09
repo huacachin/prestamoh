@@ -95,7 +95,8 @@ class ClientController extends Controller
             $query->where('zona', 'like', '%'.trim($ruta).'%');
         }
         if (trim($giro) !== '') {
-            $query->where('giro', 'like', '%'.trim($giro).'%');
+            // 10/10: mismo criterio que la pantalla (giro o placa de sus vehículos).
+            $query->giroOPlaca($giro);
         }
 
         // Filtro de morosidad de los chips (al día / 2 / 3 / 4+ / ejecución):

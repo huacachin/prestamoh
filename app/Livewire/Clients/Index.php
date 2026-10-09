@@ -96,7 +96,7 @@ class Index extends Component
         $query = Client::query()
             ->where('status', 'active')
             ->titulares()
-            ->with(['asesor:id,name,username', 'headquarter:id,name', 'vehiculos:id,client_id,placa', 'vehiculos.copropietarios:id,nombre,apellido_pat,apellido_mat'])
+            ->with(['asesor:id,name,username', 'headquarter:id,name', 'vehiculos:id,client_id,placa,marca,modelo', 'vehiculos.copropietarios:id,nombre,apellido_pat,apellido_mat', 'vehiculosCompartidos:id,placa,marca,modelo'])
             // attachments ya no se cuenta: el botón Adjuntos salió del listado (28/08)
             ->withCount('avales');
 
@@ -137,7 +137,8 @@ class Index extends Component
             $query->where('zona', 'like', '%'.trim($this->ruta).'%');
         }
         if (trim($this->giro) !== '') {
-            $query->where('giro', 'like', '%'.trim($this->giro).'%');
+            // 10/10 (Antony): Giro también encuentra por la placa de los vehículos del cliente.
+            $query->giroOPlaca($this->giro);
         }
 
         // Asesores para dropdown: cualquier usuario activo puede ser asesor responsable.

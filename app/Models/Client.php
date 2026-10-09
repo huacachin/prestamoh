@@ -196,6 +196,53 @@ class Client extends Model
     }
 
     /**
+     * Filtro Giro del listado y del Excel (10/10, Antony): además del texto del
+     * giro ("Com.-AWI132"), encuentra al cliente por la placa de cualquier
+     * vehículo suyo (pestaña Vehículos) o en el que es copropietario, ignorando
+     * guiones, espacios y mayúsculas ("awi-132" halla "AWI132").
+     */
+    public function scopeGiroOPlaca($q, string $texto)
+    {
+        $t = trim($texto);
+        $n = self::placaNormalizada($t);
+        $sinSignos = "REPLACE(REPLACE(UPPER(%s), '-', ''), ' ', '')";
+
+        return $q->where(function ($w) use ($t, $n, $sinSignos) {
+            $w->where('giro', 'like', "%{$t}%")
+                ->orWhereRaw(sprintf($sinSignos, 'giro').' LIKE ?', ["%{$n}%"])
+                ->orWhereHas('vehiculos', fn ($v) => $v->whereRaw(sprintf($sinSignos, 'placa').' LIKE ?', ["%{$n}%"]))
+                ->orWhereHas('vehiculosCompartidos', fn ($v) => $v->whereRaw(sprintf($sinSignos, 'placa').' LIKE ?', ["%{$n}%"]));
+        });
+    }
+
+    public static function placaNormalizada(string $placa): string
+    {
+        return mb_strtoupper(str_replace(['-', ' '], '', trim($placa)));
+    }
+
+    /**
+     * HTML del tooltip del Giro en el listado (10/10, Antony): todas las placas
+     * de los vehículos del cliente (los suyos y los que tiene como copropietario),
+     * o null si no tiene ninguno. Usa las relaciones cargadas con with().
+     */
+    public function textoVehiculos(): ?string
+    {
+        $lineas = collect();
+        foreach ($this->vehiculos as $v) {
+            $lineas->push(e($v->placa).($v->marca || $v->modelo ? ' <small>'.e(trim($v->marca.' '.$v->modelo)).'</small>' : ''));
+        }
+        foreach ($this->vehiculosCompartidos as $v) {
+            $lineas->push(e($v->placa).' <small>'.e(trim($v->marca.' '.$v->modelo)).($v->marca || $v->modelo ? ' · ' : '').'copropietario</small>');
+        }
+        if ($lineas->isEmpty()) {
+            return null;
+        }
+        $n = $lineas->count();
+
+        return '<b>'.($n === 1 ? 'Vehículo:' : "{$n} vehículos:").'</b><br>'.$lineas->implode('<br>');
+    }
+
+    /**
      * HTML del tooltip Bootstrap del listado (10/10, Antony): "Este cliente
      * tiene un copropietario:" y debajo cada persona con sus placas.
      */

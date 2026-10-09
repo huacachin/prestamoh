@@ -226,7 +226,9 @@
                                     </td>
                                     <td>{{ $client->celular1 }}</td>
                                     <td class="text-center">{{ $client->zona }}</td>
-                                    <td class="text-center">{{ $client->giro }}</td>
+                                    @php $placas = $client->textoVehiculos(); @endphp
+                                    {{-- 10/10: al pasar el mouse por el giro, todas las placas de sus vehículos --}}
+                                    <td class="text-center" @if($placas) data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" data-bs-custom-class="tip-copro" title="{{ $placas }}" style="cursor: help;" @endif>{{ $client->giro }}</td>
                                     <td class="text-center">{{ $client->asesor?->username ?? $client->asesor?->name }}</td>
                                     <td class="text-center text-nowrap">
                                         <a href="{{ route('clients.show', $client->id) }}" target="_blank"
@@ -318,7 +320,10 @@
                                         <div class="col-6"><b>Exp.:</b> {{ $client->expediente }}</div>
                                         <div class="col-6"><b>Movil:</b> {{ $client->celular1 }}</div>
                                         <div class="col-6"><b>T.Credito:</b> {{ $client->zona }}</div>
-                                        <div class="col-6"><b>Giro:</b> {{ $client->giro }}</div>
+                                        @php $placas = $client->textoVehiculos(); @endphp
+                                        <div class="col-6"><b>Giro:</b>
+                                            <span @if($placas) data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="bottom" data-bs-custom-class="tip-copro" title="{{ $placas }}" @endif>{{ $client->giro }}</span>
+                                        </div>
                                         <div class="col-6"><b>Asesor:</b> {{ $client->asesor?->username ?? $client->asesor?->name }}</div>
                                         <div class="col-6"><b>Fecha:</b> {{ $client->fecha_registro?->format('Y-m-d') }}</div>
                                         <div class="col-6"><b>Usuario:</b> {{ $client->usuario }}</div>
@@ -460,7 +465,7 @@
         window.__tooltipCoproListo = true;
         const tooltipCopro = (e) => {
             if (typeof bootstrap === 'undefined') return;
-            const el = e.target.closest('.copro-icono[data-bs-toggle="tooltip"]');
+            const el = e.target.closest('[wire\\:name="clients"] [data-bs-toggle="tooltip"]');
             if (!el || el.dataset.tipListo) return;
             el.dataset.tipListo = '1';
             bootstrap.Tooltip.getOrCreateInstance(el).show();
