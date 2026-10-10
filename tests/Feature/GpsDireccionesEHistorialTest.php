@@ -140,8 +140,13 @@ class GpsDireccionesEHistorialTest extends TestCase
         // En pantalla, entre las direcciones y las ubicaciones de los vehículos.
         $html = $comp->html();
         $this->assertStringContainsString('tabla-cambios-gps', $html);
-        $this->assertStringContainsString('<td>Actualizó</td>', $html);
-        $this->assertStringContainsString('<td class="fw-semibold" style="word-break:break-all;">-12.5, -76.5</td>', $html);
+        $this->assertStringContainsString('<td data-label="Acción">Actualizó</td>', $html);
+        $this->assertStringContainsString('<td class="fw-semibold" style="word-break:break-all;" data-label="Después">-12.5, -76.5</td>', $html);
+        // 10/10: en el celular las tablas se apilan con el rótulo de cada columna (data-label) y la lista de direcciones es flexible.
+        $this->assertStringContainsString('tabla-cambios-gps tabla-apilable', $html);
+        $this->assertStringContainsString('.tabla-apilable td[data-label]::before { content: attr(data-label) ": "', $html);
+        $this->assertStringContainsString('<div class="direccion-gps" wire:key="dir-casa">', $html);
+        $this->assertStringNotContainsString('style="width:160px;"', $html, 'sin anchos fijos que aplasten el campo en el celular');
         $this->assertLessThan(strpos($html, 'tabla-cambios-gps'), strpos($html, 'lista-direcciones-gps'), 'la lista de direcciones va antes de la tablita');
         $this->assertLessThan(strpos($html, 'wire:name="clients.gps-vehiculos"') ?: PHP_INT_MAX, strpos($html, 'tabla-cambios-gps'), 'la tablita va antes de los vehículos');
 
