@@ -11,8 +11,8 @@
                 <tr>
                     <th class="text-center" width="130">Fecha de registro</th>
                     <th class="text-center" width="210">Coordenadas</th>
-                    <th>Descripción</th>
                     <th class="text-center" width="110">Registró</th>
+                    <th>Descripción</th>
                     @if($puedeEditar)<th width="40"></th>@endif
                 </tr>
             </thead>
@@ -28,8 +28,8 @@
                             <span class="text-muted">—</span>
                         @endif
                     </td>
-                    <td style="white-space:pre-line;" data-label="Descripción">{{ $r->descripcion ?: '—' }}</td>
                     <td class="text-center" data-label="Registró">{{ $r->registradoPor?->username ?? $r->registradoPor?->name ?? '—' }}</td>
+                    <td style="white-space:pre-line;" data-label="Descripción">{{ $r->descripcion ?: '—' }}</td>
                     @if($puedeEditar)
                         <td class="text-center celda-acciones">
                             <button type="button" class="btn btn-sm btn-outline-danger py-0" wire:click="eliminar({{ $r->id }})" @creadoEl($r)

@@ -116,6 +116,9 @@ class GpsVehiculosReporteTest extends TestCase
         $this->assertStringContainsString('href="https://maps.google.com/?q=-12.014431,-76.824936" target="_blank"', $html);
         $this->assertStringContainsString('Parado frente al mercado de Huaycán', $html);
         $this->assertStringContainsString('gps-veh-tester', $html);
+        // 10/10 (Antony): "el registro va después de coordenadas": Fecha · Coordenadas · Registró · Descripción.
+        $this->assertMatchesRegularExpression('/<th[^>]*>Fecha de registro<\/th>\s*<th[^>]*>Coordenadas<\/th>\s*<th[^>]*>Registró<\/th>\s*<th>Descripción<\/th>/', $html);
+        $this->assertLessThan(strpos($html, 'Parado frente al mercado de Huaycán'), strpos($html, 'data-label="Registró">gps-veh-tester'), 'quién registró va antes de la descripción también en el celular');
         $this->assertStringContainsString("wire:click=\"nuevo({$this->vehiculo->id})\"", $html, 'vuelve el botón');
 
         // Lo demás se fue de verdad: ni fotos, ni puntos, ni texto para WhatsApp.
