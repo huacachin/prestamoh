@@ -7,6 +7,7 @@ use App\Models\Vehiculo;
 use App\Models\VehiculoGpsReporte;
 use App\Support\ConReglasDeEliminacion;
 use App\Support\Coordenadas;
+use App\Support\SinHorarioDeEliminacion;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -19,7 +20,7 @@ use Livewire\Component;
  * y, debajo, sus ubicaciones. Sin vehículos, se avisa que aún no se agregaron.
  * La fecha de registro se pone sola al guardar.
  */
-class GpsVehiculos extends Component
+class GpsVehiculos extends Component implements SinHorarioDeEliminacion
 {
     use ConReglasDeEliminacion;
 

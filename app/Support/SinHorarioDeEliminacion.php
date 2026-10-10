@@ -5,7 +5,8 @@ namespace App\Support;
 /**
  * Marca (09/10/2026, Antony: "el rol de Licet debe poder eliminar adjuntos de
  * ingresos y egresos del mismo día") para lo que se puede eliminar a CUALQUIER
- * hora, sin la ventana de 6:00 a 11:00 de HorarioEliminacion. La regla del
+ * hora, sin la ventana de 6:00 a 11:00 de HorarioEliminacion (adjuntos de caja y, desde el 10/10,
+ * ubicaciones GPS de vehículos). La regla del
  * mismo día sigue: solo lo registrado hoy, y solo con el permiso de siempre.
  *
  * Se pone en el modelo (para ConReglasDeEliminacion y el data-sin-horario que

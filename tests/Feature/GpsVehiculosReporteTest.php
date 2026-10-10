@@ -9,12 +9,14 @@ use App\Models\Headquarter;
 use App\Models\User;
 use App\Models\Vehiculo;
 use App\Models\VehiculoGpsReporte;
+use App\Support\HorarioEliminacion;
 use Carbon\Carbon;
 use Database\Seeders\PermissionCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
+use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
 /**
@@ -216,5 +218,37 @@ class GpsVehiculosReporteTest extends TestCase
             ->assertSet('msg', 'Ubicación del vehículo ALP837 eliminada.')
             ->assertSee('Sin ubicaciones todavía.');
         $this->assertNull($r->fresh());
+    }
+
+    /**
+     * 10/10/2026 (Antony): "el mismo permiso al eliminar para los roles
+     * diferentes a director: solo el mismo día que se registró, después no".
+     * Como los adjuntos de caja: sin la ventana de 6 a 11, pero solo lo
+     * registrado hoy.
+     */
+    public function test_quien_no_es_director_elimina_la_ubicacion_el_mismo_dia_a_cualquier_hora_y_al_dia_siguiente_ya_no(): void
+    {
+        $this->mundo();
+        config(['auditoria.eliminar_horario.activo' => true, 'auditoria.eliminar_mismo_dia.activo' => true]);
+        Carbon::setTestNow(Carbon::parse('2026-10-10 15:00', 'America/Lima')); // fuera de la ventana de 6 a 11
+        $deHoy = $this->ubicacion(['descripcion' => 'Registrada hoy']);
+        $deAyer = $this->ubicacion(['descripcion' => 'Registrada ayer']);
+        VehiculoGpsReporte::whereKey($deAyer->id)->update(['created_at' => now()->subDay()]);
+
+        $comp = Livewire::test(GpsVehiculos::class, ['id' => $this->client->id]);
+        $html = $comp->html();
+        $this->assertStringContainsString('data-creado="2026-10-10" data-sin-horario="1"', $html, 'el botón de hoy no se apaga por la hora');
+        $this->assertStringContainsString('data-creado="2026-10-09" data-sin-horario="1"', $html, 'el de ayer lo apaga el mismo día, no la hora');
+
+        // La de ayer no: aviso del mismo día y rastro en la auditoría.
+        $comp->call('eliminar', $deAyer->id)->assertDispatched('errorAlert');
+        $this->assertNotNull($deAyer->fresh());
+        $this->assertSame(HorarioEliminacion::mensajeMismoDia(), HorarioEliminacion::motivoBloqueo($deAyer->fresh(), $this->user));
+        $this->assertSame(1, Activity::where('description', 'like', 'Intentó eliminar un registro de otro día: GpsVehiculos::eliminar')->count());
+
+        // La de hoy sí, a las 15:00 (el hook no la corta: el componente es SinHorarioDeEliminacion).
+        $comp->call('eliminar', $deHoy->id)->assertNotDispatched('errorAlert')->assertSet('msg', 'Ubicación del vehículo ALP837 eliminada.');
+        $this->assertNull($deHoy->fresh());
+        $this->assertSame(0, Activity::where('description', 'like', 'Intentó eliminar fuera de horario%')->count());
     }
 }

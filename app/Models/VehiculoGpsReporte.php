@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\Auditable;
+use App\Support\SinHorarioDeEliminacion;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -12,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * (Antony): antes llevaba puntos del recorrido, horarios, domicilio, fotos y
  * el texto para WhatsApp.
  */
-class VehiculoGpsReporte extends Model
+class VehiculoGpsReporte extends Model implements SinHorarioDeEliminacion
 {
     use Auditable;
 

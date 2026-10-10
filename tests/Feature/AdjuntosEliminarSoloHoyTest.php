@@ -191,6 +191,12 @@ class AdjuntosEliminarSoloHoyTest extends TestCase
         Livewire::test(ExpenseGallery::class, ['id' => $egresoDos->id])->call('deleteAttachment', $attViejo->id)->assertDispatched('errorAlert');
         $this->assertNotNull($attViejo->fresh());
         $this->assertSame(1, Activity::where('description', 'like', 'Intentó eliminar un registro de otro día%')->count());
+        // En ingresos igual, también por la vía del evento (deleteAttachment directo), que antes no miraba la fecha.
+        [$ingresoDos, $attIngViejo] = $this->ingresoConFoto(now()->toDateString());
+        IncomeAttachment::whereKey($attIngViejo->id)->update(['created_at' => now()->subDay()]);
+        Livewire::test(IncomeGallery::class, ['id' => $ingresoDos->id])->call('deleteAttachment', $attIngViejo->id)->assertDispatched('errorAlert');
+        $this->assertNotNull($attIngViejo->fresh());
+        $this->assertSame(2, Activity::where('description', 'like', 'Intentó eliminar un registro de otro día%')->count());
 
         // Y lo que no es adjunto de caja sigue con la ventana: el egreso mismo, no.
         [$egresoTres, $attTres] = $this->egresoConFoto(now()->toDateString());

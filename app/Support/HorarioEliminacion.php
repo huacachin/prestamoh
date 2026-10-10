@@ -27,7 +27,7 @@ use Illuminate\Support\HtmlString;
  * y en el JS).
  *
  * Excepción a la ventana horaria (09/10/2026, Antony): lo que implementa
- * SinHorarioDeEliminacion —los adjuntos de ingresos y egresos— se elimina a
+ * SinHorarioDeEliminacion —los adjuntos de ingresos y egresos y las ubicaciones GPS de vehículos— se elimina a
  * cualquier hora, siempre el mismo día y con el permiso de siempre.
  */
 final class HorarioEliminacion

@@ -138,7 +138,8 @@ class IncomeGallery extends Component implements SinHorarioDeEliminacion
         }
 
         $att = IncomeAttachment::where('income_id', $this->incomeId)->find($id);
-        if (! $att) {
+        // 10/10: también aquí (el evento tras el SweetAlert no pasa por questionDelete): solo lo de hoy.
+        if (! $att || $this->eliminacionBloqueada($att)) {
             return;
         }
 
