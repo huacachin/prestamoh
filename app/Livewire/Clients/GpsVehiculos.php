@@ -12,10 +12,12 @@ use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /**
- * Reportes de GPS de los vehículos del cliente, en la pestaña GPS debajo de
- * las direcciones. Simplificado el 09/10/2026 (Antony): placa, coordenadas
- * (pegadas o desde el enlace de Google Maps, como en Casa/Negocio) y una
- * descripción; la fecha de registro se pone sola al guardar. Nada más.
+ * Ubicaciones GPS de los vehículos del cliente, en la pestaña GPS debajo de
+ * las direcciones (10/10/2026, Antony): se listan TODAS las placas del
+ * cliente (propias y donde es copropietario); cada una con su botón "Agregar
+ * ubicación" (coordenadas pegadas o enlace de Google Maps, y una descripción)
+ * y, debajo, sus ubicaciones. Sin vehículos, se avisa que aún no se agregaron.
+ * La fecha de registro se pone sola al guardar.
  */
 class GpsVehiculos extends Component
 {
@@ -28,9 +30,10 @@ class GpsVehiculos extends Component
 
     public bool $puedeEditar = true;
 
-    public bool $mostrarForm = false;
+    /** Vehículo cuyo formulario de "Agregar ubicación" está abierto (null = ninguno). */
+    public ?int $formVehiculoId = null;
 
-    /** @var array{vehiculo_id?: string, coordenadas?: string, descripcion?: string} */
+    /** @var array{coordenadas?: string, descripcion?: string} */
     public array $form = [];
 
     public ?string $msg = null;
@@ -45,34 +48,34 @@ class GpsVehiculos extends Component
         $this->puedeEditar = ! (auth()->user()?->can('clientes.scope-propio') ?? false);
     }
 
-    /** Vehículos del cliente: propios y donde es copropietario. */
+    /** Vehículos del cliente: propios y donde es copropietario, por placa. */
     public function vehiculos(): Collection
     {
         return $this->client->vehiculos()->orderBy('placa')->get()
             ->concat($this->client->vehiculosCompartidos()->orderBy('placa')->get())
             ->unique('id')
+            ->sortBy('placa')
             ->values();
     }
 
-    public function nuevo(): void
+    public function nuevo(int $vehiculoId): void
     {
-        abort_unless($this->puedeEditar, 403, 'No tienes permiso para registrar reportes.');
-        $vehiculos = $this->vehiculos();
+        abort_unless($this->puedeEditar, 403, 'No tienes permiso para registrar ubicaciones.');
+        if (! $this->vehiculos()->firstWhere('id', $vehiculoId) instanceof Vehiculo) {
+            $this->dispatch('errorAlert', ['message' => 'Ese vehículo no es de este cliente.']);
+
+            return;
+        }
 
         $this->resetErrorBag();
         $this->msg = null;
-        // La fecha de registro no se digita: es el momento en que se guarda.
-        $this->form = [
-            'vehiculo_id' => $vehiculos->count() === 1 ? (string) $vehiculos->first()->id : '',
-            'coordenadas' => '',
-            'descripcion' => '',
-        ];
-        $this->mostrarForm = true;
+        $this->formVehiculoId = $vehiculoId;
+        $this->form = ['coordenadas' => '', 'descripcion' => ''];
     }
 
     public function cancelar(): void
     {
-        $this->mostrarForm = false;
+        $this->formVehiculoId = null;
         $this->form = [];
         $this->resetErrorBag();
     }
@@ -80,7 +83,6 @@ class GpsVehiculos extends Component
     protected function rules(): array
     {
         return [
-            'form.vehiculo_id' => 'required|integer',
             'form.coordenadas' => 'required|string|max:500',
             'form.descripcion' => 'nullable|string|max:1000',
         ];
@@ -89,7 +91,6 @@ class GpsVehiculos extends Component
     protected function messages(): array
     {
         return [
-            'form.vehiculo_id.required' => 'Elige la placa.',
             'form.coordenadas.required' => 'Pega las coordenadas del vehículo (o el enlace de Google Maps).',
             'form.descripcion.max' => 'La descripción admite hasta 1000 caracteres.',
         ];
@@ -97,15 +98,14 @@ class GpsVehiculos extends Component
 
     public function guardar(): void
     {
-        abort_unless($this->puedeEditar, 403, 'No tienes permiso para registrar reportes.');
-        $this->validate();
-
-        $vehiculo = $this->vehiculos()->firstWhere('id', (int) $this->form['vehiculo_id']);
+        abort_unless($this->puedeEditar, 403, 'No tienes permiso para registrar ubicaciones.');
+        $vehiculo = $this->formVehiculoId ? $this->vehiculos()->firstWhere('id', $this->formVehiculoId) : null;
         if (! $vehiculo instanceof Vehiculo) {
-            $this->addError('form.vehiculo_id', 'La placa no es de este cliente.');
+            $this->dispatch('errorAlert', ['message' => 'Elige primero la placa con "Agregar ubicación".']);
 
             return;
         }
+        $this->validate();
 
         // Una sola lectura: un enlace corto de Maps sale a la red para resolverse.
         $coords = Coordenadas::parse((string) $this->form['coordenadas']);
@@ -129,32 +129,38 @@ class GpsVehiculos extends Component
 
         $this->cancelar();
         $this->msgType = 'ok';
-        $this->msg = "Reporte de GPS del vehículo {$vehiculo->placa} guardado.";
+        $this->msg = "Ubicación del vehículo {$vehiculo->placa} guardada.";
     }
 
     public function eliminar(int $id): void
     {
-        abort_unless($this->puedeEditar, 403, 'No tienes permiso para eliminar reportes.');
+        abort_unless($this->puedeEditar, 403, 'No tienes permiso para eliminar ubicaciones.');
         $r = VehiculoGpsReporte::where('client_id', $this->clientId)->find($id);
         if (! $r || $this->eliminacionBloqueada($r)) {
             return;
         }
         $r->delete();
         $this->msgType = 'ok';
-        $this->msg = 'Reporte eliminado.';
+        $this->msg = "Ubicación del vehículo {$r->placa} eliminada.";
     }
 
     public function render()
     {
-        // Del último registrado hacia abajo.
+        $vehiculos = $this->vehiculos();
+
+        // Del último registrado hacia abajo, agrupadas por vehículo.
         $reportes = VehiculoGpsReporte::with('registradoPor:id,name,username')
             ->where('client_id', $this->clientId)
             ->orderByDesc('id')
             ->get();
+        $porVehiculo = $reportes->whereIn('vehiculo_id', $vehiculos->pluck('id'))->groupBy('vehiculo_id');
+        // Ubicaciones cuyo vehículo ya no está en la ficha: se siguen viendo, por placa.
+        $huerfanas = $reportes->whereNotIn('vehiculo_id', $vehiculos->pluck('id'))->groupBy('placa');
 
         return view('livewire.clients.gps-vehiculos', [
-            'reportes' => $reportes,
-            'vehiculos' => $this->vehiculos(),
+            'vehiculos' => $vehiculos,
+            'porVehiculo' => $porVehiculo,
+            'huerfanas' => $huerfanas,
         ]);
     }
 }

@@ -114,7 +114,7 @@ class EliminarFueraDeHorarioTest extends TestCase
 
         // motivoBloqueo: primero el horario, luego el día; sin fecha no se elimina; el director nunca se bloquea.
         $deAyer = $this->egreso('2026-10-08 16:00:00');
-        $deHoy = $this->egreso();
+        $deHoy = $this->egreso('2026-10-09 07:00:00'); // \"hoy\" respecto al reloj fijo del test (2026-10-09), no a la fecha real
         $this->assertSame(HorarioEliminacion::mensaje(), HorarioEliminacion::motivoBloqueo($deAyer, $this->user, Carbon::parse('2026-10-09 15:00', 'America/Lima')));
         $this->assertSame(HorarioEliminacion::mensajeMismoDia(), HorarioEliminacion::motivoBloqueo($deAyer, $this->user, $ahora));
         $this->assertNull(HorarioEliminacion::motivoBloqueo($deHoy, $this->user, $ahora));
@@ -187,7 +187,7 @@ class EliminarFueraDeHorarioTest extends TestCase
     {
         Carbon::setTestNow(Carbon::parse('2026-10-09 08:30', 'America/Lima'));
         $deAyer = $this->egreso('2026-10-08 16:00:00');
-        $deHoy = $this->egreso();
+        $deHoy = $this->egreso('2026-10-09 07:00:00'); // \"hoy\" respecto al reloj fijo del test (2026-10-09), no a la fecha real
         Activity::query()->delete();
 
         Livewire::test(EditExpense::class, ['id' => $deAyer->id])
@@ -284,8 +284,8 @@ class EliminarFueraDeHorarioTest extends TestCase
 
     public function test_dentro_de_horario_elimina_y_el_director_elimina_a_cualquier_hora(): void
     {
-        $egreso = $this->egreso();
         Carbon::setTestNow(Carbon::parse('2026-10-09 08:30', 'America/Lima'));
+        $egreso = $this->egreso(); // creado \"hoy\" según el reloj congelado, no la fecha real
         Livewire::test(EditExpense::class, ['id' => $egreso->id])->call('destroy', $egreso->id)->assertNotDispatched('errorAlert');
         $this->assertNull($egreso->fresh(), 'a las 8:30 sí se elimina');
 
