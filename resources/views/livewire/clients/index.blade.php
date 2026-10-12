@@ -208,21 +208,22 @@
                                             {{-- El tooltip sale al pasar por el nombre o por el icono; el icono va del color del nombre. --}}
                                             <span class="copro-icono" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="right" data-bs-custom-class="tip-copro"
                                                   title="{{ \App\Models\Client::textoCopropietarios($copros) }}">
-                                                <a href="{{ route('clients.edit', $client->id) }}" style="color: inherit; text-decoration: none;">
+                                                <a href="{{ route('clients.edit', $client->id) }}" target="_blank" rel="noopener" style="color: inherit; text-decoration: none;">
                                                     {{ $client->apellido_pat }} {{ $client->apellido_mat }} {{ $client->nombre }}
                                                 </a>
                                                 <i class="ti ti-users ms-1"></i>
                                             </span>
                                         @else
-                                            <a href="{{ route('clients.edit', $client->id) }}" style="color: inherit; text-decoration: none;">
+                                            <a href="{{ route('clients.edit', $client->id) }}" target="_blank" rel="noopener" style="color: inherit; text-decoration: none;">
                                                 {{ $client->apellido_pat }} {{ $client->apellido_mat }} {{ $client->nombre }}
                                             </a>
                                         @endif
                                     </td>
                                     <td>
                                         {{-- 10/10: el DNI también lleva a la ficha (antes abría el alta de crédito);
-                                             cae en la pestaña Préstamos, donde está "Nuevo préstamo". --}}
-                                        <a href="{{ route('clients.edit', ['id' => $client->id, 'tab' => 'prestamos']) }}" style="color: inherit; text-decoration: none;">
+                                             cae en la pestaña Préstamos, donde está "Nuevo préstamo".
+                                             12/10 (Antony): nombre y DNI abren la ficha en otra pestaña. --}}
+                                        <a href="{{ route('clients.edit', ['id' => $client->id, 'tab' => 'prestamos']) }}" target="_blank" rel="noopener" style="color: inherit; text-decoration: none;">
                                             {{ $client->documento }}
                                         </a>
                                     </td>
@@ -302,13 +303,13 @@
                                             @if($copros->isNotEmpty())
                                                 <span class="copro-icono" data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="bottom" data-bs-custom-class="tip-copro"
                                                       title="{{ \App\Models\Client::textoCopropietarios($copros) }}" style="{{ $sinVigente ? 'color: #FF0000;' : 'color: black;' }}">
-                                                    <a href="{{ route('clients.edit', $client->id) }}" style="color: inherit;">
+                                                    <a href="{{ route('clients.edit', $client->id) }}" target="_blank" rel="noopener" style="color: inherit;">
                                                         {{ $client->apellido_pat }} {{ $client->apellido_mat }} {{ $client->nombre }}
                                                     </a>
                                                     <i class="ti ti-users ms-1"></i>
                                                 </span>
                                             @else
-                                                <a href="{{ route('clients.edit', $client->id) }}" style="{{ $sinVigente ? 'color: #FF0000;' : 'color: black;' }}">
+                                                <a href="{{ route('clients.edit', $client->id) }}" target="_blank" rel="noopener" style="{{ $sinVigente ? 'color: #FF0000;' : 'color: black;' }}">
                                                     {{ $client->apellido_pat }} {{ $client->apellido_mat }} {{ $client->nombre }}
                                                 </a>
                                             @endif
@@ -317,7 +318,7 @@
                                     </div>
                                     <div class="row g-1" style="font-size: 12px;">
                                         <div class="col-6"><b>DNI:</b>
-                                            <a href="{{ route('clients.edit', ['id' => $client->id, 'tab' => 'prestamos']) }}" style="color: inherit;">{{ $client->documento }}</a>
+                                            <a href="{{ route('clients.edit', ['id' => $client->id, 'tab' => 'prestamos']) }}" target="_blank" rel="noopener" style="color: inherit;">{{ $client->documento }}</a>
                                         </div>
                                         <div class="col-6"><b>Exp.:</b> {{ $client->expediente }}</div>
                                         <div class="col-6"><b>Movil:</b> {{ $client->celular1 }}</div>

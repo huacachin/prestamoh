@@ -36,14 +36,18 @@ class ClientesListaDniEnlazaFichaTest extends TestCase
 
         // Tabla de escritorio.
         $html = Livewire::test(Index::class)->html();
-        $this->assertMatchesRegularExpression('~<a href="'.preg_quote($enlace, '~').'" style="color: inherit; text-decoration: none;">\s*41849995\s*</a>~', $html);
+        // 12/10 (Antony): nombre y DNI abren la ficha en otra pestaña.
+        $this->assertMatchesRegularExpression('~<a href="'.preg_quote($enlace, '~').'" target="_blank" rel="noopener" style="color: inherit; text-decoration: none;">\s*41849995\s*</a>~', $html);
         $this->assertStringNotContainsString(route('credits.create', $client->id), $html, 'el DNI ya no abre el alta de crédito');
-        $this->assertStringContainsString('<a href="'.route('clients.edit', $client->id).'" style="color: inherit; text-decoration: none;">', $html, 'el nombre sigue yendo a Datos');
+        $this->assertStringContainsString('<a href="'.route('clients.edit', $client->id).'" target="_blank" rel="noopener" style="color: inherit; text-decoration: none;">', $html, 'el nombre sigue yendo a Datos, en otra pestaña');
+        $this->assertStringNotContainsString('<a href="'.route('clients.edit', $client->id).'" style=', $html, 'ningún enlace a la ficha sin target');
 
         // Tarjetas en móvil.
         $movil = Livewire::test(Index::class)->set('movil', true)->html();
         $this->assertStringContainsString('<b>DNI:</b>', $movil);
-        $this->assertStringContainsString('<a href="'.$enlace.'" style="color: inherit;">41849995</a>', $movil);
+        $this->assertStringContainsString('<a href="'.$enlace.'" target="_blank" rel="noopener" style="color: inherit;">41849995</a>', $movil);
+        // Sin crédito vigente el nombre va en rojo; con uno, en negro. En ambos casos, otra pestaña.
+        $this->assertMatchesRegularExpression('~<a href="'.preg_quote(route('clients.edit', $client->id), '~').'" target="_blank" rel="noopener" style="color: (#FF0000|black);">~', $movil, 'el nombre en la tarjeta también');
         $this->assertStringNotContainsString(route('credits.create', $client->id), $movil);
     }
 }
