@@ -16,8 +16,9 @@ use Tests\TestCase;
 /**
  * 10/10/2026 (Antony): las previsualizaciones de vouchers (y todo lo que usa el
  * partial _lightbox) se levantan como VENTANA FLOTANTE en escritorio: sin fondo
- * oscuro, arrastrable solo desde la cabecera, redimensionable, con posición
- * recordada; en celular sigue a pantalla completa. Los atajos de teclado pasan
+ * oscuro, arrastrable solo desde la cabecera, redimensionable; desde el 12/10
+ * abre al tamaño real de la foto y la foto tiene zoom; en celular sigue a
+ * pantalla completa. Los atajos de teclado pasan
  * al partial (antes vivían en cada pantalla: ahora duplicarlos haría saltar dos
  * fotos por pulsación), y las flechas no actúan mientras se escribe.
  */
@@ -53,6 +54,19 @@ class VisorFlotanteTest extends TestCase
         $this->assertStringContainsString('.huac-lb--flotante { background: transparent; pointer-events: none;', $html);
         $this->assertStringContainsString('.huac-lb--flotante .huac-lb__ventana { position: fixed; pointer-events: auto;', $html);
         $this->assertStringContainsString('resize: both;', $html);
+        // 12/10 (Antony, "las imágenes se ven pequeñas"): zoom de la foto y maximizar.
+        $this->assertStringContainsString('@click.stop="alejar()" title="Alejar (−)"', $html);
+        $this->assertStringContainsString('@click.stop="real()" title="Tamaño real, 100 % (1)" x-text="porcentaje()"', $html);
+        $this->assertStringContainsString('@click.stop="acercar()" title="Acercar (+)"', $html);
+        $this->assertStringContainsString('@click.stop="ajustar()" title="Ajustar a la ventana (0)"', $html);
+        $this->assertStringContainsString('x-show="flotante" @click.stop="maximizar()"', $html);
+        $this->assertStringContainsString('@dblclick="maximizar()"', $html, 'doble clic en la cabecera maximiza');
+        $this->assertStringContainsString('@wheel.prevent="rueda($event)" @dblclick="dobleClic($event)"', $html, 'rueda directa sobre la foto');
+        $this->assertStringContainsString('@pointerdown="tocar($event)" @pointermove="moverFoto($event)"', $html, 'arrastre y pellizco');
+        $this->assertStringContainsString('x-ref="foto" @load="alCargar($event)"', $html, 'al cargar, la ventana toma el tamaño real');
+        $this->assertStringContainsString('<span class="huac-lb__grip" x-show="flotante" aria-hidden="true"></span>', $html, 'tirador visible');
+        $this->assertStringContainsString('.huac-lb__cuerpo { flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden;', $html);
+        $this->assertStringContainsString('transform-origin: 0 0;', $html);
         // El script del componente va en la capa, con versión por fecha del archivo.
         $this->assertMatchesRegularExpression('#assets/js/ventanas-flotantes\.js\?v=\d+#', $html);
     }
@@ -139,8 +153,15 @@ class VisorFlotanteTest extends TestCase
         // Antony (10/10): "que siempre levante al centro, no al lado derecho". Solo el visor recuerda su tamaño.
         $this->assertStringContainsString('x: Math.max(0, Math.round((window.innerWidth - w) / 2))', $js);
         $this->assertStringContainsString('y: Math.max(MARGEN, Math.round((window.innerHeight - h) / 2))', $js);
-        $this->assertStringContainsString("const CLAVE_VISOR = 'huac.visor-flotante';   // solo tamaño {w, h}", $js);
-        $this->assertSame(1, substr_count($js, 'localStorage.setItem('), 'solo se guarda el tamaño del visor, ninguna posición');
+        // 12/10: ya no se recuerda ningún tamaño: la ventana abre al tamaño real de la foto (tope 85 % de la pantalla).
+        $this->assertStringNotContainsString('localStorage', $js, 'nada se recuerda: ni tamaño ni posición');
+        $this->assertStringContainsString('const VENTANA_MAX = 0.85;', $js);
+        $this->assertStringContainsString('this.natural = { w: img.naturalWidth || 0, h: img.naturalHeight || 0 };', $js);
+        $this->assertStringContainsString('Math.round(window.innerWidth * VENTANA_MAX)', $js);
+        $this->assertStringContainsString('this.zoomHacia(this.escala * Math.exp(-e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top);', $js, 'la rueda acerca donde está el cursor');
+        $this->assertStringContainsString('return Math.min(c.clientWidth / this.natural.w, c.clientHeight / this.natural.h, 1);', $js, 'ajustar nunca estira más del 100 %');
+        $this->assertStringContainsString('this.pellizco = { dist: Math.hypot(a.x - b.x, a.y - b.y) || 1 };', $js, 'pellizco con dos dedos');
+        $this->assertStringContainsString("if (e.key === '+' || e.key === '=') { e.preventDefault(); this.acercar(); }", $js);
         $modal = substr($js, strpos($js, 'function modalFlotante'), strpos($js, 'function registrar') - strpos($js, 'function modalFlotante'));
         $this->assertStringNotContainsString('localStorage', $modal, 'el modal no recuerda posición: siempre al centro');
         $this->assertStringContainsString("this.\$el.style.display = 'block';", $modal, 'se mide el diálogo para centrarlo en vertical');
@@ -148,7 +169,7 @@ class VisorFlotanteTest extends TestCase
         $this->assertStringContainsString("document.body.classList.add('arrastrando-ventana')", $js, 'los iframes no se quedan con el puntero');
         $this->assertStringContainsString("e.target.closest('button, a, input, select, textarea')", $js, 'los botones de la cabecera no arrastran');
         $this->assertStringContainsString("['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName)", $js, 'flechas solo si no se escribe');
-        $this->assertStringContainsString('new ResizeObserver', $js, 'el tamaño redimensionado por la esquina también se guarda');
+        $this->assertStringContainsString('new ResizeObserver', $js, 'al redimensionar por la esquina la foto se reencaja');
         $this->assertStringContainsString('{ backdrop: false, focus: false }', $js, 'el modal flotante no tapa ni secuestra el foco');
         $this->assertStringContainsString("document.body.classList.add('con-modal-flotante')", $js, 'la página sigue con scroll');
         $this->assertStringNotContainsString('$nextTick(() => this.alAbrir())', $js, 'Alpine retiene los ticks durante la transición de x-show');

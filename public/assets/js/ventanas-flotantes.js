@@ -9,10 +9,12 @@
  *  - `visorFlotante`: el visor de vouchers/fotos del partial
  *    livewire/cash/partials/_lightbox.blade.php. Se anida dentro del x-data que
  *    ya tiene el contrato del visor (open / idx / items / close / next / prev).
- *    En escritorio no hay fondo oscuro, la ventana se arrastra desde la
- *    cabecera y se redimensiona por la esquina (resize nativo de CSS). Atajos:
- *    Esc cierra; ← → cambian de foto salvo que se esté escribiendo en un campo
- *    (la página de abajo está activa).
+ *    En escritorio no hay fondo oscuro, la ventana abre al tamaño real de la
+ *    foto (tope 85 % de la pantalla), se arrastra desde la cabecera, se
+ *    redimensiona por la esquina (resize nativo de CSS) y se maximiza. La foto
+ *    tiene zoom (botones, rueda, doble clic, arrastre, pellizco, teclas + − 0 1).
+ *    Atajos: Esc cierra; ← → cambian de foto salvo que se esté escribiendo en
+ *    un campo (la página de abajo está activa).
  *
  *  - `modalFlotante('clave')`: un modal de Bootstrap (la confirmación del cobro
  *    en /payments/create, el recibo en payments/partials/_modal-recibo) que en
@@ -25,12 +27,15 @@
  * modal centrado con fondo.
  */
 (function () {
-    const CLAVE_VISOR = 'huac.visor-flotante';   // solo tamaño {w, h}
     const MIN_ANCHO = 260;
     const MIN_ALTO = 180;
     const MARGEN = 16;
     const CABECERA = 40;      // alto de la barra: lo mínimo que debe quedar visible
     const ASOMO = 120;        // al arrastrar, cuánto puede quedar fuera de pantalla
+    const VENTANA_MAX = 0.85; // la ventana abre al tamaño real de la foto, hasta este tanto de la pantalla
+    const ZOOM_MIN = 0.1;
+    const ZOOM_MAX = 8;
+    const ZOOM_PASO = 1.25;   // por clic en + / − y por tecla
 
     const limitar = (v, min, max) => Math.min(Math.max(v, min), Math.max(min, max));
     const esEscritorio = () => window.matchMedia('(min-width: 768px)').matches;
@@ -38,17 +43,6 @@
         x: Math.max(0, Math.round((window.innerWidth - w) / 2)),
         y: Math.max(MARGEN, Math.round((window.innerHeight - h) / 2)),
     });
-
-    function leerTamano() {
-        try {
-            const g = JSON.parse(localStorage.getItem(CLAVE_VISOR) || 'null');
-            return g && typeof g === 'object' ? g : null;
-        } catch (e) { return null; }
-    }
-
-    function guardarTamano(w, h) {
-        try { localStorage.setItem(CLAVE_VISOR, JSON.stringify({ w, h })); } catch (e) { /* privado / lleno */ }
-    }
 
     // Arrastre compartido. `c` es el componente: usa c.flotante, c.geo {x,y,w,h},
     // c.arrastre y c.aplicar().
@@ -80,33 +74,75 @@
             flotante: false,
             geo: null,        // { x, y, w, h } de la ventana en escritorio
             arrastre: null,   // { id, dx, dy } mientras se arrastra
+            previa: null,     // geo antes de maximizar (null = no está maximizada)
+            dimensionar: false, // true hasta que carga la primera foto tras abrir: la ventana toma su tamaño real
+
+            // Zoom de la foto (12/10): escala respecto al tamaño real (1 = 100 %). En modo
+            // 'ajuste' la foto sigue al tamaño de la ventana; 'libre' = el usuario hizo zoom.
+            escala: 1,
+            modo: 'ajuste',
+            natural: { w: 0, h: 0 },
+            pos: { x: 0, y: 0 },
+            desplazable: false,
+            panning: null,    // { id, x, y, px, py } mientras se arrastra la foto
+            toques: new Map(), // pointerId → { x, y } (pellizco con dos dedos)
+            pellizco: null,   // { dist, escala } al empezar el pellizco
 
             init() {
                 // Sin $nextTick: Alpine retiene los ticks mientras dura la transición de x-show.
                 this.$watch('open', (abierto) => { if (abierto) this.alAbrir(); });
+                // Al cambiar de foto vuelve ajustada; alCargar la reencaja cuando llega.
+                this.$watch('idx', () => { this.modo = 'ajuste'; });
                 this.$nextTick(() => {
-                    if (!window.ResizeObserver || !this.$refs.ventana) return;
-                    // Redimensionado por la esquina: recordar el tamaño nuevo.
-                    new ResizeObserver(() => {
-                        if (this.flotante && this.open && !this.arrastre) this.recordarTamano();
-                    }).observe(this.$refs.ventana);
+                    if (!window.ResizeObserver || !this.$refs.cuerpo) return;
+                    // Redimensionado por la esquina o maximizar: la foto ajustada se reencaja; con zoom libre se recoloca.
+                    new ResizeObserver(() => { if (this.open) this.reencajar(); }).observe(this.$refs.cuerpo);
                 });
             },
 
             alAbrir() {
                 const v = this.$refs.ventana;
                 if (!v) return;
+                this.previa = null;
+                this.modo = 'ajuste';
                 this.flotante = esEscritorio();
+                this.dimensionar = this.flotante;
                 if (!this.flotante) {
                     v.style.cssText = '';
                     return;
                 }
-                const g = leerTamano() || {};
-                const w = limitar(g.w || 460, MIN_ANCHO, window.innerWidth - 2 * MARGEN);
-                const h = limitar(g.h || Math.min(Math.round(window.innerHeight * 0.8), 640), MIN_ALTO, window.innerHeight - 2 * MARGEN);
+                // Provisional hasta que cargue la foto: alCargar lleva la ventana a su tamaño real.
+                const w = limitar(Math.round(window.innerWidth * 0.5), MIN_ANCHO, window.innerWidth - 2 * MARGEN);
+                const h = limitar(Math.round(window.innerHeight * 0.6), MIN_ALTO, window.innerHeight - 2 * MARGEN);
                 this.geo = Object.assign({ w, h }, centrado(w, h));
                 this.aplicar();
                 try { v.focus({ preventScroll: true }); } catch (e) { /* nada */ }
+                // Las galerías traen la lista desde el inicio: la primera foto puede estar cargada ya
+                // (sin evento load al abrir), así que se dimensiona con lo que hay.
+                const img = this.$refs.foto;
+                if (img && img.complete && img.naturalWidth) {
+                    // Al siguiente cuadro, con la capa ya visible y medible.
+                    requestAnimationFrame(() => { if (this.open && this.dimensionar) this.alCargar({ target: img }); });
+                }
+            },
+
+            // La foto ya cargó: recién abierta, la ventana toma el tamaño real de la foto
+            // (tope VENTANA_MAX de la pantalla) y se centra; siempre, la foto queda ajustada.
+            alCargar(e) {
+                const img = e.target;
+                this.natural = { w: img.naturalWidth || 0, h: img.naturalHeight || 0 };
+                if (this.dimensionar && this.flotante && this.natural.w) {
+                    this.dimensionar = false;
+                    const v = this.$refs.ventana, c = this.$refs.cuerpo;
+                    // Si todavía no hay medidas (la capa aún oculta), vale lo que ocupan borde y cabecera.
+                    const extraW = v.offsetWidth ? v.offsetWidth - c.clientWidth : 2;
+                    const extraH = v.offsetHeight ? v.offsetHeight - c.clientHeight : CABECERA + 2;
+                    const w = limitar(this.natural.w + extraW, MIN_ANCHO, Math.round(window.innerWidth * VENTANA_MAX));
+                    const h = limitar(this.natural.h + extraH, MIN_ALTO, Math.round(window.innerHeight * VENTANA_MAX));
+                    this.geo = Object.assign({ w, h }, centrado(w, h));
+                    this.aplicar();
+                }
+                this.ajustar();
             },
 
             aplicar() {
@@ -122,13 +158,119 @@
             arrastrar(e) { Arrastre.mover(this, e); },
             soltar(e) { Arrastre.soltar(this, e); },
 
-            recordarTamano() {
-                const r = this.$refs.ventana.getBoundingClientRect();
-                if (!r.width || !r.height) return;
-                const w = Math.round(r.width), h = Math.round(r.height);
-                if (this.geo && w === this.geo.w && h === this.geo.h) return;
-                this.geo = Object.assign({}, this.geo || {}, { w, h });
-                guardarTamano(w, h);
+            // Maximizar ↔ restaurar (botón de la cabecera o doble clic en ella).
+            maximizar() {
+                if (!this.flotante || !this.geo) return;
+                if (this.previa) {
+                    this.geo = this.previa;
+                    this.previa = null;
+                } else {
+                    this.previa = Object.assign({}, this.geo);
+                    this.geo = { x: MARGEN, y: MARGEN, w: window.innerWidth - 2 * MARGEN, h: window.innerHeight - 2 * MARGEN };
+                }
+                this.aplicar();
+            },
+
+            // ── Zoom ──
+            escalaAjuste() {
+                const c = this.$refs.cuerpo;
+                if (!c || !this.natural.w || !this.natural.h) return 1;
+                // Nunca por encima del tamaño real: una foto chica no se estira borrosa.
+                return Math.min(c.clientWidth / this.natural.w, c.clientHeight / this.natural.h, 1);
+            },
+            ajustar() { this.modo = 'ajuste'; this.fijarEscala(this.escalaAjuste()); },
+            real() { this.modo = 'libre'; this.fijarEscala(1); },
+            acercar() { this.zoomHacia(this.escala * ZOOM_PASO); },
+            alejar() { this.zoomHacia(this.escala / ZOOM_PASO); },
+            porcentaje() { return Math.round(this.escala * 100) + ' %'; },
+
+            // Escala absoluta `nueva` dejando fijo el punto (cx, cy) del cuerpo (por defecto el centro).
+            zoomHacia(nueva, cx, cy) {
+                const c = this.$refs.cuerpo;
+                if (!c || !this.natural.w) return;
+                nueva = limitar(nueva, Math.min(ZOOM_MIN, this.escalaAjuste()), ZOOM_MAX);
+                if (cx === undefined) { cx = c.clientWidth / 2; cy = c.clientHeight / 2; }
+                const f = nueva / this.escala;
+                this.modo = 'libre';
+                this.pos = { x: cx - (cx - this.pos.x) * f, y: cy - (cy - this.pos.y) * f };
+                this.escala = nueva;
+                this.colocarFoto();
+            },
+            fijarEscala(s) { this.escala = s; this.pos = { x: 0, y: 0 }; this.colocarFoto(); },
+
+            // Centrada si cabe; si no, pegada a los bordes para no dejar vacío.
+            colocarFoto() {
+                const c = this.$refs.cuerpo, img = this.$refs.foto;
+                if (!c || !img) return;
+                const W = c.clientWidth, H = c.clientHeight;
+                const w = this.natural.w * this.escala, h = this.natural.h * this.escala;
+                this.pos.x = w <= W ? (W - w) / 2 : limitar(this.pos.x, W - w, 0);
+                this.pos.y = h <= H ? (H - h) / 2 : limitar(this.pos.y, H - h, 0);
+                img.style.transform = 'translate(' + this.pos.x + 'px, ' + this.pos.y + 'px) scale(' + this.escala + ')';
+                this.desplazable = w > W || h > H;
+            },
+            reencajar() { if (this.modo === 'ajuste') this.ajustar(); else this.colocarFoto(); },
+
+            // Rueda directa sobre la foto (Antony, 12/10): acerca o aleja donde está el cursor.
+            rueda(e) {
+                const r = this.$refs.cuerpo.getBoundingClientRect();
+                this.zoomHacia(this.escala * Math.exp(-e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top);
+            },
+            // Doble clic: ajustada ↔ 100 % (si ya se ve al 100 %, vuelve a ajustada).
+            dobleClic(e) {
+                const r = this.$refs.cuerpo.getBoundingClientRect();
+                const ajuste = this.escalaAjuste();
+                if (Math.abs(this.escala - ajuste) < 0.001 && ajuste < 1) {
+                    this.zoomHacia(1, e.clientX - r.left, e.clientY - r.top);
+                } else {
+                    this.ajustar();
+                }
+            },
+            // Teclas + − 0 1 (sin pelearse con lo que se escribe en la página de abajo).
+            tecla(e) {
+                if (!this.open || this.escribiendo(e) || e.ctrlKey || e.metaKey || e.altKey) return;
+                if (e.key === '+' || e.key === '=') { e.preventDefault(); this.acercar(); }
+                else if (e.key === '-') { e.preventDefault(); this.alejar(); }
+                else if (e.key === '0') { e.preventDefault(); this.ajustar(); }
+                else if (e.key === '1') { e.preventDefault(); this.real(); }
+            },
+
+            // ── Mover la foto con el puntero y pellizco con dos dedos (Pointer Events) ──
+            tocar(e) {
+                if (e.pointerType === 'mouse' && e.button !== 0) return;
+                this.toques.set(e.pointerId, { x: e.clientX, y: e.clientY });
+                try { this.$refs.cuerpo.setPointerCapture(e.pointerId); } catch (err) { /* nada */ }
+                if (this.toques.size === 2) {
+                    const [a, b] = Array.from(this.toques.values());
+                    this.pellizco = { dist: Math.hypot(a.x - b.x, a.y - b.y) || 1 };
+                    this.panning = null;
+                } else if (this.toques.size === 1) {
+                    this.panning = { id: e.pointerId, x: e.clientX, y: e.clientY, px: this.pos.x, py: this.pos.y };
+                }
+            },
+            moverFoto(e) {
+                if (!this.toques.has(e.pointerId)) return;
+                this.toques.set(e.pointerId, { x: e.clientX, y: e.clientY });
+                if (this.pellizco && this.toques.size >= 2) {
+                    const [a, b] = Array.from(this.toques.values());
+                    const r = this.$refs.cuerpo.getBoundingClientRect();
+                    const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+                    this.zoomHacia(this.escala * dist / this.pellizco.dist, (a.x + b.x) / 2 - r.left, (a.y + b.y) / 2 - r.top);
+                    this.pellizco.dist = dist;
+                    return;
+                }
+                if (this.panning && e.pointerId === this.panning.id && this.desplazable) {
+                    e.preventDefault();
+                    this.pos.x = this.panning.px + (e.clientX - this.panning.x);
+                    this.pos.y = this.panning.py + (e.clientY - this.panning.y);
+                    this.colocarFoto();
+                }
+            },
+            soltarFoto(e) {
+                this.toques.delete(e.pointerId);
+                try { this.$refs.cuerpo.releasePointerCapture(e.pointerId); } catch (err) { /* nada */ }
+                if (this.toques.size < 2) this.pellizco = null;
+                if (this.panning && e.pointerId === this.panning.id) this.panning = null;
             },
 
             // Con la página viva debajo, las flechas no deben pelearse con lo que se escribe.
