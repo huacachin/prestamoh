@@ -83,6 +83,13 @@ class ClientePrestamosTabTest extends TestCase
         $html = Livewire::test(Edit::class, ['id' => $this->client->id])->html();
         $this->assertStringContainsString("wire:click=\"\$set('tab', 'prestamos')\"", $html);
         $this->assertStringContainsString('ti-cash', $html);
+        // 12/10 (Antony): orden de las pestañas = Datos, Vehículos, Préstamos, Documentos, Adjuntos, GPS.
+        $posiciones = array_map(fn ($tab) => strpos($html, "\$set('tab', '{$tab}')"), ['datos', 'vehiculos', 'prestamos', 'documentos', 'adjuntos', 'gps']);
+        $this->assertNotContains(false, $posiciones, 'las seis pestañas están');
+        $this->assertSame($posiciones, array_values(array_filter($posiciones)), 'ninguna falta');
+        $ordenadas = $posiciones;
+        sort($ordenadas);
+        $this->assertSame($ordenadas, $posiciones, 'en ese orden');
 
         $comp = Livewire::test(Prestamos::class, ['id' => $this->client->id]);
         $html = $comp->html();

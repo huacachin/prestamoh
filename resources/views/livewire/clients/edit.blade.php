@@ -23,8 +23,8 @@
             @php
                 $tabs = [
                     'datos' => ['Datos', 'ti-user'],
-                    'prestamos' => ['Préstamos', 'ti-cash'],
                     'vehiculos' => ['Vehículos', 'ti-car'],
+                    'prestamos' => ['Préstamos', 'ti-cash'], // 12/10 (Antony): después de Vehículos
                     'documentos' => ['Documentos', 'ti-file-text'],
                     'adjuntos' => ['Adjuntos', 'ti-photo'],
                     'gps' => ['GPS', 'ti-map-pin'],
