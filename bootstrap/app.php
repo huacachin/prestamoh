@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\LogModuleAccess;
+use App\Http\Middleware\ModuloLegalActivo;
 use App\Http\Middleware\PermisoVista;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -17,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => RoleMiddleware::class,
             'permission' => PermisoVista::class,
+            'legal.activo' => ModuloLegalActivo::class,
         ]);
         $middleware->web(append: [
             LogModuleAccess::class,

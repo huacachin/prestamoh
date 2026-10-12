@@ -65,4 +65,16 @@ class RoleSetupSeeder extends Seeder
             ->sortBy(fn ($r) => $hierarchy[$r->name] ?? PHP_INT_MAX)
             ->values();
     }
+
+    /**
+     * Catálogo para los selectores de rol de usuarios (11/10/2026): con el
+     * Área Legal oculta (config legal.activo = false) el rol area-legal no se
+     * ofrece, salvo que sea el rol actual del usuario que se edita.
+     */
+    public static function rolesVisibles(?string $conservar = null, array $columns = ['id', 'name']): Collection
+    {
+        return self::orderedRoles($columns)
+            ->reject(fn ($r) => $r->name === 'area-legal' && ! config('legal.activo') && $r->name !== $conservar)
+            ->values();
+    }
 }

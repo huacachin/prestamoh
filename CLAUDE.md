@@ -85,6 +85,11 @@ generación de contratos PDF, notaría, expedientes judiciales, papeletas, caja
 legal (`incomes`/`expenses` con `caja=4`, aislada de la operativa) y campana de
 alertas. Rol `area-legal` con permisos `legal.*`.
 
+**Oculto desde el 11/10/2026** (pedido de Antony): `config('legal.activo')` (env
+`AREA_LEGAL_ACTIVO`, por defecto `false`) quita el menú, la campana, el grupo de permisos,
+el rol `area-legal` de los selectores y responde 404 en `legal/*`. Datos y permisos
+asignados quedan intactos; `phpunit.xml` lo enciende para los tests del módulo.
+
 **Antes de tocar migraciones/poblado del módulo o re-migrar sus datos, leer
 `docs/AREA-LEGAL.md`** — documenta qué tablas escribe cada importador, las
 garantías de aislamiento del sistema de préstamos (nunca se escribe en

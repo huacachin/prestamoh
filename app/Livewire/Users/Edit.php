@@ -46,7 +46,7 @@ class Edit extends Component
         $this->headquarters = Headquarter::where('status', 'active')->get(['id', 'name']);
         // Catálogo COMPLETO (los no-asignables se pintan deshabilitados);
         // el rol actual del usuario siempre cuenta como seleccionable.
-        $this->roles = RoleSetupSeeder::orderedRoles();
+        $this->roles = RoleSetupSeeder::rolesVisibles($this->user->roles()->value('name'));
 
         $this->name = $this->user->name;
         $this->username = $this->user->username;

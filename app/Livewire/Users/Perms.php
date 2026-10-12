@@ -34,7 +34,7 @@ class Perms extends Component
         $this->user = User::with('roles')->findOrFail($id);
 
         $this->permsUserName = $this->user->name;
-        $this->roles = RoleSetupSeeder::orderedRoles();
+        $this->roles = RoleSetupSeeder::rolesVisibles($this->user->roles->first()?->name);
         $this->selectedRoleId = $this->user->roles()->value('id');
 
         // Director: no editable (es el super-rol homologado).
@@ -143,6 +143,10 @@ class Perms extends Component
         $groups = [];
 
         foreach ($sidebarStructure as $g) {
+            // 11/10: con el Área Legal oculta, sus permisos no se exponen (siguen en BD).
+            if ($g['key'] === 'legal' && ! config('legal.activo')) {
+                continue;
+            }
             $items = [];
             foreach ($g['permissions'] as $p) {
                 if (in_array($p['perm'], $permsExistentes, true)) {

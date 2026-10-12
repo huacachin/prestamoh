@@ -124,26 +124,28 @@ Route::middleware('auth')->group(function () {
     Route::get('reports/cancelled', [ReportController::class, 'cancelled'])->name('reports.cancelled')->middleware('permission:reportes.cancelados');
     Route::get('reports/simulator', [ReportController::class, 'simulator'])->name('reports.simulator')->middleware('permission:reportes.simulador');
 
-    // Área Legal
-    Route::middleware('permission:legal.garantias')->group(function () {
-        Route::get('legal/vehiculos', [LegalController::class, 'vehiculos'])->name('legal.vehiculos');
-        Route::get('legal/garantias', [LegalController::class, 'garantias'])->name('legal.garantias.index');
-        Route::get('legal/garantias/create/{creditId?}', [LegalController::class, 'garantiaCreate'])->name('legal.garantias.create');
-        Route::get('legal/garantias/{id}', [LegalController::class, 'garantiaShow'])->name('legal.garantias.show');
-    });
-    Route::get('legal/settings', [LegalController::class, 'settings'])->name('legal.settings')->middleware('permission:legal.configuracion');
-    Route::middleware('permission:legal.contratos')->group(function () {
-        Route::get('legal/garantias/{id}/contrato', [LegalController::class, 'contratoForm'])->name('legal.contratos.form');
-        Route::get('legal/contratos/{id}/pdf', [LegalController::class, 'contratoPdf'])->name('legal.contratos.pdf');
-        Route::get('legal/contratos/{id}/imprimir', [LegalController::class, 'contratoImprimir'])->name('legal.contratos.imprimir');
-    });
-    Route::get('legal/notaria', [LegalController::class, 'notaria'])->name('legal.notaria')->middleware('permission:legal.notaria');
-    Route::get('legal/papeletas', [LegalController::class, 'papeletas'])->name('legal.papeletas')->middleware('permission:legal.papeletas');
-    Route::get('legal/caja', [LegalController::class, 'caja'])->name('legal.caja')->middleware('permission:legal.caja');
-    Route::middleware('permission:legal.judicial')->group(function () {
-        Route::get('legal/expedientes', [LegalController::class, 'expedientes'])->name('legal.expedientes.index');
-        Route::get('legal/expedientes/create', [LegalController::class, 'expedienteCreate'])->name('legal.expedientes.create');
-        Route::get('legal/expedientes/{id}', [LegalController::class, 'expedienteShow'])->name('legal.expedientes.show');
+    // Área Legal (11/10: oculto con config legal.activo = false → 404; ver config/legal.php)
+    Route::middleware('legal.activo')->group(function () {
+        Route::middleware('permission:legal.garantias')->group(function () {
+            Route::get('legal/vehiculos', [LegalController::class, 'vehiculos'])->name('legal.vehiculos');
+            Route::get('legal/garantias', [LegalController::class, 'garantias'])->name('legal.garantias.index');
+            Route::get('legal/garantias/create/{creditId?}', [LegalController::class, 'garantiaCreate'])->name('legal.garantias.create');
+            Route::get('legal/garantias/{id}', [LegalController::class, 'garantiaShow'])->name('legal.garantias.show');
+        });
+        Route::get('legal/settings', [LegalController::class, 'settings'])->name('legal.settings')->middleware('permission:legal.configuracion');
+        Route::middleware('permission:legal.contratos')->group(function () {
+            Route::get('legal/garantias/{id}/contrato', [LegalController::class, 'contratoForm'])->name('legal.contratos.form');
+            Route::get('legal/contratos/{id}/pdf', [LegalController::class, 'contratoPdf'])->name('legal.contratos.pdf');
+            Route::get('legal/contratos/{id}/imprimir', [LegalController::class, 'contratoImprimir'])->name('legal.contratos.imprimir');
+        });
+        Route::get('legal/notaria', [LegalController::class, 'notaria'])->name('legal.notaria')->middleware('permission:legal.notaria');
+        Route::get('legal/papeletas', [LegalController::class, 'papeletas'])->name('legal.papeletas')->middleware('permission:legal.papeletas');
+        Route::get('legal/caja', [LegalController::class, 'caja'])->name('legal.caja')->middleware('permission:legal.caja');
+        Route::middleware('permission:legal.judicial')->group(function () {
+            Route::get('legal/expedientes', [LegalController::class, 'expedientes'])->name('legal.expedientes.index');
+            Route::get('legal/expedientes/create', [LegalController::class, 'expedienteCreate'])->name('legal.expedientes.create');
+            Route::get('legal/expedientes/{id}', [LegalController::class, 'expedienteShow'])->name('legal.expedientes.show');
+        });
     });
 
     // Configuración - Usuarios

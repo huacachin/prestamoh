@@ -64,9 +64,9 @@
                                     <livewire:layout.compromisos-bell />
 
                                     {{-- Campana del Área Legal (renovaciones SIGM y trámites varados) --}}
-                                    @can('legal.garantias')
+                                    @if(config('legal.activo') && auth()->user()?->can('legal.garantias'))
                                         <livewire:layout.legal-bell />
-                                    @endcan
+                                    @endif
 
                                     <li class="header-profile">
                                         <div class="flex-shrink-0 dropdown">

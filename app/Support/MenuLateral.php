@@ -35,7 +35,7 @@ class MenuLateral
 
     public static function items(): array
     {
-        return [
+        $items = [
             ['type' => 'title', 'title' => ''],
 
             [
@@ -134,6 +134,13 @@ class MenuLateral
                 'role' => 'director',
             ],
         ];
+
+        // 11/10 (Antony): el Área Legal se oculta mientras config legal.activo sea false.
+        if (! config('legal.activo')) {
+            $items = array_values(array_filter($items, fn (array $item) => ($item['id'] ?? null) !== 'legal'));
+        }
+
+        return $items;
     }
 
     /**

@@ -70,7 +70,7 @@ class Create extends Component
         // dejar "— Seleccionar —" solo servía para olvidarla.
         $this->headquarter_id ??= $this->headquarters->first()?->id;
         // Catálogo completo: los no-asignables se pintan deshabilitados
-        $this->roles = RoleSetupSeeder::orderedRoles();
+        $this->roles = RoleSetupSeeder::rolesVisibles();
     }
 
     /**

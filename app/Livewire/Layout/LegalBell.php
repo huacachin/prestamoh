@@ -44,7 +44,7 @@ class LegalBell extends Component
 
         // Defensivo: el header ya envuelve esta campana en @can('legal.garantias'),
         // pero si se incluyera en otro layout no debe filtrar datos.
-        if (auth()->user()?->can('legal.garantias')) {
+        if (config('legal.activo') && auth()->user()?->can('legal.garantias')) {
             $items = $this->renovaciones()
                 ->concat($this->notariaVarada())
                 ->concat($this->plazosJudiciales())
