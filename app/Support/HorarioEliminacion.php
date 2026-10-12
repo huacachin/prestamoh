@@ -29,6 +29,10 @@ use Illuminate\Support\HtmlString;
  * Excepción a la ventana horaria (09/10/2026, Antony): lo que implementa
  * SinHorarioDeEliminacion —los adjuntos de ingresos y egresos y las ubicaciones GPS de vehículos— se elimina a
  * cualquier hora, siempre el mismo día y con el permiso de siempre.
+ *
+ * EDITAR (12/10/2026, Antony, ubicaciones GPS de vehículos): misma regla del
+ * mismo día para quien no es director, sin ventana horaria
+ * (motivoBloqueo(..., accion: 'editar') y ConReglasDeEliminacion::edicionBloqueada()).
  */
 final class HorarioEliminacion
 {
@@ -116,13 +120,14 @@ final class HorarioEliminacion
      * Por qué ESTE usuario no puede eliminar ESE registro ahora, o null si puede.
      * Sin fecha de creación conocida (null) no se elimina: solo el director.
      */
-    public static function motivoBloqueo(mixed $registro, ?User $usuario = null, ?Carbon $ahora = null): ?string
+    public static function motivoBloqueo(mixed $registro, ?User $usuario = null, ?Carbon $ahora = null, string $accion = 'eliminar'): ?string
     {
         $usuario ??= auth()->user();
         if (self::esDirector($usuario)) {
             return null;
         }
-        if (! self::sinHorario($registro) && self::bloqueado($usuario, $ahora)) {
+        // La ventana horaria es solo para eliminar; editar (12/10) solo mira el mismo día.
+        if ($accion === 'eliminar' && ! self::sinHorario($registro) && self::bloqueado($usuario, $ahora)) {
             return self::mensaje();
         }
         if (! self::mismoDiaActivo()) {
@@ -130,10 +135,10 @@ final class HorarioEliminacion
         }
         $creadoEl = self::creadoEl($registro);
         if ($creadoEl === null) {
-            return self::mensajeSinFecha();
+            return self::mensajeSinFecha($accion);
         }
 
-        return self::esDeHoy($creadoEl, $ahora) ? null : self::mensajeMismoDia();
+        return self::esDeHoy($creadoEl, $ahora) ? null : self::mensajeMismoDia($accion);
     }
 
     public static function esMetodoDeEliminar(string $metodo): bool
@@ -156,14 +161,14 @@ final class HorarioEliminacion
         return sprintf('Eliminar solo está habilitado de %d:00 a %d:00 de la mañana (hora de Lima). Fuera de ese horario, pídeselo al director.', self::desde(), self::hasta());
     }
 
-    public static function mensajeMismoDia(): string
+    public static function mensajeMismoDia(string $accion = 'eliminar'): string
     {
-        return 'Solo se puede eliminar el mismo día en que se registró. Pasado ese día, pídeselo al director.';
+        return "Solo se puede {$accion} el mismo día en que se registró. Pasado ese día, pídeselo al director.";
     }
 
-    public static function mensajeSinFecha(): string
+    public static function mensajeSinFecha(string $accion = 'eliminar'): string
     {
-        return 'Este dato no tiene fecha de registro: solo el director puede eliminarlo.';
+        return "Este dato no tiene fecha de registro: solo el director puede {$accion}lo.";
     }
 
     /**

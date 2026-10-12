@@ -10,7 +10,7 @@
         <table class="table table-sm table-bordered table-hover tabla-ubicaciones tabla-apilable">
             <thead class="table-secondary">
                 <tr>
-                    @if($puedeEditar)<th class="text-center" width="40">Op.</th>@endif
+                    @if($puedeEditar)<th class="text-center" width="70">Op.</th>@endif
                     <th class="text-center" width="40">N°</th>
                     <th class="text-center" width="120">Fecha</th>
                     <th class="text-center" width="100">Usuario</th>
@@ -22,7 +22,13 @@
             @foreach($ubicaciones as $r)
                 <tr wire:key="ubicacion-{{ $r->id }}">
                     @if($puedeEditar)
-                        <td class="text-center celda-acciones">
+                        <td class="text-center celda-acciones" style="white-space:nowrap;">
+                            {{-- 12/10: editar, solo lo registrado hoy salvo el director (el servidor lo vuelve a comprobar). --}}
+                            @if($this->puedeEditarUbicacion($r))
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0" wire:click="editar({{ $r->id }})" title="Editar">
+                                    <i class="ti ti-pencil"></i>
+                                </button>
+                            @endif
                             <button type="button" class="btn btn-sm btn-outline-danger py-0" wire:click="eliminar({{ $r->id }})" @creadoEl($r)
                                     data-confirmar="¿Eliminar la ubicación del {{ $r->fecha->format('d/m/Y H:i') }} del vehículo {{ $placa }}?" title="Eliminar">
                                 <i class="ti ti-trash"></i>

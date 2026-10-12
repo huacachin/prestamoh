@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
@@ -254,5 +255,63 @@ class GpsVehiculosReporteTest extends TestCase
         $comp->call('eliminar', $deHoy->id)->assertNotDispatched('errorAlert')->assertSet('msg', 'Ubicación del vehículo ALP837 eliminada.');
         $this->assertNull($deHoy->fresh());
         $this->assertSame(0, Activity::where('description', 'like', 'Intentó eliminar fuera de horario%')->count());
+    }
+
+    /**
+     * 12/10/2026 (Antony): "agregarle una opción de editar… solo se pueda
+     * editar el mismo día que se creó, solo para roles diferentes al director".
+     */
+    public function test_editar_corrige_coordenadas_y_descripcion_solo_el_mismo_dia_salvo_el_director(): void
+    {
+        $this->mundo();
+        config(['auditoria.eliminar_horario.activo' => true, 'auditoria.eliminar_mismo_dia.activo' => true]);
+        Carbon::setTestNow(Carbon::parse('2026-10-12 15:00', 'America/Lima')); // fuera de la ventana de 6 a 11: editar no la mira
+        $deHoy = $this->ubicacion(['descripcion' => 'Registrada hoy']);
+        $deAyer = $this->ubicacion(['descripcion' => 'Registrada ayer']);
+        VehiculoGpsReporte::whereKey($deAyer->id)->update(['created_at' => now()->subDay()]);
+
+        $comp = Livewire::test(GpsVehiculos::class, ['id' => $this->client->id]);
+        $html = $comp->html();
+        $this->assertStringContainsString("wire:click=\"editar({$deHoy->id})\"", $html, 'la de hoy se puede editar');
+        $this->assertStringNotContainsString("wire:click=\"editar({$deAyer->id})\"", $html, 'la de ayer no muestra el lápiz');
+
+        // La de ayer, aunque se fuerce la llamada: aviso con "editar" y rastro en la auditoría.
+        $comp->call('editar', $deAyer->id)->assertDispatched('errorAlert')->assertSet('editId', null);
+        $this->assertSame('Solo se puede editar el mismo día en que se registró. Pasado ese día, pídeselo al director.', HorarioEliminacion::motivoBloqueo($deAyer->fresh(), $this->user, null, 'editar'));
+        $this->assertSame(1, Activity::where('description', 'Intentó editar un registro de otro día: GpsVehiculos::editar')->count());
+
+        // La de hoy: el formulario de su placa se abre con sus datos y guarda los cambios sin tocar la fecha.
+        $comp->call('editar', $deHoy->id)
+            ->assertSet('editId', $deHoy->id)
+            ->assertSet('formVehiculoId', $this->vehiculo->id)
+            ->assertSet('form.coordenadas', '-12.014431, -76.824936')
+            ->assertSet('form.descripcion', 'Registrada hoy');
+        $this->assertStringContainsString('Editando la ubicación · la fecha de registro no cambia', $comp->html());
+        $this->assertStringContainsString('Guardar cambios', $comp->html());
+        $comp->set('form.coordenadas', 'https://maps.google.com/?q=-12.0464,-77.0428')
+            ->set('form.descripcion', 'Corregida: frente al grifo')
+            ->call('guardar')
+            ->assertHasNoErrors()
+            ->assertSet('editId', null)
+            ->assertSet('formVehiculoId', null)
+            ->assertSet('msg', 'Ubicación del vehículo ALP837 actualizada.');
+        $r = $deHoy->fresh();
+        $this->assertSame('-12.0464, -77.0428', $r->coordenadas());
+        $this->assertSame('Corregida: frente al grifo', $r->descripcion);
+        $this->assertSame($deHoy->fecha->format('Y-m-d H:i'), $r->fecha->format('Y-m-d H:i'), 'la fecha de registro no cambia');
+        $this->assertSame(1, VehiculoGpsReporte::where('client_id', $this->client->id)->where('descripcion', 'Corregida: frente al grifo')->count(), 'se actualizó, no se creó otra');
+        // Queda en la auditoría automática con el antes y el después.
+        $this->assertSame(1, Activity::where('subject_type', VehiculoGpsReporte::class)->where('subject_id', $r->id)->where('event', 'updated')->count());
+
+        // Cancelar limpia el modo edición.
+        $comp->call('editar', $deHoy->id)->assertSet('editId', $deHoy->id)->call('cancelar')->assertSet('editId', null)->assertSet('formVehiculoId', null);
+
+        // El director edita también la de ayer.
+        $this->user->syncRoles([Role::findOrCreate('director', 'web')]);
+        $html = Livewire::test(GpsVehiculos::class, ['id' => $this->client->id])
+            ->call('editar', $deAyer->id)->assertNotDispatched('errorAlert')->assertSet('editId', $deAyer->id)
+            ->set('form.descripcion', 'La corrigió el director')->call('guardar')->assertHasNoErrors()->html();
+        $this->assertSame('La corrigió el director', $deAyer->fresh()->descripcion);
+        $this->assertStringContainsString("wire:click=\"editar({$deAyer->id})\"", $html, 'el director ve el lápiz en todas');
     }
 }

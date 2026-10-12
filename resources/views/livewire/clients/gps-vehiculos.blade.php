@@ -46,6 +46,9 @@
             <div class="placa-cuerpo">
                 @if($formVehiculoId === $v->id)
                     <div class="alta-ubicacion">
+                        @if($editId)
+                            <div class="small fw-semibold mb-1"><i class="ti ti-pencil"></i> Editando la ubicación · la fecha de registro no cambia</div>
+                        @endif
                         <div class="row g-2">
                             <div class="col-12 col-md-5">
                                 <label class="form-label mb-0 small">Coordenadas * <span class="text-muted">(o el enlace de Google Maps)</span></label>
@@ -65,7 +68,7 @@
                         <div class="d-flex gap-2 mt-2">
                             <button type="button" class="btn btn-sm btn-dark" wire:click="guardar" wire:loading.attr="disabled" wire:target="guardar">
                                 <i class="ti ti-device-floppy"></i>
-                                <span wire:loading.remove wire:target="guardar">Guardar</span>
+                                <span wire:loading.remove wire:target="guardar">{{ $editId ? 'Guardar cambios' : 'Guardar' }}</span>
                                 <span wire:loading wire:target="guardar">Guardando…</span>
                             </button>
                             <button type="button" class="btn btn-sm btn-outline-secondary" wire:click="cancelar"><i class="ti ti-x"></i> Cancelar</button>

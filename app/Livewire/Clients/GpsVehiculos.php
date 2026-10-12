@@ -7,6 +7,7 @@ use App\Models\Vehiculo;
 use App\Models\VehiculoGpsReporte;
 use App\Support\ConReglasDeEliminacion;
 use App\Support\Coordenadas;
+use App\Support\HorarioEliminacion;
 use App\Support\SinHorarioDeEliminacion;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Locked;
@@ -18,7 +19,8 @@ use Livewire\Component;
  * cliente (propias y donde es copropietario); cada una con su botón "Agregar
  * ubicación" (coordenadas pegadas o enlace de Google Maps, y una descripción)
  * y, debajo, sus ubicaciones. Sin vehículos, se avisa que aún no se agregaron.
- * La fecha de registro se pone sola al guardar.
+ * La fecha de registro se pone sola al guardar. Editar (12/10): mismo
+ * formulario; quien no es director solo edita lo registrado el mismo día.
  */
 class GpsVehiculos extends Component implements SinHorarioDeEliminacion
 {
@@ -33,6 +35,9 @@ class GpsVehiculos extends Component implements SinHorarioDeEliminacion
 
     /** Vehículo cuyo formulario de "Agregar ubicación" está abierto (null = ninguno). */
     public ?int $formVehiculoId = null;
+
+    /** Ubicación que se está editando en ese formulario (null = es un alta). 12/10: Antony pidió editar. */
+    public ?int $editId = null;
 
     /** @var array{coordenadas?: string, descripcion?: string} */
     public array $form = [];
@@ -71,12 +76,47 @@ class GpsVehiculos extends Component implements SinHorarioDeEliminacion
         $this->resetErrorBag();
         $this->msg = null;
         $this->formVehiculoId = $vehiculoId;
+        $this->editId = null;
         $this->form = ['coordenadas' => '', 'descripcion' => ''];
+    }
+
+    /**
+     * Abre la ubicación en el formulario de su placa para corregir coordenadas
+     * o descripción. Quien no es director solo edita lo registrado hoy
+     * (edicionBloqueada: avisa y deja rastro); la fecha de registro no cambia.
+     */
+    public function editar(int $id): void
+    {
+        abort_unless($this->puedeEditar, 403, 'No tienes permiso para editar ubicaciones.');
+        $r = VehiculoGpsReporte::where('client_id', $this->clientId)->find($id);
+        if (! $r || ! $this->vehiculos()->firstWhere('id', $r->vehiculo_id) instanceof Vehiculo) {
+            $this->dispatch('errorAlert', ['message' => 'Esa ubicación ya no se puede editar desde aquí.']);
+
+            return;
+        }
+        if ($this->edicionBloqueada($r)) {
+            return;
+        }
+
+        $this->resetErrorBag();
+        $this->msg = null;
+        $this->formVehiculoId = $r->vehiculo_id;
+        $this->editId = $r->id;
+        $this->form = ['coordenadas' => $r->coordenadas(), 'descripcion' => (string) $r->descripcion];
+    }
+
+    /** Quién puede editar ESA ubicación ahora (para pintar o no el botón). */
+    public function puedeEditarUbicacion(VehiculoGpsReporte $r): bool
+    {
+        return $this->puedeEditar
+            && $r->vehiculo_id !== null
+            && HorarioEliminacion::motivoBloqueo($r, null, null, 'editar') === null;
     }
 
     public function cancelar(): void
     {
         $this->formVehiculoId = null;
+        $this->editId = null;
         $this->form = [];
         $this->resetErrorBag();
     }
@@ -116,6 +156,24 @@ class GpsVehiculos extends Component implements SinHorarioDeEliminacion
             return;
         }
         [$lat, $lng] = $coords;
+
+        if ($this->editId) {
+            $r = VehiculoGpsReporte::where('client_id', $this->clientId)->find($this->editId);
+            // Se vuelve a mirar la regla al guardar: la página pudo quedar abierta hasta el día siguiente.
+            if (! $r || $this->edicionBloqueada($r, 'guardar')) {
+                return;
+            }
+            $r->update([
+                'latitud' => $lat,
+                'longitud' => $lng,
+                'descripcion' => trim((string) ($this->form['descripcion'] ?? '')) ?: null,
+            ]);
+            $this->cancelar();
+            $this->msgType = 'ok';
+            $this->msg = "Ubicación del vehículo {$vehiculo->placa} actualizada.";
+
+            return;
+        }
 
         VehiculoGpsReporte::create([
             'client_id' => $this->clientId,
