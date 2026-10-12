@@ -118,9 +118,13 @@ class GpsVehiculosReporteTest extends TestCase
         $this->assertStringContainsString('href="https://maps.google.com/?q=-12.014431,-76.824936" target="_blank"', $html);
         $this->assertStringContainsString('Parado frente al mercado de Huaycán', $html);
         $this->assertStringContainsString('gps-veh-tester', $html);
-        // 10/10 (Antony): "el registro va después de coordenadas": Fecha · Coordenadas · Registró · Descripción.
-        $this->assertMatchesRegularExpression('/<th[^>]*>Fecha de registro<\/th>\s*<th[^>]*>Coordenadas<\/th>\s*<th[^>]*>Registró<\/th>\s*<th>Descripción<\/th>/', $html);
-        $this->assertLessThan(strpos($html, 'Parado frente al mercado de Huaycán'), strpos($html, 'data-label="Registró">gps-veh-tester'), 'quién registró va antes de la descripción también en el celular');
+        // 11/10 (Antony): Op. (eliminar) · N° · Fecha · Usuario · Coordenadas · Descripción (entre Op. y N° va el marcador del @if de Livewire).
+        $this->assertMatchesRegularExpression('/<th[^>]*>Op\.<\/th>(?:\s|<!--.*?-->)*<th[^>]*>N°<\/th>\s*<th[^>]*>Fecha<\/th>\s*<th[^>]*>Usuario<\/th>\s*<th[^>]*>Coordenadas<\/th>\s*<th>Descripción<\/th>/', $html);
+        $this->assertStringNotContainsString('Fecha de registro</th>', $html);
+        $this->assertStringNotContainsString('Registró', $html);
+        $this->assertStringContainsString('<td class="text-center" data-label="N°">1</td>', $html);
+        $this->assertLessThan(strpos($html, 'data-label="N°">1</td>'), strpos($html, "wire:click=\"eliminar({$r->id})\""), 'el botón de eliminar va primero');
+        $this->assertLessThan(strpos($html, 'Parado frente al mercado de Huaycán'), strpos($html, 'data-label="Usuario">gps-veh-tester'), 'el usuario va antes de la descripción también en el celular');
         $this->assertStringContainsString("wire:click=\"nuevo({$this->vehiculo->id})\"", $html, 'vuelve el botón');
 
         // Lo demás se fue de verdad: ni fotos, ni puntos, ni texto para WhatsApp.
