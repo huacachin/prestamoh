@@ -333,7 +333,7 @@
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="casa" wire:model.defer="casa">
                                     <label class="form-check-label small" for="casa">
-                                        <i class="ti ti-home"></i> Resetear coords <strong>Casa</strong>
+                                        <i class="ti ti-home"></i> Resetear coords <strong>{{ $client->nombreUbicacion('casa') }}</strong>
                                     </label>
                                 </div>
                             @endif
@@ -341,7 +341,7 @@
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="negocio" wire:model.defer="negocio">
                                     <label class="form-check-label small" for="negocio">
-                                        <i class="ti ti-building-store"></i> Resetear coords <strong>Negocio</strong>
+                                        <i class="ti ti-building-store"></i> Resetear coords <strong>{{ $client->nombreUbicacion('negocio') }}</strong>
                                     </label>
                                 </div>
                             @endif

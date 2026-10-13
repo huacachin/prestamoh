@@ -23,12 +23,16 @@ use Livewire\Component;
  *
  * 10/10/2026 (Antony, ficha 173): (1) vuelve NEGOCIO (latitud2/longitud2) y se
  * pueden AGREGAR más direcciones con nombre propio (tabla client_ubicaciones);
- * (2) si la dirección ya tiene coordenadas, el campo va bloqueado y solo se
- * habilita al pulsar "Modificar" (Alpine, sin viaje al servidor); (3) cada
- * cambio queda en una tablita —dirección, antes, después, quién, cuándo— que
- * sale de la auditoría: se registra a mano con el detalle (properties.gps) y
- * también se leen los cambios de coordenadas hechos desde la ficha del
- * cliente (auditoría automática del modelo).
+ * (2) cada cambio queda en una tablita —dirección, antes, después, quién,
+ * cuándo— que sale de la auditoría: se registra a mano con el detalle
+ * (properties.gps) y también se leen los cambios de coordenadas hechos desde
+ * la ficha del cliente (auditoría automática del modelo).
+ *
+ * 13/10/2026 (Antony): las direcciones van en una TABLA como las ubicaciones
+ * de los vehículos: Op. (lápiz) · N° · Dirección · Coordenadas. El lápiz abre
+ * un formulario con el NOMBRE (Casa y Negocio también se renombran: columnas
+ * clients.ubicacion1_nombre / ubicacion2_nombre) y las coordenadas; Borrar
+ * vive dentro de ese formulario.
  *
  * Claves de dirección: 'casa' y 'negocio' (fijas, columnas de clients) y
  * 'u:{id}' para las adicionales.
@@ -37,10 +41,14 @@ class Gps extends Component
 {
     use ConReglasDeEliminacion;
 
+    /** Nombres por defecto de las direcciones fijas (el usuario puede renombrarlas). */
     public const TIPOS = ['casa' => 'Casa', 'negocio' => 'Negocio'];
 
     /** Columnas de clients por dirección fija. */
     public const COLUMNAS = ['casa' => ['latitud', 'longitud'], 'negocio' => ['latitud2', 'longitud2']];
+
+    /** Columna de clients con el nombre que el usuario le puso a cada dirección fija. */
+    public const COLUMNA_NOMBRE = ['casa' => 'ubicacion1_nombre', 'negocio' => 'ubicacion2_nombre'];
 
     #[Locked]
     public int $clientId;
@@ -51,6 +59,11 @@ class Gps extends Component
 
     /** Texto pegado por clave de dirección: ['casa' => '...', 'negocio' => '...', 'u:12' => '...'] */
     public array $pegado = ['casa' => '', 'negocio' => ''];
+
+    /** Dirección cuyo formulario de edición está abierto (null = ninguno) y el nombre que se edita. */
+    public ?string $editClave = null;
+
+    public string $editNombre = '';
 
     /** Alta de una dirección adicional. */
     public string $nuevaNombre = '';
@@ -74,6 +87,34 @@ class Gps extends Component
         $this->puedeEditar = ! (auth()->user()?->can('clientes.scope-propio') ?? false);
     }
 
+    /** Abre el formulario de una dirección: nombre y coordenadas (vacías = se conservan). */
+    public function editar(string $clave): void
+    {
+        abort_unless($this->puedeEditar, 403, 'No tienes permiso para editar coordenadas.');
+        if (! array_key_exists($clave, self::TIPOS) && ! $this->ubicacionExtra($clave)) {
+            return;
+        }
+        $this->resetErrorBag();
+        $this->msg = null;
+        $this->editClave = $clave;
+        $this->editNombre = $this->nombre($clave);
+        $this->pegado[$clave] = '';
+    }
+
+    public function cancelarEdicion(): void
+    {
+        if ($this->editClave !== null) {
+            $this->pegado[$this->editClave] = '';
+        }
+        $this->editClave = null;
+        $this->editNombre = '';
+        $this->resetErrorBag();
+    }
+
+    /**
+     * Guarda la dirección: las coordenadas pegadas (si se pegó algo) y, con el
+     * formulario abierto, el nombre nuevo. Sin nada que cambiar, avisa.
+     */
     public function guardar(string $clave): void
     {
         abort_unless($this->puedeEditar, 403, 'No tienes permiso para registrar coordenadas.');
@@ -82,33 +123,65 @@ class Gps extends Component
             return;
         }
 
-        $coords = Coordenadas::parse((string) ($this->pegado[$clave] ?? ''));
-        if (! $coords) {
-            $this->msgType = 'err';
-            $this->msg = self::mensajeFormato((string) ($this->pegado[$clave] ?? ''));
+        $texto = trim((string) ($this->pegado[$clave] ?? ''));
+        $coords = null;
+        if ($texto !== '') {
+            $coords = Coordenadas::parse($texto);
+            if (! $coords) {
+                $this->msgType = 'err';
+                $this->msg = self::mensajeFormato($texto);
+
+                return;
+            }
+        }
+
+        $nombreActual = $this->nombre($clave);
+        $nombreNuevo = $this->editClave === $clave ? trim(preg_replace('/\s+/', ' ', $this->editNombre)) : $nombreActual;
+        if ($nombreNuevo !== $nombreActual) {
+            $this->validate(['editNombre' => ['required', 'string', 'max:60', $this->nombreLibre($clave)]], [], ['editNombre' => 'nombre']);
+        } elseif ($coords === null) {
+            $this->msgType = 'warn';
+            $this->msg = 'No hay nada que guardar: pega las coordenadas o cambia el nombre.';
 
             return;
         }
 
-        [$lat, $lng] = $coords;
-        $antes = $this->coordenadas($clave);
-
-        if ($extra) {
-            $extra->update(['latitud' => $lat, 'longitud' => $lng]);
+        if ($coords !== null) {
+            [$lat, $lng] = $coords;
+            $antes = $this->coordenadas($clave);
+            if ($extra) {
+                $extra->update(['latitud' => $lat, 'longitud' => $lng]);
+            } else {
+                [$cLat, $cLng] = self::COLUMNAS[$clave];
+                $this->client->sinAuditoriaAutomatica(fn () => $this->client->update([$cLat => $lat, $cLng => $lng]));
+            }
             $this->client->refresh();
-        } else {
-            [$cLat, $cLng] = self::COLUMNAS[$clave];
-            $this->client->sinAuditoriaAutomatica(fn () => $this->client->update([$cLat => $lat, $cLng => $lng]));
-            $this->client->refresh();
+            $verbo = $antes['lat'] !== null ? 'Actualizó' : 'Registró';
+            $this->registrarCambio("{$verbo} la ubicación GPS de {$nombreActual} del cliente #{$this->clientId}", $clave, $antes, $this->coordenadas($clave), $nombreActual);
         }
 
-        $verbo = $antes['lat'] !== null ? 'Actualizó' : 'Registró';
-        $this->registrarCambio("{$verbo} la ubicación GPS de ".$this->nombre($clave)." del cliente #{$this->clientId}", $clave, $antes, $this->coordenadas($clave));
+        if ($nombreNuevo !== $nombreActual) {
+            if ($extra) {
+                $extra->update(['nombre' => $nombreNuevo]);
+            } else {
+                $columna = self::COLUMNA_NOMBRE[$clave];
+                // null = vuelve al nombre de siempre
+                $this->client->sinAuditoriaAutomatica(fn () => $this->client->update([$columna => $nombreNuevo === self::TIPOS[$clave] ? null : $nombreNuevo]));
+            }
+            $this->client->refresh();
+            $c = $this->coordenadas($clave);
+            Audit::log("Renombró la dirección GPS {$nombreActual} a {$nombreNuevo} del cliente #{$this->clientId}", $this->client, [
+                'gps' => ['tipo' => $clave, 'nombre' => $nombreNuevo, 'antes' => $c, 'despues' => $c, 'renombre' => ['de' => $nombreActual, 'a' => $nombreNuevo]],
+            ]);
+        }
 
         $this->pegado[$clave] = '';
+        $this->editClave = null;
+        $this->editNombre = '';
         $this->msgType = 'ok';
-        $this->msg = 'Coordenadas de '.$this->nombre($clave).' guardadas.';
-        // El navegador vuelve a bloquear el campo de esa dirección.
+        $this->msg = $coords !== null
+            ? "Coordenadas de {$nombreNuevo} guardadas."
+            : "Dirección renombrada: {$nombreActual} → {$nombreNuevo}.";
         $this->dispatch('gps-guardado', clave: $clave);
     }
 
@@ -117,14 +190,8 @@ class Gps extends Component
     {
         abort_unless($this->puedeEditar, 403, 'No tienes permiso para registrar coordenadas.');
         $this->nuevaNombre = trim(preg_replace('/\s+/', ' ', $this->nuevaNombre));
-
         $this->validate([
-            'nuevaNombre' => ['required', 'string', 'max:60', function ($attr, $valor, $fail) {
-                $usados = array_map('mb_strtolower', array_merge(array_values(self::TIPOS), $this->client->ubicaciones()->pluck('nombre')->all()));
-                if (in_array(mb_strtolower($valor), $usados, true)) {
-                    $fail("Ya hay una dirección llamada {$valor}.");
-                }
-            }],
+            'nuevaNombre' => ['required', 'string', 'max:60', $this->nombreLibre(null)],
             'nuevaCoordenadas' => ['required', 'string', fn ($attr, $valor, $fail) => Coordenadas::parse((string) $valor) ?: $fail(self::mensajeFormato((string) $valor))],
         ], [], ['nuevaNombre' => 'nombre', 'nuevaCoordenadas' => 'coordenadas']);
 
@@ -170,6 +237,10 @@ class Gps extends Component
 
         $this->registrarCambio("Borró la ubicación GPS de {$nombre} del cliente #{$this->clientId}", $clave, $antes, ['lat' => null, 'lng' => null], $nombre);
 
+        if ($this->editClave === $clave) {
+            $this->editClave = null;
+            $this->editNombre = '';
+        }
         $this->msgType = 'ok';
         $this->msg = $extra ? "Dirección {$nombre} eliminada." : "Coordenadas de {$nombre} borradas.";
         $this->dispatch('gps-guardado', clave: $clave);
@@ -178,18 +249,20 @@ class Gps extends Component
     /**
      * Todas las direcciones en el orden de la pestaña: Casa, Negocio y las adicionales.
      *
-     * @return list<array{clave: string, nombre: string, fija: bool, lat: ?string, lng: ?string, url: ?string, modelo: ?ClientUbicacion}>
+     * @return list<array{clave: string, nombre: string, fija: bool, icono: string, lat: ?string, lng: ?string, url: ?string, modelo: ?ClientUbicacion}>
      */
     public function direcciones(): array
     {
         $filas = [];
-        foreach (self::TIPOS as $clave => $nombre) {
+        foreach (array_keys(self::TIPOS) as $clave) {
             $c = $this->coordenadas($clave);
-            $filas[] = ['clave' => $clave, 'nombre' => $nombre, 'fija' => true, 'lat' => $c['lat'], 'lng' => $c['lng'], 'url' => self::url($c), 'modelo' => null];
+            $filas[] = ['clave' => $clave, 'nombre' => $this->nombre($clave), 'fija' => true, 'icono' => $clave === 'casa' ? 'ti-home' : 'ti-building-store',
+                'lat' => $c['lat'], 'lng' => $c['lng'], 'url' => self::url($c), 'modelo' => null];
         }
         foreach ($this->client->ubicaciones as $u) {
             $c = ['lat' => $u->latitud, 'lng' => $u->longitud];
-            $filas[] = ['clave' => "u:{$u->id}", 'nombre' => $u->nombre, 'fija' => false, 'lat' => $c['lat'], 'lng' => $c['lng'], 'url' => self::url($c), 'modelo' => $u];
+            $filas[] = ['clave' => "u:{$u->id}", 'nombre' => $u->nombre, 'fija' => false, 'icono' => 'ti-map-pin',
+                'lat' => $c['lat'], 'lng' => $c['lng'], 'url' => self::url($c), 'modelo' => $u];
         }
 
         return $filas;
@@ -227,9 +300,30 @@ class Gps extends Component
         return $this->client->ubicaciones()->find((int) substr($clave, 2));
     }
 
+    /** Nombre actual de una dirección: el puesto por el usuario o el de siempre. */
     private function nombre(string $clave): string
     {
-        return self::TIPOS[$clave] ?? ($this->ubicacionExtra($clave)?->nombre ?? $clave);
+        if (array_key_exists($clave, self::TIPOS)) {
+            return $this->client->nombreUbicacion($clave);
+        }
+
+        return $this->ubicacionExtra($clave)?->nombre ?? $clave;
+    }
+
+    /** Regla: el nombre no puede repetir el de otra dirección del cliente (sin distinguir mayúsculas). */
+    private function nombreLibre(?string $claveExcluida): \Closure
+    {
+        return function ($attr, $valor, $fail) use ($claveExcluida) {
+            $usados = [];
+            foreach ($this->direcciones() as $d) {
+                if ($d['clave'] !== $claveExcluida) {
+                    $usados[] = mb_strtolower($d['nombre']);
+                }
+            }
+            if (in_array(mb_strtolower(trim((string) $valor)), $usados, true)) {
+                $fail("Ya hay una dirección llamada {$valor}.");
+            }
+        };
     }
 
     /** @return array{lat: ?string, lng: ?string} */
@@ -282,11 +376,22 @@ class Gps extends Component
 
         if (isset($p['gps'])) {
             $g = $p['gps'];
+            // Un cambio de nombre (13/10): antes y después son los nombres, no las coordenadas.
+            if (isset($g['renombre'])) {
+                return [[
+                    'fecha' => $a->created_at,
+                    'accion' => 'Renombró',
+                    'tipo' => (string) ($g['renombre']['a'] ?? $g['nombre'] ?? $g['tipo']),
+                    'antes' => (string) ($g['renombre']['de'] ?? '—'),
+                    'despues' => (string) ($g['renombre']['a'] ?? '—'),
+                    'quien' => $quien,
+                ]];
+            }
 
             return [[
                 'fecha' => $a->created_at,
                 'accion' => explode(' ', $a->description)[0],
-                'tipo' => self::TIPOS[$g['tipo']] ?? ($g['nombre'] ?? (string) $g['tipo']),
+                'tipo' => $g['nombre'] ?? (self::TIPOS[$g['tipo']] ?? (string) $g['tipo']),
                 'antes' => self::textoCoordenadas($g['antes'] ?? []),
                 'despues' => self::textoCoordenadas($g['despues'] ?? []),
                 'quien' => $quien,
@@ -313,7 +418,7 @@ class Gps extends Component
             $filas[] = [
                 'fecha' => $a->created_at,
                 'accion' => $despues['lat'] === null ? 'Borró' : ($antes['lat'] === null ? 'Registró' : 'Actualizó'),
-                'tipo' => self::TIPOS[$tipo].' (desde la ficha)',
+                'tipo' => $this->client->nombreUbicacion($tipo).' (desde la ficha)',
                 'antes' => self::textoCoordenadas($antes),
                 'despues' => self::textoCoordenadas($despues),
                 'quien' => $quien,

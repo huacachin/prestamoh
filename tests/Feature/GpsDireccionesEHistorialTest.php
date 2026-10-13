@@ -15,8 +15,8 @@ use Tests\TestCase;
 /**
  * 10/10/2026 (Antony, ficha 173): pestaña GPS organizada. Casa, Negocio y
  * cuantas direcciones más haga falta, con nombre propio ("tiene que haber la
- * posibilidad de agregar más direcciones"); si la dirección ya tiene
- * coordenadas el campo va bloqueado hasta pulsar "Modificar"; y cada cambio
+ * posibilidad de agregar más direcciones"); desde el 13/10 van en tabla con
+ * lápiz de edición (nombre y coordenadas) como los vehículos; y cada cambio
  * sale en una tablita (dirección, antes, después, quién, cuándo) debajo de
  * las direcciones y antes de las ubicaciones de los vehículos.
  */
@@ -37,36 +37,49 @@ class GpsDireccionesEHistorialTest extends TestCase
         ]);
     }
 
-    public function test_el_campo_va_bloqueado_cuando_ya_hay_coordenadas_hasta_pulsar_modificar(): void
+    /** 13/10 (Antony): las direcciones van en tabla, como las ubicaciones de los vehículos, y el lápiz abre su formulario. */
+    public function test_las_direcciones_van_en_tabla_y_el_lapiz_abre_el_formulario_de_nombre_y_coordenadas(): void
     {
         $c = $this->cliente();
-        $html = Livewire::test(Gps::class, ['id' => $c->id])->html();
+        $comp = Livewire::test(Gps::class, ['id' => $c->id]);
+        $html = $comp->html();
 
-        // Sin coordenadas: campo a la vista y Guardar, sin botón Modificar.
-        $this->assertSame(2, substr_count($html, '<div class="input-group input-group-sm">'), 'Casa y Negocio con el campo libre');
-        $this->assertStringNotContainsString('Modificar', $html);
-
-        $c->update(['latitud' => -12.1, 'longitud' => -76.9]);
-        $html = Livewire::test(Gps::class, ['id' => $c->id])->html();
-
-        // Casa con coordenadas: el campo solo sale al pulsar Modificar; Negocio sigue libre.
-        $this->assertStringContainsString("<div class=\"input-group input-group-sm\" x-show=\"modificando === 'casa'\" x-cloak>", $html);
-        $this->assertSame(1, substr_count($html, '<div class="input-group input-group-sm">'));
+        // Tabla como la de los vehículos: Op. · N° · Dirección · Coordenadas; Casa y Negocio sin ubicación.
+        $this->assertMatchesRegularExpression('~<th[^>]*>Op\.</th>(?:\s|<!--.*?-->)*<th[^>]*>N°</th>\s*<th[^>]*>Dirección</th>\s*<th>Coordenadas</th>~', $html);
+        $this->assertStringContainsString('wire:key="dir-casa"', $html);
+        $this->assertStringContainsString('wire:key="dir-negocio"', $html);
+        $this->assertSame(2, substr_count($html, 'Sin ubicación'));
+        $this->assertStringContainsString("wire:click=\"editar('casa')\"", $html);
+        $this->assertStringContainsString("wire:click=\"editar('negocio')\"", $html);
+        $this->assertStringNotContainsString('wire:model="editNombre"', $html, 'sin formulario hasta pulsar el lápiz');
+        $this->assertStringNotContainsString('wire:click="borrar(', $html, 'Borrar solo dentro de la edición');
         // El formulario de "Agregar dirección" se oculta con !important (d-flex de Bootstrap lo pisaba).
         $this->assertStringContainsString('x-show.important="agregando" x-cloak', $html);
-        $this->assertStringContainsString("x-on:click=\"modificando = 'casa'; \$nextTick(() => \$refs['campo-casa'].focus())\"", $html);
-        // 13/10 (Antony): solo el lápiz, sin la palabra.
-        $this->assertMatchesRegularExpression('~<i class="ti ti-pencil"></i>\s*</button>~', $html);
-        $this->assertStringNotContainsString('</i> Modificar', $html);
-        $this->assertStringContainsString("x-on:click=\"modificando = null; \$wire.set('pegado.casa', '', false)\">Cancelar", $html, 'Cancelar vuelve a bloquear sin viaje');
-        $this->assertStringContainsString('x-on:gps-guardado.window="modificando = null; agregando = false"', $html);
-        $this->assertStringContainsString('Las coordenadas ya están registradas: pulsa el lápiz si hay que cambiarlas.', $html);
 
-        // Al guardar, el servidor avisa para que el navegador vuelva a bloquear.
-        Livewire::test(Gps::class, ['id' => $c->id])
-            ->set('pegado.casa', '-12.2, -76.8')
-            ->call('guardar', 'casa')
-            ->assertDispatched('gps-guardado', clave: 'casa');
+        // El lápiz abre el formulario con el nombre actual y el campo de coordenadas vacío.
+        $comp->call('editar', 'casa')->assertSet('editClave', 'casa')->assertSet('editNombre', 'Casa');
+        $html = $comp->html();
+        $this->assertStringContainsString('Editando Casa', $html);
+        $this->assertStringContainsString('wire:model="editNombre"', $html);
+        $this->assertStringContainsString('wire:model="pegado.casa"', $html);
+        $this->assertStringContainsString('Guardar cambios', $html);
+        $this->assertStringNotContainsString("wire:click=\"borrar('casa')\"", $html, 'sin coordenadas no hay nada que borrar');
+        $this->assertStringContainsString('<tr wire:key="dir-casa" class="table-warning">', $html, 'la fila en edición se resalta');
+
+        // Sin nada que guardar, avisa; con coordenadas, guarda y cierra el formulario.
+        $comp->call('guardar', 'casa')->assertSet('msgType', 'warn')->assertSet('editClave', 'casa');
+        $comp->set('pegado.casa', '-12.2, -76.8')->call('guardar', 'casa')
+            ->assertSet('msgType', 'ok')->assertSet('editClave', null)->assertDispatched('gps-guardado', clave: 'casa');
+        $this->assertEqualsWithDelta(-12.2, (float) $c->fresh()->latitud, 0.0001);
+        $html = $comp->html();
+        $this->assertStringContainsString('<span class="font-monospace">-12.2000000, -76.8000000</span>', $html);
+        $this->assertStringContainsString('href="https://maps.google.com/?q=-12.2000000,-76.8000000" target="_blank"', $html);
+
+        // Con coordenadas, dentro de la edición aparece Borrar coordenadas (con la fecha para la regla).
+        $html = $comp->call('editar', 'casa')->html();
+        $this->assertStringContainsString("wire:click=\"borrar('casa')\" data-creado=\"\"", $html, 'Casa no tiene fecha propia: solo el director la borra');
+        $this->assertStringContainsString('data-confirmar="¿Borrar las coordenadas de Casa?"', $html);
+        $comp->call('cancelarEdicion')->assertSet('editClave', null)->assertSet('editNombre', '');
     }
 
     public function test_se_agregan_direcciones_con_nombre_propio_y_se_editan_y_borran_como_las_fijas(): void
@@ -93,12 +106,14 @@ class GpsDireccionesEHistorialTest extends TestCase
         // Repetido (sin distinguir mayúsculas): no.
         $comp->set('nuevaNombre', 'TALLER')->set('nuevaCoordenadas', '-12.0, -77.0')->call('agregar')->assertHasErrors(['nuevaNombre']);
 
-        // En la lista, con su fila, el campo bloqueado y Modificar; se edita y se borra con la misma clave.
+        // En la tabla, con su fila y su lápiz; dentro de la edición, Eliminar dirección con su fecha de registro.
         $html = $comp->html();
         $this->assertStringContainsString('wire:key="dir-u:'.$u->id.'"', $html);
-        $this->assertStringContainsString("x-on:click=\"modificando = 'u:{$u->id}'; \$nextTick(() => \$refs['campo-u:{$u->id}'].focus())\"", $html);
+        $this->assertStringContainsString("wire:click=\"editar('u:{$u->id}')\"", $html);
+        $html = $comp->call('editar', "u:{$u->id}")->assertSet('editNombre', 'Taller')->html();
         $this->assertStringContainsString("wire:click=\"borrar('u:{$u->id}')\" data-creado=\"".now()->toDateString().'"', $html, 'la dirección adicional sí tiene fecha de registro');
         $this->assertStringContainsString('data-confirmar="¿Eliminar la dirección Taller?"', $html);
+        $this->assertStringContainsString('Eliminar dirección', $html);
 
         $comp->set("pegado.u:{$u->id}", '-12.5, -77.5')->call('guardar', "u:{$u->id}")->assertSet('msgType', 'ok');
         $this->assertEqualsWithDelta(-12.5, (float) $u->fresh()->latitud, 0.0001);
@@ -151,7 +166,7 @@ class GpsDireccionesEHistorialTest extends TestCase
         $this->assertStringContainsString('<div class="table-responsive" x-show="verCambios" x-cloak x-transition.opacity>', $html);
         $this->assertStringContainsString("Ver movimientos ({$filas->count()})", $html);
         $this->assertStringContainsString('.tabla-apilable td[data-label]::before { content: attr(data-label) ": "', $html);
-        $this->assertStringContainsString('<div class="direccion-gps" wire:key="dir-casa">', $html);
+        $this->assertStringContainsString('<tr wire:key="dir-casa"', $html);
         $this->assertStringNotContainsString('style="width:160px;"', $html, 'sin anchos fijos que aplasten el campo en el celular');
         $this->assertLessThan(strpos($html, 'tabla-cambios-gps'), strpos($html, 'lista-direcciones-gps'), 'la lista de direcciones va antes de la tablita');
         $this->assertLessThan(strpos($html, 'wire:name="clients.gps-vehiculos"') ?: PHP_INT_MAX, strpos($html, 'tabla-cambios-gps'), 'la tablita va antes de los vehículos');
@@ -180,5 +195,47 @@ class GpsDireccionesEHistorialTest extends TestCase
         $this->assertSame('Registró', $filas[1]['accion']);
         $this->assertSame('—', $filas[1]['antes']);
         $this->assertSame('gps-hist', $filas[1]['quien']);
+    }
+
+    /** 13/10 (Antony): "las etiquetas Casa y Negocio deben ser editables". */
+    public function test_casa_negocio_y_las_adicionales_se_renombran_y_el_cambio_queda_en_la_tablita(): void
+    {
+        $c = $this->cliente();
+        $c->update(['latitud' => -12.1, 'longitud' => -76.9]);
+        $comp = Livewire::test(Gps::class, ['id' => $c->id]);
+
+        // Casa pasa a "Casa de la mamá" sin tocar las coordenadas.
+        $comp->call('editar', 'casa')->set('editNombre', '  Casa   de la mamá ')->call('guardar', 'casa')
+            ->assertHasNoErrors()->assertSet('msg', 'Dirección renombrada: Casa → Casa de la mamá.')->assertSet('editClave', null);
+        $c->refresh();
+        $this->assertSame('Casa de la mamá', $c->ubicacion1_nombre);
+        $this->assertSame('Casa de la mamá', $c->nombreUbicacion('casa'));
+        $this->assertEqualsWithDelta(-12.1, (float) $c->latitud, 0.0001, 'las coordenadas siguen');
+        $this->assertStringContainsString('Casa de la mamá', $comp->html());
+
+        // No puede repetir otro nombre (sin distinguir mayúsculas) ni quedar vacío.
+        $comp->call('editar', 'negocio')->set('editNombre', 'casa DE LA MAMÁ')->call('guardar', 'negocio')->assertHasErrors(['editNombre']);
+        $comp->set('editNombre', '')->call('guardar', 'negocio')->assertHasErrors(['editNombre']);
+        // Renombrar y pegar coordenadas en el mismo guardado.
+        $comp->set('editNombre', 'Tienda')->set('pegado.negocio', '-11.9, -77.1')->call('guardar', 'negocio')
+            ->assertHasNoErrors()->assertSet('msg', 'Coordenadas de Tienda guardadas.');
+        $c->refresh();
+        $this->assertSame('Tienda', $c->ubicacion2_nombre);
+        $this->assertEqualsWithDelta(-11.9, (float) $c->latitud2, 0.0001);
+        // Volver al nombre de siempre deja la columna en null.
+        $comp->call('editar', 'negocio')->set('editNombre', 'Negocio')->call('guardar', 'negocio')->assertHasNoErrors();
+        $this->assertNull($c->fresh()->ubicacion2_nombre);
+
+        // Una adicional también se renombra.
+        $comp->set('nuevaNombre', 'Taller')->set('nuevaCoordenadas', '-12.0, -77.0')->call('agregar')->assertHasNoErrors();
+        $u = ClientUbicacion::sole();
+        $comp->call('editar', "u:{$u->id}")->set('editNombre', 'Chacra')->call('guardar', "u:{$u->id}")->assertHasNoErrors();
+        $this->assertSame('Chacra', $u->fresh()->nombre);
+
+        // La tablita: los renombres con antes/después = nombres, del más reciente al más viejo.
+        $renombres = $comp->instance()->historial()->where('accion', 'Renombró')->values();
+        $this->assertSame(['Chacra', 'Negocio', 'Tienda', 'Casa de la mamá'], $renombres->pluck('tipo')->all());
+        $this->assertSame([['Taller', 'Chacra'], ['Tienda', 'Negocio'], ['Negocio', 'Tienda'], ['Casa', 'Casa de la mamá']],
+            $renombres->map(fn ($f) => [$f['antes'], $f['despues']])->all());
     }
 }

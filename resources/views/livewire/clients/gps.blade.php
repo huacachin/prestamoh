@@ -1,21 +1,13 @@
 <div>
-    {{-- 10/10 (Antony): "en móvil se ve muy mal". La lista de direcciones ya no es
-         una tabla de anchos fijos: cada dirección es una fila flexible (nombre ·
-         coordenadas · botones) que en el celular se parte en dos líneas (nombre y
-         botones arriba, coordenadas o el campo a lo ancho abajo). Las tablas de
-         cambios y de ubicaciones de vehículos (.tabla-apilable) se apilan en
-         tarjetas con el rótulo de cada columna (data-label) por debajo de 576 px. --}}
+    {{-- 13/10 (Antony): las direcciones van en una tabla como las ubicaciones de
+         los vehículos: Op. (lápiz) · N° · Dirección · Coordenadas. El lápiz abre
+         arriba el formulario de esa dirección (nombre y coordenadas; Casa y
+         Negocio también se renombran) y Borrar vive dentro del formulario.
+         En el celular las tablas se apilan (.tabla-apilable, data-label). --}}
     <style>
-        .direccion-gps { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 5px 0; border-bottom: 1px dashed #e3e6ea; }
-        .direccion-gps:last-child { border-bottom: 0; }
-        .direccion-gps .dg-nombre { flex: 0 0 150px; font-weight: 600; white-space: nowrap; }
-        .direccion-gps .dg-coord { flex: 1 1 220px; min-width: 0; word-break: break-all; }
-        .direccion-gps .dg-acciones { margin-left: auto; display: flex; gap: 4px; white-space: nowrap; }
-        .direccion-gps .dg-acciones .btn { font-size: 11px; }
+        .alta-direccion { border: 1px dashed #c9cdd2; border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; background: #fcfcfa; }
+        .tabla-direcciones-gps { font-size: 12px; margin-bottom: 0; }
         @media (max-width: 575.98px) {
-            .direccion-gps .dg-nombre { flex: 1 1 auto; }
-            .direccion-gps .dg-acciones { order: 2; }
-            .direccion-gps .dg-coord { order: 3; flex: 1 1 100%; }
             .tabla-apilable thead { display: none; }
             .tabla-apilable, .tabla-apilable tbody, .tabla-apilable tr, .tabla-apilable td { display: block; width: 100%; }
             .tabla-apilable tr { border: 1px solid #dee2e6; border-radius: 6px; margin-bottom: 8px; padding: 4px 8px; background: #fff; }
@@ -42,78 +34,101 @@
         </div>
     @endif
 
-    {{-- 10/10 (Antony): lista de direcciones —Casa, Negocio y las que se agreguen con
-         nombre propio—, compacta. Si la dirección ya tiene coordenadas, el campo va
-         bloqueado hasta pulsar "Modificar" (estado local de Alpine: `modificando` guarda
-         la clave de la fila abierta; al guardar o borrar, gps-guardado lo cierra). --}}
-    <div class="border rounded px-2 py-1 mb-2 lista-direcciones-gps" style="background:#fcfcfa; font-size:12px;"
-         x-data="{ modificando: null, agregando: false }"
-         x-on:gps-guardado.window="modificando = null; agregando = false">
-        @foreach($direcciones as $d)
-            @php
-                $tiene = $d['url'] !== null;
-                $icono = match ($d['clave']) { 'casa' => 'ti-home', 'negocio' => 'ti-building-store', default => 'ti-map-pin' };
-            @endphp
-            <div class="direccion-gps" wire:key="dir-{{ $d['clave'] }}">
-                <span class="dg-nombre"><i class="ti {{ $icono }} f-s-16"></i> {{ $d['nombre'] }}</span>
-                <span class="dg-coord">
-                    @if($tiene)
-                        <span class="text-muted" x-show="modificando !== '{{ $d['clave'] }}'">{{ $d['lat'] }}, {{ $d['lng'] }}</span>
-                    @elseif(! $puedeEditar)
-                        <span class="badge bg-secondary" style="font-size:10px;"><i class="ti ti-map-pin-off"></i> Sin ubicación</span>
-                    @endif
-                    @if($puedeEditar)
-                        @if($tiene)
-                        <div class="input-group input-group-sm" x-show="modificando === '{{ $d['clave'] }}'" x-cloak>
-                        @else
-                        <div class="input-group input-group-sm">
-                        @endif
-                            <input type="text" class="form-control" autocomplete="off" x-ref="campo-{{ $d['clave'] }}"
-                                   wire:model="pegado.{{ $d['clave'] }}"
-                                   placeholder="{{ $tiene ? 'Nuevas coordenadas o enlace de Google Maps' : 'Coordenadas o enlace de Google Maps' }}"
-                                   title="En el celular: abre Google Maps, mantén pulsado el punto, copia las coordenadas y pégalas aquí.">
-                            <button type="button" class="btn btn-dark" wire:click="guardar('{{ $d['clave'] }}')"
-                                    wire:loading.attr="disabled" wire:target="guardar('{{ $d['clave'] }}')">
-                                <i class="ti ti-device-floppy"></i>
-                                <span wire:loading.remove wire:target="guardar('{{ $d['clave'] }}')">Guardar</span>
-                                <span wire:loading wire:target="guardar('{{ $d['clave'] }}')">Guardando…</span>
-                            </button>
-                            @if($tiene)
-                                <button type="button" class="btn btn-outline-secondary"
-                                        x-on:click="modificando = null; $wire.set('pegado.{{ $d['clave'] }}', '', false)">Cancelar</button>
-                            @endif
+    <div class="border rounded px-2 py-2 mb-2 lista-direcciones-gps" style="background:#fcfcfa;"
+         x-data="{ agregando: false }"
+         x-on:gps-guardado.window="agregando = false">
+
+        {{-- ═══ Formulario de la dirección que se edita (nombre + coordenadas) ═══ --}}
+        @if($editClave !== null)
+            @php $editando = collect($direcciones)->firstWhere('clave', $editClave); @endphp
+            @if($editando)
+                <div class="alta-direccion" wire:key="edicion-{{ $editClave }}">
+                    <div class="small fw-semibold mb-1"><i class="ti ti-pencil"></i> Editando {{ $editando['nombre'] }}</div>
+                    <div class="row g-2">
+                        <div class="col-12 col-md-4">
+                            <label class="form-label mb-0 small">Nombre *</label>
+                            <input type="text" class="form-control form-control-sm @error('editNombre') is-invalid @enderror" maxlength="60"
+                                   wire:model="editNombre" wire:keydown.enter="guardar('{{ $editClave }}')" autocomplete="off"
+                                   placeholder="{{ $editando['fija'] ? 'Ej.: Casa, Casa de la mamá' : 'Ej.: Taller, Chacra' }}">
+                            @error('editNombre') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
-                    @endif
-                </span>
-                @if($tiene || ($puedeEditar && ! $d['fija']))
-                    <span class="dg-acciones">
-                        @if($tiene)
-                            <a href="{{ $d['url'] }}" target="_blank" class="btn btn-success btn-sm py-0" title="Ver en el mapa">
-                                <i class="ti ti-map-pin"></i> Mapa
-                            </a>
-                            @if($puedeEditar)
-                                <button type="button" class="btn btn-outline-dark btn-sm py-0"
-                                        x-show="modificando !== '{{ $d['clave'] }}'"
-                                        x-on:click="modificando = '{{ $d['clave'] }}'; $nextTick(() => $refs['campo-{{ $d['clave'] }}'].focus())"
-                                        title="Las coordenadas ya están registradas: pulsa el lápiz si hay que cambiarlas.">
+                        <div class="col-12 col-md-8">
+                            <label class="form-label mb-0 small">Coordenadas <span class="text-muted">(o el enlace de Google Maps; vacío = se conservan las de ahora)</span></label>
+                            <input type="text" class="form-control form-control-sm" autocomplete="off"
+                                   wire:model="pegado.{{ $editClave }}" wire:keydown.enter="guardar('{{ $editClave }}')"
+                                   placeholder="{{ $editando['url'] ? $editando['lat'].', '.$editando['lng'] : '-12.014431, -76.824936 o https://maps.app.goo.gl/…' }}"
+                                   title="En el celular: abre Google Maps, mantén pulsado el punto, copia las coordenadas y pégalas aquí.">
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-2 flex-wrap">
+                        <button type="button" class="btn btn-sm btn-dark" wire:click="guardar('{{ $editClave }}')"
+                                wire:loading.attr="disabled" wire:target="guardar('{{ $editClave }}')">
+                            <i class="ti ti-device-floppy"></i>
+                            <span wire:loading.remove wire:target="guardar('{{ $editClave }}')">Guardar cambios</span>
+                            <span wire:loading wire:target="guardar('{{ $editClave }}')">Guardando…</span>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" wire:click="cancelarEdicion"><i class="ti ti-x"></i> Cancelar</button>
+                        @if($editando['url'] || ! $editando['fija'])
+                            {{-- Borrar solo aquí, dentro de la edición: Casa/Negocio borran sus coordenadas (solo el director:
+                                 no tienen fecha propia); una dirección adicional se elimina (regla del mismo día). --}}
+                            <button type="button" class="btn btn-sm btn-outline-danger ms-auto"
+                                    wire:click="borrar('{{ $editClave }}')" @creadoEl($editando['modelo'])
+                                    data-confirmar="{{ $editando['fija'] ? "¿Borrar las coordenadas de {$editando['nombre']}?" : "¿Eliminar la dirección {$editando['nombre']}?" }}"
+                                    title="{{ $editando['fija'] ? 'Borrar coordenadas' : 'Eliminar esta dirección' }}">
+                                <i class="ti ti-trash"></i> {{ $editando['fija'] ? 'Borrar coordenadas' : 'Eliminar dirección' }}
+                            </button>
+                        @endif
+                    </div>
+                </div>
+            @endif
+        @endif
+
+        {{-- ═══ Tabla de direcciones ═══ --}}
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered table-hover tabla-direcciones-gps tabla-apilable">
+                <thead class="table-secondary">
+                    <tr>
+                        @if($puedeEditar)<th class="text-center" width="40">Op.</th>@endif
+                        <th class="text-center" width="40">N°</th>
+                        <th width="180">Dirección</th>
+                        <th>Coordenadas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach($direcciones as $i => $d)
+                    <tr wire:key="dir-{{ $d['clave'] }}" @class(['table-warning' => $editClave === $d['clave']])>
+                        @if($puedeEditar)
+                            <td class="text-center celda-acciones">
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0" wire:click="editar('{{ $d['clave'] }}')"
+                                        title="Editar nombre o coordenadas">
                                     <i class="ti ti-pencil"></i>
                                 </button>
+                            </td>
+                        @endif
+                        <td class="text-center" data-label="N°">{{ $i + 1 }}</td>
+                        <td class="fw-semibold" data-label="Dirección"><i class="ti {{ $d['icono'] }} f-s-16"></i> {{ $d['nombre'] }}</td>
+                        <td data-label="Coordenadas" style="word-break:break-all;">
+                            @if($d['url'])
+                                <span class="font-monospace">{{ $d['lat'] }}, {{ $d['lng'] }}</span>
+                                <a href="{{ $d['url'] }}" target="_blank" rel="noopener" class="btn btn-success btn-sm py-0 ms-1" style="font-size:11px;" title="Ver en el mapa (pestaña nueva)">
+                                    <i class="ti ti-map-pin"></i> Mapa
+                                </a>
+                            @else
+                                <span class="badge bg-secondary" style="font-size:10px;"><i class="ti ti-map-pin-off"></i> Sin ubicación</span>
+                                @if($puedeEditar)
+                                    <a href="#" class="small ms-1" wire:click.prevent="editar('{{ $d['clave'] }}')">pegar coordenadas</a>
+                                @endif
                             @endif
-                        @endif
-                        @if($puedeEditar && ($tiene || ! $d['fija']))
-                            <button type="button" class="btn btn-outline-danger btn-sm py-0"
-                                    wire:click="borrar('{{ $d['clave'] }}')" @creadoEl($d['modelo'])
-                                    data-confirmar="{{ $d['fija'] ? "¿Borrar las coordenadas de {$d['nombre']}?" : "¿Eliminar la dirección {$d['nombre']}?" }}"
-                                    title="{{ $d['fija'] ? 'Borrar coordenadas' : 'Eliminar esta dirección' }}">
-                                <i class="ti ti-trash"></i>
-                            </button>
-                        @endif
-                    </span>
-                @endif
-            </div>
-        @endforeach
+                        </td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        </div>
+
+        {{-- ═══ Agregar dirección (Alpine: el formulario aparece sin viaje al servidor) ═══ --}}
         @if($puedeEditar)
-            <div class="pt-2 pb-1" wire:key="dir-nueva">
+            <div class="pt-2" wire:key="dir-nueva">
                 <button type="button" class="btn btn-outline-primary btn-sm py-0" style="font-size:11px;"
                         x-show="!agregando" x-on:click="agregando = true; $nextTick(() => $refs.nuevoNombre.focus())">
                     <i class="ti ti-plus"></i> Agregar dirección

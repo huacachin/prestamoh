@@ -29,7 +29,7 @@ class Client extends Model
         'direccion', 'referencia', 'distrito', 'provincia', 'departamento',
         'zona', 'contacto_emergencia', 'telefono_contacto',
         'banco_haberes', 'cuenta_haberes', 'banco_cts', 'cuenta_cts',
-        'afp', 'cussp', 'latitud', 'longitud', 'latitud2', 'longitud2', 'imagen',
+        'afp', 'cussp', 'latitud', 'longitud', 'latitud2', 'longitud2', 'ubicacion1_nombre', 'ubicacion2_nombre', 'imagen',
         'observaciones', 'asesor_id', 'headquarter_id', 'status', 'es_relacionado',
     ];
 
@@ -303,6 +303,19 @@ class Client extends Model
     }
 
     /** Direcciones GPS adicionales (10/10/2026): Casa y Negocio viven en latitud/longitud y latitud2/longitud2; el resto aquí. */
+    /**
+     * Nombre de la dirección fija de la pestaña GPS (13/10/2026): el que le
+     * puso el usuario o, si no, "Casa" / "Negocio".
+     */
+    public function nombreUbicacion(string $clave): string
+    {
+        return match ($clave) {
+            'casa' => trim((string) $this->ubicacion1_nombre) ?: 'Casa',
+            'negocio' => trim((string) $this->ubicacion2_nombre) ?: 'Negocio',
+            default => $clave,
+        };
+    }
+
     public function ubicaciones(): HasMany
     {
         return $this->hasMany(ClientUbicacion::class, 'client_id')->orderBy('id');
