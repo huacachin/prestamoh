@@ -199,6 +199,9 @@ class GpsVehiculos extends Component implements SinHorarioDeEliminacion
             return;
         }
         $r->delete();
+        if ($this->editId === $id) {
+            $this->cancelar();
+        }
         $this->msgType = 'ok';
         $this->msg = "Ubicación del vehículo {$r->placa} eliminada.";
     }

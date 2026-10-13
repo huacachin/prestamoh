@@ -124,7 +124,8 @@ class GpsVehiculosReporteTest extends TestCase
         $this->assertStringNotContainsString('Fecha de registro</th>', $html);
         $this->assertStringNotContainsString('Registró', $html);
         $this->assertStringContainsString('<td class="text-center" data-label="N°">1</td>', $html);
-        $this->assertLessThan(strpos($html, 'data-label="N°">1</td>'), strpos($html, "wire:click=\"eliminar({$r->id})\""), 'el botón de eliminar va primero');
+        $this->assertLessThan(strpos($html, 'data-label="N°">1</td>'), strpos($html, "wire:click=\"editar({$r->id})\""), 'el lápiz va primero');
+        $this->assertStringNotContainsString('wire:click="eliminar(', $html, '13/10: Eliminar solo sale dentro del formulario de edición');
         $this->assertLessThan(strpos($html, 'Parado frente al mercado de Huaycán'), strpos($html, 'data-label="Usuario">gps-veh-tester'), 'el usuario va antes de la descripción también en el celular');
         $this->assertStringContainsString("wire:click=\"nuevo({$this->vehiculo->id})\"", $html, 'vuelve el botón');
 
@@ -191,7 +192,8 @@ class GpsVehiculosReporteTest extends TestCase
         $html = $comp->html();
         $this->assertSame(3, substr_count($html, 'wire:click="nuevo('), 'un botón por cada vehículo de la ficha; la placa huérfana no tiene');
         $this->assertStringContainsString('· 2 ubicaciones', $html);
-        $this->assertSame(4, substr_count($html, 'wire:click="eliminar('));
+        $this->assertSame(0, substr_count($html, 'wire:click="eliminar('), 'sin tacho en las filas');
+        $this->assertSame(3, substr_count($html, 'wire:click="editar('), 'un lápiz por ubicación de un vehículo de la ficha; la huérfana no');
 
         Livewire::test(Gps::class, ['id' => $this->client->id])->assertSeeLivewire('clients.gps-vehiculos');
 
@@ -241,9 +243,11 @@ class GpsVehiculosReporteTest extends TestCase
         VehiculoGpsReporte::whereKey($deAyer->id)->update(['created_at' => now()->subDay()]);
 
         $comp = Livewire::test(GpsVehiculos::class, ['id' => $this->client->id]);
-        $html = $comp->html();
-        $this->assertStringContainsString('data-creado="2026-10-10" data-sin-horario="1"', $html, 'el botón de hoy no se apaga por la hora');
-        $this->assertStringContainsString('data-creado="2026-10-09" data-sin-horario="1"', $html, 'el de ayer lo apaga el mismo día, no la hora');
+        // 13/10: Eliminar vive dentro del formulario de edición; en la fila solo va el lápiz (y la de ayer ni eso para quien no es director).
+        $html = $comp->call('editar', $deHoy->id)->html();
+        $this->assertStringContainsString("wire:click=\"eliminar({$deHoy->id})\" data-creado=\"2026-10-10\" data-sin-horario=\"1\"", $html, 'el botón de hoy no se apaga por la hora');
+        $this->assertStringNotContainsString("wire:click=\"editar({$deAyer->id})\"", $html, 'la de ayer no se edita ni se elimina desde la lista');
+        $comp->call('cancelar');
 
         // La de ayer no: aviso del mismo día y rastro en la auditoría.
         $comp->call('eliminar', $deAyer->id)->assertDispatched('errorAlert');
@@ -288,6 +292,9 @@ class GpsVehiculosReporteTest extends TestCase
             ->assertSet('form.descripcion', 'Registrada hoy');
         $this->assertStringContainsString('Editando la ubicación · la fecha de registro no cambia', $comp->html());
         $this->assertStringContainsString('Guardar cambios', $comp->html());
+        // 13/10: Eliminar aparece solo aquí, dentro del formulario, con su fecha para la regla del mismo día.
+        $this->assertStringContainsString("wire:click=\"eliminar({$deHoy->id})\" data-creado=\"2026-10-12\" data-sin-horario=\"1\"", $comp->html());
+        $this->assertSame(1, substr_count($comp->html(), 'wire:click="eliminar('));
         $comp->set('form.coordenadas', 'https://maps.google.com/?q=-12.0464,-77.0428')
             ->set('form.descripcion', 'Corregida: frente al grifo')
             ->call('guardar')

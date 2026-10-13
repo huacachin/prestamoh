@@ -95,8 +95,8 @@
                                 <button type="button" class="btn btn-outline-dark btn-sm py-0"
                                         x-show="modificando !== '{{ $d['clave'] }}'"
                                         x-on:click="modificando = '{{ $d['clave'] }}'; $nextTick(() => $refs['campo-{{ $d['clave'] }}'].focus())"
-                                        title="Las coordenadas ya están registradas: pulsa Modificar si hay que cambiarlas.">
-                                    <i class="ti ti-pencil"></i> Modificar
+                                        title="Las coordenadas ya están registradas: pulsa el lápiz si hay que cambiarlas.">
+                                    <i class="ti ti-pencil"></i>
                                 </button>
                             @endif
                         @endif
@@ -142,13 +142,22 @@
         @endif
     </div>
 
-    {{-- Cambios de ubicación (10/10): qué dirección, de qué a qué, quién y cuándo. Sale de la auditoría. --}}
-    <div class="border rounded px-2 py-2 mb-2" style="background:#fcfcfa;">
-        <div class="fw-semibold small mb-1"><i class="ti ti-history f-s-16"></i> Cambios de ubicación</div>
+    {{-- Cambios de ubicación (10/10): qué dirección, de qué a qué, quién y cuándo. Sale de la auditoría.
+         13/10 (Antony): la tabla va escondida tras "Ver movimientos" (Alpine, sin viaje al servidor). --}}
+    <div class="border rounded px-2 py-2 mb-2" style="background:#fcfcfa;" x-data="{ verCambios: false }">
+        <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
+            <span class="fw-semibold small"><i class="ti ti-history f-s-16"></i> Cambios de ubicación</span>
+            @if($historial->isNotEmpty())
+                <button type="button" class="btn btn-outline-secondary btn-sm py-0" style="font-size:11px;" x-on:click="verCambios = !verCambios">
+                    <i class="ti" :class="verCambios ? 'ti-eye-off' : 'ti-eye'"></i>
+                    <span x-text="verCambios ? 'Ocultar movimientos' : 'Ver movimientos ({{ $historial->count() }})'">Ver movimientos ({{ $historial->count() }})</span>
+                </button>
+            @endif
+        </div>
         @if($historial->isEmpty())
             <div class="small text-muted">Todavía no hay cambios registrados.</div>
         @else
-            <div class="table-responsive">
+            <div class="table-responsive" x-show="verCambios" x-cloak x-transition.opacity>
                 <table class="table table-sm table-bordered align-middle mb-0 tabla-cambios-gps tabla-apilable" style="font-size:11px;">
                     <thead class="bg-primary">
                         <tr>

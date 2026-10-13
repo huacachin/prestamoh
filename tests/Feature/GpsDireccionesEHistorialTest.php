@@ -55,10 +55,12 @@ class GpsDireccionesEHistorialTest extends TestCase
         // El formulario de "Agregar dirección" se oculta con !important (d-flex de Bootstrap lo pisaba).
         $this->assertStringContainsString('x-show.important="agregando" x-cloak', $html);
         $this->assertStringContainsString("x-on:click=\"modificando = 'casa'; \$nextTick(() => \$refs['campo-casa'].focus())\"", $html);
-        $this->assertStringContainsString('<i class="ti ti-pencil"></i> Modificar', $html);
+        // 13/10 (Antony): solo el lápiz, sin la palabra.
+        $this->assertMatchesRegularExpression('~<i class="ti ti-pencil"></i>\s*</button>~', $html);
+        $this->assertStringNotContainsString('</i> Modificar', $html);
         $this->assertStringContainsString("x-on:click=\"modificando = null; \$wire.set('pegado.casa', '', false)\">Cancelar", $html, 'Cancelar vuelve a bloquear sin viaje');
         $this->assertStringContainsString('x-on:gps-guardado.window="modificando = null; agregando = false"', $html);
-        $this->assertStringContainsString('Las coordenadas ya están registradas: pulsa Modificar si hay que cambiarlas.', $html);
+        $this->assertStringContainsString('Las coordenadas ya están registradas: pulsa el lápiz si hay que cambiarlas.', $html);
 
         // Al guardar, el servidor avisa para que el navegador vuelva a bloquear.
         Livewire::test(Gps::class, ['id' => $c->id])
@@ -144,6 +146,10 @@ class GpsDireccionesEHistorialTest extends TestCase
         $this->assertStringContainsString('<td class="fw-semibold" style="word-break:break-all;" data-label="Después">-12.5, -76.5</td>', $html);
         // 10/10: en el celular las tablas se apilan con el rótulo de cada columna (data-label) y la lista de direcciones es flexible.
         $this->assertStringContainsString('tabla-cambios-gps tabla-apilable', $html);
+        // 13/10 (Antony): la tabla va escondida tras "Ver movimientos" (Alpine), con el conteo.
+        $this->assertStringContainsString('x-data="{ verCambios: false }"', $html);
+        $this->assertStringContainsString('<div class="table-responsive" x-show="verCambios" x-cloak x-transition.opacity>', $html);
+        $this->assertStringContainsString("Ver movimientos ({$filas->count()})", $html);
         $this->assertStringContainsString('.tabla-apilable td[data-label]::before { content: attr(data-label) ": "', $html);
         $this->assertStringContainsString('<div class="direccion-gps" wire:key="dir-casa">', $html);
         $this->assertStringNotContainsString('style="width:160px;"', $html, 'sin anchos fijos que aplasten el campo en el celular');

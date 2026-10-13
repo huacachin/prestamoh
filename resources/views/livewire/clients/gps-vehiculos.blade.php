@@ -72,6 +72,13 @@
                                 <span wire:loading wire:target="guardar">Guardando…</span>
                             </button>
                             <button type="button" class="btn btn-sm btn-outline-secondary" wire:click="cancelar"><i class="ti ti-x"></i> Cancelar</button>
+                            @if($editId && ($editando = $ubicaciones->firstWhere('id', $editId)))
+                                {{-- 13/10 (Antony): Eliminar solo aparece mientras se edita; misma regla del mismo día (@creadoEl + ConReglasDeEliminacion). --}}
+                                <button type="button" class="btn btn-sm btn-outline-danger ms-auto" wire:click="eliminar({{ $editando->id }})" @creadoEl($editando)
+                                        data-confirmar="¿Eliminar la ubicación del {{ $editando->fecha->format('d/m/Y H:i') }} del vehículo {{ $v->placa }}?" title="Eliminar esta ubicación">
+                                    <i class="ti ti-trash"></i> Eliminar
+                                </button>
+                            @endif
                         </div>
                     </div>
                 @endif
