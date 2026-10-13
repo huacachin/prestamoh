@@ -57,13 +57,52 @@ class Coordenadas
         if (preg_match('/@(-?\d+\.\d+),(-?\d+\.\d+)/', $texto, $m)) {
             return self::validas($m[1], $m[2]);
         }
-        preg_match_all('/-?\d+\.\d+/', $texto, $m);
-        $nums = $m[0] ?? [];
-        if (count($nums) < 2) {
+        // Grados, minutos y segundos tal como Maps los muestra de nombre del lugar
+        // (13/10, Antony: 12°01'22.6"S 76°58'06.4"W se guardaba como 22.6, 6.4).
+        if (($dms = self::deGradosMinutosSegundos($texto)) !== null) {
+            return $dms;
+        }
+        // Decimales pegados a mano: "-12.014431, -76.824936" (también con espacio o
+        // paréntesis). Tienen que ir JUNTOS, separados solo por coma o espacio: ya no
+        // se toman dos números cualesquiera del texto, que es lo que colaba los
+        // segundos del DMS ("22.6 … 06.4").
+        if (preg_match('/(-?\d{1,3}\.\d+)\s*[,;]?\s*(-?\d{1,3}\.\d+)/', $texto, $m)) {
+            return self::validas($m[1], $m[2]);
+        }
+
+        return null;
+    }
+
+    /**
+     * 12°01'22.6"S 76°58'06.4"W → [-12.0229444, -76.9684444]. Acepta ° u º, ' o ′,
+     * " o ″ o '' (o nada), espacios, y N/S/E/W/O (Oeste) en cualquier orden.
+     *
+     * @return array{0: float, 1: float}|null
+     */
+    private static function deGradosMinutosSegundos(string $texto): ?array
+    {
+        $patron = '/(\d{1,3})\s*[°º]\s*(\d{1,2})\s*[\'′’]\s*(\d{1,2}(?:\.\d+)?)\s*(?:"|″|”|\'\')?\s*([NSEWO])\b/iu';
+        if (! preg_match_all($patron, $texto, $m, PREG_SET_ORDER) || count($m) < 2) {
+            return null;
+        }
+        $lat = $lng = null;
+        foreach ($m as $p) {
+            $valor = (int) $p[1] + (int) $p[2] / 60 + (float) $p[3] / 3600;
+            $hemisferio = strtoupper($p[4]);
+            if (in_array($hemisferio, ['S', 'W', 'O'], true)) {
+                $valor = -$valor;
+            }
+            if (in_array($hemisferio, ['N', 'S'], true)) {
+                $lat ??= $valor;
+            } else {
+                $lng ??= $valor;
+            }
+        }
+        if ($lat === null || $lng === null) {
             return null;
         }
 
-        return self::validas($nums[0], $nums[1]);
+        return self::validas((string) $lat, (string) $lng);
     }
 
     /** @return array{0: float, 1: float}|null */

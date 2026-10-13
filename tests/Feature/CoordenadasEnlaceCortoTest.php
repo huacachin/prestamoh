@@ -91,4 +91,32 @@ class CoordenadasEnlaceCortoTest extends TestCase
             ->call('agregar')
             ->assertHasErrors(['nuevaCoordenadas']);
     }
+
+    /**
+     * 13/10/2026 (Antony, ficha 1469): el nombre del lugar que muestra Maps
+     * en grados, minutos y segundos (12°01'22.6"S 76°58'06.4"W) se guardaba
+     * como 22.6, 6.4: el lector tomaba los dos primeros decimales del texto.
+     * Ahora entiende ese formato y ya no adivina con números sueltos.
+     */
+    public function test_grados_minutos_y_segundos_se_convierten_y_los_numeros_sueltos_ya_no_se_toman_por_coordenadas(): void
+    {
+        // El caso real (Google: 12°01'22.6"S 76°58'06.4"W ≈ -12.022944, -76.968444).
+        $this->assertSame([-12.0229444, -76.9684444], Coordenadas::parse('12°01\'22.6"S 76°58\'06.4"W'));
+        // Variantes: con coma, sin comillas de segundos, con ″ y ′, con O de Oeste, y la longitud primero.
+        $this->assertSame([-12.0229444, -76.9684444], Coordenadas::parse('12°01\'22.6"S, 76°58\'06.4"W'));
+        $this->assertSame([-12.0229444, -76.9684444], Coordenadas::parse("12º01'22.6 S 76º58'06.4 W"));
+        $this->assertSame([-12.0229444, -76.9684444], Coordenadas::parse('12°01′22.6″S 76°58′06.4″W'));
+        $this->assertSame([-12.0229444, -76.9684444], Coordenadas::parse("76°58'06.4''O 12°01'22.6''S"));
+        $this->assertSame([12.0229444, 76.9684444], Coordenadas::parse('12°01\'22.6"N 76°58\'06.4"E'));
+        // El enlace largo con el nombre en DMS sigue leyendo el pin, no los segundos.
+        $this->assertSame([-12.022748, -76.9746108], Coordenadas::parse("https://www.google.com/maps/place/12%C2%B001'21.9%22S+76%C2%B058'28.6%22W/@-12.022748,-76.9771857,17z/data=!3m1!4b1!4m4!3m3!8m2!3d-12.022748!4d-76.9746108?hl=es&entry=ttu"));
+        // Decimales a mano siguen igual: coma, espacio, paréntesis.
+        $this->assertSame([-12.014431, -76.824936], Coordenadas::parse('-12.014431, -76.824936'));
+        $this->assertSame([-12.014431, -76.824936], Coordenadas::parse('(-12.014431 -76.824936)'));
+        $this->assertSame([-12.0464, -77.0428], Coordenadas::parse('-12.0464,-77.0428'));
+        // Lo que antes colaba: dos números sueltos en un texto ya no son coordenadas.
+        $this->assertNull(Coordenadas::parse('llamar a las 21.9 o 28.6'));
+        $this->assertNull(Coordenadas::parse('S/ 1500.50 cuota 375.13'));
+        $this->assertNull(Coordenadas::parse('12°01\'22.6"S'), 'solo una de las dos');
+    }
 }
