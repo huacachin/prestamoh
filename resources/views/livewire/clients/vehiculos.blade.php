@@ -91,7 +91,7 @@
                     <select class="form-select form-select-sm select2-tags" wire:model.defer="categoria"
                             data-placeholder="— Seleccione —">
                         <option value=""></option>
-                        @foreach(\App\Support\VehiculoCatalogos::paraValor(\App\Support\VehiculoCatalogos::CATEGORIAS, $categoria) as $opcion)
+                        @foreach(\App\Support\VehiculoCatalogos::paraValor('categoria', $categoria) as $opcion)
                             <option value="{{ $opcion }}">{{ $opcion }}</option>
                         @endforeach
                     </select>
@@ -106,7 +106,7 @@
                     <select class="form-select form-select-sm select2-tags" wire:model.defer="carroceria"
                             data-placeholder="— Seleccione —">
                         <option value=""></option>
-                        @foreach(\App\Support\VehiculoCatalogos::paraValor(\App\Support\VehiculoCatalogos::CARROCERIAS, $carroceria) as $opcion)
+                        @foreach(\App\Support\VehiculoCatalogos::paraValor('carroceria', $carroceria) as $opcion)
                             <option value="{{ $opcion }}">{{ $opcion }}</option>
                         @endforeach
                     </select>
@@ -116,7 +116,7 @@
                     <select class="form-select form-select-sm select2-tags @if(in_array('color', $autoCampos)) campo-api @endif" wire:model.defer="color"
                             data-placeholder="— Seleccione —">
                         <option value=""></option>
-                        @foreach(\App\Support\VehiculoCatalogos::paraValor(\App\Support\VehiculoCatalogos::COLORES, $color) as $opcion)
+                        @foreach(\App\Support\VehiculoCatalogos::paraValor('color', $color) as $opcion)
                             <option value="{{ $opcion }}">{{ $opcion }}</option>
                         @endforeach
                     </select>
@@ -126,7 +126,7 @@
                     <select class="form-select form-select-sm select2-tags" wire:model.defer="combustible"
                             data-placeholder="— Seleccione —">
                         <option value=""></option>
-                        @foreach(\App\Support\Combustibles::paraValor($combustible) as $comb)
+                        @foreach(\App\Support\VehiculoCatalogos::paraValor('combustible', $combustible) as $comb)
                             <option value="{{ $comb }}">{{ $comb }}</option>
                         @endforeach
                     </select>

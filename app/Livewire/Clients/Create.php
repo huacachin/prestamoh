@@ -11,6 +11,7 @@ use App\Support\Auditoria\ConCapturaDeAuditoria;
 use App\Support\Documentos\DomicilioLegal;
 use App\Support\Documentos\Nacionalidades;
 use App\Support\Ubigeo;
+use App\Support\VehiculoCatalogos;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
@@ -763,6 +764,8 @@ class Create extends Component
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+                // 13/10: lo escrito en categoría, carrocería, color o combustible queda en el catálogo para la próxima.
+                VehiculoCatalogos::recordarDe($v);
             }
 
             // Avanzar correlativo al expediente que terminó usando el usuario

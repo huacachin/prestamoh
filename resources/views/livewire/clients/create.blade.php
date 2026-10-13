@@ -467,7 +467,7 @@
                                     <select class="form-select form-select-sm select2-tags" wire:model.defer="vehiculos.{{ $i }}.categoria"
                                             data-placeholder="— Seleccione —">
                                         <option value=""></option>
-                                        @foreach(\App\Support\VehiculoCatalogos::paraValor(\App\Support\VehiculoCatalogos::CATEGORIAS, $v['categoria'] ?? null) as $opcion)
+                                        @foreach(\App\Support\VehiculoCatalogos::paraValor('categoria', $v['categoria'] ?? null) as $opcion)
                                             <option value="{{ $opcion }}">{{ $opcion }}</option>
                                         @endforeach
                                     </select>
@@ -482,7 +482,7 @@
                                     <select class="form-select form-select-sm select2-tags" wire:model.defer="vehiculos.{{ $i }}.carroceria"
                                             data-placeholder="— Seleccione —">
                                         <option value=""></option>
-                                        @foreach(\App\Support\VehiculoCatalogos::paraValor(\App\Support\VehiculoCatalogos::CARROCERIAS, $v['carroceria'] ?? null) as $opcion)
+                                        @foreach(\App\Support\VehiculoCatalogos::paraValor('carroceria', $v['carroceria'] ?? null) as $opcion)
                                             <option value="{{ $opcion }}">{{ $opcion }}</option>
                                         @endforeach
                                     </select>
@@ -492,7 +492,7 @@
                                     <select class="form-select form-select-sm select2-tags @if(in_array('color', $autoVehiculo[$i] ?? [])) campo-api @endif" wire:model.defer="vehiculos.{{ $i }}.color"
                                             data-placeholder="— Seleccione —">
                                         <option value=""></option>
-                                        @foreach(\App\Support\VehiculoCatalogos::paraValor(\App\Support\VehiculoCatalogos::COLORES, $v['color'] ?? null) as $opcion)
+                                        @foreach(\App\Support\VehiculoCatalogos::paraValor('color', $v['color'] ?? null) as $opcion)
                                             <option value="{{ $opcion }}">{{ $opcion }}</option>
                                         @endforeach
                                     </select>
@@ -502,7 +502,7 @@
                                     <select class="form-select form-select-sm select2-tags" wire:model.defer="vehiculos.{{ $i }}.combustible"
                                             data-placeholder="— Seleccione —">
                                         <option value=""></option>
-                                        @foreach(\App\Support\Combustibles::paraValor($v['combustible'] ?? null) as $comb)
+                                        @foreach(\App\Support\VehiculoCatalogos::paraValor('combustible', $v['combustible'] ?? null) as $comb)
                                             <option value="{{ $comb }}">{{ $comb }}</option>
                                         @endforeach
                                     </select>

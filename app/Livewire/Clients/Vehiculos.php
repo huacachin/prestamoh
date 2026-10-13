@@ -8,6 +8,7 @@ use App\Services\Factiliza;
 use App\Support\Audit;
 use App\Support\ConReglasDeEliminacion;
 use App\Support\Documentos\Nacionalidades;
+use App\Support\VehiculoCatalogos;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 
@@ -209,6 +210,8 @@ class Vehiculos extends Component
             Vehiculo::create($datos);
             $this->msg = "Vehículo {$this->placa} agregado.";
         }
+        // 13/10: lo escrito en categoría, carrocería, color o combustible queda en el catálogo para la próxima.
+        VehiculoCatalogos::recordarDe($datos);
 
         $this->msgType = 'ok';
         $this->limpiarFormulario();
