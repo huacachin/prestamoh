@@ -45,7 +45,7 @@ class GpsDireccionesEHistorialTest extends TestCase
         $html = $comp->html();
 
         // Tabla como la de los vehículos: Op. · N° · Dirección · Coordenadas; Casa y Negocio sin ubicación.
-        $this->assertMatchesRegularExpression('~<th[^>]*>Op\.</th>(?:\s|<!--.*?-->)*<th[^>]*>N°</th>\s*<th[^>]*>Dirección</th>\s*<th>Coordenadas</th>~', $html);
+        $this->assertMatchesRegularExpression('~<th[^>]*>Op\.</th>(?:\s|<!--.*?-->)*<th[^>]*>N°</th>\s*<th[^>]*>Fecha</th>\s*<th[^>]*>Usuario</th>\s*<th[^>]*>Dirección</th>\s*<th>Coordenadas</th>~', $html);
         $this->assertStringContainsString('wire:key="dir-casa"', $html);
         $this->assertStringContainsString('wire:key="dir-negocio"', $html);
         $this->assertSame(2, substr_count($html, 'Sin ubicación'));
@@ -75,7 +75,9 @@ class GpsDireccionesEHistorialTest extends TestCase
         $this->assertStringContainsString('<span class="font-monospace">-12.2000000, -76.8000000</span>', $html);
         $this->assertStringContainsString('href="https://maps.google.com/?q=-12.2000000,-76.8000000" target="_blank"', $html);
         // 14/10 (Antony): la fila lleva la fecha del último registro y quién lo hizo; Negocio sigue sin nada.
-        $this->assertMatchesRegularExpression('~<th[^>]*>Coordenadas</th>\s*<th[^>]*>Fecha</th>\s*<th[^>]*>Usuario</th>~', $html);
+        // Orden (14/10, Antony): Op. · N° · Fecha · Usuario · Dirección · Coordenadas.
+        $this->assertMatchesRegularExpression('~<th[^>]*>N°</th>\s*<th[^>]*>Fecha</th>\s*<th[^>]*>Usuario</th>\s*<th[^>]*>Dirección</th>\s*<th>Coordenadas</th>~', $html);
+        $this->assertLessThan(strpos($html, 'data-label="Dirección"'), strpos($html, 'data-label="Fecha"'), 'en el celular también: fecha antes de la dirección');
         $this->assertStringContainsString(now()->format('d/m/Y').' <span class="text-muted">'.now()->format('H:i').'</span>', $html);
         $this->assertStringContainsString('<td class="text-center" data-label="Usuario">gps-hist</td>', $html);
         $this->assertSame(1, substr_count($html, 'data-label="Usuario">gps-hist</td>'), 'solo Casa tiene registro');

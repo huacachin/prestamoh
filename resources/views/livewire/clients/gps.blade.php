@@ -90,10 +90,10 @@
                     <tr>
                         @if($puedeEditar)<th class="text-center" width="40">Op.</th>@endif
                         <th class="text-center" width="40">N°</th>
-                        <th width="180">Dirección</th>
-                        <th>Coordenadas</th>
                         <th class="text-center" width="120">Fecha</th>
                         <th class="text-center" width="100">Usuario</th>
+                        <th width="180">Dirección</th>
+                        <th>Coordenadas</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -108,6 +108,15 @@
                             </td>
                         @endif
                         <td class="text-center" data-label="N°">{{ $i + 1 }}</td>
+                        {{-- 14/10 (Antony): último registro de coordenadas, fecha y usuario (de la auditoría). --}}
+                        <td class="text-center" style="white-space:nowrap;" data-label="Fecha">
+                            @if($d['url'] && $d['fecha'])
+                                {{ $d['fecha']->format('d/m/Y') }} <span class="text-muted">{{ $d['fecha']->format('H:i') }}</span>
+                            @else
+                                <span class="text-muted">—</span>
+                            @endif
+                        </td>
+                        <td class="text-center" data-label="Usuario">{{ ($d['url'] && $d['quien']) ? $d['quien'] : '—' }}</td>
                         <td class="fw-semibold" data-label="Dirección"><i class="ti {{ $d['icono'] }} f-s-16"></i> {{ $d['nombre'] }}</td>
                         <td data-label="Coordenadas" style="word-break:break-all;">
                             @if($d['url'])
@@ -122,15 +131,6 @@
                                 @endif
                             @endif
                         </td>
-                        {{-- 14/10 (Antony): último registro de coordenadas, fecha y usuario (de la auditoría). --}}
-                        <td class="text-center" style="white-space:nowrap;" data-label="Fecha">
-                            @if($d['url'] && $d['fecha'])
-                                {{ $d['fecha']->format('d/m/Y') }} <span class="text-muted">{{ $d['fecha']->format('H:i') }}</span>
-                            @else
-                                <span class="text-muted">—</span>
-                            @endif
-                        </td>
-                        <td class="text-center" data-label="Usuario">{{ ($d['url'] && $d['quien']) ? $d['quien'] : '—' }}</td>
                     </tr>
                 @endforeach
                 </tbody>
