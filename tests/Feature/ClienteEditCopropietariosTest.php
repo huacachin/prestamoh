@@ -66,6 +66,9 @@ class ClienteEditCopropietariosTest extends TestCase
         $this->mundo();
         $html = Livewire::test(Edit::class, ['id' => $this->titular->id])->html();
 
+        // 14/10 (Antony): el título lleva el nombre completo del cliente (en el celular, en su propia línea).
+        $this->assertStringContainsString('<span class="titulo-cliente">· Ore Barrientos Carla</span>', $html);
+        $this->assertStringContainsString('@media (max-width: 575.98px) { .titulo-cliente { display: block;', $html);
         $this->assertStringNotContainsString('resumen-linea', $html);
         $this->assertStringNotContainsString('resumen-cliente', $html);
         $this->assertStringNotContainsString('badge rounded-pill', $html, 'sin globitos en las pestañas');

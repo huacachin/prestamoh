@@ -1,7 +1,16 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-sm-6">
-            <h4 class="main-title title-modules">EDITAR CLIENTE</h4>
+            {{-- 14/10 (Antony): el título lleva el nombre completo del cliente; en el celular
+                 baja a su propia línea para no romper el título. --}}
+            <style>
+                .titulo-cliente { font-size: 75%; font-weight: 500; color: #6c757d; text-transform: none; }
+                @media (max-width: 575.98px) { .titulo-cliente { display: block; margin-top: 2px; } }
+            </style>
+            <h4 class="main-title title-modules mb-0">
+                EDITAR CLIENTE
+                <span class="titulo-cliente">· {{ $client->fullName() }}</span>
+            </h4>
         </div>
         <div class="col-sm-6 mt-sm-2">
             <ul class="breadcrumb breadcrumb-start float-sm-end">
