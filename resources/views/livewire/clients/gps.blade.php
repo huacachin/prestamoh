@@ -92,6 +92,8 @@
                         <th class="text-center" width="40">N°</th>
                         <th width="180">Dirección</th>
                         <th>Coordenadas</th>
+                        <th class="text-center" width="120">Fecha</th>
+                        <th class="text-center" width="100">Usuario</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -120,6 +122,15 @@
                                 @endif
                             @endif
                         </td>
+                        {{-- 14/10 (Antony): último registro de coordenadas, fecha y usuario (de la auditoría). --}}
+                        <td class="text-center" style="white-space:nowrap;" data-label="Fecha">
+                            @if($d['url'] && $d['fecha'])
+                                {{ $d['fecha']->format('d/m/Y') }} <span class="text-muted">{{ $d['fecha']->format('H:i') }}</span>
+                            @else
+                                <span class="text-muted">—</span>
+                            @endif
+                        </td>
+                        <td class="text-center" data-label="Usuario">{{ ($d['url'] && $d['quien']) ? $d['quien'] : '—' }}</td>
                     </tr>
                 @endforeach
                 </tbody>

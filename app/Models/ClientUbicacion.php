@@ -23,6 +23,12 @@ class ClientUbicacion extends Model
         return $this->belongsTo(Client::class);
     }
 
+    /** Quién la registró (para la tabla de la pestaña GPS cuando no hay rastro en la auditoría). */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function url(): ?string
     {
         return ($this->latitud && $this->longitud) ? "https://maps.google.com/?q={$this->latitud},{$this->longitud}" : null;

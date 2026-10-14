@@ -249,23 +249,48 @@ class Gps extends Component
     /**
      * Todas las direcciones en el orden de la pestaña: Casa, Negocio y las adicionales.
      *
-     * @return list<array{clave: string, nombre: string, fija: bool, icono: string, lat: ?string, lng: ?string, url: ?string, modelo: ?ClientUbicacion}>
+     * @return list<array{clave: string, nombre: string, fija: bool, icono: string, lat: ?string, lng: ?string, url: ?string, modelo: ?ClientUbicacion, fecha: ?Carbon, quien: ?string}>
      */
     public function direcciones(): array
     {
+        $ultimos = $this->ultimosRegistros();
         $filas = [];
         foreach (array_keys(self::TIPOS) as $clave) {
             $c = $this->coordenadas($clave);
             $filas[] = ['clave' => $clave, 'nombre' => $this->nombre($clave), 'fija' => true, 'icono' => $clave === 'casa' ? 'ti-home' : 'ti-building-store',
-                'lat' => $c['lat'], 'lng' => $c['lng'], 'url' => self::url($c), 'modelo' => null];
+                'lat' => $c['lat'], 'lng' => $c['lng'], 'url' => self::url($c), 'modelo' => null,
+                'fecha' => $ultimos[$clave]['fecha'] ?? null, 'quien' => $ultimos[$clave]['quien'] ?? null];
         }
         foreach ($this->client->ubicaciones as $u) {
             $c = ['lat' => $u->latitud, 'lng' => $u->longitud];
-            $filas[] = ['clave' => "u:{$u->id}", 'nombre' => $u->nombre, 'fija' => false, 'icono' => 'ti-map-pin',
-                'lat' => $c['lat'], 'lng' => $c['lng'], 'url' => self::url($c), 'modelo' => $u];
+            $clave = "u:{$u->id}";
+            // Sin rastro en la auditoría (altas viejas), vale el alta de la fila.
+            $filas[] = ['clave' => $clave, 'nombre' => $u->nombre, 'fija' => false, 'icono' => 'ti-map-pin',
+                'lat' => $c['lat'], 'lng' => $c['lng'], 'url' => self::url($c), 'modelo' => $u,
+                'fecha' => $ultimos[$clave]['fecha'] ?? $u->created_at, 'quien' => $ultimos[$clave]['quien'] ?? ($u->user?->username ?? $u->user?->name)];
         }
 
         return $filas;
+    }
+
+    /**
+     * Último registro o actualización de coordenadas por dirección (14/10,
+     * Antony): fecha y usuario, para la tabla. Sale de la auditoría; los
+     * renombres y borrados no cuentan.
+     *
+     * @return array<string, array{fecha: Carbon, quien: string}>
+     */
+    private function ultimosRegistros(): array
+    {
+        $ultimos = [];
+        foreach ($this->filasHistorial() as $f) {
+            if (! in_array($f['accion'], ['Registró', 'Actualizó'], true) || isset($ultimos[$f['clave']])) {
+                continue;
+            }
+            $ultimos[$f['clave']] = ['fecha' => $f['fecha'], 'quien' => $f['quien']];
+        }
+
+        return $ultimos;
     }
 
     /** Aviso de formato: si era un enlace de Maps que no se pudo leer, dice qué hacer. */
@@ -355,6 +380,12 @@ class Gps extends Component
      */
     public function historial(): Collection
     {
+        return $this->filasHistorial()->take(50)->values();
+    }
+
+    /** Todas las filas de cambios (hasta 300 registros de auditoría), del más reciente al más viejo. */
+    private function filasHistorial(): Collection
+    {
         return ActivityLog::query()
             ->where('log_name', Audit::LOG)
             ->where('subject_type', $this->client->getMorphClass())
@@ -364,7 +395,6 @@ class Gps extends Component
             ->limit(300)
             ->get()
             ->flatMap(fn (ActivityLog $a) => $this->filasDelRegistro($a))
-            ->take(50)
             ->values();
     }
 
@@ -379,6 +409,7 @@ class Gps extends Component
             // Un cambio de nombre (13/10): antes y después son los nombres, no las coordenadas.
             if (isset($g['renombre'])) {
                 return [[
+                    'clave' => (string) $g['tipo'],
                     'fecha' => $a->created_at,
                     'accion' => 'Renombró',
                     'tipo' => (string) ($g['renombre']['a'] ?? $g['nombre'] ?? $g['tipo']),
@@ -389,6 +420,7 @@ class Gps extends Component
             }
 
             return [[
+                'clave' => (string) $g['tipo'],
                 'fecha' => $a->created_at,
                 'accion' => explode(' ', $a->description)[0],
                 'tipo' => $g['nombre'] ?? (self::TIPOS[$g['tipo']] ?? (string) $g['tipo']),
@@ -416,6 +448,7 @@ class Gps extends Component
                 continue;
             }
             $filas[] = [
+                'clave' => $tipo,
                 'fecha' => $a->created_at,
                 'accion' => $despues['lat'] === null ? 'Borró' : ($antes['lat'] === null ? 'Registró' : 'Actualizó'),
                 'tipo' => $this->client->nombreUbicacion($tipo).' (desde la ficha)',

@@ -74,6 +74,12 @@ class GpsDireccionesEHistorialTest extends TestCase
         $html = $comp->html();
         $this->assertStringContainsString('<span class="font-monospace">-12.2000000, -76.8000000</span>', $html);
         $this->assertStringContainsString('href="https://maps.google.com/?q=-12.2000000,-76.8000000" target="_blank"', $html);
+        // 14/10 (Antony): la fila lleva la fecha del último registro y quién lo hizo; Negocio sigue sin nada.
+        $this->assertMatchesRegularExpression('~<th[^>]*>Coordenadas</th>\s*<th[^>]*>Fecha</th>\s*<th[^>]*>Usuario</th>~', $html);
+        $this->assertStringContainsString(now()->format('d/m/Y').' <span class="text-muted">'.now()->format('H:i').'</span>', $html);
+        $this->assertStringContainsString('<td class="text-center" data-label="Usuario">gps-hist</td>', $html);
+        $this->assertSame(1, substr_count($html, 'data-label="Usuario">gps-hist</td>'), 'solo Casa tiene registro');
+        $this->assertSame(1, substr_count($html, 'data-label="Usuario">—</td>'), 'Negocio sin registro');
 
         // Con coordenadas, dentro de la edición aparece Borrar coordenadas (con la fecha para la regla).
         $html = $comp->call('editar', 'casa')->html();
@@ -110,6 +116,9 @@ class GpsDireccionesEHistorialTest extends TestCase
         $html = $comp->html();
         $this->assertStringContainsString('wire:key="dir-u:'.$u->id.'"', $html);
         $this->assertStringContainsString("wire:click=\"editar('u:{$u->id}')\"", $html);
+        // 14/10: la adicional muestra quién la registró y cuándo.
+        $this->assertStringContainsString('<td class="text-center" data-label="Usuario">gps-hist</td>', $html);
+        $this->assertStringContainsString(now()->format('d/m/Y').' <span class="text-muted">'.now()->format('H:i').'</span>', $html);
         $html = $comp->call('editar', "u:{$u->id}")->assertSet('editNombre', 'Taller')->html();
         $this->assertStringContainsString("wire:click=\"borrar('u:{$u->id}')\" data-creado=\"".now()->toDateString().'"', $html, 'la dirección adicional sí tiene fecha de registro');
         $this->assertStringContainsString('data-confirmar="¿Eliminar la dirección Taller?"', $html);
