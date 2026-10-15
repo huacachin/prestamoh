@@ -29,7 +29,7 @@ class Client extends Model
         'direccion', 'referencia', 'distrito', 'provincia', 'departamento',
         'zona', 'contacto_emergencia', 'telefono_contacto',
         'banco_haberes', 'cuenta_haberes', 'banco_cts', 'cuenta_cts',
-        'afp', 'cussp', 'latitud', 'longitud', 'latitud2', 'longitud2', 'ubicacion1_nombre', 'ubicacion2_nombre', 'imagen',
+        'afp', 'cussp', 'imagen',
         'observaciones', 'asesor_id', 'headquarter_id', 'status', 'es_relacionado',
     ];
 
@@ -302,23 +302,27 @@ class Client extends Model
         return $this->hasMany(ExpedienteJudicial::class);
     }
 
-    /** Direcciones GPS adicionales (10/10/2026): Casa y Negocio viven en latitud/longitud y latitud2/longitud2; el resto aquí. */
     /**
-     * Nombre de la dirección fija de la pestaña GPS (13/10/2026): el que le
-     * puso el usuario o, si no, "Casa" / "Negocio".
+     * Direcciones GPS del cliente (15/10/2026: TODAS en client_ubicaciones):
+     * Casa, Negocio y luego las adicionales, en ese orden.
      */
-    public function nombreUbicacion(string $clave): string
-    {
-        return match ($clave) {
-            'casa' => trim((string) $this->ubicacion1_nombre) ?: 'Casa',
-            'negocio' => trim((string) $this->ubicacion2_nombre) ?: 'Negocio',
-            default => $clave,
-        };
-    }
-
     public function ubicaciones(): HasMany
     {
-        return $this->hasMany(ClientUbicacion::class, 'client_id')->orderBy('id');
+        return $this->hasMany(ClientUbicacion::class, 'client_id')
+            ->orderByRaw("FIELD(tipo, 'casa', 'negocio', 'otra')")
+            ->orderBy('id');
+    }
+
+    /** La fila de Casa o Negocio, si existe (puede no tener coordenadas y conservar solo el nombre). */
+    public function ubicacionFija(string $tipo): ?ClientUbicacion
+    {
+        return $this->ubicaciones->firstWhere('tipo', $tipo);
+    }
+
+    /** Nombre de Casa / Negocio: el que le puso el usuario o el de siempre. */
+    public function nombreUbicacion(string $clave): string
+    {
+        return $this->ubicacionFija($clave)?->nombre ?: (ClientUbicacion::TIPOS[$clave] ?? $clave);
     }
 
     public function scopeActive($q)

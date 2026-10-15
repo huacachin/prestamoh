@@ -63,7 +63,7 @@ class Ceased extends Component
 
         $query = Client::query()
             ->where('status', 'inactive')
-            ->with(['asesor:id,name,username', 'headquarter:id,name'])
+            ->with(['asesor:id,name,username', 'headquarter:id,name', 'ubicaciones'])
             ->withCount(['avales', 'attachments']);
 
         if ($user->can('clientes.scope-propio')) {

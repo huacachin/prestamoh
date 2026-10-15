@@ -252,10 +252,7 @@ class MigrateLegacyData extends Command
                     'cuenta_cts' => $lc->cuentacts ?: null,
                     'afp' => $lc->codigoafp ?: null,
                     'cussp' => $lc->cussp ?: null,
-                    'latitud' => is_numeric($lc->latitud) ? $lc->latitud : null,
-                    'longitud' => is_numeric($lc->longitud) ? $lc->longitud : null,
-                    'latitud2' => is_numeric($lc->latitud2 ?? null) ? $lc->latitud2 : null,
-                    'longitud2' => is_numeric($lc->longitud2 ?? null) ? $lc->longitud2 : null,
+                    // 15/10: las coordenadas de Casa/Negocio ya no viven en clients (client_ubicaciones); el legacy está retirado.
                     'asesor_id' => $asesorId,
                     'headquarter_id' => 1,
                     'status' => match ((string) $lc->cestpersona) {

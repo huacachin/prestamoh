@@ -73,9 +73,9 @@ class CoordenadasEnlaceCortoTest extends TestCase
             ->set('pegado.casa', 'https://maps.app.goo.gl/bueno')
             ->call('guardar', 'casa')
             ->assertSet('msgType', 'ok');
-        $c->refresh();
-        $this->assertEqualsWithDelta(-12.0631527, (float) $c->latitud, 0.0000001);
-        $this->assertEqualsWithDelta(-77.0501364, (float) $c->longitud, 0.0000001);
+        $casa = $c->fresh()->ubicacionFija('casa');
+        $this->assertEqualsWithDelta(-12.0631527, (float) $casa->latitud, 0.0000001);
+        $this->assertEqualsWithDelta(-77.0501364, (float) $casa->longitud, 0.0000001);
 
         // Enlace de Maps que no se puede leer: aviso específico, no el "formato inválido" genérico.
         Livewire::test(Gps::class, ['id' => $c->id])
@@ -83,7 +83,7 @@ class CoordenadasEnlaceCortoTest extends TestCase
             ->call('guardar', 'negocio')
             ->assertSet('msgType', 'err')
             ->assertSet('msg', 'No pude leer las coordenadas de ese enlace de Google Maps. Abre el punto en Maps, mantén pulsado el pin, copia las coordenadas y pégalas aquí.');
-        $this->assertNull($c->fresh()->latitud2);
+        $this->assertNull($c->fresh()->ubicacionFija('negocio'));
 
         // Y un texto cualquiera sigue con el aviso de siempre, también en "Agregar dirección".
         Livewire::test(Gps::class, ['id' => $c->id])

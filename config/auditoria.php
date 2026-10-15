@@ -98,8 +98,10 @@ return [
             'departamento' => 'Departamento', 'zona' => 'Zona', 'contacto_emergencia' => 'Contacto de emergencia',
             'telefono_contacto' => 'Teléfono del contacto', 'banco_haberes' => 'Banco de haberes',
             'cuenta_haberes' => 'Cuenta de haberes', 'banco_cts' => 'Banco CTS', 'cuenta_cts' => 'Cuenta CTS',
-            'afp' => 'AFP', 'cussp' => 'CUSPP', 'latitud' => 'Latitud', 'longitud' => 'Longitud',
-            'latitud2' => 'Latitud 2', 'longitud2' => 'Longitud 2', 'imagen' => 'Imagen',
+            'afp' => 'AFP', 'cussp' => 'CUSPP', 'imagen' => 'Imagen',
+            // latitud/longitud, latitud2/longitud2 y los nombres de Casa/Negocio salieron de clients el 15/10 (client_ubicaciones);
+            // se dejan las etiquetas para leer las filas viejas de la auditoría.
+            'latitud' => 'Latitud', 'longitud' => 'Longitud', 'latitud2' => 'Latitud 2', 'longitud2' => 'Longitud 2',
             'ubicacion1_nombre' => 'Nombre de Casa (GPS)', 'ubicacion2_nombre' => 'Nombre de Negocio (GPS)',
             'observaciones' => 'Observaciones', 'asesor_id' => 'Asesor', 'headquarter_id' => 'Sucursal',
             'status' => 'Estado', 'es_relacionado' => 'Persona relacionada',

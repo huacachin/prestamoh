@@ -140,8 +140,8 @@
                                         </a>
                                     </td>
                                     <td class="text-center">
-                                        @if($client->latitud && $client->longitud)
-                                            <a href="https://maps.google.com/?q={{ $client->latitud }},{{ $client->longitud }}" target="_blank">
+                                        @if($casaUrl = $client->ubicacionFija('casa')?->url())
+                                            <a href="{{ $casaUrl }}" target="_blank">
                                                 <i class="ti ti-map-pin f-s-18 text-success"></i>
                                             </a>
                                         @else
@@ -149,8 +149,8 @@
                                         @endif
                                     </td>
                                     <td class="text-center">
-                                        @if($client->latitud2 && $client->longitud2)
-                                            <a href="https://maps.google.com/?q={{ $client->latitud2 }},{{ $client->longitud2 }}" target="_blank">
+                                        @if($negocioUrl = $client->ubicacionFija('negocio')?->url())
+                                            <a href="{{ $negocioUrl }}" target="_blank">
                                                 <i class="ti ti-map-pin f-s-18 text-success"></i>
                                             </a>
                                         @else
@@ -204,8 +204,8 @@
                                         <div class="col-6"><b>Fecha:</b> {{ $client->fecha_registro?->format('Y-m-d') }}</div>
                                         <div class="col-6"><b>Usuario:</b> {{ $client->usuario }}</div>
                                         <div class="col-6">
-                                            @if($client->latitud && $client->longitud)
-                                                <a href="https://maps.google.com/?q={{ $client->latitud }},{{ $client->longitud }}" target="_blank">
+                                            @if($casaUrl = $client->ubicacionFija('casa')?->url())
+                                                <a href="{{ $casaUrl }}" target="_blank">
                                                     <i class="ti ti-map-pin f-s-14 text-success"></i> Casa
                                                 </a>
                                             @else
@@ -213,8 +213,8 @@
                                             @endif
                                         </div>
                                         <div class="col-6">
-                                            @if($client->latitud2 && $client->longitud2)
-                                                <a href="https://maps.google.com/?q={{ $client->latitud2 }},{{ $client->longitud2 }}" target="_blank">
+                                            @if($negocioUrl = $client->ubicacionFija('negocio')?->url())
+                                                <a href="{{ $negocioUrl }}" target="_blank">
                                                     <i class="ti ti-map-pin f-s-14 text-success"></i> Trabajo
                                                 </a>
                                             @else

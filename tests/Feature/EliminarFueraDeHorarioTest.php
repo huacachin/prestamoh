@@ -11,6 +11,7 @@ use App\Livewire\Clients\GpsVehiculos;
 use App\Livewire\Credits\Index as CreditsIndex;
 use App\Models\Client;
 use App\Models\ClientAttachment;
+use App\Models\ClientUbicacion;
 use App\Models\Credit;
 use App\Models\DocumentoCliente;
 use App\Models\Expense;
@@ -80,7 +81,7 @@ class EliminarFueraDeHorarioTest extends TestCase
         return Client::create([
             'expediente' => '950', 'nombre' => 'Cliente', 'apellido_pat' => 'Con', 'apellido_mat' => 'Borrables',
             'tipo_documento' => 'DNI', 'documento' => '33445566', 'sexo' => 'M', 'status' => 'active',
-            'headquarter_id' => $this->sede->id, 'asesor_id' => $this->user->id, 'latitud' => '-12.014431', 'longitud' => '-76.824936',
+            'headquarter_id' => $this->sede->id, 'asesor_id' => $this->user->id,
         ]);
     }
 
@@ -266,11 +267,13 @@ class EliminarFueraDeHorarioTest extends TestCase
             ->assertDispatched('errorAlert');
         $this->assertNotNull($reporte->fresh(), 'reporte GPS de ayer: sigue');
 
-        // Coordenadas de la casa: no tienen fecha propia, solo el director las borra.
+        // Coordenadas de la casa (15/10: fila de client_ubicaciones con su fecha de registro): registradas ayer, no se borran.
+        $casa = $cliente->ubicaciones()->create(['tipo' => 'casa', 'nombre' => 'Casa', 'latitud' => -12.014431, 'longitud' => -76.824936, 'user_id' => $this->user->id, 'registrado_at' => $ayer]);
+        ClientUbicacion::whereKey($casa->id)->update(['created_at' => $ayer]);
         Livewire::test(Gps::class, ['id' => $cliente->id])
             ->call('borrar', 'casa')
             ->assertDispatched('errorAlert');
-        $this->assertEqualsWithDelta(-12.014431, (float) $cliente->fresh()->latitud, 0.000001, 'las coordenadas siguen');
+        $this->assertEqualsWithDelta(-12.014431, (float) $cliente->fresh()->ubicacionFija('casa')->latitud, 0.000001, 'las coordenadas siguen');
 
         // Crédito del listado (ayer, sin pagos; con histórico antes se podía).
         Livewire::test(CreditsIndex::class)

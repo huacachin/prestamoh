@@ -7,6 +7,7 @@ use App\Models\Client;
 use App\Models\User;
 use App\Support\Coordenadas;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
@@ -43,11 +44,15 @@ class ClienteGpsTest extends TestCase
         $this->assertNull(Coordenadas::parse('99.5, -300.2'));
     }
 
-    /** 26/09: solo Casa. "negocio" ya no es un tipo válido: no guarda ni se muestra. */
-    /** 10/10 (Antony): vuelve Negocio como segunda dirección (latitud2/longitud2). */
-    public function test_casa_y_negocio_se_guardan_cada_una_en_sus_columnas(): void
+    /**
+     * 10/10 (Antony): vuelve Negocio como segunda dirección. 15/10: Casa y Negocio
+     * ya no viven en clients sino como filas de client_ubicaciones (tipo casa /
+     * negocio), cada una con su usuario y fecha de registro.
+     */
+    public function test_casa_y_negocio_se_guardan_cada_una_en_su_fila(): void
     {
         $c = $this->cliente(); // cliente() ya autentica al usuario de prueba
+        $this->assertFalse(Schema::hasColumn('clients', 'latitud'), 'clients ya no lleva coordenadas');
 
         $comp = Livewire::test(Gps::class, ['id' => $c->id])
             ->assertSee('Casa')
@@ -56,16 +61,21 @@ class ClienteGpsTest extends TestCase
             ->call('guardar', 'casa');
 
         $c->refresh();
-        $this->assertEqualsWithDelta(-12.014431, (float) $c->latitud, 0.0000001);
-        $this->assertNull($c->latitud2);
+        $casa = $c->ubicacionFija('casa');
+        $this->assertEqualsWithDelta(-12.014431, (float) $casa->latitud, 0.0000001);
+        $this->assertSame(['casa', 'Casa', auth()->id()], [$casa->tipo, $casa->nombre, $casa->user_id]);
+        $this->assertTrue($casa->registrado_at->isSameMinute(now()));
+        $this->assertNull($c->ubicacionFija('negocio'), 'Negocio no tiene fila hasta que se registre');
 
         $comp->set('pegado.negocio', 'https://www.google.com/maps/@-12.0464,-77.0428,17z')
             ->call('guardar', 'negocio');
 
         $c->refresh();
-        $this->assertEqualsWithDelta(-12.0464, (float) $c->latitud2, 0.0001);
-        $this->assertEqualsWithDelta(-77.0428, (float) $c->longitud2, 0.0001);
-        $this->assertEqualsWithDelta(-12.014431, (float) $c->latitud, 0.0000001, 'casa no se toca');
+        $negocio = $c->ubicacionFija('negocio');
+        $this->assertEqualsWithDelta(-12.0464, (float) $negocio->latitud, 0.0001);
+        $this->assertEqualsWithDelta(-77.0428, (float) $negocio->longitud, 0.0001);
+        $this->assertEqualsWithDelta(-12.014431, (float) $c->ubicacionFija('casa')->latitud, 0.0000001, 'casa no se toca');
+        $this->assertSame(['casa', 'negocio'], $c->ubicaciones->pluck('tipo')->all(), 'una fila por dirección fija, en orden');
     }
 
     public function test_formato_invalido_no_guarda(): void
@@ -77,19 +87,21 @@ class ClienteGpsTest extends TestCase
             ->call('guardar', 'casa')
             ->assertSet('msgType', 'err');
 
-        $this->assertNull($c->fresh()->latitud);
+        $this->assertNull($c->fresh()->ubicacionFija('casa'));
     }
 
-    public function test_borrar_deja_la_ubicacion_vacia(): void
+    public function test_borrar_deja_la_ubicacion_vacia_y_conserva_el_nombre(): void
     {
         $c = $this->cliente();
-        $c->update(['latitud' => -12.1, 'longitud' => -76.9]);
+        $c->ubicaciones()->create(['tipo' => 'casa', 'nombre' => 'Casa de la mamá', 'latitud' => -12.1, 'longitud' => -76.9, 'user_id' => auth()->id(), 'registrado_at' => now()]);
 
-        Livewire::test(Gps::class, ['id' => $c->id])->call('borrar', 'casa');
+        Livewire::test(Gps::class, ['id' => $c->id])->call('borrar', 'casa')->assertSet('msg', 'Coordenadas de Casa de la mamá borradas.');
 
-        $c->refresh();
-        $this->assertNull($c->latitud);
-        $this->assertNull($c->longitud);
+        $casa = $c->fresh()->ubicacionFija('casa');
+        $this->assertNull($casa->latitud);
+        $this->assertNull($casa->longitud);
+        $this->assertNull($casa->registrado_at);
+        $this->assertSame('Casa de la mamá', $casa->nombre, 'el nombre se queda');
     }
 
     public function test_analista_no_entra_a_cliente_ajeno(): void

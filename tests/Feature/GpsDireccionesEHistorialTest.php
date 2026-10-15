@@ -8,6 +8,7 @@ use App\Models\ClientUbicacion;
 use App\Models\User;
 use App\Support\Audit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
@@ -25,6 +26,19 @@ class GpsDireccionesEHistorialTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+
+    /** Fila de la auditoría automática del modelo (antes del 15/10, al editar coordenadas desde la ficha). */
+    private function filaAutomaticaDeLaFicha(Client $c, array $antes, array $despues): void
+    {
+        DB::table('activity_log')->insert([
+            'log_name' => Audit::LOG, 'description' => 'Editó Cliente '.$c->fullName(), 'event' => 'updated',
+            'subject_type' => $c->getMorphClass(), 'subject_id' => $c->id,
+            'causer_type' => $this->user->getMorphClass(), 'causer_id' => $this->user->id,
+            'properties' => json_encode(['old' => $antes, 'attributes' => $despues]),
+            'old_data' => json_encode($antes), 'new_data' => json_encode($despues), 'changed_fields' => json_encode(array_keys($despues)),
+            'user_name' => $this->user->name, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+    }
 
     private function cliente(): Client
     {
@@ -70,7 +84,7 @@ class GpsDireccionesEHistorialTest extends TestCase
         $comp->call('guardar', 'casa')->assertSet('msgType', 'warn')->assertSet('editClave', 'casa');
         $comp->set('pegado.casa', '-12.2, -76.8')->call('guardar', 'casa')
             ->assertSet('msgType', 'ok')->assertSet('editClave', null)->assertDispatched('gps-guardado', clave: 'casa');
-        $this->assertEqualsWithDelta(-12.2, (float) $c->fresh()->latitud, 0.0001);
+        $this->assertEqualsWithDelta(-12.2, (float) $c->fresh()->ubicacionFija('casa')->latitud, 0.0001);
         $html = $comp->html();
         $this->assertStringContainsString('<span class="font-monospace">-12.2000000, -76.8000000</span>', $html);
         $this->assertStringContainsString('href="https://maps.google.com/?q=-12.2000000,-76.8000000" target="_blank"', $html);
@@ -85,7 +99,8 @@ class GpsDireccionesEHistorialTest extends TestCase
 
         // Con coordenadas, dentro de la edición aparece Borrar coordenadas (con la fecha para la regla).
         $html = $comp->call('editar', 'casa')->html();
-        $this->assertStringContainsString("wire:click=\"borrar('casa')\" data-creado=\"\"", $html, 'Casa no tiene fecha propia: solo el director la borra');
+        // 15/10: Casa ya es una fila con su propia fecha de registro; la regla del mismo día aplica como a las demás.
+        $this->assertStringContainsString("wire:click=\"borrar('casa')\" data-creado=\"".now()->toDateString().'"', $html);
         $this->assertStringContainsString('data-confirmar="¿Borrar las coordenadas de Casa?"', $html);
         $comp->call('cancelarEdicion')->assertSet('editClave', null)->assertSet('editNombre', '');
     }
@@ -106,7 +121,7 @@ class GpsDireccionesEHistorialTest extends TestCase
             ->assertHasNoErrors()
             ->assertSet('nuevaNombre', '')
             ->assertSet('msgType', 'ok');
-        $u = ClientUbicacion::sole();
+        $u = ClientUbicacion::where('tipo', 'otra')->sole();
         $this->assertSame(['Taller', $c->id, $this->user->id], [$u->nombre, $u->client_id, $u->user_id]);
         $this->assertEqualsWithDelta(-12.0464, (float) $u->latitud, 0.0001);
         $comp->assertDispatched('gps-guardado', clave: "u:{$u->id}");
@@ -193,8 +208,9 @@ class GpsDireccionesEHistorialTest extends TestCase
     {
         $c = $this->cliente();
         // Edición normal del modelo (p. ej. desde la ficha): auditoría automática con old/attributes.
-        $c->update(['latitud' => -12.3, 'longitud' => -76.7]);
-        $c->update(['latitud' => -12.4]);
+        // 15/10: clients ya no lleva coordenadas; las filas automáticas de antes siguen en la auditoría y se leen igual.
+        $this->filaAutomaticaDeLaFicha($c, ['latitud' => null, 'longitud' => null], ['latitud' => -12.3, 'longitud' => -76.7]);
+        $this->filaAutomaticaDeLaFicha($c, ['latitud' => -12.3], ['latitud' => -12.4]);
 
         $filas = Livewire::test(Gps::class, ['id' => $c->id])->instance()->historial();
         $this->assertCount(2, $filas);
@@ -212,16 +228,16 @@ class GpsDireccionesEHistorialTest extends TestCase
     public function test_casa_negocio_y_las_adicionales_se_renombran_y_el_cambio_queda_en_la_tablita(): void
     {
         $c = $this->cliente();
-        $c->update(['latitud' => -12.1, 'longitud' => -76.9]);
+        $c->ubicaciones()->create(['tipo' => 'casa', 'nombre' => 'Casa', 'latitud' => -12.1, 'longitud' => -76.9, 'user_id' => $this->user->id, 'registrado_at' => now()]);
         $comp = Livewire::test(Gps::class, ['id' => $c->id]);
 
         // Casa pasa a "Casa de la mamá" sin tocar las coordenadas.
         $comp->call('editar', 'casa')->set('editNombre', '  Casa   de la mamá ')->call('guardar', 'casa')
             ->assertHasNoErrors()->assertSet('msg', 'Dirección renombrada: Casa → Casa de la mamá.')->assertSet('editClave', null);
         $c->refresh();
-        $this->assertSame('Casa de la mamá', $c->ubicacion1_nombre);
+        $this->assertSame('Casa de la mamá', $c->ubicacionFija('casa')->nombre);
         $this->assertSame('Casa de la mamá', $c->nombreUbicacion('casa'));
-        $this->assertEqualsWithDelta(-12.1, (float) $c->latitud, 0.0001, 'las coordenadas siguen');
+        $this->assertEqualsWithDelta(-12.1, (float) $c->ubicacionFija('casa')->latitud, 0.0001, 'las coordenadas siguen');
         $this->assertStringContainsString('Casa de la mamá', $comp->html());
 
         // No puede repetir otro nombre (sin distinguir mayúsculas) ni quedar vacío.
@@ -231,15 +247,15 @@ class GpsDireccionesEHistorialTest extends TestCase
         $comp->set('editNombre', 'Tienda')->set('pegado.negocio', '-11.9, -77.1')->call('guardar', 'negocio')
             ->assertHasNoErrors()->assertSet('msg', 'Coordenadas de Tienda guardadas.');
         $c->refresh();
-        $this->assertSame('Tienda', $c->ubicacion2_nombre);
-        $this->assertEqualsWithDelta(-11.9, (float) $c->latitud2, 0.0001);
+        $this->assertSame('Tienda', $c->ubicacionFija('negocio')->nombre);
+        $this->assertEqualsWithDelta(-11.9, (float) $c->ubicacionFija('negocio')->latitud, 0.0001);
         // Volver al nombre de siempre deja la columna en null.
         $comp->call('editar', 'negocio')->set('editNombre', 'Negocio')->call('guardar', 'negocio')->assertHasNoErrors();
-        $this->assertNull($c->fresh()->ubicacion2_nombre);
+        $this->assertSame('Negocio', $c->fresh()->ubicacionFija('negocio')->nombre);
 
         // Una adicional también se renombra.
         $comp->set('nuevaNombre', 'Taller')->set('nuevaCoordenadas', '-12.0, -77.0')->call('agregar')->assertHasNoErrors();
-        $u = ClientUbicacion::sole();
+        $u = ClientUbicacion::where('tipo', 'otra')->sole();
         $comp->call('editar', "u:{$u->id}")->set('editNombre', 'Chacra')->call('guardar', "u:{$u->id}")->assertHasNoErrors();
         $this->assertSame('Chacra', $u->fresh()->nombre);
 

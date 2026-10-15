@@ -30,25 +30,27 @@ use Livewire\Component;
  *
  * 13/10/2026 (Antony): las direcciones van en una TABLA como las ubicaciones
  * de los vehículos: Op. (lápiz) · N° · Dirección · Coordenadas. El lápiz abre
- * un formulario con el NOMBRE (Casa y Negocio también se renombran: columnas
- * clients.ubicacion1_nombre / ubicacion2_nombre) y las coordenadas; Borrar
+ * un formulario con el NOMBRE (Casa y Negocio también se renombran) y las
+ * coordenadas; Borrar
  * vive dentro de ese formulario.
  *
- * Claves de dirección: 'casa' y 'negocio' (fijas, columnas de clients) y
- * 'u:{id}' para las adicionales.
+ * 15/10/2026 (Antony): Casa y Negocio se desataron de clients: TODAS las
+ * direcciones son filas de client_ubicaciones (tipo casa | negocio | otra) con
+ * su último usuario y fecha de registro (user_id, registrado_at). Las claves
+ * de la pestaña y de la auditoría siguen siendo 'casa', 'negocio' y 'u:{id}'.
  */
 class Gps extends Component
 {
     use ConReglasDeEliminacion;
 
     /** Nombres por defecto de las direcciones fijas (el usuario puede renombrarlas). */
-    public const TIPOS = ['casa' => 'Casa', 'negocio' => 'Negocio'];
+    public const TIPOS = ClientUbicacion::TIPOS;
 
-    /** Columnas de clients por dirección fija. */
+    /**
+     * Columnas que Casa y Negocio tenían en clients hasta el 15/10/2026: solo
+     * para leer las filas viejas de la auditoría automática ("desde la ficha").
+     */
     public const COLUMNAS = ['casa' => ['latitud', 'longitud'], 'negocio' => ['latitud2', 'longitud2']];
-
-    /** Columna de clients con el nombre que el usuario le puso a cada dirección fija. */
-    public const COLUMNA_NOMBRE = ['casa' => 'ubicacion1_nombre', 'negocio' => 'ubicacion2_nombre'];
 
     #[Locked]
     public int $clientId;
@@ -149,25 +151,18 @@ class Gps extends Component
         if ($coords !== null) {
             [$lat, $lng] = $coords;
             $antes = $this->coordenadas($clave);
-            if ($extra) {
-                $extra->update(['latitud' => $lat, 'longitud' => $lng]);
-            } else {
-                [$cLat, $cLng] = self::COLUMNAS[$clave];
-                $this->client->sinAuditoriaAutomatica(fn () => $this->client->update([$cLat => $lat, $cLng => $lng]));
-            }
+            // Casa/Negocio sin fila todavía: se crea con su nombre de siempre.
+            $fila = $this->fila($clave) ?? new ClientUbicacion(['client_id' => $this->clientId, 'tipo' => $clave, 'nombre' => $nombreActual]);
+            $fila->fill(['latitud' => $lat, 'longitud' => $lng, 'user_id' => auth()->id(), 'registrado_at' => now()])->save();
             $this->client->refresh();
             $verbo = $antes['lat'] !== null ? 'Actualizó' : 'Registró';
             $this->registrarCambio("{$verbo} la ubicación GPS de {$nombreActual} del cliente #{$this->clientId}", $clave, $antes, $this->coordenadas($clave), $nombreActual);
         }
 
         if ($nombreNuevo !== $nombreActual) {
-            if ($extra) {
-                $extra->update(['nombre' => $nombreNuevo]);
-            } else {
-                $columna = self::COLUMNA_NOMBRE[$clave];
-                // null = vuelve al nombre de siempre
-                $this->client->sinAuditoriaAutomatica(fn () => $this->client->update([$columna => $nombreNuevo === self::TIPOS[$clave] ? null : $nombreNuevo]));
-            }
+            // Sin coordenadas aún, la fila fija nace solo con el nombre (se conserva aunque se borren las coordenadas).
+            $fila = $this->fila($clave) ?? new ClientUbicacion(['client_id' => $this->clientId, 'tipo' => $clave]);
+            $fila->fill(['nombre' => $nombreNuevo])->save();
             $this->client->refresh();
             $c = $this->coordenadas($clave);
             Audit::log("Renombró la dirección GPS {$nombreActual} a {$nombreNuevo} del cliente #{$this->clientId}", $this->client, [
@@ -196,7 +191,7 @@ class Gps extends Component
         ], [], ['nuevaNombre' => 'nombre', 'nuevaCoordenadas' => 'coordenadas']);
 
         [$lat, $lng] = Coordenadas::parse($this->nuevaCoordenadas);
-        $u = $this->client->ubicaciones()->create(['nombre' => $this->nuevaNombre, 'latitud' => $lat, 'longitud' => $lng, 'user_id' => auth()->id()]);
+        $u = $this->client->ubicaciones()->create(['tipo' => 'otra', 'nombre' => $this->nuevaNombre, 'latitud' => $lat, 'longitud' => $lng, 'user_id' => auth()->id(), 'registrado_at' => now()]);
         $this->client->refresh();
 
         $clave = "u:{$u->id}";
@@ -216,9 +211,13 @@ class Gps extends Component
         if (! array_key_exists($clave, self::TIPOS) && ! $extra) {
             return;
         }
-        // Casa y Negocio no tienen fecha propia de registro (solo el director las borra);
-        // una dirección adicional sí, y entra en la regla del mismo día.
-        if ($this->eliminacionBloqueada($extra)) {
+        $fila = $this->fila($clave);
+        if (! $fila || ! $fila->tieneCoordenadas()) {
+            return;
+        }
+        // Regla del mismo día sobre la fecha de la fila (la carga inicial del 14/10 cuenta como registro):
+        // quien no es director solo borra lo registrado hoy; el director, cualquiera.
+        if ($this->eliminacionBloqueada($fila)) {
             return;
         }
 
@@ -227,13 +226,12 @@ class Gps extends Component
 
         if ($extra) {
             $extra->delete();
-            $this->client->refresh();
             unset($this->pegado[$clave]);
         } else {
-            [$cLat, $cLng] = self::COLUMNAS[$clave];
-            $this->client->sinAuditoriaAutomatica(fn () => $this->client->update([$cLat => null, $cLng => null]));
-            $this->client->refresh();
+            // Casa/Negocio: se vacían las coordenadas; la fila queda para conservar el nombre.
+            $fila->fill(['latitud' => null, 'longitud' => null, 'user_id' => null, 'registrado_at' => null])->save();
         }
+        $this->client->refresh();
 
         $this->registrarCambio("Borró la ubicación GPS de {$nombre} del cliente #{$this->clientId}", $clave, $antes, ['lat' => null, 'lng' => null], $nombre);
 
@@ -247,50 +245,39 @@ class Gps extends Component
     }
 
     /**
-     * Todas las direcciones en el orden de la pestaña: Casa, Negocio y las adicionales.
+     * Todas las direcciones en el orden de la pestaña: Casa, Negocio (con o sin
+     * fila) y las adicionales, cada una con su último usuario y fecha de registro.
      *
      * @return list<array{clave: string, nombre: string, fija: bool, icono: string, lat: ?string, lng: ?string, url: ?string, modelo: ?ClientUbicacion, fecha: ?Carbon, quien: ?string}>
      */
     public function direcciones(): array
     {
-        $ultimos = $this->ultimosRegistros();
         $filas = [];
         foreach (array_keys(self::TIPOS) as $clave) {
-            $c = $this->coordenadas($clave);
-            $filas[] = ['clave' => $clave, 'nombre' => $this->nombre($clave), 'fija' => true, 'icono' => $clave === 'casa' ? 'ti-home' : 'ti-building-store',
-                'lat' => $c['lat'], 'lng' => $c['lng'], 'url' => self::url($c), 'modelo' => null,
-                'fecha' => $ultimos[$clave]['fecha'] ?? null, 'quien' => $ultimos[$clave]['quien'] ?? null];
+            $filas[] = $this->filaDireccion($clave, $this->client->ubicacionFija($clave), true, $clave === 'casa' ? 'ti-home' : 'ti-building-store');
         }
-        foreach ($this->client->ubicaciones as $u) {
-            $c = ['lat' => $u->latitud, 'lng' => $u->longitud];
-            $clave = "u:{$u->id}";
-            // Sin rastro en la auditoría (altas viejas), vale el alta de la fila.
-            $filas[] = ['clave' => $clave, 'nombre' => $u->nombre, 'fija' => false, 'icono' => 'ti-map-pin',
-                'lat' => $c['lat'], 'lng' => $c['lng'], 'url' => self::url($c), 'modelo' => $u,
-                'fecha' => $ultimos[$clave]['fecha'] ?? $u->created_at, 'quien' => $ultimos[$clave]['quien'] ?? ($u->user?->username ?? $u->user?->name)];
+        foreach ($this->client->ubicaciones->where('tipo', 'otra') as $u) {
+            $filas[] = $this->filaDireccion("u:{$u->id}", $u, false, 'ti-map-pin');
         }
 
         return $filas;
     }
 
-    /**
-     * Último registro o actualización de coordenadas por dirección (14/10,
-     * Antony): fecha y usuario, para la tabla. Sale de la auditoría; los
-     * renombres y borrados no cuentan.
-     *
-     * @return array<string, array{fecha: Carbon, quien: string}>
-     */
-    private function ultimosRegistros(): array
+    /** @return array{clave: string, nombre: string, fija: bool, icono: string, lat: ?string, lng: ?string, url: ?string, modelo: ?ClientUbicacion, fecha: ?Carbon, quien: ?string} */
+    private function filaDireccion(string $clave, ?ClientUbicacion $u, bool $fija, string $icono): array
     {
-        $ultimos = [];
-        foreach ($this->filasHistorial() as $f) {
-            if (! in_array($f['accion'], ['Registró', 'Actualizó'], true) || isset($ultimos[$f['clave']])) {
-                continue;
-            }
-            $ultimos[$f['clave']] = ['fecha' => $f['fecha'], 'quien' => $f['quien']];
-        }
-
-        return $ultimos;
+        return [
+            'clave' => $clave,
+            'nombre' => $this->nombre($clave),
+            'fija' => $fija,
+            'icono' => $icono,
+            'lat' => $u?->latitud,
+            'lng' => $u?->longitud,
+            'url' => $u?->url(),
+            'modelo' => $u,
+            'fecha' => $u?->registrado_at,
+            'quien' => $u?->user?->username ?? $u?->user?->name,
+        ];
     }
 
     /** Aviso de formato: si era un enlace de Maps que no se pudo leer, dice qué hacer. */
@@ -316,20 +303,31 @@ class Gps extends Component
         return ($c['lat'] && $c['lng']) ? "https://maps.google.com/?q={$c['lat']},{$c['lng']}" : null;
     }
 
+    /** Dirección adicional ('u:{id}') de este cliente, o null. */
     private function ubicacionExtra(string $clave): ?ClientUbicacion
     {
         if (! str_starts_with($clave, 'u:')) {
             return null;
         }
 
-        return $this->client->ubicaciones()->find((int) substr($clave, 2));
+        return $this->client->ubicaciones()->where('tipo', 'otra')->find((int) substr($clave, 2));
+    }
+
+    /** La fila de cualquier clave: Casa/Negocio por tipo (puede no existir aún) o la adicional por id. */
+    private function fila(string $clave): ?ClientUbicacion
+    {
+        if (array_key_exists($clave, self::TIPOS)) {
+            return $this->client->ubicaciones()->where('tipo', $clave)->first();
+        }
+
+        return $this->ubicacionExtra($clave);
     }
 
     /** Nombre actual de una dirección: el puesto por el usuario o el de siempre. */
     private function nombre(string $clave): string
     {
         if (array_key_exists($clave, self::TIPOS)) {
-            return $this->client->nombreUbicacion($clave);
+            return $this->fila($clave)?->nombre ?: self::TIPOS[$clave];
         }
 
         return $this->ubicacionExtra($clave)?->nombre ?? $clave;
@@ -354,12 +352,9 @@ class Gps extends Component
     /** @return array{lat: ?string, lng: ?string} */
     private function coordenadas(string $clave): array
     {
-        if ($extra = $this->ubicacionExtra($clave)) {
-            return ['lat' => $extra->latitud, 'lng' => $extra->longitud];
-        }
-        [$cLat, $cLng] = self::COLUMNAS[$clave] ?? [null, null];
+        $fila = $this->fila($clave);
 
-        return ['lat' => $cLat ? $this->client->{$cLat} : null, 'lng' => $cLng ? $this->client->{$cLng} : null];
+        return ['lat' => $fila?->latitud, 'lng' => $fila?->longitud];
     }
 
     /** Fila de auditoría con el detalle que lee la tablita (sujeto: el cliente). */

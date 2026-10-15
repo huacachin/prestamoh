@@ -117,15 +117,6 @@ class Edit extends Component
 
     public ?int $asesor_id = null;
 
-    // ── Casa / Negocio (reset coords) ──
-    public bool $casa = false;
-
-    public bool $negocio = false;
-
-    public ?string $latitud = null;
-
-    public ?string $latitud2 = null;
-
     // ── Permisos cacheados ──
     public bool $puedeEditarIdentidad = false;
 
@@ -227,8 +218,6 @@ class Edit extends Component
         $this->celular2 = $c->celular2;
         $this->zona = $c->zona;
         $this->asesor_id = $c->asesor_id;
-        $this->latitud = $c->latitud;
-        $this->latitud2 = $c->latitud2;
     }
 
     public function update()
@@ -288,17 +277,7 @@ class Edit extends Component
             $data['status'] = $this->status;
         }
 
-        // Casa / Negocio: reset coords (solo SuperUsuario)
-        if ($this->puedeEditarIdentidad) {
-            if ($this->casa) {
-                $data['latitud'] = null;
-                $data['longitud'] = null;
-            }
-            if ($this->negocio) {
-                $data['latitud2'] = null;
-                $data['longitud2'] = null;
-            }
-        }
+        // 15/10: las coordenadas de Casa/Negocio se borran desde la pestaña GPS (client_ubicaciones), ya no desde aquí.
 
         $this->client->update($data);
 

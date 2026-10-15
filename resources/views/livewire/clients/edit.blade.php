@@ -335,27 +335,6 @@
                         </select>
                     </div>
 
-                    {{-- Casa / Negocio: solo SuperUsuario y solo si la coord existe --}}
-                    @if($puedeEditarIdentidad && ($latitud || $latitud2))
-                        <div class="col-md-6 d-flex align-items-end gap-3">
-                            @if($latitud)
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="casa" wire:model.defer="casa">
-                                    <label class="form-check-label small" for="casa">
-                                        <i class="ti ti-home"></i> Resetear coords <strong>{{ $client->nombreUbicacion('casa') }}</strong>
-                                    </label>
-                                </div>
-                            @endif
-                            @if($latitud2)
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="negocio" wire:model.defer="negocio">
-                                    <label class="form-check-label small" for="negocio">
-                                        <i class="ti ti-building-store"></i> Resetear coords <strong>{{ $client->nombreUbicacion('negocio') }}</strong>
-                                    </label>
-                                </div>
-                            @endif
-                        </div>
-                    @endif
                 </div>
 
                 <hr class="my-2" style="border-color:#e8e2d5;">
