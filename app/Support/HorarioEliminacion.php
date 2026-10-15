@@ -30,9 +30,12 @@ use Illuminate\Support\HtmlString;
  * SinHorarioDeEliminacion —los adjuntos de ingresos y egresos y las ubicaciones GPS de vehículos— se elimina a
  * cualquier hora, siempre el mismo día y con el permiso de siempre.
  *
- * EDITAR (12/10/2026, Antony, ubicaciones GPS de vehículos): misma regla del
- * mismo día para quien no es director, sin ventana horaria
- * (motivoBloqueo(..., accion: 'editar') y ConReglasDeEliminacion::edicionBloqueada()).
+ * EDITAR (12/10/2026, Antony, ubicaciones GPS de vehículos; 15/10, direcciones
+ * GPS del cliente): misma regla del mismo día para quien no es director, sin
+ * ventana horaria (motivoBloqueo(..., accion: 'editar') y
+ * ConReglasDeEliminacion::edicionBloqueada()). La fecha que cuenta es la de la
+ * fila (created_at) o, si implementa ConFechaDeRegistro, la que ella misma da
+ * (las direcciones: cuándo se registraron las coordenadas de ahora).
  */
 final class HorarioEliminacion
 {
@@ -87,13 +90,17 @@ final class HorarioEliminacion
     }
 
     /**
-     * Fecha de creación de lo que se va a eliminar: un modelo o fila (created_at),
-     * una fecha suelta, o null cuando no se conoce.
+     * Fecha de creación de lo que se va a eliminar: un modelo o fila (created_at,
+     * o su propia fecha de registro si implementa ConFechaDeRegistro), una fecha
+     * suelta, o null cuando no se conoce.
      */
     public static function creadoEl(mixed $registro): ?Carbon
     {
         if ($registro instanceof \DateTimeInterface) {
             return Carbon::instance($registro);
+        }
+        if ($registro instanceof ConFechaDeRegistro) {
+            return $registro->registradoEl();
         }
         if ($registro instanceof Model || is_object($registro)) {
             $registro = $registro->created_at ?? null;

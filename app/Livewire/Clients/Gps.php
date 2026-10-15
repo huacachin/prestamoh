@@ -8,6 +8,7 @@ use App\Models\ClientUbicacion;
 use App\Support\Audit;
 use App\Support\ConReglasDeEliminacion;
 use App\Support\Coordenadas;
+use App\Support\HorarioEliminacion;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Locked;
@@ -38,6 +39,8 @@ use Livewire\Component;
  * direcciones son filas de client_ubicaciones (tipo casa | negocio | otra) con
  * su último usuario y fecha de registro (user_id, registrado_at). Las claves
  * de la pestaña y de la auditoría siguen siendo 'casa', 'negocio' y 'u:{id}'.
+ * Quien no es director edita o borra una dirección solo el día en que se
+ * registraron sus coordenadas (la columna Fecha); el director, cualquier día.
  */
 class Gps extends Component
 {
@@ -89,11 +92,20 @@ class Gps extends Component
         $this->puedeEditar = ! (auth()->user()?->can('clientes.scope-propio') ?? false);
     }
 
-    /** Abre el formulario de una dirección: nombre y coordenadas (vacías = se conservan). */
+    /**
+     * Abre el formulario de una dirección: nombre y coordenadas (vacías = se conservan).
+     * 15/10 (Antony): quien no es director edita solo el día en que se registraron
+     * las coordenadas (edicionBloqueada: avisa y deja rastro); el director, siempre.
+     * Sin coordenadas todavía no hay nada registrado: se pueden pegar cualquier día.
+     */
     public function editar(string $clave): void
     {
         abort_unless($this->puedeEditar, 403, 'No tienes permiso para editar coordenadas.');
         if (! array_key_exists($clave, self::TIPOS) && ! $this->ubicacionExtra($clave)) {
+            return;
+        }
+        $fila = $this->fila($clave);
+        if ($fila?->tieneCoordenadas() && $this->edicionBloqueada($fila)) {
             return;
         }
         $this->resetErrorBag();
@@ -122,6 +134,11 @@ class Gps extends Component
         abort_unless($this->puedeEditar, 403, 'No tienes permiso para registrar coordenadas.');
         $extra = $this->ubicacionExtra($clave);
         if (! array_key_exists($clave, self::TIPOS) && ! $extra) {
+            return;
+        }
+        // Se vuelve a mirar la regla del día al guardar: la página pudo quedar abierta hasta el día siguiente.
+        $fila = $this->fila($clave);
+        if ($fila?->tieneCoordenadas() && $this->edicionBloqueada($fila, 'guardar')) {
             return;
         }
 
@@ -215,8 +232,8 @@ class Gps extends Component
         if (! $fila || ! $fila->tieneCoordenadas()) {
             return;
         }
-        // Regla del mismo día sobre la fecha de la fila (la carga inicial del 14/10 cuenta como registro):
-        // quien no es director solo borra lo registrado hoy; el director, cualquiera.
+        // Regla del mismo día sobre la fecha de registro de las coordenadas (la carga inicial del 14/10
+        // cuenta como registro): quien no es director solo borra lo registrado hoy; el director, cualquiera.
         if ($this->eliminacionBloqueada($fila)) {
             return;
         }
@@ -248,7 +265,7 @@ class Gps extends Component
      * Todas las direcciones en el orden de la pestaña: Casa, Negocio (con o sin
      * fila) y las adicionales, cada una con su último usuario y fecha de registro.
      *
-     * @return list<array{clave: string, nombre: string, fija: bool, icono: string, lat: ?string, lng: ?string, url: ?string, modelo: ?ClientUbicacion, fecha: ?Carbon, quien: ?string}>
+     * @return list<array{clave: string, nombre: string, fija: bool, icono: string, lat: ?string, lng: ?string, url: ?string, modelo: ?ClientUbicacion, fecha: ?Carbon, quien: ?string, editable: bool}>
      */
     public function direcciones(): array
     {
@@ -263,7 +280,7 @@ class Gps extends Component
         return $filas;
     }
 
-    /** @return array{clave: string, nombre: string, fija: bool, icono: string, lat: ?string, lng: ?string, url: ?string, modelo: ?ClientUbicacion, fecha: ?Carbon, quien: ?string} */
+    /** @return array{clave: string, nombre: string, fija: bool, icono: string, lat: ?string, lng: ?string, url: ?string, modelo: ?ClientUbicacion, fecha: ?Carbon, quien: ?string, editable: bool} */
     private function filaDireccion(string $clave, ?ClientUbicacion $u, bool $fija, string $icono): array
     {
         return [
@@ -277,7 +294,22 @@ class Gps extends Component
             'modelo' => $u,
             'fecha' => $u?->registrado_at,
             'quien' => $u?->user?->username ?? $u?->user?->name,
+            'editable' => $this->puedeEditarDireccion($u),
         ];
+    }
+
+    /**
+     * Quién puede editar ESA dirección ahora (para pintar o no el lápiz): con
+     * permiso de editar y, si ya tiene coordenadas, solo el día en que se
+     * registraron salvo el director. El servidor lo vuelve a comprobar.
+     */
+    public function puedeEditarDireccion(?ClientUbicacion $u): bool
+    {
+        if (! $this->puedeEditar) {
+            return false;
+        }
+
+        return ! $u?->tieneCoordenadas() || HorarioEliminacion::motivoBloqueo($u, null, null, 'editar') === null;
     }
 
     /** Aviso de formato: si era un enlace de Maps que no se pudo leer, dice qué hacer. */

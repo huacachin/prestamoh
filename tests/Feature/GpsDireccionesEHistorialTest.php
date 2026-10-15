@@ -7,10 +7,13 @@ use App\Models\Client;
 use App\Models\ClientUbicacion;
 use App\Models\User;
 use App\Support\Audit;
+use App\Support\HorarioEliminacion;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
@@ -264,5 +267,65 @@ class GpsDireccionesEHistorialTest extends TestCase
         $this->assertSame(['Chacra', 'Negocio', 'Tienda', 'Casa de la mamá'], $renombres->pluck('tipo')->all());
         $this->assertSame([['Taller', 'Chacra'], ['Tienda', 'Negocio'], ['Negocio', 'Tienda'], ['Casa', 'Casa de la mamá']],
             $renombres->map(fn ($f) => [$f['antes'], $f['despues']])->all());
+    }
+
+    /**
+     * 15/10 (Antony): "se puede editar solo en el día que se registró, luego no; solo el
+     * director puede editar en cualquier momento". La fecha que cuenta es la de registro de
+     * las coordenadas (la columna Fecha), no la de la fila: Casa y Negocio viven para siempre.
+     */
+    public function test_quien_no_es_director_edita_una_direccion_solo_el_dia_en_que_se_registro(): void
+    {
+        config(['auditoria.eliminar_mismo_dia.activo' => true]);
+        Carbon::setTestNow(Carbon::parse('2026-10-14 15:00', 'America/Lima'));
+        $ayer = now()->subDay();
+        $c = $this->cliente();
+        // Casa: fila de la carga inicial, coordenadas registradas ayer. Taller: registrado hoy. Negocio: sin coordenadas.
+        $casa = $c->ubicaciones()->create(['tipo' => 'casa', 'nombre' => 'Casa', 'latitud' => -12.1, 'longitud' => -76.9, 'user_id' => $this->user->id, 'registrado_at' => $ayer]);
+        ClientUbicacion::whereKey($casa->id)->update(['created_at' => $ayer]);
+        $taller = $c->ubicaciones()->create(['tipo' => 'otra', 'nombre' => 'Taller', 'latitud' => -12.0, 'longitud' => -77.0, 'user_id' => $this->user->id, 'registrado_at' => now()]);
+
+        $comp = Livewire::test(Gps::class, ['id' => $c->id]);
+        $html = $comp->html();
+        $this->assertStringNotContainsString("wire:click=\"editar('casa')\"", $html, 'Casa de ayer: sin lápiz');
+        $this->assertStringContainsString('ti-lock', $html, 'en su lugar, un candado');
+        $this->assertStringContainsString("wire:click=\"editar('u:{$taller->id}')\"", $html, 'Taller de hoy: con lápiz');
+        $this->assertStringContainsString("wire:click.prevent=\"editar('negocio')\"", $html, 'Negocio sin coordenadas: se pueden pegar cualquier día');
+
+        // El servidor también lo rechaza, avisa y deja rastro; las coordenadas no cambian.
+        $comp->call('editar', 'casa')->assertDispatched('errorAlert')->assertSet('editClave', null);
+        $comp->set('pegado.casa', '-11.5, -77.5')->call('guardar', 'casa')->assertDispatched('errorAlert');
+        $this->assertEqualsWithDelta(-12.1, (float) $casa->fresh()->latitud, 0.0001, 'Casa sigue con las de ayer');
+        $this->assertSame(1, Activity::where('description', 'Intentó editar un registro de otro día: Gps::editar')->count());
+        $this->assertSame(1, Activity::where('description', 'Intentó editar un registro de otro día: Gps::guardar')->count());
+        $this->assertSame(HorarioEliminacion::mensajeMismoDia('editar'), HorarioEliminacion::motivoBloqueo($casa->fresh(), $this->user, null, 'editar'));
+
+        // Lo de hoy y lo que no tiene coordenadas sí: Taller se edita y a Negocio se le pegan coordenadas.
+        $comp->call('editar', "u:{$taller->id}")->assertNotDispatched('errorAlert')->assertSet('editClave', "u:{$taller->id}")
+            ->set('pegado.u:'.$taller->id, '-12.2, -77.2')->call('guardar', "u:{$taller->id}")->assertHasNoErrors()->assertSet('editClave', null);
+        $this->assertEqualsWithDelta(-12.2, (float) $taller->fresh()->latitud, 0.0001);
+        $comp->call('editar', 'negocio')->assertNotDispatched('errorAlert')->assertSet('editClave', 'negocio')
+            ->set('pegado.negocio', '-11.9, -77.1')->call('guardar', 'negocio')->assertHasNoErrors();
+        $this->assertEqualsWithDelta(-11.9, (float) $c->fresh()->ubicacionFija('negocio')->latitud, 0.0001);
+
+        // El director edita cualquier día; el botón Borrar lleva la fecha de registro (la que lee horario-eliminar.js).
+        $this->user->syncRoles([Role::findOrCreate('director', 'web')]);
+        $director = Livewire::test(Gps::class, ['id' => $c->id]);
+        $this->assertStringContainsString("wire:click=\"editar('casa')\"", $director->html(), 'el director ve el lápiz de Casa');
+        $director->call('editar', 'casa')->assertNotDispatched('errorAlert')->assertSet('editClave', 'casa');
+        $this->assertStringContainsString("wire:click=\"borrar('casa')\" data-creado=\"2026-10-13\"", $director->html());
+        $director->set('pegado.casa', '-11.5, -77.5')->call('guardar', 'casa')->assertHasNoErrors();
+        $casa->refresh();
+        $this->assertEqualsWithDelta(-11.5, (float) $casa->latitud, 0.0001);
+        // Registradas hoy por el director: hoy cualquiera con permiso vuelve a poder editarlas.
+        $this->assertSame('2026-10-14', $casa->registrado_at->toDateString());
+        $asesor = User::factory()->create(['username' => 'gps-asesor']);
+        $this->assertNull(HorarioEliminacion::motivoBloqueo($casa, $asesor, null, 'editar'));
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
     }
 }

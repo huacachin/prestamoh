@@ -69,8 +69,8 @@
                         </button>
                         <button type="button" class="btn btn-sm btn-outline-secondary" wire:click="cancelarEdicion"><i class="ti ti-x"></i> Cancelar</button>
                         @if($editando['url'] || ! $editando['fija'])
-                            {{-- Borrar solo aquí, dentro de la edición: Casa/Negocio borran sus coordenadas (solo el director:
-                                 no tienen fecha propia); una dirección adicional se elimina (regla del mismo día). --}}
+                            {{-- Borrar solo aquí, dentro de la edición: Casa/Negocio borran sus coordenadas; una dirección
+                                 adicional se elimina. Regla del mismo día sobre la fecha de registro (data-creado). --}}
                             <button type="button" class="btn btn-sm btn-outline-danger ms-auto"
                                     wire:click="borrar('{{ $editClave }}')" @creadoEl($editando['modelo'])
                                     data-confirmar="{{ $editando['fija'] ? "¿Borrar las coordenadas de {$editando['nombre']}?" : "¿Eliminar la dirección {$editando['nombre']}?" }}"
@@ -101,10 +101,16 @@
                     <tr wire:key="dir-{{ $d['clave'] }}" @class(['table-warning' => $editClave === $d['clave']])>
                         @if($puedeEditar)
                             <td class="text-center celda-acciones">
-                                <button type="button" class="btn btn-sm btn-outline-primary py-0" wire:click="editar('{{ $d['clave'] }}')"
-                                        title="Editar nombre o coordenadas">
-                                    <i class="ti ti-pencil"></i>
-                                </button>
+                                {{-- 15/10 (Antony): quien no es director edita solo el día en que se registraron las
+                                     coordenadas; el director, siempre (el servidor lo vuelve a comprobar). --}}
+                                @if($d['editable'])
+                                    <button type="button" class="btn btn-sm btn-outline-primary py-0" wire:click="editar('{{ $d['clave'] }}')"
+                                            title="Editar nombre o coordenadas">
+                                        <i class="ti ti-pencil"></i>
+                                    </button>
+                                @else
+                                    <i class="ti ti-lock text-muted" title="{{ \App\Support\HorarioEliminacion::mensajeMismoDia('editar') }}"></i>
+                                @endif
                             </td>
                         @endif
                         <td class="text-center" data-label="N°">{{ $i + 1 }}</td>

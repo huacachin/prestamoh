@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Support\ConFechaDeRegistro;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -12,8 +14,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * último usuario y la fecha en que se registraron las coordenadas. Los cambios
  * se registran a mano en la auditoría con el cliente como sujeto
  * (App\Livewire\Clients\Gps), que es lo que lee "Ver movimientos".
+ *
+ * Regla del mismo día (editar y borrar, quien no es director): cuenta la fecha
+ * en que se registraron las coordenadas de ahora (registrado_at, la columna
+ * Fecha), no la de la fila, que en Casa y Negocio es para siempre.
  */
-class ClientUbicacion extends Model
+class ClientUbicacion extends Model implements ConFechaDeRegistro
 {
     /** Nombres por defecto de las direcciones fijas. */
     public const TIPOS = ['casa' => 'Casa', 'negocio' => 'Negocio'];
@@ -45,6 +51,12 @@ class ClientUbicacion extends Model
     public function tieneCoordenadas(): bool
     {
         return $this->latitud !== null && $this->longitud !== null;
+    }
+
+    /** Cuándo se registraron las coordenadas de ahora (null si no hay coordenadas). */
+    public function registradoEl(): ?Carbon
+    {
+        return $this->tieneCoordenadas() && $this->registrado_at ? Carbon::instance($this->registrado_at) : null;
     }
 
     public function url(): ?string
