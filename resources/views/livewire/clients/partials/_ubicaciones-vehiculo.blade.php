@@ -2,7 +2,7 @@
      del último registro hacia abajo, o el aviso de que aún no hay. Lo usa
      gps-vehiculos.blade.php por cada vehículo. $ubicaciones, $placa, $puedeEditar.
      En el celular se apila (tabla-apilable, CSS en gps.blade.php).
-     Columnas (11/10, Antony): Op. · N° · Fecha · Usuario · Coordenadas · Descripción. --}}
+     Columnas (14/10, Antony): Op. · N° · Fecha · Usuario · Descripción · Coordenadas. --}}
 @if($ubicaciones->isEmpty())
     <div class="text-muted small fst-italic">Sin ubicaciones todavía.</div>
 @else
@@ -14,8 +14,8 @@
                     <th class="text-center" width="40">N°</th>
                     <th class="text-center" width="120">Fecha</th>
                     <th class="text-center" width="100">Usuario</th>
-                    <th class="text-center" width="210">Coordenadas</th>
                     <th>Descripción</th>
+                    <th class="text-center" width="210">Coordenadas</th>
                 </tr>
             </thead>
             <tbody>
@@ -35,6 +35,7 @@
                     <td class="text-center" data-label="N°">{{ $loop->iteration }}</td>
                     <td class="text-center" style="white-space:nowrap;" data-label="Fecha">{{ $r->fecha->format('d/m/Y') }} <span class="text-muted">{{ $r->fecha->format('H:i') }}</span></td>
                     <td class="text-center" data-label="Usuario">{{ $r->registradoPor?->username ?? $r->registradoPor?->name ?? '—' }}</td>
+                    <td style="white-space:pre-line;" data-label="Descripción">{{ $r->descripcion ?: '—' }}</td>
                     <td class="text-center" style="white-space:nowrap;" data-label="Coordenadas">
                         @if($r->tieneCoordenadas())
                             <span class="font-monospace">{{ $r->coordenadas() }}</span>
@@ -43,7 +44,6 @@
                             <span class="text-muted">—</span>
                         @endif
                     </td>
-                    <td style="white-space:pre-line;" data-label="Descripción">{{ $r->descripcion ?: '—' }}</td>
                 </tr>
             @endforeach
             </tbody>
