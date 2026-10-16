@@ -1471,6 +1471,10 @@
                                     @else
                                         <span class="badge bg-warning">Pendiente</span>
                                     @endif
+                                    {{-- 16/10 (Antony): la cuota con pago parcial se marca Amortizada además de su estado. --}}
+                                    @if(! $inst->pagado && ($inst->importe_aplicado + $inst->interes_aplicado + $inst->excedente_aplicado) > 0.001)
+                                        <span class="badge bg-info text-dark" title="Cuota con pago parcial: aún le falta">Amortizada</span>
+                                    @endif
                                 </td>
                                 <td>{{ $inst->pagado ? $inst->fecha_pago?->format('d/m/Y') : '' }}</td>
                                 <td class="text-center" style="white-space:nowrap;">

@@ -173,6 +173,10 @@
                                     @else
                                         <span class="badge bg-warning">Pendiente</span>
                                     @endif
+                                    {{-- 16/10 (Antony): la cuota con pago parcial se marca Amortizada además de su estado. --}}
+                                    @if($row['amortizada'] ?? false)
+                                        <span class="badge bg-info text-dark" title="Cuota con pago parcial: aún le falta">Amortizada</span>
+                                    @endif
                                 </td>
                                 <td style="{{ $st }}">
                                     {{ $row['fecha_pago'] }}

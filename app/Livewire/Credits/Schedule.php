@@ -200,6 +200,8 @@ class Schedule extends Component
                 'saldo' => round($cap + $int + $exc
                     - (float) $ins->importe_aplicado - (float) $ins->interes_aplicado - (float) $ins->excedente_aplicado, 2),
                 'flag_pagado' => (bool) $ins->pagado,
+                // 16/10: con abonos pero sin completar → badge Amortizada (por los aplicados de la cuota, no por payments).
+                'amortizada' => ! $ins->pagado && ((float) $ins->importe_aplicado + (float) $ins->interes_aplicado + (float) $ins->excedente_aplicado) > 0.001,
                 'hora' => $hora,
                 'fecha_pago' => $fechaPago,
                 'color' => $color,
@@ -234,6 +236,7 @@ class Schedule extends Component
                 'pagado_exc' => 0.0,
                 'saldo' => 0.0,
                 'flag_pagado' => null,
+                'amortizada' => false,
                 'hora' => $info['hora'],
                 'fecha_pago' => $f,
                 'color' => '',
@@ -265,6 +268,7 @@ class Schedule extends Component
                 'pagado_exc' => 0.0,
                 'saldo' => 0.0,
                 'flag_pagado' => null,
+                'amortizada' => false,
                 'hora' => null,
                 'fecha_pago' => '',
                 'color' => '',
