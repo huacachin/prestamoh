@@ -11,21 +11,22 @@ use Illuminate\Support\Facades\RateLimiter;
  * Para los componentes Livewire que asignan roles (alta y edición de usuarios,
  * 16/10/2026, Antony): "cada vez que alguien quiera cambiar el rol de director
  * a alguien, o de otro rol a director, hay que pedir una contraseña que solo
- * el gerente maneja". Antes de guardar, con el rol actual y el nuevo:
+ * el gerente maneja". Antes de guardar, con el rol actual, el nuevo y la clave
+ * tal como llegó del formulario:
  *
- *     if ($this->cambioDeRolBloqueado($rolActual, $rolNuevo, $usuario)) { return; }
+ *     if ($this->cambioDeRolBloqueado($rolActual, $rolNuevo, $usuario, $clave)) { return; }
  *
  * Si el cambio entra o sale de Director, exige la clave ROL_DIRECTOR
  * (ClaveSeguridad): sin clave configurada, vacía o incorrecta, avisa en el
  * campo claveDirector, deja rastro del intento en la auditoría y frena tras
  * cinco fallos en diez minutos. Los cambios entre otros roles no la piden.
  * Al terminar, registrarCambioDeRol() deja el cambio en la auditoría.
+ *
+ * La clave NO es estado del componente: llega como parámetro de la acción
+ * (desde el DOM) y nunca vuelve al navegador en el snapshot de Livewire.
  */
 trait ProtegeRolDirector
 {
-    /** Clave de seguridad del gerente. Se vacía en cada intento; nunca se guarda. */
-    public string $claveDirector = '';
-
     public const INTENTOS_CLAVE = 5;
 
     public const SEGUNDOS_BLOQUEO_CLAVE = 600;
@@ -37,13 +38,12 @@ trait ProtegeRolDirector
     }
 
     /** true (y ya avisó) cuando el cambio necesita la clave del gerente y no se dio la correcta. */
-    protected function cambioDeRolBloqueado(?string $rolActual, ?string $rolNuevo, ?Model $afectado = null): bool
+    protected function cambioDeRolBloqueado(?string $rolActual, ?string $rolNuevo, ?Model $afectado, string $clave): bool
     {
         if (! self::cambioProtegido($rolActual, $rolNuevo)) {
             return false;
         }
-        $intento = trim($this->claveDirector);
-        $this->claveDirector = '';
+        $intento = trim($clave);
 
         if (! ClaveSeguridad::definida(ClaveSeguridad::ROL_DIRECTOR)) {
             $this->addError('claveDirector', 'No hay clave de seguridad configurada para dar o quitar el rol Director. Hay que crearla con el comando usuarios:clave-director.');

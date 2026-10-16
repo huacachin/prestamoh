@@ -97,19 +97,19 @@ class Create extends Component
 
     public function clean(): void
     {
-        $this->reset(['name', 'username', 'pwd', 'email', 'document_type', 'document_number', 'phone', 'headquarter_id', 'selectedRoleId', 'claveDirector']);
+        $this->reset(['name', 'username', 'pwd', 'email', 'document_type', 'document_number', 'phone', 'headquarter_id', 'selectedRoleId']);
         // Limpiar el formulario no debe dejar la sede vacía.
         $this->headquarter_id = $this->headquarters->first()?->id;
     }
 
-    public function save()
+    public function save(string $claveDirector = '')
     {
         $this->recortarEspacios();
         $this->validate();
 
         // Dar de alta directamente como Director exige la clave de seguridad del gerente (16/10).
         $rolNuevo = $this->selectedRoleId ? collect($this->roles)->firstWhere('id', $this->selectedRoleId)?->name : null;
-        if ($this->cambioDeRolBloqueado(null, $rolNuevo)) {
+        if ($this->cambioDeRolBloqueado(null, $rolNuevo, null, $claveDirector)) {
             return;
         }
 

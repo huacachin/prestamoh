@@ -131,7 +131,8 @@
 
                 {{-- 16/10 (Antony): dar o quitar el rol Director pide la clave de seguridad que custodia el
                      gerente. El campo aparece (Alpine, sin viaje al servidor) solo cuando el rol marcado
-                     cambia y uno de los dos es Director; el servidor lo exige de todos modos. --}}
+                     cambia y uno de los dos es Director; el servidor lo exige de todos modos. La clave no es
+                     estado del componente (sin wire:model): va como parámetro y nunca vuelve al navegador. --}}
                 @php
                     $directorId = (int) (collect($roles)->firstWhere('name', 'director')?->id ?? 0);
                     $rolOriginalId = (int) ($user->roles()->value('id') ?? 0);
@@ -141,7 +142,7 @@
                     <div class="perm-col-title"><i class="ti ti-shield-lock"></i> Clave de seguridad</div>
                     <div class="perm-col-controls">
                         <input type="password" class="form-control form-control-sm @error('claveDirector') is-invalid @enderror"
-                               wire:model="claveDirector" wire:keydown.enter="update" name="clave_director" autocomplete="one-time-code"
+                               id="clave-director" wire:keydown.enter="update($event.target.value)" name="clave_director" autocomplete="one-time-code"
                                placeholder="Clave del gerente para dar o quitar el rol Director">
                         <small class="text-muted d-block">Dar o quitar el rol Director requiere la clave de seguridad que custodia el gerente.</small>
                         @error('claveDirector') <span class="title-modules small">{{ $message }}</span> @enderror
@@ -150,7 +151,7 @@
             </div>
 
             <div class="mt-2 d-flex gap-2">
-                <button class="btn btn-primary btn-sm" wire:click="update">Actualizar</button>
+                <button class="btn btn-primary btn-sm" wire:click="update(document.getElementById('clave-director').value)">Actualizar</button>
                 <a class="btn btn-secondary btn-sm" href="{{ route('settings.users.index') }}">Volver</a>
             </div>
         </div>

@@ -21,8 +21,9 @@ use Tests\TestCase;
  * a alguien, o de otro rol a director, hay que pedir una contraseña… solo el
  * gerente va a manejar este password". La clave vive como hash en
  * claves_seguridad (ClaveSeguridad::ROL_DIRECTOR), se pide en la edición y en
- * el alta de usuarios (trait ProtegeRolDirector) y se crea o cambia con el
- * comando usuarios:clave-director.
+ * el alta de usuarios (trait ProtegeRolDirector; llega como parámetro de la
+ * acción, nunca como estado) y se crea o cambia con el comando
+ * usuarios:clave-director.
  */
 class ClaveRolDirectorTest extends TestCase
 {
@@ -80,16 +81,14 @@ class ClaveRolDirectorTest extends TestCase
         $this->assertSame(0, Activity::where('description', 'like', 'Cambió el rol%')->count());
     }
 
-    public function test_con_la_clave_incorrecta_avisa_deja_rastro_y_vacia_el_campo(): void
+    public function test_con_la_clave_incorrecta_avisa_y_deja_rastro(): void
     {
         $guilmer = $this->usuario('Guilmer', 'director');
 
         Livewire::test(Edit::class, ['id' => $guilmer->id])
             ->set('selectedRoleId', $this->rolId('administrador'))
-            ->set('claveDirector', 'esta-no-es')
-            ->call('update')
+            ->call('update', 'esta-no-es')
             ->assertHasErrors(['claveDirector' => 'Clave de seguridad incorrecta.'])
-            ->assertSet('claveDirector', '')
             ->assertNoRedirect();
 
         $this->assertSame(['director'], $guilmer->fresh()->roles->pluck('name')->all());
@@ -104,8 +103,7 @@ class ClaveRolDirectorTest extends TestCase
 
         Livewire::test(Edit::class, ['id' => $guilmer->id])
             ->set('selectedRoleId', $this->rolId('administrador'))
-            ->set('claveDirector', self::CLAVE)
-            ->call('update')
+            ->call('update', self::CLAVE)
             ->assertHasNoErrors()
             ->assertRedirect(route('settings.users.index'));
 
@@ -137,8 +135,7 @@ class ClaveRolDirectorTest extends TestCase
 
         Livewire::test(Edit::class, ['id' => $rosa->id])
             ->set('selectedRoleId', $this->rolId('director'))
-            ->set('claveDirector', self::CLAVE)
-            ->call('update')
+            ->call('update', self::CLAVE)
             ->assertHasNoErrors();
         $this->assertSame(['director'], $rosa->fresh()->roles->pluck('name')->all());
         $this->assertTrue(Activity::where('description', 'Cambió el rol de Rosa de analista-creditos a director')->sole()->properties['clave_seguridad']);
@@ -153,7 +150,7 @@ class ClaveRolDirectorTest extends TestCase
         $datos(Livewire::test(Create::class))->call('save')->assertHasErrors(['claveDirector'])->assertNoRedirect();
         $this->assertNull(User::where('username', 'nuevodir')->first(), 'sin clave no se crea');
 
-        $datos(Livewire::test(Create::class))->set('claveDirector', self::CLAVE)->call('save')->assertHasNoErrors()->assertRedirect(route('settings.users.index'));
+        $datos(Livewire::test(Create::class))->call('save', self::CLAVE)->assertHasNoErrors()->assertRedirect(route('settings.users.index'));
         $nuevo = User::where('username', 'nuevodir')->sole();
         $this->assertSame(['director'], $nuevo->roles->pluck('name')->all());
         $this->assertTrue(Activity::where('description', 'Asignó el rol director a nuevodir')->sole()->properties['clave_seguridad']);
@@ -171,8 +168,7 @@ class ClaveRolDirectorTest extends TestCase
 
         $comp = Livewire::test(Edit::class, ['id' => $guilmer->id])
             ->set('selectedRoleId', $this->rolId('administrador'))
-            ->set('claveDirector', self::CLAVE)
-            ->call('update')
+            ->call('update', self::CLAVE)
             ->assertHasErrors(['claveDirector'])
             ->assertNoRedirect();
         // (assertHasErrors parte el mensaje en los dos puntos de "usuarios:clave-director"; se mira directo.)
@@ -185,24 +181,44 @@ class ClaveRolDirectorTest extends TestCase
         $guilmer = $this->usuario('Guilmer', 'director');
         $comp = Livewire::test(Edit::class, ['id' => $guilmer->id])->set('selectedRoleId', $this->rolId('administrador'));
         for ($i = 0; $i < 5; $i++) {
-            $comp->set('claveDirector', "mala-{$i}")->call('update')->assertHasErrors(['claveDirector' => 'Clave de seguridad incorrecta.']);
+            $comp->call('update', "mala-{$i}")->assertHasErrors(['claveDirector' => 'Clave de seguridad incorrecta.']);
         }
-        $comp->set('claveDirector', self::CLAVE)->call('update')->assertHasErrors(['claveDirector']);
+        $comp->call('update', self::CLAVE)->assertHasErrors(['claveDirector']);
         $this->assertStringStartsWith('Demasiados intentos', $comp->errors()->first('claveDirector'));
         $this->assertSame(['director'], $guilmer->fresh()->roles->pluck('name')->all(), 'bloqueado: sigue director');
         $this->assertSame(5, Activity::where('description', 'like', 'Intentó cambiar el rol de Guilmer%')->count());
 
         RateLimiter::clear('clave-director:'.$this->actor->id);
-        $comp->set('claveDirector', self::CLAVE)->call('update')->assertHasNoErrors();
+        $comp->call('update', self::CLAVE)->assertHasNoErrors();
         $this->assertSame(['administrador'], $guilmer->fresh()->roles->pluck('name')->all());
+    }
+
+    /** La clave no es estado del componente: no viaja de vuelta en el snapshot de Livewire ni con otros errores. */
+    public function test_la_clave_escrita_nunca_vuelve_al_navegador(): void
+    {
+        $guilmer = $this->usuario('Guilmer', 'director');
+
+        $comp = Livewire::test(Edit::class, ['id' => $guilmer->id])
+            ->set('name', '')->set('selectedRoleId', $this->rolId('administrador'))
+            ->call('update', self::CLAVE)->assertHasErrors(['name']);
+        $this->assertStringNotContainsString(self::CLAVE, $comp->html());
+        $this->assertStringNotContainsString('wire:model="claveDirector"', $comp->html());
+
+        $comp = Livewire::test(Edit::class, ['id' => $guilmer->id])
+            ->set('selectedRoleId', $this->rolId('administrador'))
+            ->call('update', 'equivocada-123')->assertHasErrors(['claveDirector']);
+        $this->assertStringNotContainsString('equivocada-123', $comp->html());
+
+        $comp = Livewire::test(Create::class)->set('selectedRoleId', $this->rolId('director'))
+            ->call('save', self::CLAVE)->assertHasErrors(['name']);
+        $this->assertStringNotContainsString(self::CLAVE, $comp->html());
     }
 
     public function test_un_director_sigue_sin_poder_quitarse_su_propio_rol(): void
     {
         Livewire::test(Edit::class, ['id' => $this->actor->id])
             ->set('selectedRoleId', $this->rolId('administrador'))
-            ->set('claveDirector', self::CLAVE)
-            ->call('update')
+            ->call('update', self::CLAVE)
             ->assertDispatched('errorAlert')
             ->assertNoRedirect();
         $this->assertSame(['director'], $this->actor->fresh()->roles->pluck('name')->all());
@@ -214,11 +230,13 @@ class ClaveRolDirectorTest extends TestCase
         $director = $this->rolId('director');
 
         $html = Livewire::test(Edit::class, ['id' => $guilmer->id])->html();
-        $this->assertStringContainsString('wire:model="claveDirector"', $html);
+        $this->assertStringContainsString('id="clave-director"', $html);
+        $this->assertStringContainsString("wire:click=\"update(document.getElementById('clave-director').value)\"", $html);
         $this->assertStringContainsString("x-show.important=\"(\$wire.selectedRoleId ?? 0) != {$director} && ((\$wire.selectedRoleId ?? 0) == {$director} || {$director} == {$director})\"", $html);
 
         $html = Livewire::test(Create::class)->html();
-        $this->assertStringContainsString('wire:model="claveDirector"', $html);
+        $this->assertStringContainsString('id="clave-director"', $html);
+        $this->assertStringContainsString("wire:click=\"save(document.getElementById('clave-director').value)\"", $html);
         $this->assertStringContainsString("x-show.important=\"(\$wire.selectedRoleId ?? 0) == {$director}\"", $html);
     }
 
@@ -233,7 +251,6 @@ class ClaveRolDirectorTest extends TestCase
         $fila = ClaveSeguridad::where('nombre', ClaveSeguridad::ROL_DIRECTOR)->sole();
         $this->assertSame($this->actor->id, (int) $fila->actualizado_por);
         $this->assertFalse(ClaveSeguridad::verificar(ClaveSeguridad::ROL_DIRECTOR, self::CLAVE), 'la vieja ya no vale');
-        $this->assertStringNotContainsString($fila->hash, ClaveSeguridad::generar(), 'el hash nunca sale en claro');
 
         $this->artisan('usuarios:clave-director', ['--generar' => true])->expectsOutputToContain('REEMPLAZADA')->assertSuccessful();
         $this->artisan('usuarios:clave-director', ['--generar' => true, '--por' => 'nadie'])->expectsOutputToContain('No existe el usuario nadie')->assertFailed();

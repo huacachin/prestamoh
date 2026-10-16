@@ -41,6 +41,7 @@ class MiPerfilTest extends TestCase
         $html = $this->actingAs($this->usuario())->get(route('perfil'))->assertOk()->getContent();
         $this->assertStringContainsString('MI PERFIL', $html);
         $this->assertStringContainsString('Sesiones activas', $html);
+        $this->assertStringNotContainsString('Cambiar contraseña', $html, 'sin tarjeta de contraseña (Antony, 16/10)');
         $perfil = strpos($html, 'href="'.route('perfil').'"');
         $cerrar = strpos($html, 'Cerrar Sesión');
         $this->assertNotFalse($perfil, 'el menú lleva a Mi perfil');
@@ -62,30 +63,6 @@ class MiPerfilTest extends TestCase
         $this->assertStringNotContainsString('Guardar mis datos', $html);
         $this->assertFalse(method_exists(MiPerfil::class, 'guardarDatos'), 'tampoco existe la acción por detrás');
         $this->assertSame('Rosa Tafur', $u->fresh()->name);
-    }
-
-    public function test_cambia_su_contrasena_confirmando_la_actual(): void
-    {
-        $u = $this->usuario();
-        $this->actingAs($u);
-
-        Livewire::test(MiPerfil::class)
-            ->set('passwordActual', 'equivocada')->set('passwordNueva', 'Nueva.Clave.2026')->set('passwordNueva_confirmation', 'Nueva.Clave.2026')
-            ->call('cambiarPassword')->assertHasErrors(['passwordActual']);
-        $this->assertTrue(Hash::check('Actual.2026', $u->fresh()->password), 'sigue la de antes');
-
-        Livewire::test(MiPerfil::class)
-            ->set('passwordActual', 'Actual.2026')->set('passwordNueva', 'corta')->set('passwordNueva_confirmation', 'corta')
-            ->call('cambiarPassword')->assertHasErrors(['passwordNueva']);
-
-        Livewire::test(MiPerfil::class)
-            ->set('passwordActual', 'Actual.2026')->set('passwordNueva', 'Nueva.Clave.2026')->set('passwordNueva_confirmation', 'Nueva.Clave.2026')
-            ->call('cambiarPassword')->assertHasNoErrors()->assertDispatched('successAlert')->assertSet('passwordActual', '')->assertSet('passwordNueva', '');
-        $this->assertTrue(Hash::check('Nueva.Clave.2026', $u->fresh()->password));
-        $cambio = Activity::where('description', 'Cambió su contraseña')->sole();
-        $this->assertSame($u->id, (int) $cambio->subject_id);
-        $this->assertStringNotContainsString('Nueva.Clave', json_encode($cambio->properties), 'la contraseña no viaja a la auditoría');
-        $this->assertSame(0, Activity::where('description', 'like', 'Editó Usuario%')->count(), 'sin fila automática duplicada');
     }
 
     public function test_lista_sus_sesiones_marca_la_actual_y_cierra_las_demas_con_su_contrasena(): void
@@ -112,10 +89,11 @@ class MiPerfilTest extends TestCase
         $this->assertStringContainsString('38.25.29.129', $html);
         $this->assertStringNotContainsString('1.2.3.4', $html, 'las sesiones de otros no salen');
 
-        $comp->set('passwordSesiones', 'mala')->call('cerrarOtrasSesiones')->assertHasErrors(['passwordSesiones']);
+        $comp->call('cerrarOtrasSesiones', 'mala-mala')->assertHasErrors(['passwordSesiones']);
+        $this->assertStringNotContainsString('mala-mala', $comp->html(), 'la contraseña no vuelve al navegador');
         $this->assertSame(2, DB::table('sessions')->where('user_id', $u->id)->count());
 
-        $comp->set('passwordSesiones', 'Actual.2026')->call('cerrarOtrasSesiones')->assertHasNoErrors()->assertDispatched('successAlert')->assertSet('passwordSesiones', '');
+        $comp->call('cerrarOtrasSesiones', 'Actual.2026')->assertHasNoErrors()->assertDispatched('successAlert')->assertDispatched('perfil-sesiones-cerradas');
         $this->assertSame([$actual], DB::table('sessions')->where('user_id', $u->id)->pluck('id')->all(), 'queda solo la actual');
         $this->assertNotNull(DB::table('sessions')->find('ajena'), 'las de otros usuarios no se tocan');
         $this->assertSame(1, (int) Activity::where('description', 'Cerró sus otras sesiones (1)')->sole()->properties['sesiones_cerradas']);

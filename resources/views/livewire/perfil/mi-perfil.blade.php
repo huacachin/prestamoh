@@ -41,46 +41,6 @@
         </div>
     </div>
 
-    {{-- ═══ Contraseña ═══ --}}
-    <div class="card" x-data="{ ver: false }">
-        <div class="card-header py-2"><h6 class="mb-0"><i class="ti ti-key"></i> Cambiar contraseña</h6></div>
-        <div class="card-body">
-            <div class="perm-grid form-two-cols">
-                <div class="perm-row">
-                    <div class="perm-col-title">Contraseña actual</div>
-                    <div class="perm-col-controls">
-                        <input :type="ver ? 'text' : 'password'" class="form-control form-control-sm @error('passwordActual') is-invalid @enderror" wire:model="passwordActual" autocomplete="current-password">
-                        @error('passwordActual') <span class="title-modules small">{{ $message }}</span> @enderror
-                    </div>
-                </div>
-                <div class="perm-row">
-                    <div class="perm-col-title">&nbsp;</div>
-                    <div class="perm-col-controls">
-                        <button type="button" class="btn btn-outline-secondary btn-sm" x-on:click="ver = !ver"><i class="ti" :class="ver ? 'ti-eye-off' : 'ti-eye'"></i> <span x-text="ver ? 'Ocultar' : 'Mostrar'">Mostrar</span></button>
-                    </div>
-                </div>
-                <div class="perm-row">
-                    <div class="perm-col-title">Contraseña nueva</div>
-                    <div class="perm-col-controls">
-                        <input :type="ver ? 'text' : 'password'" class="form-control form-control-sm @error('passwordNueva') is-invalid @enderror" wire:model="passwordNueva" autocomplete="new-password" placeholder="Mínimo 8 caracteres">
-                        @error('passwordNueva') <span class="title-modules small">{{ $message }}</span> @enderror
-                    </div>
-                </div>
-                <div class="perm-row">
-                    <div class="perm-col-title">Repetir la nueva</div>
-                    <div class="perm-col-controls">
-                        <input :type="ver ? 'text' : 'password'" class="form-control form-control-sm" wire:model="passwordNueva_confirmation" wire:keydown.enter="cambiarPassword" autocomplete="new-password">
-                    </div>
-                </div>
-            </div>
-            <div class="mt-2">
-                <button type="button" class="btn btn-dark btn-sm" wire:click="cambiarPassword" wire:loading.attr="disabled" wire:target="cambiarPassword">
-                    <i class="ti ti-key"></i> Cambiar contraseña
-                </button>
-            </div>
-        </div>
-    </div>
-
     {{-- ═══ Sesiones activas ═══ --}}
     <div class="card">
         <div class="card-header py-2"><h6 class="mb-0"><i class="ti ti-devices"></i> Sesiones activas</h6></div>
@@ -121,13 +81,13 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="d-flex flex-column flex-md-row gap-2 align-items-md-start">
+                <div class="d-flex flex-column flex-md-row gap-2 align-items-md-start" x-data x-on:perfil-sesiones-cerradas.window="$refs.clave.value = ''">
                     <div style="max-width:320px;">
-                        <input type="password" class="form-control form-control-sm @error('passwordSesiones') is-invalid @enderror" wire:model="passwordSesiones"
-                               wire:keydown.enter="cerrarOtrasSesiones" autocomplete="current-password" placeholder="Tu contraseña, para confirmar">
+                        <input type="password" class="form-control form-control-sm @error('passwordSesiones') is-invalid @enderror" x-ref="clave" name="password_sesiones"
+                               wire:keydown.enter="cerrarOtrasSesiones($event.target.value)" autocomplete="current-password" placeholder="Tu contraseña, para confirmar">
                         @error('passwordSesiones') <span class="title-modules small">{{ $message }}</span> @enderror
                     </div>
-                    <button type="button" class="btn btn-outline-danger btn-sm" wire:click="cerrarOtrasSesiones" wire:loading.attr="disabled" wire:target="cerrarOtrasSesiones"
+                    <button type="button" class="btn btn-outline-danger btn-sm" wire:click="cerrarOtrasSesiones($refs.clave.value)" wire:loading.attr="disabled" wire:target="cerrarOtrasSesiones"
                             @if($sesiones->where('actual', false)->isEmpty()) disabled title="No hay otras sesiones abiertas" @endif>
                         <i class="ti ti-logout"></i> Cerrar las otras sesiones
                     </button>

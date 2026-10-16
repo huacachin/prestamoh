@@ -113,7 +113,7 @@ class Edit extends Component
         $this->phone = trim($this->phone);
     }
 
-    public function update()
+    public function update(string $claveDirector = '')
     {
         $this->recortarEspacios();
         $this->validate();
@@ -130,7 +130,7 @@ class Edit extends Component
         }
 
         // Dar o quitar Director exige la clave de seguridad del gerente.
-        if ($this->cambioDeRolBloqueado($rolActual, $rolNuevo, $this->user)) {
+        if ($this->cambioDeRolBloqueado($rolActual, $rolNuevo, $this->user, $claveDirector)) {
             return;
         }
 

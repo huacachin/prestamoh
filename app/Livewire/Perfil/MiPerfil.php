@@ -9,51 +9,30 @@ use Carbon\Carbon;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Livewire\Component;
 
 /**
  * Mi perfil (16/10/2026, Antony): cada usuario ve sus datos (solo lectura:
- * los cambia quien administra usuarios), cambia su contraseña confirmando la
- * actual y ve sus sesiones activas (navegador, sistema, IP y última actividad)
- * con la opción de cerrar todas las demás. Las sesiones salen de la tabla
+ * los cambia quien administra usuarios) y sus sesiones activas (navegador,
+ * sistema, IP y última actividad) con la opción de cerrar todas las demás
+ * confirmando con su contraseña. Sin cambio de contraseña (Antony, 16/10:
+ * "solo quiero que el card de cambiar contraseña no aparezca"). Las sesiones salen de la tabla
  * `sessions` (SESSION_DRIVER=database, como Jetstream): con otro driver se
  * avisa y la lista no se muestra.
+ *
+ * La contraseña de confirmación NO es estado del componente: llega como
+ * parámetro de la acción (desde el DOM) y nunca vuelve al navegador (Livewire
+ * devuelve el estado en cada respuesta, wire:snapshot en el HTML, y con
+ * `wire:model` quedaría a la vista tras un intento fallido).
  */
 class MiPerfil extends Component
 {
-    public string $passwordActual = '';
-
-    public string $passwordNueva = '';
-
-    public string $passwordNueva_confirmation = '';
-
-    /** Contraseña actual para confirmar el cierre de las otras sesiones. */
-    public string $passwordSesiones = '';
-
     private function usuario(): User
     {
         /** @var User $u */
         $u = auth()->user();
 
         return $u;
-    }
-
-    public function cambiarPassword(): void
-    {
-        $u = $this->usuario();
-        $this->validate([
-            'passwordActual' => ['required', 'current_password'],
-            'passwordNueva' => ['required', 'string', 'min:8', 'confirmed', 'different:passwordActual'],
-        ], ['passwordActual.current_password' => 'La contraseña actual no es correcta.'], [
-            'passwordActual' => 'contraseña actual', 'passwordNueva' => 'contraseña nueva',
-        ]);
-
-        $u->sinAuditoriaAutomatica(fn () => $u->update(['password' => Hash::make($this->passwordNueva)]));
-        Audit::log('Cambió su contraseña', $u);
-
-        $this->reset('passwordActual', 'passwordNueva', 'passwordNueva_confirmation');
-        $this->dispatch('successAlert', ['message' => 'Contraseña cambiada.']);
     }
 
     /** Las sesiones viven en la base de datos (si no, no hay lista que mostrar). */
@@ -90,14 +69,14 @@ class MiPerfil extends Component
     }
 
     /** Cierra todas las sesiones del usuario menos esta, confirmando con su contraseña. */
-    public function cerrarOtrasSesiones(): void
+    public function cerrarOtrasSesiones(string $password = ''): void
     {
-        $this->validate(
+        validator(
+            ['passwordSesiones' => $password],
             ['passwordSesiones' => ['required', 'current_password']],
             ['passwordSesiones.current_password' => 'La contraseña no es correcta.'],
             ['passwordSesiones' => 'contraseña']
-        );
-        $this->reset('passwordSesiones');
+        )->validate();
 
         if (! self::sesionesDisponibles()) {
             $this->dispatch('errorAlert', ['message' => 'Las sesiones no se guardan en la base de datos: no se pueden cerrar desde aquí.']);
@@ -112,6 +91,7 @@ class MiPerfil extends Component
             ->delete();
 
         Audit::log("Cerró sus otras sesiones ({$cerradas})", $u, ['sesiones_cerradas' => $cerradas]);
+        $this->dispatch('perfil-sesiones-cerradas');
         $this->dispatch('successAlert', ['message' => $cerradas === 0 ? 'No había otras sesiones abiertas.' : "Se cerraron {$cerradas} sesión(es) más."]);
     }
 
