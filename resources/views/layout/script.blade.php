@@ -43,17 +43,42 @@ document.addEventListener('click', function (e) {
     // del recuadro deja su borde inferior fuera de la ventana cuando el recuadro
     // (650 px) no cabe entero; por eso, además, se baja o sube la PÁGINA hasta
     // que el final (o el inicio) del recuadro quede a la vista.
-    // El scroll interno también va suave (antes era un salto seco por una vieja
-    // nota de compatibilidad; los navegadores actuales animan scrollTo en
-    // contenedores con overflow horizontal + vertical sin problema).
+    // 16/10 (Antony, Caja General 2 en el celular): los dos scrolls suaves A LA
+    // VEZ (página y recuadro) se interrumpen entre sí en pantallas pequeñas y el
+    // recuadro se quedaba a medio camino. Ahora van en SECUENCIA —primero la
+    // página y, cuando termina (scrollend, o 700 ms si el navegador no lo emite),
+    // el recuadro por dentro, suave— y al final se comprueba la posición y se
+    // remata sin animación si algo la cortó. Si el recuadro ya cabe a la vista,
+    // solo se mueve por dentro (pantallas grandes: igual que antes).
+    var alTerminarElScrollDePagina = function (fn) {
+        var hecho = false;
+        var una = function () { if (hecho) return; hecho = true; document.removeEventListener('scrollend', una); fn(); };
+        document.addEventListener('scrollend', una);
+        setTimeout(una, 700);
+    };
     var verFinalDelRecuadro = function () {
-        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+        var dentro = function () {
+            el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+            setTimeout(function () {
+                if (el.scrollTop < el.scrollHeight - el.clientHeight - 2) el.scrollTop = el.scrollHeight;
+                var sobra = el.getBoundingClientRect().bottom - window.innerHeight;
+                if (sobra > 2) window.scrollBy(0, sobra);
+            }, 900);
+        };
+        if (el.getBoundingClientRect().bottom <= window.innerHeight + 1) { dentro(); return; }
+        alTerminarElScrollDePagina(dentro);
         el.scrollIntoView({ behavior: 'smooth', block: 'end' });
     };
     var verInicioDelRecuadro = function () {
-        el.scrollTo({ top: 0, behavior: 'smooth' });
+        var dentro = function () {
+            el.scrollTo({ top: 0, behavior: 'smooth' });
+            setTimeout(function () { if (el.scrollTop > 2) el.scrollTop = 0; }, 900);
+        };
         // 90 px: la cabecera fija (mismo margen que [data-lista] en app.css).
-        window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 90, behavior: 'smooth' });
+        var destino = el.getBoundingClientRect().top + window.scrollY - 90;
+        if (Math.abs(destino - window.scrollY) <= 1) { dentro(); return; }
+        alTerminarElScrollDePagina(dentro);
+        window.scrollTo({ top: destino, behavior: 'smooth' });
     };
 
     var fija = btn.getAttribute('data-scroll-dir');
