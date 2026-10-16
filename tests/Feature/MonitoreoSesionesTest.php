@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\Monitoreo\Sesiones;
+use App\Livewire\Users\Index as UsersIndex;
 use App\Models\User;
 use App\Support\Audit;
 use App\Support\MenuLateral;
@@ -136,6 +137,40 @@ class MonitoreoSesionesTest extends TestCase
         $comp->call('cerrarTodas', $this->director->id)->assertDispatched('successAlert');
         $this->assertSame([(string) session()->getId()], DB::table('sessions')->where('user_id', $this->director->id)->pluck('id')->all());
         $comp->call('cerrarSesion', 'ya-no-existe')->assertDispatched('errorAlert');
+    }
+
+    /** 16/10 (Antony): "hay que mostrar solo los status 1"; un cesado solo mientras conserve una sesión. */
+    public function test_solo_usuarios_activos_salvo_un_cesado_con_sesion_abierta(): void
+    {
+        $this->actingAs($this->director);
+        $cesadoSinSesion = User::factory()->create(['username' => 'Gianella', 'status' => 'inactive']);
+        $cesadoConSesion = User::factory()->create(['username' => 'Marvin', 'status' => 'inactive']);
+        $this->sesion('marvin-pc', $cesadoConSesion, '209.61.122.152', self::UA_WIN, 3);
+
+        $comp = Livewire::test(Sesiones::class);
+        $this->assertSame(['Marvin', 'Guilmer', 'Licet', 'Rosa'], $comp->instance()->bloques()->pluck('usuario.username')->all());
+        $html = $comp->html();
+        $this->assertStringContainsString('Cesado', $html, 'Marvin sale marcado como cesado');
+        $this->assertStringNotContainsString('Gianella', $html);
+
+        $comp->call('cerrarTodas', $cesadoConSesion->id)->assertDispatched('successAlert');
+        $this->assertStringNotContainsString('Marvin', $comp->html(), 'sin sesión, el cesado desaparece');
+    }
+
+    /** Al cesar a un usuario desde /users se cierran sus sesiones: ya no puede seguir dentro hasta que caduque. */
+    public function test_desactivar_un_usuario_cierra_sus_sesiones(): void
+    {
+        $this->actingAs($this->director);
+        $this->sesion('licet-pc', $this->licet, '209.61.122.152', self::UA_WIN, 2);
+        $this->sesion('licet-cel', $this->licet, '179.6.137.162', self::UA_ANDROID, 40);
+        $this->sesion('rosa-pc', $this->rosa, '209.61.122.152', self::UA_WIN, 5);
+
+        Livewire::test(UsersIndex::class)->call('destroy', $this->licet->id)
+            ->assertDispatched('successAlert', ['message' => 'Usuario desactivado correctamente y 2 sesión(es) suya(s) cerrada(s)']);
+        $this->assertSame('inactive', $this->licet->fresh()->status);
+        $this->assertSame(0, DB::table('sessions')->where('user_id', $this->licet->id)->count());
+        $this->assertSame(1, DB::table('sessions')->where('user_id', $this->rosa->id)->count(), 'las de otros no se tocan');
+        $this->assertSame(2, (int) Activity::where('description', 'like', 'Desactivó el usuario Licet%')->sole()->properties['sesiones_cerradas']);
     }
 
     public function test_filtros_buscar_y_solo_con_sesion(): void

@@ -17,7 +17,8 @@ use Livewire\Component;
  * activas (dispositivo, navegador, IP, última actividad) y sus últimos
  * inicios de sesión (de la auditoría)— y puede cerrar una sesión o todas las
  * de un usuario. La sesión del propio director desde la que mira nunca se
- * cierra desde aquí. Cada cierre queda en la auditoría.
+ * cierra desde aquí. Cada cierre queda en la auditoría. Solo usuarios activos
+ * (un cesado sale solo mientras le quede una sesión abierta).
  */
 class Sesiones extends Component
 {
@@ -91,7 +92,10 @@ class Sesiones extends Component
         $fallidos = $this->intentosFallidos();
         $termino = mb_strtolower(trim($this->buscar));
 
+        // 16/10 (Antony): solo usuarios activos (status 1); un cesado aparece únicamente mientras conserve
+        // alguna sesión abierta, para poder cerrársela.
         return User::with('roles')
+            ->where(fn ($q) => $q->where('status', 'active')->orWhereIn('id', $sesiones->keys()->all()))
             ->when($termino !== '', fn ($q) => $q->where(fn ($w) => $w->whereRaw('lower(name) like ?', ["%{$termino}%"])->orWhereRaw('lower(username) like ?', ["%{$termino}%"])))
             ->orderBy('name')
             ->get()

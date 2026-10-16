@@ -5,6 +5,7 @@ namespace App\Livewire\Users;
 use App\Models\User;
 use App\Support\Audit;
 use App\Support\ConReglasDeEliminacion;
+use App\Support\SesionesActivas;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -36,8 +37,11 @@ class Index extends Component
         }
 
         $user->sinAuditoriaAutomatica(fn () => $user->update(['status' => 'inactive']));
-        Audit::log("Desactivó el usuario {$user->username} ({$user->name})", $user);
-        $this->dispatch('successAlert', ['message' => 'Usuario desactivado correctamente']);
+        // 16/10: al cesarlo se cierran sus sesiones abiertas (el login ya no lo deja entrar, pero una sesión
+        // viva seguía sirviendo hasta caducar). Nunca la del navegador que desactiva (no es la suya).
+        $cerradas = SesionesActivas::cerrarDeUsuario($user->id, conservarLaActual: true);
+        Audit::log("Desactivó el usuario {$user->username} ({$user->name})", $user, $cerradas ? ['sesiones_cerradas' => $cerradas] : []);
+        $this->dispatch('successAlert', ['message' => 'Usuario desactivado correctamente'.($cerradas ? " y {$cerradas} sesión(es) suya(s) cerrada(s)" : '')]);
     }
 
     public function reactivate(int $id): void
