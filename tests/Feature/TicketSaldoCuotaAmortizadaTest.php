@@ -90,6 +90,43 @@ class TicketSaldoCuotaAmortizadaTest extends TestCase
         }
     }
 
+    /** 16/10 (Antony: "no me sale el amortizado"): la vista previa del cobro trae el mismo desglose que el ticket. */
+    public function test_la_vista_previa_del_cobro_trae_el_mismo_desglose(): void
+    {
+        $this->actingAs($this->actor());
+        $credit = $this->credito();
+
+        $comp = Livewire::test(Create::class, ['creditId' => $credit->id])->set('monto', 400.08)->call('confirmarPago');
+        $preview = $comp->get('preview');
+        $this->assertTrue($preview['detalle_cuotas_visible']);
+        $this->assertSame([1, 2], array_column($preview['detalle_cuotas'], 'num'));
+        [$c1, $c2] = $preview['detalle_cuotas'];
+        $this->assertFalse($c1['parcial']);
+        $this->assertEqualsWithDelta(275.08, $c1['monto'], 0.001);
+        $this->assertTrue($c2['parcial']);
+        $this->assertEqualsWithDelta(125.00, $c2['monto'], 0.001);
+        $this->assertEqualsWithDelta(150.08, $c2['saldo'], 0.001);
+
+        $html = $comp->html();
+        $this->assertStringContainsString('Cuota 1:</span><span>275.08', $html);
+        $this->assertStringNotContainsString('Cuota 1 (amortizada)', $html);
+        $this->assertStringContainsString('Cuota 2 (amortizada):</span><span>125.00', $html);
+        $this->assertStringContainsString('Cuota 2 (Saldo):</span><span>150.08', $html);
+
+        // Y el ticket del cobro real dice exactamente lo mismo (preview == cobro real).
+        $comp->call('pagar');
+        $t = $this->ultimoTicket($credit);
+        $this->assertSame(
+            array_map(fn ($c) => [$c['num'], $c['monto'], $c['parcial'], $c['saldo']], $preview['detalle_cuotas']),
+            array_map(fn ($c) => [$c['num'], $c['monto'], $c['parcial'], $c['saldo']], $t['detalle_cuotas'])
+        );
+
+        // Una sola cuota completa: sin desglose en la vista previa, como en el ticket.
+        $comp2 = Livewire::test(Create::class, ['creditId' => $credit->id])->set('monto', 150.08)->call('confirmarPago');
+        $this->assertFalse($comp2->get('preview')['detalle_cuotas_visible']);
+        $this->assertStringNotContainsString('amortizada', $comp2->html());
+    }
+
     public function test_al_completar_la_cuota_amortizada_en_otro_cobro_ya_no_es_amortizada(): void
     {
         $this->actingAs($this->actor());

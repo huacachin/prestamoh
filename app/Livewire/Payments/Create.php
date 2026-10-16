@@ -1466,6 +1466,29 @@ class Create extends Component
         $aplicado = $dist['capital'] + $dist['interes'] + $dist['excedente'];
         $saldo = $this->cancel ? 0.0 : round($this->saldoDe($cronograma) - $aplicado, 2);
 
+        // Desglose POR CUOTA igual que el ticket (16/10, Antony: "no me sale el amortizado"): cuánto
+        // recibe cada cuota en este cobro, "(amortizada)" solo si no queda completa y debajo su saldo.
+        // Una misma cuota puede venir en varias filas (interés y capital por separado).
+        $porCuota = [];
+        foreach ($dist['rows'] as $row) {
+            $ins = $row['ins'];
+            $num = (int) $ins->num_cuota;
+            $recibe = (float) $row['cap'] + (float) $row['int'] + (float) $row['exc'];
+            if ($recibe < 0.001) {
+                continue;
+            }
+            $pendienteAntes = (float) $ins->importe_cuota + (float) $ins->importe_interes + (float) $ins->importe_excedente
+                - (float) $ins->importe_aplicado - (float) $ins->interes_aplicado - (float) $ins->excedente_aplicado;
+            $porCuota[$num]['monto'] = ($porCuota[$num]['monto'] ?? 0.0) + $recibe;
+            $porCuota[$num]['pendiente'] = $pendienteAntes;
+        }
+        ksort($porCuota);
+        $detalleCuotas = [];
+        foreach ($porCuota as $num => $info) {
+            $saldoCuota = max(0.0, round($info['pendiente'] - $info['monto'], 2));
+            $detalleCuotas[] = ['num' => $num, 'monto' => round($info['monto'], 2), 'parcial' => $saldoCuota > 0.001, 'saldo' => $saldoCuota];
+        }
+
         // Disclaimer del modal (08/09): "cubre el total" confundía porque la
         // pantalla dice "Saldo Pendiente 15,000" (cronograma completo, con
         // interés futuro) y el umbral de cancelación es menor (capital +
@@ -1502,6 +1525,8 @@ class Create extends Component
             'credit_id' => (int) $this->credit->id,
             'fecha' => Carbon::parse($this->fecpag)->format('d/m/Y'),
             'cuotas' => $dist['cuotas'],
+            'detalle_cuotas' => $detalleCuotas,
+            'detalle_cuotas_visible' => count($detalleCuotas) > 1 || array_any($detalleCuotas, fn ($c) => $c['parcial']),
             'capital' => $dist['capital'],
             'interes' => $dist['interes'],
             'excedente' => $dist['excedente'],

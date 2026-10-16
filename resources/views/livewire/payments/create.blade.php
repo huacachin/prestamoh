@@ -830,6 +830,16 @@
                                 @if($preview['cuotas'])
                                     <div class="tp-row tp-wrap"><span>Cuotas:</span><span>{{ \App\Support\RangoCuotas::texto($preview['cuotas']) }}</span></div>
                                 @endif
+                                {{-- 16/10 (Antony): mismo desglose por cuota que el ticket: (amortizada) solo si no queda
+                                     completa y debajo "Cuota n (Saldo)" con lo que le falta. --}}
+                                @if($preview['detalle_cuotas_visible'] ?? false)
+                                    @foreach($preview['detalle_cuotas'] as $dc)
+                                        <div class="tp-row"><span>&nbsp;Cuota {{ $dc['num'] }}{{ $dc['parcial'] ? ' (amortizada)' : '' }}:</span><span>{{ number_format($dc['monto'], 2) }}</span></div>
+                                        @if($dc['parcial'])
+                                            <div class="tp-row"><span>&nbsp;Cuota {{ $dc['num'] }} (Saldo):</span><span>{{ number_format($dc['saldo'], 2) }}</span></div>
+                                        @endif
+                                    @endforeach
+                                @endif
                                 <div class="tp-row"><span>Capital:</span><span>{{ number_format($preview['capital'], 2) }}</span></div>
                                 <div class="tp-row"><span>Interes:</span><span>{{ number_format($preview['interes'], 2) }}</span></div>
                                 {{-- 16/10 (Antony): sin línea "Excedente" en el voucher (va dentro del TOTAL). --}}
