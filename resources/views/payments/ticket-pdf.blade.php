@@ -80,6 +80,9 @@
     @if($t['detalle_cuotas_visible'] ?? false)
         @foreach($t['detalle_cuotas'] as $dc)
             <tr><td>&nbsp;Cuota {{ $dc['num'] }}{{ $dc['parcial'] ? ' (amortizada)' : '' }}:</td><td class="der">{{ number_format($dc['monto'], 2) }}</td></tr>
+            @if($dc['parcial'])
+                <tr><td>&nbsp;Cuota {{ $dc['num'] }} (Saldo):</td><td class="der">{{ number_format($dc['saldo'] ?? 0, 2) }}</td></tr>
+            @endif
         @endforeach
     @endif
     {{-- 16/10 (Antony): sin línea "Excedente" (va dentro de cada cuota y del TOTAL). --}}

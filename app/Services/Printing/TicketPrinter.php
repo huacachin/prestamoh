@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Printing;
 
+use App\Models\CreditInstallment;
 use App\Models\MassDeletion;
 use App\Support\RangoCuotas;
 use App\Support\Usernames;
@@ -87,15 +88,16 @@ final class TicketPrinter
         $masivo->loadMissing([
             'credit.client',
             'credit.headquarter:id,name',
-            'details.installment:id,num_cuota,pagado',
+            'details.installment:id,num_cuota,pagado,importe_cuota,importe_interes,importe_excedente,importe_aplicado,interes_aplicado,excedente_aplicado',
         ]);
 
         $totales = ['C' => 0.0, 'I' => 0.0, 'E' => 0.0, 'M' => 0.0];
         // Desglose POR CUOTA (capital+interés+excedente que recibió cada una en
         // ESTE cobro). La mora queda fuera: va como línea global aparte. Se
-        // marca "amortizada" la cuota que quedó sin completar — refleja el
-        // estado ACTUAL, así que una reimpresión posterior puede mostrarla ya
-        // completa, que es lo esperado.
+        // marca "amortizada" SOLO la cuota que quedó sin completar (por montos,
+        // no por la bandera pagado) y debajo va "Cuota n (Saldo)" con lo que le
+        // falta (16/10, Antony). Refleja el estado ACTUAL, así que una
+        // reimpresión posterior puede mostrarla ya completa, que es lo esperado.
         $porCuota = [];
         foreach ($masivo->details as $d) {
             $tipo = (string) ($d->tipo ?? '');
@@ -105,14 +107,15 @@ final class TicketPrinter
             if ($d->installment?->num_cuota !== null && in_array($tipo, ['C', 'I', 'E'], true)) {
                 $num = (int) $d->installment->num_cuota;
                 $porCuota[$num]['monto'] = ($porCuota[$num]['monto'] ?? 0.0) + (float) $d->amount;
-                $porCuota[$num]['parcial'] = ! (bool) $d->installment->pagado;
+                $porCuota[$num]['saldo'] = self::saldoDeCuota($d->installment);
+                $porCuota[$num]['parcial'] = $porCuota[$num]['saldo'] > 0.001;
             }
         }
         ksort($porCuota);
 
         $detalleCuotas = [];
         foreach ($porCuota as $num => $info) {
-            $detalleCuotas[] = ['num' => $num, 'monto' => round($info['monto'], 2), 'parcial' => $info['parcial']];
+            $detalleCuotas[] = ['num' => $num, 'monto' => round($info['monto'], 2), 'parcial' => $info['parcial'], 'saldo' => round($info['saldo'], 2)];
         }
         // Con interés-primero una cuota puede recibir solo interés: entra igual
         // al listado (antes solo se listaban las que recibían capital).
@@ -155,6 +158,14 @@ final class TicketPrinter
             'proxima' => $this->proximaCuota((int) $masivo->credit_id),
             'metodo' => $this->metodoPago((int) $masivo->id),
         ];
+    }
+
+    /** Lo que le falta a una cuota: capital + interés + excedente menos lo aplicado (nunca negativo). */
+    private static function saldoDeCuota(CreditInstallment $i): float
+    {
+        return max(0.0, round(
+            (float) $i->importe_cuota + (float) $i->importe_interes + (float) $i->importe_excedente
+            - (float) $i->importe_aplicado - (float) $i->interes_aplicado - (float) $i->excedente_aplicado, 2));
     }
 
     public function buildPaymentTicketBytes(MassDeletion $masivo): string
@@ -228,7 +239,8 @@ final class TicketPrinter
                 $this->pt($printer, $this->row('Cuotas:', RangoCuotas::texto($t['cuotas']), $columns));
             }
             // Desglose por cuota: cuánto recibió cada una en este cobro, con
-            // marca de amortizada cuando quedó sin completar.
+            // marca de amortizada cuando quedó sin completar y, debajo, lo que
+            // le falta a esa cuota (16/10).
             if ($t['detalle_cuotas_visible'] ?? false) {
                 foreach ($t['detalle_cuotas'] as $dc) {
                     $this->pt($printer, $this->row(
@@ -236,6 +248,9 @@ final class TicketPrinter
                         number_format($dc['monto'], 2),
                         $columns
                     ));
+                    if ($dc['parcial']) {
+                        $this->pt($printer, $this->row(' Cuota '.$dc['num'].' (Saldo):', number_format($dc['saldo'] ?? 0, 2), $columns));
+                    }
                 }
             }
 

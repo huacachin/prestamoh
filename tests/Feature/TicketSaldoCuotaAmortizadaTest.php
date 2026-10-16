@@ -1,0 +1,112 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Livewire\Payments\Create;
+use App\Models\Client;
+use App\Models\Credit;
+use App\Models\CreditInstallment;
+use App\Models\MassDeletion;
+use App\Models\User;
+use App\Services\Printing\TicketPrinter;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Livewire\Livewire;
+use Tests\TestCase;
+
+/**
+ * 16/10/2026 (Antony): en el desglose del voucher "(amortizada)" sale SOLO si
+ * la cuota no quedó completa, y debajo va "Cuota n (Saldo)" con lo que le
+ * falta a esa cuota. Una cuota completa no lleva ni la marca ni el saldo.
+ */
+class TicketSaldoCuotaAmortizadaTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function actor(): User
+    {
+        DB::table('headquarters')->insertOrIgnore([
+            'id' => 1, 'name' => 'Principal', 'empresa' => 'Huacachin', 'status' => 'active', 'sort_order' => 1,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        return User::factory()->create(['username' => 'tester', 'headquarter_id' => 1]);
+    }
+
+    /** Semanal, 4 cuotas de 250 + 25 (+ 0.08 de excedente de cuota uniforme). */
+    private function credito(): Credit
+    {
+        $client = Client::create(['nombre' => 'Cliente Saldo']);
+        $credit = Credit::create([
+            'client_id' => $client->id, 'fecha_prestamo' => now()->format('Y-m-d'),
+            'importe' => 1000, 'cuotas' => 4, 'tipo_planilla' => 1, 'interes' => 10,
+            'interes_total' => 100, 'situacion' => 'Activo', 'estado' => 1,
+        ]);
+        foreach (range(1, 4) as $n) {
+            CreditInstallment::create([
+                'credit_id' => $credit->id, 'num_cuota' => $n,
+                'fecha_vencimiento' => now()->addWeeks($n)->format('Y-m-d'),
+                'importe_cuota' => 250, 'importe_interes' => 25, 'importe_excedente' => 0.08, 'pagado' => 0,
+            ]);
+        }
+
+        return $credit;
+    }
+
+    private function ultimoTicket(Credit $credit): array
+    {
+        $masivo = MassDeletion::where('credit_id', $credit->id)->latest('id')->first();
+
+        return app(TicketPrinter::class)->paymentTicketData($masivo);
+    }
+
+    public function test_la_amortizada_lleva_su_saldo_debajo_y_la_completa_no_lleva_nada(): void
+    {
+        $this->actingAs($this->actor());
+        $credit = $this->credito();
+
+        // Paga 400.08: cuota 1 completa (275.08) y 125.00 a la cuota 2 (quedan 150.08).
+        Livewire::test(Create::class, ['creditId' => $credit->id])->set('monto', 400.08)->call('pagar');
+        $t = $this->ultimoTicket($credit);
+
+        [$c1, $c2] = $t['detalle_cuotas'];
+        $this->assertFalse($c1['parcial']);
+        $this->assertEqualsWithDelta(0, $c1['saldo'], 0.001, 'la completa no debe nada');
+        $this->assertTrue($c2['parcial']);
+        $this->assertEqualsWithDelta(125.00, $c2['monto'], 0.001);
+        $this->assertEqualsWithDelta(150.08, $c2['saldo'], 0.001, 'lo que le falta a la cuota 2');
+
+        $masivo = MassDeletion::where('credit_id', $credit->id)->latest('id')->first();
+        $html = view('payments.ticket', ['t' => $t, 'autoprint' => false, 'esCopia' => false, 'logo' => null])->render();
+        $pdf = view('payments.ticket-pdf', ['t' => $t, 'logo' => null])->render();
+        $bytes = app(TicketPrinter::class)->buildPaymentTicketBytes($masivo);
+        foreach (['web' => $html, 'pdf' => $pdf, 'ticket' => $bytes] as $formato => $salida) {
+            $this->assertStringContainsString('Cuota 1:', $salida, $formato);
+            $this->assertStringNotContainsString('Cuota 1 (amortizada)', $salida, $formato);
+            $this->assertStringNotContainsString('Cuota 1 (Saldo)', $salida, $formato);
+            $this->assertStringContainsString('Cuota 2 (amortizada):', $salida, $formato);
+            $this->assertStringContainsString('Cuota 2 (Saldo):', $salida, $formato);
+            $this->assertStringContainsString('150.08', $salida, $formato);
+        }
+    }
+
+    public function test_al_completar_la_cuota_amortizada_en_otro_cobro_ya_no_es_amortizada(): void
+    {
+        $this->actingAs($this->actor());
+        $credit = $this->credito();
+        Livewire::test(Create::class, ['creditId' => $credit->id])->set('monto', 400.08)->call('pagar');
+
+        // Segundo cobro: los 150.08 que faltaban de la cuota 2.
+        Livewire::test(Create::class, ['creditId' => $credit->id])->set('monto', 150.08)->call('pagar');
+        $t = $this->ultimoTicket($credit);
+        $this->assertCount(1, $t['detalle_cuotas']);
+        $this->assertSame(2, $t['detalle_cuotas'][0]['num']);
+        $this->assertFalse($t['detalle_cuotas'][0]['parcial'], 'quedó completa: sin marca');
+        $this->assertEqualsWithDelta(0, $t['detalle_cuotas'][0]['saldo'], 0.001);
+        $this->assertFalse($t['detalle_cuotas_visible'], 'una sola cuota completa: sin desglose');
+
+        $html = view('payments.ticket', ['t' => $t, 'autoprint' => false, 'esCopia' => false, 'logo' => null])->render();
+        $this->assertStringNotContainsString('amortizada', $html);
+        $this->assertStringNotContainsString('(Saldo)', $html);
+    }
+}
