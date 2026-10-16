@@ -1075,7 +1075,8 @@
                             Cancelar
                         </button>
                         <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-sm btn-outline-primary"
+                            {{-- 16/10 (Antony): Cobrar del mismo negro que el botón Pagar. --}}
+                            <button type="button" class="btn btn-sm btn-dark"
                                     x-on:click="$captura('pagar', false)"
                                     @disabled($faltaDecidir)
                                     wire:loading.attr="disabled" wire:target="pagar">
