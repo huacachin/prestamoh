@@ -148,6 +148,50 @@ class MonitoreoSesionesTest extends TestCase
         $this->assertStringContainsString('mon-inicios-lista', $html, 'recuadro con scroll, no una columna que se alarga');
     }
 
+    /** 16/10 (Antony): filtro de rango de fechas para los inicios de sesión (datepicker del sistema, Y-m-d). */
+    public function test_el_rango_de_fechas_filtra_los_inicios_sin_cambiar_los_colores(): void
+    {
+        $this->actingAs($this->director);
+        $inicio = function (User $u, string $ip, string $fecha): void {
+            DB::table('activity_log')->insert([
+                'log_name' => Audit::LOG, 'description' => 'Inicio de sesión', 'event' => null,
+                'subject_type' => null, 'subject_id' => null, 'causer_type' => $u->getMorphClass(), 'causer_id' => $u->id,
+                'properties' => json_encode([]), 'ip_address' => $ip, 'user_agent' => self::UA_WIN, 'user_name' => $u->name,
+                'created_at' => $fecha, 'updated_at' => $fecha,
+            ]);
+        };
+        $inicio($this->licet, '38.25.29.129', '2026-10-01 08:00:00');
+        $inicio($this->licet, '209.61.122.152', '2026-10-05 08:00:00');
+        $inicio($this->licet, '209.61.122.152', '2026-10-10 23:30:00');
+        $inicio($this->licet, '179.6.137.162', '2026-10-15 08:00:00');
+
+        $comp = Livewire::test(Sesiones::class);
+        $this->assertStringContainsString('class="form-control form-control-sm dates" placeholder="Desde" wire:model.live="desde"', $comp->html(), 'datepicker del sistema');
+        $colorAntes = preg_match('/<span class="mon-ip" style="(--ip-bg:[^"]+)">209\.61\.122\.152<\/span>/', $comp->html(), $m) ? $m[1] : null;
+        $this->assertNotNull($colorAntes);
+
+        $licet = fn () => $comp->instance()->bloques()->firstWhere('usuario.username', 'Licet');
+        $this->assertSame(4, $licet()['inicios']->count());
+
+        $comp->set('desde', '2026-10-05')->set('hasta', '2026-10-10');
+        $this->assertSame(2, $licet()['inicios']->count(), 'del 05 al 10 inclusive (hasta las 23:59)');
+        $html = $comp->html();
+        $this->assertStringContainsString('del 05/10/2026 al 10/10/2026', $html);
+        $this->assertStringNotContainsString('179.6.137.162', $html, 'el del 15 queda fuera');
+        preg_match('/<span class="mon-ip" style="(--ip-bg:[^"]+)">209\.61\.122\.152<\/span>/', $html, $m2);
+        $this->assertSame($colorAntes, $m2[1], 'la IP conserva su color al filtrar');
+
+        $comp->set('desde', '2026-10-10')->set('hasta', '2026-10-05');
+        $this->assertSame(2, $licet()['inicios']->count(), 'al revés se invierten');
+        $comp->set('desde', '2026-10-16')->set('hasta', '');
+        $this->assertSame(0, $licet()['inicios']->count());
+        $this->assertStringContainsString('Sin inicios de sesión en ese rango.', $comp->html());
+        $comp->set('desde', 'no-es-fecha');
+        $this->assertSame(4, $licet()['inicios']->count(), 'una fecha mal escrita no filtra');
+        $comp->set('desde', '2026-10-01')->call('limpiarFechas')->assertSet('desde', '')->assertSet('hasta', '');
+        $this->assertSame(4, $licet()['inicios']->count());
+    }
+
     public function test_el_director_cierra_una_sesion_o_todas_las_de_un_usuario_y_queda_en_la_auditoria(): void
     {
         $this->actingAs($this->director);

@@ -27,6 +27,14 @@ class Sesiones extends Component
 
     public bool $soloConSesion = false;
 
+    /** Rango de fechas de los inicios de sesión (Y-m-d, vacío = sin límite). 16/10 (Antony): datepicker del sistema. */
+    public string $desde = '';
+
+    public string $hasta = '';
+
+    /** Filas de auditoría de inicios, leídas una sola vez por petición. */
+    private ?Collection $filasInicio = null;
+
     public function mount(): void
     {
         $this->soloDirector();
@@ -35,6 +43,40 @@ class Sesiones extends Component
     private function soloDirector(): void
     {
         abort_unless(auth()->user()?->hasRole('director') ?? false, 403, 'Monitoreo es solo para el director.');
+    }
+
+    public function limpiarFechas(): void
+    {
+        $this->desde = '';
+        $this->hasta = '';
+    }
+
+    /**
+     * Rango efectivo [desde 00:00, hasta 23:59:59] en hora de Lima, o null en
+     * cada extremo si está vacío o mal escrito; si vienen al revés, se invierten.
+     *
+     * @return array{0: ?Carbon, 1: ?Carbon}
+     */
+    public function rango(): array
+    {
+        $leer = function (string $v): ?Carbon {
+            $v = trim($v);
+            if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $v)) {
+                return null;
+            }
+            try {
+                return Carbon::createFromFormat('Y-m-d', $v, config('app.timezone'));
+            } catch (\Throwable) {
+                return null;
+            }
+        };
+        $d = $leer($this->desde)?->startOfDay();
+        $h = $leer($this->hasta)?->endOfDay();
+        if ($d && $h && $d->gt($h)) {
+            [$d, $h] = [$h->copy()->startOfDay(), $d->copy()->endOfDay()];
+        }
+
+        return [$d, $h];
     }
 
     /** Cierra UNA sesión de un usuario (nunca la del director que mira). */
@@ -121,7 +163,11 @@ class Sesiones extends Component
      */
     private function inicios(): Collection
     {
+        [$desde, $hasta] = $this->rango();
+
         return $this->filasDeInicio()
+            ->when($desde, fn (Collection $f) => $f->filter(fn (ActivityLog $a) => $a->created_at && $a->created_at->gte($desde)))
+            ->when($hasta, fn (Collection $f) => $f->filter(fn (ActivityLog $a) => $a->created_at && $a->created_at->lte($hasta)))
             ->groupBy('causer_id')
             ->map(fn (Collection $filas) => $filas->map(function (ActivityLog $a) {
                 // Las filas anteriores al 25/09 no traen IP ni navegador: se muestra "—" en vez de "desconocido".
@@ -138,7 +184,7 @@ class Sesiones extends Component
     /** @return Collection<int, ActivityLog> */
     private function filasDeInicio(): Collection
     {
-        return ActivityLog::query()
+        return $this->filasInicio ??= ActivityLog::query()
             ->where('log_name', Audit::LOG)
             ->where('description', 'Inicio de sesión')
             ->whereNotNull('causer_id')
@@ -154,11 +200,12 @@ class Sesiones extends Component
      *
      * @return array<string, array{bg: string, borde: string, texto: string}>
      */
-    private function paletaDeIps(Collection $bloques): array
+    private function paletaDeIps(): array
     {
-        $ips = $bloques->flatMap(fn (array $b) => $b['inicios'])
-            ->sortBy(fn (array $i) => $i['fecha']?->timestamp ?? 0)
-            ->pluck('ip');
+        // Sobre TODOS los inicios, no solo los del rango filtrado: así una IP conserva su color al cambiar las fechas.
+        $ips = $this->filasDeInicio()
+            ->sortBy(fn (ActivityLog $a) => $a->created_at?->timestamp ?? 0)
+            ->map(fn (ActivityLog $a) => $a->ip_address ?? ($a->properties['contexto']['ip'] ?? null));
 
         return ColorDeIp::paleta($ips);
     }
@@ -181,7 +228,8 @@ class Sesiones extends Component
 
         return view('livewire.monitoreo.sesiones', [
             'bloques' => $bloques,
-            'paleta' => $this->paletaDeIps($bloques),
+            'paleta' => $this->paletaDeIps(),
+            'rango' => $this->rango(),
             'disponibles' => SesionesActivas::disponibles(),
             'totalSesiones' => $bloques->sum(fn (array $b) => $b['sesiones']->count()),
             'usuariosConSesion' => $bloques->filter(fn (array $b) => $b['sesiones']->isNotEmpty())->count(),

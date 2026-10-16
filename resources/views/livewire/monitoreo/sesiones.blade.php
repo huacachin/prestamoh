@@ -13,6 +13,8 @@
         .monitoreo-sesiones .mon-buscar { position: relative; flex: 1 1 220px; max-width: 360px; }
         .monitoreo-sesiones .mon-buscar i { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: #9aa3af; }
         .monitoreo-sesiones .mon-buscar input { padding-left: 32px; border-radius: 10px; }
+        .monitoreo-sesiones .mon-fechas { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .monitoreo-sesiones .mon-fechas input { width: 112px; border-radius: 10px; }
         .monitoreo-sesiones .mon-usuario { background: #fff; border: 1px solid var(--mon-borde); border-radius: var(--mon-radius); box-shadow: var(--mon-sombra); margin-bottom: 16px; overflow: hidden; }
         .monitoreo-sesiones .mon-cab { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--mon-borde); }
         .monitoreo-sesiones .mon-avatar { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 15px; color: #fff; background: linear-gradient(135deg, #6b7280, #9aa3af); flex-shrink: 0; position: relative; }
@@ -106,6 +108,16 @@
             <input class="form-check-input" type="checkbox" id="soloConSesion" wire:model.live="soloConSesion">
             <label class="form-check-label" for="soloConSesion">Solo con sesión abierta</label>
         </div>
+        {{-- 16/10 (Antony): rango de fechas de los inicios de sesión con el datepicker del sistema (clase .dates). --}}
+        <div class="mon-fechas">
+            <span class="text-muted small"><i class="ti ti-calendar"></i> Inicios</span>
+            <input type="text" name="desde" autocomplete="off" class="form-control form-control-sm dates" placeholder="Desde" wire:model.live="desde" title="Desde (aaaa-mm-dd)">
+            <span class="text-muted small">al</span>
+            <input type="text" name="hasta" autocomplete="off" class="form-control form-control-sm dates" placeholder="Hasta" wire:model.live="hasta" title="Hasta (aaaa-mm-dd)">
+            @if($desde !== '' || $hasta !== '')
+                <button type="button" class="btn btn-sm btn-light" wire:click="limpiarFechas" title="Quitar el rango"><i class="ti ti-x"></i></button>
+            @endif
+        </div>
         <span class="ms-auto text-muted small"><i class="ti ti-refresh"></i> Se actualiza solo cada 30 s · <span class="mon-vivo"></span> actividad reciente</span>
     </div>
 
@@ -195,6 +207,9 @@
                 <div class="mon-col mon-inicios">
                     <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
                         <div class="mon-titulo mb-0"><i class="ti ti-login"></i> Inicios de sesión <span class="mon-chip">{{ $b['inicios']->count() }}</span></div>
+                        @if($rango[0] || $rango[1])
+                            <span class="mon-chip" title="Rango de fechas aplicado"><i class="ti ti-calendar"></i> {{ $rango[0] ? 'del '.$rango[0]->format('d/m/Y') : 'hasta' }} {{ $rango[1] ? ($rango[0] ? 'al ' : '').$rango[1]->format('d/m/Y') : 'en adelante' }}</span>
+                        @endif
                         @if($b['ips']->isNotEmpty())
                             <span class="mon-sub">· {{ $b['ips']->count() }} IP(s) distinta(s):</span>
                             @foreach($b['ips'] as $ip => $veces)
@@ -203,7 +218,7 @@
                         @endif
                     </div>
                     @if($b['inicios']->isEmpty())
-                        <div class="mon-vacio">Sin inicios de sesión registrados.</div>
+                        <div class="mon-vacio">{{ ($rango[0] || $rango[1]) ? 'Sin inicios de sesión en ese rango.' : 'Sin inicios de sesión registrados.' }}</div>
                     @else
                         <div class="mon-inicios-lista">
                             @foreach($b['inicios'] as $i)
