@@ -93,11 +93,8 @@ class PaymentController extends Controller
     /** Datos comunes de las tres vistas del recibo (HTML interno, público y PDF). */
     private function datosRecibo(int $massDeletionId, TicketPrinter $printer): array
     {
-        $masivo = MassDeletion::with([
-            'credit.client',
-            'credit.headquarter:id,name',
-            'details.installment:id,num_cuota',
-        ])->findOrFail($massDeletionId);
+        // Las cuotas las carga paymentTicketData con todas sus columnas (no traerlas aquí a medias).
+        $masivo = MassDeletion::with(['credit.client', 'credit.headquarter:id,name'])->findOrFail($massDeletionId);
 
         // Mismo logo que el ticket ESC/POS; si no está subido, no se muestra.
         $logo = null;

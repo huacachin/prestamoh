@@ -11,7 +11,10 @@ use App\Models\User;
 use App\Services\Printing\TicketPrinter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\URL;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
@@ -125,6 +128,36 @@ class TicketSaldoCuotaAmortizadaTest extends TestCase
         $comp2 = Livewire::test(Create::class, ['creditId' => $credit->id])->set('monto', 150.08)->call('confirmarPago');
         $this->assertFalse($comp2->get('preview')['detalle_cuotas_visible']);
         $this->assertStringNotContainsString('amortizada', $comp2->html());
+    }
+
+    /**
+     * El recibo que abre el operador y el público (enlace firmado) pasan por el controlador, que cargaba la
+     * relación de cuotas con pocas columnas: el desglose salía sin la amortizada ni su saldo (16/10).
+     */
+    public function test_el_recibo_por_http_y_con_la_relacion_cargada_a_medias_tambien_muestra_la_amortizada(): void
+    {
+        $actor = $this->actor();
+        // La ruta del recibo del operador pide el permiso del módulo de pagos.
+        $actor->givePermissionTo(Permission::findOrCreate('pagos', 'web'));
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $this->actingAs($actor);
+        $credit = $this->credito();
+        Livewire::test(Create::class, ['creditId' => $credit->id])->set('monto', 400.08)->call('pagar');
+        $masivo = MassDeletion::where('credit_id', $credit->id)->latest('id')->first();
+
+        // Relación precargada con solo id y num_cuota, como la traía el controlador.
+        $aMedias = MassDeletion::with('details.installment:id,num_cuota')->findOrFail($masivo->id);
+        $t = app(TicketPrinter::class)->paymentTicketData($aMedias);
+        $this->assertTrue($t['detalle_cuotas_visible']);
+        $this->assertTrue($t['detalle_cuotas'][1]['parcial']);
+        $this->assertEqualsWithDelta(150.08, $t['detalle_cuotas'][1]['saldo'], 0.001);
+
+        foreach ([route('payments.ticket', $masivo->id), URL::signedRoute('recibo.publico', ['massDeletionId' => $masivo->id])] as $url) {
+            $html = $this->get($url)->assertOk()->getContent();
+            $this->assertStringContainsString('Cuota 1:</span><span>275.08', $html, $url);
+            $this->assertStringContainsString('Cuota 2 (amortizada):</span><span>125.00', $html, $url);
+            $this->assertStringContainsString('Cuota 2 (Saldo):</span><span>150.08', $html, $url);
+        }
     }
 
     public function test_al_completar_la_cuota_amortizada_en_otro_cobro_ya_no_es_amortizada(): void

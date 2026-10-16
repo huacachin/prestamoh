@@ -85,11 +85,11 @@ final class TicketPrinter
      */
     public function paymentTicketData(MassDeletion $masivo): array
     {
-        $masivo->loadMissing([
-            'credit.client',
-            'credit.headquarter:id,name',
-            'details.installment:id,num_cuota,pagado,importe_cuota,importe_interes,importe_excedente,importe_aplicado,interes_aplicado,excedente_aplicado',
-        ]);
+        $masivo->loadMissing(['credit.client', 'credit.headquarter:id,name']);
+        // Las cuotas se cargan SIEMPRE completas: si quien llama ya trajo la relación con pocas columnas
+        // (el controlador del recibo la traía con id,num_cuota), loadMissing la dejaba a medias y el
+        // desglose salía sin montos (16/10: el recibo web/PDF no mostraba la amortizada ni su saldo).
+        $masivo->load(['details.installment:id,num_cuota,pagado,importe_cuota,importe_interes,importe_excedente,importe_aplicado,interes_aplicado,excedente_aplicado']);
 
         $totales = ['C' => 0.0, 'I' => 0.0, 'E' => 0.0, 'M' => 0.0];
         // Desglose POR CUOTA (capital+interés+excedente que recibió cada una en
