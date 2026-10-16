@@ -7,6 +7,9 @@
             border-color: #e6a6a0 !important;
             background-color: #fff7f6 !important;
         }
+        /* 16/10 (Antony): en amarillo lo que la consulta de placa NO rellena y hay que escribir a mano. */
+        .campo-obligatorio, select.campo-obligatorio + .select2 .select2-selection { background-color: #fff8c5 !important; }
+        .campo-obligatorio.campo-api { background-color: #ffeccc !important; }
     </style>
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
         <h6 class="mb-0" style="color:red;">
@@ -64,72 +67,85 @@
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label mb-0 small fw-semibold">Marca</label>
-                    <input type="text" class="form-control form-control-sm @if(in_array('marca', $autoCampos)) campo-api @endif" wire:model.defer="marca" placeholder="Toyota">
+                    <label class="form-label mb-0 small fw-semibold">Marca <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm @error('marca') is-invalid @enderror @if(in_array('marca', $autoCampos)) campo-api @endif" wire:model.defer="marca" placeholder="Toyota">
+                    @error('marca') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label mb-0 small fw-semibold">Modelo</label>
-                    <input type="text" class="form-control form-control-sm @if(in_array('modelo', $autoCampos)) campo-api @endif" wire:model.defer="modelo" placeholder="Hiace">
+                    <label class="form-label mb-0 small fw-semibold">Modelo <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm @error('modelo') is-invalid @enderror @if(in_array('modelo', $autoCampos)) campo-api @endif" wire:model.defer="modelo" placeholder="Hiace">
+                    @error('modelo') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label mb-0 small fw-semibold">Valor del vehículo (S/)</label>
-                    <input type="number" step="0.01" min="0" style="background-color:#fff9db;"
-                           class="form-control form-control-sm @error('valor') is-invalid @enderror"
+                    <label class="form-label mb-0 small fw-semibold">Valor del vehículo (S/) <span class="text-danger">*</span></label>
+                    <input type="number" step="0.01" min="0"
+                           class="form-control form-control-sm campo-obligatorio @error('valor') is-invalid @enderror"
                            wire:model.defer="valor" placeholder="0.00">
+                    @error('valor') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                 </div>
 
                 <div class="col-md-3">
-                    <label class="form-label mb-0 small fw-semibold">N° de Motor</label>
-                    <input type="text" class="form-control form-control-sm text-uppercase @if(in_array('nro_motor', $autoCampos)) campo-api @endif" wire:model.defer="nro_motor">
+                    <label class="form-label mb-0 small fw-semibold">N° de Motor <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm text-uppercase @error('nro_motor') is-invalid @enderror @if(in_array('nro_motor', $autoCampos)) campo-api @endif" wire:model.defer="nro_motor">
+                    @error('nro_motor') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label mb-0 small fw-semibold">N° de Serie</label>
-                    <input type="text" class="form-control form-control-sm text-uppercase @if(in_array('nro_serie', $autoCampos)) campo-api @endif" wire:model.defer="nro_serie">
+                    <label class="form-label mb-0 small fw-semibold">N° de Serie <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm text-uppercase @error('nro_serie') is-invalid @enderror @if(in_array('nro_serie', $autoCampos)) campo-api @endif" wire:model.defer="nro_serie">
+                    @error('nro_serie') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label mb-0 small fw-semibold">Categoría</label>
-                    <select class="form-select form-select-sm select2-tags" wire:model.defer="categoria"
+                    <label class="form-label mb-0 small fw-semibold">Categoría <span class="text-danger">*</span></label>
+                    <select class="form-select form-select-sm select2-tags campo-obligatorio @error('categoria') is-invalid @enderror @if(in_array('categoria', $autoCampos)) campo-api @endif" wire:model.defer="categoria"
                             data-placeholder="— Seleccione —">
                         <option value=""></option>
                         @foreach(\App\Support\VehiculoCatalogos::paraValor('categoria', $categoria) as $opcion)
                             <option value="{{ $opcion }}">{{ $opcion }}</option>
                         @endforeach
                     </select>
+                    @error('categoria') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label mb-0 small fw-semibold">Año de Modelo</label>
-                    <input type="text" class="form-control form-control-sm" wire:model.defer="anio_modelo" placeholder="2018">
+                    <label class="form-label mb-0 small fw-semibold">Año de Modelo <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm campo-obligatorio @error('anio_modelo') is-invalid @enderror @if(in_array('anio_modelo', $autoCampos)) campo-api @endif" wire:model.defer="anio_modelo" placeholder="2018">
+                    @error('anio_modelo') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                 </div>
 
                 <div class="col-md-3">
-                    <label class="form-label mb-0 small fw-semibold">Carrocería</label>
-                    <select class="form-select form-select-sm select2-tags" wire:model.defer="carroceria"
+                    <label class="form-label mb-0 small fw-semibold">Carrocería <span class="text-danger">*</span></label>
+                    <select class="form-select form-select-sm select2-tags campo-obligatorio @error('carroceria') is-invalid @enderror @if(in_array('carroceria', $autoCampos)) campo-api @endif" wire:model.defer="carroceria"
                             data-placeholder="— Seleccione —">
                         <option value=""></option>
                         @foreach(\App\Support\VehiculoCatalogos::paraValor('carroceria', $carroceria) as $opcion)
                             <option value="{{ $opcion }}">{{ $opcion }}</option>
                         @endforeach
                     </select>
+                    @error('carroceria') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label mb-0 small fw-semibold">Color</label>
-                    <select class="form-select form-select-sm select2-tags @if(in_array('color', $autoCampos)) campo-api @endif" wire:model.defer="color"
+                    <label class="form-label mb-0 small fw-semibold">Color <span class="text-danger">*</span></label>
+                    <select class="form-select form-select-sm select2-tags campo-obligatorio @error('color') is-invalid @enderror @if(in_array('color', $autoCampos)) campo-api @endif" wire:model.defer="color"
                             data-placeholder="— Seleccione —">
                         <option value=""></option>
                         @foreach(\App\Support\VehiculoCatalogos::paraValor('color', $color) as $opcion)
                             <option value="{{ $opcion }}">{{ $opcion }}</option>
                         @endforeach
                     </select>
+                    @error('color') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label mb-0 small fw-semibold">Combustible</label>
-                    <select class="form-select form-select-sm select2-tags" wire:model.defer="combustible"
+                    <label class="form-label mb-0 small fw-semibold">Combustible <span class="text-danger">*</span></label>
+                    <select class="form-select form-select-sm select2-tags campo-obligatorio @error('combustible') is-invalid @enderror @if(in_array('combustible', $autoCampos)) campo-api @endif" wire:model.defer="combustible"
                             data-placeholder="— Seleccione —">
                         <option value=""></option>
                         @foreach(\App\Support\VehiculoCatalogos::paraValor('combustible', $combustible) as $comb)
                             <option value="{{ $comb }}">{{ $comb }}</option>
                         @endforeach
                     </select>
+                    @error('combustible') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                </div>
+                <div class="col-12">
+                    <small class="text-muted"><i class="ti ti-info-circle"></i> Todos los campos son obligatorios; en amarillo los que la consulta de placa no rellena y van a mano.</small>
                 </div>
             </div>
 

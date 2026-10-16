@@ -78,6 +78,7 @@ class VehiculoCatalogosTest extends TestCase
         Livewire::test(Vehiculos::class, ['id' => $client->id])
             ->call('nuevo')
             ->set('placa', 'XYZ123')->set('marca', 'KIA')->set('modelo', 'RIO')->set('valor', 15000)
+            ->set('nro_motor', 'G4FA123')->set('nro_serie', 'KNA123')->set('anio_modelo', '2019')
             ->set('categoria', 'M1')->set('carroceria', 'Hatchback')->set('color', 'Negro mate')->set('combustible', 'Gasolina / GLP')
             ->call('guardar')
             ->assertHasNoErrors()

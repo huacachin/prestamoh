@@ -37,13 +37,24 @@ class ClienteVehiculosTabTest extends TestCase
     {
         $c = $this->cliente();
 
-        Livewire::test(Vehiculos::class, ['id' => $c->id])
+        // 16/10 (Antony): no se guarda si falta algún campo; en amarillo los que la consulta de placa no rellena.
+        $comp = Livewire::test(Vehiculos::class, ['id' => $c->id])
             ->call('nuevo')
             ->set('placa', 'nue-001')
             ->set('marca', 'Toyota')
             ->set('valor', 25000)
             ->call('guardar')
-            ->assertHasNoErrors();
+            ->assertHasErrors(['modelo', 'nro_motor', 'nro_serie', 'categoria', 'anio_modelo', 'carroceria', 'color', 'combustible']);
+        $this->assertSame(0, Vehiculo::where('client_id', $c->id)->count(), 'incompleto: no se guarda');
+        $html = $comp->html();
+        foreach (['valor', 'categoria', 'anio_modelo', 'carroceria', 'color', 'combustible'] as $campo) {
+            $this->assertMatchesRegularExpression('/class="[^"]*campo-obligatorio[^"]*"[^>]*wire:model\.defer="'.$campo.'"/', $html, "{$campo} en amarillo");
+        }
+        $this->assertDoesNotMatchRegularExpression('/class="[^"]*campo-obligatorio[^"]*"[^>]*wire:model\.defer="marca"/', $html, 'la marca la rellena la consulta');
+        $comp->set('valor', 0)->set('modelo', 'Hiace')->set('nro_motor', 'm1')->set('nro_serie', 's1')->set('categoria', 'M1')
+            ->set('anio_modelo', '2018')->set('carroceria', 'Minibús')->set('color', 'Blanco')->set('combustible', 'Diesel')
+            ->call('guardar')->assertHasErrors(['valor' => 'gt']);
+        $comp->set('valor', 25000)->call('guardar')->assertHasNoErrors();
 
         $v = Vehiculo::where('client_id', $c->id)->sole();
         $this->assertSame('NUE-001', $v->placa, 'la placa se normaliza');
@@ -53,7 +64,10 @@ class ClienteVehiculosTabTest extends TestCase
     public function test_edita_y_elimina_un_vehiculo(): void
     {
         $c = $this->cliente();
-        $v = Vehiculo::create(['client_id' => $c->id, 'placa' => 'OLD-999', 'marca' => 'Nissan']);
+        $v = Vehiculo::create([
+            'client_id' => $c->id, 'placa' => 'OLD-999', 'marca' => 'Nissan', 'modelo' => 'Urvan', 'nro_motor' => 'M9', 'nro_serie' => 'S9',
+            'categoria' => 'M2', 'anio_modelo' => '2015', 'carroceria' => 'Minibús', 'color' => 'Gris', 'combustible' => 'Diesel', 'valor' => 30000,
+        ]);
 
         // Editar: el unique no debe chocar consigo mismo
         Livewire::test(Vehiculos::class, ['id' => $c->id])

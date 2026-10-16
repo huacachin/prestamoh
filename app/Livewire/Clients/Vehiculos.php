@@ -127,23 +127,35 @@ class Vehiculos extends Component
         $ignorar = $this->editandoId ?: null;
 
         return [
+            // 16/10 (Antony): el vehículo no se guarda si no están TODOS los campos completos.
             'placa' => 'required|string|max:10|unique:vehiculos,placa'.($ignorar ? ",{$ignorar}" : ''),
-            'marca' => 'nullable|string|max:50',
-            'modelo' => 'nullable|string|max:50',
-            'nro_motor' => 'nullable|string|max:30',
-            'nro_serie' => 'nullable|string|max:30',
-            'categoria' => 'nullable|string|max:30',
-            'anio_modelo' => 'nullable|string|max:10',
-            'carroceria' => 'nullable|string|max:50',
-            'color' => 'nullable|string|max:50',
-            'combustible' => 'nullable|string|max:30',
-            'valor' => 'nullable|numeric|min:0',
+            'marca' => 'required|string|max:50',
+            'modelo' => 'required|string|max:50',
+            'nro_motor' => 'required|string|max:30',
+            'nro_serie' => 'required|string|max:30',
+            'categoria' => 'required|string|max:30',
+            'anio_modelo' => 'required|string|max:10',
+            'carroceria' => 'required|string|max:50',
+            'color' => 'required|string|max:50',
+            'combustible' => 'required|string|max:30',
+            'valor' => 'required|numeric|gt:0',
         ];
     }
 
     protected function messages(): array
     {
         return [
+            'marca.required' => 'Ingresa la marca.',
+            'modelo.required' => 'Ingresa el modelo.',
+            'nro_motor.required' => 'Ingresa el N° de motor.',
+            'nro_serie.required' => 'Ingresa el N° de serie.',
+            'categoria.required' => 'Selecciona la categoría.',
+            'anio_modelo.required' => 'Ingresa el año de modelo.',
+            'carroceria.required' => 'Selecciona la carrocería.',
+            'color.required' => 'Selecciona el color.',
+            'combustible.required' => 'Selecciona el combustible.',
+            'valor.required' => 'Ingresa el valor del vehículo.',
+            'valor.gt' => 'El valor del vehículo debe ser mayor que cero.',
             'placa.required' => 'La placa es obligatoria.',
             'placa.unique' => 'Esa placa ya está registrada en otro cliente.',
         ];
