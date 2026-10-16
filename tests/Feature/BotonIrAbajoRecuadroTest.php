@@ -27,15 +27,16 @@ class BotonIrAbajoRecuadroTest extends TestCase
 
         $html = $this->get(route('cash.incomes'))->assertOk()->getContent();
 
-        // Bajar: la página hasta el borde inferior del recuadro y, al terminar (scrollend o 700 ms), el scroll
-        // interno al final, suave; con un remate sin animación si algo cortó la animación (16/10: celular).
-        $this->assertStringContainsString("el.scrollIntoView({ behavior: 'smooth', block: 'end' });", $html);
+        // Bajar: la página hasta el FINAL del documento (como el .abajo del legacy) y, al terminar (scrollend o
+        // 700 ms), el scroll interno al final, suave; con un remate sin animación si algo cortó la animación (16/10).
+        $this->assertStringContainsString("window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });", $html);
         $this->assertStringContainsString("el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });", $html);
         $this->assertStringContainsString("document.addEventListener('scrollend', una);\n        setTimeout(una, 700);", $html);
         $this->assertStringContainsString("if (el.scrollTop < el.scrollHeight - el.clientHeight - 2) el.scrollTop = el.scrollHeight;", $html);
-        $this->assertStringContainsString("if (sobra > 2) window.scrollBy(0, sobra);", $html);
+        $this->assertStringContainsString("if (window.scrollY < fin - 2) window.scrollTo(0, fin);", $html);
         // Si el recuadro ya cabe a la vista (pantalla grande), solo se mueve por dentro.
-        $this->assertStringContainsString("if (el.getBoundingClientRect().bottom <= window.innerHeight + 1) { dentro(); return; }", $html);
+        $this->assertStringContainsString("var cabia = el.getBoundingClientRect().bottom <= window.innerHeight + 1;", $html);
+        $this->assertStringContainsString("if (cabia) { dentro(); return; }", $html);
         // Subir: la página al inicio del recuadro, bajo la cabecera fija, y luego el scroll interno al inicio.
         $this->assertStringContainsString("// 90 px: la cabecera fija (mismo margen que [data-lista] en app.css).\n        var destino = el.getBoundingClientRect().top + window.scrollY - 90;", $html);
         $this->assertStringContainsString("window.scrollTo({ top: destino, behavior: 'smooth' });", $html);

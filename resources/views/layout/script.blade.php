@@ -57,17 +57,23 @@ document.addEventListener('click', function (e) {
         setTimeout(una, 700);
     };
     var verFinalDelRecuadro = function () {
+        // Si el recuadro ya cabe a la vista (pantalla grande), solo se mueve por dentro.
+        var cabia = el.getBoundingClientRect().bottom <= window.innerHeight + 1;
         var dentro = function () {
             el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
             setTimeout(function () {
                 if (el.scrollTop < el.scrollHeight - el.clientHeight - 2) el.scrollTop = el.scrollHeight;
-                var sobra = el.getBoundingClientRect().bottom - window.innerHeight;
-                if (sobra > 2) window.scrollBy(0, sobra);
+                if (!cabia) {
+                    var fin = document.documentElement.scrollHeight - window.innerHeight;
+                    if (window.scrollY < fin - 2) window.scrollTo(0, fin);
+                }
             }, 900);
         };
-        if (el.getBoundingClientRect().bottom <= window.innerHeight + 1) { dentro(); return; }
+        if (cabia) { dentro(); return; }
+        // 16/10 (Antony, escritorio): la PÁGINA baja hasta el FINAL del documento, como el .abajo del legacy
+        // ($('html,body').animate({ scrollTop: … })); con scrollIntoView al borde del recuadro se quedaba corta.
         alTerminarElScrollDePagina(dentro);
-        el.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
     };
     var verInicioDelRecuadro = function () {
         var dentro = function () {
