@@ -126,7 +126,8 @@ class Create extends Component
 
     public const DEP_BANCOS = ['Bcp', 'Interbank', 'Bbva', 'Banco de la Nación'];
 
-    public const DEP_CUENTAS = ['Guilmer', 'Corhuac', 'Flores', 'Centeno', 'Rosales', 'Malpartida', 'Ramos', 'Otra'];
+    /** Cuentas receptoras del depósito. 16/10/2026 (Antony): solo Guilmer y Corhuac; fuera Flores, Centeno, Rosales, Malpartida, Ramos y Otra. */
+    public const DEP_CUENTAS = ['Guilmer', 'Corhuac'];
 
     public const DEP_CANALES = ['Yape', 'Trans.', 'Ag.', 'Plin'];
 
