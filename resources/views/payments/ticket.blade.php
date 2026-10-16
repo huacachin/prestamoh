@@ -145,9 +145,8 @@
             <div class="row"><span>&nbsp;Cuota {{ $dc['num'] }}{{ $dc['parcial'] ? ' (amortizada)' : '' }}:</span><span>{{ number_format($dc['monto'], 2) }}</span></div>
         @endforeach
     @endif
-    @if($t['excedente'] > 0.001)
-        <div class="row"><span>Excedente:</span><span>{{ number_format($t['excedente'], 2) }}</span></div>
-    @endif
+    {{-- 16/10 (Antony): la línea "Excedente" ya no se imprime en ningún voucher; el redondeo de la cuota
+         uniforme va dentro de cada cuota y del TOTAL. --}}
     @if($t['mora'] > 0.001)
         <div class="row"><span>Mora:</span><span>{{ number_format($t['mora'], 2) }}</span></div>
     @endif

@@ -82,9 +82,7 @@
             <tr><td>&nbsp;Cuota {{ $dc['num'] }}{{ $dc['parcial'] ? ' (amortizada)' : '' }}:</td><td class="der">{{ number_format($dc['monto'], 2) }}</td></tr>
         @endforeach
     @endif
-    @if($t['excedente'] > 0.001)
-        <tr><td>Excedente:</td><td class="der">{{ number_format($t['excedente'], 2) }}</td></tr>
-    @endif
+    {{-- 16/10 (Antony): sin línea "Excedente" (va dentro de cada cuota y del TOTAL). --}}
     @if($t['mora'] > 0.001)
         <tr><td>Mora:</td><td class="der">{{ number_format($t['mora'], 2) }}</td></tr>
     @endif

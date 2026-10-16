@@ -240,10 +240,9 @@ final class TicketPrinter
             }
 
             // Capital e Interes globales fuera a pedido del negocio (15/08): el
-            // desglose por cuota ya cuenta la historia y el TOTAL cierra.
-            if ($t['excedente'] > 0.001) {
-                $this->pt($printer, $this->row('Excedente:', number_format($t['excedente'], 2), $columns));
-            }
+            // desglose por cuota ya cuenta la historia y el TOTAL cierra. La
+            // línea "Excedente" también fuera (16/10, Antony): va dentro de
+            // cada cuota y del TOTAL.
             if ($t['mora'] > 0.001) {
                 $this->pt($printer, $this->row('Mora:', number_format($t['mora'], 2), $columns));
             }

@@ -832,9 +832,7 @@
                                 @endif
                                 <div class="tp-row"><span>Capital:</span><span>{{ number_format($preview['capital'], 2) }}</span></div>
                                 <div class="tp-row"><span>Interes:</span><span>{{ number_format($preview['interes'], 2) }}</span></div>
-                                @if($preview['excedente'] > 0.001)
-                                    <div class="tp-row"><span>Excedente:</span><span>{{ number_format($preview['excedente'], 2) }}</span></div>
-                                @endif
+                                {{-- 16/10 (Antony): sin línea "Excedente" en el voucher (va dentro del TOTAL). --}}
                                 @if($preview['mora'] > 0.001)
                                     <div class="tp-row"><span>Mora:</span><span>{{ number_format($preview['mora'], 2) }}</span></div>
                                 @endif
