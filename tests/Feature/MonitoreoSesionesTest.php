@@ -103,8 +103,13 @@ class MonitoreoSesionesTest extends TestCase
         $this->assertStringContainsString("wire:click=\"cerrarTodas({$this->licet->id})\"", $html);
         $this->assertStringContainsString("wire:click=\"cerrarSesion('licet-cel')\"", $html);
         $this->assertStringNotContainsString("wire:click=\"cerrarTodas({$this->director->id})\"", $html, 'el director solo tiene su sesión actual: nada que cerrar');
-        $this->assertStringContainsString('2 usuario(s) con sesión abierta', $html, 'Licet y el propio director');
-        $this->assertStringContainsString('3 sesión(es) en total', $html);
+        // Indicadores (16/10, nuevo look): número y rótulo en tarjetas.
+        $this->assertStringContainsString('<div class="mon-kpi-num">2</div><div class="mon-kpi-label">usuario(s) con sesión abierta</div>', $html, 'Licet y el propio director');
+        $this->assertStringContainsString('<div class="mon-kpi-num">3</div><div class="mon-kpi-label">sesión(es) en total</div>', $html);
+        $this->assertStringContainsString('<div class="mon-kpi-num">2</div><div class="mon-kpi-label">con actividad en 5 min</div>', $html, 'la del director (ahora) y la de Licet de hace 2 min');
+        $this->assertStringContainsString('<div class="mon-kpi-num">2</div><div class="mon-kpi-label">intento(s) fallido(s) en 7 días</div>', $html);
+        $this->assertStringContainsString('En línea', $html, 'Licet tiene actividad reciente');
+        $this->assertStringContainsString('Sin sesión', $html, 'Rosa');
     }
 
     public function test_el_director_cierra_una_sesion_o_todas_las_de_un_usuario_y_queda_en_la_auditoria(): void
@@ -200,6 +205,6 @@ class MonitoreoSesionesTest extends TestCase
         $this->actingAs($this->director);
         $html = Livewire::test(Sesiones::class)->html();
         $this->assertStringContainsString('SESSION_DRIVER=database', $html);
-        $this->assertStringContainsString('0 sesión(es) en total', $html);
+        $this->assertStringContainsString('<div class="mon-kpi-num">0</div><div class="mon-kpi-label">sesión(es) en total</div>', $html);
     }
 }

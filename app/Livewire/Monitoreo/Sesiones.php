@@ -160,6 +160,9 @@ class Sesiones extends Component
             'disponibles' => SesionesActivas::disponibles(),
             'totalSesiones' => $bloques->sum(fn (array $b) => $b['sesiones']->count()),
             'usuariosConSesion' => $bloques->filter(fn (array $b) => $b['sesiones']->isNotEmpty())->count(),
+            // 16/10 (look & feel): indicadores de actividad reciente y de intentos fallidos de la semana.
+            'activasAhora' => $bloques->sum(fn (array $b) => $b['sesiones']->where('activa', true)->count()),
+            'fallidosSemana' => $bloques->sum(fn (array $b) => $b['fallidos']),
         ]);
     }
 }
