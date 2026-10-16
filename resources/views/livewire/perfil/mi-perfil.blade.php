@@ -81,16 +81,45 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="d-flex flex-column flex-md-row gap-2 align-items-md-start" x-data x-on:perfil-sesiones-cerradas.window="$refs.clave.value = ''">
-                    <div style="max-width:320px;">
-                        <input type="password" class="form-control form-control-sm @error('passwordSesiones') is-invalid @enderror" x-ref="clave" name="password_sesiones"
-                               wire:keydown.enter="cerrarOtrasSesiones($event.target.value)" autocomplete="current-password" placeholder="Tu contraseña, para confirmar">
-                        @error('passwordSesiones') <span class="title-modules small">{{ $message }}</span> @enderror
-                    </div>
-                    <button type="button" class="btn btn-outline-danger btn-sm" wire:click="cerrarOtrasSesiones($refs.clave.value)" wire:loading.attr="disabled" wire:target="cerrarOtrasSesiones"
-                            @if($sesiones->where('actual', false)->isEmpty()) disabled title="No hay otras sesiones abiertas" @endif>
+                {{-- 16/10 (Antony): confirmación en dos pasos. El botón abre un cuadro con la contraseña (candado,
+                     ojo para verla, Confirmar / Cancelar); la contraseña va como parámetro, nunca como estado.
+                     ⚠️ Se llama con Alpine (x-on + $wire): en una expresión wire:click los nombres se resuelven
+                     contra $wire ($wire.document, $refs del componente) y la llamada falla en silencio. --}}
+                @php $otras = $sesiones->where('actual', false)->count(); @endphp
+                <div x-data="{ confirmando: {{ $errors->has('passwordSesiones') ? 'true' : 'false' }}, ver: false }"
+                     x-on:perfil-sesiones-cerradas.window="confirmando = false; ver = false; $refs.clave.value = ''">
+                    <button type="button" class="btn btn-outline-danger btn-sm" x-show="!confirmando"
+                            x-on:click="confirmando = true; $nextTick(() => $refs.clave.focus())"
+                            @if($otras === 0) disabled title="No hay otras sesiones abiertas" @endif>
                         <i class="ti ti-logout"></i> Cerrar las otras sesiones
                     </button>
+                    <div class="border rounded p-2 confirmar-cierre-sesiones" style="max-width:520px; background:#fcfcfa;" x-show="confirmando" x-cloak>
+                        <label for="clave-cerrar-sesiones" class="form-label small fw-semibold mb-1">
+                            <i class="ti ti-shield-lock"></i> Confirma con tu contraseña para cerrar {{ $otras === 1 ? 'la otra sesión' : "las otras {$otras} sesiones" }}
+                        </label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text"><i class="ti ti-lock"></i></span>
+                            <input :type="ver ? 'text' : 'password'" id="clave-cerrar-sesiones" class="form-control @error('passwordSesiones') is-invalid @enderror"
+                                   x-ref="clave" name="password_sesiones" autocomplete="current-password" placeholder="Tu contraseña"
+                                   x-on:keydown.enter="$wire.cerrarOtrasSesiones($event.target.value)">
+                            <button type="button" class="btn btn-outline-secondary" x-on:click="ver = !ver" :title="ver ? 'Ocultar' : 'Mostrar'">
+                                <i class="ti" :class="ver ? 'ti-eye-off' : 'ti-eye'"></i>
+                            </button>
+                        </div>
+                        @error('passwordSesiones') <div class="text-danger small mt-1"><i class="ti ti-alert-circle"></i> {{ $message }}</div> @enderror
+                        <div class="d-flex flex-wrap gap-2 mt-2">
+                            <button type="button" class="btn btn-danger btn-sm" x-on:click="$wire.cerrarOtrasSesiones($refs.clave.value)"
+                                    wire:loading.attr="disabled" wire:target="cerrarOtrasSesiones">
+                                <i class="ti ti-logout"></i>
+                                <span wire:loading.remove wire:target="cerrarOtrasSesiones">Cerrar las otras sesiones</span>
+                                <span wire:loading wire:target="cerrarOtrasSesiones">Cerrando…</span>
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" x-on:click="confirmando = false; ver = false; $refs.clave.value = ''">
+                                <i class="ti ti-x"></i> Cancelar
+                            </button>
+                        </div>
+                        <small class="text-muted d-block mt-1">Esta sesión seguirá abierta; las demás tendrán que volver a iniciar sesión.</small>
+                    </div>
                 </div>
             @endif
         </div>

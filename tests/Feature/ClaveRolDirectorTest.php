@@ -231,12 +231,12 @@ class ClaveRolDirectorTest extends TestCase
 
         $html = Livewire::test(Edit::class, ['id' => $guilmer->id])->html();
         $this->assertStringContainsString('id="clave-director"', $html);
-        $this->assertStringContainsString("wire:click=\"update(document.getElementById('clave-director').value)\"", $html);
+        $this->assertStringContainsString("x-on:click=\"\$wire.update(document.getElementById('clave-director').value)\"", $html);
         $this->assertStringContainsString("x-show.important=\"(\$wire.selectedRoleId ?? 0) != {$director} && ((\$wire.selectedRoleId ?? 0) == {$director} || {$director} == {$director})\"", $html);
 
         $html = Livewire::test(Create::class)->html();
         $this->assertStringContainsString('id="clave-director"', $html);
-        $this->assertStringContainsString("wire:click=\"save(document.getElementById('clave-director').value)\"", $html);
+        $this->assertStringContainsString("x-on:click=\"\$wire.save(document.getElementById('clave-director').value)\"", $html);
         $this->assertStringContainsString("x-show.important=\"(\$wire.selectedRoleId ?? 0) == {$director}\"", $html);
     }
 

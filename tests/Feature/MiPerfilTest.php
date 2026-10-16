@@ -88,9 +88,16 @@ class MiPerfilTest extends TestCase
         $this->assertStringContainsString('Computadora · Windows', $html);
         $this->assertStringContainsString('38.25.29.129', $html);
         $this->assertStringNotContainsString('1.2.3.4', $html, 'las sesiones de otros no salen');
+        // Confirmación en dos pasos: botón → cuadro con contraseña (candado + ojo) y Confirmar / Cancelar.
+        $this->assertStringContainsString('Confirma con tu contraseña para cerrar la otra sesión', $html);
+        $this->assertStringContainsString('x-ref="clave"', $html);
+        $this->assertStringContainsString('x-on:click="$wire.cerrarOtrasSesiones($refs.clave.value)"', $html);
+        $this->assertStringContainsString('x-data="{ confirmando: false, ver: false }"', $html);
 
         $comp->call('cerrarOtrasSesiones', 'mala-mala')->assertHasErrors(['passwordSesiones']);
         $this->assertStringNotContainsString('mala-mala', $comp->html(), 'la contraseña no vuelve al navegador');
+        $this->assertStringContainsString('x-data="{ confirmando: true, ver: false }"', $comp->html(), 'con error el cuadro sigue abierto');
+        $this->assertStringContainsString('La contraseña no es correcta.', $comp->html());
         $this->assertSame(2, DB::table('sessions')->where('user_id', $u->id)->count());
 
         $comp->call('cerrarOtrasSesiones', 'Actual.2026')->assertHasNoErrors()->assertDispatched('successAlert')->assertDispatched('perfil-sesiones-cerradas');

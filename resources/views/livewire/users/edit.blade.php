@@ -142,7 +142,7 @@
                     <div class="perm-col-title"><i class="ti ti-shield-lock"></i> Clave de seguridad</div>
                     <div class="perm-col-controls">
                         <input type="password" class="form-control form-control-sm @error('claveDirector') is-invalid @enderror"
-                               id="clave-director" wire:keydown.enter="update($event.target.value)" name="clave_director" autocomplete="one-time-code"
+                               id="clave-director" x-on:keydown.enter="$wire.update($event.target.value)" name="clave_director" autocomplete="one-time-code"
                                placeholder="Clave del gerente para dar o quitar el rol Director">
                         <small class="text-muted d-block">Dar o quitar el rol Director requiere la clave de seguridad que custodia el gerente.</small>
                         @error('claveDirector') <span class="title-modules small">{{ $message }}</span> @enderror
@@ -151,7 +151,7 @@
             </div>
 
             <div class="mt-2 d-flex gap-2">
-                <button class="btn btn-primary btn-sm" wire:click="update(document.getElementById('clave-director').value)">Actualizar</button>
+                <button class="btn btn-primary btn-sm" x-on:click="$wire.update(document.getElementById('clave-director').value)">Actualizar</button>
                 <a class="btn btn-secondary btn-sm" href="{{ route('settings.users.index') }}">Volver</a>
             </div>
         </div>
