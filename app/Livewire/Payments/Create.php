@@ -902,7 +902,8 @@ class Create extends Component
 
             $totCuotas = $this->credit->installments->count();
             $hora = now()->format('H:i:s');
-            $usuario = auth()->user()?->name;
+            // payments.usuario es varchar(50): un nombre más largo tumbaba el cobro con un 1406 (16/10).
+            $usuario = mb_substr((string) auth()->user()?->name, 0, 50) ?: null;
             $userId = auth()->id();
             $hqId = auth()->user()?->headquarter_id ?? 1; // C10
             $semodn = $this->credit->moneda ?? 'Soles';
