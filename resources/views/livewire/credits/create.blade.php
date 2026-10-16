@@ -58,10 +58,11 @@
                         @endif
                     </div>
                     <div class="col-md-2">
-                        <label class="form-label mb-0 small fw-semibold">Código Préstamo</label>
-                        <input type="number" name="codpre_" autocomplete="off" class="form-control form-control-sm @error('codpre_') is-invalid @enderror"
-                               wire:model.defer="codpre_"
-                               style="background-color:yellow;" required>
+                        <label class="form-label mb-0 small fw-semibold">Código Préstamo <span class="text-muted fw-normal">(automático)</span></label>
+                        {{-- 16/10 (Antony): no se edita; lo asigna el sistema (correlativo) y en gris. --}}
+                        <input type="number" name="codpre_" autocomplete="off" class="form-control form-control-sm bg-light @error('codpre_') is-invalid @enderror"
+                               wire:model.defer="codpre_" readonly tabindex="-1" title="Lo asigna el sistema">
+                        @error('codpre_') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">Moneda</label>

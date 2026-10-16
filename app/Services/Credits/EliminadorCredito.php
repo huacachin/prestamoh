@@ -103,6 +103,11 @@ final class EliminadorCredito
                 throw new \RuntimeException("No se pudo borrar el crédito #{$credit->id}");
             }
 
+            // 16/10 (Antony): al eliminar el último crédito creado, su código vuelve a
+            // ofrecerse al siguiente (el correlativo retrocede al mayor id que queda).
+            // Si se borra uno del medio, el hueco se queda: no se reordenan códigos.
+            self::recontarCorrelativo();
+
             return $resumen;
         });
 
@@ -114,5 +119,22 @@ final class EliminadorCredito
         }
 
         return $resumen;
+    }
+
+    /**
+     * Deja el correlativo de créditos en el mayor id existente, de modo que el
+     * próximo crédito tome el código liberado por el último eliminado. Nunca
+     * sube el correlativo (si está por encima del máximo, baja; si está por
+     * debajo, se respeta lo que haya hecho la creación).
+     */
+    public static function recontarCorrelativo(): int
+    {
+        $maximo = (int) (DB::table('credits')->max('id') ?? 0);
+        DB::table('correlativos')
+            ->where('tipo', 'Credito')
+            ->where('correl', '>', $maximo)
+            ->update(['correl' => $maximo, 'updated_at' => now()]);
+
+        return $maximo;
     }
 }
