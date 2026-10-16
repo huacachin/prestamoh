@@ -133,6 +133,14 @@ class MenuLateral
                 'route' => 'audit.index',
                 'role' => 'director',
             ],
+            // 16/10 (Antony): sesiones abiertas de todos los usuarios, solo director.
+            [
+                'id' => 'monitoreo',
+                'title' => 'Monitoreo',
+                'icon' => 'ti ti-devices',
+                'route' => 'monitoreo.index',
+                'role' => 'director',
+            ],
         ];
 
         // 11/10 (Antony): el Área Legal se oculta mientras config legal.activo sea false.

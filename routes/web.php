@@ -11,6 +11,7 @@ use App\Http\Controllers\DocumentoClienteController;
 use App\Http\Controllers\ExchangeRateController;
 use App\Http\Controllers\HeadquarterController;
 use App\Http\Controllers\LegalController;
+use App\Http\Controllers\MonitoreoController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\ReportController;
@@ -59,6 +60,8 @@ Route::middleware('auth')->group(function () {
     Route::view('audit', 'audit.index')->name('audit.index')->middleware('role:director');
     // 08/10: captura de pantalla de una fila de auditoría (disco privado, solo director).
     Route::get('audit/captura/{id}', AuditCapturaController::class)->name('audit.captura')->middleware('role:director');
+    // Monitoreo (16/10): sesiones abiertas de todos los usuarios, solo director.
+    Route::get('monitoreo', [MonitoreoController::class, 'index'])->name('monitoreo.index')->middleware('role:director');
 
     // Clientes
     Route::get('clients/ceased', [ClientController::class, 'ceased'])->name('clients.ceased')->middleware('permission:registro.cesados');
