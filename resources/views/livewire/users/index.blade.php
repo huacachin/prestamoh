@@ -81,8 +81,12 @@
                                     <td>{{ $user->phone ?: '—' }}</td>
                                     <td>{{ $user->headquarter?->name ?: '—' }}</td>
                                     <td>{{ optional($user->roles->first())->name ?: '—' }}</td>
-                                    <td>
-                                        <span class="badge bg-dark">{{ $user->permissions->count() }} permisos</span>
+                                    <td class="text-nowrap">
+                                        {{-- 16/10 (Antony): antes salía la cuenta de permisos DIRECTOS (los checks de módulos),
+                                             igual para todos (27). Ahora: permisos efectivos del rol (+ directos finos) y,
+                                             aparte, los módulos del menú que ve. --}}
+                                        <span class="badge bg-dark" title="Permisos efectivos: los del rol más los directos">{{ $user->getAllPermissions()->count() }} permisos</span>
+                                        <span class="badge bg-secondary" title="Módulos del menú que ve (checks de Permisos; el director los ve todos)">{{ \App\Support\PermisosVista::modulosQueVe($user) }} módulos</span>
                                     </td>
                                     <td>
                                         @if($user->status === 'active')

@@ -86,7 +86,8 @@ class Index extends Component
                 ->orWhere('email', 'like', "%{$term}%")
             )
             )
-            ->with(['headquarter', 'roles', 'permissions'])
+            // roles.permissions: el listado muestra los permisos EFECTIVOS (rol + directos) sin una consulta por fila.
+            ->with(['headquarter', 'roles.permissions', 'permissions'])
             ->orderBy('name')
             ->get();
 

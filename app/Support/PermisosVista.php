@@ -32,6 +32,32 @@ class PermisosVista
     ];
 
     /**
+     * Los módulos que hoy se ofrecen en la matriz: la LISTA sin el Área Legal
+     * mientras esté oculta (config legal.activo).
+     *
+     * @return list<string>
+     */
+    public static function visibles(): array
+    {
+        return array_values(array_filter(self::LISTA, fn (string $p) => config('legal.activo') || ! str_starts_with($p, 'legal.')));
+    }
+
+    /**
+     * Cuántos módulos del menú ve el usuario (16/10/2026, listado de usuarios):
+     * el director los ve todos (el Gate lo exime de los checks); el resto, los
+     * que tiene marcados en /users/{id}/perms.
+     */
+    public static function modulosQueVe(User $user): int
+    {
+        $visibles = self::visibles();
+        if ($user->hasRole('director')) {
+            return count($visibles);
+        }
+
+        return $user->permissions->pluck('name')->intersect($visibles)->count();
+    }
+
+    /**
      * Siembra los checks de visualización del usuario según su rol actual
      * (matriz ∩ LISTA), conservando los permisos directos finos que tenga.
      * Se dispara al asignar/cambiar rol (overrides en User) y en el seeder.
