@@ -11,6 +11,7 @@ use App\Support\Documentos\BancosVoucher;
 use App\Support\Documentos\DomicilioLegal;
 use App\Support\Documentos\FechaEnLetras;
 use App\Support\Documentos\Genero;
+use App\Support\Documentos\MaquetaContrato;
 use App\Support\Documentos\ModelosContrato;
 use App\Support\Documentos\Ordinales;
 use App\Support\NumerosEnLetras;
@@ -58,9 +59,14 @@ class GeneradorContrato
     {
         $preset = ModelosContrato::get($modelo);
 
+        // Rutas de lo que el wizard cambió respecto de los datos del sistema
+        // ('deudores.0.ocupacion', 'montos.valor_bien', 'fecha'…): la previa
+        // las pinta en rojo (ResaltarCambios). Quedan en el snapshot como rastro.
+        $cambios = [];
+
         $deudores = $preset['personas'] === 'empresa'
-            ? [self::deudorJuridico($client, $datos['empresa'] ?? [])]
-            : self::deudoresNaturales($client, $preset, $datos);
+            ? [self::deudorJuridico($client, $datos['empresa'] ?? [], $cambios)]
+            : self::deudoresNaturales($client, $preset, $datos, $cambios);
 
         $bienes = self::bienes($vehiculoIds, $preset, $datos['bienes'] ?? []);
 
@@ -81,7 +87,17 @@ class GeneradorContrato
             ->countBy(fn ($f) => number_format($f['monto'], 2, '.', ''))
             ->sortDesc()->keys()->first() ?? 0);
 
-        $cuota = self::montoEditable($datos, 'cuota', $cuotaModa);
+        $cuota = self::montoEditable($datos, 'cuota', $cuotaModa, $cambios);
+
+        // El wizard precarga la fecha de hoy: otra fecha es un cambio del usuario.
+        $fecha = filled($datos['fecha'] ?? null) ? $datos['fecha'] : now()->toDateString();
+        if (! self::fechaDelSnapshot((string) $fecha)->isToday()) {
+            $cambios[] = 'fecha';
+        }
+        // Las cláusulas adicionales son siempre texto agregado a mano.
+        if (filled($datos['clausulas_adicionales'] ?? null)) {
+            $cambios[] = 'clausulasAdicionales';
+        }
 
         return [
             'numero' => "CONTRATO CRÉDITO N° {$credit->id}",
@@ -104,17 +120,17 @@ class GeneradorContrato
             ] : null,
             'bienes' => $bienes,
             'montos' => [
-                'valor_bien' => self::montoEditable($datos, 'valor_bien', round(array_sum(array_column($bienes, 'valor')), 2)),
+                'valor_bien' => self::montoEditable($datos, 'valor_bien', round(array_sum(array_column($bienes, 'valor')), 2), $cambios),
                 'obligacion' => round((float) $credit->importe, 2),
                 // Gravamen máximo: por defecto cuota × n° de cuotas reales del cronograma.
-                'monto_maximo' => self::montoEditable($datos, 'monto_maximo', round($cuota * $filas->count(), 2)),
+                'monto_maximo' => self::montoEditable($datos, 'monto_maximo', round($cuota * $filas->count(), 2), $cambios),
                 'cuota' => $cuota,
             ],
             // Cuotas que efectivamente se cobran (sin filas 0 de fines de semana
             // del diario) — mismo criterio que el Anexo 1 emitido.
             'numCuotas' => $filas->count(),
             'frecuencia' => $credit->tipoPlanillaLabel(),
-            'fecha' => filled($datos['fecha'] ?? null) ? $datos['fecha'] : now()->toDateString(),
+            'fecha' => $fecha,
             'banco' => filled($datos['banco'] ?? null) ? $datos['banco'] : null,
             'cronograma' => [
                 'filas' => $filas->all(),
@@ -124,6 +140,7 @@ class GeneradorContrato
             // cambia aunque el motor de cláusulas cambie después.
             'clausulas' => self::clausulas((bool) $preset['gps'], (bool) $preset['custodia']),
             'clausulasAdicionales' => filled($datos['clausulas_adicionales'] ?? null) ? $datos['clausulas_adicionales'] : null,
+            'cambios' => $cambios,
         ];
     }
 
@@ -154,11 +171,7 @@ class GeneradorContrato
             ];
         }
 
-        // La fecha llega 'd/m/Y' desde el wizard o 'Y-m-d' del default —
-        // Carbon::parse interpreta las barras como m/d/Y y revienta con día > 12.
-        $fecha = preg_match('/^\d{2}\/\d{2}\/\d{4}$/', (string) $snapshot['fecha'])
-            ? Carbon::createFromFormat('d/m/Y', $snapshot['fecha'])->startOfDay()
-            : Carbon::parse($snapshot['fecha']);
+        $fecha = self::fechaDelSnapshot((string) $snapshot['fecha']);
 
         // Sin tenor gráfico aquí (va en el Anexo 2): la cláusula de constancia
         // solo menciona la denominación legal del banco elegido.
@@ -187,7 +200,20 @@ class GeneradorContrato
             cronograma: $snapshot['cronograma'],
             clausulasAdicionales: $snapshot['clausulasAdicionales'] ?? null,
             snapshot: $snapshot,
+            cambios: array_values($snapshot['cambios'] ?? []),
+            ajuste: (int) ($snapshot['ajuste'] ?? 0),
         );
+    }
+
+    /**
+     * La fecha llega 'd/m/Y' desde el wizard o 'Y-m-d' del default —
+     * Carbon::parse interpreta las barras como m/d/Y y revienta con día > 12.
+     */
+    private static function fechaDelSnapshot(string $fecha): Carbon
+    {
+        return preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $fecha)
+            ? Carbon::createFromFormat('d/m/Y', $fecha)->startOfDay()
+            : Carbon::parse($fecha);
     }
 
     /**
@@ -404,9 +430,8 @@ class GeneradorContrato
                 ->lockForUpdate()
                 ->max('version') + 1;
 
-            $contenido = Pdf::loadHTML(
-                RenderDocumento::html($snapshot, 'contrato', 'pdf')
-            )->setPaper('a4')->output();
+            // Dentro del tope de hojas; el snapshot vuelve con el 'ajuste' de maqueta que cupo.
+            [$contenido, $snapshot, $hojas] = self::pdfDentroDelTope($snapshot);
 
             $path = "documentos/cliente-{$client->id}/contrato-credito-{$credit->id}-v{$version}.pdf";
             Storage::disk('public')->put($path, $contenido);
@@ -429,10 +454,40 @@ class GeneradorContrato
             $doc->sinAuditoriaAutomatica(fn () => $doc->save());
 
             $nombreModelo = ModelosContrato::get($modelo)['nombre'];
-            Audit::log("Generó el Contrato v{$version} del crédito #{$credit->id} (modelo {$nombreModelo})", $doc);
+            $maqueta = $snapshot['ajuste'] > 0 ? ", {$hojas} hojas con la maqueta apretada al nivel {$snapshot['ajuste']}" : '';
+            Audit::log("Generó el Contrato v{$version} del crédito #{$credit->id} (modelo {$nombreModelo}{$maqueta})", $doc);
 
             return $doc;
         });
+    }
+
+    /**
+     * PDF del contrato dentro del tope de hojas (MaquetaContrato::MAX_HOJAS):
+     * renderiza con la maqueta normal y, si se pasa, aprieta nivel a nivel
+     * hasta que cabe. El nivel que cupo queda en el snapshot ('ajuste') para
+     * que el Word, la copia de impresión y cualquier re-render salgan igual
+     * que el PDF emitido.
+     *
+     * @return array{0: string, 1: array, 2: int} [pdf, snapshot con 'ajuste', hojas]
+     *
+     * @throws \InvalidArgumentException si ni el nivel más apretado entra en el tope
+     */
+    private static function pdfDentroDelTope(array $snapshot): array
+    {
+        $hojas = 0;
+        for ($nivel = 0; $nivel <= MaquetaContrato::MAX_NIVEL; $nivel++) {
+            $snapshot['ajuste'] = $nivel;
+            $pdf = Pdf::loadHTML(RenderDocumento::html($snapshot, 'contrato', 'pdf'))->setPaper('a4')->output();
+            $hojas = MaquetaContrato::hojas($pdf);
+            if ($hojas <= MaquetaContrato::MAX_HOJAS) {
+                return [$pdf, $snapshot, $hojas];
+            }
+        }
+
+        throw new \InvalidArgumentException(
+            "El contrato sale en {$hojas} hojas y el máximo es ".MaquetaContrato::MAX_HOJAS
+            .': acorte las cláusulas adicionales o los datos editados.'
+        );
     }
 
     /** Lista ordenada de cláusulas activas según los parámetros del modelo. */
@@ -462,7 +517,7 @@ class GeneradorContrato
      * ficha del cliente. El codeudor puede venir de la BD (codeudor_client_id)
      * o tipeado a mano en el wizard (sin ficha).
      */
-    private static function deudoresNaturales(Client $client, array $preset, array $datos): array
+    private static function deudoresNaturales(Client $client, array $preset, array $datos, array &$cambios): array
     {
         $fichas = [$client];
         if ($preset['personas'] === 2) {
@@ -471,15 +526,38 @@ class GeneradorContrato
                 : null;
         }
 
+        $up = fn (mixed $v): string => mb_strtoupper(trim((string) $v));
+
         $deudores = [];
         foreach ($fichas as $i => $ficha) {
             $o = $datos['deudores'][$i] ?? [];
 
+            // Valor del wizard si vino con contenido, si no el de la ficha; y se
+            // anota el cambio cuando difieren (la previa lo pinta en rojo).
+            $campo = function (string $nombre, mixed $override, string $default, bool $mayusculas = true) use (&$cambios, $i): string {
+                $valor = filled($override)
+                    ? ($mayusculas ? mb_strtoupper(trim((string) $override)) : trim((string) $override))
+                    : $default;
+                if ($valor !== $default) {
+                    $cambios[] = "deudores.{$i}.{$nombre}";
+                }
+
+                return $valor;
+            };
+
+            // El wizard normaliza el estado civil de la ficha a su opción
+            // ("casada" → CASADO): solo cuenta como cambio si difiere en la raíz.
+            $estadoCivilDefault = $up($ficha?->estado_civil ?: '');
+            $estadoCivil = filled($o['estado_civil'] ?? null) ? $up($o['estado_civil']) : $estadoCivilDefault;
+            if (mb_substr($estadoCivil, 0, 4) !== mb_substr($estadoCivilDefault, 0, 4)) {
+                $cambios[] = "deudores.{$i}.estadoCivil";
+            }
+
             $deudores[] = [
                 'esJuridica' => false,
-                'sexo' => mb_strtoupper(trim((string) (($o['sexo'] ?? null) ?: $ficha?->sexo ?: 'M'))),
-                'nombre' => mb_strtoupper(trim((string) (($o['nombre'] ?? null) ?: $ficha?->fullName() ?: ''))),
-                'dni' => trim((string) (($o['dni'] ?? null) ?: $ficha?->documento ?: '')),
+                'sexo' => $campo('sexo', $o['sexo'] ?? null, $up($ficha?->sexo ?: 'M')),
+                'nombre' => $campo('nombre', $o['nombre'] ?? null, $up($ficha?->fullName() ?: '')),
+                'dni' => $campo('dni', $o['dni'] ?? null, trim((string) ($ficha?->documento ?: '')), mayusculas: false),
                 // "CON DNI N°" estaba hardcodeado: un deudor con carné de
                 // extranjería salía "IDENTIFICADO CON DNI N° <su CE>". Mismo
                 // patrón que ya usaban los Anexos 1 y 2 (documento_tipo).
@@ -488,15 +566,13 @@ class GeneradorContrato
                 'partida' => null,
                 'oficinaRegistral' => null,
                 // Base masculina ('PERUANO'): el partial la flexiona con el Genero del deudor.
-                'nacionalidad' => mb_strtoupper(trim((string) (($o['nacionalidad'] ?? null) ?: $ficha?->nacionalidad ?: 'PERUANO'))),
+                'nacionalidad' => $campo('nacionalidad', $o['nacionalidad'] ?? null, $up($ficha?->nacionalidad ?: 'PERUANO')),
                 // La ficha tiene `ocupacion` desde el 28/08; `giro` es el rubro
                 // del negocio y solo sirve de último recurso.
-                'ocupacion' => mb_strtoupper(trim((string) (($o['ocupacion'] ?? null) ?: $ficha?->ocupacion ?: $ficha?->giro ?: ''))),
-                'estadoCivil' => mb_strtoupper(trim((string) (($o['estado_civil'] ?? null) ?: $ficha?->estado_civil ?: ''))),
-                'domicilio' => filled($o['domicilio'] ?? null)
-                    ? mb_strtoupper(trim($o['domicilio']))
-                    : ($ficha ? self::domicilio($ficha) : ''),
-                'correo' => mb_strtoupper(trim((string) (($o['correo'] ?? null) ?: $ficha?->email ?: ''))),
+                'ocupacion' => $campo('ocupacion', $o['ocupacion'] ?? null, $up($ficha?->ocupacion ?: $ficha?->giro ?: '')),
+                'estadoCivil' => $estadoCivil,
+                'domicilio' => $campo('domicilio', $o['domicilio'] ?? null, $ficha ? self::domicilio($ficha) : ''),
+                'correo' => $campo('correo', $o['correo'] ?? null, $up($ficha?->email ?: '')),
                 'gerente' => null,
             ];
         }
@@ -505,25 +581,43 @@ class GeneradorContrato
     }
 
     /** Deudor persona jurídica: la empresa se redacta como LA DEUDORA; el gerente se flexiona aparte. */
-    private static function deudorJuridico(Client $client, array $empresa): array
+    private static function deudorJuridico(Client $client, array $empresa, array &$cambios): array
     {
         $gerente = $empresa['gerente'] ?? [];
+        $up = fn (mixed $v): string => mb_strtoupper(trim((string) $v));
+
+        // Lo que el wizard precarga de la ficha (clients + client_empresas): si
+        // el valor final difiere, se anota el cambio para la previa. Partida,
+        // oficina registral y gerente no tienen default del sistema: no se anotan.
+        $fichaEmpresa = $client->empresa;
+        $anotar = function (string $campo, string $valor, string $default) use (&$cambios): void {
+            if ($valor !== $default) {
+                $cambios[] = "deudores.0.{$campo}";
+            }
+        };
+
+        $nombre = $up(($empresa['razon_social'] ?? null) ?: $client->fullName());
+        $anotar('nombre', $nombre, $up($client->fullName()));
+        $ruc = trim((string) (($empresa['ruc'] ?? null) ?: $client->documento ?: ''));
+        $anotar('ruc', $ruc, trim((string) ($client->documento ?: '')));
+        $domicilio = filled($empresa['domicilio'] ?? null) ? $up($empresa['domicilio']) : self::domicilio($client);
+        $anotar('domicilio', $up($domicilio), $up(($fichaEmpresa?->domicilio ?? null) ?: self::domicilio($client)));
+        $correo = $up(($empresa['correo'] ?? null) ?: $client->email ?: '');
+        $anotar('correo', $correo, $up(($fichaEmpresa?->correo ?? null) ?: $client->email ?: ''));
 
         return [
             'esJuridica' => true,
             'sexo' => 'F', // la empresa se redacta como LA DEUDORA
-            'nombre' => mb_strtoupper(trim((string) (($empresa['razon_social'] ?? null) ?: $client->fullName()))),
+            'nombre' => $nombre,
             'dni' => null,
-            'ruc' => trim((string) (($empresa['ruc'] ?? null) ?: $client->documento ?: '')),
+            'ruc' => $ruc,
             'partida' => trim((string) ($empresa['partida'] ?? '')),
             'oficinaRegistral' => mb_strtoupper(trim((string) ($empresa['oficina_registral'] ?? ''))),
             'nacionalidad' => null,
             'ocupacion' => null,
             'estadoCivil' => null,
-            'domicilio' => filled($empresa['domicilio'] ?? null)
-                ? mb_strtoupper(trim($empresa['domicilio']))
-                : self::domicilio($client),
-            'correo' => mb_strtoupper(trim((string) (($empresa['correo'] ?? null) ?: $client->email ?: ''))),
+            'domicilio' => $domicilio,
+            'correo' => $correo,
             'gerente' => [
                 'sexo' => mb_strtoupper(trim((string) (($gerente['sexo'] ?? null) ?: 'M'))),
                 'nombre' => mb_strtoupper(trim((string) ($gerente['nombre'] ?? ''))),
@@ -625,12 +719,24 @@ class GeneradorContrato
         return $bienes;
     }
 
-    /** Monto editable del wizard: usa el override si vino con valor; si no, el default del sistema. */
-    private static function montoEditable(array $datos, string $clave, float $default): float
+    /**
+     * Monto editable del wizard: usa el override si vino con valor; si no, el
+     * default del sistema. Si el override difiere del default, anota el cambio
+     * ('montos.<clave>') para que la previa lo pinte en rojo.
+     */
+    private static function montoEditable(array $datos, string $clave, float $default, array &$cambios): float
     {
         $valor = $datos[$clave] ?? null;
+        if ($valor === null || $valor === '') {
+            return $default;
+        }
 
-        return ($valor !== null && $valor !== '') ? round((float) $valor, 2) : $default;
+        $valor = round((float) $valor, 2);
+        if (abs($valor - round($default, 2)) >= 0.005) {
+            $cambios[] = "montos.{$clave}";
+        }
+
+        return $valor;
     }
 
     /** Domicilio legal en el formato de las maestras (ver DomicilioLegal). */

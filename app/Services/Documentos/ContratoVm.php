@@ -44,6 +44,10 @@ final class ContratoVm
         public readonly array $cronograma,
         public readonly ?string $clausulasAdicionales,
         public readonly array $snapshot,
+        /** Rutas del snapshot que el wizard cambió respecto de los datos del sistema (ResaltarCambios las pinta en la previa). */
+        public readonly array $cambios = [],
+        /** Nivel de MaquetaContrato con el que el PDF cupo en el tope de hojas (0 = maqueta normal). */
+        public readonly int $ajuste = 0,
     ) {}
 
     /** "S/ 7,000.00 (SIETE MIL CON 00/100 SOLES)" — claves: valor_bien, obligacion, monto_maximo, cuota */

@@ -981,6 +981,12 @@
                                         style="width:21cm; height:29.7cm; max-width:100%; border:1px solid #ccc;
                                                background:#fff; display:block; margin:0 auto;"
                                         title="Vista previa del contrato"></iframe>
+                                {{-- 16/10: ResaltarCambios envuelve en .cambio lo que difiere de los datos del sistema --}}
+                                @if (str_contains($htmlPreviewContrato, 'class="cambio"'))
+                                    <div class="text-center mt-1" style="font-size:11px;color:#555;">
+                                        En <span style="color:#c00000;font-weight:600;">rojo</span>: lo que cambiaste respecto de los datos de la ficha, el crédito y los vehículos. El PDF sale todo en negro.
+                                    </div>
+                                @endif
                             </div>
                         @endif
                     @endif

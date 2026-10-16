@@ -9,7 +9,7 @@
 <head>
     <meta charset="utf-8">
     <title>{{ $vm->numero }}</title>
-    @include('documentos.pdf.estilos', ['compacto' => true])
+    @include('documentos.pdf.estilos', ['compacto' => true, 'ajuste' => $vm->ajuste])
 </head>
 <body>
 

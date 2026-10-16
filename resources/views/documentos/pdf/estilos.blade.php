@@ -12,6 +12,11 @@
     @php
         $medio = $medio ?? 'pdf';
         $compacto = $compacto ?? false;
+        // 16/10: maqueta del contrato por nivel de ajuste (App\Support\Documentos\
+        // MaquetaContrato): margen exterior ancho para firmar en cada hoja y
+        // niveles de reserva que GeneradorContrato sube cuando el PDF pasa de
+        // 5 hojas. $ajuste lo pasa contrato.blade ($vm->ajuste, congelado en el snapshot).
+        $maqueta = $compacto ? \App\Support\Documentos\MaquetaContrato::nivel((int) ($ajuste ?? 0)) : null;
         // 18/09: lo pasa el Anexo 1, el único documento con pie. En Word, un
         // pie DE VERDAD (el de la sección) es lo único que lo deja siempre al
         // fondo de la hoja; en el flujo quedaba pegado al cronograma.
@@ -27,7 +32,7 @@
         // las cláusulas van "pegadas" como en las maestras en papel.
         // El documento puede traer los suyos (el Anexo 1 los aprieta desde el
         // 18/09); si no, el juego del contrato o el general.
-        $margenes = $margenes ?? ($compacto ? '1.8cm 1.8cm 1.5cm 2.4cm' : '2.2cm 2cm 2.4cm 2.8cm');
+        $margenes = $margenes ?? ($compacto ? $maqueta['margenes'] : '2.2cm 2cm 2.4cm 2.8cm');
         // Un solo juego de TTF en public/fonts/bookman: dompdf los lee por
         // RUTA (public_path está dentro de su chroot) y la previa del
         // navegador por URL. Así la pantalla se ve igual que el papel.
@@ -82,8 +87,8 @@
     }
     body {
         font-family: "Bookman Old Style", "Bookman", "DejaVu Serif", serif;
-        font-size: 6.5pt;
-        line-height: {{ $compacto ? '1.2' : '1.5' }};
+        font-size: {{ $compacto ? $maqueta['fuente'] : '6.5pt' }};
+        line-height: {{ $compacto ? $maqueta['interlineado'] : '1.5' }};
         color: #000;
         margin: 0;
         @if($medio === 'previa')
@@ -100,7 +105,7 @@
         text-transform: uppercase;
         margin: 0 0 8px 0;
     }
-    .parrafo { text-align: justify; margin: 0 0 {{ $compacto ? '4px' : '8px' }} 0; }
+    .parrafo { text-align: justify; margin: 0 0 {{ $compacto ? $maqueta['parrafo'] : '8px' }} 0; }
     .clausula { margin: 0 0 4px 0; }
     .clausula-titulo {
         font-weight: bold;
@@ -188,6 +193,13 @@
     table.tabla-firmas td { padding: 8pt 10pt; vertical-align: top; }
     table.tabla-firmas tr { page-break-inside: avoid; }
     .firmas .linea-firma { margin-top: 46pt; }
+    @endif
+
+    @if($medio === 'previa')
+    /* Previa del wizard (16/10): lo que el usuario cambió respecto de los datos
+       del sistema sale en rojo (App\Support\Documentos\ResaltarCambios envuelve
+       el texto en .cambio). Solo en la previa: el PDF y el Word no llevan el span. */
+    .cambio { color: #c00000; }
     @endif
 
     .salto { page-break-before: always; }

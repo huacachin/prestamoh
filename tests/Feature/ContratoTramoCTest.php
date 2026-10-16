@@ -201,6 +201,9 @@ class ContratoTramoCTest extends TestCase
                 $this->deudor('MARIA LOPEZ', '22222222', 'F', $dom),
             ],
         ]);
+        // 16/10: la previa envuelve en <span class="cambio"> lo que difiere de
+        // la ficha (ResaltarCambios); aquí interesa el texto corrido.
+        $html = preg_replace('#<span class="cambio">(.*?)</span>#su', '$1', $html);
 
         $this->assertStringContainsString('DATOS DE LOS CONSTITUYENTES Y LOS DEUDORES:', $html);
         $this->assertStringContainsString('AMBOS CON DOMICILIO EN', $html);

@@ -4,6 +4,7 @@ namespace App\Services\Documentos;
 
 use App\Models\DocumentoCliente;
 use App\Support\Documentos\Enfasis;
+use App\Support\Documentos\ResaltarCambios;
 
 /**
  * Mapa central tipo de documento → vista Blade y datos de render. Todo
@@ -54,8 +55,18 @@ class RenderDocumento
      */
     public static function html(array $snapshot, string $tipo, string $medio): string
     {
-        $html = view(self::vista($tipo), self::datosDesdeSnapshot($snapshot, $tipo, $medio))->render();
+        $datos = self::datosDesdeSnapshot($snapshot, $tipo, $medio);
+        $html = view(self::vista($tipo), $datos)->render();
 
-        return $tipo === 'contrato' ? Enfasis::aplicar($html) : $html;
+        if ($tipo !== 'contrato') {
+            return $html;
+        }
+
+        // Solo la previa del wizard pinta en rojo lo que el usuario cambió (16/10).
+        if ($medio === 'previa') {
+            $html = ResaltarCambios::aplicar($html, $datos['vm']);
+        }
+
+        return Enfasis::aplicar($html);
     }
 }
