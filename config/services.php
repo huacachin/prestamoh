@@ -69,6 +69,9 @@ return [
         // acepta.
         'modelo' => env('ANTHROPIC_MODELO', 'claude-sonnet-5'),
         'habilitado' => filled(env('ANTHROPIC_API_KEY')),
+        // 16/10: una clave de usuario (sk-ant-usr-…) no está atada a un workspace y la API exige la
+        // cabecera anthropic-workspace-id; con una clave de workspace (sk-ant-api03-…) se deja vacío.
+        'workspace' => env('ANTHROPIC_WORKSPACE_ID'),
     ],
 
 ];

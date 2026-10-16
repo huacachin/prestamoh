@@ -159,7 +159,11 @@ class LectorVoucherClaude implements LectorDeVoucher
             throw new VoucherIlegible('La lectura automática no está configurada (falta ANTHROPIC_API_KEY).');
         }
 
-        return $this->cliente = new Client(apiKey: $clave);
+        // Clave de usuario (sk-ant-usr-…): la API exige decir en qué workspace trabajar (16/10).
+        $workspace = trim((string) config('services.anthropic.workspace'));
+        $opciones = $workspace !== '' ? ['extraHeaders' => ['anthropic-workspace-id' => $workspace]] : null;
+
+        return $this->cliente = new Client(apiKey: $clave, requestOptions: $opciones);
     }
 
     /** @return array{tipo: string, datos: string} */
