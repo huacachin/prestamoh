@@ -2,6 +2,7 @@
 
 use App\Models\ActuacionJudicial;
 use App\Models\CashOpening;
+use App\Models\ClaveSeguridad;
 use App\Models\Client;
 use App\Models\ClientAttachment;
 use App\Models\ClientAval;
@@ -59,6 +60,7 @@ return [
         DocumentoCliente::class => 'Documento',
         // Maestros
         User::class => 'Usuario',
+        ClaveSeguridad::class => 'Clave de seguridad',
         Concept::class => 'Concepto',
         ExchangeRate::class => 'Tipo de cambio',
         Headquarter::class => 'Sucursal',

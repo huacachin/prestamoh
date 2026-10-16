@@ -4,13 +4,21 @@ namespace App\Livewire\Users;
 
 use App\Models\Headquarter;
 use App\Models\User;
+use App\Support\ProtegeRolDirector;
 use Database\Seeders\RoleSetupSeeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
 
+/**
+ * Edición de usuario. Dar o quitar el rol Director pide además la clave de
+ * seguridad del gerente (16/10/2026, trait ProtegeRolDirector); cualquier
+ * cambio de rol queda en la auditoría.
+ */
 class Edit extends Component
 {
+    use ProtegeRolDirector;
+
     public User $user;
 
     public string $name = '';
@@ -110,15 +118,20 @@ class Edit extends Component
         $this->recortarEspacios();
         $this->validate();
 
+        $rolActual = $this->user->roles()->value('name');
+        $rolNuevo = $this->selectedRoleId ? collect($this->roles)->firstWhere('id', $this->selectedRoleId)?->name : null;
+
         // Anti-lockout: un director no puede quitarse su propio rol de director
         // (si es el único, nadie más podría gestionar usuarios/permisos).
-        if ($this->user->id === auth()->id() && $this->user->hasRole('director')) {
-            $rolNuevo = collect($this->roles)->firstWhere('id', $this->selectedRoleId)?->name;
-            if ($rolNuevo !== 'director') {
-                $this->dispatch('errorAlert', ['message' => 'No puedes quitarte tu propio rol de Director.']);
+        if ($this->user->id === auth()->id() && $rolActual === 'director' && $rolNuevo !== 'director') {
+            $this->dispatch('errorAlert', ['message' => 'No puedes quitarte tu propio rol de Director.']);
 
-                return;
-            }
+            return;
+        }
+
+        // Dar o quitar Director exige la clave de seguridad del gerente.
+        if ($this->cambioDeRolBloqueado($rolActual, $rolNuevo, $this->user)) {
+            return;
         }
 
         $payload = [
@@ -137,11 +150,8 @@ class Edit extends Component
 
         $this->user->update($payload);
 
-        $roleName = null;
-        if ($this->selectedRoleId) {
-            $roleName = collect($this->roles)->firstWhere('id', $this->selectedRoleId)?->name;
-        }
-        $this->user->syncRoles($roleName ? [$roleName] : []);
+        $this->user->syncRoles($rolNuevo ? [$rolNuevo] : []);
+        $this->registrarCambioDeRol($this->user, $rolActual, $rolNuevo);
 
         session()->flash('user_success', 'Usuario actualizado correctamente.');
 

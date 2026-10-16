@@ -4,13 +4,20 @@ namespace App\Livewire\Users;
 
 use App\Models\Headquarter;
 use App\Models\User;
+use App\Support\ProtegeRolDirector;
 use Database\Seeders\RoleSetupSeeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
 
+/**
+ * Alta de usuario. Darlo de alta como Director pide además la clave de
+ * seguridad del gerente (16/10/2026, trait ProtegeRolDirector).
+ */
 class Create extends Component
 {
+    use ProtegeRolDirector;
+
     public string $name = '';
 
     public string $username = '';
@@ -90,7 +97,7 @@ class Create extends Component
 
     public function clean(): void
     {
-        $this->reset(['name', 'username', 'pwd', 'email', 'document_type', 'document_number', 'phone', 'headquarter_id', 'selectedRoleId']);
+        $this->reset(['name', 'username', 'pwd', 'email', 'document_type', 'document_number', 'phone', 'headquarter_id', 'selectedRoleId', 'claveDirector']);
         // Limpiar el formulario no debe dejar la sede vacía.
         $this->headquarter_id = $this->headquarters->first()?->id;
     }
@@ -99,6 +106,12 @@ class Create extends Component
     {
         $this->recortarEspacios();
         $this->validate();
+
+        // Dar de alta directamente como Director exige la clave de seguridad del gerente (16/10).
+        $rolNuevo = $this->selectedRoleId ? collect($this->roles)->firstWhere('id', $this->selectedRoleId)?->name : null;
+        if ($this->cambioDeRolBloqueado(null, $rolNuevo)) {
+            return;
+        }
 
         $user = User::create([
             'name' => $this->name,
@@ -111,11 +124,9 @@ class Create extends Component
             'headquarter_id' => $this->headquarter_id,
         ]);
 
-        if ($this->selectedRoleId) {
-            $roleName = collect($this->roles)->firstWhere('id', $this->selectedRoleId)?->name;
-            if ($roleName) {
-                $user->syncRoles([$roleName]);
-            }
+        if ($rolNuevo) {
+            $user->syncRoles([$rolNuevo]);
+            $this->registrarCambioDeRol($user, null, $rolNuevo);
         }
 
         session()->flash('user_success', 'Usuario creado correctamente.');

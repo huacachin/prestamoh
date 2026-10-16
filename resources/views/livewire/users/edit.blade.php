@@ -128,6 +128,25 @@
                         @error('selectedRoleId') <span class="title-modules small">{{ $message }}</span> @enderror
                     </div>
                 </div>
+
+                {{-- 16/10 (Antony): dar o quitar el rol Director pide la clave de seguridad que custodia el
+                     gerente. El campo aparece (Alpine, sin viaje al servidor) solo cuando el rol marcado
+                     cambia y uno de los dos es Director; el servidor lo exige de todos modos. --}}
+                @php
+                    $directorId = (int) (collect($roles)->firstWhere('name', 'director')?->id ?? 0);
+                    $rolOriginalId = (int) ($user->roles()->value('id') ?? 0);
+                @endphp
+                <div class="perm-row span-2 clave-rol-director" x-data x-cloak
+                     x-show.important="($wire.selectedRoleId ?? 0) != {{ $rolOriginalId }} && (($wire.selectedRoleId ?? 0) == {{ $directorId }} || {{ $rolOriginalId }} == {{ $directorId }})">
+                    <div class="perm-col-title"><i class="ti ti-shield-lock"></i> Clave de seguridad</div>
+                    <div class="perm-col-controls">
+                        <input type="password" class="form-control form-control-sm @error('claveDirector') is-invalid @enderror"
+                               wire:model="claveDirector" wire:keydown.enter="update" name="clave_director" autocomplete="one-time-code"
+                               placeholder="Clave del gerente para dar o quitar el rol Director">
+                        <small class="text-muted d-block">Dar o quitar el rol Director requiere la clave de seguridad que custodia el gerente.</small>
+                        @error('claveDirector') <span class="title-modules small">{{ $message }}</span> @enderror
+                    </div>
+                </div>
             </div>
 
             <div class="mt-2 d-flex gap-2">
