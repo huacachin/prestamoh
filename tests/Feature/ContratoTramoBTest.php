@@ -104,6 +104,7 @@ class ContratoTramoBTest extends TestCase
             ->set('distrito', 'BELLAVISTA')
             ->set('provincia', 'CALLAO')
             ->set('departamento', 'CALLAO')
+            ->set('fecha_nacimiento', '1985-03-10')->set('giro', 'Transporte')->set('zona', 'Gar. Veh.')->set('celular1', '987654321')->set('asesor_id', auth()->id())
             ->call('siguientePaso')
             ->call('save')
             ->assertHasNoErrors();

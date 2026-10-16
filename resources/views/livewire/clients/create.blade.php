@@ -28,6 +28,9 @@
                         border-color: #e6a6a0 !important;
                         background-color: #fff7f6 !important;
                     }
+                    /* 16/10 (Antony): campos obligatorios resaltados en amarillo (también los select2). */
+                    .campo-obligatorio, select.campo-obligatorio + .select2 .select2-selection { background-color: #fff8c5 !important; }
+                    .campo-obligatorio.campo-api { background-color: #ffeccc !important; }
                 </style>
 
                 {{-- ════════ Pasos del wizard ════════ --}}
@@ -135,10 +138,10 @@
                              campos se ocultan y pasan al REPRESENTANTE LEGAL. --}}
                         @unless($tipo_documento === 'RUC')
                         <div class="col-md-3">
-                            <label class="form-label mb-0 small fw-semibold">Nacionalidad</label>
+                            <label class="form-label mb-0 small fw-semibold">Nacionalidad <span class="text-danger">*</span></label>
                             {{-- No flexiona: el contrato dice PERUANO / VENEZOLANO
                                  tanto para deudor como para deudora. --}}
-                            <select class="form-select form-select-sm select2-simple @error('nacionalidad') is-invalid @enderror"
+                            <select class="form-select form-select-sm select2-simple campo-obligatorio @error('nacionalidad') is-invalid @enderror"
                                     wire:model.defer="nacionalidad" name="nacionalidad">
                                 @foreach(\App\Support\Documentos\Nacionalidades::OPCIONES as $opcion)
                                     <option value="{{ $opcion }}">{{ $opcion }}</option>
@@ -148,15 +151,16 @@
                         </div>
 
                         <div class="col-md-2">
-                            <label class="form-label mb-0 small fw-semibold">Sexo</label>
-                            <select class="form-select form-select-sm @if(in_array('sexo', $autoCliente)) campo-api @endif" wire:model.defer="sexo">
+                            <label class="form-label mb-0 small fw-semibold">Sexo <span class="text-danger">*</span></label>
+                            <select class="form-select form-select-sm campo-obligatorio @if(in_array('sexo', $autoCliente)) campo-api @endif" wire:model.defer="sexo">
                                 <option value="F">Femenino</option>
                                 <option value="M">Masculino</option>
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label mb-0 small fw-semibold">Nacimiento</label>
-                            <input type="text" autocomplete="off" name="fecha_nacimiento" class="form-control form-control-sm dates @if(in_array('fecha_nacimiento', $autoCliente)) campo-api @endif" wire:model.defer="fecha_nacimiento">
+                            <label class="form-label mb-0 small fw-semibold">Nacimiento <span class="text-danger">*</span></label>
+                            <input type="text" autocomplete="off" name="fecha_nacimiento" class="form-control form-control-sm dates campo-obligatorio @error('fecha_nacimiento') is-invalid @enderror @if(in_array('fecha_nacimiento', $autoCliente)) campo-api @endif" wire:model.defer="fecha_nacimiento">
+                            @error('fecha_nacimiento') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                         @endunless
                         <div class="col-md-3">
@@ -165,9 +169,10 @@
                                    wire:model.defer="documento" name="documento" autocomplete="off" placeholder="Número de documento" maxlength="12">
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label mb-0 small fw-semibold">Expediente</label>
-                            <input type="number" class="form-control form-control-sm @error('expediente') is-invalid @enderror"
-                                   wire:model.defer="expediente" name="expediente" autocomplete="off" min="1">
+                            <label class="form-label mb-0 small fw-semibold">Expediente <span class="text-muted fw-normal">(automático)</span></label>
+                            {{-- 16/10 (Antony): el N° de expediente no se edita; lo asigna el sistema. --}}
+                            <input type="number" class="form-control form-control-sm bg-light @error('expediente') is-invalid @enderror"
+                                   wire:model.defer="expediente" name="expediente" autocomplete="off" min="1" readonly tabindex="-1" title="Lo asigna el sistema">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label mb-0 small fw-semibold">Tipo</label>
@@ -177,23 +182,40 @@
 
                         {{-- Campos obligatorios agregados el 28/08 --}}
                         <div class="col-md-4">
-                            <label class="form-label mb-0 small fw-semibold">Correo electrónico</label>
-                            <input type="email" class="form-control form-control-sm correo-sugerencias @error('email') is-invalid @enderror"
-                                   wire:model.defer="email" name="email" autocomplete="off" placeholder="cliente@correo.com">
-                            @error('email') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            <label class="form-label mb-0 small fw-semibold">Correo electrónico <span class="text-danger">*</span></label>
+                            {{-- 16/10 (Antony): solo el usuario del correo; el dominio se elige (Gmail / Hotmail / otro). --}}
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control campo-obligatorio @error('emailUsuario') is-invalid @enderror @error('email') is-invalid @enderror"
+                                       wire:model.defer="emailUsuario" name="email_usuario" autocomplete="off" placeholder="usuario" maxlength="100">
+                                <span class="input-group-text">@</span>
+                                <select class="form-select campo-obligatorio @error('emailDominio') is-invalid @enderror" wire:model.live="emailDominio" name="email_dominio" style="max-width: 150px;">
+                                    <option value="">— dominio —</option>
+                                    @foreach(\App\Livewire\Clients\Create::EMAIL_DOMINIOS as $valor => $etiqueta)
+                                        <option value="{{ $valor }}">{{ $etiqueta }}</option>
+                                    @endforeach
+                                </select>
+                                @if($emailDominio === 'otro')
+                                    <input type="text" class="form-control campo-obligatorio @error('emailDominioOtro') is-invalid @enderror"
+                                           wire:model.defer="emailDominioOtro" name="email_dominio_otro" autocomplete="off" placeholder="dominio.com" maxlength="100">
+                                @endif
+                            </div>
+                            @error('emailUsuario') <div class="text-danger small">{{ $message }}</div> @enderror
+                            @error('emailDominio') <div class="text-danger small">{{ $message }}</div> @enderror
+                            @error('emailDominioOtro') <div class="text-danger small">{{ $message }}</div> @enderror
+                            @error('email') <div class="text-danger small">{{ $message }}</div> @enderror
                         </div>
                         @unless($tipo_documento === 'RUC')
                         <div class="col-md-4">
-                            <label class="form-label mb-0 small fw-semibold">Ocupación</label>
-                            <select class="form-select form-select-sm select2-tags @error('ocupacion') is-invalid @enderror" wire:model.defer="ocupacion">
+                            <label class="form-label mb-0 small fw-semibold">Ocupación <span class="text-danger">*</span></label>
+                            <select class="form-select form-select-sm select2-tags campo-obligatorio @error('ocupacion') is-invalid @enderror" wire:model.defer="ocupacion">
                                 @foreach(\App\Livewire\Clients\Create::ocupacionesPara($ocupacion) as $valor => $etiqueta)
                                     <option value="{{ $valor }}">{{ $etiqueta }}</option>
                                 @endforeach
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label mb-0 small fw-semibold">Estado civil</label>
-                            <select class="form-select form-select-sm select2-tags @error('estado_civil') is-invalid @enderror" wire:model.defer="estado_civil">
+                            <label class="form-label mb-0 small fw-semibold">Estado civil <span class="text-danger">*</span></label>
+                            <select class="form-select form-select-sm select2-tags campo-obligatorio @error('estado_civil') is-invalid @enderror" wire:model.defer="estado_civil">
                                 @foreach(\App\Livewire\Clients\Create::estadosCivilesPara($estado_civil) as $valor => $etiqueta)
                                     <option value="{{ $valor }}">{{ $etiqueta }}</option>
                                 @endforeach
@@ -280,8 +302,8 @@
                     <h6 class="mb-1" style="color:red;">Dirección Principal</h6>
                     <div class="row g-2">
                         <div class="col-md-6">
-                            <label class="form-label mb-0 small fw-semibold">Dirección</label>
-                            <input type="text" class="form-control form-control-sm @error('direccion') is-invalid @enderror @if(in_array('direccion', $autoCliente)) campo-api @endif"
+                            <label class="form-label mb-0 small fw-semibold">Dirección <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control form-control-sm campo-obligatorio @error('direccion') is-invalid @enderror @if(in_array('direccion', $autoCliente)) campo-api @endif"
                                    wire:model.defer="direccion" name="direccion" autocomplete="street-address" placeholder="Av. Arequipa Nro. 3400">
                             @error('direccion') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
@@ -291,8 +313,8 @@
                              nuevo cuando cambia la cascada para que select2 se reinicie
                              limpio tras el morph de Livewire. --}}
                         <div class="col-md-3" wire:key="ubigeo-dep">
-                            <label class="form-label mb-0 small fw-semibold">Departamento</label>
-                            <select class="form-select form-select-sm select2-tags @error('departamento') is-invalid @enderror @if(in_array('departamento', $autoCliente ?? [])) campo-api @endif"
+                            <label class="form-label mb-0 small fw-semibold">Departamento <span class="text-danger">*</span></label>
+                            <select class="form-select form-select-sm select2-tags campo-obligatorio @error('departamento') is-invalid @enderror @if(in_array('departamento', $autoCliente ?? [])) campo-api @endif"
                                     wire:model.live="departamento">
                                 @foreach(\App\Support\Ubigeo::conHistorico(\App\Support\Ubigeo::departamentos(), $departamento) as $dep)
                                     <option value="{{ $dep }}">{{ $dep }}</option>
@@ -301,8 +323,8 @@
                             @error('departamento') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                         <div class="col-md-3" wire:key="ubigeo-prov-{{ md5((string) $departamento) }}">
-                            <label class="form-label mb-0 small fw-semibold">Provincia</label>
-                            <select class="form-select form-select-sm select2-tags @error('provincia') is-invalid @enderror @if(in_array('provincia', $autoCliente ?? [])) campo-api @endif"
+                            <label class="form-label mb-0 small fw-semibold">Provincia <span class="text-danger">*</span></label>
+                            <select class="form-select form-select-sm select2-tags campo-obligatorio @error('provincia') is-invalid @enderror @if(in_array('provincia', $autoCliente ?? [])) campo-api @endif"
                                     wire:model.live="provincia">
                                 @foreach(\App\Support\Ubigeo::conHistorico(\App\Support\Ubigeo::provinciasDe($departamento), $provincia) as $prov)
                                     <option value="{{ $prov }}">{{ $prov }}</option>
@@ -311,9 +333,9 @@
                             @error('provincia') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                         <div class="col-md-3" wire:key="ubigeo-dist-{{ md5($departamento.'|'.$provincia) }}">
-                            <label class="form-label mb-0 small fw-semibold">Distrito</label>
+                            <label class="form-label mb-0 small fw-semibold">Distrito <span class="text-danger">*</span></label>
                             {{-- tags: permite texto libre (historial migrado / casos borde) --}}
-                            <select class="form-select form-select-sm select2-tags @error('distrito') is-invalid @enderror @if(in_array('distrito', $autoCliente ?? [])) campo-api @endif"
+                            <select class="form-select form-select-sm select2-tags campo-obligatorio @error('distrito') is-invalid @enderror @if(in_array('distrito', $autoCliente ?? [])) campo-api @endif"
                                     wire:model="distrito" data-placeholder="Busca o escribe...">
                                 <option value=""></option>
                                 @foreach(\App\Support\Ubigeo::conHistorico(\App\Support\Ubigeo::distritosDe($departamento, $provincia), $distrito) as $d)
@@ -323,18 +345,20 @@
                             @error('distrito') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label mb-0 small fw-semibold">Giro</label>
-                            <input type="text" class="form-control form-control-sm"
+                            <label class="form-label mb-0 small fw-semibold">Giro <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control form-control-sm campo-obligatorio @error('giro') is-invalid @enderror"
                                    wire:model.defer="giro" name="giro" autocomplete="on" placeholder="Giro del negocio">
+                            @error('giro') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label mb-0 small fw-semibold">T. Crédito</label>
-                            <select class="form-select form-select-sm select2-tags @error('zona') is-invalid @enderror" wire:model.defer="zona" data-placeholder="— Seleccione —">
+                            <label class="form-label mb-0 small fw-semibold">T. Crédito <span class="text-danger">*</span></label>
+                            <select class="form-select form-select-sm select2-tags campo-obligatorio @error('zona') is-invalid @enderror" wire:model.defer="zona" data-placeholder="— Seleccione —">
                                 <option value="">— Seleccione —</option>
                                 @foreach(\App\Support\TiposCredito::paraValor($zona) as $opcion)
                                     <option value="{{ $opcion }}">{{ $opcion }}</option>
                                 @endforeach
                             </select>
+                            @error('zona') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
 
                         <div class="col-md-3">
@@ -350,9 +374,10 @@
                         </div>
 
                         <div class="col-md-3">
-                            <label class="form-label mb-0 small fw-semibold">Celular / Whatsapp</label>
-                            <input type="text" class="form-control form-control-sm"
+                            <label class="form-label mb-0 small fw-semibold">Celular / Whatsapp <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control form-control-sm campo-obligatorio @error('celular1') is-invalid @enderror"
                                    wire:model.defer="celular1" name="celular1" autocomplete="tel" placeholder="999-999-999">
+                            @error('celular1') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                         <div class="col-md-3">
                             <label class="form-label mb-0 small fw-semibold">Celular Secundario</label>
@@ -360,13 +385,14 @@
                                    wire:model.defer="celular2" name="celular2" autocomplete="tel" placeholder="999-999-999">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label mb-0 small fw-semibold">Ejecutivo / Asesor</label>
-                            <select class="form-select form-select-sm" wire:model.defer="asesor_id">
+                            <label class="form-label mb-0 small fw-semibold">Ejecutivo / Asesor <span class="text-danger">*</span></label>
+                            <select class="form-select form-select-sm campo-obligatorio @error('asesor_id') is-invalid @enderror" wire:model.defer="asesor_id">
                                 <option value="">— Seleccione —</option>
                                 @foreach($asesores as $a)
                                     <option value="{{ $a->id }}">{{ $a->name }}</option>
                                 @endforeach
                             </select>
+                            @error('asesor_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                     </div>
 

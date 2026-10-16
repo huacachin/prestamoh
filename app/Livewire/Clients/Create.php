@@ -96,6 +96,20 @@ class Create extends Component
 
     public string $email = '';
 
+    /**
+     * Correo en dos partes (16/10/2026, Antony): el usuario escribe solo la
+     * parte antes de la @ y elige el dominio (Gmail, Hotmail u otro escrito a
+     * mano). $email se arma al validar; si llega entero (ficha ya existente o
+     * puesto directo), se reparte en partes para que el formulario lo muestre.
+     */
+    public string $emailUsuario = '';
+
+    public string $emailDominio = '';
+
+    public string $emailDominioOtro = '';
+
+    public const EMAIL_DOMINIOS = ['gmail.com' => '@GMAIL.COM', 'hotmail.com' => '@HOTMAIL.COM', 'otro' => 'Otro…'];
+
     public string $ocupacion = 'transportista';
 
     public string $estado_civil = 'soltero';
@@ -270,6 +284,7 @@ class Create extends Component
             $this->sexo = $existe->sexo ?: 'M';
             $this->nacionalidad = $existe->nacionalidad ?: $this->nacionalidad;
             $this->email = (string) ($existe->email ?? '');
+            $this->repartirEmail($this->email);
             $this->ocupacion = $existe->ocupacion ?: $this->ocupacion;
             $this->estado_civil = $existe->estado_civil ?: $this->estado_civil;
             $this->departamento = Ubigeo::resolverDepartamento($existe->departamento) ?? ($existe->departamento ?: $this->departamento);
@@ -386,6 +401,7 @@ class Create extends Component
     /** Paso 1 → 2: valida SOLO los campos del cliente. */
     public function siguientePaso(): void
     {
+        $this->componerEmail();
         $this->nacionalidad = Nacionalidades::normalizar($this->nacionalidad);
         $this->validate($this->reglasCliente(), $this->messages());
         $this->paso = 2;
@@ -538,6 +554,40 @@ class Create extends Component
     }
 
     // ─────────────────────────────────────────────────────────
+    //  Correo en dos partes
+    // ─────────────────────────────────────────────────────────
+
+    /** Arma $email con usuario + dominio (en minúsculas); vacío si falta una parte. */
+    private function componerEmail(): void
+    {
+        if (trim($this->emailUsuario) === '' && $this->emailDominio === '' && str_contains($this->email, '@')) {
+            $this->repartirEmail($this->email);
+        }
+        $usuario = trim($this->emailUsuario);
+        $dominio = match ($this->emailDominio) {
+            'otro' => mb_strtolower(trim($this->emailDominioOtro)),
+            '' => '',
+            default => $this->emailDominio,
+        };
+        $this->email = ($usuario !== '' && $dominio !== '') ? mb_strtolower($usuario.'@'.$dominio) : '';
+    }
+
+    /** Reparte un correo entero en usuario + dominio (dominio conocido, u "otro" con el texto). */
+    private function repartirEmail(string $correo): void
+    {
+        [$usuario, $dominio] = array_pad(explode('@', trim($correo), 2), 2, '');
+        $dominio = mb_strtolower($dominio);
+        $this->emailUsuario = $usuario;
+        if ($dominio !== '' && $dominio !== 'otro' && array_key_exists($dominio, self::EMAIL_DOMINIOS)) {
+            $this->emailDominio = $dominio;
+            $this->emailDominioOtro = '';
+        } else {
+            $this->emailDominio = $dominio === '' ? '' : 'otro';
+            $this->emailDominioOtro = $dominio;
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────
     //  Validación
     // ─────────────────────────────────────────────────────────
 
@@ -552,13 +602,17 @@ class Create extends Component
             'apellido_mat' => 'nullable|string|max:100',
             // La EMPRESA no tiene datos personales: son del representante.
             'sexo' => $isRuc ? 'nullable' : 'required|in:M,F',
-            'fecha_nacimiento' => 'nullable|date',
+            // 16/10 (Antony): los campos resaltados en amarillo son obligatorios (menos el celular secundario).
+            'fecha_nacimiento' => $isRuc ? 'nullable|date' : 'required|date',
             'tipo_documento' => 'required|in:'.implode(',', array_keys(self::TIPOS_DOCUMENTO)),
             // unique SOLO contra clientes de verdad: si el documento existe
             // como persona relacionada, guardar PROMUEVE esa ficha (misma
             // fila) en vez de duplicarla.
             'documento' => ['required', 'string', 'min:8', 'max:12',
                 Rule::unique('clients', 'documento')->where(fn ($q) => $q->where('es_relacionado', false))],
+            'emailUsuario' => ['required', 'string', 'max:100', 'regex:/^[A-Za-z0-9._%+\-]+$/'],
+            'emailDominio' => 'required|in:'.implode(',', array_keys(self::EMAIL_DOMINIOS)),
+            'emailDominioOtro' => ['exclude_unless:emailDominio,otro', 'required', 'string', 'max:100', 'regex:/^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/'],
             'email' => 'required|email|max:150',
             'ocupacion' => $isRuc ? 'nullable' : 'required|string|max:100',
             'estado_civil' => $isRuc ? 'nullable' : 'required|string|max:100',
@@ -570,12 +624,12 @@ class Create extends Component
             'distrito' => 'required|string|max:100',
             'provincia' => 'required|string|max:100',
             'departamento' => 'required|string|max:100',
-            'giro' => 'nullable|string|max:100',
+            'giro' => 'required|string|max:100',
             'capital' => 'nullable|numeric|min:0',
-            'zona' => 'nullable|string|max:100',
-            'celular1' => 'nullable|string|max:20',
+            'zona' => 'required|string|max:100',
+            'celular1' => 'required|string|max:20',
             'celular2' => 'nullable|string|max:20',
-            'asesor_id' => 'nullable|exists:users,id',
+            'asesor_id' => 'required|exists:users,id',
         ];
 
         if ($isRuc) {
@@ -631,6 +685,17 @@ class Create extends Component
             'vehiculos.*.placa.distinct' => 'La placa está repetida en la lista.',
             'email.required' => 'El correo electrónico es obligatorio.',
             'email.email' => 'Escribe un correo electrónico válido.',
+            'emailUsuario.required' => 'Escribe el usuario del correo (lo que va antes de la @).',
+            'emailUsuario.regex' => 'El usuario del correo solo lleva letras, números, punto, guion o guion bajo.',
+            'emailDominio.required' => 'Elige el dominio del correo.',
+            'emailDominio.in' => 'Elige el dominio del correo.',
+            'emailDominioOtro.required' => 'Escribe el dominio del correo (p. ej. outlook.com).',
+            'emailDominioOtro.regex' => 'Escribe un dominio válido (p. ej. outlook.com).',
+            'fecha_nacimiento.required' => 'Ingresa la fecha de nacimiento.',
+            'giro.required' => 'Ingresa el giro.',
+            'zona.required' => 'Selecciona el tipo de crédito.',
+            'celular1.required' => 'Ingresa el celular / WhatsApp.',
+            'asesor_id.required' => 'Selecciona el ejecutivo / asesor.',
             'ocupacion.required' => 'Selecciona la ocupación.',
             'estado_civil.required' => 'Selecciona el estado civil.',
         ];
@@ -653,6 +718,7 @@ class Create extends Component
             }
         }
 
+        $this->componerEmail();
         $this->validate();
 
         // Re-confirmar duplicado al guardar (race condition) — los

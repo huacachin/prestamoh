@@ -53,7 +53,57 @@ class ClienteWizardTest extends TestCase
             ->set('direccion', 'AV. AREQUIPA 3400')
             ->set('distrito', 'LINCE')
             ->set('provincia', 'LIMA')
-            ->set('departamento', 'LIMA');
+            ->set('departamento', 'LIMA')
+            // 16/10: los campos resaltados en amarillo son obligatorios.
+            ->set('fecha_nacimiento', '1990-05-20')
+            ->set('giro', 'Transporte')
+            ->set('zona', 'Gar. Veh.')
+            ->set('celular1', '987654321')
+            ->set('asesor_id', auth()->id());
+    }
+
+    /** 16/10 (Antony): correo en dos partes (usuario + dominio elegido), expediente bloqueado y obligatorios resaltados. */
+    public function test_correo_en_dos_partes_expediente_bloqueado_y_campos_obligatorios(): void
+    {
+        // Sin las partes del correo no pasa; con "otro" hay que escribir el dominio.
+        $comp = $this->paso1()->set('email', '')->set('emailUsuario', 'juan.perez')->set('emailDominio', '')
+            ->call('siguientePaso')->assertHasErrors(['emailDominio', 'email'])->assertSet('paso', 1);
+        $comp->set('emailDominio', 'otro')->set('emailDominioOtro', '')
+            ->call('siguientePaso')->assertHasErrors(['emailDominioOtro'])->assertSet('paso', 1);
+        $comp->set('emailDominioOtro', 'no es dominio')
+            ->call('siguientePaso')->assertHasErrors(['emailDominioOtro'])->assertSet('paso', 1);
+        $comp->set('emailDominioOtro', 'Outlook.COM')
+            ->call('siguientePaso')->assertHasNoErrors()->assertSet('paso', 2)->assertSet('email', 'juan.perez@outlook.com');
+        $comp->call('pasoAnterior')->set('emailDominio', 'gmail.com')->set('emailUsuario', 'Juan.Perez')
+            ->call('siguientePaso')->assertHasNoErrors()->assertSet('email', 'juan.perez@gmail.com');
+        $comp->call('pasoAnterior')->set('emailUsuario', 'juan perez')
+            ->call('siguientePaso')->assertHasErrors(['emailUsuario'])->assertSet('paso', 1);
+
+        // Un correo que llega entero (ficha existente / puesto directo) se reparte en sus partes.
+        $this->paso1()->set('email', 'rosa@hotmail.com')->call('siguientePaso')->assertHasNoErrors()
+            ->assertSet('emailUsuario', 'rosa')->assertSet('emailDominio', 'hotmail.com')->assertSet('email', 'rosa@hotmail.com');
+        $this->paso1()->set('email', 'rosa@empresa.pe')->call('siguientePaso')->assertHasNoErrors()
+            ->assertSet('emailDominio', 'otro')->assertSet('emailDominioOtro', 'empresa.pe');
+
+        // Los resaltados son obligatorios (menos el celular secundario).
+        $this->paso1()->set('fecha_nacimiento', null)->set('giro', '')->set('zona', '')->set('celular1', '')->set('asesor_id', null)->set('celular2', '')
+            ->call('siguientePaso')
+            ->assertHasErrors(['fecha_nacimiento', 'giro', 'zona', 'celular1', 'asesor_id'])
+            ->assertHasNoErrors(['celular2'])
+            ->assertSet('paso', 1);
+
+        // El expediente viene asignado y bloqueado; el correo va en dos partes y los campos llevan el resaltado.
+        $html = Livewire::test(Create::class)->assertSet('expediente', 101)->html();
+        $this->assertStringContainsString('wire:model.defer="expediente" name="expediente" autocomplete="off" min="1" readonly', $html);
+        $this->assertStringContainsString('wire:model.defer="emailUsuario"', $html);
+        $this->assertStringContainsString('<option value="gmail.com">@GMAIL.COM</option>', $html);
+        $this->assertStringContainsString('<option value="hotmail.com">@HOTMAIL.COM</option>', $html);
+        $this->assertStringContainsString('<option value="otro">Otro…</option>', $html);
+        $this->assertStringNotContainsString('wire:model.defer="email"', $html, 'ya no hay campo de correo entero');
+        foreach (['nacionalidad', 'sexo', 'fecha_nacimiento', 'emailUsuario', 'ocupacion', 'estado_civil', 'direccion', 'departamento', 'provincia', 'distrito', 'giro', 'zona', 'celular1', 'asesor_id'] as $campo) {
+            $this->assertMatchesRegularExpression('/class="[^"]*campo-obligatorio[^"]*"[^>]*wire:model[.a-z]*="'.preg_quote($campo, '/').'"/', $html, "{$campo} resaltado");
+        }
+        $this->assertDoesNotMatchRegularExpression('/class="[^"]*campo-obligatorio[^"]*"[^>]*wire:model[.a-z]*="celular2"/', $html, 'el celular secundario no es obligatorio');
     }
 
     public function test_el_paso_1_exige_correo_ocupacion_y_estado_civil(): void
@@ -361,12 +411,13 @@ class ClienteWizardTest extends TestCase
         $this->assertCount(count($esperado), TiposCredito::OPCIONES);
     }
 
-    public function test_t_credito_puede_quedar_vacio(): void
+    /** 16/10 (Antony): el T. Crédito pasó a ser obligatorio (antes podía quedar vacío). */
+    public function test_t_credito_ya_no_puede_quedar_vacio(): void
     {
         $this->paso1()->set('zona', '')
             ->call('siguientePaso')
-            ->assertHasNoErrors()
-            ->assertSet('paso', 2);
+            ->assertHasErrors(['zona'])
+            ->assertSet('paso', 1);
     }
 
     public function test_editar_conserva_el_t_credito_historico(): void

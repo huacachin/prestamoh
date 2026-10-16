@@ -49,6 +49,12 @@ class ClienteVehiculoTest extends TestCase
             'distrito' => 'LINCE',
             'provincia' => 'LIMA',
             'departamento' => 'LIMA',
+            // 16/10: los campos resaltados son obligatorios.
+            'fecha_nacimiento' => '1990-05-20',
+            'giro' => 'Transporte',
+            'zona' => 'Gar. Veh.',
+            'celular1' => '987654321',
+            'asesor_id' => auth()->id(),
         ];
     }
 

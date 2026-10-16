@@ -232,6 +232,7 @@ class PersonasRelacionadasTest extends TestCase
             ->set('distrito', 'LINCE')
             ->set('provincia', 'LIMA')
             ->set('departamento', 'LIMA')
+            ->set('fecha_nacimiento', '1988-07-02')->set('giro', 'Comercio')->set('zona', 'Gar. Veh.')->set('celular1', '987654321')->set('asesor_id', auth()->id())
             ->call('siguientePaso')
             ->call('save')
             ->assertHasNoErrors();

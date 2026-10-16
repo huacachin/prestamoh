@@ -52,7 +52,12 @@ class AltaEmpresaTest extends TestCase
             ->set('direccion', 'AV. SALAVERRY 2900')
             ->set('distrito', 'MAGDALENA DEL MAR')
             ->set('provincia', 'LIMA')
-            ->set('departamento', 'LIMA');
+            ->set('departamento', 'LIMA')
+            // 16/10: los campos resaltados son obligatorios (también para la empresa).
+            ->set('giro', 'Transporte de carga')
+            ->set('zona', 'Gar. Veh.')
+            ->set('celular1', '987654321')
+            ->set('asesor_id', auth()->id());
     }
 
     public function test_el_alta_ruc_exige_al_representante_y_no_los_personales_del_cliente(): void
@@ -164,6 +169,7 @@ class AltaEmpresaTest extends TestCase
             ->set('distrito', 'ATE')
             ->set('provincia', 'LIMA')
             ->set('departamento', 'LIMA')
+            ->set('fecha_nacimiento', '1990-01-15')->set('giro', 'Transporte')->set('zona', 'Gar. Veh.')->set('celular1', '987654321')->set('asesor_id', auth()->id())
             ->call('siguientePaso')
             ->assertHasNoErrors();
 
