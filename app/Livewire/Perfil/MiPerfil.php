@@ -10,25 +10,18 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rule;
 use Livewire\Component;
 
 /**
- * Mi perfil (16/10/2026, Antony): cada usuario edita sus propios datos
- * (nombre, correo, teléfono), cambia su contraseña confirmando la actual y ve
- * sus sesiones activas (navegador, sistema, IP y última actividad) con la
- * opción de cerrar todas las demás. Las sesiones salen de la tabla `sessions`
- * (SESSION_DRIVER=database, como Jetstream): con otro driver se avisa y la
- * lista no se muestra. Usuario, rol y sede no se tocan desde aquí.
+ * Mi perfil (16/10/2026, Antony): cada usuario ve sus datos (solo lectura:
+ * los cambia quien administra usuarios), cambia su contraseña confirmando la
+ * actual y ve sus sesiones activas (navegador, sistema, IP y última actividad)
+ * con la opción de cerrar todas las demás. Las sesiones salen de la tabla
+ * `sessions` (SESSION_DRIVER=database, como Jetstream): con otro driver se
+ * avisa y la lista no se muestra.
  */
 class MiPerfil extends Component
 {
-    public string $name = '';
-
-    public string $email = '';
-
-    public string $phone = '';
-
     public string $passwordActual = '';
 
     public string $passwordNueva = '';
@@ -38,39 +31,12 @@ class MiPerfil extends Component
     /** Contraseña actual para confirmar el cierre de las otras sesiones. */
     public string $passwordSesiones = '';
 
-    public function mount(): void
-    {
-        $u = $this->usuario();
-        $this->name = (string) $u->name;
-        $this->email = (string) $u->email;
-        $this->phone = (string) $u->phone;
-    }
-
     private function usuario(): User
     {
         /** @var User $u */
         $u = auth()->user();
 
         return $u;
-    }
-
-    public function guardarDatos(): void
-    {
-        $u = $this->usuario();
-        $this->name = trim(preg_replace('/\s+/', ' ', $this->name));
-        $this->email = trim($this->email);
-        $this->phone = trim($this->phone);
-
-        $this->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($u->id)],
-            'phone' => ['required', 'string', 'max:15'],
-        ], [], ['name' => 'nombre', 'email' => 'correo', 'phone' => 'teléfono']);
-
-        // La auditoría automática del modelo deja "Editó Usuario …" con antes y después.
-        $u->update(['name' => $this->name, 'email' => $this->email, 'phone' => $this->phone]);
-
-        $this->dispatch('successAlert', ['message' => 'Tus datos se guardaron.']);
     }
 
     public function cambiarPassword(): void

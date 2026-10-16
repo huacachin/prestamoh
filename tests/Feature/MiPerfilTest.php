@@ -48,23 +48,20 @@ class MiPerfilTest extends TestCase
         $this->assertLessThan($cerrar, $perfil, 'Mi perfil va antes de Cerrar Sesión');
     }
 
-    public function test_edita_sus_datos_sin_tocar_usuario_rol_ni_sede(): void
+    public function test_mis_datos_es_solo_lectura(): void
     {
         $u = $this->usuario();
         $this->actingAs($u);
-        User::factory()->create(['username' => 'ocupado', 'email' => 'ocupado@huacachin.pe']);
 
-        Livewire::test(MiPerfil::class)->set('email', 'ocupado@huacachin.pe')->call('guardarDatos')->assertHasErrors(['email']);
-
-        Livewire::test(MiPerfil::class)
-            ->set('name', '  Rosa  Tafur Cuenca ')->set('email', ' rosa.tc@huacachin.pe ')->set('phone', ' 988777666 ')
-            ->call('guardarDatos')->assertHasNoErrors()->assertDispatched('successAlert');
-        $u->refresh();
-        $this->assertSame('Rosa Tafur Cuenca', $u->name);
-        $this->assertSame('rosa.tc@huacachin.pe', $u->email);
-        $this->assertSame('988777666', $u->phone);
-        $this->assertSame('perfil', $u->username, 'el usuario no se toca');
-        $this->assertSame(1, Activity::where('description', 'like', 'Editó Usuario%')->where('subject_id', $u->id)->count(), 'queda en la auditoría');
+        $comp = Livewire::test(MiPerfil::class);
+        $html = $comp->html();
+        $this->assertStringContainsString('Solo lectura', $html);
+        $this->assertStringContainsString('value="Rosa Tafur" readonly disabled', $html);
+        $this->assertStringContainsString('value="rosa@huacachin.pe" readonly disabled', $html);
+        $this->assertStringNotContainsString('wire:model="name"', $html, 'no hay campos editables de datos');
+        $this->assertStringNotContainsString('Guardar mis datos', $html);
+        $this->assertFalse(method_exists(MiPerfil::class, 'guardarDatos'), 'tampoco existe la acción por detrás');
+        $this->assertSame('Rosa Tafur', $u->fresh()->name);
     }
 
     public function test_cambia_su_contrasena_confirmando_la_actual(): void

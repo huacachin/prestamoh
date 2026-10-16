@@ -12,56 +12,32 @@
         </div>
     </div>
 
-    {{-- ═══ Mis datos ═══ --}}
+    {{-- ═══ Mis datos (solo lectura: los cambia quien administra usuarios) ═══ --}}
     <div class="card">
-        <div class="card-header py-2"><h6 class="mb-0"><i class="ti ti-id"></i> Mis datos</h6></div>
+        <div class="card-header py-2 d-flex align-items-center gap-2">
+            <h6 class="mb-0"><i class="ti ti-id"></i> Mis datos</h6>
+            <span class="badge bg-secondary" title="Para corregir algún dato, pídeselo a quien administra los usuarios"><i class="ti ti-lock"></i> Solo lectura</span>
+        </div>
         <div class="card-body">
             <div class="perm-grid form-two-cols">
-                <div class="perm-row">
-                    <div class="perm-col-title">Nombre</div>
-                    <div class="perm-col-controls">
-                        <input type="text" class="form-control form-control-sm @error('name') is-invalid @enderror" wire:model="name" autocomplete="name" maxlength="255">
-                        @error('name') <span class="title-modules small">{{ $message }}</span> @enderror
+                @foreach([
+                    'Nombre' => $usuario->name,
+                    'Usuario' => $usuario->username,
+                    'Correo' => $usuario->email,
+                    'Rol' => $rol ? ucfirst($rol) : null,
+                    'Teléfono' => $usuario->phone,
+                    'Sede' => $sede,
+                    'Documento' => trim(($usuario->document_type ?? '').' '.($usuario->document_number ?? '')) ?: null,
+                ] as $etiqueta => $valor)
+                    <div class="perm-row">
+                        <div class="perm-col-title">{{ $etiqueta }}</div>
+                        <div class="perm-col-controls">
+                            <input type="text" class="form-control form-control-sm" value="{{ $valor ?: '—' }}" readonly disabled>
+                        </div>
                     </div>
-                </div>
-                <div class="perm-row">
-                    <div class="perm-col-title">Usuario</div>
-                    <div class="perm-col-controls">
-                        <input type="text" class="form-control form-control-sm" value="{{ $usuario->username }}" disabled title="El usuario lo cambia quien administra usuarios">
-                    </div>
-                </div>
-                <div class="perm-row">
-                    <div class="perm-col-title">Correo</div>
-                    <div class="perm-col-controls">
-                        <input type="email" class="form-control form-control-sm @error('email') is-invalid @enderror" wire:model="email" autocomplete="email" maxlength="255">
-                        @error('email') <span class="title-modules small">{{ $message }}</span> @enderror
-                    </div>
-                </div>
-                <div class="perm-row">
-                    <div class="perm-col-title">Rol</div>
-                    <div class="perm-col-controls">
-                        <input type="text" class="form-control form-control-sm" value="{{ $rol ? ucfirst($rol) : '—' }}" disabled>
-                    </div>
-                </div>
-                <div class="perm-row">
-                    <div class="perm-col-title">Teléfono</div>
-                    <div class="perm-col-controls">
-                        <input type="text" class="form-control form-control-sm @error('phone') is-invalid @enderror" wire:model="phone" autocomplete="tel" maxlength="15">
-                        @error('phone') <span class="title-modules small">{{ $message }}</span> @enderror
-                    </div>
-                </div>
-                <div class="perm-row">
-                    <div class="perm-col-title">Sede</div>
-                    <div class="perm-col-controls">
-                        <input type="text" class="form-control form-control-sm" value="{{ $sede ?: '—' }}" disabled>
-                    </div>
-                </div>
+                @endforeach
             </div>
-            <div class="mt-2">
-                <button type="button" class="btn btn-primary btn-sm" wire:click="guardarDatos" wire:loading.attr="disabled" wire:target="guardarDatos">
-                    <i class="ti ti-device-floppy"></i> Guardar mis datos
-                </button>
-            </div>
+            <small class="text-muted d-block mt-2"><i class="ti ti-info-circle"></i> Estos datos solo los modifica quien administra los usuarios.</small>
         </div>
     </div>
 
