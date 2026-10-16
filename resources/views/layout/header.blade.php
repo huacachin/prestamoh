@@ -99,6 +99,12 @@
                                                 </li>
 
                                                 <li class="app-divider-v dotted py-1"></li>
+                                                {{-- 16/10 (Antony): Mi perfil, justo encima de Cerrar Sesión. --}}
+                                                <li>
+                                                    <a class="dropdown-item mb-0 title-modules" href="{{ route('perfil') }}">
+                                                        <i class="ti ti-user-circle pe-1 f-s-18 title-modules"></i> Mi perfil
+                                                    </a>
+                                                </li>
                                                 <li class="btn-light-danger b-r-5">
                                                     <livewire:auth.logout />
                                                 </li>

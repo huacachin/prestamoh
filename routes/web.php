@@ -12,6 +12,7 @@ use App\Http\Controllers\ExchangeRateController;
 use App\Http\Controllers\HeadquarterController;
 use App\Http\Controllers\LegalController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ShortLinkController;
 use App\Http\Controllers\UserController;
@@ -45,6 +46,9 @@ Route::middleware('auth')->group(function () {
 
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
+
+    // Mi perfil (16/10): cualquier usuario logueado, sin permiso propio (sus datos, su contraseña, sus sesiones).
+    Route::get('perfil', [PerfilController::class, 'index'])->name('perfil');
 
     // Aterrizaje de respaldo: usuario autenticado SIN ningún módulo accesible
     // (ver App\Support\MenuLateral::rutaInicio). Sin permiso propio a
