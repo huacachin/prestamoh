@@ -112,6 +112,42 @@ class MonitoreoSesionesTest extends TestCase
         $this->assertStringContainsString('Sin sesión', $html, 'Rosa');
     }
 
+    /** 16/10 (Antony): se listan TODOS los inicios y cada IP distinta lleva su color (misma IP, mismo color). */
+    public function test_se_listan_todos_los_inicios_y_cada_ip_distinta_tiene_su_color(): void
+    {
+        $this->actingAs($this->director);
+        $inicio = function (User $u, string $ip, int $haceDias): void {
+            DB::table('activity_log')->insert([
+                'log_name' => Audit::LOG, 'description' => 'Inicio de sesión', 'event' => null,
+                'subject_type' => null, 'subject_id' => null, 'causer_type' => $u->getMorphClass(), 'causer_id' => $u->id,
+                'properties' => json_encode([]), 'ip_address' => $ip, 'user_agent' => self::UA_WIN, 'user_name' => $u->name,
+                'created_at' => now()->subDays($haceDias), 'updated_at' => now()->subDays($haceDias),
+            ]);
+        };
+        for ($d = 12; $d >= 1; $d--) {
+            $inicio($this->licet, $d % 3 === 0 ? '38.25.29.129' : '209.61.122.152', $d); // 12 inicios, 2 IPs
+        }
+        $inicio($this->rosa, '209.61.122.152', 2); // la misma IP de la oficina: mismo color que en Licet
+
+        $comp = Livewire::test(Sesiones::class);
+        $licet = $comp->instance()->bloques()->firstWhere('usuario.username', 'Licet');
+        $this->assertSame(12, $licet['inicios']->count(), 'todos, no solo los últimos 8');
+        $this->assertSame(['209.61.122.152' => 8, '38.25.29.129' => 4], $licet['ips']->all(), 'la más usada primero');
+
+        $html = $comp->html();
+        $this->assertStringContainsString('2 IP(s) distinta(s):', $html);
+        $this->assertStringContainsString('209.61.122.152 <b>×8</b>', $html);
+        $this->assertStringContainsString('38.25.29.129 <b>×4</b>', $html);
+        preg_match_all('/<span class="mon-ip" style="(--ip-bg:[^"]+)">209\.61\.122\.152<\/span>/', $html, $oficina);
+        preg_match_all('/<span class="mon-ip" style="(--ip-bg:[^"]+)">38\.25\.29\.129<\/span>/', $html, $casa);
+        $this->assertCount(9, $oficina[1], '8 de Licet + 1 de Rosa');
+        $this->assertCount(4, $casa[1]);
+        $this->assertCount(1, array_unique($oficina[1]), 'misma IP, mismo color, también entre usuarios');
+        $this->assertCount(1, array_unique($casa[1]));
+        $this->assertNotSame($oficina[1][0], $casa[1][0], 'IPs distintas, colores distintos');
+        $this->assertStringContainsString('mon-inicios-lista', $html, 'recuadro con scroll, no una columna que se alarga');
+    }
+
     public function test_el_director_cierra_una_sesion_o_todas_las_de_un_usuario_y_queda_en_la_auditoria(): void
     {
         $this->actingAs($this->director);

@@ -27,11 +27,17 @@
         .monitoreo-sesiones .mon-chip.ambar { background: #fef3c7; color: #92400e; }
         .monitoreo-sesiones .mon-chip.rojo { background: #fee2e2; color: #991b1b; }
         .monitoreo-sesiones .mon-chip.gris { background: #f1f3f6; color: #6b7280; }
-        .monitoreo-sesiones .mon-cuerpo { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 0; }
+        .monitoreo-sesiones .mon-cuerpo { display: grid; grid-template-columns: 1fr; gap: 0; }
         .monitoreo-sesiones .mon-col { padding: 12px 16px; min-width: 0; }
-        .monitoreo-sesiones .mon-col + .mon-col { border-left: 1px solid var(--mon-borde); }
+        .monitoreo-sesiones .mon-col + .mon-col { border-top: 1px solid var(--mon-borde); }
+        .monitoreo-sesiones .mon-sesiones { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 8px; }
+        .monitoreo-sesiones .mon-ip { display: inline-flex; align-items: center; gap: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--ip-bg); border: 1px solid var(--ip-bd); color: var(--ip-tx); white-space: nowrap; }
+        .monitoreo-sesiones .mon-inicios-lista { max-height: 230px; overflow: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 4px 14px; padding: 8px 10px; border: 1px solid var(--mon-borde); border-radius: 10px; background: #fafbfc; }
+        .monitoreo-sesiones .mon-inicio { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #374151; min-width: 0; padding: 2px 0; }
+        .monitoreo-sesiones .mon-inicio .mon-fecha { font-weight: 600; color: #1b2430; white-space: nowrap; }
+        .monitoreo-sesiones .mon-inicio .mon-dato { color: #6b7280; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .monitoreo-sesiones .mon-titulo { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }
-        .monitoreo-sesiones .mon-sesion { display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: 10px; border: 1px solid var(--mon-borde); margin-bottom: 8px; background: #fafbfc; }
+        .monitoreo-sesiones .mon-sesion { display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: 10px; border: 1px solid var(--mon-borde); background: #fafbfc; min-width: 0; }
         .monitoreo-sesiones .mon-sesion.actual { background: #f0fdf4; border-color: #bbf7d0; }
         .monitoreo-sesiones .mon-dev { width: 38px; height: 38px; border-radius: 10px; background: #fff; border: 1px solid var(--mon-borde); display: grid; place-items: center; font-size: 19px; color: #374151; flex-shrink: 0; }
         .monitoreo-sesiones .mon-sesion-txt { flex: 1 1 auto; min-width: 0; }
@@ -41,16 +47,6 @@
         .monitoreo-sesiones .mon-dormida { width: 8px; height: 8px; border-radius: 50%; background: #cbd5e1; display: inline-block; }
         .monitoreo-sesiones .mon-cerrar { border-radius: 8px; font-size: 12px; white-space: nowrap; }
         .monitoreo-sesiones .mon-vacio { font-size: 12px; color: #9aa3af; padding: 10px; border: 1px dashed var(--mon-borde); border-radius: 10px; text-align: center; }
-        .monitoreo-sesiones .mon-timeline { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 2px solid #e5e7eb; }
-        .monitoreo-sesiones .mon-timeline li { position: relative; padding: 0 0 10px 12px; font-size: 12px; color: #374151; }
-        .monitoreo-sesiones .mon-timeline li::before { content: ""; position: absolute; left: -19px; top: 4px; width: 9px; height: 9px; border-radius: 50%; background: #93c5fd; border: 2px solid #fff; box-shadow: 0 0 0 1px #bfdbfe; }
-        .monitoreo-sesiones .mon-timeline li:last-child { padding-bottom: 0; }
-        .monitoreo-sesiones .mon-timeline .mon-fecha { font-weight: 600; color: #1b2430; }
-        .monitoreo-sesiones .mon-timeline .mon-dato { color: #6b7280; }
-        @media (max-width: 991.98px) {
-            .monitoreo-sesiones .mon-cuerpo { grid-template-columns: 1fr; }
-            .monitoreo-sesiones .mon-col + .mon-col { border-left: 0; border-top: 1px solid var(--mon-borde); }
-        }
         @media (max-width: 575.98px) {
             .monitoreo-sesiones .mon-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .monitoreo-sesiones .mon-kpi-num { font-size: 22px; }
@@ -165,6 +161,7 @@
                     @if($n === 0)
                         <div class="mon-vacio">Sin sesiones abiertas.</div>
                     @else
+                        <div class="mon-sesiones">
                         @foreach($b['sesiones'] as $s)
                             <div class="mon-sesion {{ $s['actual'] ? 'actual' : '' }}" wire:key="sesion-{{ md5($s['id']) }}">
                                 <div class="mon-dev"><i class="ti {{ $s['agente']['dispositivo'] === 'Celular' ? 'ti-device-mobile' : ($s['agente']['dispositivo'] === 'Tablet' ? 'ti-device-tablet' : 'ti-device-desktop') }}"></i></div>
@@ -176,7 +173,7 @@
                                         @if($s['actual'])<span class="mon-chip verde">Esta sesión</span>@endif
                                     </div>
                                     <div class="mon-sesion-l2">
-                                        <span><i class="ti ti-world"></i> <span class="font-monospace">{{ $s['ip'] ?: '—' }}</span></span>
+                                        <span class="mon-ip" style="{{ \App\Support\ColorDeIp::estilo($paleta[$s['ip']] ?? null) }}"><i class="ti ti-world"></i> {{ $s['ip'] ?: '—' }}</span>
                                         <span title="{{ $s['ultima']->format('d/m/Y H:i:s') }}"><i class="ti ti-clock"></i> {{ $s['ultima']->diffForHumans() }}</span>
                                     </div>
                                 </div>
@@ -189,23 +186,34 @@
                                 @endunless
                             </div>
                         @endforeach
+                        </div>
                     @endif
                 </div>
 
-                {{-- Últimos inicios de sesión (auditoría) --}}
-                <div class="mon-col">
-                    <div class="mon-titulo"><i class="ti ti-login"></i> Últimos inicios de sesión</div>
+                {{-- Inicios de sesión (auditoría): TODOS, en un recuadro con scroll, y cada IP distinta con su color.
+                     16/10 (Antony): "hay que listar todos… y pintar las IPs de color distinto si son diferentes". --}}
+                <div class="mon-col mon-inicios">
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                        <div class="mon-titulo mb-0"><i class="ti ti-login"></i> Inicios de sesión <span class="mon-chip">{{ $b['inicios']->count() }}</span></div>
+                        @if($b['ips']->isNotEmpty())
+                            <span class="mon-sub">· {{ $b['ips']->count() }} IP(s) distinta(s):</span>
+                            @foreach($b['ips'] as $ip => $veces)
+                                <span class="mon-ip" style="{{ \App\Support\ColorDeIp::estilo($paleta[$ip] ?? null) }}" title="{{ $veces }} inicio(s) desde esta IP">{{ $ip }} <b>×{{ $veces }}</b></span>
+                            @endforeach
+                        @endif
+                    </div>
                     @if($b['inicios']->isEmpty())
                         <div class="mon-vacio">Sin inicios de sesión registrados.</div>
                     @else
-                        <ul class="mon-timeline">
+                        <div class="mon-inicios-lista">
                             @foreach($b['inicios'] as $i)
-                                <li>
+                                <div class="mon-inicio">
                                     <span class="mon-fecha">{{ $i['fecha']->format('d/m/Y H:i') }}</span>
-                                    <span class="mon-dato"> · {{ $i['agente'] }} · <span class="font-monospace">{{ $i['ip'] ?: '—' }}</span></span>
-                                </li>
+                                    <span class="mon-dato">{{ $i['agente'] }}</span>
+                                    <span class="mon-ip" style="{{ \App\Support\ColorDeIp::estilo($i['ip'] ? ($paleta[$i['ip']] ?? null) : null) }}">{{ $i['ip'] ?: '—' }}</span>
+                                </div>
                             @endforeach
-                        </ul>
+                        </div>
                     @endif
                 </div>
             </div>

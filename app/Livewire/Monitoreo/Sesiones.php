@@ -6,6 +6,7 @@ use App\Models\ActivityLog;
 use App\Models\User;
 use App\Support\AgenteNavegador;
 use App\Support\Audit;
+use App\Support\ColorDeIp;
 use App\Support\SesionesActivas;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -22,9 +23,6 @@ use Livewire\Component;
  */
 class Sesiones extends Component
 {
-    /** Cuántos inicios de sesión recientes se muestran por usuario. */
-    public const INICIOS_POR_USUARIO = 8;
-
     public string $buscar = '';
 
     public bool $soloConSesion = false;
@@ -83,12 +81,12 @@ class Sesiones extends Component
      * Usuarios con sus sesiones e inicios recientes: primero los que tienen
      * sesión abierta (más sesiones arriba), luego por nombre.
      *
-     * @return Collection<int, array{usuario: User, rol: ?string, sesiones: Collection, inicios: Collection, fallidos: int}>
+     * @return Collection<int, array{usuario: User, rol: ?string, sesiones: Collection, inicios: Collection, ips: Collection, fallidos: int}>
      */
     public function bloques(): Collection
     {
         $sesiones = SesionesActivas::porUsuario();
-        $inicios = $this->iniciosRecientes();
+        $inicios = $this->inicios();
         $fallidos = $this->intentosFallidos();
         $termino = mb_strtolower(trim($this->buscar));
 
@@ -104,6 +102,8 @@ class Sesiones extends Component
                 'rol' => $u->roles->first()?->name,
                 'sesiones' => $sesiones->get($u->id, collect()),
                 'inicios' => $inicios->get($u->id, collect()),
+                // IPs distintas de sus inicios con cuántas veces entró desde cada una (la más usada primero).
+                'ips' => $inicios->get($u->id, collect())->pluck('ip')->filter()->countBy()->sortDesc(),
                 'fallidos' => (int) ($fallidos[mb_strtolower((string) $u->username)] ?? 0),
             ])
             ->filter(fn (array $b) => ! $this->soloConSesion || $b['sesiones']->isNotEmpty())
@@ -112,22 +112,18 @@ class Sesiones extends Component
     }
 
     /**
-     * Últimos inicios de sesión por usuario (auditoría "Inicio de sesión"):
-     * fecha, dispositivo/navegador e IP.
+     * TODOS los inicios de sesión por usuario (auditoría "Inicio de sesión",
+     * del más reciente al más viejo): fecha, dispositivo/navegador e IP.
+     * 16/10 (Antony): antes eran los 8 últimos; ahora se listan todos (en prod
+     * son unos cientos en total) y se pintan en un recuadro con scroll.
      *
-     * @return Collection<int, Collection<int, array{fecha: Carbon, ip: ?string, agente: array{navegador: string, plataforma: string, dispositivo: string, texto: string}}>>
+     * @return Collection<int, Collection<int, array{fecha: Carbon, ip: ?string, agente: string}>>
      */
-    private function iniciosRecientes(): Collection
+    private function inicios(): Collection
     {
-        return ActivityLog::query()
-            ->where('log_name', Audit::LOG)
-            ->where('description', 'Inicio de sesión')
-            ->whereNotNull('causer_id')
-            ->orderByDesc('id')
-            ->limit(600)
-            ->get(['id', 'causer_id', 'ip_address', 'user_agent', 'properties', 'created_at'])
+        return $this->filasDeInicio()
             ->groupBy('causer_id')
-            ->map(fn (Collection $filas) => $filas->take(self::INICIOS_POR_USUARIO)->map(function (ActivityLog $a) {
+            ->map(fn (Collection $filas) => $filas->map(function (ActivityLog $a) {
                 // Las filas anteriores al 25/09 no traen IP ni navegador: se muestra "—" en vez de "desconocido".
                 $ua = $a->user_agent ?? ($a->properties['contexto']['agente'] ?? null);
 
@@ -137,6 +133,34 @@ class Sesiones extends Component
                     'agente' => $ua ? AgenteNavegador::describir($ua)['texto'] : '—',
                 ];
             })->values());
+    }
+
+    /** @return Collection<int, ActivityLog> */
+    private function filasDeInicio(): Collection
+    {
+        return ActivityLog::query()
+            ->where('log_name', Audit::LOG)
+            ->where('description', 'Inicio de sesión')
+            ->whereNotNull('causer_id')
+            ->orderByDesc('id')
+            ->limit(5000)
+            ->get(['id', 'causer_id', 'ip_address', 'user_agent', 'properties', 'created_at']);
+    }
+
+    /**
+     * Un color por IP distinta en toda la página, asignado por orden de primera
+     * aparición (la más antigua primero: una IP nueva no cambia los colores de
+     * las de antes). Así se ve a primera vista si alguien entró desde IPs distintas.
+     *
+     * @return array<string, array{bg: string, borde: string, texto: string}>
+     */
+    private function paletaDeIps(Collection $bloques): array
+    {
+        $ips = $bloques->flatMap(fn (array $b) => $b['inicios'])
+            ->sortBy(fn (array $i) => $i['fecha']?->timestamp ?? 0)
+            ->pluck('ip');
+
+        return ColorDeIp::paleta($ips);
     }
 
     /** Intentos fallidos de los últimos 7 días por username (en minúsculas). */
@@ -157,6 +181,7 @@ class Sesiones extends Component
 
         return view('livewire.monitoreo.sesiones', [
             'bloques' => $bloques,
+            'paleta' => $this->paletaDeIps($bloques),
             'disponibles' => SesionesActivas::disponibles(),
             'totalSesiones' => $bloques->sum(fn (array $b) => $b['sesiones']->count()),
             'usuariosConSesion' => $bloques->filter(fn (array $b) => $b['sesiones']->isNotEmpty())->count(),
