@@ -237,8 +237,8 @@ class GpsVehiculosReporteTest extends TestCase
     public function test_quien_no_es_director_elimina_la_ubicacion_el_mismo_dia_a_cualquier_hora_y_al_dia_siguiente_ya_no(): void
     {
         $this->mundo();
-        config(['auditoria.eliminar_horario.activo' => true, 'auditoria.eliminar_mismo_dia.activo' => true]);
-        Carbon::setTestNow(Carbon::parse('2026-10-10 15:00', 'America/Lima')); // fuera de la ventana de 6 a 11
+        config(['auditoria.eliminar_mismo_dia.activo' => true]);
+        Carbon::setTestNow(Carbon::parse('2026-10-10 15:00', 'America/Lima'));
         $deHoy = $this->ubicacion(['descripcion' => 'Registrada hoy']);
         $deAyer = $this->ubicacion(['descripcion' => 'Registrada ayer']);
         VehiculoGpsReporte::whereKey($deAyer->id)->update(['created_at' => now()->subDay()]);
@@ -246,7 +246,7 @@ class GpsVehiculosReporteTest extends TestCase
         $comp = Livewire::test(GpsVehiculos::class, ['id' => $this->client->id]);
         // 13/10: Eliminar vive dentro del formulario de edición; en la fila solo va el lápiz (y la de ayer ni eso para quien no es director).
         $html = $comp->call('editar', $deHoy->id)->html();
-        $this->assertStringContainsString("wire:click=\"eliminar({$deHoy->id})\" data-creado=\"2026-10-10\" data-sin-horario=\"1\"", $html, 'el botón de hoy no se apaga por la hora');
+        $this->assertStringContainsString("wire:click=\"eliminar({$deHoy->id})\" data-creado=\"2026-10-10\"", $html, 'el botón de hoy lleva su fecha');
         $this->assertStringNotContainsString("wire:click=\"editar({$deAyer->id})\"", $html, 'la de ayer no se edita ni se elimina desde la lista');
         $comp->call('cancelar');
 
@@ -256,7 +256,7 @@ class GpsVehiculosReporteTest extends TestCase
         $this->assertSame(HorarioEliminacion::mensajeMismoDia(), HorarioEliminacion::motivoBloqueo($deAyer->fresh(), $this->user));
         $this->assertSame(1, Activity::where('description', 'like', 'Intentó eliminar un registro de otro día: GpsVehiculos::eliminar')->count());
 
-        // La de hoy sí, a las 15:00 (el hook no la corta: el componente es SinHorarioDeEliminacion).
+        // La de hoy sí, a las 15:00.
         $comp->call('eliminar', $deHoy->id)->assertNotDispatched('errorAlert')->assertSet('msg', 'Ubicación del vehículo ALP837 eliminada.');
         $this->assertNull($deHoy->fresh());
         $this->assertSame(0, Activity::where('description', 'like', 'Intentó eliminar fuera de horario%')->count());
@@ -269,8 +269,8 @@ class GpsVehiculosReporteTest extends TestCase
     public function test_editar_corrige_coordenadas_y_descripcion_solo_el_mismo_dia_salvo_el_director(): void
     {
         $this->mundo();
-        config(['auditoria.eliminar_horario.activo' => true, 'auditoria.eliminar_mismo_dia.activo' => true]);
-        Carbon::setTestNow(Carbon::parse('2026-10-12 15:00', 'America/Lima')); // fuera de la ventana de 6 a 11: editar no la mira
+        config(['auditoria.eliminar_mismo_dia.activo' => true]);
+        Carbon::setTestNow(Carbon::parse('2026-10-12 15:00', 'America/Lima'));
         $deHoy = $this->ubicacion(['descripcion' => 'Registrada hoy']);
         $deAyer = $this->ubicacion(['descripcion' => 'Registrada ayer']);
         VehiculoGpsReporte::whereKey($deAyer->id)->update(['created_at' => now()->subDay()]);
@@ -294,7 +294,7 @@ class GpsVehiculosReporteTest extends TestCase
         $this->assertStringContainsString('Editando la ubicación · la fecha de registro no cambia', $comp->html());
         $this->assertStringContainsString('Guardar cambios', $comp->html());
         // 13/10: Eliminar aparece solo aquí, dentro del formulario, con su fecha para la regla del mismo día.
-        $this->assertStringContainsString("wire:click=\"eliminar({$deHoy->id})\" data-creado=\"2026-10-12\" data-sin-horario=\"1\"", $comp->html());
+        $this->assertStringContainsString("wire:click=\"eliminar({$deHoy->id})\" data-creado=\"2026-10-12\"", $comp->html());
         $this->assertSame(1, substr_count($comp->html(), 'wire:click="eliminar('));
         $comp->set('form.coordenadas', 'https://maps.google.com/?q=-12.0464,-77.0428')
             ->set('form.descripcion', 'Corregida: frente al grifo')

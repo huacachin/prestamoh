@@ -233,21 +233,13 @@ return [
     ],
 
     /*
-     * Ventana para ELIMINAR de quien no es director (09/10/2026): solo de
-     * 'desde' a 'hasta' (horas, zona app.timezone). 'activo' en false apaga el
-     * bloqueo (en tests va apagado por phpunit.xml; el test que lo prueba lo
-     * enciende). Ver App\Support\HorarioEliminacion.
-     */
-    'eliminar_horario' => [
-        'activo' => (bool) env('ELIMINAR_HORARIO_ACTIVO', true),
-        'desde' => 6,
-        'hasta' => 11,
-    ],
-
-    /*
-     * Regla del mismo día (09/10/2026): quien no es director solo elimina lo
-     * que se registró ese mismo día (created_at); al día siguiente ya no.
-     * ELIMINAR_MISMO_DIA_ACTIVO=false la apaga sin tocar código.
+     * Regla del mismo día (09/10/2026; desde el 16/10/2026 es la única: la
+     * ventana de 6:00 a 11:00 se quitó a pedido de Antony): quien no es
+     * director solo elimina, anula o edita lo que se registró ese mismo día
+     * (created_at); pasadas las 00:00 ya no. El director puede todo.
+     * ELIMINAR_MISMO_DIA_ACTIVO=false la apaga sin tocar código (en tests va
+     * apagada por phpunit.xml; los tests que la prueban la encienden).
+     * Ver App\Support\HorarioEliminacion.
      */
     'eliminar_mismo_dia' => [
         'activo' => (bool) env('ELIMINAR_MISMO_DIA_ACTIVO', true),

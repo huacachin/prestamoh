@@ -2,7 +2,6 @@
 
 namespace App\Providers;
 
-use App\Livewire\Hooks\BloquearEliminacionFueraDeHorario;
 use App\Models\User;
 use App\Services\Documentos\Ocr\LectorDeVoucher;
 use App\Services\Documentos\Ocr\LectorVoucherClaude;
@@ -16,7 +15,6 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
-use Livewire\Livewire;
 use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 class AppServiceProvider extends ServiceProvider
@@ -35,8 +33,6 @@ class AppServiceProvider extends ServiceProvider
     {
         Paginator::useBootstrapFive();
 
-        // 09/10: ningún método de eliminar de Livewire corre fuera de 6:00-11:00 si no es director.
-        Livewire::componentHook(BloquearEliminacionFueraDeHorario::class);
         // @creadoEl($registro) en el botón de eliminar: data-creado="Y-m-d" para que
         // horario-eliminar.js aplique la regla del mismo día (ver HorarioEliminacion).
         Blade::directive('creadoEl', fn (string $expresion) => "<?php echo \\App\\Support\\HorarioEliminacion::atributoCreado({$expresion}); ?>");

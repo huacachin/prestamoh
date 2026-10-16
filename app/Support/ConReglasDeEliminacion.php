@@ -11,11 +11,11 @@ use Illuminate\Database\Eloquent\Model;
  *
  *     if ($this->eliminacionBloqueada($registro)) { return; }
  *
- * Aplica las reglas de HorarioEliminacion (quien no es director: solo de 6:00
- * a 11:00 y solo lo creado hoy), avisa en pantalla y deja rastro en la
- * auditoría. Es la guardia que de verdad protege: el hook de Livewire solo ve
- * las llamadas directas, no los métodos que llegan como evento
- * (register_destroy, attachment_destroy) después del SweetAlert.
+ * Aplica la regla de HorarioEliminacion (quien no es director: solo lo
+ * registrado hoy; desde el 16/10/2026 sin ventana horaria), avisa en pantalla
+ * y deja rastro en la auditoría. Es la guardia que de verdad protege: también
+ * ve los métodos que llegan como evento (register_destroy, attachment_destroy)
+ * después del SweetAlert.
  *
  * Desde el 12/10/2026 también para EDITAR (ubicaciones GPS de vehículos):
  * edicionBloqueada($registro) aplica solo la regla del mismo día, sin ventana
@@ -42,10 +42,8 @@ trait ConReglasDeEliminacion
             return false;
         }
 
-        $porHorario = $motivo === HorarioEliminacion::mensaje();
         Audit::log(
-            ($porHorario ? "Intentó {$verbo} fuera de horario: " : "Intentó {$verbo} un registro de otro día: ")
-                .class_basename(static::class).'::'.$accion,
+            "Intentó {$verbo} un registro de otro día: ".class_basename(static::class).'::'.$accion,
             $registro instanceof Model ? $registro : null,
             array_filter([
                 'motivo' => $motivo,

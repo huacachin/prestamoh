@@ -485,8 +485,8 @@ document.addEventListener('click', function (e) {
      `modalFlotante` (modales de Bootstrap, p. ej. la confirmación del cobro). --}}
 <script src="{{ asset('assets/js/ventanas-flotantes.js') }}?v={{ filemtime(public_path('assets/js/ventanas-flotantes.js')) }}"></script>
 
-{{-- Eliminar solo de 6:00 a 11:00 para quien no es director (09/10): el script deshabilita
-     los botones en pantalla y se reevalúa solo; el servidor rechaza igual. --}}
+{{-- Eliminar, anular o editar solo el mismo día para quien no es director (09/10; desde el 16/10 sin
+     ventana horaria): el script deshabilita los botones en pantalla y se reevalúa solo; el servidor rechaza igual. --}}
 @auth
 <script>window.HorarioEliminacion = @json(\App\Support\HorarioEliminacion::paraJs());</script>
 <script src="{{ asset('assets/js/horario-eliminar.js') }}?v={{ filemtime(public_path('assets/js/horario-eliminar.js')) }}"></script>

@@ -8,7 +8,6 @@ use App\Models\VehiculoGpsReporte;
 use App\Support\ConReglasDeEliminacion;
 use App\Support\Coordenadas;
 use App\Support\HorarioEliminacion;
-use App\Support\SinHorarioDeEliminacion;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -22,7 +21,7 @@ use Livewire\Component;
  * La fecha de registro se pone sola al guardar. Editar (12/10): mismo
  * formulario; quien no es director solo edita lo registrado el mismo día.
  */
-class GpsVehiculos extends Component implements SinHorarioDeEliminacion
+class GpsVehiculos extends Component
 {
     use ConReglasDeEliminacion;
 

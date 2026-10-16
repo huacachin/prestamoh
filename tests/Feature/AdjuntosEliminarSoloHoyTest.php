@@ -157,27 +157,25 @@ class AdjuntosEliminarSoloHoyTest extends TestCase
 
     /**
      * 09/10/2026 (Antony): "el rol de Licet debe poder eliminar adjuntos de
-     * ingresos y egresos del mismo día": a cualquier hora, no solo de 6 a 11.
-     * Los adjuntos de caja saltan la ventana horaria (SinHorarioDeEliminacion);
-     * la regla del mismo día y el permiso siguen igual, y todo lo demás sigue
-     * con horario.
+     * ingresos y egresos del mismo día": a cualquier hora. Desde el 16/10/2026
+     * la ventana de 6 a 11 no existe para nada: solo rige el mismo día y el
+     * permiso de siempre.
      */
     public function test_el_administrador_elimina_adjuntos_de_caja_de_hoy_a_cualquier_hora_pero_no_los_de_ayer(): void
     {
         $this->mundo();
-        config(['auditoria.eliminar_horario.activo' => true, 'auditoria.eliminar_mismo_dia.activo' => true]);
-        Carbon::setTestNow(Carbon::parse('2026-10-09 18:20', 'America/Lima')); // fuera de la ventana de 6 a 11
+        config(['auditoria.eliminar_mismo_dia.activo' => true]);
+        Carbon::setTestNow(Carbon::parse('2026-10-09 18:20', 'America/Lima'));
         $admin = $this->usuario('licet-admin', ['caja.egresos', 'caja.ingresos', 'caja.ver-todo', 'caja.eliminar']);
         $this->actingAs($admin);
         [$egreso, $att] = $this->egresoConFoto(now()->toDateString());
         [$ingreso, $attIng] = $this->ingresoConFoto(now()->toDateString());
 
-        // El botón lleva la marca para que horario-eliminar.js no lo apague fuera de la ventana.
+        // El botón lleva la fecha del registro para horario-eliminar.js.
         $comp = Livewire::test(ExpenseGallery::class, ['id' => $egreso->id])->assertSet('puedeEliminar', true);
-        $this->assertStringContainsString('data-creado="2026-10-09" data-sin-horario="1"', $comp->html());
-        $this->assertStringContainsString("ventanaCerrada && !el.hasAttribute('data-sin-horario')", file_get_contents(public_path('assets/js/horario-eliminar.js')));
+        $this->assertStringContainsString('data-creado="2026-10-09"', $comp->html());
 
-        // A las 18:20 pasan la llamada directa (hook) y la que llega como evento tras el SweetAlert (trait).
+        // A las 18:20 pasan la llamada directa y la que llega como evento tras el SweetAlert (trait).
         $comp->call('questionDelete', $att->id)->assertDispatched('questionDelete')->assertNotDispatched('errorAlert');
         $comp->call('deleteAttachment', $att->id)->assertNotDispatched('errorAlert');
         $this->assertNull($att->fresh());
@@ -198,11 +196,11 @@ class AdjuntosEliminarSoloHoyTest extends TestCase
         $this->assertNotNull($attIngViejo->fresh());
         $this->assertSame(2, Activity::where('description', 'like', 'Intentó eliminar un registro de otro día%')->count());
 
-        // Y lo que no es adjunto de caja sigue con la ventana: el egreso mismo, no.
+        // 16/10: sin ventana horaria, el egreso de hoy también se puede eliminar a las 18:20.
         [$egresoTres, $attTres] = $this->egresoConFoto(now()->toDateString());
         $this->assertNull(HorarioEliminacion::motivoBloqueo($attTres, $admin));
         $this->assertSame(HorarioEliminacion::mensajeMismoDia(), HorarioEliminacion::motivoBloqueo($attViejo->fresh(), $admin));
-        $this->assertSame(HorarioEliminacion::mensaje(), HorarioEliminacion::motivoBloqueo($egresoTres, $admin));
-        $this->assertStringNotContainsString('data-sin-horario', (string) HorarioEliminacion::atributoCreado($egresoTres));
+        $this->assertNull(HorarioEliminacion::motivoBloqueo($egresoTres, $admin));
+        $this->assertSame('data-creado="2026-10-09"', (string) HorarioEliminacion::atributoCreado($egresoTres));
     }
 }

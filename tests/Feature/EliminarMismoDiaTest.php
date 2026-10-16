@@ -30,14 +30,15 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * 09/10/2026 (Antony): quien no es director solo puede eliminar de 6:00 a
- * 11:00 de la mañana Y solo lo que se registró ese mismo día. Bloqueado en el
- * servidor (hook de Livewire para las llamadas directas + ConReglasDeEliminacion
- * dentro de cada método, que es lo único que ve los eliminados que llegan como
- * evento tras el SweetAlert) y en pantalla (horario-eliminar.js, con la bandera
- * que pinta el layout y el data-creado de cada botón).
+ * 09/10/2026 (Antony): quien no es director solo elimina lo que se registró
+ * ese mismo día. 16/10/2026 (Antony): "esa regla de 6 a 11 hay que quitarla;
+ * todos los anular o eliminar o incluso editar solo se debe poder el mismo
+ * día, pasadas las 00:00 ya no, excepto el director". Bloqueado en el servidor
+ * (ConReglasDeEliminacion dentro de cada método, que es lo único que ve los
+ * eliminados que llegan como evento tras el SweetAlert) y en pantalla
+ * (horario-eliminar.js con la bandera del layout y el data-creado del botón).
  */
-class EliminarFueraDeHorarioTest extends TestCase
+class EliminarMismoDiaTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -53,8 +54,8 @@ class EliminarFueraDeHorarioTest extends TestCase
         $this->seed(PermissionCatalogSeeder::class);
         $this->user->givePermissionTo(['caja.egresos', 'caja.eliminar', 'caja.editar-historico', 'caja.ver-todo']);
         $this->actingAs($this->user);
-        // En el resto de la suite las dos reglas van apagadas (phpunit.xml); aquí se prueban encendidas.
-        config(['auditoria.eliminar_horario.activo' => true, 'auditoria.eliminar_mismo_dia.activo' => true]);
+        // En el resto de la suite la regla va apagada (phpunit.xml); aquí se prueba encendida.
+        config(['auditoria.eliminar_mismo_dia.activo' => true]);
     }
 
     protected function tearDown(): void
@@ -90,15 +91,8 @@ class EliminarFueraDeHorarioTest extends TestCase
         return Activity::query()->where('log_name', Audit::LOG)->where('description', 'like', $prefijo.'%')->count();
     }
 
-    public function test_la_ventana_es_de_6_a_11_hora_de_lima_y_el_mismo_dia_se_compara_en_lima(): void
+    public function test_solo_cuenta_el_dia_en_hora_de_lima_sin_ventana_horaria(): void
     {
-        config(['auditoria.eliminar_horario.activo' => false]);
-        $this->assertFalse(HorarioEliminacion::bloqueado($this->user, Carbon::parse('2026-10-09 15:00', 'America/Lima')), 'apagado: nunca bloquea');
-        config(['auditoria.eliminar_horario.activo' => true]);
-        $this->assertTrue(HorarioEliminacion::bloqueado($this->user, Carbon::parse('2026-10-09 15:00', 'America/Lima')));
-        foreach (['05:59' => false, '06:00' => true, '10:59' => true, '11:00' => false, '15:30' => false, '02:00' => false] as $hora => $abierta) {
-            $this->assertSame($abierta, HorarioEliminacion::enVentana(Carbon::parse("2026-10-09 {$hora}", 'America/Lima')), "a las {$hora}");
-        }
         foreach (['delete', 'deleteAttachment', 'destroy', 'eliminar', 'eliminarFoto', 'borrar', 'anular', 'questionDelete'] as $m) {
             $this->assertTrue(HorarioEliminacion::esMetodoDeEliminar($m), $m);
         }
@@ -106,22 +100,27 @@ class EliminarFueraDeHorarioTest extends TestCase
             $this->assertFalse(HorarioEliminacion::esMetodoDeEliminar($m), $m);
         }
 
-        // Mismo día: la fecha del registro se compara con hoy en hora de Lima (created_at se guarda en UTC).
+        // La fecha del registro se compara con hoy en hora de Lima (created_at se guarda en UTC).
         $ahora = Carbon::parse('2026-10-09 08:30', 'America/Lima');
         $this->assertTrue(HorarioEliminacion::esDeHoy(Carbon::parse('2026-10-09 00:10', 'America/Lima'), $ahora));
         $this->assertTrue(HorarioEliminacion::esDeHoy(Carbon::parse('2026-10-10 02:00', 'UTC'), $ahora), 'las 21:00 de Lima del 09 ya son día 10 en UTC');
         $this->assertFalse(HorarioEliminacion::esDeHoy(Carbon::parse('2026-10-08 23:59', 'America/Lima'), $ahora));
         $this->assertFalse(HorarioEliminacion::esDeHoy(null, $ahora));
 
-        // motivoBloqueo: primero el horario, luego el día; sin fecha no se elimina; el director nunca se bloquea.
+        // motivoBloqueo: lo de hoy a CUALQUIER hora (16/10: ya no hay ventana de 6 a 11); lo de ayer nunca;
+        // sin fecha no; el director siempre puede.
         $deAyer = $this->egreso('2026-10-08 16:00:00');
-        $deHoy = $this->egreso('2026-10-09 07:00:00'); // \"hoy\" respecto al reloj fijo del test (2026-10-09), no a la fecha real
-        $this->assertSame(HorarioEliminacion::mensaje(), HorarioEliminacion::motivoBloqueo($deAyer, $this->user, Carbon::parse('2026-10-09 15:00', 'America/Lima')));
-        $this->assertSame(HorarioEliminacion::mensajeMismoDia(), HorarioEliminacion::motivoBloqueo($deAyer, $this->user, $ahora));
-        $this->assertNull(HorarioEliminacion::motivoBloqueo($deHoy, $this->user, $ahora));
+        $deHoy = $this->egreso('2026-10-09 07:00:00');
+        foreach (['02:00', '08:30', '15:00', '23:59'] as $hora) {
+            $reloj = Carbon::parse("2026-10-09 {$hora}", 'America/Lima');
+            $this->assertNull(HorarioEliminacion::motivoBloqueo($deHoy, $this->user, $reloj), "hoy a las {$hora}");
+            $this->assertSame(HorarioEliminacion::mensajeMismoDia(), HorarioEliminacion::motivoBloqueo($deAyer, $this->user, $reloj), "ayer a las {$hora}");
+        }
+        $this->assertSame(HorarioEliminacion::mensajeMismoDia(), HorarioEliminacion::motivoBloqueo($deHoy, $this->user, Carbon::parse('2026-10-10 00:00', 'America/Lima')), 'a las 00:00 ya es otro día');
+        $this->assertSame(HorarioEliminacion::mensajeMismoDia('editar'), HorarioEliminacion::motivoBloqueo($deAyer, $this->user, $ahora, 'editar'));
         $this->assertSame(HorarioEliminacion::mensajeSinFecha(), HorarioEliminacion::motivoBloqueo(null, $this->user, $ahora));
         config(['auditoria.eliminar_mismo_dia.activo' => false]);
-        $this->assertNull(HorarioEliminacion::motivoBloqueo($deAyer, $this->user, $ahora), 'regla del día apagada: solo manda el horario');
+        $this->assertNull(HorarioEliminacion::motivoBloqueo($deAyer, $this->user, $ahora), 'regla apagada: nada bloquea');
         config(['auditoria.eliminar_mismo_dia.activo' => true]);
         $director = User::factory()->create(['username' => 'dir-tester']);
         $director->syncRoles([Role::findOrCreate('director', 'web')]);
@@ -138,59 +137,17 @@ class EliminarFueraDeHorarioTest extends TestCase
         }
         $this->assertSame('data-creado="2026-10-08"', (string) HorarioEliminacion::atributoCreado($deAyer));
         $this->assertSame('data-creado=""', (string) HorarioEliminacion::atributoCreado(null));
+        $this->assertArrayNotHasKey('desde', HorarioEliminacion::paraJs(), 'la ventana horaria ya no existe');
     }
 
-    public function test_fuera_de_horario_el_servidor_no_elimina_avisa_y_lo_deja_en_la_auditoria(): void
+    public function test_a_cualquier_hora_se_elimina_lo_de_hoy_y_nunca_lo_de_ayer(): void
     {
-        $egreso = $this->egreso();
-        Carbon::setTestNow(Carbon::parse('2026-10-09 15:00', 'America/Lima'));
-        Activity::query()->delete();
-
-        Livewire::test(EditExpense::class, ['id' => $egreso->id])
-            ->call('destroy', $egreso->id)
-            ->assertDispatched('errorAlert')
-            ->assertNoRedirect();
-
-        $this->assertNotNull($egreso->fresh(), 'el egreso sigue');
-        $this->assertStringContainsString(HorarioEliminacion::mensaje(), json_encode(Livewire::test(EditExpense::class, ['id' => $egreso->id])->call('destroy', $egreso->id)->effects['dispatches'] ?? [], JSON_UNESCAPED_UNICODE));
-        $intento = Activity::query()->where('log_name', Audit::LOG)->where('description', 'like', 'Intentó eliminar fuera de horario%')->first();
-        $this->assertNotNull($intento);
-        $this->assertStringContainsString('EditExpense::destroy', $intento->description);
-    }
-
-    /**
-     * Los botones Eliminar con confirmación (SweetAlert) no llaman a destroy:
-     * disparan el evento register_destroy, que Livewire ejecuta dentro de su
-     * propio hook sin pasar por el nuestro. La guardia dentro del método es la
-     * que los frena; y el questionDelete previo ni abre la confirmación.
-     */
-    public function test_el_eliminar_con_confirmacion_llega_como_evento_y_tambien_se_bloquea(): void
-    {
-        $egreso = $this->egreso();
-        Carbon::setTestNow(Carbon::parse('2026-10-09 15:00', 'America/Lima'));
-        Activity::query()->delete();
-
-        Livewire::test(EditExpense::class, ['id' => $egreso->id])
-            ->call('questionDelete', $egreso->id)
-            ->assertDispatched('errorAlert')
-            ->assertNotDispatched('questionDelete');
-
-        Livewire::test(EditExpense::class, ['id' => $egreso->id])
-            ->dispatch('register_destroy', id: $egreso->id)
-            ->assertDispatched('errorAlert')
-            ->assertNoRedirect();
-
-        $this->assertNotNull($egreso->fresh(), 'el egreso sigue aunque el evento haya llegado');
-        $this->assertSame(2, $this->intentos('Intentó eliminar fuera de horario'), 'questionDelete (hook) + destroy (método)');
-    }
-
-    public function test_dentro_de_horario_solo_se_elimina_lo_registrado_hoy(): void
-    {
-        Carbon::setTestNow(Carbon::parse('2026-10-09 08:30', 'America/Lima'));
+        Carbon::setTestNow(Carbon::parse('2026-10-09 15:00', 'America/Lima')); // antes esta hora bloqueaba todo
         $deAyer = $this->egreso('2026-10-08 16:00:00');
-        $deHoy = $this->egreso('2026-10-09 07:00:00'); // \"hoy\" respecto al reloj fijo del test (2026-10-09), no a la fecha real
+        $deHoy = $this->egreso('2026-10-09 07:00:00');
         Activity::query()->delete();
 
+        // Lo de ayer: ni el questionDelete abre la confirmación ni el evento register_destroy elimina.
         Livewire::test(EditExpense::class, ['id' => $deAyer->id])
             ->call('questionDelete', $deAyer->id)
             ->assertDispatched('errorAlert')
@@ -200,29 +157,38 @@ class EliminarFueraDeHorarioTest extends TestCase
             ->assertDispatched('errorAlert')
             ->assertNoRedirect();
         $this->assertNotNull($deAyer->fresh(), 'lo de ayer ya no se elimina');
-        $this->assertSame(2, $this->intentos('Intentó eliminar un registro de otro día'), 'questionDelete + destroy, los dos por el método');
+        $this->assertSame(2, $this->intentos('Intentó eliminar un registro de otro día'), 'questionDelete + destroy');
         $intento = Activity::query()->where('log_name', Audit::LOG)->where('description', 'Intentó eliminar un registro de otro día: EditExpense::destroy')->first();
         $this->assertNotNull($intento);
         $this->assertSame(HorarioEliminacion::mensajeMismoDia(), $intento->properties['motivo']);
         $this->assertSame('2026-10-08 16:00:00', $intento->properties['creado_el']);
+        $this->assertSame(0, $this->intentos('Intentó eliminar fuera de horario'), 'ese motivo ya no existe');
 
+        // Lo de hoy sí, aunque sean las 15:00.
         Livewire::test(EditExpense::class, ['id' => $deHoy->id])
             ->dispatch('register_destroy', id: $deHoy->id)
             ->assertNotDispatched('errorAlert');
-        $this->assertNull($deHoy->fresh(), 'lo registrado hoy sí se elimina a las 8:30');
+        $this->assertNull($deHoy->fresh(), 'lo registrado hoy se elimina a cualquier hora');
 
-        // El director elimina lo de ayer, y a cualquier hora.
+        // Pasada la medianoche, lo de "hoy" pasa a ser de ayer.
+        $otroDeHoy = $this->egreso('2026-10-09 22:00:00');
+        Carbon::setTestNow(Carbon::parse('2026-10-10 00:05', 'America/Lima'));
+        Livewire::test(EditExpense::class, ['id' => $otroDeHoy->id])->call('destroy', $otroDeHoy->id)->assertDispatched('errorAlert');
+        $this->assertNotNull($otroDeHoy->fresh(), 'a las 00:05 del día siguiente ya no');
+
+        // El director elimina lo de cualquier día, a cualquier hora.
         $this->user->syncRoles([Role::findOrCreate('director', 'web')]);
-        Carbon::setTestNow(Carbon::parse('2026-10-09 15:00', 'America/Lima'));
         Livewire::test(EditExpense::class, ['id' => $deAyer->id])
             ->dispatch('register_destroy', id: $deAyer->id)
             ->assertNotDispatched('errorAlert');
-        $this->assertNull($deAyer->fresh(), 'el director elimina lo de otro día a cualquier hora');
+        $this->assertNull($deAyer->fresh(), 'el director elimina lo de otro día');
+        Livewire::test(EditExpense::class, ['id' => $otroDeHoy->id])->call('destroy', $otroDeHoy->id)->assertNotDispatched('errorAlert');
+        $this->assertNull($otroDeHoy->fresh());
     }
 
     public function test_la_regla_del_dia_cubre_adjuntos_documentos_gps_y_creditos(): void
     {
-        Carbon::setTestNow(Carbon::parse('2026-10-09 08:30', 'America/Lima'));
+        Carbon::setTestNow(Carbon::parse('2026-10-09 18:20', 'America/Lima')); // tarde: antes bloqueaba por la hora
         $this->user->givePermissionTo(['clientes', 'clientes.eliminar', 'creditos', 'creditos.eliminar']);
         $cliente = $this->cliente();
         $ayer = '2026-10-08 16:00:00';
@@ -238,22 +204,27 @@ class EliminarFueraDeHorarioTest extends TestCase
             ->assertDispatched('errorAlert');
         $this->assertNotNull($adjunto->fresh(), 'adjunto de ayer: sigue');
 
-        // Documento emitido (Anular en la pestaña Documentos).
+        // Documento emitido (Anular en la pestaña Documentos): el de ayer no; el de HOY sí aunque sean las 18:20
+        // (16/10: el caso de Rosa, que a las 12:20 no podía anular el anexo que acababa de generar).
         $credito = Credit::create([
             'client_id' => $cliente->id, 'fecha_prestamo' => '2026-10-08', 'importe' => 5000, 'cuotas' => 4,
             'tipo_planilla' => 1, 'interes' => 10, 'situacion' => 'Activo', 'estado' => 1, 'headquarter_id' => $this->sede->id, 'user_id' => $this->user->id,
         ]);
         Credit::whereKey($credito->id)->update(['created_at' => $ayer]);
-        $doc = DocumentoCliente::create([
+        $docAyer = DocumentoCliente::create([
             'client_id' => $cliente->id, 'credit_id' => $credito->id, 'tipo' => 'anexo1', 'version' => 1, 'correlativo' => '2026-900',
             'snapshot' => ['credito' => ['correlativo' => '2026-900']], 'pdf_path' => 'x.pdf', 'sha256' => str_repeat('a', 64), 'estado' => 'emitido',
         ]);
-        DocumentoCliente::whereKey($doc->id)->update(['created_at' => $ayer]);
-        Livewire::test(Documentos::class, ['id' => $cliente->id])
-            ->call('anular', $doc->id)
-            ->assertDispatched('errorAlert')
-            ->assertNotDispatched('successAlert');
-        $this->assertSame('emitido', $doc->fresh()->estado, 'documento de ayer: no se anula');
+        DocumentoCliente::whereKey($docAyer->id)->update(['created_at' => $ayer]);
+        $docHoy = DocumentoCliente::create([
+            'client_id' => $cliente->id, 'credit_id' => $credito->id, 'tipo' => 'anexo2', 'version' => 1,
+            'snapshot' => ['credito' => ['numero' => $credito->id]], 'pdf_path' => 'y.pdf', 'sha256' => str_repeat('b', 64), 'estado' => 'emitido',
+        ]);
+        $comp = Livewire::test(Documentos::class, ['id' => $cliente->id]);
+        $comp->call('anular', $docAyer->id)->assertDispatched('errorAlert')->assertNotDispatched('successAlert');
+        $this->assertSame('emitido', $docAyer->fresh()->estado, 'documento de ayer: no se anula');
+        $comp->call('anular', $docHoy->id)->assertNotDispatched('errorAlert')->assertDispatched('successAlert');
+        $this->assertSame('anulado', $docHoy->fresh()->estado, 'documento de hoy: se anula a las 18:20');
 
         // Reporte GPS del vehículo (pestaña GPS).
         $vehiculo = Vehiculo::create(['client_id' => $cliente->id, 'placa' => 'ALP-837', 'marca' => 'TOYOTA', 'modelo' => 'HIACE', 'valor' => 20000]);
@@ -267,7 +238,7 @@ class EliminarFueraDeHorarioTest extends TestCase
             ->assertDispatched('errorAlert');
         $this->assertNotNull($reporte->fresh(), 'reporte GPS de ayer: sigue');
 
-        // Coordenadas de la casa (15/10: fila de client_ubicaciones con su fecha de registro): registradas ayer, no se borran.
+        // Coordenadas de la casa (fila de client_ubicaciones con su fecha de registro): registradas ayer, no se borran.
         $casa = $cliente->ubicaciones()->create(['tipo' => 'casa', 'nombre' => 'Casa', 'latitud' => -12.014431, 'longitud' => -76.824936, 'user_id' => $this->user->id, 'registrado_at' => $ayer]);
         ClientUbicacion::whereKey($casa->id)->update(['created_at' => $ayer]);
         Livewire::test(Gps::class, ['id' => $cliente->id])
@@ -282,43 +253,24 @@ class EliminarFueraDeHorarioTest extends TestCase
         $this->assertNotNull($credito->fresh(), 'crédito de ayer: sigue');
 
         $this->assertSame(5, $this->intentos('Intentó eliminar un registro de otro día'), 'un intento por cada bloqueo');
-        $this->assertSame(0, $this->intentos('Intentó eliminar fuera de horario'));
     }
 
-    public function test_dentro_de_horario_elimina_y_el_director_elimina_a_cualquier_hora(): void
+    public function test_las_acciones_que_no_eliminan_no_se_tocan(): void
     {
-        Carbon::setTestNow(Carbon::parse('2026-10-09 08:30', 'America/Lima'));
-        $egreso = $this->egreso(); // creado \"hoy\" según el reloj congelado, no la fecha real
-        Livewire::test(EditExpense::class, ['id' => $egreso->id])->call('destroy', $egreso->id)->assertNotDispatched('errorAlert');
-        $this->assertNull($egreso->fresh(), 'a las 8:30 sí se elimina');
-
-        $otro = $this->egreso();
-        $this->user->syncRoles([Role::findOrCreate('director', 'web')]);
-        Carbon::setTestNow(Carbon::parse('2026-10-09 15:00', 'America/Lima'));
-        Livewire::test(EditExpense::class, ['id' => $otro->id])->call('destroy', $otro->id)->assertNotDispatched('errorAlert');
-        $this->assertNull($otro->fresh(), 'el director elimina a cualquier hora');
-    }
-
-    public function test_el_hook_no_toca_las_acciones_que_no_eliminan(): void
-    {
-        Carbon::setTestNow(Carbon::parse('2026-10-09 15:00', 'America/Lima'));
+        Carbon::setTestNow(Carbon::parse('2026-10-09 23:30', 'America/Lima'));
         Livewire::test(CreateExpense::class)
             ->set('modo', 'Otros')->set('reason', 'Banco')->set('detail', 'Dep.')->set('total', '10')
             ->call('save')
             ->assertNotDispatched('errorAlert');
         $this->assertSame(1, Expense::where('caja', 1)->count(), 'guardar sigue funcionando a cualquier hora');
-
-        // Y el delete de créditos (otro componente, otro nombre de método) sí queda bloqueado.
-        $this->user->givePermissionTo('creditos');
-        Livewire::test(CreditsIndex::class)->call('delete', 999999)->assertDispatched('errorAlert');
     }
 
     public function test_el_layout_entrega_la_bandera_y_el_boton_lleva_la_fecha_del_registro(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-10-09 08:30', 'America/Lima'));
         $html = $this->get(route('cash.expenses.create'))->assertOk()->getContent();
-        $this->assertStringContainsString('window.HorarioEliminacion = {"activo":true,"director":false,"desde":6,"hasta":11,', $html);
-        $this->assertStringContainsString('"mismoDia":true,', $html);
+        $this->assertStringContainsString('window.HorarioEliminacion = {"director":false,"mismoDia":true,', $html);
+        $this->assertStringNotContainsString('"desde":', $html, 'sin ventana horaria en la bandera');
         $this->assertStringContainsString('questionDelete)', $html, 'el patrón del JS incluye el botón con confirmación');
         $this->assertStringContainsString('assets/js/horario-eliminar.js', $html);
 
@@ -330,6 +282,7 @@ class EliminarFueraDeHorarioTest extends TestCase
         $js = file_get_contents(public_path('assets/js/horario-eliminar.js'));
         $this->assertStringContainsString("hasAttribute('data-creado')", $js);
         $this->assertStringContainsString("querySelectorAll('button, a')", $js, 'también los <a wire:click.prevent> (compromisos)');
+        $this->assertStringNotContainsString('getHours()', $js, 'el JS ya no mira la hora');
 
         $this->user->syncRoles([Role::findOrCreate('director', 'web')]);
         $this->assertStringContainsString('"director":true', $this->get(route('cash.expenses.create'))->getContent());
