@@ -29,6 +29,10 @@
         .monitoreo-sesiones .mon-chip.ambar { background: #fef3c7; color: #92400e; }
         .monitoreo-sesiones .mon-chip.rojo { background: #fee2e2; color: #991b1b; }
         .monitoreo-sesiones .mon-chip.gris { background: #f1f3f6; color: #6b7280; }
+        .monitoreo-sesiones .mon-ultima { font-size: 12px; padding: 4px 10px; border: 1px solid transparent; }
+        .monitoreo-sesiones .mon-ultima.verde { border-color: #86efac; }
+        .monitoreo-sesiones .mon-ultima.ambar { border-color: #fcd34d; }
+        .monitoreo-sesiones .mon-ultima b { font-weight: 700; }
         .monitoreo-sesiones .mon-cuerpo { display: grid; grid-template-columns: 1fr; gap: 0; }
         .monitoreo-sesiones .mon-col { padding: 12px 16px; min-width: 0; }
         .monitoreo-sesiones .mon-col + .mon-col { border-top: 1px solid var(--mon-borde); }
@@ -152,7 +156,17 @@
                             <span class="mon-chip rojo" title="Intentos de inicio de sesión fallidos en los últimos 7 días"><i class="ti ti-alert-triangle"></i> {{ $b['fallidos'] }} fallido(s)</span>
                         @endif
                     </div>
-                    <div class="mon-sub">{{ $u->name }}@if($ultima) · última actividad {{ $ultima->diffForHumans() }}@endif</div>
+                    <div class="mon-sub d-flex flex-wrap align-items-center gap-2">
+                        <span>{{ $u->name }}</span>
+                        @if($ultima)
+                            {{-- 16/10 (Antony): la última actividad resalta a simple vista: verde si es de hace minutos,
+                                 ámbar si es de la última hora, gris si es más vieja. --}}
+                            @php $minutos = $ultima->diffInMinutes(now()); @endphp
+                            <span class="mon-chip mon-ultima {{ $minutos <= \App\Support\SesionesActivas::MINUTOS_ACTIVA ? 'verde' : ($minutos <= 60 ? 'ambar' : 'gris') }}" title="{{ $ultima->format('d/m/Y H:i:s') }}">
+                                <i class="ti ti-clock-hour-4"></i> última actividad <b>{{ $ultima->diffForHumans() }}</b>
+                            </span>
+                        @endif
+                    </div>
                 </div>
                 <div class="d-flex flex-wrap align-items-center gap-2">
                     @if($estado === 'en-linea')

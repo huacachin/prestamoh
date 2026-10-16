@@ -110,6 +110,8 @@ class MonitoreoSesionesTest extends TestCase
         $this->assertStringContainsString('<div class="mon-kpi-num">2</div><div class="mon-kpi-label">intento(s) fallido(s) en 7 días</div>', $html);
         $this->assertStringContainsString('En línea', $html, 'Licet tiene actividad reciente');
         $this->assertStringContainsString('Sin sesión', $html, 'Rosa');
+        // 16/10: la última actividad resalta con su propia etiqueta de color (verde = hace minutos).
+        $this->assertMatchesRegularExpression('/<span class="mon-chip mon-ultima verde"[^>]*>\s*<i class="ti ti-clock-hour-4"><\/i> última actividad <b>hace 2 minutos<\/b>/', $html);
     }
 
     /** 16/10 (Antony): se listan TODOS los inicios y cada IP distinta lleva su color (misma IP, mismo color). */
