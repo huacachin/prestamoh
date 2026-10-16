@@ -12,7 +12,7 @@
         .monitoreo-sesiones .mon-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: #fff; border: 1px solid var(--mon-borde); border-radius: var(--mon-radius); box-shadow: var(--mon-sombra); padding: 10px 14px; margin-bottom: 16px; }
         .monitoreo-sesiones .mon-buscar { position: relative; flex: 1 1 220px; max-width: 360px; }
         .monitoreo-sesiones .mon-buscar i { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: #9aa3af; }
-        .monitoreo-sesiones .mon-buscar input { padding-left: 32px; border-radius: 10px; }
+        .monitoreo-sesiones .mon-buscar select { padding-left: 32px; border-radius: 10px; }
         .monitoreo-sesiones .mon-fechas { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
         .monitoreo-sesiones .mon-fechas input { width: 112px; border-radius: 10px; }
         .monitoreo-sesiones .mon-usuario { background: #fff; border: 1px solid var(--mon-borde); border-radius: var(--mon-radius); box-shadow: var(--mon-sombra); margin-bottom: 16px; overflow: hidden; }
@@ -100,9 +100,15 @@
 
     {{-- Barra --}}
     <div class="mon-toolbar">
+        {{-- 16/10 (Antony): desplegable de usuarios activos en vez de buscador de texto. --}}
         <div class="mon-buscar">
-            <i class="ti ti-search"></i>
-            <input type="search" class="form-control form-control-sm" placeholder="Buscar usuario o nombre…" wire:model.live.debounce.400ms="buscar">
+            <i class="ti ti-user"></i>
+            <select class="form-select form-select-sm" wire:model.live="usuarioId" title="Usuario">
+                <option value="">Todos los usuarios activos</option>
+                @foreach($usuariosActivos as $ua)
+                    <option value="{{ $ua->id }}">{{ $ua->username }} · {{ $ua->name }}</option>
+                @endforeach
+            </select>
         </div>
         <div class="form-check form-switch mb-0 small">
             <input class="form-check-input" type="checkbox" id="soloConSesion" wire:model.live="soloConSesion">

@@ -258,19 +258,29 @@ class MonitoreoSesionesTest extends TestCase
         $this->assertSame(2, (int) Activity::where('description', 'like', 'Desactivó el usuario Licet%')->sole()->properties['sesiones_cerradas']);
     }
 
-    public function test_filtros_buscar_y_solo_con_sesion(): void
+    /** 16/10 (Antony): el filtro de usuario es un desplegable de usuarios ACTIVOS (+ Todos). */
+    public function test_filtro_por_usuario_activo_y_solo_con_sesion(): void
     {
         $this->actingAs($this->director);
         $this->sesion('licet-pc', $this->licet, '209.61.122.152', self::UA_WIN, 2);
+        $cesado = User::factory()->create(['username' => 'Marvin', 'status' => 'inactive']);
 
         $comp = Livewire::test(Sesiones::class);
+        $html = $comp->html();
+        $this->assertStringContainsString('<option value="">Todos los usuarios activos</option>', $html);
+        $this->assertStringContainsString('<option value="'.$this->licet->id.'">Licet · Licet Tafur</option>', $html);
+        $this->assertStringNotContainsString('<option value="'.$cesado->id.'">', $html, 'los cesados no salen en el desplegable');
+        $this->assertStringContainsString('wire:model.live="usuarioId"', $html);
+
         $this->assertSame(['Licet', 'Guilmer', 'Rosa'], $comp->instance()->bloques()->pluck('usuario.username')->all());
         $comp->set('soloConSesion', true);
         $this->assertSame(['Licet'], $comp->instance()->bloques()->pluck('usuario.username')->all());
-        $comp->set('soloConSesion', false)->set('buscar', 'tafur');
-        $this->assertSame(['Licet', 'Rosa'], $comp->instance()->bloques()->pluck('usuario.username')->all());
-        $comp->set('buscar', 'nadie');
-        $this->assertStringContainsString('No hay usuarios que coincidan', $comp->html());
+        $comp->set('soloConSesion', false)->set('usuarioId', (string) $this->rosa->id);
+        $this->assertSame(['Rosa'], $comp->instance()->bloques()->pluck('usuario.username')->all());
+        $comp->set('soloConSesion', true);
+        $this->assertStringContainsString('No hay usuarios que coincidan', $comp->html(), 'Rosa sin sesión con "solo con sesión"');
+        $comp->set('soloConSesion', false)->set('usuarioId', '');
+        $this->assertSame(['Licet', 'Guilmer', 'Rosa'], $comp->instance()->bloques()->pluck('usuario.username')->all());
     }
 
     public function test_una_administradora_no_puede_llamar_a_las_acciones(): void

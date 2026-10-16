@@ -23,7 +23,8 @@ use Livewire\Component;
  */
 class Sesiones extends Component
 {
-    public string $buscar = '';
+    /** Usuario elegido en el desplegable de activos ('' = todos). 16/10 (Antony): antes era un buscador de texto. */
+    public string $usuarioId = '';
 
     public bool $soloConSesion = false;
 
@@ -130,13 +131,12 @@ class Sesiones extends Component
         $sesiones = SesionesActivas::porUsuario();
         $inicios = $this->inicios();
         $fallidos = $this->intentosFallidos();
-        $termino = mb_strtolower(trim($this->buscar));
 
         // 16/10 (Antony): solo usuarios activos (status 1); un cesado aparece únicamente mientras conserve
         // alguna sesión abierta, para poder cerrársela.
         return User::with('roles')
             ->where(fn ($q) => $q->where('status', 'active')->orWhereIn('id', $sesiones->keys()->all()))
-            ->when($termino !== '', fn ($q) => $q->where(fn ($w) => $w->whereRaw('lower(name) like ?', ["%{$termino}%"])->orWhereRaw('lower(username) like ?', ["%{$termino}%"])))
+            ->when($this->usuarioId !== '', fn ($q) => $q->where('id', (int) $this->usuarioId))
             ->orderBy('name')
             ->get()
             ->map(fn (User $u) => [
@@ -229,6 +229,7 @@ class Sesiones extends Component
         return view('livewire.monitoreo.sesiones', [
             'bloques' => $bloques,
             'paleta' => $this->paletaDeIps(),
+            'usuariosActivos' => User::where('status', 'active')->orderBy('username')->get(['id', 'username', 'name']),
             'rango' => $this->rango(),
             'disponibles' => SesionesActivas::disponibles(),
             'totalSesiones' => $bloques->sum(fn (array $b) => $b['sesiones']->count()),
