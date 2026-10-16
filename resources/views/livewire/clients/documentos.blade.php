@@ -67,11 +67,12 @@
                     @endunless
                 </div>
                 <div class="d-flex gap-2 flex-wrap">
-                    <button type="button" class="btn btn-sm btn-success" wire:click="abrirModalAnexo1">
-                        <i class="ti ti-file-plus"></i> Generar Anexo 1
-                    </button>
+                    {{-- 16/10 (Antony): el orden de trabajo es Contrato → Anexo 1 → Anexo 2. --}}
                     <button type="button" class="btn btn-sm btn-dark" wire:click="abrirModalContrato">
                         <i class="ti ti-file-plus"></i> Generar Contrato
+                    </button>
+                    <button type="button" class="btn btn-sm btn-success" wire:click="abrirModalAnexo1">
+                        <i class="ti ti-file-plus"></i> Generar Anexo 1
                     </button>
                     <button type="button" class="btn btn-sm btn-info" wire:click="abrirModalAnexo2">
                         <i class="ti ti-file-plus"></i> Generar Anexo 2
@@ -125,18 +126,20 @@
                         <tbody>
                         {{-- N° por CRÉDITO (02/10): contrato, anexo 1 y anexo 2 de un mismo crédito
                              comparten número y su celda N° va COMBINADA (rowspan), así que las
-                             filas de cada crédito se agrupan. 10/10 (Antony): orden cronológico,
-                             del primero que se hizo al último: el crédito más antiguo arriba
-                             (N° 1) y, dentro, del documento más viejo al más nuevo; la columna #
-                             numera los documentos de CADA crédito desde 1 (se reinicia por
-                             préstamo). El zebra alterna por crédito. --}}
+                             filas de cada crédito se agrupan. 10/10 (Antony): el crédito más
+                             antiguo arriba (N° 1); la columna # numera los documentos de CADA
+                             crédito desde 1 (se reinicia por préstamo). El zebra alterna por
+                             crédito. 16/10 (Antony): dentro de cada crédito el orden es el de
+                             trabajo —Contrato, Anexo 1, Anexo 2— y, dentro de cada tipo, del
+                             más viejo al más nuevo. --}}
                         @php
+                            $ordenTipo = ['contrato' => 1, 'anexo1' => 2, 'anexo2' => 3];
                             $grupos = $documentos->groupBy('credit_id')->sortBy(fn ($docs) => $docs->min('id'))->values();
                         @endphp
                         @foreach($grupos as $g => $docsCredito)
                         @php
                             $numCredito = $g + 1;
-                            $filasCredito = $docsCredito->sortBy('id')->values();
+                            $filasCredito = $docsCredito->sortBy(fn ($d) => [$ordenTipo[$d->tipo] ?? 9, $d->id])->values();
                         @endphp
                         @foreach($filasCredito as $k => $doc)
                             @php
