@@ -305,6 +305,16 @@ class Create extends Component
     /** @var array<int, array{num:int, venc:string, saldo:float, dias:int, rate:float, calc:float, valor:string, sel:bool}> */
     public array $moraCuotas = [];
 
+    /**
+     * Cuotas cuya mora compone el Total Mora tras "elegir cuotas" (17/10,
+     * Antony): el rótulo de la banda de Atraso las nombra ("cuotas 1 a 3").
+     * Vacío = el Total Mora es la calculada global, de la impaga más antigua.
+     * Se limpia cuando el cajero vuelve a teclear el Monto a Pagar.
+     *
+     * @var list<int>
+     */
+    public array $moraCuotasAplicadas = [];
+
     public function abrirMoraCuotas(): void
     {
         $this->moraCuotas = [];
@@ -390,21 +400,26 @@ class Create extends Component
         $monto = 0.0;
         $mora = 0.0;
         $haySeleccion = false;
+        $conMora = [];
         foreach ($this->moraCuotas as $fila) {
             if (! $fila['sel']) {
                 break; // prefijo estricto: en la primera desmarcada se corta (el motor FIFO no salta cuotas)
             }
             $haySeleccion = true;
             $monto += (float) $fila['saldo'];
-            if (is_numeric($fila['valor'] ?? null)) {
-                $mora += max(0, (float) $fila['valor']);
+            if (is_numeric($fila['valor'] ?? null) && (float) $fila['valor'] > 0) {
+                $mora += (float) $fila['valor'];
+                $conMora[] = (int) $fila['num'];
             }
         }
 
         $this->monto = $haySeleccion ? number_format(round($monto, 2), 2, '.', '') : null;
         $this->montoTecleado = null;   // el monto de las cuotas elegidas manda
+        $this->moraCuotasAplicadas = [];
         if ($this->canEditMora()) {
             $this->moraManual = $haySeleccion ? number_format(round($mora, 2), 2, '.', '') : null;
+            // El Total Mora pasa a ser la suma del desglose: la banda nombra esas cuotas.
+            $this->moraCuotasAplicadas = $haySeleccion ? $conMora : [];
             $this->motivoSegunDireccion();
         }
         $this->refrescarPreview();
@@ -471,8 +486,10 @@ class Create extends Component
 
     public function updatedMonto(): void
     {
-        // El cajero volvió a teclear: lo guardado para el modo estricto caduca.
+        // El cajero volvió a teclear: lo guardado para el modo estricto caduca,
+        // y el Total Mora deja de corresponder a las cuotas elegidas.
         $this->montoTecleado = null;
+        $this->moraCuotasAplicadas = [];
 
         if (! $this->canEditMora()) {
             return;
@@ -538,6 +555,7 @@ class Create extends Component
             'dias_atraso' => $diasddd, 'dias_final' => $diasFinal,
             'mora_rate' => $moraRate, 'total_mora' => $totMora, 'total_mora_calc' => $totMoraCalc,
             'mora_cuota' => $moraInfo['cuota_num'],
+            'mora_cuotas' => $usaManual ? $this->moraCuotasAplicadas : [],
             'mora_manual' => $usaManual, 'mora_acumulada' => $moraAcumulada,
             // Ajuste REAL: el override cambió el monto. El campo viene precargado
             // con la mora calculada, así que "manual" sin cambio no es un ajuste
@@ -597,7 +615,7 @@ class Create extends Component
     {
         return ['importe' => 0, 'interes_pct' => 0, 'interes_total' => 0, 'total_credito' => 0,
             'saldo_pendiente' => 0, 'fecha_venc' => null, 'saldo_restante' => 0, 'dias_atraso' => 0, 'dias_final' => 0,
-            'mora_rate' => 0, 'total_mora' => 0, 'total_mora_calc' => 0, 'mora_cuota' => null, 'mora_manual' => false,
+            'mora_rate' => 0, 'total_mora' => 0, 'total_mora_calc' => 0, 'mora_cuota' => null, 'mora_cuotas' => [], 'mora_manual' => false,
             'mora_acumulada' => 0, 'saldo_mora' => 0, 'saldo_mora_restante' => 0, 'asesor_nombre' => null];
     }
 

@@ -26,7 +26,18 @@
             </div>
         </div>
     @else
-        @php $c = $calcs; @endphp
+        @php
+            $c = $calcs;
+            // 17/10 (Antony): de qué cuota(s) es el Total Mora. Si viene del desglose
+            // de "elegir cuotas" (con permiso), nombra las cuotas elegidas con mora;
+            // si no, es la calculada de la cuota impaga más antigua.
+            $cuotaMora = $c['mora_cuota'] ?? null;
+            $cuotasMora = (($c['mora_manual'] ?? false) && ! empty($c['mora_cuotas']))
+                ? $c['mora_cuotas']
+                : ($cuotaMora ? [$cuotaMora] : []);
+            $rotuloMora = \App\Support\RotuloCuotas::de($cuotasMora);
+            $totalMoraTxt = $rotuloMora !== '' ? ' · '.$rotuloMora : '';
+        @endphp
 
         @php
             // Para cancelar el crédito el Monto a Pagar debe cubrir el capital
@@ -162,13 +173,17 @@
                         $moraAcumTotal = collect($moraExon)->sum('monto');
                         $diasAtr = (int) $c['dias_atraso'];
                         $puedeMora = auth()->user()->can('pagos.mora-manual');
-                        // 17/10 (Antony): el Total Mora es el de UNA cuota —la impaga más
-                        // antigua—, no la suma de todas las vencidas; se dice cuál.
-                        $cuotaMora = $c['mora_cuota'] ?? null;
+                        // 17/10 (Antony): los días transcurridos son siempre de la impaga más
+                        // antigua; el Total Mora nombra sus cuotas ($rotuloMora, arriba).
                         $cuotaMoraTxt = $cuotaMora ? ' · cuota '.$cuotaMora : '';
-                        $cuotaMoraTitle = $cuotaMora
-                            ? "Mora de la cuota {$cuotaMora} (la impaga más antigua, vencida el ".\Carbon\Carbon::parse($c['fecha_venc'])->format('d/m/Y')."). No es la suma de la mora de todas las cuotas vencidas."
+                        $diasTitle = $cuotaMora
+                            ? "Días desde el vencimiento de la cuota {$cuotaMora}, la impaga más antigua (".\Carbon\Carbon::parse($c['fecha_venc'])->format('d/m/Y').')'
                             : '';
+                        $cuotaMoraTitle = count($cuotasMora) > 1
+                            ? "Mora de las {$rotuloMora}: suma de la mora de cada cuota marcada en \"elegir cuotas\"."
+                            : ($cuotaMora
+                                ? "Mora de la cuota {$cuotaMora} (la impaga más antigua, vencida el ".\Carbon\Carbon::parse($c['fecha_venc'])->format('d/m/Y')."). No es la suma de la mora de todas las cuotas vencidas: para cobrar varias, usa \"elegir cuotas\"."
+                                : '');
                     @endphp
                     <div class="atraso-band">
                         <div class="atraso-kpi atraso-ambar" title="Mora exonerada de cuotas que ya se pagaron con atraso (columna Mora Exon. del cronograma). No entra en este cobro.">
@@ -181,7 +196,7 @@
                             <div class="atraso-val">{{ number_format($moraAcumTotal, 2) }}</div>
                             <div class="atraso-pie">de cuotas ya pagadas</div>
                         </div>
-                        <div class="atraso-kpi {{ ! $c['fecha_venc'] ? 'atraso-gris' : ($diasAtr > 0 ? 'atraso-rojo' : 'atraso-verde') }}" title="{{ $cuotaMoraTitle }}">
+                        <div class="atraso-kpi {{ ! $c['fecha_venc'] ? 'atraso-gris' : ($diasAtr > 0 ? 'atraso-rojo' : 'atraso-verde') }}" title="{{ $diasTitle }}">
                             <div class="atraso-top">Días Transcurridos</div>
                             @if(! $c['fecha_venc'])
                                 <div class="atraso-val">—</div>
@@ -217,10 +232,10 @@
                                        placeholder="{{ number_format($c['total_mora_calc'], 2) }}"
                                        @disabled(((float)$monto) <= 0)
                                        title="{{ ((float)$monto) > 0 ? 'Total Mora editable (reemplaza la calculada)' : 'Escribe primero el Monto a Pagar' }}">
-                                <div class="atraso-pie">{{ ((float)$monto) > 0 ? 'editable' : 'calculada' }}{{ $cuotaMoraTxt }}</div>
+                                <div class="atraso-pie">{{ ((float)$monto) > 0 ? 'editable' : 'calculada' }}{{ $totalMoraTxt }}</div>
                             @else
                                 <div class="atraso-val">{{ number_format($c['total_mora'], 2) }}</div>
-                                <div class="atraso-pie">calculada{{ $cuotaMoraTxt }}</div>
+                                <div class="atraso-pie">calculada{{ $totalMoraTxt }}</div>
                             @endif
                         </div>
                     </div>
@@ -853,7 +868,7 @@
                                 <div class="tp-row"><span>Interes:</span><span>{{ number_format($preview['interes'], 2) }}</span></div>
                                 {{-- 16/10 (Antony): sin línea "Excedente" en el voucher (va dentro del TOTAL). --}}
                                 @if($preview['mora'] > 0.001)
-                                    <div class="tp-row"><span>Mora{{ ($c['mora_cuota'] ?? null) ? ' cuota '.$c['mora_cuota'] : '' }}:</span><span>{{ number_format($preview['mora'], 2) }}</span></div>
+                                    <div class="tp-row"><span>Mora{{ $rotuloMora !== '' ? ' '.$rotuloMora : '' }}:</span><span>{{ number_format($preview['mora'], 2) }}</span></div>
                                 @endif
 
                                 <div class="tp-sep"></div>

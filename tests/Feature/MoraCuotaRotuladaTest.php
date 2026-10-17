@@ -7,6 +7,7 @@ use App\Models\Client;
 use App\Models\Credit;
 use App\Models\CreditInstallment;
 use App\Models\User;
+use App\Support\RotuloCuotas;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -77,7 +78,7 @@ class MoraCuotaRotuladaTest extends TestCase
             ->assertSee('calculada · cuota 1')
             ->assertSee('de cuotas ya pagadas');
         $this->assertStringContainsString('Mora de la cuota 1 (la impaga más antigua, vencida el '.now()->subDays(40)->format('d/m/Y').')', $html);
-        $this->assertStringContainsString('No es la suma de la mora de todas las cuotas vencidas.', $html);
+        $this->assertStringContainsString('No es la suma de la mora de todas las cuotas vencidas', $html);
     }
 
     public function test_con_permiso_de_mora_manual_el_rotulo_tambien_lleva_la_cuota(): void
@@ -100,5 +101,59 @@ class MoraCuotaRotuladaTest extends TestCase
         Livewire::test(Create::class, ['creditId' => $credit->id])
             ->assertSee('vence en 20 días · cuota 3')
             ->assertSee('calculada · cuota 3');
+    }
+
+    public function test_con_elegir_cuotas_el_rotulo_nombra_las_cuotas_cuya_mora_se_suma(): void
+    {
+        $this->actingAs($this->actor(conPermiso: true));
+        $credit = $this->credito();
+
+        // El modal preselecciona lo vencido (cuotas 1 y 2); aplicar suma sus moras:
+        // 40 × 1.83 + 10 × 1.83 = 73.20 + 18.30 = 91.50.
+        $comp = Livewire::test(Create::class, ['creditId' => $credit->id])
+            ->call('abrirMoraCuotas')
+            ->call('aplicarCuotas')
+            ->assertSet('moraManual', '91.50')
+            ->assertSee('editable · cuotas 1 y 2')
+            ->assertDontSee('editable · cuota 1');
+        $this->assertStringContainsString('Mora de las cuotas 1 y 2: suma de la mora de cada cuota marcada', $comp->html());
+        // Los días transcurridos siguen siendo los de la cuota 1.
+        $comp->assertSee('días de atraso · cuota 1');
+
+        // Solo la cuota 1 marcada → vuelve a nombrar una sola.
+        $comp->set('moraCuotas.1.sel', false)
+            ->call('aplicarCuotas')
+            ->assertSet('moraManual', '73.20')
+            ->assertSee('editable · cuota 1');
+
+        // Marca de nuevo las dos y luego teclea otro monto: la selección caduca.
+        $comp->call('abrirMoraCuotas')->call('aplicarCuotas')
+            ->assertSee('editable · cuotas 1 y 2')
+            ->set('monto', 50)
+            ->assertSee('editable · cuota 1')
+            ->assertDontSee('cuotas 1 y 2');
+    }
+
+    public function test_sin_permiso_de_mora_manual_elegir_cuotas_no_cambia_el_rotulo(): void
+    {
+        $this->actingAs($this->actor(conPermiso: false));
+        $credit = $this->credito();
+
+        // Sin permiso la mora del cobro sigue siendo la calculada global (cuota 1).
+        Livewire::test(Create::class, ['creditId' => $credit->id])
+            ->call('abrirMoraCuotas')
+            ->call('aplicarCuotas')
+            ->assertSee('73.20')
+            ->assertSee('calculada · cuota 1')
+            ->assertDontSee('cuotas 1 y 2');
+    }
+
+    public function test_el_rotulo_de_cuotas(): void
+    {
+        $this->assertSame('', RotuloCuotas::de([]));
+        $this->assertSame('cuota 1', RotuloCuotas::de([1]));
+        $this->assertSame('cuotas 1 y 2', RotuloCuotas::de([2, 1]));
+        $this->assertSame('cuotas 1 a 4', RotuloCuotas::de([1, 2, 3, 4]));
+        $this->assertSame('cuotas 1, 2 y 5', RotuloCuotas::de([1, 2, 5]));
     }
 }
