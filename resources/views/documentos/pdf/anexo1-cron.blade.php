@@ -28,10 +28,10 @@
     </tr>
     @foreach ($grupo as $fila)
         <tr>
-            <td class="num">{{ $fila['n'] }}</td>
-            <td class="num">{{ $fila['fecha'] }}</td>
+            <td class="num">{{ $dato($fila['n']) }}</td>
+            <td class="num">{{ $dato($fila['fecha']) }}</td>
             <td class="sim">S/.</td>
-            <td class="montod">{{ $fmt($fila['monto']) }}</td>
+            <td class="montod">{{ $dato($fmt($fila['monto'])) }}</td>
         </tr>
     @endforeach
     @if ($esUltimo)
@@ -40,7 +40,7 @@
             {{-- 'none' y no '0': con ancho 0 y estilo sin declarar, Word
                  repinta la línea de rejilla y separa el S/. del importe. --}}
             <td class="sim" style="border-right: none;">S/.</td>
-            <td class="montod">{{ $fmt($d['cronograma']['total']) }}</td>
+            <td class="montod">{{ $dato($fmt($d['cronograma']['total'])) }}</td>
         </tr>
     @endif
 </table>

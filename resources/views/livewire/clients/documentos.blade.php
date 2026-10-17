@@ -373,6 +373,10 @@
                                         style="width:21cm; height:29.7cm; max-width:100%; border:1px solid #ccc;
                                                background:#fff; display:block; margin:0 auto;"
                                         title="Vista previa del Anexo 1"></iframe>
+                                {{-- 17/10: como en el contrato, $dato() envuelve en .variable cada dato variable (solo en la previa) --}}
+                                <div class="text-center mt-1" style="font-size:11px;color:#555;">
+                                    En <span style="color:#ff0000;font-weight:700;">rojo</span>: los datos variables (ficha, crédito, vehículos y cronograma). El PDF sale todo en negro.
+                                </div>
                             </div>
                         @endif
                     @endif

@@ -4,6 +4,7 @@ namespace App\Services\Documentos;
 
 use App\Support\Documentos\Genero;
 use App\Support\Documentos\Ordinales;
+use App\Support\Documentos\Resaltado;
 use App\Support\NumerosEnLetras;
 use Illuminate\Support\HtmlString;
 
@@ -63,9 +64,7 @@ final class ContratoVm
      */
     public function v(mixed $texto): HtmlString
     {
-        $t = e((string) $texto);
-
-        return new HtmlString($this->resaltar ? '<span class="variable">'.$t.'</span>' : $t);
+        return Resaltado::dato($texto, $this->resaltar);
     }
 
     /** "S/ 7,000.00 (SIETE MIL CON 00/100 SOLES)" — claves: valor_bien, obligacion, monto_maximo, cuota */

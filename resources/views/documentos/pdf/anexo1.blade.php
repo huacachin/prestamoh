@@ -286,6 +286,11 @@
            posición la pone cada rama. */
         .ax-pie { border-top: 0.8pt solid #000; padding-top: 6px;
                   text-align: center; font-weight: bold; font-size: {{ $pt(9/8.5) }}pt; }
+        @if(($medio ?? 'pdf') === 'previa')
+        /* 17/10: el total va sobre la fila azul; el rojo de .variable (estilos)
+           no se lee ahí, así que SOLO en la previa lleva un fondo blanco. */
+        table.ax-cron tr.total .variable, table.ax-cron td.total-celda .variable { background: #fff; padding: 0 3px; }
+        @endif
         @if(($medio ?? 'pdf') === 'pdf')
         /* PDF: anclado abajo. left/right 0 en dompdf es el área de contenido
            (dentro de los márgenes), así que la raya mide lo que las tablas. */
@@ -410,7 +415,7 @@
         <tr>
             <td class="etiqueta" style="width: {{ $wEtiqueta }}%;">{{ $varios ? 'Clientes' : 'Cliente' }}</td>
             @foreach ($clientes as $c)
-                <td class="cli" style="width: {{ $wDeudor }}%;">{{ $c['nombre'] }}</td>
+                <td class="cli" style="width: {{ $wDeudor }}%;">{{ $dato($c['nombre']) }}</td>
             @endforeach
             {{-- 17/09 (Antony): "Placa de Rodaje", como las demás etiquetas, no en mayúsculas. --}}
             {{-- Con dos vehículos la columna de etiquetas es angosta y "Placas
@@ -419,7 +424,7 @@
                  Vehículos". Con uno solo cabe y sigue en una línea. --}}
             <td class="etiqueta" style="width: {{ $wVehLabel }}%;{{ $variosVeh ? '' : ' white-space: nowrap;' }}">{{ $variosVeh ? 'Placas de Rodaje' : 'Placa de Rodaje' }}</td>
             @foreach ($vehiculosCab as $i => $veh)
-                <td class="valor-cent cli" @if (! $variosVeh) colspan="2" @endif>{{ ($veh['placa'] ?? '') ?: '—' }}</td>
+                <td class="valor-cent cli" @if (! $variosVeh) colspan="2" @endif>{{ $dato(($veh['placa'] ?? '') ?: '—') }}</td>
             @endforeach
             @if (! $vehiculosCab)
                 <td class="valor-cent" colspan="2">—</td>
@@ -434,11 +439,11 @@
                  número lleva el suyo delante. --}}
             <td class="etiqueta">{{ $tipoDocComun ?: 'Documento' }}</td>
             @foreach ($clientes as $c)
-                <td class="cli">{{ $tipoDocComun ? $c['documento'] : trim(($c['documento_tipo'] ?: 'DNI').' '.$c['documento']) }}</td>
+                <td class="cli">{{ $dato($tipoDocComun ? $c['documento'] : trim(($c['documento_tipo'] ?: 'DNI').' '.$c['documento'])) }}</td>
             @endforeach
             <td class="etiqueta">Marca</td>
             @foreach ($vehiculosCab as $veh)
-                <td class="valor-cent cli" @if (! $variosVeh) colspan="2" @endif>{{ ($veh['marca'] ?? '') ?: '—' }}</td>
+                <td class="valor-cent cli" @if (! $variosVeh) colspan="2" @endif>{{ $dato(($veh['marca'] ?? '') ?: '—') }}</td>
             @endforeach
             @if (! $vehiculosCab)
                 <td class="valor-cent" colspan="2">—</td>
@@ -447,11 +452,11 @@
         <tr>
             <td class="etiqueta">Dirección</td>
             @foreach ($clientes as $c)
-                <td class="cli">{{ $c['domicilio'] }}</td>
+                <td class="cli">{{ $dato($c['domicilio']) }}</td>
             @endforeach
             <td class="etiqueta">Modelo</td>
             @foreach ($vehiculosCab as $veh)
-                <td class="valor-cent cli" @if (! $variosVeh) colspan="2" @endif>{{ ($veh['modelo'] ?? '') ?: '—' }}</td>
+                <td class="valor-cent cli" @if (! $variosVeh) colspan="2" @endif>{{ $dato(($veh['modelo'] ?? '') ?: '—') }}</td>
             @endforeach
             @if (! $vehiculosCab)
                 <td class="valor-cent" colspan="2">—</td>
@@ -460,11 +465,11 @@
         <tr>
             <td class="etiqueta">Celular</td>
             @foreach ($clientes as $c)
-                <td class="cli">{{ $c['celular'] }}</td>
+                <td class="cli">{{ $dato($c['celular']) }}</td>
             @endforeach
             <td class="etiqueta">N° Serie</td>
             @foreach ($vehiculosCab as $veh)
-                <td class="valor-cent cli" @if (! $variosVeh) colspan="2" @endif>{{ ($veh['nro_serie'] ?? '') ?: '—' }}</td>
+                <td class="valor-cent cli" @if (! $variosVeh) colspan="2" @endif>{{ $dato(($veh['nro_serie'] ?? '') ?: '—') }}</td>
             @endforeach
             @if (! $vehiculosCab)
                 <td class="valor-cent" colspan="2">—</td>
@@ -473,7 +478,7 @@
         <tr>
             <td class="etiqueta">Correo</td>
             @foreach ($clientes as $c)
-                <td class="cli"><span class="ax-correo">{{ $c['correo'] }}</span></td>
+                <td class="cli"><span class="ax-correo">{{ $dato($c['correo']) }}</span></td>
             @endforeach
             <td class="etiqueta">{{ $variosVeh ? 'Valor Vehículos' : 'Valor Vehículo' }}</td>
             @if ($variosVeh)
@@ -481,11 +486,11 @@
                      maestro —"S/" en su propia celda, pegado a la izquierda—:
                      el importe va entero en la columna de su vehículo. --}}
                 @foreach ($vehiculosCab as $veh)
-                    <td class="valor-der">{{ ($veh['valor'] ?? null) !== null ? 'S/ '.$fmt($veh['valor']) : '—' }}</td>
+                    <td class="valor-der">{{ $dato(($veh['valor'] ?? null) !== null ? 'S/ '.$fmt($veh['valor']) : '—') }}</td>
                 @endforeach
             @elseif (($v1['valor'] ?? null) !== null)
                 <td class="sim">S/</td>
-                <td class="montod">{{ $fmt($v1['valor']) }}</td>
+                <td class="montod">{{ $dato($fmt($v1['valor'])) }}</td>
             @else
                 <td class="valor-cent" colspan="2">—</td>
             @endif
@@ -528,11 +533,11 @@
             </tr>
             @foreach ($clientesExtra as $c)
                 <tr>
-                    <td class="cli">{{ $c['nombre'] }}</td>
-                    <td class="valor-cent">{{ $c['documento'] ?: '—' }}</td>
-                    <td class="cli">{{ $c['domicilio'] ?: '—' }}</td>
-                    <td class="valor-cent">{{ $c['celular'] ?: '—' }}</td>
-                    <td class="cli"><span class="ax-correo">{{ $c['correo'] }}</span></td>
+                    <td class="cli">{{ $dato($c['nombre']) }}</td>
+                    <td class="valor-cent">{{ $dato($c['documento'] ?: '—') }}</td>
+                    <td class="cli">{{ $dato($c['domicilio'] ?: '—') }}</td>
+                    <td class="valor-cent">{{ $dato($c['celular'] ?: '—') }}</td>
+                    <td class="cli"><span class="ax-correo">{{ $dato($c['correo']) }}</span></td>
                 </tr>
             @endforeach
         </table>
@@ -571,11 +576,11 @@
             </tr>
             @foreach ($vehiculosExtra as $veh)
                 <tr>
-                    <td class="valor-cent">{{ $veh['placa'] ?: '—' }}</td>
-                    <td class="valor-cent">{{ $veh['marca'] ?: '—' }}</td>
-                    <td class="valor-cent">{{ $veh['modelo'] ?: '—' }}</td>
-                    <td class="valor-cent">{{ $veh['nro_serie'] ?: '—' }}</td>
-                    <td class="valor-der">{{ $veh['valor'] !== null ? 'S/ '.$fmt($veh['valor']) : '—' }}</td>
+                    <td class="valor-cent">{{ $dato($veh['placa'] ?: '—') }}</td>
+                    <td class="valor-cent">{{ $dato($veh['marca'] ?: '—') }}</td>
+                    <td class="valor-cent">{{ $dato($veh['modelo'] ?: '—') }}</td>
+                    <td class="valor-cent">{{ $dato($veh['nro_serie'] ?: '—') }}</td>
+                    <td class="valor-der">{{ $dato($veh['valor'] !== null ? 'S/ '.$fmt($veh['valor']) : '—') }}</td>
                 </tr>
             @endforeach
         </table>
@@ -600,22 +605,22 @@
             {{-- Numeración del ÁREA ("2026-230"), no el id interno: es la que
                  citan en sus registros. Los documentos emitidos antes del
                  15/09 no la traen y siguen mostrando su id. --}}
-            <td class="valor-cent" colspan="2" style="width: 32%;">{{ $cred['correlativo'] ?? $cred['numero'] }}</td>
+            <td class="valor-cent" colspan="2" style="width: 32%;">{{ $dato($cred['correlativo'] ?? $cred['numero']) }}</td>
             <td class="etiqueta" style="width: 24%;">Moneda</td>
             <td class="valor-der" style="width: 26%;">{{ ucfirst(mb_strtolower($cred['moneda'])) }}</td>
         </tr>
         <tr>
             <td class="etiqueta" style="text-align: center;">Monto Crédito</td>
             <td class="sim">S/</td>
-            <td class="montod">{{ $fmt($cred['monto']) }}</td>
+            <td class="montod">{{ $dato($fmt($cred['monto'])) }}</td>
             <td class="etiqueta">Plazo</td>
-            <td class="valor-der">{{ $plazo }}</td>
+            <td class="valor-der">{{ $dato($plazo) }}</td>
         </tr>
         <tr>
             <td class="etiqueta" style="text-align: center;">Fecha Inicio</td>
-            <td class="valor-cent" colspan="2">{{ $fechaInicio }}</td>
+            <td class="valor-cent" colspan="2">{{ $dato($fechaInicio) }}</td>
             <td class="etiqueta">TIM (Tasa interés moratorio)</td>
-            <td class="valor-der">{{ $tim }}</td>
+            <td class="valor-der">{{ $dato($tim) }}</td>
         </tr>
     </table>
 

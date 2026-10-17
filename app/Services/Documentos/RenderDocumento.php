@@ -4,6 +4,7 @@ namespace App\Services\Documentos;
 
 use App\Models\DocumentoCliente;
 use App\Support\Documentos\Enfasis;
+use App\Support\Documentos\Resaltado;
 
 /**
  * Mapa central tipo de documento → vista Blade y datos de render. Todo
@@ -35,9 +36,13 @@ class RenderDocumento
             ];
         }
 
+        // Los anexos renderizan desde el snapshot; $dato marca cada dato
+        // variable (rojo solo en la previa, 17/10): {{ $dato($c['nombre']) }}.
+        // (No se llama $v: anexo2.blade recorre los vouchers como $v.)
         return [
             'd' => $snapshot,
             'medio' => $medio,
+            'dato' => Resaltado::marcador($medio === 'previa'),
         ];
     }
 
