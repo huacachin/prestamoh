@@ -88,7 +88,9 @@ class CronogramaAbonosDesglosadosTest extends TestCase
         $this->assertStringContainsString('>1.1</td>', $html); // numeración n.k, como una fila más
         $this->assertStringContainsString('>1.3</td>', $html);
         $this->assertStringContainsString('<small>09:51:05</small>', $html);
-        $this->assertSame(2, substr_count($html, 'title="Ver recibo" onclick="abrirRecibo('), 'dos botones de recibo: el de la cuota (su último cobro) y el del abono 2');
+        // 17/10 (Antony): con varios abonos el recibo va solo en las filas del desglose (aquí el del abono 2),
+        // ya no se repite en la fila de la cuota; con un solo pago iría en la fila de la cuota.
+        $this->assertSame(1, substr_count($html, 'title="Ver recibo" onclick="abrirRecibo('), 'un solo botón de recibo: el del abono 2');
         // Domingo en rojo / sábado en verde y amarillo si fue tarde, igual que las cuotas del semanal.
         $this->assertSame(['green', 'green', 'green'], array_column($abonos, 'color')); // 22/08, 05/09 y 19/09 de 2026 son sábados
         $this->assertSame([false, false, false], array_column($abonos, 'tarde'));

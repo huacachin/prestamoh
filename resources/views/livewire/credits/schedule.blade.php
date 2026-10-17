@@ -185,7 +185,9 @@
                                     @endif
                                 </td>
                                 <td class="text-center" style="white-space:nowrap;">
-                                    @php $rec = $recibos[$row['installment_id']] ?? null; @endphp
+                                    {{-- 17/10 (Antony): con varios abonos el recibo va en cada fila del desglose;
+                                         con un solo pago, aquí, en la fila de la cuota. --}}
+                                    @php $rec = isset($abonos[$row['installment_id']]) ? null : ($recibos[$row['installment_id']] ?? null); @endphp
                                     @if($rec)
                                         <button type="button" class="btn btn-sm btn-secondary py-0 px-1"
                                                 title="Ver recibo" onclick="abrirRecibo(@js($rec['ver']))">

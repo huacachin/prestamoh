@@ -158,7 +158,7 @@ class AbonosPorCuotaTest extends TestCase
         $this->assertSame(122.49, $abonos[1]['cobro']['total']);
     }
 
-    public function test_la_cuota_amortizada_con_un_solo_abono_se_desglosa_y_la_nota_dice_que_mas_pago_ese_cobro(): void
+    public function test_la_cuota_con_un_solo_abono_no_se_desglosa_y_la_nota_dice_que_mas_pago_ese_cobro(): void
     {
         $c = $this->credito(3, pagadas: 1);
         $c2 = $this->cuota($c, 2);
@@ -178,18 +178,40 @@ class AbonosPorCuotaTest extends TestCase
 
         $abonos = AbonosPorCuota::porCredito($c);
 
-        // La 2 (dos abonos) y la 3 (amortizada con UN abono) se desglosan; la 1, pagada en un solo cobro, no.
-        $this->assertEqualsCanonicalizing([$c2->id, $c3->id], array_keys($abonos));
+        // Solo la 2 (dos abonos) se desglosa; la 3, amortizada con UN abono, no (su recibo va en su
+        // propia fila: "si es un solo abono, debe ir en la misma cuota"); la 1, pagada en un solo cobro, tampoco.
+        $this->assertSame([$c2->id], array_keys($abonos));
         $this->assertSame([25.0, 400.0], array_column($abonos[$c2->id], 'monto'));
         $this->assertSame([400.0, 0.0], array_column($abonos[$c2->id], 'saldo'));
-        $this->assertSame([50.0], array_column($abonos[$c3->id], 'monto'));
-        $this->assertSame([375.0], array_column($abonos[$c3->id], 'saldo'));
 
-        // La nota del cobro partido, vista desde cada cuota, y la mora no es abono pero sí suma al cobro.
+        // La nota del cobro partido, y la mora no es abono pero sí suma al cobro.
         $this->assertSame(['lote' => $md, 'total' => 500.0, 'mora' => 50.0, 'otras' => [['num' => 3, 'monto' => 50.0]]], $abonos[$c2->id][1]['cobro']);
-        $this->assertSame(['lote' => $md, 'total' => 500.0, 'mora' => 50.0, 'otras' => [['num' => 2, 'monto' => 400.0]]], $abonos[$c3->id][0]['cobro']);
         $this->assertSame(['lote' => null, 'total' => 25.0, 'mora' => 0.0, 'otras' => []], $abonos[$c2->id][0]['cobro']);
-        $this->assertSame($md, $abonos[$c3->id][0]['lote']);
+        $this->assertSame($md, $abonos[$c2->id][1]['lote']);
+    }
+
+    public function test_los_saldos_al_cobro_van_descontando_abono_a_abono_y_el_del_credito_cierra_con_el_actual(): void
+    {
+        $c = $this->credito(2);
+        $c1 = $this->cuota($c, 1);
+        $c1->update(['importe_aplicado' => 87.50, 'interes_aplicado' => 112.50]); // hoy: 200 pagados de 425
+        $this->pago($c, 'INTERES', 100, $c1->id, 'Interes:  1/2', '2026-10-12', '10:23:58');
+        $this->pago($c, 'INTERES', 12.50, $c1->id, 'Interes:  1/2', '2026-10-14', '07:36:40');
+        $this->pago($c, 'CAPITAL', 87.50, $c1->id, 'Cuota:  1/2', '2026-10-14', '07:36:40');
+        DB::table('payments')->insert([
+            'credit_id' => $c->id, 'installment_id' => $c1->id, 'modo' => 'CREDITO', 'tipo' => 'MORA', 'documento' => 'MORA',
+            'fecha' => '2026-10-14 00:00:00', 'hora' => '07:36:40', 'monto' => 30, 'detalle' => 'Mora', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $primero = AbonosPorCuota::saldosAlCobro($c->id, '2026-10-12', '10:23:58');
+        $segundo = AbonosPorCuota::saldosAlCobro($c->id, '2026-10-14', '07:36:40');
+
+        $this->assertSame(325.0, $primero['cuotas'][$c1->id], 'tras el primer abono faltaban 325');
+        $this->assertSame(225.0, $segundo['cuotas'][$c1->id], 'tras el segundo, 225');
+        $this->assertSame(425.0, $segundo['cuotas'][$this->cuota($c, 2)->id], 'la cuota 2 sigue entera');
+        // Crédito: 850 en total; hoy faltan 650; al primer cobro faltaban 650 + 100 cobrados después.
+        $this->assertSame(650.0, $segundo['credito']);
+        $this->assertSame(750.0, $primero['credito']);
     }
 
     public function test_los_centavos_no_desglosan_ni_siquiera_en_la_cuota_amortizada(): void

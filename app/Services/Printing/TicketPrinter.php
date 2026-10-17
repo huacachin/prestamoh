@@ -6,6 +6,7 @@ namespace App\Services\Printing;
 
 use App\Models\CreditInstallment;
 use App\Models\MassDeletion;
+use App\Support\AbonosPorCuota;
 use App\Support\RangoCuotas;
 use App\Support\Usernames;
 use Carbon\Carbon;
@@ -96,8 +97,11 @@ final class TicketPrinter
         // ESTE cobro). La mora queda fuera: va como línea global aparte. Se
         // marca "amortizada" SOLO la cuota que quedó sin completar (por montos,
         // no por la bandera pagado) y debajo va "Cuota n (Saldo)" con lo que le
-        // falta (16/10, Antony). Refleja el estado ACTUAL, así que una
-        // reimpresión posterior puede mostrarla ya completa, que es lo esperado.
+        // faltaba (16/10, Antony). 17/10 (Antony, "en el saldo ir descontando"):
+        // el saldo es el de JUSTO DESPUÉS de este cobro, no el actual, así los
+        // tres recibos de una cuota pagada en 3 abonos de 100 dicen 325, 225 y
+        // 125 también al reimprimirlos, igual que el desglose del cronograma.
+        $saldosAlCobro = AbonosPorCuota::saldosAlCobro((int) $masivo->credit_id, (string) ($masivo->date?->format('Y-m-d') ?? ''), (string) $masivo->time);
         $porCuota = [];
         foreach ($masivo->details as $d) {
             $tipo = (string) ($d->tipo ?? '');
@@ -107,7 +111,7 @@ final class TicketPrinter
             if ($d->installment?->num_cuota !== null && in_array($tipo, ['C', 'I', 'E'], true)) {
                 $num = (int) $d->installment->num_cuota;
                 $porCuota[$num]['monto'] = ($porCuota[$num]['monto'] ?? 0.0) + (float) $d->amount;
-                $porCuota[$num]['saldo'] = self::saldoDeCuota($d->installment);
+                $porCuota[$num]['saldo'] = $saldosAlCobro['cuotas'][(int) $d->installment->id] ?? self::saldoDeCuota($d->installment);
                 $porCuota[$num]['parcial'] = $porCuota[$num]['saldo'] > 0.001;
             }
         }
@@ -154,7 +158,9 @@ final class TicketPrinter
             'excedente' => round($totales['E'], 2),
             'mora' => round($totales['M'], 2),
             'total' => round((float) $masivo->amount, 2),
-            'saldo' => $this->saldoPendiente((int) $masivo->credit_id),
+            // Saldo restante del crédito justo después de este cobro (17/10): lo que
+            // falta hoy más lo cobrado después; para el último cobro es el actual.
+            'saldo' => $saldosAlCobro['credito'],
             'proxima' => $this->proximaCuota((int) $masivo->credit_id),
             'metodo' => $this->metodoPago((int) $masivo->id),
         ];

@@ -1532,7 +1532,9 @@
                                 </td>
                                 <td>{{ $inst->pagado ? $inst->fecha_pago?->format('d/m/Y') : '' }}</td>
                                 <td class="text-center" style="white-space:nowrap;">
-                                    @php $rec = $recibos[$inst->id] ?? null; @endphp
+                                    {{-- 17/10 (Antony): con varios abonos el recibo va en cada fila del desglose;
+                                         con un solo pago, aquí, en la fila de la cuota. --}}
+                                    @php $rec = isset($abonos[$inst->id]) ? null : ($recibos[$inst->id] ?? null); @endphp
                                     @if($rec)
                                         {{-- Único botón (el de WhatsApp se quitó 14/08): abre el
                                              recibo en un modal sobre esta misma ventana, donde

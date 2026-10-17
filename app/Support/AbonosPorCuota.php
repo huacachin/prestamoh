@@ -18,11 +18,11 @@ use Illuminate\Support\Facades\URL;
  * "n/N" del detalle), no con el FIFO, para que sea el desglose de ventanilla.
  *
  * Qué cuota se desglosa: la que recibió dos o más abonos de verdad (≥ S/ 1:
- * el centavo que un pago semanal deja caer en la cuota siguiente no cuenta) y,
- * desde el 17/10, también la cuota AMORTIZADA (con algo aplicado y sin
- * completar) aunque lleve un solo abono: es justo "pagó el saldo de una cuota
- * y amortizó la siguiente", y sin la fila la pantalla de cobro no decía ni
- * cuándo ni cuánto.
+ * el centavo que un pago semanal deja caer en la cuota siguiente no cuenta).
+ * La cuota con un solo abono NO se desglosa, esté pagada o amortizada: su
+ * recibo va en la propia fila de la cuota (17/10, Antony: "si es un solo
+ * abono, debe ir en la misma cuota"); con dos o más, los recibos van en las
+ * filas del desglose, uno por abono, y la fila de la cuota ya no lo repite.
  *
  * Cada abono trae además su COBRO (el evento de caja de esa fecha+hora): total
  * cobrado, mora y lo que fue a las otras cuotas, para explicar en la propia
@@ -123,12 +123,11 @@ class AbonosPorCuota
         $clavesConAbono = [];
         foreach ($porCuota as $insId => $evs) {
             $deVerdad = count(array_filter($evs, fn ($e) => $e['monto'] >= 1));
-            $ins = $installments->firstWhere('id', $insId);
-            $aplicado = (float) $ins->importe_aplicado + (float) $ins->interes_aplicado + (float) $ins->excedente_aplicado;
-            $amortizada = ! (bool) $ins->pagado && $aplicado > 0.001;
-            if ($deVerdad < 2 && ! ($amortizada && $deVerdad >= 1)) {
+            if ($deVerdad < 2) {
                 continue;
             }
+            $ins = $installments->firstWhere('id', $insId);
+            $aplicado = (float) $ins->importe_aplicado + (float) $ins->interes_aplicado + (float) $ins->excedente_aplicado;
             $total = (float) $ins->importe_cuota + (float) $ins->importe_interes + (float) $ins->importe_excedente;
             $venc = $ins->fecha_vencimiento ? Carbon::parse($ins->fecha_vencimiento)->format('Y-m-d') : '';
             // Cobros migrados: la caja puede atribuir a la cuota algo distinto de lo aplicado
@@ -184,6 +183,68 @@ class AbonosPorCuota
         }
 
         return $abonos;
+    }
+
+    /**
+     * Saldos "a la fecha" de un cobro, para su recibo (17/10, Antony: "en el
+     * saldo ir descontando"): lo que le faltaba a cada cuota justo después de
+     * ese cobro —la misma cifra que la columna Saldo de su fila de abono— y lo
+     * que le faltaba al crédito. Antes el recibo reimprimía el estado ACTUAL,
+     * así que los tres recibos de la cuota 21 del 28808 decían "Saldo 125.00"
+     * en vez de 325 → 225 → 125.
+     *
+     *  - Por cuota: total de la cuota menos lo que la caja le atribuyó hasta
+     *    ese cobro inclusive (misma atribución que el desglose).
+     *  - Del crédito: lo que falta HOY (aplicados) más lo cobrado DESPUÉS de
+     *    ese cobro; para el último cobro coincide con el saldo actual.
+     *
+     * @return array{cuotas: array<int, float>, credito: float} cuotas por installment_id
+     */
+    public static function saldosAlCobro(int $creditId, string $fecha, string $hora): array
+    {
+        $installments = DB::table('credit_installments')->where('credit_id', $creditId)->orderBy('num_cuota')->get();
+        if ($installments->isEmpty()) {
+            return ['cuotas' => [], 'credito' => 0.0];
+        }
+        $pays = DB::table('payments')
+            ->where('credit_id', $creditId)
+            ->whereRaw("(detalle IS NULL OR RIGHT(detalle, 3) <> 'Gat')")
+            ->select('id', 'fecha', 'hora', 'monto', 'documento', 'tipo', 'installment_id', 'detalle')
+            ->get();
+        $idPorNum = $installments->pluck('id', 'num_cuota')->map(fn ($v) => (int) $v)->all();
+        $numPorId = array_flip($idPorNum);
+        $hasta = ($fecha !== '' ? Carbon::parse($fecha)->format('Y-m-d') : '').'|'.self::hora($hora);
+
+        $pagadoHasta = [];
+        $despues = 0.0;
+        foreach ($pays as $p) {
+            if (strtoupper(substr($p->documento ?? '', 0, 4)) === 'MORA' || strtoupper((string) $p->tipo) === 'MORA') {
+                continue;
+            }
+            $insId = $p->installment_id ? (int) $p->installment_id : null;
+            if ($insId === null && preg_match('/(\d+)\s*\/\s*\d+/', (string) $p->detalle, $m)) {
+                $insId = $idPorNum[(int) $m[1]] ?? null;
+            }
+            if ($insId === null || ! isset($numPorId[$insId])) {
+                continue; // pago sin cuota (OTROS): no baja ninguna cuota
+            }
+            $k = ($p->fecha ? Carbon::parse($p->fecha)->format('Y-m-d') : '').'|'.self::hora($p->hora);
+            if ($k > $hasta) {
+                $despues += (float) $p->monto;
+            } else {
+                $pagadoHasta[$insId] = ($pagadoHasta[$insId] ?? 0.0) + (float) $p->monto;
+            }
+        }
+
+        $cuotas = [];
+        $faltaHoy = 0.0;
+        foreach ($installments as $ins) {
+            $total = (float) $ins->importe_cuota + (float) $ins->importe_interes + (float) $ins->importe_excedente;
+            $cuotas[(int) $ins->id] = round(max(0, $total - ($pagadoHasta[(int) $ins->id] ?? 0.0)), 2);
+            $faltaHoy += $total - (float) $ins->importe_aplicado - (float) $ins->interes_aplicado - (float) $ins->excedente_aplicado;
+        }
+
+        return ['cuotas' => $cuotas, 'credito' => round($faltaHoy + $despues, 2)];
     }
 
     /**
