@@ -320,7 +320,7 @@ class Documentos extends Component
 
         // Obs. 1.1 del Área Legal (02/10): se preselecciona el crédito "vigente"
         // (el más reciente sin contrato); si todos tienen contrato, solo cuando hay uno.
-        $vigente = collect($this->creditosAnexo1())->firstWhere('estado', 'vigente');
+        $vigente = collect($this->creditosConEstado())->firstWhere('estado', 'vigente');
         $this->creditoId = $vigente['credit']->id ?? ($creditos->count() === 1 ? $creditos->first()->id : null);
         // Se preseleccionan todos: lo habitual es anexar la garantía completa;
         // desmarcar es más rápido que buscar y marcar uno por uno.
@@ -1533,14 +1533,15 @@ class Documentos extends Component
     }
 
     /**
-     * Créditos activos para el Anexo 1 con su estado para el color (obs. 1.1
-     * del Área Legal, 29/09): 'vigente' = el más reciente sin contrato
-     * emitido (amarillo: es el que toca contratar), 'contratado' = ya tiene
-     * contrato (negrita), 'anterior' = créditos previos sin contrato (rojo).
+     * Créditos activos con su estado para el color (obs. 1.1 del Área Legal,
+     * 29/09, en el Anexo 1; desde el 17/10 también en el Anexo 2, pedido de
+     * Antony): 'vigente' = el más reciente sin contrato emitido (amarillo: es
+     * el que toca contratar), 'contratado' = ya tiene contrato (negrita),
+     * 'anterior' = créditos previos sin contrato (rojo).
      *
      * @return list<array{credit: Credit, estado: string}>
      */
-    private function creditosAnexo1(): array
+    private function creditosConEstado(): array
     {
         $conContrato = DocumentoCliente::where('client_id', $this->clientId)
             ->where('tipo', 'contrato')->where('estado', '!=', 'anulado')
@@ -2183,7 +2184,7 @@ class Documentos extends Component
             'documentos' => $documentos,
             'documentosAnulados' => $anulados,
             'creditosActivos' => $this->creditosActivos(),
-            'creditosAnexo1' => $this->creditosAnexo1(),
+            'creditosConEstado' => $this->creditosConEstado(),
             'vehiculos' => $this->vehiculosCliente(),
             // 18/09: los codeudores que saldrían en el Anexo 1 (copropietarios
             // de los vehículos MARCADOS), para mostrarlos en el modal.

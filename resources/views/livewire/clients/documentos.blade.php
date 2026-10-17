@@ -257,7 +257,7 @@
                                      Mac/Safari, así que es una lista: amarillo = el más reciente sin
                                      contrato (el que toca), negrita = ya con contrato, rojo = anteriores. --}}
                                 <div class="border rounded p-1 @error('creditoId') border-danger @enderror" style="background:#fcfcfa; max-height:150px; overflow:auto;">
-                                    @foreach($creditosAnexo1 as $item)
+                                    @foreach($creditosConEstado as $item)
                                         @php $c = $item['credit']; @endphp
                                         <label class="d-flex align-items-center gap-2 small px-2 py-1 rounded credito-{{ $item['estado'] }}"
                                                style="cursor:pointer;" wire:key="anx-cred-{{ $c->id }}">
@@ -1101,16 +1101,24 @@
                         <div class="row g-2">
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold mb-1">Crédito desembolsado *</label>
-                                <select class="form-select form-select-sm @error('anexo2CreditoId') is-invalid @enderror"
-                                        wire:model.live="anexo2CreditoId">
-                                    <option value="">— Selecciona el crédito —</option>
-                                    @foreach($creditosActivos as $c)
-                                        <option value="{{ $c->id }}">
-                                            #{{ $c->id }} — S/ {{ number_format((float) $c->importe, 2) }} — {{ $c->cuotas }} cuotas ({{ $c->tipoPlanillaLabel() }})
-                                        </option>
+                                {{-- 17/10 (Antony): misma lista con color que el Anexo 1 (obs. 1.1):
+                                     amarillo = el más reciente sin contrato (el vigente del día),
+                                     negrita = ya con contrato, rojo = créditos anteriores. --}}
+                                <div class="border rounded p-1 @error('anexo2CreditoId') border-danger @enderror" style="background:#fcfcfa; max-height:150px; overflow:auto;">
+                                    @foreach($creditosConEstado as $item)
+                                        @php $c = $item['credit']; @endphp
+                                        <label class="d-flex align-items-center gap-2 small px-2 py-1 rounded credito-{{ $item['estado'] }}"
+                                               style="cursor:pointer;" wire:key="anx2-cred-{{ $c->id }}">
+                                            <input class="form-check-input mt-0" type="radio" name="creditoAnexo2"
+                                                   value="{{ $c->id }}" wire:model.live="anexo2CreditoId">
+                                            <span>#{{ $c->id }} — S/ {{ number_format((float) $c->importe, 2) }} — {{ $c->cuotas }} cuotas ({{ $c->tipoPlanillaLabel() }})</span>
+                                            <span class="badge ms-auto {{ ['vigente' => 'bg-warning text-dark', 'contratado' => 'bg-dark', 'anterior' => 'bg-danger'][$item['estado']] }}" style="font-size:9px;">
+                                                {{ ['vigente' => 'Vigente del día', 'contratado' => 'Con contrato', 'anterior' => 'Anterior'][$item['estado']] }}
+                                            </span>
+                                        </label>
                                     @endforeach
-                                </select>
-                                @error('anexo2CreditoId') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                </div>
+                                @error('anexo2CreditoId') <div class="text-danger small">{{ $message }}</div> @enderror
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold mb-1">Fecha del documento</label>
@@ -1146,8 +1154,11 @@
                             <div class="row g-2">
                                 <div class="col-md-4">
                                     <label class="form-label small mb-1">Monto del voucher *</label>
-                                    <input type="text" class="form-control form-control-sm"
-                                           wire:model.blur="anexo2Monto" placeholder="10,000.00">
+                                    {{-- 17/10 (Antony): BLOQUEADO. Lo rellena la lectura del voucher y
+                                         solo sirve para cuadrar contra el desembolso; no se edita. --}}
+                                    <input type="text" class="form-control form-control-sm bg-light" readonly
+                                           wire:model="anexo2Monto" placeholder="Lo rellena la lectura del voucher"
+                                           title="Lo toma la lectura del voucher; no se edita.">
                                     @if($montoDesembolsoAnexo2 !== null)
                                         {{-- 18/09: el cotejo con el desembolso se ve ANTES de generar.
                                              Con dos vouchers (obs. 5.1) lo que cuadra es la SUMA de los dos. --}}
@@ -1291,7 +1302,10 @@
                                 <div class="row g-2">
                                     <div class="col-md-4">
                                         <label class="form-label small mb-1">Monto del voucher 2 *</label>
-                                        <input type="text" class="form-control form-control-sm" wire:model.blur="anexo2Monto2" placeholder="5,000.00">
+                                        {{-- 17/10 (Antony): bloqueado, lo rellena la lectura del voucher 2. --}}
+                                        <input type="text" class="form-control form-control-sm bg-light" readonly
+                                               wire:model="anexo2Monto2" placeholder="Lo rellena la lectura del voucher"
+                                               title="Lo toma la lectura del voucher; no se edita.">
                                         @error('anexo2Monto2') <span class="title-modules small">{{ $message }}</span> @enderror
                                     </div>
                                     <div class="col-md-8">
