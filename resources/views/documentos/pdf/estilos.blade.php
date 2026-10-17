@@ -197,9 +197,10 @@
 
     @if($medio === 'previa')
     /* Previa del wizard (16/10): los DATOS VARIABLES (ficha, crédito, vehículos
-       y lo escrito en el wizard) salen en rojo: ContratoVm::v() los envuelve en
-       .variable. Solo en la previa: el PDF y el Word no llevan el span. */
-    .variable { color: #c00000; }
+       y lo escrito en el wizard) salen en rojo fuerte y negrita (17/10, Antony):
+       ContratoVm::v() los envuelve en .variable. SOLO en la previa: el PDF y el
+       Word no llevan ni el span ni esta regla, salen como siempre. */
+    .variable { color: #ff0000; font-weight: bold; }
     @endif
 
     .salto { page-break-before: always; }

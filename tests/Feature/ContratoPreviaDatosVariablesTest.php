@@ -108,7 +108,8 @@ class ContratoPreviaDatosVariablesTest extends TestCase
             $this->assertStringContainsString($rojo($dato), $previa, "Debió salir en rojo: {$dato}");
         }
         $this->assertStringContainsString($rojo('4').' CUOTAS', $previa);
-        $this->assertStringContainsString('.variable { color: #c00000; }', $previa);
+        // Rojo fuerte y negrita (17/10, Antony), solo en la previa.
+        $this->assertStringContainsString('.variable { color: #ff0000; font-weight: bold; }', $previa);
 
         // El acreedor y su apoderada son constantes: en negro.
         $acreedor = config('documentos.acreedor');
