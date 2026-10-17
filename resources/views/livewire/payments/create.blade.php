@@ -162,33 +162,42 @@
                         $moraAcumTotal = collect($moraExon)->sum('monto');
                         $diasAtr = (int) $c['dias_atraso'];
                         $puedeMora = auth()->user()->can('pagos.mora-manual');
+                        // 17/10 (Antony): el Total Mora es el de UNA cuota —la impaga más
+                        // antigua—, no la suma de todas las vencidas; se dice cuál.
+                        $cuotaMora = $c['mora_cuota'] ?? null;
+                        $cuotaMoraTxt = $cuotaMora ? ' · cuota '.$cuotaMora : '';
+                        $cuotaMoraTitle = $cuotaMora
+                            ? "Mora de la cuota {$cuotaMora} (la impaga más antigua, vencida el ".\Carbon\Carbon::parse($c['fecha_venc'])->format('d/m/Y')."). No es la suma de la mora de todas las cuotas vencidas."
+                            : '';
                     @endphp
                     <div class="atraso-band">
-                        <div class="atraso-kpi atraso-ambar">
+                        <div class="atraso-kpi atraso-ambar" title="Mora exonerada de cuotas que ya se pagaron con atraso (columna Mora Exon. del cronograma). No entra en este cobro.">
                             <div class="atraso-top">Días Mora Acumulada</div>
                             <div class="atraso-val">{{ $moraAcumDias }}</div>
+                            <div class="atraso-pie">de cuotas ya pagadas</div>
                         </div>
-                        <div class="atraso-kpi atraso-ambar">
+                        <div class="atraso-kpi atraso-ambar" title="Mora exonerada de cuotas que ya se pagaron con atraso (columna Mora Exon. del cronograma). No entra en este cobro.">
                             <div class="atraso-top">Total Mora Acumulada</div>
                             <div class="atraso-val">{{ number_format($moraAcumTotal, 2) }}</div>
+                            <div class="atraso-pie">de cuotas ya pagadas</div>
                         </div>
-                        <div class="atraso-kpi {{ ! $c['fecha_venc'] ? 'atraso-gris' : ($diasAtr > 0 ? 'atraso-rojo' : 'atraso-verde') }}">
+                        <div class="atraso-kpi {{ ! $c['fecha_venc'] ? 'atraso-gris' : ($diasAtr > 0 ? 'atraso-rojo' : 'atraso-verde') }}" title="{{ $cuotaMoraTitle }}">
                             <div class="atraso-top">Días Transcurridos</div>
                             @if(! $c['fecha_venc'])
                                 <div class="atraso-val">—</div>
                                 <div class="atraso-pie">sin cuotas pendientes</div>
                             @elseif($diasAtr > 0)
                                 <div class="atraso-val">{{ $diasAtr }}</div>
-                                <div class="atraso-pie">{{ $diasAtr === 1 ? 'día' : 'días' }} de atraso</div>
+                                <div class="atraso-pie">{{ $diasAtr === 1 ? 'día' : 'días' }} de atraso{{ $cuotaMoraTxt }}</div>
                             @elseif($diasAtr === 0)
                                 <div class="atraso-val">Hoy</div>
-                                <div class="atraso-pie">vence hoy</div>
+                                <div class="atraso-pie">vence hoy{{ $cuotaMoraTxt }}</div>
                             @else
                                 <div class="atraso-val">Al día</div>
-                                <div class="atraso-pie">vence en {{ abs($diasAtr) }} {{ abs($diasAtr) === 1 ? 'día' : 'días' }}</div>
+                                <div class="atraso-pie">vence en {{ abs($diasAtr) }} {{ abs($diasAtr) === 1 ? 'día' : 'días' }}{{ $cuotaMoraTxt }}</div>
                             @endif
                         </div>
-                        <div class="atraso-kpi {{ $c['total_mora'] > 0 ? 'atraso-rojo' : 'atraso-verde' }}">
+                        <div class="atraso-kpi {{ $c['total_mora'] > 0 ? 'atraso-rojo' : 'atraso-verde' }}" title="{{ $cuotaMoraTitle }}">
                             <div class="atraso-top">
                                 Total Mora
                                 @if($puedeMora)
@@ -208,10 +217,10 @@
                                        placeholder="{{ number_format($c['total_mora_calc'], 2) }}"
                                        @disabled(((float)$monto) <= 0)
                                        title="{{ ((float)$monto) > 0 ? 'Total Mora editable (reemplaza la calculada)' : 'Escribe primero el Monto a Pagar' }}">
-                                <div class="atraso-pie">{{ ((float)$monto) > 0 ? 'editable' : 'calculada' }}</div>
+                                <div class="atraso-pie">{{ ((float)$monto) > 0 ? 'editable' : 'calculada' }}{{ $cuotaMoraTxt }}</div>
                             @else
                                 <div class="atraso-val">{{ number_format($c['total_mora'], 2) }}</div>
-                                <div class="atraso-pie">calculada</div>
+                                <div class="atraso-pie">calculada{{ $cuotaMoraTxt }}</div>
                             @endif
                         </div>
                     </div>
@@ -844,7 +853,7 @@
                                 <div class="tp-row"><span>Interes:</span><span>{{ number_format($preview['interes'], 2) }}</span></div>
                                 {{-- 16/10 (Antony): sin línea "Excedente" en el voucher (va dentro del TOTAL). --}}
                                 @if($preview['mora'] > 0.001)
-                                    <div class="tp-row"><span>Mora:</span><span>{{ number_format($preview['mora'], 2) }}</span></div>
+                                    <div class="tp-row"><span>Mora{{ ($c['mora_cuota'] ?? null) ? ' cuota '.$c['mora_cuota'] : '' }}:</span><span>{{ number_format($preview['mora'], 2) }}</span></div>
                                 @endif
 
                                 <div class="tp-sep"></div>
@@ -1201,7 +1210,7 @@
                                 <div class="d-flex justify-content-between small"><span>Excedente</span><span>{{ number_format($sim['exc_hoy'], 2) }}</span></div>
                             @endif
                             <div class="d-flex justify-content-between small">
-                                <span>Mora @if($sim['mora_dias'] > 0)({{ $sim['mora_dias'] }} {{ $sim['mora_dias'] === 1 ? 'día' : 'días' }} × {{ number_format($sim['mora_rate'], 2) }})@endif</span>
+                                <span>Mora{{ ($c['mora_cuota'] ?? null) ? ' cuota '.$c['mora_cuota'] : '' }} @if($sim['mora_dias'] > 0)({{ $sim['mora_dias'] }} {{ $sim['mora_dias'] === 1 ? 'día' : 'días' }} × {{ number_format($sim['mora_rate'], 2) }})@endif</span>
                                 <span style="color:red;">{{ number_format($sim['mora'], 2) }}</span>
                             </div>
                             <div class="d-flex justify-content-between fw-bold border-top mt-1 pt-1"><span>Total</span><span>{{ number_format($sim['total_hoy'], 2) }}</span></div>
@@ -1240,7 +1249,7 @@
                                 <div class="d-flex justify-content-between small"><span>Excedente</span><span>{{ number_format($sim['exc_prox'], 2) }}</span></div>
                             @endif
                             <div class="d-flex justify-content-between small">
-                                <span>Mora @if($sim['mora_dias'] > 0)({{ $sim['mora_dias'] }} {{ $sim['mora_dias'] === 1 ? 'día' : 'días' }} × {{ number_format($sim['mora_rate'], 2) }})@endif</span>
+                                <span>Mora{{ ($c['mora_cuota'] ?? null) ? ' cuota '.$c['mora_cuota'] : '' }} @if($sim['mora_dias'] > 0)({{ $sim['mora_dias'] }} {{ $sim['mora_dias'] === 1 ? 'día' : 'días' }} × {{ number_format($sim['mora_rate'], 2) }})@endif</span>
                                 <span style="color:red;">{{ number_format($sim['mora'], 2) }}</span>
                             </div>
                             <div class="d-flex justify-content-between fw-bold border-top mt-1 pt-1"><span>Total</span><span>{{ number_format($sim['total_prox'], 2) }}</span></div>
@@ -1297,11 +1306,11 @@
                                 <div class="d-flex justify-content-between small"><span>Excedente vencido</span><span>{{ number_format($sim['exc_hoy'], 2) }}</span></div>
                             @endif
                             <div class="d-flex justify-content-between small">
-                                <span>Mora @if($sim['mora_dias'] > 0)({{ $sim['mora_dias'] }} {{ $sim['mora_dias'] === 1 ? 'día' : 'días' }} × {{ number_format($sim['mora_rate'], 2) }})@endif</span>
+                                <span>Mora{{ ($c['mora_cuota'] ?? null) ? ' cuota '.$c['mora_cuota'] : '' }} @if($sim['mora_dias'] > 0)({{ $sim['mora_dias'] }} {{ $sim['mora_dias'] === 1 ? 'día' : 'días' }} × {{ number_format($sim['mora_rate'], 2) }})@endif</span>
                                 <span style="{{ $quitarMora ? $tachado : 'color:red;' }}">{{ number_format($sim['mora'], 2) }}</span>
                             </div>
                             <div class="d-flex justify-content-between small">
-                                <span>Mora acumulada @if($moraAcumDias > 0)({{ $moraAcumDias }} {{ $moraAcumDias === 1 ? 'día' : 'días' }})@endif</span>
+                                <span>Mora acumulada de cuotas ya pagadas @if($moraAcumDias > 0)({{ $moraAcumDias }} {{ $moraAcumDias === 1 ? 'día' : 'días' }})@endif</span>
                                 <span style="{{ $quitarMoraAcum ? $tachado : 'color:#b8860b;' }}">{{ number_format($moraAcumTotal, 2) }}</span>
                             </div>
                             <div class="d-flex justify-content-between fw-bold border-top mt-1 pt-1"><span>Total</span><span>{{ number_format($totalCancelarCard, 2) }}</span></div>

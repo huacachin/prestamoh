@@ -537,6 +537,7 @@ class Create extends Component
             'saldo_restante' => $saldoRestante,
             'dias_atraso' => $diasddd, 'dias_final' => $diasFinal,
             'mora_rate' => $moraRate, 'total_mora' => $totMora, 'total_mora_calc' => $totMoraCalc,
+            'mora_cuota' => $moraInfo['cuota_num'],
             'mora_manual' => $usaManual, 'mora_acumulada' => $moraAcumulada,
             // Ajuste REAL: el override cambió el monto. El campo viene precargado
             // con la mora calculada, así que "manual" sin cambio no es un ajuste
@@ -565,7 +566,7 @@ class Create extends Component
         $minIns = DB::table('credit_installments')->where('credit_id', $this->credit->id)
             ->where('pagado', 0)->where('importe_cuota', '>', 0)
             ->orderBy('fecha_vencimiento')
-            ->first(['fecha_vencimiento', 'importe_cuota', 'importe_interes', 'importe_excedente']);
+            ->first(['num_cuota', 'fecha_vencimiento', 'importe_cuota', 'importe_interes', 'importe_excedente']);
         $minFechaStr = $minIns?->fecha_vencimiento ? Carbon::parse($minIns->fecha_vencimiento)->format('Y-m-d') : null;
 
         $diasddd = 0;
@@ -582,6 +583,9 @@ class Create extends Component
 
         return [
             'fecha_venc' => $minFechaStr,
+            // 17/10 (Antony): la pantalla dice de QUÉ cuota es esta mora — es la
+            // de la impaga más antigua, no la suma de todas las vencidas.
+            'cuota_num' => $minIns?->num_cuota !== null ? (int) $minIns->num_cuota : null,
             'dias_atraso' => $diasddd,
             'dias_final' => $diasFinal,
             'mora_rate' => $moraRate,
@@ -593,7 +597,7 @@ class Create extends Component
     {
         return ['importe' => 0, 'interes_pct' => 0, 'interes_total' => 0, 'total_credito' => 0,
             'saldo_pendiente' => 0, 'fecha_venc' => null, 'saldo_restante' => 0, 'dias_atraso' => 0, 'dias_final' => 0,
-            'mora_rate' => 0, 'total_mora' => 0, 'total_mora_calc' => 0, 'mora_manual' => false,
+            'mora_rate' => 0, 'total_mora' => 0, 'total_mora_calc' => 0, 'mora_cuota' => null, 'mora_manual' => false,
             'mora_acumulada' => 0, 'saldo_mora' => 0, 'saldo_mora_restante' => 0, 'asesor_nombre' => null];
     }
 
