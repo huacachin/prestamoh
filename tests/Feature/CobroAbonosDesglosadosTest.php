@@ -115,6 +115,10 @@ class CobroAbonosDesglosadosTest extends TestCase
         $this->assertStringContainsString('<small>10:23:58</small>', $html);
         $this->assertStringContainsString('12/10/2026', $html);
         $this->assertStringContainsString('Amortizada', $html);
+        $this->assertStringContainsString('3 abonos', $html);
+        // La cuota en juego llega abierta; cada abono fue un cobro de una sola cuota: sin nota.
+        $this->assertStringContainsString('x-show="abiertas['.$c21->id.'] ?? true"', $html);
+        $this->assertStringNotContainsString('Cobro S/ 100.00', $html);
         // Recibos: el de la cuota (su último cobro) + uno por abono, cada uno con su lote.
         $this->assertSame(4, substr_count($html, 'title="Ver recibo" onclick="abrirRecibo('));
         $this->assertStringContainsString('/recibo/'.$md1, (string) $abonos[$c21->id][0]['recibo']);
@@ -138,17 +142,31 @@ class CobroAbonosDesglosadosTest extends TestCase
 
         $abonos = AbonosPorCuota::porCredito($c);
 
-        // La 14 se pagó en dos abonos (25 y 400) y los dos se ven; la 15 solo tiene uno todavía: sin desglose.
-        $this->assertSame([$c14->id], array_keys($abonos));
+        // La 14 se pagó en dos abonos (25 y 400) y la 15, amortizada con uno solo, también se desglosa:
+        // es justo "pagó el saldo de una cuota y amortizó la siguiente".
+        $this->assertSame([$c14->id, $c15->id], array_keys($abonos));
         $this->assertSame([25.0, 400.0], array_column($abonos[$c14->id], 'monto'));
         $this->assertSame([400.0, 0.0], array_column($abonos[$c14->id], 'saldo'));
         $this->assertSame([null, $md], array_column($abonos[$c14->id], 'lote'));
+        $this->assertSame([50.0], array_column($abonos[$c15->id], 'monto'));
+        $this->assertSame([375.0], array_column($abonos[$c15->id], 'saldo'));
 
         $html = Livewire::test(Create::class, ['creditId' => $c->id])->html();
-        $this->assertSame(2, substr_count($html, 'class="fila-abono"'));
+        $this->assertSame(3, substr_count($html, 'class="fila-abono"'));
         $this->assertStringContainsString('>14.1</td>', $html);
         $this->assertStringContainsString('>14.2</td>', $html);
-        $this->assertStringNotContainsString('>15.1</td>', $html);
+        $this->assertStringContainsString('>15.1</td>', $html);
+        // La propia fila explica el cobro partido, visto desde cada cuota.
+        $this->assertStringContainsString("Cobro S/ 450.00 (#{$md}): S/ 400.00 a esta cuota · S/ 50.00 a la cuota 15", $html);
+        $this->assertStringContainsString("Cobro S/ 450.00 (#{$md}): S/ 50.00 a esta cuota · S/ 400.00 a la cuota 14", $html);
+        // Plegado por defecto: la 14 (pagada) cerrada, la 15 (en juego) abierta; todo con Alpine.
+        $this->assertStringContainsString('x-show="abiertas['.$c14->id.'] ?? false"', $html);
+        $this->assertStringContainsString('x-show="abiertas['.$c15->id.'] ?? true"', $html);
+        $this->assertStringContainsString('2 abonos', $html);
+        $this->assertStringContainsString('1 abono', $html);
+        $this->assertStringContainsString('Desglosar abonos', $html);
+        $this->assertStringNotContainsString('wire:click="abrir', $html);
+        $this->assertStringNotContainsString('table-striped table-hover', $html);
     }
 
     public function test_sin_pagos_parciales_la_tabla_no_cambia(): void
@@ -162,6 +180,7 @@ class CobroAbonosDesglosadosTest extends TestCase
 
         $comp = Livewire::test(Create::class, ['creditId' => $c->id]);
         $this->assertSame([], $comp->viewData('abonos'));
-        $this->assertStringNotContainsString('fila-abono', $comp->html());
+        $this->assertStringNotContainsString('class="fila-abono"', $comp->html());
+        $this->assertStringNotContainsString('Desglosar abonos', $comp->html());
     }
 }
