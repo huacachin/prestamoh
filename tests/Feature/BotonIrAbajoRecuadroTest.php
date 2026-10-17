@@ -49,4 +49,37 @@ class BotonIrAbajoRecuadroTest extends TestCase
         $this->assertStringContainsString('data-scroll-sel="#incomesTable"', $html);
         $this->assertStringContainsString('data-scroll-cont="1"', $html);
     }
+
+    /**
+     * 17/10 (Antony, Caja General 2): tras bajar con el botón de la tabla, subir
+     * con el botón fijo de la plantilla (.go-top) dejaba el ícono en "subir".
+     * La dirección se lee ahora de la posición real y se re-pinta en cada
+     * scroll (página o recuadro), al cambiar el tamaño y tras cada re-render.
+     */
+    public function test_el_icono_del_boton_que_alterna_sigue_la_posicion_real_del_scroll(): void
+    {
+        $user = User::factory()->create(['username' => 'scroll-sync']);
+        $this->seed(PermissionCatalogSeeder::class);
+        $user->givePermissionTo('caja.ingresos');
+        $this->actingAs($user);
+
+        $html = $this->get(route('cash.incomes'))->assertOk()->getContent();
+
+        // Una sola fuente de verdad para la posición, compartida por el clic y el sincronizador.
+        $this->assertStringContainsString('var estaAbajoDe = function (el, isCont) {', $html);
+        $this->assertStringContainsString('var bordeVisible = el.getBoundingClientRect().bottom <= window.innerHeight + 8;', $html);
+        $this->assertStringContainsString('return dentroAbajo && bordeVisible;', $html);
+        $this->assertStringContainsString('var abajo = estaAbajoDe(el, isCont);', $html);
+        $this->assertStringContainsString("pintarDireccion(btn, abajo ? 'down' : 'up');", $html);
+        // Se re-pinta con el scroll de la página Y del recuadro (capture), al redimensionar y tras cada cambio del DOM.
+        $this->assertStringContainsString("document.addEventListener('scroll', sincronizarBotones, true);", $html);
+        $this->assertStringContainsString("window.addEventListener('resize', sincronizarBotones);", $html);
+        $this->assertStringContainsString('new MutationObserver(sincronizarBotones).observe(document.documentElement, { childList: true, subtree: true });', $html);
+        $this->assertStringContainsString("document.querySelectorAll('[data-scroll-sel]:not([data-scroll-dir])')", $html);
+        // El botón fijo de la plantilla sigue ahí: es el que destapó el problema.
+        $this->assertStringContainsString('<div class="go-top">', $html);
+        // Ya no hay estado propio del clic.
+        $this->assertStringNotContainsString('var nearBottom = ', $html);
+        $this->assertStringNotContainsString("setDir('up');", $html);
+    }
 }

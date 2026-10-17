@@ -29,6 +29,53 @@
      Se delega en document para que también capture botones agregados después
      (Livewire re-renders, modales, etc.). --}}
 <script>
+// 17/10 (Antony, Caja General 2): el ícono del botón que alterna (bajar/subir) se
+// quedaba en "subir" después de volver arriba por otro camino —el botón fijo de la
+// plantilla (.go-top), la rueda o un re-render de Livewire—. Ahora la dirección se
+// lee de la POSICIÓN real y se re-pinta en cada scroll (de la página o del recuadro).
+var estaAbajoDe = function (el, isCont) {
+    if (isCont) {
+        var dentroAbajo = (el.scrollTop + el.clientHeight) >= (el.scrollHeight - 8);
+        // Si el recuadro no cabe en la ventana, "estar abajo" exige además que su borde
+        // inferior esté a la vista: con la página arriba, el próximo clic debe BAJAR
+        // aunque el scroll interno ya esté al final.
+        var bordeVisible = el.getBoundingClientRect().bottom <= window.innerHeight + 8;
+        if (el.scrollHeight <= el.clientHeight + 8 && bordeVisible) return false; // nada que mover
+        return dentroAbajo && bordeVisible;
+    }
+    var doc = document.documentElement;
+    if (doc.scrollHeight <= window.innerHeight + 8) return false; // la página no hace scroll
+    return (window.innerHeight + window.scrollY) >= (doc.scrollHeight - 8);
+};
+// El ícono muestra la acción del PRÓXIMO clic.
+var pintarDireccion = function (btn, dir) {
+    var icon = btn.querySelector('i');
+    if (icon) {
+        icon.classList.toggle('ti-chevron-down', dir === 'down');
+        icon.classList.toggle('ti-chevron-up', dir === 'up');
+    }
+    btn.setAttribute('title', dir === 'up' ? 'Volver al inicio' : 'Ir al final');
+};
+var sincronizando = false;
+var sincronizarBotones = function () {
+    if (sincronizando) return;
+    sincronizando = true;
+    requestAnimationFrame(function () {
+        sincronizando = false;
+        document.querySelectorAll('[data-scroll-sel]:not([data-scroll-dir])').forEach(function (btn) {
+            var el = document.querySelector(btn.getAttribute('data-scroll-sel'));
+            if (!el) return;
+            pintarDireccion(btn, estaAbajoDe(el, btn.getAttribute('data-scroll-cont') === '1') ? 'up' : 'down');
+        });
+    });
+};
+// capture: true para oír también el scroll interno de los recuadros (no burbujea).
+document.addEventListener('scroll', sincronizarBotones, true);
+window.addEventListener('resize', sincronizarBotones);
+window.addEventListener('load', sincronizarBotones);
+// Livewire re-pinta el botón con su ícono por defecto: tras cada cambio del DOM se vuelve a leer.
+new MutationObserver(sincronizarBotones).observe(document.documentElement, { childList: true, subtree: true });
+
 document.addEventListener('click', function (e) {
     var btn = e.target.closest('[data-scroll-sel]');
     if (!btn) return;
@@ -100,36 +147,19 @@ document.addEventListener('click', function (e) {
     }
 
     // Toggle: si estás arriba → baja; si estás cerca del fondo → vuelve arriba.
-    var icon = btn.querySelector('i');
-    var setDir = function (dir) {
-        if (icon) {
-            icon.classList.toggle('ti-chevron-down', dir === 'down');
-            icon.classList.toggle('ti-chevron-up', dir === 'up');
-        }
-        // El ícono muestra la acción del PRÓXIMO clic.
-        btn.setAttribute('title', dir === 'up' ? 'Volver al inicio' : 'Ir al final');
-    };
-
+    // 17/10: la posición la decide estaAbajoDe —la misma que usa el sincronizador—,
+    // así el ícono y la acción nunca se contradicen.
+    var abajo = estaAbajoDe(el, isCont);
     if (isCont) {
-        var nearBottom = (el.scrollTop + el.clientHeight) >= (el.scrollHeight - 8);
-        if (nearBottom) {
-            verInicioDelRecuadro();
-            setDir('down');
-        } else {
-            verFinalDelRecuadro();
-            setDir('up');
-        }
+        abajo ? verInicioDelRecuadro() : verFinalDelRecuadro();
+    } else if (abajo) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-        var doc = document.documentElement;
-        var nearBottomDoc = (window.innerHeight + window.scrollY) >= (doc.scrollHeight - 8);
-        if (nearBottomDoc) {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            setDir('down');
-        } else {
-            el.scrollIntoView({ behavior: 'smooth', block: 'end' });
-            setDir('up');
-        }
+        el.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
+    pintarDireccion(btn, abajo ? 'down' : 'up');
+    // Al terminar la animación se vuelve a leer la posición real por si algo la cortó.
+    setTimeout(sincronizarBotones, 1100);
 });
 
 /* ── Drag-to-scroll: arrastrar tablas desde la CABECERA ──
