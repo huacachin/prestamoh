@@ -5,6 +5,7 @@ namespace App\Services\Documentos;
 use App\Support\Documentos\Genero;
 use App\Support\Documentos\Ordinales;
 use App\Support\NumerosEnLetras;
+use Illuminate\Support\HtmlString;
 
 /**
  * View-model inmutable que consumen las vistas Blade del contrato de garantía
@@ -44,11 +45,28 @@ final class ContratoVm
         public readonly array $cronograma,
         public readonly ?string $clausulasAdicionales,
         public readonly array $snapshot,
-        /** Rutas del snapshot que el wizard cambió respecto de los datos del sistema (ResaltarCambios las pinta en la previa). */
-        public readonly array $cambios = [],
         /** Nivel de MaquetaContrato con el que el PDF cupo en el tope de hojas (0 = maqueta normal). */
         public readonly int $ajuste = 0,
+        /** true solo en la previa del wizard: v() pinta en rojo los datos variables. */
+        public readonly bool $resaltar = false,
     ) {}
+
+    /**
+     * Dato VARIABLE del contrato (ficha, crédito, vehículos, wizard), listo
+     * para imprimir con {{ }}: en la previa del wizard va en rojo (span
+     * .variable; pedido de Antony, 16/10/2026: "en la vista previa los datos
+     * variables en rojo") y en el PDF y el Word sale el texto escapado tal
+     * cual, byte a byte igual que antes. Las constantes (acreedor, apoderada,
+     * usuaria SIGM, representantes) NO pasan por aquí: van en negro.
+     * Concatenado dentro de un @php (nucleo, bienLinea…) el string resultante
+     * ya lleva HTML y se imprime con {!! !!}.
+     */
+    public function v(mixed $texto): HtmlString
+    {
+        $t = e((string) $texto);
+
+        return new HtmlString($this->resaltar ? '<span class="variable">'.$t.'</span>' : $t);
+    }
 
     /** "S/ 7,000.00 (SIETE MIL CON 00/100 SOLES)" — claves: valor_bien, obligacion, monto_maximo, cuota */
     public function monto(string $clave): string

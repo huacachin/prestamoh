@@ -28,7 +28,7 @@
 @endphp
 
 <div class="firmas">
-    <p class="parrafo">EN SEÑAL DE CONFORMIDAD, LAS PARTES FIRMAN EL PRESENTE DOCUMENTO EN {{ mb_strtoupper($vm->constante('ciudad_firma')) }}, EL {{ $vm->fechaSimple }}.</p>
+    <p class="parrafo">EN SEÑAL DE CONFORMIDAD, LAS PARTES FIRMAN EL PRESENTE DOCUMENTO EN {{ mb_strtoupper($vm->constante('ciudad_firma')) }}, EL {{ $vm->v($vm->fechaSimple) }}.</p>
 
     <table class="tabla-firmas">
         @foreach ($filas as $fila)
@@ -51,12 +51,12 @@
                                 {{-- Solo la empresa (02/10, Antony): el gerente ya quedó
                                      identificado en la cláusula primera; la firma lleva
                                      razón social y RUC, sin sus datos personales. --}}
-                                {{ mb_strtoupper($celda['nombre']) }}<br>
-                                RUC N° {{ $celda['ruc'] }}<br>
+                                {{ $vm->v(mb_strtoupper($celda['nombre'])) }}<br>
+                                RUC N° {{ $vm->v($celda['ruc']) }}<br>
                                 {{ $vm->g->deudor() }}
                             @else
-                                {{ mb_strtoupper($celda['nombre']) }}<br>
-                                {{ $celda['documentoTipo'] ?? 'DNI' }} N° {{ $celda['dni'] }}<br>
+                                {{ $vm->v(mb_strtoupper($celda['nombre'])) }}<br>
+                                {{ $celda['documentoTipo'] ?? 'DNI' }} N° {{ $vm->v($celda['dni']) }}<br>
                                 {{ $vm->g->deudor() }}
                             @endif
                         </div>

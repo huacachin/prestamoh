@@ -13,10 +13,11 @@
      cita es parte del contrato y sin él se pierde el vínculo entre ambos.
 
      $banco YA TRAE EL ARTÍCULO ('EL BANCO DE CRÉDITO...', 'LA CAJA MUNICIPAL
-     ...'), así que se escribe "EN {{ $banco }}" y nunca "EN EL {{ $banco }}". --}}
+     ...'), así que se escribe "EN {{ $vm->v($banco) }}" y nunca "EN EL {{ $vm->v($banco) }}". --}}
 @php
     $banco = mb_strtoupper($vm->voucher['bancoNombreLegal'] ?? 'LA ENTIDAD BANCARIA');
-    $nombres = mb_strtoupper(implode(' Y ', array_column($vm->deudores, 'nombre')));
+    // Cada nombre pasa por $vm->v() (rojo en la previa, 16/10): $nombres lleva HTML y va con {!! !!}.
+    $nombres = implode(' Y ', array_map(fn ($n) => $vm->v(mb_strtoupper($n)), array_column($vm->deudores, 'nombre')));
     $anexo2 = 'CUYO TENOR GRÁFICO Y LITERAL SE ENCUENTRA EN EL ANEXO 2 DEL PRESENTE CONTRATO.';
 @endphp
 @php
@@ -29,22 +30,22 @@
 
     @if ($vm->destino === 'tercero')
         <div class="numerales">
-            <div class="numeral">{{ $n }}.{{ ++$i }}. AMBAS PARTES CERTIFICAN LA VALIDEZ Y EFICACIA LEGAL DEL COMPROBANTE DEL DEPÓSITO/TRANSFERENCIA BANCARIA A FAVOR DE {{ $vm->g->deudor() }} {{ $nombres }} POR EL IMPORTE TOTAL DE {{ $vm->monto('obligacion') }} EN {{ $banco }}.</div>
+            <div class="numeral">{{ $n }}.{{ ++$i }}. AMBAS PARTES CERTIFICAN LA VALIDEZ Y EFICACIA LEGAL DEL COMPROBANTE DEL DEPÓSITO/TRANSFERENCIA BANCARIA A FAVOR DE {{ $vm->g->deudor() }} {!! $nombres !!} POR EL IMPORTE TOTAL DE {{ $vm->v($vm->monto('obligacion')) }} EN {{ $vm->v($banco) }}.</div>
             {{-- Segundo párrafo del numeral, al MISMO nivel que su texto (21/09,
                  Antony con Desktop/ejem_sigm.jpeg): antes iba como párrafo
                  suelto y arrancaba en el margen izquierdo. --}}
-            <div class="numeral-cont">ASIMISMO, LAS PARTES DEJAN CONSTANCIA QUE, POR EXPRESA AUTORIZACIÓN DE {{ $vm->g->deudor() }}, DICHO DEPÓSITO FUE REALIZADO A LA CUENTA BANCARIA N° {{ $vm->tercero['cuenta'] }} A NOMBRE DE {{ mb_strtoupper($vm->tercero['nombre']) }}, IDENTIFICADO CON DNI N.° {{ $vm->tercero['dni'] }}, DEBIDO A QUE {{ mb_strtoupper($vm->tercero['motivo']) }}, CIRCUNSTANCIA QUE NO AFECTA LA VALIDEZ NI EL DESTINO DEL PAGO, EL CUAL SE CONSIDERA ÍNTEGRAMENTE RECIBIDO POR {{ $vm->g->deudor() }}.</div>
-            <div class="numeral">{{ $n }}.{{ ++$i }}. INSERTO: EL COMPROBANTE DEL DEPÓSITO/TRANSFERENCIA BANCARIA POR EL IMPORTE TOTAL DE {{ $vm->monto('obligacion') }} EFECTUADO EN {{ $banco }}, A LA CUENTA DE {{ mb_strtoupper($vm->tercero['nombre']) }}, POR AUTORIZACIÓN EXPRESA DE {{ $vm->g->deudor() }} {{ $nombres }}, {{ $anexo2 }}</div>
+            <div class="numeral-cont">ASIMISMO, LAS PARTES DEJAN CONSTANCIA QUE, POR EXPRESA AUTORIZACIÓN DE {{ $vm->g->deudor() }}, DICHO DEPÓSITO FUE REALIZADO A LA CUENTA BANCARIA N° {{ $vm->v($vm->tercero['cuenta']) }} A NOMBRE DE {{ $vm->v(mb_strtoupper($vm->tercero['nombre'])) }}, IDENTIFICADO CON DNI N.° {{ $vm->v($vm->tercero['dni']) }}, DEBIDO A QUE {{ mb_strtoupper($vm->tercero['motivo']) }}, CIRCUNSTANCIA QUE NO AFECTA LA VALIDEZ NI EL DESTINO DEL PAGO, EL CUAL SE CONSIDERA ÍNTEGRAMENTE RECIBIDO POR {{ $vm->g->deudor() }}.</div>
+            <div class="numeral">{{ $n }}.{{ ++$i }}. INSERTO: EL COMPROBANTE DEL DEPÓSITO/TRANSFERENCIA BANCARIA POR EL IMPORTE TOTAL DE {{ $vm->v($vm->monto('obligacion')) }} EFECTUADO EN {{ $vm->v($banco) }}, A LA CUENTA DE {{ $vm->v(mb_strtoupper($vm->tercero['nombre'])) }}, POR AUTORIZACIÓN EXPRESA DE {{ $vm->g->deudor() }} {!! $nombres !!}, {{ $anexo2 }}</div>
         </div>
     @elseif ($vm->destino === 'gerente')
         <div class="numerales">
-            <div class="numeral">{{ $n }}.{{ ++$i }}. AMBAS PARTES CERTIFICAN LA VALIDEZ DEL COMPROBANTE DEL DEPÓSITO/TRANSFERENCIA BANCARIA REALIZADO A LA CUENTA DE TITULARIDAD DEL GERENTE GENERAL {{ mb_strtoupper($vm->g->del()) }} {{ $vm->g->deudorSolo() }} {{ $nombres }}, POR EL IMPORTE TOTAL DE {{ $vm->monto('obligacion') }} CONFORME SE ACREDITA EN LA TRANSACCION REALIZADA EN {{ $banco }}.</div>
-            <div class="numeral">{{ $n }}.{{ ++$i }}. INSERTO: EL COMPROBANTE DEL DEPÓSITO/TRANSFERENCIA BANCARIA A FAVOR DEL GERENTE GENERAL {{ mb_strtoupper($vm->g->del()) }} {{ $vm->g->deudorSolo() }} {{ $nombres }} POR EL IMPORTE TOTAL DE {{ $vm->monto('obligacion') }} EN {{ $banco }}, {{ $anexo2 }}</div>
+            <div class="numeral">{{ $n }}.{{ ++$i }}. AMBAS PARTES CERTIFICAN LA VALIDEZ DEL COMPROBANTE DEL DEPÓSITO/TRANSFERENCIA BANCARIA REALIZADO A LA CUENTA DE TITULARIDAD DEL GERENTE GENERAL {{ mb_strtoupper($vm->g->del()) }} {{ $vm->g->deudorSolo() }} {!! $nombres !!}, POR EL IMPORTE TOTAL DE {{ $vm->v($vm->monto('obligacion')) }} CONFORME SE ACREDITA EN LA TRANSACCION REALIZADA EN {{ $vm->v($banco) }}.</div>
+            <div class="numeral">{{ $n }}.{{ ++$i }}. INSERTO: EL COMPROBANTE DEL DEPÓSITO/TRANSFERENCIA BANCARIA A FAVOR DEL GERENTE GENERAL {{ mb_strtoupper($vm->g->del()) }} {{ $vm->g->deudorSolo() }} {!! $nombres !!} POR EL IMPORTE TOTAL DE {{ $vm->v($vm->monto('obligacion')) }} EN {{ $vm->v($banco) }}, {{ $anexo2 }}</div>
         </div>
     @else
         <div class="numerales">
-            <div class="numeral">{{ $n }}.{{ ++$i }}. AMBAS PARTES CERTIFICAN LA VALIDEZ DEL COMPROBANTE DEL DEPÓSITO/TRANSFERENCIA BANCARIA A FAVOR DE {{ $vm->g->deudor() }} {{ $nombres }} POR EL IMPORTE TOTAL DE {{ $vm->monto('obligacion') }} EN {{ $banco }}.</div>
-            <div class="numeral">{{ $n }}.{{ ++$i }}. INSERTO: EL COMPROBANTE DEL DEPÓSITO/TRANSFERENCIA BANCARIA A FAVOR DE {{ $vm->g->deudor() }} {{ $nombres }} POR EL IMPORTE TOTAL DE {{ $vm->monto('obligacion') }} EN {{ $banco }}, {{ $anexo2 }}</div>
+            <div class="numeral">{{ $n }}.{{ ++$i }}. AMBAS PARTES CERTIFICAN LA VALIDEZ DEL COMPROBANTE DEL DEPÓSITO/TRANSFERENCIA BANCARIA A FAVOR DE {{ $vm->g->deudor() }} {!! $nombres !!} POR EL IMPORTE TOTAL DE {{ $vm->v($vm->monto('obligacion')) }} EN {{ $vm->v($banco) }}.</div>
+            <div class="numeral">{{ $n }}.{{ ++$i }}. INSERTO: EL COMPROBANTE DEL DEPÓSITO/TRANSFERENCIA BANCARIA A FAVOR DE {{ $vm->g->deudor() }} {!! $nombres !!} POR EL IMPORTE TOTAL DE {{ $vm->v($vm->monto('obligacion')) }} EN {{ $vm->v($banco) }}, {{ $anexo2 }}</div>
         </div>
     @endif
 </div>

@@ -22,7 +22,7 @@
 @if ($vm->clausulasAdicionales)
     <div class="clausula">
         <div class="clausula-titulo">CLÁUSULAS ADICIONALES</div>
-        <p class="parrafo">{{ mb_strtoupper($vm->clausulasAdicionales) }}</p>
+        <p class="parrafo">{{ $vm->v(mb_strtoupper($vm->clausulasAdicionales)) }}</p>
     </div>
 @endif
 

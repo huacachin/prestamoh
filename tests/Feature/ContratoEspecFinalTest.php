@@ -213,7 +213,8 @@ class ContratoEspecFinalTest extends TestCase
     {
         [$client, $credit, $v] = $this->mundo(['tipo_documento' => 'RUC', 'documento' => '20609999992']);
 
-        $html = GeneradorContrato::previsualizar($client, $credit, [$v->id], 'a4', [
+        // sinResaltado: la previa envuelve cada dato variable en un span (16/10).
+        $html = $this->sinResaltado(GeneradorContrato::previsualizar($client, $credit, [$v->id], 'a4', [
             'banco' => 'bcp',
             'empresa' => [
                 'razon_social' => 'ESPEC2 S.A.C.', 'ruc' => '20609999992', 'partida' => '111',
@@ -226,7 +227,7 @@ class ContratoEspecFinalTest extends TestCase
                     'domicilio' => 'AV. X, DISTRITO DE ATE, PROVINCIA Y DEPARTAMENTO DE LIMA',
                 ],
             ],
-        ]);
+        ]));
 
         $this->assertStringContainsString('IDENTIFICADO CON CARNÉ DE EXTRANJERÍA N° 001234567', $html);
         $this->assertStringNotContainsString('CON DNI N° 001234567', $html);

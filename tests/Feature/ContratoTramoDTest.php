@@ -328,7 +328,8 @@ class ContratoTramoDTest extends TestCase
         $credit = $this->credito($client);
         $v = $this->vehiculo($client, 'TRD888');
 
-        $html = GeneradorContrato::previsualizar($client, $credit, [$v->id], 'a1', ['banco' => 'bcp']);
+        // sinResaltado: la previa envuelve cada dato variable en un span (16/10).
+        $html = $this->sinResaltado(GeneradorContrato::previsualizar($client, $credit, [$v->id], 'a1', ['banco' => 'bcp']));
 
         $this->assertStringContainsString('IDENTIFICADO CON CARNÉ DE EXTRANJERÍA N° 001234567', $html);
         $this->assertStringContainsString('DE NACIONALIDAD VENEZOLANO', $html);
@@ -343,7 +344,7 @@ class ContratoTramoDTest extends TestCase
         $credit = $this->credito($client);
         $v = $this->vehiculo($client, 'TRD999');
 
-        $html = GeneradorContrato::previsualizar($client, $credit, [$v->id], 'a1', ['banco' => 'bcp']);
+        $html = $this->sinResaltado(GeneradorContrato::previsualizar($client, $credit, [$v->id], 'a1', ['banco' => 'bcp']));
 
         $this->assertStringContainsString('IDENTIFICADO CON DNI N° '.$client->documento, $html);
     }

@@ -196,10 +196,10 @@
     @endif
 
     @if($medio === 'previa')
-    /* Previa del wizard (16/10): lo que el usuario cambió respecto de los datos
-       del sistema sale en rojo (App\Support\Documentos\ResaltarCambios envuelve
-       el texto en .cambio). Solo en la previa: el PDF y el Word no llevan el span. */
-    .cambio { color: #c00000; }
+    /* Previa del wizard (16/10): los DATOS VARIABLES (ficha, crédito, vehículos
+       y lo escrito en el wizard) salen en rojo: ContratoVm::v() los envuelve en
+       .variable. Solo en la previa: el PDF y el Word no llevan el span. */
+    .variable { color: #c00000; }
     @endif
 
     .salto { page-break-before: always; }

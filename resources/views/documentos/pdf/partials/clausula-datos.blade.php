@@ -13,11 +13,13 @@
 
     // Datos personales de un deudor, SIN el domicilio: es la parte que se
     // repite por persona cuando el contrato lleva dos (a.3).
-    $nucleo = fn (array $d) => trim($d['nombre'])
-        .', DE NACIONALIDAD '.$d['nacionalidad']
-        .', '.$d['g']->flex('IDENTIFICADO').' CON '.($d['documentoTipo'] ?? 'DNI').' N° '.$d['dni']
-        .', OCUPACIÓN '.$d['ocupacion']
-        .', ESTADO CIVIL '.$d['g']->flex($d['estadoCivil']);
+    // Los datos variables pasan por $vm->v() (rojo en la previa, 16/10): el
+    // string resultante ya lleva HTML y se imprime con {!! !!}.
+    $nucleo = fn (array $d) => $vm->v(trim($d['nombre']))
+        .', DE NACIONALIDAD '.$vm->v($d['nacionalidad'])
+        .', '.$d['g']->flex('IDENTIFICADO').' CON '.($d['documentoTipo'] ?? 'DNI').' N° '.$vm->v($d['dni'])
+        .', OCUPACIÓN '.$vm->v($d['ocupacion'])
+        .', ESTADO CIVIL '.$vm->v($d['g']->flex($d['estadoCivil']));
 
     // Dos deudores van en UN SOLO párrafo, encadenados con "Y" y cerrando en
     // "AMBOS CON DOMICILIO EN" (a.3), no en un bloque por persona.
@@ -35,13 +37,13 @@
 
     @if ($dosDeudores)
         @php($gc = $vm->g->constituyente())
-        <p class="parrafo">DATOS {{ mb_strtoupper($gc->del()) }} {{ $gc->forma('CONSTITUYENTE', 'CONSTITUYENTE', 'CONSTITUYENTES', 'CONSTITUYENTES') }} Y {{ $vm->g->deudor() }}: @if ($domicilioCompartido){{ $nucleo($vm->deudores[0]) }}, Y {{ $nucleo($vm->deudores[1]) }}, AMBOS CON DOMICILIO EN {{ $vm->deudores[0]['domicilio'] }}.@else{{ $nucleo($vm->deudores[0]) }}, CON DOMICILIO EN {{ $vm->deudores[0]['domicilio'] }} Y {{ $nucleo($vm->deudores[1]) }}, CON DOMICILIO EN {{ $vm->deudores[1]['domicilio'] }}.@endif</p>
+        <p class="parrafo">DATOS {{ mb_strtoupper($gc->del()) }} {{ $gc->forma('CONSTITUYENTE', 'CONSTITUYENTE', 'CONSTITUYENTES', 'CONSTITUYENTES') }} Y {{ $vm->g->deudor() }}: @if ($domicilioCompartido){!! $nucleo($vm->deudores[0]) !!}, Y {!! $nucleo($vm->deudores[1]) !!}, AMBOS CON DOMICILIO EN {{ $vm->v($vm->deudores[0]['domicilio']) }}.@else{!! $nucleo($vm->deudores[0]) !!}, CON DOMICILIO EN {{ $vm->v($vm->deudores[0]['domicilio']) }} Y {!! $nucleo($vm->deudores[1]) !!}, CON DOMICILIO EN {{ $vm->v($vm->deudores[1]['domicilio']) }}.@endif</p>
     @else
     @foreach ($vm->deudores as $d)
         @if ($d['esJuridica'])
-            <p class="parrafo">DATOS DE LA CONSTITUYENTE Y {{ $d['g']->deudor() }}: {{ $d['nombre'] }} IDENTIFICADA CON RUC N° {{ $d['ruc'] }}, Y CON DOMICILIO EN {{ $d['domicilio'] }}; DEBIDAMENTE REPRESENTADA POR SU GERENTE GENERAL {{ $d['gerente']['nombre'] }},@if (! empty($d['gerente']['nacionalidad'])) DE NACIONALIDAD {{ $d['gerente']['nacionalidad'] }},@endif {{ $d['gerente']['g']->flex('IDENTIFICADO') }} CON {{ $d['gerente']['documentoTipo'] ?? 'DNI' }} N° {{ $d['gerente']['dni'] }}, OCUPACIÓN {{ $d['gerente']['ocupacion'] }}, ESTADO CIVIL {{ $d['gerente']['g']->flex($d['gerente']['estadoCivil']) }}, CON DOMICILIO EN {{ $d['gerente']['domicilio'] }}, CONFORME SE ENCUENTRA {{ $d['gerente']['g']->flex('INSCRITO') }} EN LA PARTIDA REGISTRAL N° {{ $d['partida'] }} DEL REGISTRO DE PERSONAS JURIDICAS DE LA OFICINA REGISTRAL DE {{ $d['oficinaRegistral'] }}.</p>
+            <p class="parrafo">DATOS DE LA CONSTITUYENTE Y {{ $d['g']->deudor() }}: {{ $vm->v($d['nombre']) }} IDENTIFICADA CON RUC N° {{ $vm->v($d['ruc']) }}, Y CON DOMICILIO EN {{ $vm->v($d['domicilio']) }}; DEBIDAMENTE REPRESENTADA POR SU GERENTE GENERAL {{ $vm->v($d['gerente']['nombre']) }},@if (! empty($d['gerente']['nacionalidad'])) DE NACIONALIDAD {{ $vm->v($d['gerente']['nacionalidad']) }},@endif {{ $d['gerente']['g']->flex('IDENTIFICADO') }} CON {{ $d['gerente']['documentoTipo'] ?? 'DNI' }} N° {{ $vm->v($d['gerente']['dni']) }}, OCUPACIÓN {{ $vm->v($d['gerente']['ocupacion']) }}, ESTADO CIVIL {{ $vm->v($d['gerente']['g']->flex($d['gerente']['estadoCivil'])) }}, CON DOMICILIO EN {{ $vm->v($d['gerente']['domicilio']) }}, CONFORME SE ENCUENTRA {{ $d['gerente']['g']->flex('INSCRITO') }} EN LA PARTIDA REGISTRAL N° {{ $vm->v($d['partida']) }} DEL REGISTRO DE PERSONAS JURIDICAS DE LA OFICINA REGISTRAL DE {{ $vm->v($d['oficinaRegistral']) }}.</p>
         @else
-            <p class="parrafo">DATOS {{ mb_strtoupper($d['g']->del()) }} CONSTITUYENTE Y {{ $d['g']->deudor() }}: {{ $nucleo($d) }}, CON DOMICILIO EN {{ $d['domicilio'] }}.</p>
+            <p class="parrafo">DATOS {{ mb_strtoupper($d['g']->del()) }} CONSTITUYENTE Y {{ $d['g']->deudor() }}: {!! $nucleo($d) !!}, CON DOMICILIO EN {{ $vm->v($d['domicilio']) }}.</p>
         @endif
     @endforeach
     @endif

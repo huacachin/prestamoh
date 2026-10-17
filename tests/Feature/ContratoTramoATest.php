@@ -177,7 +177,8 @@ class ContratoTramoATest extends TestCase
             ? [$this->v1->id, $this->v2->id]
             : [$this->v1->id];
 
-        return GeneradorContrato::previsualizar($this->client, $this->credit, $ids, $modelo, $this->datosCompletos($modelo));
+        // sinResaltado: la previa envuelve cada dato variable en un span (16/10).
+        return $this->sinResaltado(GeneradorContrato::previsualizar($this->client, $this->credit, $ids, $modelo, $this->datosCompletos($modelo)));
     }
 
     // ── 1 · El mapa de slots ──────────────────────────────────────────────

@@ -33,8 +33,9 @@
                 'COLOR' => $b['color'],
                 'COMBUSTIBLE' => $b['combustible'],
             ], fn ($v) => trim((string) $v) !== '');
-            $bienLinea = implode('; ', array_map(fn ($k, $v) => "{$k}: {$v}", array_keys($bienAttrs), $bienAttrs));
+            // Cada valor pasa por $vm->v() (rojo en la previa, 16/10): la línea lleva HTML y va con {!! !!}.
+            $bienLinea = implode('; ', array_map(fn ($k, $v) => "{$k}: ".$vm->v($v), array_keys($bienAttrs), $bienAttrs));
         @endphp
-        <p class="parrafo">VEHÍCULO{{ $bienPlural ? ' '.($i + 1) : '' }}@if ($bienMixto) {{ ! empty($b['esFuturo']) ? '(BIEN FUTURO)' : '(BIEN PRESENTE)' }}@endif: {{ $bienLinea }}; PROPIEDAD: {{ $bienPropiedad }} (EN ADELANTE {{ $bienPlural ? 'LOS VEHICULOS' : 'EL VEHICULO' }}).</p>
+        <p class="parrafo">VEHÍCULO{{ $bienPlural ? ' '.($i + 1) : '' }}@if ($bienMixto) {{ ! empty($b['esFuturo']) ? '(BIEN FUTURO)' : '(BIEN PRESENTE)' }}@endif: {!! $bienLinea !!}; PROPIEDAD: {{ $bienPropiedad }} (EN ADELANTE {{ $bienPlural ? 'LOS VEHICULOS' : 'EL VEHICULO' }}).</p>
     @endforeach
 </div>
