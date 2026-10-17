@@ -198,15 +198,16 @@
                                  parciales) → un renglón por abono, con lo que fue quedando de saldo.
                                  17/10: filas en un partial compartido con la pantalla de cobro; aquí
                                  siempre abiertas, como desde el 02/10. --}}
-                            @include('livewire.payments.partials._filas-abonos', [
-                                'abonosCuota' => $abonos[$row['installment_id']] ?? [],
-                                'n' => $row['n'],
-                                'insId' => $row['installment_id'],
-                                'tieneExc' => $tieneExc,
-                                'formatoFecha' => 'Y-m-d',
-                                'colapsable' => false,
-                                'abiertaPorDefecto' => true,
-                            ])
+                            @isset($abonos[$row['installment_id']])
+                                @include('livewire.payments.partials._filas-abonos', [
+                                    'abonosCuota' => $abonos[$row['installment_id']],
+                                    'n' => $row['n'],
+                                    'insId' => $row['installment_id'],
+                                    'tieneExc' => $tieneExc,
+                                    'formatoFecha' => 'Y-m-d',
+                                    'cuotaPagada' => false, // aquí nunca se pliegan: es la vista de historia completa
+                                ])
+                            @endisset
                         @endforeach
 
                         {{-- Pagos OTROS (fuera del cronograma) --}}

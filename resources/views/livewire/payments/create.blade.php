@@ -1412,31 +1412,33 @@
 
         {{-- Cronograma de cuotas (homologado con /credits/{id}) --}}
         <div class="card shadow-sm mt-2">
-            {{-- 17/10: abonos plegables sin round trip (Alpine). El x-data vive en el card-body, que
-                 Livewire no reemplaza al morfear la tabla tras cobrar: lo que el cajero abrió o plegó
-                 se conserva y lo nuevo toma su default del servidor. --}}
-            <div class="card-body pb-2" x-data="{ abiertas: {}, todas: false }">
+            {{-- 17/10: los abonos de las cuotas YA PAGADAS llegan plegados (son historia; el cronograma
+                 del crédito los tiene todos) y los de la cuota en juego, abiertos. Un solo interruptor
+                 Alpine (sin round trip) los muestra; vive en el card-body, que Livewire no reemplaza al
+                 morfear la tabla tras cobrar, así que queda como lo dejó el cajero. --}}
+            <div class="card-body pb-2" x-data="{ verTodo: false }">
                 <div class="d-flex justify-content-between align-items-center mb-1">
                     <h6 class="mb-0">CRONOGRAMA DE CUOTAS</h6>
-                    <div class="d-flex align-items-center gap-1">
+                    <div class="d-flex align-items-center gap-3">
                         @if($abonos !== [])
-                            <button type="button" class="btn btn-sm btn-light"
-                                    title="Mostrar u ocultar los abonos de todas las cuotas"
-                                    x-on:click="todas = ! todas; $root.querySelectorAll('tr[data-abonos]').forEach(tr => abiertas[tr.dataset.abonos] = todas)"
-                                    x-text="todas ? 'Plegar abonos' : 'Desglosar abonos'">Desglosar abonos</button>
+                            <div class="form-check form-switch mb-0 small" title="Las cuotas ya pagadas llegan con sus abonos plegados; la cuota que se está cobrando siempre los muestra">
+                                <input class="form-check-input" type="checkbox" id="ver-abonos-pagadas" x-model="verTodo">
+                                <label class="form-check-label" for="ver-abonos-pagadas">Ver abonos de cuotas pagadas</label>
+                            </div>
                         @endif
                         <x-scroll-bottom-btn scrollable="#tabla-cronograma" />
                     </div>
                 </div>
                 @php $tieneExc = $credit->installments->sum('importe_excedente') > 0; @endphp
                 <style>
-                    /* 17/10: la cebra va por clase (fila-par) y no por table-striped, porque las filas
-                       de abono intercaladas rompían el nth-of-type; misma regla que el tema. */
-                    #tabla-cronograma tr.fila-par > * { --bs-table-accent-bg: rgba(var(--dark), 0.03); color: rgba(var(--dark), 1); }
-                    #tabla-cronograma tr.fila-abono > * { --bs-table-accent-bg: transparent; font-size: .92em; }
-                    #tabla-cronograma .badge-abonos { cursor: pointer; font-weight: 500; }
+                    /* 17/10: la cebra va por clase (fila-par) y no por table-striped, porque las filas de
+                       abono intercaladas rompían el nth-of-type; mismo color que el tema (_tables.scss). */
+                    #tabla-cronograma tr.fila-par > * { background-color: #d0cdcd; color: rgba(var(--dark), 1); }
+                    /* Abonos de cuotas ya pagadas: plegados hasta que se activa el interruptor. */
+                    #tabla-cronograma.historial-plegado tr.abono-pagada { display: none; }
                 </style>
-                <div id="tabla-cronograma" class="table-responsive tableFixHead" style="max-height: 500px; overflow:auto;">
+                <div id="tabla-cronograma" class="table-responsive tableFixHead historial-plegado"
+                     :class="{ 'historial-plegado': ! verTodo }" style="max-height: 500px; overflow:auto;">
                     <table class="table table-bordered table-hover">
                         <thead class="bg-primary">
                         <tr>
@@ -1518,16 +1520,14 @@
                                     @if(! $inst->pagado && ($inst->importe_aplicado + $inst->interes_aplicado + $inst->excedente_aplicado) > 0.001)
                                         <span class="badge bg-info text-dark" title="Cuota con pago parcial: aún le falta">Amortizada</span>
                                     @endif
-                                    {{-- 17/10: la cuota con abonos los pliega o despliega aquí mismo (Alpine, sin round trip).
-                                         Por defecto abierta la cuota sin pagar (la que se está cobrando) y plegada la ya pagada. --}}
+                                    {{-- 17/10: aviso de que la cuota tiene desglose (los de cuotas pagadas llegan plegados);
+                                         el title lista cada abono. --}}
                                     @if(isset($abonos[$inst->id]))
-                                        @php $nAb = count($abonos[$inst->id]); $defAb = $inst->pagado ? 'false' : 'true'; @endphp
-                                        <button type="button" class="badge bg-light text-dark border badge-abonos ms-1"
-                                                title="Mostrar u ocultar los abonos de esta cuota"
-                                                x-on:click="abiertas[{{ $inst->id }}] = ! (abiertas[{{ $inst->id }}] ?? {{ $defAb }})">
-                                            {{ $nAb }} {{ $nAb === 1 ? 'abono' : 'abonos' }}
-                                            <i class="ti" :class="(abiertas[{{ $inst->id }}] ?? {{ $defAb }}) ? 'ti-chevron-up' : 'ti-chevron-down'"></i>
-                                        </button>
+                                        @php
+                                            $nAb = count($abonos[$inst->id]);
+                                            $listaAb = implode("\n", array_map(fn ($a) => ($a['fecha'] !== '' ? \Carbon\Carbon::parse($a['fecha'])->format('d/m/Y') : '—').' · S/ '.number_format($a['monto'], 2), $abonos[$inst->id]));
+                                        @endphp
+                                        <span class="badge bg-light text-dark border ms-1" title="{{ $listaAb }}">{{ $nAb }} {{ $nAb === 1 ? 'abono' : 'abonos' }}</span>
                                     @endif
                                 </td>
                                 <td>{{ $inst->pagado ? $inst->fecha_pago?->format('d/m/Y') : '' }}</td>
@@ -1547,17 +1547,17 @@
                             {{-- 17/10 (Antony): cuota pagada o amortizada en varios abonos → un renglón por
                                  abono, igual que en el cronograma del crédito (partial compartido y
                                  App\Support\AbonosPorCuota): numeración n.k, nota del cobro partido, capital,
-                                 interés, monto, el saldo que iba quedando, fecha y hora, y su recibo.
-                                 Plegable: abierta la cuota sin pagar, plegada la ya pagada. --}}
-                            @include('livewire.payments.partials._filas-abonos', [
-                                'abonosCuota' => $abonos[$inst->id] ?? [],
-                                'n' => $inst->num_cuota,
-                                'insId' => $inst->id,
-                                'tieneExc' => $tieneExc,
-                                'formatoFecha' => 'd/m/Y',
-                                'colapsable' => true,
-                                'abiertaPorDefecto' => ! $inst->pagado,
-                            ])
+                                 interés, monto, el saldo que iba quedando, fecha y hora, y su recibo. --}}
+                            @isset($abonos[$inst->id])
+                                @include('livewire.payments.partials._filas-abonos', [
+                                    'abonosCuota' => $abonos[$inst->id],
+                                    'n' => $inst->num_cuota,
+                                    'insId' => $inst->id,
+                                    'tieneExc' => $tieneExc,
+                                    'formatoFecha' => 'd/m/Y',
+                                    'cuotaPagada' => (bool) $inst->pagado,
+                                ])
+                            @endisset
                         @endforeach
                         </tbody>
                         @php

@@ -26,14 +26,15 @@ use Illuminate\Support\Facades\URL;
  *
  * Cada abono trae además su COBRO (el evento de caja de esa fecha+hora): total
  * cobrado, mora y lo que fue a las otras cuotas, para explicar en la propia
- * fila el cobro que tocó dos cuotas ("Cobro S/ 450.00: 400.00 a esta cuota ·
- * 50.00 a la cuota 15").
+ * fila el cobro que tocó dos cuotas ("Cobro #118431 de S/ 450.00 · además
+ * S/ 50.00 a la cuota 15").
  *
- * RECIBO (corregido el 17/10): el lote se cruza por crédito + fecha + hora del
- * evento, no por mass_deletion_details.payment_id. Los lotes migrados del
- * legacy guardan en payment_id el id del ingreso legacy, y cruzar por ese id
- * sin filtrar por crédito abría el recibo de OTRO cliente (verificado: 14.1
- * del crédito 28808 abría el lote 109242 del crédito 27102).
+ * RECIBO (corregido el 17/10): el lote se cruza SOLO por crédito + fecha + hora
+ * del evento. Antes se cruzaba por mass_deletion_details.payment_id sin filtrar
+ * por crédito, y los lotes migrados del legacy guardan ahí el id del ingreso
+ * legacy: el botón abría el recibo de OTRO cliente (verificado: 14.1 del
+ * crédito 28808 abría el lote 109242 del crédito 27102). Sin lote en esa clave
+ * el abono queda sin recibo: mejor ninguno que uno equivocado.
  *
  * Compartido por /credits/{id}/schedule y /payments/create (17/10/2026,
  * Antony: "al igual que la primera vista debe de haber un desglose").
@@ -41,7 +42,7 @@ use Illuminate\Support\Facades\URL;
 class AbonosPorCuota
 {
     /**
-     * @return array<int, list<array{fecha: string, hora: ?string, cap: float, int: float, exc: float, monto: float, saldo: float, color: string, tarde: bool, payment_id: int, lote: ?int, recibo: ?string, cobro: array{lote: ?int, total: float, mora: float, otras: list<array{num: int, monto: float}>}}>> por installment_id
+     * @return array<int, list<array{fecha: string, hora: ?string, cap: float, int: float, exc: float, monto: float, saldo: float, color: string, tarde: bool, payment_id: int, lote: ?int, recibo: ?string, segun_caja: bool, cobro: array{lote: ?int, total: float, mora: float, otras: list<array{num: int, monto: float}>}}>> por installment_id
      */
     public static function porCredito(Credit $credit): array
     {
@@ -86,7 +87,8 @@ class AbonosPorCuota
             }
             $monto = (float) $p->monto;
             $eventos[$k]['total'] += $monto;
-            if (strtoupper(substr($p->documento ?? '', 0, 4)) === 'MORA') {
+            // La mora no es abono (no baja el saldo de la cuota): MORA, MORA ACUM., MORA INTERES…
+            if (strtoupper(substr($p->documento ?? '', 0, 4)) === 'MORA' || strtoupper((string) $p->tipo) === 'MORA') {
                 $eventos[$k]['mora'] += $monto;
 
                 continue;
@@ -129,8 +131,14 @@ class AbonosPorCuota
             }
             $total = (float) $ins->importe_cuota + (float) $ins->importe_interes + (float) $ins->importe_excedente;
             $venc = $ins->fecha_vencimiento ? Carbon::parse($ins->fecha_vencimiento)->format('Y-m-d') : '';
+            // Cobros migrados: la caja puede atribuir a la cuota algo distinto de lo aplicado
+            // (28808, cuota 19: Σ 462.50 vs 425). Se muestra lo que dijo caja y se avisa.
+            $segunCaja = abs(array_sum(array_column($evs, 'monto')) - $aplicado) > 0.01;
             $acum = 0.0;
             foreach ($evs as $k => $e) {
+                if ($e['monto'] < 0.005) {
+                    continue; // la fila 'CAPITAL 0.00' suelta del legacy no es un abono
+                }
                 $ev = $eventos[$k];
                 $acum += $e['monto'];
                 $e['fecha'] = $ev['fecha'];
@@ -142,6 +150,7 @@ class AbonosPorCuota
                     Carbon::SUNDAY => 'red', Carbon::SATURDAY => 'green', default => '',
                 };
                 $e['tarde'] = $e['fecha'] !== '' && $venc !== '' && $e['fecha'] > $venc;
+                $e['segun_caja'] = $segunCaja;
                 $otras = [];
                 foreach ($ev['cuotas'] as $otroId => $oc) {
                     if ($otroId !== $insId && $oc['monto'] >= 0.01) {
@@ -179,9 +188,10 @@ class AbonosPorCuota
 
     /**
      * Lote (mass_deletion) de cada evento de caja, cruzado por crédito + fecha +
-     * hora. Si en esa clave hubiera más de un lote, gana el que cuadra con el
-     * total cobrado. Como último recurso, los detalles (payment_id) pero SOLO
-     * de los lotes de este crédito: nunca el recibo de otro cliente.
+     * hora. Si en esa clave hubiera más de un lote (102 casos en todo el
+     * histórico, ninguno en 2026), gana el que cuadra con el total cobrado.
+     * Nunca por mass_deletion_details.payment_id: en los lotes migrados ese id
+     * es del legacy y señala cobros de otros créditos.
      *
      * @param  list<string>  $claves  'Y-m-d|H:i:s' de los eventos con abono
      * @return array<string, int> clave => mass_deletion_id
@@ -199,12 +209,9 @@ class AbonosPorCuota
         }
 
         $out = [];
-        $sinLote = [];
         foreach ($claves as $k) {
             $lista = $candidatos[$k] ?? [];
             if ($lista === []) {
-                $sinLote[] = $k;
-
                 continue;
             }
             $total = $eventos[$k]['total'];
@@ -212,32 +219,10 @@ class AbonosPorCuota
             $out[$k] = ($exacto[0] ?? $lista[0])['id'];
         }
 
-        if ($sinLote !== []) {
-            $pagoPorClave = [];
-            foreach ($sinLote as $k) {
-                foreach ($eventos[$k]['cuotas'] as $c) {
-                    $pagoPorClave[$c['payment_id']] = $k;
-                }
-            }
-            if ($pagoPorClave !== []) {
-                $porPago = DB::table('mass_deletion_details as d')
-                    ->join('mass_deletions as m', 'm.id', '=', 'd.mass_deletion_id')
-                    ->where('m.credit_id', $creditId)
-                    ->whereIn('d.payment_id', array_keys($pagoPorClave))
-                    ->pluck('d.mass_deletion_id', 'd.payment_id');
-                foreach ($porPago as $payId => $mdId) {
-                    $k = $pagoPorClave[(int) $payId] ?? null;
-                    if ($k !== null && ! isset($out[$k])) {
-                        $out[$k] = (int) $mdId;
-                    }
-                }
-            }
-        }
-
         return $out;
     }
 
-    /** 'H:i:s' normalizada (payments.hora y mass_deletions.time pueden traer milésimas o venir vacías). */
+    /** 'H:i:s' normalizada (payments.hora es varchar y mass_deletions.time es TIME; pueden traer milésimas o venir vacías). */
     private static function hora(mixed $hora): string
     {
         return substr((string) $hora, 0, 8);

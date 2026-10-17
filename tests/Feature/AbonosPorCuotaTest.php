@@ -112,7 +112,7 @@ class AbonosPorCuotaTest extends TestCase
         $this->assertSame([], AbonosPorCuota::porCredito($a), 'el crédito A no tiene pagos: nada que desglosar');
     }
 
-    public function test_con_dos_lotes_en_la_misma_fecha_y_hora_gana_el_que_cuadra_con_el_total_y_sin_lote_se_usa_el_detalle_del_propio_credito(): void
+    public function test_con_dos_lotes_en_la_misma_fecha_y_hora_gana_el_que_cuadra_con_el_total_y_sin_lote_en_esa_clave_no_hay_recibo(): void
     {
         $c = $this->credito(2);
         $c1 = $this->cuota($c, 1);
@@ -121,13 +121,41 @@ class AbonosPorCuotaTest extends TestCase
         $p2 = $this->pago($c, 'CAPITAL', 100, $c1->id, 'Pago : X Cuota:  1/2', '2026-02-07', '09:30:00');
         $otro = $this->lote($c, 55, '2026-02-06', '09:00:00');
         $cuadra = $this->lote($c, 100, '2026-02-06', '09:00:00');
-        // El segundo abono tiene su lote a OTRA hora (reloj distinto), pero su detalle sí apunta al pago.
+        // El segundo abono tiene su lote a OTRA hora y un detalle que apunta al pago: NO se usa
+        // (en los lotes migrados ese id es del legacy); mejor sin recibo que con uno equivocado.
         $porDetalle = $this->lote($c, 100, '2026-02-07', '09:31:00', [[$c1->id, $p2, 'C', 100]]);
 
         $abonos = AbonosPorCuota::porCredito($c)[$c1->id];
 
-        $this->assertSame([$cuadra, $porDetalle], array_column($abonos, 'lote'));
+        $this->assertSame([$cuadra, null], array_column($abonos, 'lote'));
+        $this->assertNull($abonos[1]['recibo']);
         $this->assertNotContains($otro, array_column($abonos, 'lote'));
+        $this->assertNotContains($porDetalle, array_column($abonos, 'lote'));
+    }
+
+    public function test_la_fila_de_cero_no_es_abono_la_mora_interes_tampoco_y_se_avisa_cuando_la_caja_no_cuadra_con_lo_aplicado(): void
+    {
+        $c = $this->credito(2, pagadas: 1);
+        $c1 = $this->cuota($c, 1);
+        // Caja legacy: 350 + 112.50 = 462.50 atribuidos a una cuota de 425 (caso real de la cuota 19 del 28808),
+        // más una fila 'CAPITAL 0.00' suelta y una 'MORA INTERES' con tipo INTERES.
+        $this->pago($c, 'CAPITAL', 312.50, null, 'Cuota:  1/2', '2026-06-23', '16:35:48');
+        $this->pago($c, 'INTERES', 37.50, null, 'Interes:  1/2', '2026-06-23', '16:35:48');
+        $this->pago($c, 'CAPITAL', 0, null, 'Cuota:  1/2', '2026-06-30', '21:06:29');
+        $this->pago($c, 'INTERES', 112.50, null, 'Interes:  1/2', '2026-06-30', '21:06:29');
+        $this->pago($c, 'CAPITAL', 0, null, 'Cuota:  1/2', '2026-07-02', '10:00:00');
+        DB::table('payments')->insert([
+            'credit_id' => $c->id, 'installment_id' => $c1->id, 'modo' => 'CREDITO', 'tipo' => 'INTERES', 'documento' => 'MORA INTERES',
+            'fecha' => '2026-06-30 00:00:00', 'hora' => '21:06:29', 'monto' => 9.99, 'detalle' => 'Mora', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $abonos = AbonosPorCuota::porCredito($c)[$c1->id];
+
+        $this->assertSame([350.0, 112.5], array_column($abonos, 'monto'), 'la fila 0.00 suelta del 02/07 no es un abono');
+        $this->assertSame([75.0, 0.0], array_column($abonos, 'saldo'), 'el saldo se acota a 0 aunque la caja sume de más');
+        $this->assertSame([true, true], array_column($abonos, 'segun_caja'));
+        $this->assertSame(9.99, $abonos[1]['cobro']['mora'], 'MORA INTERES cuenta como mora del cobro, no como abono');
+        $this->assertSame(122.49, $abonos[1]['cobro']['total']);
     }
 
     public function test_la_cuota_amortizada_con_un_solo_abono_se_desglosa_y_la_nota_dice_que_mas_pago_ese_cobro(): void

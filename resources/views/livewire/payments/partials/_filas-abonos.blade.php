@@ -1,13 +1,14 @@
 {{-- Filas de ABONO debajo de una cuota (17/10/2026, Antony: "al igual que la
      primera vista debe de haber un desglose"). Compartido por /credits/{id}/schedule
-     (todas abiertas, sin plegado) y /payments/create (plegables con Alpine:
-     abiertas[ID] ?? default, sin round trips). Mismas 13/14 columnas que la tabla
-     que las contiene; la fila lleva un fondo propio y amarillo si el abono fue
-     después del vencimiento, y la fecha en rojo (domingo) o verde (sábado).
+     y /payments/create. Mismas 13/14 columnas y el mismo formato que una fila del
+     semanal (criterio del 02/10: tamaño normal, Pagado en verde, sin letra chica):
+     la subordinación la dan la numeración n.k y las celdas vacías. Fondo amarillo
+     si el abono fue después del vencimiento; fecha en rojo (domingo) o verde (sábado).
+     La clase abono-pagada marca los abonos de cuotas ya pagadas: la pantalla de
+     cobro los pliega por CSS hasta que se activa "Ver abonos de cuotas pagadas".
 
      Recibe: $abonosCuota (lista de App\Support\AbonosPorCuota), $n (número de
-     cuota), $insId, $tieneExc, $formatoFecha ('d/m/Y' | 'Y-m-d'),
-     $colapsable (bool) y $abiertaPorDefecto (bool). --}}
+     cuota), $insId, $tieneExc, $formatoFecha ('d/m/Y' | 'Y-m-d') y $cuotaPagada (bool). --}}
 @foreach($abonosCuota as $i => $ab)
     @php
         $stAb = $ab['color'] ? 'color:'.$ab['color'].';' : '';
@@ -15,21 +16,26 @@
         // Nota del cobro partido: solo cuando el mismo cobro tocó otra cuota o trajo mora.
         $nota = '';
         if ($cobro['otras'] !== [] || $cobro['mora'] > 0.009) {
-            $partes = ['S/ '.number_format($ab['monto'], 2).' a esta cuota'];
+            $partes = [];
             foreach ($cobro['otras'] as $o) {
-                $partes[] = 'S/ '.number_format($o['monto'], 2).' a la cuota '.$o['num'];
+                $partes[] = 'además S/ '.number_format($o['monto'], 2).' a la cuota '.$o['num'];
             }
             if ($cobro['mora'] > 0.009) {
                 $partes[] = 'S/ '.number_format($cobro['mora'], 2).' de mora';
             }
-            $nota = 'Cobro S/ '.number_format($cobro['total'], 2).($cobro['lote'] ? ' (#'.$cobro['lote'].')' : '').': '.implode(' · ', $partes);
+            $nota = 'Cobro '.($cobro['lote'] ? '#'.$cobro['lote'].' ' : '').'de S/ '.number_format($cobro['total'], 2).' · '.implode(' · ', $partes);
         }
         $fechaAb = $ab['fecha'] !== '' ? \Carbon\Carbon::parse($ab['fecha'])->format($formatoFecha) : '';
+        // Sin @if dentro de la celda: Livewire envuelve los bloques en marcadores <!--[if BLOCK]-->
+        // y la numeración dejaría de leerse como ">21.1</td>".
+        $tituloN = ! empty($ab['segun_caja'])
+            ? 'Desglose según caja (cobro migrado del legacy): la suma de los abonos no cuadra con lo aplicado a la cuota; manda la fila de la cuota.'
+            : '';
+        $marcaN = $tituloN !== '' ? '<sup title="'.e($tituloN).'">*</sup>' : '';
     @endphp
-    <tr class="fila-abono" wire:key="abono-{{ $insId }}-{{ $i }}" data-abonos="{{ $insId }}"
-        style="background-color:{{ $ab['tarde'] ? '#fff3cd' : '#fbfbfb' }};"
-        @if($colapsable) x-show="abiertas[{{ $insId }}] ?? {{ $abiertaPorDefecto ? 'true' : 'false' }}" x-cloak @endif>
-        <td style="{{ $stAb }}" class="text-center">{{ $n }}.{{ $i + 1 }}</td>
+    <tr class="fila-abono{{ $cuotaPagada ? ' abono-pagada' : '' }}" wire:key="abono-{{ $insId }}-{{ $i }}"
+        @if($ab['tarde']) style="background-color:#fff3cd;" @endif>
+        <td style="{{ $stAb }}" class="text-center">{{ $n }}.{{ $i + 1 }}{!! $marcaN !!}</td>
         <td colspan="{{ $tieneExc ? 4 : 3 }}" class="text-muted" style="white-space:normal; font-size:.9em;">{{ $nota }}</td>
         <td style="{{ $stAb }}" class="text-end">{{ number_format($ab['cap'], 2) }}</td>
         <td style="{{ $stAb }}" class="text-end">{{ number_format($ab['int'], 2) }}</td>
