@@ -1515,6 +1515,42 @@
                                     @endif
                                 </td>
                             </tr>
+                            {{-- 17/10 (Antony): cuota pagada o amortizada en varios abonos → un renglón por
+                                 abono, igual que en el cronograma del crédito (App\Support\AbonosPorCuota):
+                                 numeración n.k, capital, interés, monto, el saldo que iba quedando, fecha y
+                                 hora, y su recibo. Así se ve el "saldo de una cuota + amortiza la siguiente". --}}
+                            @foreach(($abonos[$inst->id] ?? []) as $i => $ab)
+                                @php $stAb = $ab['color'] ? 'color:'.$ab['color'].';' : ''; @endphp
+                                <tr class="fila-abono" @if($ab['tarde']) style="background-color:#fff3cd;" @endif>
+                                    <td style="{{ $stAb }}" class="text-center">{{ $inst->num_cuota }}.{{ $i + 1 }}</td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                    @if($tieneExc)
+                                        <td></td>
+                                    @endif
+                                    <td style="{{ $stAb }}" class="text-end">{{ number_format($ab['cap'], 2) }}</td>
+                                    <td style="{{ $stAb }}" class="text-end">{{ number_format($ab['int'], 2) }}</td>
+                                    <td style="{{ $stAb }}" class="text-end">{{ number_format($ab['monto'], 2) }}</td>
+                                    <td style="{{ $stAb }}" class="text-end">{{ number_format($ab['saldo'], 2) }}</td>
+                                    <td></td>
+                                    <td><span class="badge bg-success">Pagado</span></td>
+                                    <td style="{{ $stAb }}">
+                                        {{ $ab['fecha'] !== '' ? \Carbon\Carbon::parse($ab['fecha'])->format('d/m/Y') : '' }}
+                                        @if($ab['hora'])
+                                            <small>{{ $ab['hora'] }}</small>
+                                        @endif
+                                    </td>
+                                    <td class="text-center" style="white-space:nowrap;">
+                                        @if($ab['recibo'])
+                                            <button type="button" class="btn btn-sm btn-secondary py-0 px-1"
+                                                    title="Ver recibo" onclick="abrirRecibo(@js($ab['recibo']))">
+                                                <i class="ti ti-eye"></i>
+                                            </button>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
                         @endforeach
                         </tbody>
                         @php

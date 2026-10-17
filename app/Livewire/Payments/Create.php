@@ -10,6 +10,7 @@ use App\Models\MassDeletion;
 use App\Models\Payment;
 use App\Services\Payments\MotorPagos;
 use App\Services\Printing\TicketPrinter;
+use App\Support\AbonosPorCuota;
 use App\Support\Audit;
 use App\Support\Auditoria\ConCapturaDeAuditoria;
 use App\Support\ConSubidaDeArchivos;
@@ -1948,6 +1949,9 @@ class Create extends Component
             'fecsimMin' => $fecsimMin,
             'moraExon' => $this->credit ? MoraExonerada::porCuota($this->credit, $moraCelda) : [],
             'recibos' => $this->recibosPorCuota(),
+            // 17/10 (Antony): mismo desglose por abonos que /credits/{id}/schedule debajo
+            // de cada cuota pagada o amortizada en varias veces (clase compartida).
+            'abonos' => $this->credit ? AbonosPorCuota::porCredito($this->credit) : [],
             'moraPagadaCuotas' => $reparto,
             // La celda de cada cuota muestra SU parte del reparto (antes pintaba
             // importe_mora, que carga todo el cobro en la primera cuota).
