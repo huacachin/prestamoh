@@ -1937,7 +1937,14 @@ class Documentos extends Component
                     'ocupacion' => trim((string) $this->gerente['ocupacion']),
                     'estado_civil' => trim((string) $this->gerente['estado_civil']),
                     'domicilio' => trim((string) $this->gerente['domicilio']),
-                    'banco' => trim((string) ($this->gerente['banco'] ?? '')),
+                    // 19/10 (Antony): el desembolso va SIEMPRE a la cuenta personal del gerente o
+                    // representante, nunca a una cuenta de la empresa, así que su banco es el "Banco
+                    // del desembolso" ya elegido en el formulario (no se pide dos veces). Solo se
+                    // tipea el número de cuenta. Hasta hoy el wizard mandaba los dos vacíos y el
+                    // a.4.1 nunca pasaba el guard ("necesita el banco de su cuenta personal").
+                    'banco' => ($preset['destino'] ?? 'propio') === 'gerente' && filled($this->bancoDesembolso)
+                        ? mb_strtoupper(trim((string) (BancosVoucher::BANCOS[$this->bancoDesembolso] ?? $this->bancoDesembolso)))
+                        : trim((string) ($this->gerente['banco'] ?? '')),
                     'cuenta' => trim((string) ($this->gerente['cuenta'] ?? '')),
                 ],
             ];

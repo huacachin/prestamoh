@@ -351,7 +351,7 @@ class GeneradorContrato
                 $errores[] = 'El depósito al gerente necesita el banco de su cuenta personal.';
             }
             if (blank($g['cuenta'] ?? null)) {
-                $errores[] = 'El depósito al gerente necesita su cuenta personal.';
+                $errores[] = 'El depósito al gerente necesita el número de su cuenta personal (bloque del gerente).';
             }
         }
 
