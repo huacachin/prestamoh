@@ -733,17 +733,8 @@
                                             <label class="form-label small mb-1">Domicilio</label>
                                             <input type="text" class="form-control form-control-sm @if(in_array('domicilio', $autoGerente)) campo-api @endif" wire:model.blur="gerente.domicilio">
                                         </div>
-                                        @if(($presetContrato['destino'] ?? '') === 'gerente')
-                                            {{-- 19/10 (Antony): el depósito va siempre a la cuenta personal del gerente; su banco es el
-                                                 "Banco del desembolso" de abajo (no se repite). Aquí solo el número de cuenta. --}}
-                                            <div class="col-md-4">
-                                                <label class="form-label small mb-1">Cuenta personal del gerente *</label>
-                                                <input type="text" class="form-control form-control-sm campo-elegir @error('gerente.cuenta') is-invalid @enderror"
-                                                       wire:model.blur="gerente.cuenta" placeholder="N° de la cuenta donde se depositó">
-                                                @error('gerente.cuenta') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                                                <div class="form-text" style="font-size:10px;">El banco es el del desembolso (abajo).</div>
-                                            </div>
-                                        @endif
+                                        {{-- 19/10 (Antony): el depósito va siempre a la cuenta personal del gerente; su banco es el
+                                             "Banco del desembolso" de abajo y la plantilla no imprime el número de cuenta: no se pide. --}}
                                     </div>
                                 @else
                                     @foreach($deudores as $i => $d)
@@ -928,8 +919,7 @@
                                         @if($presetContrato['destino'] === 'gerente')
                                             <div class="alert alert-info py-1 small mb-0 w-100">
                                                 <i class="ti ti-info-circle"></i>
-                                                El modelo elegido consigna el desembolso al gerente general de la empresa deudora, a su cuenta
-                                                personal: este es su banco; el número de cuenta va arriba, en el bloque del gerente.
+                                                El modelo elegido consigna el desembolso al gerente general de la empresa deudora, a su cuenta personal en este banco.
                                             </div>
                                         @elseif($presetContrato['destino'] === 'propio')
                                             <div class="alert alert-light border py-1 small mb-0 w-100">

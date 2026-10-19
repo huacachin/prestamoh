@@ -10,6 +10,7 @@ use App\Models\DocumentoCliente;
 use App\Models\Headquarter;
 use App\Models\User;
 use App\Models\Vehiculo;
+use App\Services\Documentos\RenderDocumento;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -19,11 +20,11 @@ use Tests\TestCase;
 /**
  * 19/10/2026 (Antony, caso Justo H. Contratistas Generales S.A.C): el a.4.1
  * (deudor empresa, depósito al gerente) nunca se pudo emitir desde el wizard:
- * el guard exige banco y cuenta personal del gerente y el formulario mandaba
- * los dos vacíos. Decisión de Antony: el desembolso va SIEMPRE a la cuenta
- * personal del gerente o representante, así que su banco es el "Banco del
- * desembolso" que ya se elige (sin segundo campo de banco) y solo se tipea el
- * número de cuenta, en el bloque del gerente y solo para ese modelo.
+ * el guard exigía banco y cuenta personal del gerente y el formulario no los
+ * pedía. Decisión de Antony: el desembolso va SIEMPRE a la cuenta personal del
+ * gerente o representante, así que su banco es el "Banco del desembolso" que
+ * ya se elige (sin segundo campo de banco), y la plantilla no imprime ningún
+ * número de cuenta, así que no se pide ni se exige.
  */
 class ContratoDepositoGerenteTest extends TestCase
 {
@@ -70,7 +71,7 @@ class ContratoDepositoGerenteTest extends TestCase
         ]);
     }
 
-    /** El wizard con todo lo que el a.4.1 exige, salvo lo que cada test quiera quitar. */
+    /** El wizard con lo que la empresa y el gerente exigen, igual que lo llenó Licet el 19/10. */
     protected function wizard(string $modelo = 'a41')
     {
         return Livewire::test(Documentos::class, ['id' => $this->empresa->id])
@@ -90,48 +91,45 @@ class ContratoDepositoGerenteTest extends TestCase
             ->set('gerente.domicilio', 'AV. UNO 100, DISTRITO DE ATE, PROVINCIA Y DEPARTAMENTO DE LIMA');
     }
 
-    public function test_el_a41_se_emite_con_el_banco_del_desembolso_y_la_cuenta_del_gerente(): void
+    public function test_el_a41_se_emite_sin_pedir_cuenta_y_con_el_banco_del_desembolso_como_banco_del_gerente(): void
     {
-        $comp = $this->wizard()->set('gerente.cuenta', '200-3006962163');
+        $comp = $this->wizard();
 
-        // Un solo campo de banco en el formulario: el del desembolso.
+        // Un solo campo de banco en el formulario (el del desembolso) y ningún campo de cuenta.
         $html = $comp->html();
-        $this->assertStringContainsString('Cuenta personal del gerente', $html);
-        $this->assertStringNotContainsString('wire:model.blur="gerente.banco"', $html);
         $this->assertSame(1, substr_count($html, 'Banco del desembolso'));
+        $this->assertStringNotContainsString('wire:model.blur="gerente.banco"', $html);
+        $this->assertStringNotContainsString('wire:model.blur="gerente.cuenta"', $html);
+        $this->assertStringContainsString('a su cuenta personal en este banco', $html);
 
-        $comp->call('generarContrato')->assertDispatched('successAlert');
+        $comp->call('generarContrato')->assertDispatched('successAlert')->assertNotDispatched('errorAlert');
 
         $doc = DocumentoCliente::where('client_id', $this->empresa->id)->where('tipo', 'contrato')->first();
         $this->assertNotNull($doc);
         $this->assertSame('a41', $doc->modelo);
         $g = $doc->snapshot['deudores'][0]['gerente'];
-        $this->assertSame('INTERBANK', $g['banco'], 'el banco del gerente es el del desembolso');
-        $this->assertSame('200-3006962163', $g['cuenta']);
+        $this->assertSame('INTERBANK', $g['banco'], 'el banco del gerente es el del desembolso, como dato del snapshot');
+        $this->assertSame('', $g['cuenta'], 'la plantilla no imprime la cuenta: no se pide');
         $this->assertSame('interbank', $doc->snapshot['banco']);
     }
 
-    public function test_sin_cuenta_del_gerente_no_se_emite_y_el_aviso_lo_dice(): void
+    public function test_el_a4_cuenta_de_la_empresa_no_rellena_el_banco_del_gerente(): void
     {
-        $this->wizard()
-            ->call('generarContrato')
-            ->assertDispatched('errorAlert', fn ($nombre, $params) => str_contains($params['message'] ?? ($params[0]['message'] ?? ''), 'cuenta personal'))
-            ->assertNotDispatched('successAlert');
-
-        $this->assertSame(0, DocumentoCliente::count());
-    }
-
-    public function test_el_campo_de_cuenta_solo_aparece_cuando_el_deposito_va_al_gerente(): void
-    {
-        // a.4 (empresa, cuenta propia): sin el campo y sin exigirlo. (El texto "Cuenta personal del
-        // gerente" existe igual como opción del selector de destino; lo que no debe estar es el input.)
-        $comp = $this->wizard('a4');
-        $this->assertStringNotContainsString('wire:model.blur="gerente.cuenta"', $comp->html());
-        $this->assertStringContainsString('wire:model.blur="gerente.cuenta"', $this->wizard('a41')->html());
-        $comp->call('generarContrato')->assertDispatched('successAlert');
+        $this->wizard('a4')->call('generarContrato')->assertDispatched('successAlert');
 
         $doc = DocumentoCliente::where('client_id', $this->empresa->id)->where('tipo', 'contrato')->first();
         $this->assertSame('a4', $doc->modelo);
-        $this->assertSame('', $doc->snapshot['deudores'][0]['gerente']['banco'], 'fuera del a.4.1 el banco del gerente no se rellena');
+        $this->assertSame('', $doc->snapshot['deudores'][0]['gerente']['banco']);
+    }
+
+    public function test_el_contrato_a41_emitido_no_imprime_numero_de_cuenta(): void
+    {
+        $this->wizard()->call('generarContrato')->assertDispatched('successAlert');
+        $doc = DocumentoCliente::where('client_id', $this->empresa->id)->where('tipo', 'contrato')->first();
+        $html = RenderDocumento::html($doc->snapshot, 'contrato', 'pdf');
+
+        $this->assertStringContainsString('A LA CUENTA DE TITULARIDAD DEL GERENTE GENERAL', $html);
+        $this->assertStringContainsString('INTERBANK', $html, 'la constancia nombra el banco del desembolso');
+        $this->assertStringNotContainsString('CUENTA BANCARIA N°', $html, 'ese número solo existe en el depósito a un tercero');
     }
 }

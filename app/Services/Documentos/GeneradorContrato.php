@@ -345,15 +345,12 @@ class GeneradorContrato
             $errores[] = 'Falta el banco del desembolso: la constancia de entrega lo menciona.';
         }
 
-        if ($snapshot['destino'] === 'gerente') {
-            $g = $snapshot['deudores'][0]['gerente'] ?? [];
-            if (blank($g['banco'] ?? null)) {
-                $errores[] = 'El depósito al gerente necesita el banco de su cuenta personal.';
-            }
-            if (blank($g['cuenta'] ?? null)) {
-                $errores[] = 'El depósito al gerente necesita el número de su cuenta personal (bloque del gerente).';
-            }
-        }
+        // 19/10 (Antony): el depósito al gerente (a.4.1) NO exige banco ni cuenta
+        // personal del gerente. La maestra no los imprime —la constancia solo
+        // menciona el banco del desembolso, ya exigido arriba— y el requisito
+        // de la Guía simple (28/08) bloqueaba el modelo sin que el formulario
+        // los pidiera. El banco del gerente se guarda igual en el snapshot
+        // (es el del desembolso); la cuenta queda opcional.
 
         if ($snapshot['destino'] === 'tercero') {
             // Sin 'banco': ningún partial lo imprime (la constancia cita el

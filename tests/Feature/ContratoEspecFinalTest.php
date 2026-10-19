@@ -147,7 +147,13 @@ class ContratoEspecFinalTest extends TestCase
         $this->assertStringNotContainsString('banco del tercero', $texto);
     }
 
-    public function test_el_deposito_al_gerente_exige_su_banco_y_cuenta(): void
+    /**
+     * 19/10 (Antony): el depósito al gerente ya NO exige banco ni cuenta personal
+     * del gerente. La maestra a.4.1 no los imprime (la constancia solo nombra el
+     * banco del desembolso) y el requisito de la Guía simple bloqueaba el modelo
+     * desde el wizard, que nunca tuvo esos campos.
+     */
+    public function test_el_deposito_al_gerente_no_exige_banco_ni_cuenta_del_gerente(): void
     {
         [$client, $credit, $v] = $this->mundo(['tipo_documento' => 'RUC', 'documento' => '20609999991']);
 
@@ -162,16 +168,13 @@ class ContratoEspecFinalTest extends TestCase
             ],
         ];
 
-        $texto = implode(' | ', GeneradorContrato::validar($client, $credit, [$v->id], 'a41', [
-            'banco' => 'bcp', 'empresa' => $empresa,
-        ]));
-        $this->assertStringContainsString('banco de su cuenta personal', $texto);
-        $this->assertStringContainsString('cuenta personal', $texto);
-
-        // Con banco y cuenta, pasa; y a.4 (depósito a la empresa) no los pide.
-        $empresa['gerente'] += ['banco' => 'INTERBANK', 'cuenta' => '200-1'];
         $ok = GeneradorContrato::validar($client, $credit, [$v->id], 'a41', ['banco' => 'bcp', 'empresa' => $empresa]);
         $this->assertSame([], $ok, implode(' | ', $ok));
+
+        // El banco del desembolso sí sigue siendo obligatorio: la constancia lo menciona.
+        $texto = implode(' | ', GeneradorContrato::validar($client, $credit, [$v->id], 'a41', ['empresa' => $empresa]));
+        $this->assertStringContainsString('Falta el banco del desembolso', $texto);
+        $this->assertStringNotContainsString('cuenta personal', $texto);
     }
 
     /**
