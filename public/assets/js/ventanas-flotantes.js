@@ -21,7 +21,9 @@
  *    escritorio se abre SIN fondo ni bloqueo de la página y se arrastra desde
  *    su .modal-header. Bootstrap sigue mandando (modal.show()/hide(),
  *    data-bs-dismiss, eventos): solo cambian backdrop/focus y la posición del
- *    .modal-dialog (x-ref="dialogo").
+ *    .modal-dialog (x-ref="dialogo"). Nunca más alta que la pantalla: el CSS la
+ *    limita a 100vh - 32 px con el cuerpo en scroll y, si el contenido crece o la
+ *    pantalla se achica, la ventana sube para que el pie siga a la vista (22/10).
  *
  * En celular (< 768 px) todo se comporta como siempre: a pantalla completa /
  * modal centrado con fondo.
@@ -298,6 +300,7 @@
                 // Bootstrap bloquea el scroll del body al abrir: con la ventana flotante la página sigue viva.
                 el.addEventListener('show.bs.modal', () => { document.body.classList.add('con-modal-flotante'); this.colocar(); });
                 el.addEventListener('hidden.bs.modal', () => document.body.classList.remove('con-modal-flotante'));
+                window.addEventListener('resize', () => this.reencajar());
             },
 
             // Al centro de la pantalla. Se mide el diálogo con el modal ya en display:block
@@ -305,6 +308,7 @@
             colocar() {
                 const d = this.$refs.dialogo;
                 if (!d) return;
+                this.vigilar(d);
                 this.$el.style.display = 'block';
                 const w = d.offsetWidth || Math.min(parseInt(d.style.maxWidth, 10) || 420, window.innerWidth - 2 * MARGEN);
                 const h = d.offsetHeight || 3 * CABECERA;
@@ -317,6 +321,32 @@
                 if (!d || !this.geo) return;
                 d.style.left = this.geo.x + 'px';
                 d.style.top = this.geo.y + 'px';
+            },
+
+            // 22/10 (crédito 29099): el contenido cambia con la ventana abierta (Livewire rearma
+            // la vista previa al responder Sí/No, el ticket trae 9+ cuotas) y la pantalla puede
+            // achicarse. Cuando cambia el alto del diálogo se vuelve a encajar. El observador
+            // vive en el nodo y no en el estado de Alpine: envuelto en el proxy reactivo, un
+            // ResizeObserver nativo revienta con "Illegal invocation".
+            vigilar(d) {
+                if (d.dataset.vigilado || !window.ResizeObserver) return;
+                d.dataset.vigilado = '1';
+                new ResizeObserver(() => this.reencajar()).observe(d);
+            },
+
+            // La ventana no termina por debajo del borde de la pantalla (el CSS ya la limita a
+            // 100vh - 32 px, con el cuerpo en scroll): si creció o la pantalla se achicó, sube.
+            // Mientras se arrastra no se toca: ahí manda el cajero (puede asomarla por abajo).
+            reencajar() {
+                const d = this.$refs.dialogo;
+                if (!d || !this.geo || this.arrastre || !this.$el.classList.contains('show')) return;
+                const h = d.offsetHeight;
+                if (!h) return;
+                const yMax = Math.max(MARGEN, window.innerHeight - MARGEN - h);
+                if (this.geo.y > yMax) {
+                    this.geo.y = yMax;
+                    this.aplicar();
+                }
             },
 
             iniciarArrastre(e) { Arrastre.iniciar(this, e); },

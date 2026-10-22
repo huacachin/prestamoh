@@ -148,12 +148,18 @@
        diálogo se posiciona fijo donde el JS lo deja y se arrastra desde la cabecera. */
     .modal.modal-flotante { pointer-events: none; }
     .modal.modal-flotante .modal-dialog {
-        pointer-events: auto; position: fixed; margin: 0; display: block; min-height: 0;
+        pointer-events: auto; position: fixed; margin: 0; min-height: 0;
         width: calc(100vw - 32px); /* el max-width de cada diálogo (420/430 px) pone el tope */
+        /* 22/10 (Antony, crédito 29099): la ventana NUNCA es más alta que la pantalla. Con 9+
+           cuotas el ticket crecía más que la pantalla y el pie con "Cobrar" quedaba fuera sin
+           remedio: la capa no se desplaza y la ventana no sube de y=0. Columna flex con tope
+           de alto: cabecera y pie quedan fijos y solo el cuerpo hace scroll. */
+        display: flex; flex-direction: column; max-height: calc(100vh - 32px);
         /* sin el translate(0,-50px) de la animación de entrada: la posición es la que guarda el JS */
         transform: none !important; transition: none;
     }
-    .modal.modal-flotante .modal-content { box-shadow: 0 14px 48px rgba(0,0,0,.35); }
+    .modal.modal-flotante .modal-content { box-shadow: 0 14px 48px rgba(0,0,0,.35); min-height: 0; }
+    .modal.modal-flotante .modal-body { overflow-y: auto; }
     .modal.modal-flotante .modal-header { cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none; }
     .modal.modal-flotante .modal-header:active { cursor: grabbing; }
     body.con-modal-flotante { overflow: visible !important; padding-right: 0 !important; }

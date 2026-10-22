@@ -813,7 +813,11 @@
              x-data="modalFlotante('cobro')"
              x-on:ticket-confirm.window="modal.show()"
              x-on:ticket-close.window="modal.hide()">
-            <div class="modal-dialog modal-dialog-centered" style="max-width:420px;" x-ref="dialogo">
+            {{-- 22/10: wire:ignore.self en el diálogo: Livewire actualiza lo de adentro pero no
+                 toca sus atributos. Sin esto, al responder Sí/No el morph reponía el style del
+                 servidor y borraba el left/top de la ventana: saltaba a la esquina superior
+                 izquierda (pasaba en prod desde el 10/10). --}}
+            <div class="modal-dialog modal-dialog-centered" style="max-width:420px;" x-ref="dialogo" wire:ignore.self>
                 <div class="modal-content">
                     <div class="modal-header py-2"
                          x-on:pointerdown="iniciarArrastre($event)" x-on:pointermove="arrastrar($event)"
