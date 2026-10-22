@@ -12,14 +12,21 @@ use Illuminate\Support\Facades\DB;
  * mass_deletion_details (apunta a la cuota donde se anotó la mora) y las
  * cuotas C/I/E de esa misma operación son las que generaron el atraso.
  *
- * El monto se reparte entre esas cuotas en proporción a los DÍAS DE ATRASO
- * de cada una al momento del pago (de su vencimiento a la fecha del cobro).
- * Es la misma regla con la que el modal "Pagar por cuotas" calcula y cobra
- * la mora cuota por cuota (días × tarifa), así que con tarifa diaria
- * uniforme el prorrateo reproduce exactamente lo que se cobró por cada una,
- * sin depender de la tarifa histórica. Hasta el 17/09 se repartía por los
- * siete días en que cada cuota fue la más antigua impaga: salía parejo
- * (104,90 en las ocho del 28957) cuando lo cobrado iba de 186,48 a 23,31.
+ * El monto se reparte entre esas cuotas EN CASCADA (22/10): de la más
+ * antigua a la más nueva, cada una toma como máximo su mora teórica al
+ * momento del pago (días de atraso × tarifa diaria, lo mismo que calcula el
+ * modal "elegir cuotas") y lo que sobra pasa a la siguiente. Así, cuando se
+ * cobró la mora completa de todas las cuotas tocadas, cada una muestra la
+ * suya (igual que antes); y cuando se cobró solo la de la más antigua, que
+ * es lo que el sistema propone por defecto, esa cuota la muestra entera y las
+ * demás nada. Hasta el 22/10 se prorrateaba por días entre todas las tocadas:
+ * en el 29351 (Edwin Leoncio) los 35,70 de la cuota 6 (15 días) salían 23,28
+ * en la 6 y 12,42 en la 7, que solo recibió 0,42 de interés sobrante y por
+ * la que no se cobró mora. Si se cobró MÁS que la suma teórica (mora subida
+ * a mano), el exceso queda en la cuota ancla, donde está anotado. Hasta el
+ * 17/09 se repartía por los siete días en que cada cuota fue la más antigua
+ * impaga: salía parejo (104,90 en las ocho del 28957) cuando lo cobrado iba
+ * de 186,48 a 23,31.
  *
  * La mora migrada del legacy no tiene vínculo de operación: pertenece a su
  * propia cuota (allá venía anotada cuota por cuota) y no aparece en este
@@ -74,7 +81,8 @@ class MoraPagada
             ->whereIn('d.mass_deletion_id', $ops->pluck('mass_deletion_id')->unique()->all())
             ->whereIn('d.tipo', ['C', 'I', 'E'])
             ->distinct()
-            ->get(['d.mass_deletion_id', 'ci.id', 'ci.num_cuota', 'ci.fecha_vencimiento'])
+            ->get(['d.mass_deletion_id', 'ci.id', 'ci.num_cuota', 'ci.fecha_vencimiento',
+                'ci.importe_cuota', 'ci.importe_interes', 'ci.importe_excedente'])
             ->groupBy('mass_deletion_id');
 
         $map = [];
@@ -82,13 +90,22 @@ class MoraPagada
             $fpago = Carbon::parse($o->fecha);
             $vencidas = ($cuotasPorOp[$o->mass_deletion_id] ?? collect())
                 ->unique('id')
-                ->map(fn ($c) => ['id' => (int) $c->id, 'num' => (int) $c->num_cuota, 'venc' => Carbon::parse($c->fecha_vencimiento)])
+                ->map(fn ($c) => [
+                    'id' => (int) $c->id,
+                    'num' => (int) $c->num_cuota,
+                    'venc' => Carbon::parse($c->fecha_vencimiento),
+                    'total' => (float) $c->importe_cuota + (float) $c->importe_interes + (float) $c->importe_excedente,
+                ])
                 ->filter(fn ($c) => $c['venc']->lt($fpago))
                 ->sortBy('num')->values();
 
             $items = [];
             foreach ($vencidas as $c) {
-                $items[] = ['id' => $c['id'], 'num' => $c['num'], 'dias' => self::diasMoraEntre($c['venc'], $fpago)];
+                $dias = self::diasMoraEntre($c['venc'], $fpago);
+                // Mora teórica de la cuota al pagar, en centavos: la misma cuenta del
+                // modal "elegir cuotas" (días × Credit::moraDiaria, redondeada a 2).
+                $teorica = (int) round(round($dias * $credit->moraDiaria($c['total']), 2) * 100);
+                $items[] = ['id' => $c['id'], 'num' => $c['num'], 'dias' => $dias, 'teorica' => $teorica];
             }
             $totDias = array_sum(array_column($items, 'dias'));
 
@@ -98,10 +115,29 @@ class MoraPagada
                 $ancla = $cuotas[$o->installment_id];
                 $items = [['id' => (int) $ancla->id, 'num' => (int) $ancla->num_cuota, 'monto' => (float) $o->monto, 'dias' => null]];
             } else {
-                $partes = self::repartirCentavos((float) $o->monto, array_column($items, 'dias'));
+                // 22/10: cascada en centavos enteros. De la más antigua a la más
+                // nueva, cada cuota toma hasta su mora teórica; el resto sigue.
+                $restante = (int) round((float) $o->monto * 100);
                 foreach ($items as $i => $it) {
-                    $items[$i]['monto'] = $partes[$i];
+                    $parte = min($restante, $it['teorica']);
+                    $items[$i]['monto'] = $parte / 100;
+                    $restante -= $parte;
                 }
+                if ($restante > 0) {
+                    // Más que la suma teórica (mora subida a mano): el exceso se
+                    // queda en la cuota ancla, que es donde el cobro lo anotó.
+                    $anclaId = (int) $o->installment_id;
+                    $idx = array_search($anclaId, array_column($items, 'id'), true);
+                    if ($idx === false) {
+                        $ancla = $cuotas[$anclaId];
+                        $items[] = ['id' => (int) $ancla->id, 'num' => (int) $ancla->num_cuota, 'dias' => null, 'monto' => 0.0];
+                        $idx = array_key_last($items);
+                    }
+                    $items[$idx]['monto'] = round($items[$idx]['monto'] + $restante / 100, 2);
+                }
+                // Las cuotas que no recibieron nada no forman parte del reparto
+                // (ni en la celda ni en el "por las cuotas a..b" del tooltip).
+                $items = array_values(array_filter($items, fn ($it) => $it['monto'] > 0));
             }
 
             // Varias operaciones ancladas a la misma cuota: fusionar por cuota.

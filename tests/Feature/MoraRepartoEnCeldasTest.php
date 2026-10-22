@@ -35,6 +35,12 @@ use Tests\TestCase;
  * C/I de las ocho cuotas más la fila M anclada a la 18. Las cuotas 1 a 17
  * llevan sus pagos puntuales (solo en payments) para que el FIFO del
  * cronograma cuelgue el cobro del 17/09 en la 18 a 25 y no en la 1 a 8.
+ *
+ * 22/10: el reparto es EN CASCADA (la más antigua primero, cada una hasta su
+ * mora teórica al pagar). Caso 29351 (Edwin Leoncio): se cobró solo la mora de
+ * la cuota 6 (15 días, 35,70) y el pago tocó la 7 con 0,42 de interés; el
+ * prorrateo por días pintaba 23,28 en la 6 y 12,42 en la 7, aunque por la 7
+ * no se cobró nada. Con la cascada la 6 muestra sus 35,70 y la 7 nada.
  */
 class MoraRepartoEnCeldasTest extends TestCase
 {
@@ -135,6 +141,63 @@ class MoraRepartoEnCeldasTest extends TestCase
         return ['credit' => $credit->fresh(), 'ids' => $ids, 'pagoMora' => $pagoMora, 'op' => $opId];
     }
 
+    /**
+     * El 29351 tal como quedó el 21/10: cuotas semanales de 333,33 (tarifa 2,38 por
+     * día), la 6 vencida el 06/10 (15 días) y la 7 el 13/10 (8 días). El cobro de
+     * 333,40 cerró la 6 y dejó 0,42 de interés en la 7; la mora cobrada fue solo la
+     * de la 6 (35,70), anclada en ella.
+     *
+     * @return array{credit: Credit, ids: array<int, int>}
+     */
+    private function operacionEdwin(float $mora = 35.70): array
+    {
+        $client = Client::create(['nombre' => 'Edwin Leoncio', 'headquarter_id' => 1, 'status' => 'active']);
+        $credit = Credit::create([
+            'client_id' => $client->id, 'fecha_prestamo' => '2026-08-25',
+            'importe' => 10000, 'cuotas' => 48, 'tipo_planilla' => 1, 'interes' => 60,
+            'interes_total' => 6000, 'situacion' => 'Activo', 'estado' => 1, 'headquarter_id' => 1,
+        ]);
+        $fecha = '2026-10-21';
+        $pago = fn (string $tipo, float $monto, ?int $insId, string $detalle) => DB::table('payments')->insertGetId([
+            'credit_id' => $credit->id, 'installment_id' => $insId, 'modo' => 'CREDITO',
+            'tipo' => $tipo, 'documento' => $tipo, 'fecha' => $fecha.' 00:00:00', 'hora' => '08:55:42',
+            'monto' => $monto, 'detalle' => $detalle, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $ids = [];
+        for ($n = 1; $n <= 9; $n++) {
+            $venc = Carbon::parse('2026-09-01')->addWeeks($n - 1)->format('Y-m-d');
+            $ids[$n] = CreditInstallment::create([
+                'credit_id' => $credit->id, 'num_cuota' => $n, 'fecha_vencimiento' => $venc,
+                'importe_cuota' => 208.33, 'importe_interes' => 125.00, 'importe_excedente' => 0,
+                'importe_aplicado' => $n <= 6 ? 208.33 : 0,
+                'interes_aplicado' => $n <= 6 ? 125.00 : ($n === 7 ? 0.42 : 0),
+                'excedente_aplicado' => 0,
+                'importe_mora' => $n === 6 ? $mora : 0, 'mora_interes' => 0,
+                'pagado' => $n <= 6, 'fecha_pago' => $n <= 6 ? ($n === 6 ? $fecha : $venc) : null,
+            ])->id;
+            if ($n <= 5) {
+                $pago('INTERES', 125.00, $ids[$n], "Interes: {$n}/48");
+                $pago('CAPITAL', 208.33, $ids[$n], "Cuota: {$n}/48");
+            }
+        }
+
+        $opId = DB::table('mass_deletions')->insertGetId([
+            'credit_id' => $credit->id, 'amount' => round(333.40 + $mora, 2), 'date' => $fecha,
+            'time' => '08:55:42', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $detalle = fn (int $insId, int $pagoId, float $monto, string $tipo) => DB::table('mass_deletion_details')->insert([
+            'mass_deletion_id' => $opId, 'installment_id' => $insId, 'payment_id' => $pagoId,
+            'amount' => $monto, 'fecha' => now(), 'tipo' => $tipo, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $detalle($ids[6], $pago('CAPITAL', 208.33, $ids[6], 'Cuota: 6/48'), 208.33, 'C');
+        $detalle($ids[6], $pago('INTERES', 124.65, $ids[6], 'Interes: 6/48 Dias : 15'), 124.65, 'I');
+        $detalle($ids[7], $pago('INTERES', 0.42, $ids[7], 'Interes: 7/48 Dias : 8'), 0.42, 'I');
+        $detalle($ids[6], $pago('MORA', $mora, null, 'Mora de cuota'), $mora, 'M');
+
+        return ['credit' => $credit->fresh(), 'ids' => $ids];
+    }
+
     private function sumaRegistrada(Credit $credit): float
     {
         return round((float) $credit->installments->sum(fn ($i) => $i->importe_mora + $i->mora_interes), 2);
@@ -177,6 +240,79 @@ class MoraRepartoEnCeldasTest extends TestCase
 
         $this->assertSame($this->sumaRegistrada($credit), round(array_sum(array_column($celda, 'monto')), 2));
         $this->assertSame(909.16, $this->sumaRegistrada($credit), 'sanity: 839,16 + 50 + 20');
+    }
+
+    // ─── La cascada (22/10) ────────────────────────────────────────────────
+
+    /**
+     * Caso 29351: se cobró solo la mora de la cuota 6 y el pago tocó la 7 con
+     * 0,42 de interés. La 6 muestra sus 35,70 enteros; la 7 no muestra mora
+     * (antes: 23,28 y 12,42, prorrateo 15:8 por días).
+     */
+    public function test_caso_29351_la_mora_cobrada_por_una_cuota_se_queda_en_esa_cuota(): void
+    {
+        ['credit' => $credit, 'ids' => $ids] = $this->operacionEdwin();
+
+        $celda = MoraPagada::mostradaPorCuota($credit);
+
+        $this->assertSame(35.70, $celda[$ids[6]]['monto']);
+        $this->assertSame(15, $celda[$ids[6]]['dias']);
+        $this->assertArrayNotHasKey($ids[7], $celda, 'por la 7 no se cobró mora');
+        $this->assertStringContainsString('cobro de 35.70', $celda[$ids[6]]['detalle']);
+        $this->assertStringNotContainsString('por las cuotas', $celda[$ids[6]]['detalle'], 'el cobro ya no se atribuye a la 7');
+
+        // Y en rojo: la 6 pagó su mora completa, no se le exoneró nada.
+        $this->assertArrayNotHasKey(6, MoraExonerada::porCuota($credit, $celda));
+
+        $html = Livewire::test(Create::class, ['creditId' => $credit->id])->html();
+        $this->assertSame(2, $this->celdas($html, '35.70'), 'la celda de la 6 y la fila de Totales (único cobro)');
+        $this->assertSame(0, $this->celdas($html, '23.28'));
+        $this->assertSame(0, $this->celdas($html, '12.42'));
+    }
+
+    /** Cobrada la mora de la más antigua entre varias tocadas, la cascada la deja entera ahí. */
+    public function test_con_la_mora_de_la_mas_antigua_las_demas_no_muestran_nada(): void
+    {
+        ['credit' => $credit, 'ids' => $ids] = $this->operacion(mora: 186.48);
+
+        $celda = MoraPagada::mostradaPorCuota($credit);
+
+        $this->assertSame(186.48, $celda[$ids[18]]['monto']);
+        $this->assertSame(56, $celda[$ids[18]]['dias']);
+        foreach (range(19, 25) as $n) {
+            $this->assertArrayNotHasKey($ids[$n], $celda, "cuota {$n}: no se cobró su mora");
+        }
+        $this->assertSame(186.48, round(array_sum(array_column($celda, 'monto')), 2));
+    }
+
+    /** Entre medias: lo cobrado cubre la 18 y la 19 enteras y parte de la 20; de la 21 en adelante nada. */
+    public function test_la_cascada_llena_cuota_por_cuota_y_corta_donde_se_acaba(): void
+    {
+        ['credit' => $credit, 'ids' => $ids] = $this->operacion(mora: 400.00);
+
+        $celda = MoraPagada::mostradaPorCuota($credit);
+
+        $this->assertSame(186.48, $celda[$ids[18]]['monto']);
+        $this->assertSame(163.17, $celda[$ids[19]]['monto']);
+        $this->assertSame(50.35, $celda[$ids[20]]['monto'], '400 − 186,48 − 163,17');
+        $this->assertArrayNotHasKey($ids[21], $celda);
+        $this->assertSame(400.00, round(array_sum(array_column($celda, 'monto')), 2));
+    }
+
+    /** Más que la suma teórica (mora subida a mano): el exceso se queda en la ancla, donde está anotado. */
+    public function test_el_exceso_sobre_la_mora_teorica_queda_en_la_ancla(): void
+    {
+        ['credit' => $credit, 'ids' => $ids] = $this->operacion(mora: 900.00);
+
+        $celda = MoraPagada::mostradaPorCuota($credit);
+
+        $this->assertSame(round(186.48 + (900 - self::MORA), 2), $celda[$ids[18]]['monto'], 'su parte + el exceso 60,84');
+        foreach (self::PARTES as $n => [$monto]) {
+            if ($n !== 18) {
+                $this->assertSame($monto, $celda[$ids[$n]]['monto'], "cuota {$n}: su mora teórica");
+            }
+        }
+        $this->assertSame(900.00, round(array_sum(array_column($celda, 'monto')), 2));
     }
 
     /** La mora migrada del legacy no tiene operación: se queda en su propia cuota. */
@@ -301,15 +437,20 @@ class MoraRepartoEnCeldasTest extends TestCase
         $this->assertSame(0.0, (float) $rows->whereBetween('n', [18, 25])->sum('mora_exon'), 'el cronograma tampoco pinta rojo');
     }
 
-    /** Con la mora del sistema (solo la más antigua, 186,48) sí queda exonerada, cuota por cuota. */
+    /**
+     * Con la mora del sistema (solo la más antigua, 186,48) sí queda exonerada,
+     * cuota por cuota: la 18 pagó la suya completa (nada en rojo) y de la 19 en
+     * adelante se exonera la teórica entera. 22/10: antes, con el prorrateo por
+     * días, la 19 salía "pagó 36,26" y "exonerada 126,91" a la vez.
+     */
     public function test_la_exonerada_es_la_diferencia_por_cuota_cuando_se_cobro_menos(): void
     {
         ['credit' => $credit] = $this->operacion(mora: 186.48);
 
         $exon = MoraExonerada::porCuota($credit);
 
-        // Cuota 19: teórica 49 × 3,33 = 163,17; pagó 186,48 × 49/252 = 36,26 → 126,91.
-        $this->assertSame(126.91, $exon[19]['monto']);
+        $this->assertArrayNotHasKey(18, $exon, 'la 18 pagó sus 186,48');
+        $this->assertSame(163.17, $exon[19]['monto'], 'teórica 49 × 3,33, no pagó nada de mora');
         $this->assertSame(49, $exon[19]['dias']);
         $this->assertSame(
             round(self::MORA - 186.48, 2),
