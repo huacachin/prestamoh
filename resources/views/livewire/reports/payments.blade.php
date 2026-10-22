@@ -1,4 +1,16 @@
-<div class="container-fluid">
+{{-- 22/10 (Antony): la raíz lleva el visor flotante de vouchers (partial _lightbox, contrato
+     open / idx / items / close / next / prev) y el estado de la ventana "Direcciones" (dir),
+     que cada fila llena con verDirecciones() y muestra el modal flotante del final. --}}
+<div class="container-fluid"
+     x-data="{
+        open: false, idx: 0, items: [],
+        verVouchers(items) { this.items = items; this.idx = 0; this.open = true; },
+        close() { this.open = false; },
+        next() { this.idx = (this.idx + 1) % this.items.length; },
+        prev() { this.idx = (this.idx - 1 + this.items.length) % this.items.length; },
+        dir: null,
+        verDirecciones(d) { this.dir = d; this.$dispatch('direcciones-open'); },
+     }">
     <div class="row">
         <div class="col-sm-6">
             <h4 class="main-title title-modules" style="color:red;">REPORTE DE PAGO</h4>
@@ -119,8 +131,12 @@
                                     <th>A</th>
                                     <th style="background:#949696;">Motivo</th>
                                     <th class="text-center">S/.</th>
+                                    {{-- 22/10 (Antony): foto del voucher del cobro (se abre en la ventana movible). --}}
+                                    <th class="text-center" style="background:#949696;">Voucher</th>
                                     @if($isAdmin)
-                                        <th class="text-center" style="background:#949696;">Map</th>
+                                        {{-- Como en el legacy, solo para los niveles altos; ahora abre las
+                                             direcciones del cliente (los cobros nuevos no traen coordenadas). --}}
+                                        <th class="text-center">Map</th>
                                     @endif
                                 </tr>
                             </thead>
@@ -135,19 +151,41 @@
                                         <td>{{ $row['cliente'] }}</td>
                                         <td>{{ $row['detalle'] }}</td>
                                         <td class="text-end">{{ number_format($row['monto'], 2) }}</td>
+                                        <td class="text-center" style="white-space:nowrap;">
+                                            @if($row['vouchers'])
+                                                @php $nV = count($row['vouchers']); @endphp
+                                                <button type="button" class="btn btn-link p-0 align-middle"
+                                                        title="Ver voucher{{ $nV > 1 ? ' ('.$nV.' fotos)' : '' }}"
+                                                        x-on:click="verVouchers(@js($row['vouchers']))">
+                                                    <img src="{{ $row['vouchers'][0]['thumb'] }}" alt="Voucher" loading="lazy"
+                                                         style="height:28px; width:auto; max-width:60px; border-radius:3px; border:1px solid #dee2e6; object-fit:cover;">
+                                                    @if($nV > 1)
+                                                        <span class="badge bg-secondary ms-1 align-middle">{{ $nV }}</span>
+                                                    @endif
+                                                </button>
+                                            @endif
+                                        </td>
                                         @if($isAdmin)
-                                            <td class="text-center">
-                                                @if($row['latitud'] && $row['longitud'])
-                                                    <a target="_blank" href="https://maps.google.com/?q={{ $row['latitud'] }},{{ $row['longitud'] }}">
-                                                        <i class="ti ti-world"></i>
-                                                    </a>
+                                            <td class="text-center" style="white-space:nowrap;">
+                                                @php
+                                                    $dir = $row['direcciones'];
+                                                    $nUb = $dir ? count($dir['ubicaciones']) : 0;
+                                                @endphp
+                                                @if($dir && ($nUb > 0 || $dir['direccion'] || $dir['pago']))
+                                                    <button type="button" class="btn btn-link p-0 {{ $nUb ? 'text-success' : 'text-secondary' }}"
+                                                            title="Ver direcciones{{ $nUb ? ' ('.$nUb.' con GPS)' : ' (sin GPS)' }}"
+                                                            x-on:click="verDirecciones(@js($dir))">
+                                                        <i class="ti {{ $nUb ? 'ti-map-pin' : 'ti-map-pin-off' }} f-s-16"></i>@if($nUb > 1)<sup>{{ $nUb }}</sup>@endif
+                                                    </button>
+                                                @else
+                                                    <i class="ti ti-map-pin-off text-muted" title="Sin dirección registrada"></i>
                                                 @endif
                                             </td>
                                         @endif
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="{{ $isAdmin ? 9 : 8 }}" class="text-center py-4 text-muted">
+                                        <td colspan="{{ $isAdmin ? 10 : 9 }}" class="text-center py-4 text-muted">
                                             No se encontraron pagos en el rango seleccionado
                                         </td>
                                     </tr>
@@ -159,11 +197,13 @@
                                     <td></td>
                                     <td></td>
                                     <td class="text-end">{{ number_format($totals['total'], 2) }}</td>
+                                    <td></td>
                                     @if($isAdmin)<td></td>@endif
                                 </tr>
                                 <tr style="background-color:#f0f0f0; font-weight:500;">
                                     <td class="text-center">Fijos</td>
                                     <td class="text-end">{{ number_format($totals['fijos'], 2) }}</td>
+                                    <td></td>
                                     <td></td>
                                     @if($isAdmin)<td></td>@endif
                                 </tr>
@@ -171,17 +211,20 @@
                                     <td class="text-center" style="color:red;">Otros</td>
                                     <td class="text-end">{{ number_format($totals['otros'], 2) }}</td>
                                     <td></td>
+                                    <td></td>
                                     @if($isAdmin)<td></td>@endif
                                 </tr>
                                 <tr style="background-color:#f0f0f0; font-weight:500;">
                                     <td class="text-center">Capital</td>
                                     <td class="text-end">{{ number_format($totals['capital'], 2) }}</td>
                                     <td></td>
+                                    <td></td>
                                     @if($isAdmin)<td></td>@endif
                                 </tr>
                                 <tr style="background-color:#f0f0f0; font-weight:500;">
                                     <td class="text-center">Interes</td>
                                     <td class="text-end">{{ number_format($totals['interes'], 2) }}</td>
+                                    <td></td>
                                     <td></td>
                                     @if($isAdmin)<td></td>@endif
                                 </tr>
@@ -190,12 +233,14 @@
                                         <td class="text-center">Excedente</td>
                                         <td class="text-end">{{ number_format($totals['excedente'], 2) }}</td>
                                         <td></td>
+                                        <td></td>
                                         @if($isAdmin)<td></td>@endif
                                     </tr>
                                 @endif
                                 <tr style="background-color:#f0f0f0; font-weight:500;">
                                     <td class="text-center">Mora</td>
                                     <td class="text-end">{{ number_format($totals['mora'], 2) }}</td>
+                                    <td></td>
                                     <td></td>
                                     @if($isAdmin)<td></td>@endif
                                 </tr>
@@ -206,5 +251,63 @@
             </div>
         </div>
     </div>
+
+    {{-- Ventana flotante "Direcciones" (modalFlotante, arrastrable; mismo patrón que la confirmación
+         del cobro). Todo su contenido lo pinta Alpine con `dir`, por eso va con wire:ignore. --}}
+    <div class="modal fade" id="direccionesModal" tabindex="-1" aria-hidden="true" wire:ignore
+         x-data="modalFlotante('direcciones')"
+         x-on:direcciones-open.window="modal.show()">
+        <div class="modal-dialog modal-dialog-centered" style="max-width:440px;" x-ref="dialogo">
+            <div class="modal-content">
+                <div class="modal-header py-2"
+                     x-on:pointerdown="iniciarArrastre($event)" x-on:pointermove="arrastrar($event)"
+                     x-on:pointerup="soltar($event)" x-on:pointercancel="soltar($event)">
+                    <h6 class="modal-title mb-0"><i class="ti ti-map-pin text-success"></i> Direcciones</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body py-2 small">
+                    <template x-if="dir">
+                        <div>
+                            <div class="fw-semibold mb-2" x-text="dir.cliente"></div>
+                            <div class="mb-2">
+                                <div><span class="text-muted">Dirección:</span> <span x-text="dir.direccion || '—'"></span></div>
+                                <div x-show="dir.referencia"><span class="text-muted">Referencia:</span> <span x-text="dir.referencia"></span></div>
+                                <div x-show="dir.lugar"><span class="text-muted">Lugar:</span> <span x-text="dir.lugar"></span></div>
+                                <div x-show="dir.zona"><span class="text-muted">Zona:</span> <span x-text="dir.zona"></span></div>
+                            </div>
+                            <div class="text-muted">Ubicaciones GPS</div>
+                            <template x-if="! dir.ubicaciones.length">
+                                <div class="fst-italic text-muted py-1">Sin coordenadas en la ficha (pestaña GPS).</div>
+                            </template>
+                            <template x-for="u in dir.ubicaciones" :key="u.id">
+                                <div class="d-flex justify-content-between align-items-center gap-2 py-1 border-top">
+                                    <div>
+                                        <div class="fw-semibold" x-text="u.nombre"></div>
+                                        <div class="text-muted" style="font-size:.75rem;">
+                                            <span x-text="u.coordenadas"></span><span x-show="u.fecha"> · <span x-text="u.fecha"></span></span>
+                                        </div>
+                                    </div>
+                                    <a :href="u.url" target="_blank" rel="noopener" class="btn btn-sm btn-outline-success text-nowrap">
+                                        <i class="ti ti-world"></i> Google Maps
+                                    </a>
+                                </div>
+                            </template>
+                            <template x-if="dir.pago">
+                                <div class="d-flex justify-content-between align-items-center gap-2 py-1 border-top">
+                                    <div class="fw-semibold">Lugar del pago</div>
+                                    <a :href="dir.pago" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary text-nowrap">
+                                        <i class="ti ti-world"></i> Google Maps
+                                    </a>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Visor flotante de vouchers: el mismo partial que caja, galerías y auditoría. --}}
+    @include('livewire.cash.partials._lightbox')
 <span id="final"></span>
 </div>

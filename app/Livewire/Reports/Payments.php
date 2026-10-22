@@ -3,10 +3,13 @@
 namespace App\Livewire\Reports;
 
 use App\Models\Client;
+use App\Models\ClientUbicacion;
 use App\Models\Credit;
 use App\Models\Payment;
 use App\Support\Usernames;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
@@ -70,7 +73,13 @@ class Payments extends Component
     {
         // ─── Listado agrupado por nroentrada+fecha (legacy) ─────────────
         $base = Payment::query()
-            ->with(['credit:id,client_id', 'credit.client:id,nombre,apellido_pat,apellido_mat'])
+            ->with([
+                'credit:id,client_id',
+                // 22/10 (Antony): la columna Map abre la ventana "Direcciones" del cliente:
+                // dirección escrita + ubicaciones GPS (client_ubicaciones) con su enlace a Maps.
+                'credit.client:id,nombre,apellido_pat,apellido_mat,direccion,referencia,distrito,provincia,departamento,zona',
+                'credit.client.ubicaciones',
+            ])
             ->where('modo', 'CREDITO');
 
         if ($this->fei) {
@@ -119,10 +128,12 @@ class Payments extends Component
             ->get();
 
         // Agrupacion por (credit_id + fecha) para mostrar fila por agrupacion
+        $vouchers = $this->vouchersPorCobro($payments);
         $rows = [];
         $contador = 0;
-        foreach ($payments->groupBy(fn ($p) => $p->credit_id.'|'.$p->fecha->format('Y-m-d')) as $group) {
+        foreach ($payments->groupBy(fn ($p) => $p->credit_id.'|'.$p->fecha->format('Y-m-d')) as $clave => $group) {
             $first = $group->first();
+            $cliente = $first->credit?->client;
             $contador++;
             $rows[] = [
                 'n' => $contador,
@@ -132,14 +143,18 @@ class Payments extends Component
                 // nuevos guardan el nombre completo — Usernames::de normaliza
                 'usuario' => Usernames::de($first->usuario),
                 'asesor' => $first->asesor,
-                'cliente' => $first->credit?->client
-                    ? trim(($first->credit->client->apellido_pat ?? '').' '.($first->credit->client->apellido_mat ?? '').' '.($first->credit->client->nombre ?? ''))
+                'cliente' => $cliente
+                    ? trim(($cliente->apellido_pat ?? '').' '.($cliente->apellido_mat ?? '').' '.($cliente->nombre ?? ''))
                     : '',
                 'detalle' => $first->detalle,
                 'monto' => $group->sum('monto'),
                 'moneda' => $first->moneda,
                 'latitud' => $first->latitud,
                 'longitud' => $first->longitud,
+                // 22/10 (Antony): direcciones del cliente (ventana "Direcciones") y
+                // fotos del voucher del cobro (visor flotante), ambas por fila.
+                'direcciones' => $cliente ? $this->direccionesDe($cliente, $first) : null,
+                'vouchers' => $vouchers[$clave] ?? [],
             ];
         }
 
@@ -173,5 +188,86 @@ class Payments extends Component
             'totals' => $totals,
             'isAdmin' => $isAdmin,
         ]);
+    }
+
+    /**
+     * Lo que muestra la ventana "Direcciones" de una fila: la dirección escrita
+     * de la ficha y las ubicaciones GPS con coordenadas (Casa, Negocio y las
+     * adicionales), cada una con su enlace a Google Maps. El legacy solo
+     * enlazaba las coordenadas del pago (payments.latitud/longitud), que los
+     * cobros nuevos no traen; si un pago migrado las tiene, se conservan.
+     *
+     * @return array{cliente: string, direccion: ?string, referencia: ?string, lugar: ?string, zona: ?string, ubicaciones: list<array{id: int, nombre: string, coordenadas: string, url: string, fecha: ?string}>, pago: ?string}
+     */
+    private function direccionesDe(Client $cliente, Payment $pago): array
+    {
+        // Las coordenadas se guardan decimal(10,7): para leerlas, sin los ceros de relleno.
+        $limpia = fn ($v) => rtrim(rtrim((string) $v, '0'), '.');
+        $ubicaciones = [];
+        foreach ($cliente->ubicaciones as $u) {
+            if (! $u->tieneCoordenadas()) {
+                continue;
+            }
+            $ubicaciones[] = [
+                'id' => (int) $u->id,
+                'nombre' => $u->nombre ?: (ClientUbicacion::TIPOS[$u->tipo] ?? 'Otra'),
+                'coordenadas' => $limpia($u->latitud).', '.$limpia($u->longitud),
+                'url' => (string) $u->url(),
+                'fecha' => $u->registradoEl()?->format('d/m/Y'),
+            ];
+        }
+        $lugar = implode(' · ', array_filter(array_map(
+            fn ($v) => trim((string) $v),
+            [$cliente->distrito, $cliente->provincia, $cliente->departamento]
+        )));
+
+        return [
+            'cliente' => $cliente->fullName(),
+            'direccion' => trim((string) $cliente->direccion) ?: null,
+            'referencia' => trim((string) $cliente->referencia) ?: null,
+            'lugar' => $lugar ?: null,
+            'zona' => trim((string) $cliente->zona) ?: null,
+            'ubicaciones' => $ubicaciones,
+            'pago' => ($pago->latitud && $pago->longitud)
+                ? "https://maps.google.com/?q={$pago->latitud},{$pago->longitud}"
+                : null,
+        ];
+    }
+
+    /**
+     * Fotos del voucher de cada cobro (crédito + fecha). Un pago vía depósito
+     * deja un egreso "Banco" colgado del lote (expenses.mass_deletion_id) con
+     * la foto adjunta (expense_attachments, disco public). Una sola consulta
+     * para todas las filas del reporte.
+     *
+     * @param  Collection<int, Payment>  $payments
+     * @return array<string, list<array{url: string, thumb: string, name: string}>> por "credit_id|Y-m-d"
+     */
+    private function vouchersPorCobro(Collection $payments): array
+    {
+        if ($payments->isEmpty()) {
+            return [];
+        }
+
+        $filas = DB::table('mass_deletions as m')
+            ->join('expenses as e', 'e.mass_deletion_id', '=', 'm.id')
+            ->join('expense_attachments as a', 'a.expense_id', '=', 'e.id')
+            ->whereIn('m.credit_id', $payments->pluck('credit_id')->unique()->values()->all())
+            ->whereIn('m.date', $payments->map(fn ($p) => $p->fecha->format('Y-m-d'))->unique()->values()->all())
+            ->orderBy('m.date')->orderBy('m.time')->orderBy('a.id')
+            ->get(['m.credit_id', 'm.date', 'm.time', 'a.path', 'a.thumb_path', 'a.original_name']);
+
+        $out = [];
+        foreach ($filas as $f) {
+            $fecha = Carbon::parse($f->date)->format('Y-m-d');
+            $out[$f->credit_id.'|'.$fecha][] = [
+                'url' => '/storage/'.ltrim((string) $f->path, '/'),
+                'thumb' => '/storage/'.ltrim((string) ($f->thumb_path ?: $f->path), '/'),
+                'name' => 'Voucher '.Carbon::parse($fecha)->format('d/m/Y').' '.substr((string) $f->time, 0, 5)
+                    .($f->original_name ? ' · '.$f->original_name : ''),
+            ];
+        }
+
+        return $out;
     }
 }
