@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\CreditInstallment;
 use App\Models\Payment;
+use App\Support\MotivoCobro;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -16,9 +18,15 @@ class CajaDailyService
      * Ingresos del mes agrupados por día y crédito, con la lógica del legacy
      * reporte1a (incluye la rama de refinanciamiento cancelado el mismo día).
      *
+     * Con $conMotivo (23/10/2026, Antony: Caja General 1 en Detalle) cada
+     * ingreso trae además 'motivo', el mismo del reporte de pagos
+     * (App\Support\MotivoCobro), y 'nro_cuotas' pasa a ser ese texto en una
+     * línea (lo que leen los Excel). Sin él, 'nro_cuotas' sigue siendo el
+     * detalle legacy del primer movimiento y no se consultan las cuotas.
+     *
      * @return array<string, array<int, array>> 'Y-m-d' => [ ingreso, ... ]
      */
-    public function ingresosPorDia(int $year, int $month, ?int $tipoFilter, string $endLimit): array
+    public function ingresosPorDia(int $year, int $month, ?int $tipoFilter, string $endLimit, bool $conMotivo = false): array
     {
         $startMonth = Carbon::create($year, $month, 1)->format('Y-m-d');
 
@@ -57,6 +65,15 @@ class CajaDailyService
             }
         }
 
+        // Cuotas de los créditos del mes, en una sola consulta, solo si se pinta el motivo.
+        $cuotasPorCredito = $conMotivo && $allPayments->isNotEmpty()
+            ? CreditInstallment::query()
+                ->whereIn('credit_id', $allPayments->pluck('credit_id')->unique()->values()->all())
+                ->get(['id', 'credit_id', 'num_cuota', 'fecha_vencimiento', 'importe_cuota', 'importe_interes', 'importe_excedente', 'importe_aplicado', 'interes_aplicado', 'excedente_aplicado', 'pagado'])
+                ->groupBy('credit_id')
+            : collect();
+
+        $indices = [];
         $tcMarks = [1 => 'S.', 3 => 'M.', 4 => 'D.'];
         $result = [];
 
@@ -137,11 +154,27 @@ class CajaDailyService
                         ->map(fn ($v, $k) => "cuota {$k} = ".number_format($v, 2))->implode(' · ');
                 }
 
+                $motivo = null;
+                if ($conMotivo) {
+                    // Índices de cuotas armados una vez por crédito (un diario cobra casi todos los días del mes).
+                    $indices[$cid] ??= [
+                        ($cuotasPorCredito[$cid] ?? collect())->keyBy('id')->all(),
+                        ($cuotasPorCredito[$cid] ?? collect())->keyBy('num_cuota')->all(),
+                    ];
+                    $motivo = MotivoCobro::de(
+                        $pays->filter(fn ($p) => $p->detalle === null || ! str_ends_with((string) $p->detalle, 'Gat')),
+                        $credit,
+                        $indices[$cid][0],
+                        $indices[$cid][1],
+                    );
+                }
+
                 $ingresos[] = [
                     'credit_id' => $cid,
                     'cliente' => $cliName,
                     'detalle' => $marcador,
-                    'nro_cuotas' => $pays->sortBy('id')->first()?->detalle ?? '',
+                    'nro_cuotas' => $motivo['texto'] ?? ($pays->sortBy('id')->first()?->detalle ?? ''),
+                    'motivo' => $motivo,
                     'total' => $total,
                     'capital' => $capital,
                     'interes' => $interes,

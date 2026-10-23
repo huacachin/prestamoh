@@ -319,7 +319,21 @@
                                                     </td>
                                                     <td class="col-cliente" title="{{ $ing['cliente'] }}"><span class="ellip">{{ $ing['cliente'] }}</span></td>
                                                     <td>{{ $ing['detalle'] }}</td>
-                                                    <td class="text-center">{{ $ing['nro_cuotas'] }}</td>
+                                                    {{-- 23/10 (Antony): el mismo motivo del reporte de pagos (App\Support\MotivoCobro).
+                                                         Bloque de 250 px que corta líneas: la tabla es table-nowrap y, sin él, la
+                                                         columna llegaba a 400 px y sacaba EGRESOS de la pantalla. --}}
+                                                    <td class="text-center">
+                                                        @if(! empty($ing['motivo']))
+                                                            <div class="caja1-motivo">
+                                                                <div>{{ $ing['motivo']['resumen'] }}</div>
+                                                                @if($ing['motivo']['desglose'] !== '' || $ing['motivo']['situacion'] !== '')
+                                                                    <small class="text-muted">{{ $ing['motivo']['desglose'] }}@if($ing['motivo']['desglose'] !== '' && $ing['motivo']['situacion'] !== '') · @endif<span class="{{ str_starts_with($ing['motivo']['situacion'], 'Atraso') ? 'text-danger fw-bold' : '' }}">{{ $ing['motivo']['situacion'] }}</span></small>
+                                                                @endif
+                                                            </div>
+                                                        @else
+                                                            {{ $ing['nro_cuotas'] }}
+                                                        @endif
+                                                    </td>
                                                     <td class="text-end"><span style="color:#0000FF;">{{ number_format($ing['total'], 2) }}</span></td>
                                                     <td class="text-end"><span style="color:#0000FF;">{{ number_format($ing['capital'], 2) }}</span></td>
                                                     <td class="text-end">
@@ -456,6 +470,9 @@
     /* Montos en azul puro como el legacy (font color=blue), en vez del
        celeste del tema (rgb 0,155,220). Solo dentro de este reporte. */
     #printme .text-primary { color: #0000FF !important; }
+
+    /* "N° CUOTAS" con el motivo (23/10): ancho fijo y corte de línea dentro de la tabla table-nowrap. */
+    .caja1-motivo { width: 250px; margin: 0 auto; white-space: normal; line-height: 1.25; }
 
 
     /* Badge de observación del desglose de interés por cuota: warning negro sobre amarillo */

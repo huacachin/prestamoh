@@ -65,7 +65,9 @@ class CashGeneral1 extends Component
         $endLimit = min($endMonth, $today);
 
         // ─── INGRESOS del mes (servicio compartido con cash-statistics) ─
-        $ingresosPorDia = app(CajaDailyService::class)->ingresosPorDia($year, $month, $tipoFilter, $endLimit);
+        // 23/10: en Detalle (y en los Excel, que usan esta misma vista) "N° CUOTAS" lleva el
+        // motivo del reporte de pagos; el Resumen no pinta filas y no lo necesita.
+        $ingresosPorDia = app(CajaDailyService::class)->ingresosPorDia($year, $month, $tipoFilter, $endLimit, conMotivo: $this->vista !== 'resumen');
 
         // ─── PRECARGAR TODOS LOS CREDITOS DEL MES (egresos, 1 query) ───
         $credQuery = Credit::query()
