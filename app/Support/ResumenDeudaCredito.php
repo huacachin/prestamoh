@@ -18,14 +18,16 @@ use Carbon\Carbon;
  *     hasta hoy ("8 meses y 25 días"), sin redondear; en créditos en cuotas
  *     se descuentan primero los meses de interés ya pagados.
  *   - Monto retraso = meses × interés mensual + días × interés diario.
- *   - Total de deuda indicado = capital pendiente + monto retraso.
+ *   - Total sin mora = capital pendiente + monto retraso.
  * Crédito SEMANAL o DIARIO: se cuenta por cuotas del cronograma (cuotas
  * vencidas sin pagar, su saldo y el saldo total).
+ * Mora (todos los tipos): la de la pantalla de cobro, días de atraso de la
+ * cuota impaga más antigua × mora diaria; Total con mora = total sin mora + mora.
  */
 final class ResumenDeudaCredito
 {
     /**
-     * @return array{codigo: int, nombre: string, fecha: string, mensual: bool, capital: float, capital_pendiente: float, interes_pct: string, interes: float, interes_diario: float, retraso_meses: int, retraso_dias: int, retraso_texto: string, monto_retraso: float, monto_meses: float, monto_dias: float, total: float, cancelado: ?string, texto: string, texto_copia: string}
+     * @return array{codigo: int, nombre: string, fecha: string, mensual: bool, capital: float, capital_pendiente: float, interes_pct: string, interes: float, interes_diario: float, retraso_meses: int, retraso_dias: int, retraso_texto: string, monto_retraso: float, monto_meses: float, monto_dias: float, mora_dias: int, mora_por_dia: float, mora: float, total: float, total_con_mora: float, cancelado: ?string, texto: string, texto_copia: string}
      */
     public static function de(Credit $credit, Client $client, ?Carbon $hoy = null): array
     {
@@ -68,6 +70,19 @@ final class ResumenDeudaCredito
             $total = $cancelado ? 0.0 : round(max(0, (float) $cuotas->sum($saldoDe)), 2);
         }
 
+        // Mora como la calcula la pantalla de cobro (Payments\Create::moraCalcAt): días de atraso de la
+        // cuota impaga más antigua × mora diaria (5 % de la cuota al mes, prorrateado; diario: mora1).
+        $moraDias = 0;
+        $moraPorDia = 0.0;
+        if (! $cancelado) {
+            $primeraImpaga = $cuotas->filter(fn (CreditInstallment $c) => ! $c->pagado && (float) $c->importe_cuota > 0)->sortBy('fecha_vencimiento')->first();
+            if ($primeraImpaga !== null && $primeraImpaga->fecha_vencimiento !== null) {
+                $moraDias = max(0, (int) floor($primeraImpaga->fecha_vencimiento->copy()->startOfDay()->diffInDays($hasta, false)));
+                $moraPorDia = $credit->moraDiaria((float) $primeraImpaga->importe_cuota + (float) $primeraImpaga->importe_interes + (float) $primeraImpaga->importe_excedente);
+            }
+        }
+        $mora = round($moraDias * $moraPorDia, 2);
+
         $datos = [
             'codigo' => (int) $credit->id,
             'nombre' => $client->fullName(),
@@ -84,7 +99,11 @@ final class ResumenDeudaCredito
             'monto_retraso' => $montoRetraso,
             'monto_meses' => $montoMeses,
             'monto_dias' => $montoDias,
+            'mora_dias' => $moraDias,
+            'mora_por_dia' => $moraPorDia,
+            'mora' => $mora,
             'total' => $total,
+            'total_con_mora' => $cancelado ? 0.0 : round($total + $mora, 2),
             'cancelado' => $cancelado ? ($credit->fecha_cancelacion ? Carbon::parse($credit->fecha_cancelacion)->format('d/m/Y') : 'sí') : null,
         ];
         $datos['texto'] = self::texto($datos);
@@ -126,10 +145,16 @@ final class ResumenDeudaCredito
         if ($d['mensual'] && $d['retraso_dias'] > 0) {
             $lineas[] = 'Por '.$d['retraso_dias'].' '.($d['retraso_dias'] === 1 ? 'día' : 'días').' ('.$s($d['interes_diario']).' x día) '.$s($d['monto_dias']);
         }
+        $detalleMora = $d['mora_dias'] > 0 ? $d['mora_dias'].' '.($d['mora_dias'] === 1 ? 'día' : 'días').' ('.$s($d['mora_por_dia']).' x día) ' : '';
         array_push($lineas,
             '',
-            'Total de deuda indicado',
+            'Mora '.$detalleMora.$s($d['mora']),
+            '',
+            'Total de deuda sin mora',
             $s($d['total']),
+            '',
+            'Total de deuda con mora',
+            $s($d['total_con_mora']),
         );
         if ($d['cancelado'] !== null) {
             array_push($lineas, '', 'Crédito cancelado'.($d['cancelado'] !== 'sí' ? ' el '.$d['cancelado'] : ''));
