@@ -160,7 +160,7 @@ class CobroAbonosDesglosadosTest extends TestCase
         $this->assertStringContainsString('>14.2</td>', $html);
         $this->assertStringNotContainsString('>15.1</td>', $html);
         // La propia fila explica el cobro partido.
-        $this->assertStringContainsString("Cobro #{$md} de S/ 450.00 · además S/ 50.00 a la cuota 15", $html);
+        $this->assertStringContainsString("Cobro #{$md} de S/ 450.00 · además cuota 15 (S/ 50.00)", $html);
         // Recibos: el del abono 14.2 en el desglose y el de la 15 (un solo pago) en la fila de la cuota; la 14 no lo repite.
         $this->assertSame(2, substr_count($html, 'title="Ver recibo" onclick="abrirRecibo('));
         // Plegado por defecto: los abonos de la 14 (pagada) llevan abono-pagada y el contenedor

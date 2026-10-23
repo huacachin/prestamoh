@@ -186,6 +186,43 @@ class AbonosPorCuota
     }
 
     /**
+     * Nota del cobro partido en la fila del abono (17/10; compactada el 23/10,
+     * Antony: "está muy grande"). Las otras cuotas que pagó el mismo cobro se
+     * agrupan por monto —"además cuotas 1 a 7 (S/ 552.00 c/u)"— en vez de
+     * repetir "además S/ 552.00 a la cuota n" una por una. Vacía si el cobro
+     * no tocó otra cuota ni trajo mora.
+     *
+     * @param  array{lote: ?int, total: float, mora: float, otras: list<array{num: int, monto: float}>}  $cobro
+     */
+    public static function nota(array $cobro): string
+    {
+        $otras = $cobro['otras'] ?? [];
+        $mora = (float) ($cobro['mora'] ?? 0);
+        if ($otras === [] && $mora <= 0.009) {
+            return '';
+        }
+
+        $porMonto = []; // '552.00' => [1, 2, …] en el orden de las cuotas
+        foreach ($otras as $o) {
+            $porMonto[number_format((float) $o['monto'], 2, '.', '')][] = (int) $o['num'];
+        }
+        $grupos = [];
+        foreach ($porMonto as $monto => $nums) {
+            $grupos[] = RotuloCuotas::de($nums).' (S/ '.number_format((float) $monto, 2).(count($nums) > 1 ? ' c/u' : '').')';
+        }
+
+        $partes = [];
+        if ($grupos !== []) {
+            $partes[] = 'además '.implode(', ', $grupos);
+        }
+        if ($mora > 0.009) {
+            $partes[] = 'S/ '.number_format($mora, 2).' de mora';
+        }
+
+        return 'Cobro '.(! empty($cobro['lote']) ? '#'.$cobro['lote'].' ' : '').'de S/ '.number_format((float) ($cobro['total'] ?? 0), 2).' · '.implode(' · ', $partes);
+    }
+
+    /**
      * Saldos "a la fecha" de un cobro, para su recibo (17/10, Antony: "en el
      * saldo ir descontando"): lo que le faltaba a cada cuota justo después de
      * ese cobro —la misma cifra que la columna Saldo de su fila de abono— y lo

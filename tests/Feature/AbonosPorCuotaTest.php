@@ -226,4 +226,20 @@ class AbonosPorCuotaTest extends TestCase
 
         $this->assertSame([], AbonosPorCuota::porCredito($c));
     }
+
+    /** 23/10 (Antony: "está muy grande"): la nota agrupa por monto las otras cuotas del mismo cobro. */
+    public function test_la_nota_del_cobro_partido_agrupa_las_otras_cuotas_por_monto(): void
+    {
+        $siete = array_map(fn ($n) => ['num' => $n, 'monto' => 552.0], range(1, 7));
+        $this->assertSame(
+            'Cobro #121309 de S/ 4,000.00 · además cuotas 1 a 7 (S/ 552.00 c/u)',
+            AbonosPorCuota::nota(['lote' => 121309, 'total' => 4000.0, 'mora' => 0.0, 'otras' => $siete]),
+        );
+        $this->assertSame(
+            'Cobro #9 de S/ 1,262.00 · además cuotas 1 y 2 (S/ 552.00 c/u), cuota 3 (S/ 100.00) · S/ 5.80 de mora',
+            AbonosPorCuota::nota(['lote' => 9, 'total' => 1262.0, 'mora' => 5.8, 'otras' => [['num' => 1, 'monto' => 552.0], ['num' => 2, 'monto' => 552.0], ['num' => 3, 'monto' => 100.0]]]),
+        );
+        $this->assertSame('Cobro de S/ 60.00 · S/ 10.00 de mora', AbonosPorCuota::nota(['lote' => null, 'total' => 60.0, 'mora' => 10.0, 'otras' => []]));
+        $this->assertSame('', AbonosPorCuota::nota(['lote' => 1, 'total' => 50.0, 'mora' => 0.0, 'otras' => []]));
+    }
 }

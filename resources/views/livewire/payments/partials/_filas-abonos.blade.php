@@ -13,18 +13,8 @@
     @php
         $stAb = $ab['color'] ? 'color:'.$ab['color'].';' : '';
         $cobro = $ab['cobro'] ?? ['lote' => null, 'total' => 0, 'mora' => 0, 'otras' => []];
-        // Nota del cobro partido: solo cuando el mismo cobro tocó otra cuota o trajo mora.
-        $nota = '';
-        if ($cobro['otras'] !== [] || $cobro['mora'] > 0.009) {
-            $partes = [];
-            foreach ($cobro['otras'] as $o) {
-                $partes[] = 'además S/ '.number_format($o['monto'], 2).' a la cuota '.$o['num'];
-            }
-            if ($cobro['mora'] > 0.009) {
-                $partes[] = 'S/ '.number_format($cobro['mora'], 2).' de mora';
-            }
-            $nota = 'Cobro '.($cobro['lote'] ? '#'.$cobro['lote'].' ' : '').'de S/ '.number_format($cobro['total'], 2).' · '.implode(' · ', $partes);
-        }
+        // Nota del cobro partido (solo si el mismo cobro tocó otra cuota o trajo mora), compacta desde el 23/10.
+        $nota = \App\Support\AbonosPorCuota::nota($cobro);
         $fechaAb = $ab['fecha'] !== '' ? \Carbon\Carbon::parse($ab['fecha'])->format($formatoFecha) : '';
         // Sin @if dentro de la celda: Livewire envuelve los bloques en marcadores <!--[if BLOCK]-->
         // y la numeración dejaría de leerse como ">21.1</td>".
