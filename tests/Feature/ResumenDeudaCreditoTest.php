@@ -66,9 +66,9 @@ class ResumenDeudaCreditoTest extends TestCase
 
         $r = ResumenDeudaCredito::de($credit->fresh(), $client);
 
-        // 28/01 → 23/10 = 8 meses y 25 días; 8 × 840 + 25 × 28 = 7 420; total 16 800 + 7 420.
-        $this->assertSame([8, 25, '8 meses y 25 días', 840.0, 28.0, 7420.0, 24220.0, 16800.0, '5'], [
-            $r['retraso_meses'], $r['retraso_dias'], $r['retraso_texto'], $r['interes'], $r['interes_diario'], $r['monto_retraso'], $r['total'], $r['capital_pendiente'], $r['interes_pct'],
+        // 28/01 → 23/10 = 8 meses y 25 días; 8 × 840 = 6 720 más 25 × 28 = 700 → 7 420; total 16 800 + 7 420.
+        $this->assertSame([8, 25, '8 meses y 25 días', 840.0, 28.0, 6720.0, 700.0, 7420.0, 24220.0, 16800.0, '5'], [
+            $r['retraso_meses'], $r['retraso_dias'], $r['retraso_texto'], $r['interes'], $r['interes_diario'], $r['monto_meses'], $r['monto_dias'], $r['monto_retraso'], $r['total'], $r['capital_pendiente'], $r['interes_pct'],
         ]);
         $this->assertSame(implode("\n", [
             'DATOS DEL CRÉDITO', '',
@@ -77,7 +77,9 @@ class ResumenDeudaCreditoTest extends TestCase
             'Capital prestado', 'S/ 16,800.00', '',
             'Interés del 5% S/ 840.00', '',
             'Retraso 8 meses y 25 días', '',
-            'Monto Retraso S/ 7,420.00', '',
+            'Monto Retraso S/ 7,420.00',
+            'Por 8 meses S/ 6,720.00',
+            'Por 25 días (S/ 28.00 x día) S/ 700.00', '',
             'Total de deuda indicado', 'S/ 24,220.00',
         ]), $r['texto']);
     }
@@ -109,8 +111,8 @@ class ResumenDeudaCreditoTest extends TestCase
 
         // 7 meses pagados → el retraso corre desde el 03/08: hasta el 23/10 son 2 meses y 20 días;
         // 2 × 500 + 20 × 16.67 = 1 333.40; capital pendiente 10 000 − 7 × 833.33 = 4 166.69.
-        $this->assertSame([2, 20, 16.67, 1333.4, 4166.69, 5500.09], [$r['retraso_meses'], $r['retraso_dias'], $r['interes_diario'], $r['monto_retraso'], $r['capital_pendiente'], $r['total']]);
-        $this->assertStringContainsString("Capital prestado\nS/ 10,000.00\n\nCapital pendiente\nS/ 4,166.69\n\nInterés del 5% S/ 500.00\n\nRetraso 2 meses y 20 días\n\nMonto Retraso S/ 1,333.40\n\nTotal de deuda indicado\nS/ 5,500.09", $r['texto']);
+        $this->assertSame([2, 20, 16.67, 1000.0, 333.4, 1333.4, 4166.69, 5500.09], [$r['retraso_meses'], $r['retraso_dias'], $r['interes_diario'], $r['monto_meses'], $r['monto_dias'], $r['monto_retraso'], $r['capital_pendiente'], $r['total']]);
+        $this->assertStringContainsString("Capital prestado\nS/ 10,000.00\n\nCapital pendiente\nS/ 4,166.69\n\nInterés del 5% S/ 500.00\n\nRetraso 2 meses y 20 días\n\nMonto Retraso S/ 1,333.40\nPor 2 meses S/ 1,000.00\nPor 20 días (S/ 16.67 x día) S/ 333.40\n\nTotal de deuda indicado\nS/ 5,500.09", $r['texto']);
     }
 
     public function test_credito_semanal_cuenta_cuotas_vencidas_y_saldo_del_cronograma_y_el_cancelado_no_debe_nada(): void
@@ -123,7 +125,7 @@ class ResumenDeudaCreditoTest extends TestCase
 
         $r = ResumenDeudaCredito::de($credit->fresh(), $client);
         $this->assertSame(['1 cuota', 333.33, 666.66, 416.66], [$r['retraso_texto'], $r['monto_retraso'], $r['total'], $r['capital_pendiente']]);
-        $this->assertStringContainsString("Retraso 1 cuota\n\nMonto Retraso S/ 333.33\n\nTotal de deuda indicado\nS/ 666.66", $r['texto']);
+        $this->assertStringContainsString("Retraso 1 cuota\n\nMonto Retraso S/ 333.33\n\nTotal de deuda indicado\nS/ 666.66", $r['texto'], 'por cuotas no hay desglose de meses y días');
 
         $credit->update(['situacion' => 'Cancelado', 'estado' => 0, 'fecha_cancelacion' => '2026-10-20']);
         $c = ResumenDeudaCredito::de($credit->fresh(), $client);

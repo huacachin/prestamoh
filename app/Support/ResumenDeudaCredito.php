@@ -25,7 +25,7 @@ use Carbon\Carbon;
 final class ResumenDeudaCredito
 {
     /**
-     * @return array{codigo: int, nombre: string, fecha: string, mensual: bool, capital: float, capital_pendiente: float, interes_pct: string, interes: float, interes_diario: float, retraso_meses: int, retraso_dias: int, retraso_texto: string, monto_retraso: float, total: float, cancelado: ?string, texto: string}
+     * @return array{codigo: int, nombre: string, fecha: string, mensual: bool, capital: float, capital_pendiente: float, interes_pct: string, interes: float, interes_diario: float, retraso_meses: int, retraso_dias: int, retraso_texto: string, monto_retraso: float, monto_meses: float, monto_dias: float, total: float, cancelado: ?string, texto: string}
      */
     public static function de(Credit $credit, Client $client, ?Carbon $hoy = null): array
     {
@@ -51,7 +51,9 @@ final class ResumenDeudaCredito
             if (! $cancelado && $inicio !== null) {
                 [$meses, $dias] = self::mesesYDias($inicio, $hasta);
             }
-            $montoRetraso = round($meses * $interes + $dias * $interesDiario, 2);
+            $montoMeses = round($meses * $interes, 2);
+            $montoDias = round($dias * $interesDiario, 2);
+            $montoRetraso = round($montoMeses + $montoDias, 2);
             $retrasoTexto = self::textoRetraso($meses, $dias);
             $total = $cancelado ? 0.0 : round($capitalPendiente + $montoRetraso, 2);
         } else {
@@ -61,6 +63,8 @@ final class ResumenDeudaCredito
             $n = $vencidas->count();
             $retrasoTexto = $n.' '.($n === 1 ? 'cuota' : 'cuotas');
             $montoRetraso = round((float) $vencidas->sum($saldoDe), 2);
+            $montoMeses = 0.0;
+            $montoDias = 0.0;
             $total = $cancelado ? 0.0 : round(max(0, (float) $cuotas->sum($saldoDe)), 2);
         }
 
@@ -78,6 +82,8 @@ final class ResumenDeudaCredito
             'retraso_dias' => $dias,
             'retraso_texto' => $retrasoTexto,
             'monto_retraso' => $montoRetraso,
+            'monto_meses' => $montoMeses,
+            'monto_dias' => $montoDias,
             'total' => $total,
             'cancelado' => $cancelado ? ($credit->fecha_cancelacion ? Carbon::parse($credit->fecha_cancelacion)->format('d/m/Y') : 'sí') : null,
         ];
@@ -110,6 +116,15 @@ final class ResumenDeudaCredito
             'Retraso '.$d['retraso_texto'],
             '',
             'Monto Retraso '.$s($d['monto_retraso']),
+        );
+        // Desglose del retraso mensual (Antony, 23/10): lo que corresponde a los meses y lo prorrateado por días.
+        if ($d['mensual'] && $d['retraso_meses'] > 0) {
+            $lineas[] = 'Por '.$d['retraso_meses'].' '.($d['retraso_meses'] === 1 ? 'mes' : 'meses').' '.$s($d['monto_meses']);
+        }
+        if ($d['mensual'] && $d['retraso_dias'] > 0) {
+            $lineas[] = 'Por '.$d['retraso_dias'].' '.($d['retraso_dias'] === 1 ? 'día' : 'días').' ('.$s($d['interes_diario']).' x día) '.$s($d['monto_dias']);
+        }
+        array_push($lineas,
             '',
             'Total de deuda indicado',
             $s($d['total']),
