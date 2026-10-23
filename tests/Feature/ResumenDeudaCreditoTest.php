@@ -73,9 +73,10 @@ class ResumenDeudaCreditoTest extends TestCase
         ]);
         $this->assertSame([237, 29.4, 6967.8, 31187.8], [$r['mora_dias'], $r['mora_por_dia'], $r['mora'], $r['total_con_mora']]);
         $this->assertSame(implode("\n", [
-            'DATOS DEL CRÉDITO', '',
+            'DATOS DEL CRÉDITO #'.$credit->id, '',
             'Janampa Cahuana Mauro', '',
-            'Fecha del crédito 28/01/2026', '',
+            'Fecha del crédito 28/01/2026',
+            'Fecha de corte 23/10/2026', '',
             'Capital prestado', 'S/ 16,800.00', '',
             'Interés del 5% S/ 840.00', '',
             'Retraso 8 meses y 25 días', '',
@@ -88,7 +89,7 @@ class ResumenDeudaCreditoTest extends TestCase
         ]), $r['texto']);
         // Lo que se copia: las mismas líneas, sin las vacías.
         $this->assertSame(implode("\n", [
-            'DATOS DEL CRÉDITO', 'Janampa Cahuana Mauro', 'Fecha del crédito 28/01/2026', 'Capital prestado', 'S/ 16,800.00',
+            'DATOS DEL CRÉDITO #'.$credit->id, 'Janampa Cahuana Mauro', 'Fecha del crédito 28/01/2026', 'Fecha de corte 23/10/2026', 'Capital prestado', 'S/ 16,800.00',
             'Interés del 5% S/ 840.00', 'Retraso 8 meses y 25 días', 'Monto Retraso S/ 7,420.00', 'Por 8 meses S/ 6,720.00',
             'Por 25 días (S/ 28.00 x día) S/ 700.00', 'Mora 237 días (S/ 29.40 x día) S/ 6,967.80',
             'Total de deuda sin mora', 'S/ 24,220.00', 'Total de deuda con mora', 'S/ 31,187.80',
@@ -165,7 +166,7 @@ class ResumenDeudaCreditoTest extends TestCase
             ->assertSee('Total de deuda sin mora')
             ->assertSee('S/ 24,220.00')
             ->assertSee('S/ 31,187.80')
-            ->assertSeeHtml("data-copia=\"DATOS DEL CRÉDITO\nJanampa Cahuana Mauro\nFecha del crédito 28/01/2026\n");
+            ->assertSeeHtml("data-copia=\"DATOS DEL CRÉDITO #{$credit->id}\nJanampa Cahuana Mauro\nFecha del crédito 28/01/2026\nFecha de corte 23/10/2026\n");
         $this->assertSame($credit->id, $ficha->get('resumen')['codigo']);
 
         $ficha->call('verResumen', $ajeno->id)->assertDispatched('errorAlert')->assertNotDispatched('resumen-credito-listo');
