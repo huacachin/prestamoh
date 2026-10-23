@@ -169,16 +169,19 @@
                                         <td class="text-end">{{ number_format($row['monto'], 2) }}</td>
                                         <td class="text-center" style="white-space:nowrap;">
                                             @if($row['vouchers'])
-                                                {{-- Misma cámara que caja: los items van inline para que Livewire
-                                                     los regenere en cada filtro; la fila queda 'congelada'. --}}
+                                                {{-- Misma cámara que caja, sin el contador (Antony, 22/10: "la foto y el
+                                                     número es mucho"); el visor ya dice "1 / N". Los items van inline para
+                                                     que Livewire los regenere en cada filtro; la fila queda 'congelada'. --}}
+                                                @php $nV = count($row['vouchers']); @endphp
                                                 <a href="#" data-foto-fila style="cursor: zoom-in;"
-                                                   title="Ver voucher ({{ count($row['vouchers']) }})"
+                                                   title="Ver voucher{{ $nV > 1 ? ' ('.$nV.' fotos)' : '' }}"
                                                    x-on:click.prevent="verVouchers(@js($row['vouchers']), {{ $row['n'] }})">
                                                     <i class="ti ti-camera f-s-16 text-info"></i>
-                                                    <span class="badge bg-info" style="font-size:9px; padding:1px 4px;">{{ count($row['vouchers']) }}</span>
                                                 </a>
+                                            @else
+                                                {{-- Sin voucher: cámara tachada en gris, para que se note cuál no tiene foto. --}}
+                                                <i class="ti ti-camera-off f-s-16 text-muted" title="Sin voucher"></i>
                                             @endif
-                                            {{-- Sin voucher: celda vacía (Antony, 22/10: la cámara solo donde hay foto). --}}
                                         </td>
                                         @if($isAdmin)
                                             <td class="text-center" style="white-space:nowrap;">
