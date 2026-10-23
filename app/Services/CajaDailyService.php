@@ -159,6 +159,7 @@ class CajaDailyService
                 $ingresos[] = [
                     'credit_id' => $cid,
                     'cliente' => $cliName,
+                    'client_id' => $cli?->id, // 23/10: el nombre enlaza a su ficha en Caja General 1
                     'detalle' => $marcador,
                     'nro_cuotas' => $motivo['texto'] ?? ($pays->sortBy('id')->first()?->detalle ?? ''),
                     'motivo' => $motivo,

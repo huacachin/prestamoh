@@ -317,7 +317,8 @@
                                                     <td class="text-center">
                                                         <a href="{{ route('cash.incomes', ['buscar' => $ing['credit_id'], 'tipo' => 2, 'desde' => $day['date'], 'hasta' => $day['date']]) }}" target="_blank">{{ $ing['credit_id'] }}</a>
                                                     </td>
-                                                    <td class="col-cliente" title="{{ $ing['cliente'] }}"><span class="ellip">{{ $ing['cliente'] }}</span></td>
+                                                    {{-- 23/10 (Antony): el nombre abre la ficha del cliente en otra pestaña --}}
+                                                    <td class="col-cliente" title="{{ $ing['cliente'] }}"><span class="ellip">@if($puedeVerFicha && ! empty($ing['client_id']))<a href="{{ route('clients.show', $ing['client_id']) }}" target="_blank" class="caja1-ficha">{{ $ing['cliente'] }}</a>@else{{ $ing['cliente'] }}@endif</span></td>
                                                     <td>{{ $ing['detalle'] }}</td>
                                                     {{-- 23/10 (Antony): el mismo motivo del reporte de pagos (App\Support\MotivoCobro).
                                                          Bloque de 250 px que corta líneas: la tabla es table-nowrap y, sin él, la
@@ -363,7 +364,7 @@
                                                     <td class="text-center" style="{{ $egrRowStyle }}">
                                                         <a href="{{ route('credits.show', $egr['credit_id']) }}" target="_blank">{{ $egr['credit_id'] }}</a>
                                                     </td>
-                                                    <td class="col-cliente" style="{{ $egrRowStyle }}" title="{{ $egr['cliente'] }}"><span class="ellip">{{ $egr['cliente'] }}</span>@if($egr['cod_rem'])<span style="color:red;font-size:9px;"> ({{ $egr['cod_rem'] }})</span>@endif</td>
+                                                    <td class="col-cliente" style="{{ $egrRowStyle }}" title="{{ $egr['cliente'] }}"><span class="ellip">@if($puedeVerFicha && ! empty($egr['client_id']))<a href="{{ route('clients.show', $egr['client_id']) }}" target="_blank" class="caja1-ficha">{{ $egr['cliente'] }}</a>@else{{ $egr['cliente'] }}@endif</span>@if($egr['cod_rem'])<span style="color:red;font-size:9px;"> ({{ $egr['cod_rem'] }})</span>@endif</td>
                                                     <td class="text-end" style="{{ $egrRowStyle }}"><span style="color:#0000FF;">{{ number_format($egr['monto'], 2) }}</span></td>
                                                     <td class="text-end" style="color: red;">
                                                         @if((int)$egr['interes_pct'] == (float)$egr['interes_pct'])
@@ -470,6 +471,9 @@
     /* Montos en azul puro como el legacy (font color=blue), en vez del
        celeste del tema (rgb 0,155,220). Solo dentro de este reporte. */
     #printme .text-primary { color: #0000FF !important; }
+
+    /* Nombre del cliente → ficha (23/10): conserva el color de la fila (rojo en S/M) y se nota con el subrayado punteado. */
+    .caja1-ficha { color: inherit; text-decoration: underline dotted; }
 
     /* "N° CUOTAS" con el motivo (23/10): ancho fijo y corte de línea dentro de la tabla table-nowrap. */
     .caja1-motivo { width: 250px; margin: 0 auto; white-space: normal; line-height: 1.25; }

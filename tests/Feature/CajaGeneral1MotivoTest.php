@@ -12,6 +12,8 @@ use App\Models\User;
 use App\Services\CajaDailyService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
@@ -57,6 +59,20 @@ class CajaGeneral1MotivoTest extends TestCase
             ->assertSee('Capital 250.00 · Interés 25.00')
             ->assertSeeHtml('<span class="text-danger fw-bold">Atraso 7 días</span>')
             ->assertDontSee('Pago : X Cuota: 1/4');
+    }
+
+    public function test_el_nombre_del_cliente_en_ingresos_y_egresos_enlaza_a_su_ficha_solo_si_puede_verla(): void
+    {
+        Credit::query()->update(['fecha_actualizacion' => '2026-08-01']); // también sale como egreso del mes
+        $ficha = 'href="'.route('clients.show', Client::firstOrFail()->id).'"';
+
+        $sinPermiso = Livewire::withQueryParams(['mes' => '08', 'anio' => '2026'])->test(CashGeneral1::class)->html();
+        $this->assertSame(0, substr_count($sinPermiso, $ficha));
+
+        auth()->user()->givePermissionTo(Permission::findOrCreate('clientes', 'web'));
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $conPermiso = Livewire::withQueryParams(['mes' => '08', 'anio' => '2026'])->test(CashGeneral1::class)->html();
+        $this->assertSame(2, substr_count($conPermiso, $ficha), 'un enlace en INGRESOS y otro en EGRESOS');
     }
 
     public function test_el_excel_recibe_el_motivo_en_una_linea_y_las_estadisticas_siguen_con_el_detalle_legacy(): void

@@ -121,6 +121,7 @@ class CashGeneral1 extends Component
                 $egresos[] = [
                     'credit_id' => $credit->id,
                     'cliente' => $cliName,
+                    'client_id' => $cli?->id,
                     'cod_rem' => $credit->cod_rem,
                     'monto' => (float) $credit->importe,
                     'interes_pct' => (float) $credit->interes,
@@ -187,6 +188,8 @@ class CashGeneral1 extends Component
             'toff2' => $toff2,
             'toff1' => $Tcpi + $Texc + $Tmor4 + $TmorAcum,
             'prevStats' => $prevStats,
+            // 23/10 (Antony): el nombre del cliente lleva a su ficha, solo si puede abrirla (ruta con permission:clientes).
+            'puedeVerFicha' => auth()->user()?->can('clientes') ?? false,
         ]);
     }
 
