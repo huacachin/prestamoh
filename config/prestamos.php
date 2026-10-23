@@ -30,4 +30,19 @@ return [
 
     'imputacion' => env('PRESTAMOS_IMPUTACION', 'interes'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Ubicación obligatoria al cobrar (22/10/2026, pedido de Antony)
+    |--------------------------------------------------------------------------
+    |
+    | Cada pago guarda la latitud/longitud del navegador de quien lo registra
+    | (payments.latitud/longitud, como el legacy) y la columna Map del reporte
+    | de pagos la enlaza. Con true, sin ubicación el cobro se rechaza; con
+    | false solo se guarda si el navegador la entrega. Los tests lo apagan
+    | (phpunit.xml) salvo los que prueban la validación.
+    |
+    */
+
+    'ubicacion_obligatoria' => (bool) env('COBRO_UBICACION_OBLIGATORIA', true),
+
 ];

@@ -74,8 +74,9 @@
             </div>
         @endunless
 
-        {{-- Formulario --}}
-        <form wire:submit.prevent="confirmarPago" class="pago-form">
+        {{-- Formulario. 22/10 (Antony): "Pagar" pide primero la ubicación del navegador
+             (pagarConUbicacion, en el @script de abajo) y recién llama a confirmarPago. --}}
+        <form onsubmit="pagarConUbicacion(); return false;" class="pago-form">
             <style>
                 /* Inputs sin negrita en el value (sin tamaño custom; usa el del tema). */
                 .pago-form .form-control { font-weight: 400 !important; }
@@ -490,6 +491,9 @@
                                 <span wire:loading.remove wire:target="confirmarPago">Pagar</span>
                                 <span wire:loading wire:target="confirmarPago">Calculando…</span>
                             </button>
+                            {{-- Estado de la ubicación del navegador (lo pinta el @script; wire:ignore
+                                 para que el morph de Livewire no lo borre). --}}
+                            <span id="ubicacion-estado" class="small align-self-center" wire:ignore></span>
                             @if((int) $credit->cuotas === 1)
                                 <a href="{{ route('payments.refinance', $credit->id) }}" class="btn btn-sm btn-warning">
                                     <i class="ti ti-refresh"></i> Refinanciar
@@ -1185,16 +1189,66 @@
                 }
             });
 
-            // Capturar GPS si el navegador lo permite
-            if (navigator.geolocation) {
+            // 22/10 (Antony): cada pago guarda desde dónde se cobra. Se pide la ubicación
+            // al abrir (para que el navegador pregunte de una vez) y OTRA VEZ al pulsar
+            // "Pagar", fresca (timeout 8 s, como el legacy); con ella se llama a
+            // confirmarPago; sin ella, se avisa y no se cobra. El servidor la exige igual
+            // (validarCobro, config prestamos.ubicacion_obligatoria). Antes se pedía una
+            // sola vez al cargar y el error se ignoraba en silencio: desde septiembre
+            // ningún cobro traía coordenadas.
+            const ubicacionObligatoria = @json((bool) config('prestamos.ubicacion_obligatoria'));
+            const estadoUbicacion = document.getElementById('ubicacion-estado');
+            const pintarUbicacion = (clase, html) => {
+                if (! estadoUbicacion) return;
+                estadoUbicacion.className = 'small align-self-center ' + clase;
+                estadoUbicacion.innerHTML = html;
+            };
+            const mensajeUbicacion = (err) => {
+                if (! err) return 'Este navegador no permite obtener la ubicación.';
+                if (err.code === 1) return 'Permiso de ubicación denegado: permite la ubicación para este sitio (candado del navegador) y vuelve a intentar.';
+                return 'No se pudo obtener la ubicación (señal o tiempo agotado): revisa que la ubicación del equipo esté activa y vuelve a intentar.';
+            };
+            window.pedirUbicacion = function (cb) {
+                if (! navigator.geolocation) {
+                    pintarUbicacion('text-danger', '<i class="ti ti-map-pin-off"></i> ' + mensajeUbicacion(null));
+                    cb(false, null);
+                    return;
+                }
+                pintarUbicacion('text-muted', '<i class="ti ti-loader"></i> Obteniendo ubicación…');
                 navigator.geolocation.getCurrentPosition(
                     (pos) => {
-                        $wire.set('latitud', pos.coords.latitude.toString(), false);
-                        $wire.set('longitud', pos.coords.longitude.toString(), false);
+                        const lat = pos.coords.latitude.toFixed(7), lng = pos.coords.longitude.toFixed(7);
+                        $wire.set('latitud', lat, false);
+                        $wire.set('longitud', lng, false);
+                        pintarUbicacion('text-success', '<i class="ti ti-map-pin"></i> Ubicación activa (' + lat + ', ' + lng + ')');
+                        cb(true, null);
                     },
-                    (err) => { /* silenciosamente ignorar */ }
+                    (err) => {
+                        $wire.set('latitud', null, false);
+                        $wire.set('longitud', null, false);
+                        pintarUbicacion('text-danger', '<i class="ti ti-map-pin-off"></i> ' + mensajeUbicacion(err)
+                            + ' <a href="#" onclick="pedirUbicacion(() => {}); return false;">Reintentar</a>');
+                        cb(false, err);
+                    },
+                    { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
                 );
-            }
+            };
+            window.pagarConUbicacion = function () {
+                if (! ubicacionObligatoria) {
+                    // Opcional: se guarda si el navegador la da, pero no se espera.
+                    pedirUbicacion(() => {});
+                    $wire.confirmarPago();
+                    return;
+                }
+                pedirUbicacion((ok, err) => {
+                    if (ok) {
+                        $wire.confirmarPago();
+                    } else {
+                        window.dispatchEvent(new CustomEvent('errorAlert', { detail: [{ message: mensajeUbicacion(err) }] }));
+                    }
+                });
+            };
+            pedirUbicacion(() => {});
         </script>
         @endscript
 

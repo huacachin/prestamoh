@@ -186,14 +186,18 @@ class VisorFlotanteTest extends TestCase
         // Bootstrap sigue abriendo y cerrando por los mismos eventos de Livewire.
         $this->assertStringContainsString('x-on:ticket-confirm.window="modal.show()"', $vista);
         $this->assertStringContainsString('x-on:ticket-close.window="modal.hide()"', $vista);
-        $this->assertStringContainsString('<div class="modal-dialog modal-dialog-centered" style="max-width:420px;" x-ref="dialogo">', $vista);
+        // 22/10: wire:ignore.self en el diálogo (el morph de Livewire borraba el left/top al responder Sí/No).
+        $this->assertStringContainsString('<div class="modal-dialog modal-dialog-centered" style="max-width:420px;" x-ref="dialogo" wire:ignore.self>', $vista);
         $this->assertStringContainsString('<div class="modal-header py-2"'."\n".'                         x-on:pointerdown="iniciarArrastre($event)" x-on:pointermove="arrastrar($event)"', $vista);
         $this->assertStringContainsString('x-on:pointerup="soltar($event)" x-on:pointercancel="soltar($event)">', $vista);
 
         // El CSS va en la capa: la capa del modal no tapa la página y el diálogo queda fijo donde se deje.
         $html = $this->paginaComo(['caja.ingresos'], route('cash.incomes'));
         $this->assertStringContainsString('.modal.modal-flotante { pointer-events: none; }', $html);
-        $this->assertStringContainsString('pointer-events: auto; position: fixed; margin: 0; display: block; min-height: 0;', $html);
+        $this->assertStringContainsString('pointer-events: auto; position: fixed; margin: 0; min-height: 0;', $html);
+        // 22/10: nunca más alta que la pantalla (columna flex con tope; el cuerpo hace scroll).
+        $this->assertStringContainsString('display: flex; flex-direction: column; max-height: calc(100vh - 32px);', $html);
+        $this->assertStringContainsString('.modal.modal-flotante .modal-body { overflow-y: auto; }', $html);
         $this->assertStringContainsString('transform: none !important; transition: none;', $html, 'sin el translate de la animación de entrada: la posición es la guardada');
         $this->assertStringContainsString('.modal.modal-flotante .modal-header { cursor: grab;', $html);
         $this->assertStringContainsString('body.con-modal-flotante { overflow: visible !important; padding-right: 0 !important; }', $html);

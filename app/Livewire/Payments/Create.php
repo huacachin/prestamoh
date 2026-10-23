@@ -638,6 +638,13 @@ class Create extends Component
             return "El crédito está {$this->credit->situacion}: no admite pagos.";
         }
 
+        // 22/10 (Antony): cada pago guarda desde dónde se cobra (latitud/longitud
+        // del navegador de quien lo registra, como el legacy); el Map del reporte
+        // la enlaza. Sin ubicación no se cobra (config prestamos.ubicacion_obligatoria).
+        if (config('prestamos.ubicacion_obligatoria') && ! $this->tieneUbicacion()) {
+            return 'Activa la ubicación del navegador para registrar el pago: el sistema guarda desde dónde se cobra.';
+        }
+
         $this->validate([
             'monto' => 'required|numeric|min:0',
             'fecpag' => 'required|date',
@@ -706,6 +713,24 @@ class Create extends Component
         }
 
         return null;
+    }
+
+    /**
+     * ¿El navegador entregó una ubicación válida? Coordenadas numéricas dentro
+     * de rango y distintas de (0, 0), que es lo que manda un GPS apagado.
+     */
+    private function tieneUbicacion(): bool
+    {
+        $lat = $this->latitud;
+        $lng = $this->longitud;
+        if (! is_numeric($lat) || ! is_numeric($lng)) {
+            return false;
+        }
+        $lat = (float) $lat;
+        $lng = (float) $lng;
+
+        return $lat >= -90 && $lat <= 90 && $lng >= -180 && $lng <= 180
+            && ! (abs($lat) < 0.000001 && abs($lng) < 0.000001);
     }
 
     /**

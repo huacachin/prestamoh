@@ -20,6 +20,7 @@
     <php>
         <env name="APP_ENV" value="testing"/>
         <env name="ELIMINAR_MISMO_DIA_ACTIVO" value="false"/>
+        <env name="COBRO_UBICACION_OBLIGATORIA" value="false"/>
         <env name="AREA_LEGAL_ACTIVO" value="true"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>

@@ -227,6 +227,17 @@
                                         </td>
                                         @if($isAdmin)
                                             <td class="text-center" style="white-space:nowrap;">
+                                                {{-- 22/10 (Antony): Map = desde dónde se registró el pago (latitud/longitud
+                                                     del navegador de quien cobró, obligatoria desde hoy), como en el legacy. --}}
+                                                @if($row['latitud'] && $row['longitud'])
+                                                    <a target="_blank" rel="noopener" class="me-1"
+                                                       href="https://maps.google.com/?q={{ $row['latitud'] }},{{ $row['longitud'] }}"
+                                                       title="Lugar del pago (ubicación de quien cobró)">
+                                                        <i class="ti ti-world f-s-16 text-primary"></i>
+                                                    </a>
+                                                @else
+                                                    <i class="ti ti-world-off f-s-16 text-muted me-1" title="Pago sin ubicación (cobro anterior a la validación)"></i>
+                                                @endif
                                                 @php
                                                     $dir = $row['direcciones'];
                                                     $nUb = $dir ? count($dir['ubicaciones']) : 0;

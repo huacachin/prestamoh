@@ -184,9 +184,25 @@ class ReportePagosDireccionesVoucherTest extends TestCase
         $this->usuario();
         $this->cobro(latitudPago: '-12.0500');
 
-        $rows = Livewire::test(Payments::class)->viewData('rows');
+        $c = Livewire::test(Payments::class);
+        $rows = $c->viewData('rows');
 
         $this->assertSame('https://maps.google.com/?q=-12.0500000,-77.0428000', $rows[0]['direcciones']['pago']);
+        // Map enlaza el lugar del pago (quien cobró), como en el legacy.
+        $c->assertSeeHtml('href="https://maps.google.com/?q=-12.0500000,-77.0428000"')
+            ->assertSee('Lugar del pago (ubicación de quien cobró)')
+            ->assertSeeHtml('ti-world f-s-16 text-primary');
+    }
+
+    /** Sin coordenadas del pago (cobros anteriores a la validación) Map muestra el mundo tachado. */
+    public function test_el_pago_sin_coordenadas_muestra_el_mundo_tachado(): void
+    {
+        $this->usuario();
+        $this->cobro();
+
+        Livewire::test(Payments::class)
+            ->assertSeeHtml('ti-world-off f-s-16 text-muted')
+            ->assertSee('Pago sin ubicación');
     }
 
     /** Dos fotos en el mismo cobro: las dos van al visor, en orden. */
