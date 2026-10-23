@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\CreditInstallment;
 use App\Models\Payment;
 use App\Support\MotivoCobro;
 use Carbon\Carbon;
@@ -65,15 +64,8 @@ class CajaDailyService
             }
         }
 
-        // Cuotas de los créditos del mes, en una sola consulta, solo si se pinta el motivo.
-        $cuotasPorCredito = $conMotivo && $allPayments->isNotEmpty()
-            ? CreditInstallment::query()
-                ->whereIn('credit_id', $allPayments->pluck('credit_id')->unique()->values()->all())
-                ->get(['id', 'credit_id', 'num_cuota', 'fecha_vencimiento', 'importe_cuota', 'importe_interes', 'importe_excedente', 'importe_aplicado', 'interes_aplicado', 'excedente_aplicado', 'pagado'])
-                ->groupBy('credit_id')
-            : collect();
-
-        $indices = [];
+        // Solo las cuotas que tocan los pagos del mes, en filas planas, y solo si se pinta el motivo.
+        $indices = $conMotivo ? MotivoCobro::cuotasTocadas($allPayments) : [];
         $tcMarks = [1 => 'S.', 3 => 'M.', 4 => 'D.'];
         $result = [];
 
@@ -156,16 +148,11 @@ class CajaDailyService
 
                 $motivo = null;
                 if ($conMotivo) {
-                    // Índices de cuotas armados una vez por crédito (un diario cobra casi todos los días del mes).
-                    $indices[$cid] ??= [
-                        ($cuotasPorCredito[$cid] ?? collect())->keyBy('id')->all(),
-                        ($cuotasPorCredito[$cid] ?? collect())->keyBy('num_cuota')->all(),
-                    ];
                     $motivo = MotivoCobro::de(
                         $pays->filter(fn ($p) => $p->detalle === null || ! str_ends_with((string) $p->detalle, 'Gat')),
                         $credit,
-                        $indices[$cid][0],
-                        $indices[$cid][1],
+                        $indices[$cid][0] ?? [],
+                        $indices[$cid][1] ?? [],
                     );
                 }
 

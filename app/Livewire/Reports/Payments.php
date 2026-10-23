@@ -4,7 +4,6 @@ namespace App\Livewire\Reports;
 
 use App\Models\Client;
 use App\Models\Credit;
-use App\Models\CreditInstallment;
 use App\Models\Payment;
 use App\Support\MotivoCobro;
 use App\Support\Usernames;
@@ -174,22 +173,18 @@ class Payments extends Component
         $vouchers = $this->vouchersPorCobro($payments);
         $recibos = $this->recibosPorCobro($payments);
         // 23/10 (Antony): el "Motivo" se arma con las cuotas del crédito (App\Support\MotivoCobro), no con el
-        // detalle legacy. Las cuotas de todos los créditos del rango se traen de una vez.
-        $cuotasPorCredito = $payments->isEmpty() ? collect() : CreditInstallment::query()
-            ->whereIn('credit_id', $payments->pluck('credit_id')->unique()->all())
-            ->get(['id', 'credit_id', 'num_cuota', 'fecha_vencimiento', 'importe_cuota', 'importe_interes', 'importe_excedente', 'importe_aplicado', 'interes_aplicado', 'excedente_aplicado', 'pagado'])
-            ->groupBy('credit_id');
+        // detalle legacy. Solo se traen las cuotas que tocan los pagos del rango, en una pasada.
+        $cuotas = MotivoCobro::cuotasTocadas($payments);
         $rows = [];
         $contador = 0;
         foreach ($payments->groupBy(fn ($p) => $p->credit_id.'|'.$p->fecha->format('Y-m-d')) as $clave => $group) {
             $first = $group->first();
             $cliente = $first->credit?->client;
-            $cuotasDelCredito = $cuotasPorCredito[$first->credit_id] ?? collect();
             $motivo = MotivoCobro::de(
                 $group->filter(fn ($p) => $p->detalle === null || ! str_ends_with((string) $p->detalle, 'Gat')),
                 $first->credit,
-                $cuotasDelCredito->keyBy('id')->all(),
-                $cuotasDelCredito->keyBy('num_cuota')->all(),
+                $cuotas[$first->credit_id][0] ?? [],
+                $cuotas[$first->credit_id][1] ?? [],
             );
             $contador++;
             $rows[] = [

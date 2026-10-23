@@ -96,6 +96,32 @@ class MotivoCobroTest extends TestCase
         $this->assertSame('Mora 35.70', $mora['desglose']);
     }
 
+    public function test_cuotas_tocadas_trae_solo_las_cuotas_de_los_pagos_por_id_o_por_el_n_de_n_legacy(): void
+    {
+        DB::table('headquarters')->insertOrIgnore(['id' => 1, 'name' => 'Principal', 'empresa' => 'Huacachin', 'status' => 'active', 'sort_order' => 1, 'created_at' => now(), 'updated_at' => now()]);
+        $client = Client::create(['nombre' => 'Edwin', 'apellido_pat' => 'Leoncio', 'headquarter_id' => 1, 'status' => 'active']);
+        $credit = Credit::create(['client_id' => $client->id, 'fecha_prestamo' => '2026-09-01', 'importe' => 300, 'cuotas' => 3, 'tipo_planilla' => 1, 'interes' => 10, 'interes_total' => 30, 'situacion' => 'Activo', 'estado' => 1, 'headquarter_id' => 1]);
+        $ids = [];
+        foreach ([1, 2, 3] as $n) {
+            $ids[$n] = CreditInstallment::create(['credit_id' => $credit->id, 'num_cuota' => $n, 'fecha_vencimiento' => '2026-09-0'.(1 + $n * 2), 'importe_cuota' => 100, 'importe_interes' => 10, 'importe_excedente' => 0, 'importe_aplicado' => $n === 1 ? 100 : 0, 'interes_aplicado' => $n === 1 ? 10 : 0, 'excedente_aplicado' => 0, 'importe_mora' => 0, 'mora_interes' => 0, 'pagado' => $n === 1])->id;
+        }
+        $pagos = collect([
+            $this->pago('CAPITAL', 100.00, $ids[1], 'Pago : X Cuota: 1/3')->forceFill(['credit_id' => $credit->id]),
+            $this->pago('INTERES', 10.00, null, 'Pago : X Interes: 2/3')->forceFill(['credit_id' => $credit->id]),
+            $this->pago('MORA', 5.00, null, 'Mora de cuota')->forceFill(['credit_id' => $credit->id]),
+        ]);
+
+        $indices = MotivoCobro::cuotasTocadas($pagos);
+
+        $porId = array_keys($indices[$credit->id][0]);
+        sort($porId);
+        $this->assertSame([$ids[1], $ids[2]], $porId, 'la 1 por su installment_id y la 2 por el "2/3" del detalle; la 3 no se toca');
+        $porNum = array_keys($indices[$credit->id][1]);
+        sort($porNum);
+        $this->assertSame([1, 2], $porNum);
+        $this->assertSame('Cuotas 1 y 2 de 3', MotivoCobro::de($pagos, $credit, $indices[$credit->id][0], $indices[$credit->id][1])['resumen']);
+    }
+
     public function test_el_reporte_pinta_el_motivo_detallado_y_lo_manda_tal_cual_al_excel(): void
     {
         DB::table('headquarters')->insertOrIgnore(['id' => 1, 'name' => 'Principal', 'empresa' => 'Huacachin', 'status' => 'active', 'sort_order' => 1, 'created_at' => now(), 'updated_at' => now()]);
