@@ -125,11 +125,11 @@ class ReportePagosVoucherReciboMapTest extends TestCase
         $this->assertSame(333.33, $rows[0]['recibos'][0]['monto']);
         $this->assertStringContainsString("/recibo/{$lote}?signature=", $rows[0]['recibos'][0]['url']);
 
-        // La pantalla: cámara de caja (sin miniatura ni contador) con las fotos inline, el recibo en
+        // La pantalla: cámara de caja (sin miniatura, con el contador) con las fotos inline, el recibo en
         // ventanitas (varias a la vez, fila amarilla), y Map con el mundo tachado (cobro sin ubicación).
         $c->assertSeeHtml('ti-camera f-s-16 text-info')
-            ->assertSeeHtml('title="Ver foto del depósito"')
-            ->assertDontSeeHtml('badge bg-info') // sin contador: "la foto y el número es mucho"
+            ->assertSeeHtml('title="Ver foto del depósito (1)"')
+            ->assertSeeHtml('badge bg-info') // el número al costado, como en ingresos/egresos (23/10)
             ->assertDontSeeHtml('<img src="/storage/expenses/')
             ->assertSee('Ver recibo (S/ 333.33)')
             ->assertSeeHtml('ti-receipt f-s-16')
@@ -183,7 +183,7 @@ class ReportePagosVoucherReciboMapTest extends TestCase
 
         $this->assertSame(["/storage/expenses/{$e1}/a.jpg", "/storage/expenses/{$e2}/b.jpg"], array_column($v, 'url'));
         $this->assertSame("/storage/expenses/{$e2}/b.jpg", $v[1]['thumb'], 'sin miniatura se usa la foto');
-        $c->assertSee('Ver foto del depósito (2 fotos)');
+        $c->assertSee('Ver foto del depósito (2)');
     }
 
     /** El voucher y el recibo de OTRO día del mismo crédito no se cuelgan de este cobro. */
