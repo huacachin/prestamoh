@@ -3,6 +3,8 @@
 namespace App\Livewire\Clients;
 
 use App\Models\Client;
+use App\Models\Credit;
+use App\Support\ResumenDeudaCredito;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
@@ -10,6 +12,22 @@ use Livewire\Component;
 class Show extends Component
 {
     public Client $client;
+
+    /** Resumen de cobranza del crédito abierto desde su código (23/10): ver ResumenDeudaCredito. */
+    public ?array $resumen = null;
+
+    public function verResumen(int $creditId): void
+    {
+        $credit = Credit::with(['installments' => fn ($q) => $q->orderBy('num_cuota')])
+            ->where('client_id', $this->client->id)->find($creditId);
+        if ($credit === null) {
+            $this->dispatch('errorAlert', ['message' => 'Ese crédito no es de este cliente.']);
+
+            return;
+        }
+        $this->resumen = ResumenDeudaCredito::de($credit, $this->client);
+        $this->dispatch('resumen-credito-listo');
+    }
 
     public function mount(int $id)
     {

@@ -175,7 +175,9 @@
                                     @else
                                         <span class="badge bg-secondary" style="font-size:9px;">D</span>
                                     @endif
-                                    {{ $row['codigo'] }}
+                                    {{-- 23/10: clic en el código → resumen de cobranza para copiar --}}
+                                    <a href="#" wire:click.prevent="verResumen({{ $row['codigo'] }})" title="Ver resumen del crédito"
+                                       style="color:inherit; font-weight:600; text-decoration:underline dotted;">{{ $row['codigo'] }}</a>
                                 </td>
                                 <td style="{{ $tdStyle }}" class="text-center">{{ $row['cod_ant'] }}</td>
                                 <td style="{{ $tdStyle }}" class="text-center">{{ $row['f_credito'] }}</td>
@@ -267,4 +269,57 @@
         </div>
     </div>
 <span id="final"></span>
+
+    {{-- Resumen de cobranza del crédito (23/10, Antony): se abre con el clic en el código y se copia
+         tal cual (App\Support\ResumenDeudaCredito). wire:ignore.self: Bootstrap pone clases en el modal. --}}
+    <div class="modal fade" id="resumenCreditoModal" tabindex="-1" aria-hidden="true" wire:ignore.self
+         x-data="resumenCredito()" x-on:resumen-credito-listo.window="abrir()">
+        <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title mb-0">Resumen del crédito{{ $resumen ? ' #'.$resumen['codigo'] : '' }}</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body py-3">
+                    @if($resumen)
+                        <pre x-ref="texto" class="resumen-credito mb-0">{{ $resumen['texto'] }}</pre>
+                    @endif
+                </div>
+                <div class="modal-footer py-2 justify-content-between">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-sm btn-primary" x-on:click="copiar()" title="Copiar el texto para pegarlo en WhatsApp">
+                        <i class="ti" :class="copiado ? 'ti-check' : 'ti-copy'"></i> <span x-text="copiado ? 'Copiado' : 'Copiar'"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <style>
+        .resumen-credito { font-family: 'Poppins', sans-serif; font-size: 13px; line-height: 1.5; white-space: pre-wrap; color: #15264b; background: #f5f6fa; border-radius: 10px; padding: 12px 14px; }
+    </style>
+    <script>
+        function resumenCredito() {
+            return {
+                copiado: false,
+                abrir() { window.bootstrap.Modal.getOrCreateInstance(this.$el).show(); this.copiado = false; },
+                copiar() {
+                    const texto = this.$refs.texto ? this.$refs.texto.innerText : '';
+                    const listo = () => { this.copiado = true; setTimeout(() => { this.copiado = false; }, 1800); };
+                    if (navigator.clipboard && window.isSecureContext) {
+                        navigator.clipboard.writeText(texto).then(listo, () => this.copiarViejo(texto, listo));
+                    } else {
+                        this.copiarViejo(texto, listo);
+                    }
+                },
+                // Navegadores sin API de portapapeles (o sin https): el truco del textarea.
+                copiarViejo(texto, listo) {
+                    const t = document.createElement('textarea');
+                    t.value = texto; t.style.position = 'fixed'; t.style.opacity = '0';
+                    document.body.appendChild(t); t.select();
+                    try { document.execCommand('copy'); listo(); } catch (e) {}
+                    document.body.removeChild(t);
+                },
+            };
+        }
+    </script>
 </div>
