@@ -1482,6 +1482,7 @@
                     <div class="modal-body">
                         <div class="fw-bold" x-text="'Crédito #' + d.credito"></div>
                         <div class="mb-2" x-text="d.cliente"></div>
+                        <div class="fw-semibold">Amortizó:</div>
                         <template x-for="(linea, i) in d.abonos" :key="i">
                             <div x-text="linea"></div>
                         </template>
@@ -1504,9 +1505,9 @@
                             this.copiado = false;
                             window.bootstrap.Modal.getOrCreateInstance(this.$root).show();
                         },
-                        // Lo que se copia: crédito, cliente, cuota y cada abono, una línea cada uno y sin líneas en blanco.
+                        // Lo que se copia es lo mismo que muestra el cuerpo del modal, una línea cada cosa y sin líneas en blanco.
                         texto() {
-                            return ['Crédito #' + this.d.credito, this.d.cliente, 'Abonos de la cuota ' + this.d.cuota].concat(this.d.abonos).join('\n');
+                            return ['Crédito #' + this.d.credito, this.d.cliente, 'Amortizó:'].concat(this.d.abonos).join('\n');
                         },
                         copiar() {
                             const texto = this.texto();
