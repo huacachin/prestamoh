@@ -235,4 +235,18 @@ class ReportePagosVoucherReciboMapTest extends TestCase
             ->assertSee('Ver foto del depósito')
             ->assertSee('Ver recibo');
     }
+
+    /** 23/10 (Antony): el nombre del cliente abre su ficha, solo para quien puede abrirla. */
+    public function test_el_nombre_del_cliente_enlaza_a_su_ficha_solo_si_puede_verla(): void
+    {
+        $user = $this->usuario(admin: false);
+        ['client' => $client] = $this->cobro();
+        $ficha = 'href="'.route('clients.show', $client->id).'"';
+
+        Livewire::test(Payments::class)->assertSee('Leoncio Escalera Edwin')->assertDontSeeHtml($ficha);
+
+        $user->givePermissionTo(Permission::findOrCreate('clientes', 'web'));
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        Livewire::test(Payments::class)->assertSeeHtml($ficha)->assertSeeHtml('title="Ver ficha del cliente"');
+    }
 }

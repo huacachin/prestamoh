@@ -198,6 +198,8 @@ class Payments extends Component
                 'cliente' => $cliente
                     ? trim(($cliente->apellido_pat ?? '').' '.($cliente->apellido_mat ?? '').' '.($cliente->nombre ?? ''))
                     : '',
+                'client_id' => $cliente?->id, // 23/10: el nombre enlaza a su ficha
+
                 // 'detalle' es lo que va al Excel (una línea); 'motivo' lo que pinta la tabla en dos.
                 'detalle' => $motivo['texto'],
                 'motivo' => $motivo,
@@ -241,6 +243,8 @@ class Payments extends Component
             'rows' => $rows,
             'totals' => $totals,
             'isAdmin' => $isAdmin,
+            // 23/10 (Antony): el nombre del cliente lleva a su ficha, solo si puede abrirla (ruta con permission:clientes).
+            'puedeVerFicha' => auth()->user()?->can('clientes') ?? false,
             // Efectivos (las propiedades fei/fef guardan lo escrito; Livewire las pasa también a la vista)
             'desdeEfectivo' => $fei,
             'hastaEfectivo' => $fef,

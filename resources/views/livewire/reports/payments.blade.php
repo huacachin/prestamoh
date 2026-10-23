@@ -216,7 +216,15 @@
                                         <td>{{ $row['hora'] }}</td>
                                         <td>{{ $row['usuario'] }}</td>
                                         <td>{{ $row['asesor'] }}</td>
-                                        <td>{{ $row['cliente'] }}</td>
+                                        <td>
+                                            @if($puedeVerFicha && $row['client_id'])
+                                                {{-- 23/10 (Antony): clic en el nombre → ficha del cliente, en otra pestaña para no perder el reporte --}}
+                                                <a href="{{ route('clients.show', $row['client_id']) }}" target="_blank" title="Ver ficha del cliente"
+                                                   style="color:inherit; text-decoration:underline dotted;">{{ $row['cliente'] }}</a>
+                                            @else
+                                                {{ $row['cliente'] }}
+                                            @endif
+                                        </td>
                                         {{-- 23/10 (Antony): motivo detallado desde las cuotas, ya no el detalle legacy --}}
                                         <td style="white-space:nowrap;">
                                             <div>{{ $row['motivo']['resumen'] }}</div>
