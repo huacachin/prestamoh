@@ -129,6 +129,7 @@ class CobroAbonosDesglosadosTest extends TestCase
         $this->assertStringContainsString('id="abonosModal"', $html);
         $this->assertStringContainsString('x-on:click="copiar()"', $html, 'con su botón de copiar');
         $this->assertStringContainsString('<div class="fw-semibold">Amortizó:</div>', $html, 'la lista va bajo "Amortizó:"');
+        $this->assertStringContainsString("x-data=\"Object.assign(modalFlotante('abonos'), abonosModal())\"", $html, 'ventana movible');
         // La cuota en juego no se pliega (no lleva abono-pagada); cada abono fue un cobro de una sola cuota: sin nota.
         $this->assertStringNotContainsString('class="fila-abono abono-pagada"', $html);
         $this->assertStringNotContainsString('Cobro #', $html);

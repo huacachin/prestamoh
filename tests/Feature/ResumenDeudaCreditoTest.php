@@ -168,7 +168,8 @@ class ResumenDeudaCreditoTest extends TestCase
             ->assertSee('Total de deuda sin mora')
             ->assertSee('S/ 24,220.00')
             ->assertSee('S/ 31,187.80')
-            ->assertSeeHtml("data-copia=\"DATOS DEL CRÉDITO #{$credit->id}\nJanampa Cahuana Mauro\nFecha del crédito 28/01/2026\nFecha de corte 23/10/2026\n");
+            ->assertSeeHtml("data-copia=\"DATOS DEL CRÉDITO #{$credit->id}\nJanampa Cahuana Mauro\nFecha del crédito 28/01/2026\nFecha de corte 23/10/2026\n")
+            ->assertSeeHtml("x-data=\"Object.assign(modalFlotante('resumen'), resumenCredito())\""); // ventana movible (23/10)
         $this->assertSame($credit->id, $ficha->get('resumen')['codigo']);
 
         $ficha->call('verResumen', $ajeno->id)->assertDispatched('errorAlert')->assertNotDispatched('resumen-credito-listo');

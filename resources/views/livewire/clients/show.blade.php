@@ -272,11 +272,15 @@
 
     {{-- Resumen de cobranza del crédito (23/10, Antony): se abre con el clic en el código y se copia
          tal cual (App\Support\ResumenDeudaCredito). wire:ignore.self: Bootstrap pone clases en el modal. --}}
+    {{-- 23/10 (Antony): ventana movible, la misma de "Confirmar cobro" (modalFlotante). wire:ignore.self también en
+         el diálogo: el morph de Livewire no debe reponer su style y devolverla a la esquina (ver ventanas-flotantes). --}}
     <div class="modal fade" id="resumenCreditoModal" tabindex="-1" aria-hidden="true" wire:ignore.self
-         x-data="resumenCredito()" x-on:resumen-credito-listo.window="abrir()">
-        <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
+         x-data="Object.assign(modalFlotante('resumen'), resumenCredito())" x-on:resumen-credito-listo.window="abrir()">
+        <div class="modal-dialog modal-dialog-centered" style="max-width:420px;" x-ref="dialogo" wire:ignore.self>
             <div class="modal-content">
-                <div class="modal-header py-2">
+                <div class="modal-header py-2"
+                     x-on:pointerdown="iniciarArrastre($event)" x-on:pointermove="arrastrar($event)"
+                     x-on:pointerup="soltar($event)" x-on:pointercancel="soltar($event)">
                     <h6 class="modal-title mb-0">Resumen del crédito{{ $resumen ? ' #'.$resumen['codigo'] : '' }}</h6>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
@@ -302,7 +306,7 @@
         function resumenCredito() {
             return {
                 copiado: false,
-                abrir() { window.bootstrap.Modal.getOrCreateInstance(this.$el).show(); this.copiado = false; },
+                abrir() { this.modal.show(); this.copiado = false; }, // instancia de modalFlotante (sin fondo oscuro en escritorio)
                 copiar() {
                     const texto = this.$refs.texto ? (this.$refs.texto.dataset.copia || this.$refs.texto.innerText) : '';
                     const listo = () => { this.copiado = true; setTimeout(() => { this.copiado = false; }, 1800); };

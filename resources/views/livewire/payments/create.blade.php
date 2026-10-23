@@ -1471,11 +1471,14 @@
         {{-- 23/10 (Antony): clic en "N abonos" de una cuota → este modal con el número de crédito, el cliente
              y la misma lista del title. Lo llena Alpine con el evento ver-abonos (sin ir al servidor);
              wire:ignore para que el morph de Livewire no lo toque. --}}
+        {{-- Ventana movible (23/10, Antony): la misma de "Confirmar cobro" (modalFlotante), se arrastra por la cabecera. --}}
         <div class="modal fade" id="abonosModal" tabindex="-1" aria-hidden="true" wire:ignore
-             x-data="abonosModal()" x-on:ver-abonos.window="abrir($event.detail)">
-            <div class="modal-dialog modal-dialog-centered" style="max-width:360px;">
+             x-data="Object.assign(modalFlotante('abonos'), abonosModal())" x-on:ver-abonos.window="abrir($event.detail)">
+            <div class="modal-dialog modal-dialog-centered" style="max-width:360px;" x-ref="dialogo">
                 <div class="modal-content">
-                    <div class="modal-header py-2">
+                    <div class="modal-header py-2"
+                         x-on:pointerdown="iniciarArrastre($event)" x-on:pointermove="arrastrar($event)"
+                         x-on:pointerup="soltar($event)" x-on:pointercancel="soltar($event)">
                         <h6 class="modal-title mb-0" x-text="'Abonos de la cuota ' + d.cuota"></h6>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                     </div>
@@ -1503,7 +1506,7 @@
                         abrir(detalle) {
                             this.d = detalle;
                             this.copiado = false;
-                            window.bootstrap.Modal.getOrCreateInstance(this.$root).show();
+                            this.modal.show(); // la instancia la crea modalFlotante (sin fondo oscuro en escritorio)
                         },
                         // Lo que se copia es lo mismo que muestra el cuerpo del modal, una línea cada cosa y sin líneas en blanco.
                         texto() {
