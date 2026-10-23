@@ -337,12 +337,34 @@ document.addEventListener('click', function (e) {
         jQuery(el).datepicker('show');
     });
 
+    /**
+     * 23/10 (Antony: "la app deja de responder" en las PCs de la oficina): Livewire 4
+     * dispara 'morph.updated' UNA VEZ POR CADA ELEMENTO que recorre el morph, cambie
+     * o no. Las rutinas que barren todo el documento (calendarios, select2, horario
+     * de eliminar) estaban enganchadas ahí y corrían miles de veces por respuesta:
+     * coste cuadrático (medido: una respuesta del cobro de 3,65 s en PC lenta; un
+     * mes del reporte de pagos, 45 s). Con esto corren UNA vez por respuesta, al
+     * terminar el morph del componente ('morphed'), coalescidas por microtask si
+     * en una respuesta se morfean varios componentes.
+     */
+    window.unaVezPorMorph = function (fn) {
+        var pendiente = false;
+        var programar = function () {
+            if (pendiente) return;
+            pendiente = true;
+            queueMicrotask(function () { pendiente = false; fn(); });
+        };
+        if (window.Livewire && window.Livewire.hook) {
+            window.Livewire.hook('morphed', programar);
+        }
+    };
+
     document.addEventListener('DOMContentLoaded', initDatepickers);
-    // Re-init tras cada render de Livewire (inputs nuevos en el DOM)
+    // Re-init tras cada render de Livewire (inputs nuevos en el DOM): una vez por respuesta.
     document.addEventListener('livewire:navigated', initDatepickers);
     document.addEventListener('livewire:init', function () {
         if (window.Livewire && window.Livewire.hook) {
-            window.Livewire.hook('morph.updated', function () {
+            window.unaVezPorMorph(function () {
                 sanearDatepicker();
                 initDatepickers();
             });
@@ -464,7 +486,8 @@ document.addEventListener('click', function (e) {
     // para no dejarlo huérfano apuntando a un input que ya no existe.
     document.addEventListener('livewire:init', function () {
         if (window.Livewire && window.Livewire.hook) {
-            window.Livewire.hook('morph.updated', function () { if (panel) cerrar(); });
+            // 23/10: 'morphed' (una vez por componente), no 'morph.updated' (una vez por elemento).
+            window.Livewire.hook('morphed', function () { if (panel) cerrar(); });
         }
     });
 })();
@@ -529,7 +552,8 @@ document.addEventListener('click', function (e) {
     document.addEventListener('livewire:navigated', initSelect2);
     document.addEventListener('livewire:init', function () {
         if (window.Livewire && window.Livewire.hook) {
-            window.Livewire.hook('morph.updated', function () { queueMicrotask(initSelect2); });
+            // 23/10: una vez por respuesta, no por elemento (ver unaVezPorMorph).
+            window.unaVezPorMorph(initSelect2);
         }
     });
 })();

@@ -68,8 +68,18 @@
     }
 
     document.addEventListener('DOMContentLoaded', evaluar);
+    // 23/10 (Antony, "la app deja de responder"): Livewire 4 dispara 'morph.updated' una
+    // vez POR CADA ELEMENTO del morph; evaluar() recorre todos los botones de la página,
+    // así que corría miles de veces por respuesta en las pantallas grandes (y solo para
+    // quienes no son director, que es a quienes se les colgaba). Ahora una vez por
+    // respuesta, al terminar el morph ('morphed'), coalescida por microtask.
     document.addEventListener('livewire:init', () => {
-        window.Livewire.hook('morph.updated', () => queueMicrotask(evaluar));
+        let pendiente = false;
+        window.Livewire.hook('morphed', () => {
+            if (pendiente) return;
+            pendiente = true;
+            queueMicrotask(() => { pendiente = false; evaluar(); });
+        });
     });
     document.addEventListener('livewire:navigated', evaluar);
     setInterval(evaluar, 30000);
