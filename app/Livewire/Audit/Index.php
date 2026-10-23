@@ -53,7 +53,7 @@ class Index extends Component
         ],
         'acceso' => [
             'label' => 'Acceso', 'badge' => 'secondary', 'event' => null,
-            'verbos' => ['Inicio de sesión', 'Cerró sesión', 'Intento'],
+            'verbos' => ['Inicio de sesión', 'Cerró sesión', 'Intento', 'Consultó'],
         ],
     ];
 

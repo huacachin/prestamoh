@@ -2,6 +2,7 @@
 
 use App\Models\ActuacionJudicial;
 use App\Models\CashOpening;
+use App\Models\ChatConversacion;
 use App\Models\ClaveSeguridad;
 use App\Models\Client;
 use App\Models\ClientAttachment;
@@ -58,6 +59,7 @@ return [
         EmpresaRepresentante::class => 'Representante legal',
         Vehiculo::class => 'Vehículo',
         DocumentoCliente::class => 'Documento',
+        ChatConversacion::class => 'Chat de consulta',
         // Maestros
         User::class => 'Usuario',
         ClaveSeguridad::class => 'Clave de seguridad',

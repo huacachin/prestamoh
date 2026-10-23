@@ -64,6 +64,28 @@ return [
             ]) : [],
         ],
 
+        // Chat de consulta (23/10/2026): la misma base con un usuario que SOLO
+        // puede leer. Sin DB_LECTURA_* cae a las credenciales normales (local y
+        // tests). En producción, antes de encender el chat:
+        //   CREATE USER 'prestamoh_lectura'@'localhost' IDENTIFIED BY '…';
+        //   GRANT SELECT ON `base`.* TO 'prestamoh_lectura'@'localhost';
+        // y DB_LECTURA_USERNAME / DB_LECTURA_PASSWORD en el .env.
+        'lectura' => [
+            'driver' => 'mysql',
+            'host' => env('DB_HOST', '127.0.0.1'),
+            'port' => env('DB_PORT', '3306'),
+            'database' => env('DB_DATABASE', 'laravel'),
+            'username' => env('DB_LECTURA_USERNAME', env('DB_USERNAME', 'root')),
+            'password' => env('DB_LECTURA_PASSWORD', env('DB_PASSWORD', '')),
+            'unix_socket' => env('DB_SOCKET', ''),
+            'charset' => env('DB_CHARSET', 'utf8mb4'),
+            'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+        ],
+
         'legacy' => [
             'driver' => 'mysql',
             'host' => env('DB_LEGACY_HOST', '127.0.0.1'),

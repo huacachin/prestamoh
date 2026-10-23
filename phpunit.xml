@@ -22,6 +22,8 @@
         <env name="ELIMINAR_MISMO_DIA_ACTIVO" value="false"/>
         <env name="COBRO_UBICACION_OBLIGATORIA" value="false"/>
         <env name="AREA_LEGAL_ACTIVO" value="true"/>
+        <env name="CHAT_API_KEY" value=""/>
+        <env name="CHAT_CONEXION" value="mysql"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>

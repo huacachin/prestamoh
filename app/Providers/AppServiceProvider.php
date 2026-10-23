@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Models\User;
+use App\Services\Chat\ClienteClaude;
+use App\Services\Chat\ModeloDeChat;
 use App\Services\Documentos\Ocr\LectorDeVoucher;
 use App\Services\Documentos\Ocr\LectorVoucherClaude;
 use App\Support\PermisosVista;
@@ -26,6 +28,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             LectorDeVoucher::class,
             LectorVoucherClaude::class,
+        );
+        // Chat de consulta (23/10): mismo patrón, el modelo se resuelve por interfaz.
+        $this->app->bind(
+            ModeloDeChat::class,
+            ClienteClaude::class,
         );
     }
 

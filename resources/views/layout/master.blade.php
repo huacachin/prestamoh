@@ -55,6 +55,10 @@
 @auth
     {{-- Paleta de comandos universal (cmd+k) + atajos de teclado tipo Gmail --}}
     <livewire:command-palette />
+    {{-- Chat de consulta (23/10): botón flotante + panel, solo lectura; sin CHAT_API_KEY no aparece --}}
+    @if(config('chat.habilitado'))
+        <livewire:chat.panel />
+    @endif
 @endauth
 
 @stack('datepicker_js')
