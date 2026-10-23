@@ -220,7 +220,7 @@
                                             @if($puedeVerFicha && $row['client_id'])
                                                 {{-- 23/10 (Antony): clic en el nombre → ficha del cliente, en otra pestaña para no perder el reporte --}}
                                                 <a href="{{ route('clients.show', $row['client_id']) }}" target="_blank" title="Ver ficha del cliente"
-                                                   style="color:inherit; text-decoration:underline dotted;">{{ $row['cliente'] }}</a>
+                                                   style="color:inherit; text-decoration:none;">{{ $row['cliente'] }}</a>
                                             @else
                                                 {{ $row['cliente'] }}
                                             @endif

@@ -472,8 +472,8 @@
        celeste del tema (rgb 0,155,220). Solo dentro de este reporte. */
     #printme .text-primary { color: #0000FF !important; }
 
-    /* Nombre del cliente → ficha (23/10): conserva el color de la fila (rojo en S/M) y se nota con el subrayado punteado. */
-    .caja1-ficha { color: inherit; text-decoration: underline dotted; }
+    /* Nombre del cliente → ficha (23/10): conserva el color de la fila (rojo en S/M), sin subrayado (pedido de Antony). */
+    .caja1-ficha { color: inherit; text-decoration: none; }
 
     /* "N° CUOTAS" con el motivo (23/10): ancho fijo y corte de línea dentro de la tabla table-nowrap. */
     .caja1-motivo { width: 250px; margin: 0 auto; white-space: normal; line-height: 1.25; }
