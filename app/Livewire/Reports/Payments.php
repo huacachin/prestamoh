@@ -129,6 +129,7 @@ class Payments extends Component
 
         // Agrupacion por (credit_id + fecha) para mostrar fila por agrupacion
         $vouchers = $this->vouchersPorCobro($payments);
+        $recibos = $this->recibosPorCobro($payments);
         $rows = [];
         $contador = 0;
         foreach ($payments->groupBy(fn ($p) => $p->credit_id.'|'.$p->fecha->format('Y-m-d')) as $clave => $group) {
@@ -155,6 +156,7 @@ class Payments extends Component
                 // fotos del voucher del cobro (visor flotante), ambas por fila.
                 'direcciones' => $cliente ? $this->direccionesDe($cliente, $first) : null,
                 'vouchers' => $vouchers[$clave] ?? [],
+                'recibos' => $recibos[$clave] ?? [],
             ];
         }
 
@@ -232,6 +234,40 @@ class Payments extends Component
                 ? "https://maps.google.com/?q={$pago->latitud},{$pago->longitud}"
                 : null,
         ];
+    }
+
+    /**
+     * Recibos que genera el sistema por cada cobro (crédito + fecha): uno por
+     * lote (mass_deletions), con el link público firmado del recibo, el mismo
+     * que abre "Ver recibo" en el cronograma (App\Support\RecibosCuota) y que
+     * trae el botón "Copiar imagen".
+     *
+     * @param  Collection<int, Payment>  $payments
+     * @return array<string, list<array{lote: int, hora: string, monto: float, url: string}>> por "credit_id|Y-m-d"
+     */
+    private function recibosPorCobro(Collection $payments): array
+    {
+        if ($payments->isEmpty()) {
+            return [];
+        }
+
+        $lotes = DB::table('mass_deletions')
+            ->whereIn('credit_id', $payments->pluck('credit_id')->unique()->values()->all())
+            ->whereIn('date', $payments->map(fn ($p) => $p->fecha->format('Y-m-d'))->unique()->values()->all())
+            ->orderBy('date')->orderBy('time')->orderBy('id')
+            ->get(['id', 'credit_id', 'date', 'time', 'amount']);
+
+        $out = [];
+        foreach ($lotes as $l) {
+            $out[$l->credit_id.'|'.Carbon::parse($l->date)->format('Y-m-d')][] = [
+                'lote' => (int) $l->id,
+                'hora' => substr((string) $l->time, 0, 5),
+                'monto' => (float) $l->amount,
+                'url' => \Illuminate\Support\Facades\URL::signedRoute('recibo.publico', ['massDeletionId' => (int) $l->id]),
+            ];
+        }
+
+        return $out;
     }
 
     /**

@@ -135,12 +135,22 @@ class ReportePagosDireccionesVoucherTest extends TestCase
         $this->assertSame("/storage/expenses/{$egreso}/thumbs/voucher.jpg", $rows[0]['vouchers'][0]['thumb']);
         $this->assertSame('Voucher 22/10/2026 08:55 · WhatsApp Image.jpeg', $rows[0]['vouchers'][0]['name']);
 
-        // La pantalla: la cámara de caja (ícono + contador, sin miniatura) con las fotos inline,
-        // pin verde con las 2 ubicaciones, la ventana y el visor.
+        // El recibo generado por el sistema ("Voucher"): uno por lote, con su link público firmado.
+        $this->assertCount(1, $rows[0]['recibos']);
+        $this->assertSame($lote, $rows[0]['recibos'][0]['lote']);
+        $this->assertSame('08:55', $rows[0]['recibos'][0]['hora']);
+        $this->assertSame(333.33, $rows[0]['recibos'][0]['monto']);
+        $this->assertStringContainsString("/recibo/{$lote}?signature=", $rows[0]['recibos'][0]['url']);
+
+        // La pantalla: la cámara de caja (sin miniatura ni contador) con las fotos inline, el recibo
+        // con la ventana flotante del recibo, pin verde con las 2 ubicaciones, la ventana y el visor.
         $c->assertSeeHtml('ti-camera f-s-16 text-info')
-            ->assertSeeHtml('title="Ver voucher"')
+            ->assertSeeHtml('title="Ver foto del depósito"')
             ->assertDontSeeHtml('badge bg-info') // sin contador: "la foto y el número es mucho"
             ->assertDontSeeHtml('<img src="/storage/expenses/')
+            ->assertSee('Ver recibo (S/ 333.33)')
+            ->assertSeeHtml('ti-receipt f-s-16')
+            ->assertSeeHtml('id="modal-recibo"')
             ->assertSee('Ver direcciones (2 con GPS)')
             ->assertSeeHtml('ti-map-pin f-s-16')
             ->assertSeeHtml('id="direccionesModal"')
@@ -158,8 +168,9 @@ class ReportePagosDireccionesVoucherTest extends TestCase
         $this->assertSame([], $rows[0]['vouchers']);
         $this->assertSame([], $rows[0]['direcciones']['ubicaciones']);
         $this->assertSame('Av. Sin GPS 9', $rows[0]['direcciones']['direccion'], 'la dirección escrita sí se muestra');
-        $c->assertDontSee('Ver voucher')
-            ->assertSeeHtml('ti-camera-off f-s-16 text-muted') // sin voucher: cámara tachada en gris
+        $c->assertDontSee('Ver foto del depósito')
+            ->assertSeeHtml('ti-camera-off f-s-16 text-muted') // sin foto: cámara tachada en gris
+            ->assertSee('Ver recibo (S/ 333.33)') // el recibo del sistema sí existe aunque no haya foto
             ->assertSee('Ver direcciones (sin GPS)')
             ->assertSeeHtml('ti-map-pin-off f-s-16');
     }
@@ -188,7 +199,7 @@ class ReportePagosDireccionesVoucherTest extends TestCase
 
         $this->assertSame(["/storage/expenses/{$e1}/a.jpg", "/storage/expenses/{$e2}/b.jpg"], array_column($v, 'url'));
         $this->assertSame("/storage/expenses/{$e2}/b.jpg", $v[1]['thumb'], 'sin miniatura se usa la foto');
-        $c->assertSee('Ver voucher (2 fotos)');
+        $c->assertSee('Ver foto del depósito (2 fotos)');
     }
 
     /** El voucher de OTRO día del mismo crédito no se cuelga de este cobro. */
@@ -202,7 +213,29 @@ class ReportePagosDireccionesVoucherTest extends TestCase
         ]);
         $this->voucher($loteAyer, 'ayer.jpg');
 
-        $this->assertSame([], Livewire::test(Payments::class)->viewData('rows')[0]['vouchers']);
+        $rows = Livewire::test(Payments::class)->viewData('rows');
+        $this->assertSame([], $rows[0]['vouchers']);
+        $this->assertNotSame($loteAyer, $rows[0]['recibos'][0]['lote'] ?? null, 'el recibo de ayer tampoco');
+        $this->assertCount(1, $rows[0]['recibos'], 'solo el lote de hoy');
+    }
+
+    /** Dos cobros al mismo crédito el mismo día: dos recibos en la fila, cada uno con su hora. */
+    public function test_dos_lotes_del_mismo_dia_dan_dos_recibos_con_su_hora(): void
+    {
+        $this->usuario();
+        ['credit' => $credit] = $this->cobro();
+        $segundo = DB::table('mass_deletions')->insertGetId([
+            'credit_id' => $credit->id, 'amount' => 50.00, 'date' => self::HOY, 'time' => '16:20:00',
+            'user' => 'Licet', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $c = Livewire::test(Payments::class);
+        $recibos = $c->viewData('rows')[0]['recibos'];
+
+        $this->assertSame(['08:55', '16:20'], array_column($recibos, 'hora'));
+        $this->assertSame($segundo, $recibos[1]['lote']);
+        $c->assertSee('Ver recibo de las 08:55 (S/ 333.33)')
+            ->assertSee('Ver recibo de las 16:20 (S/ 50.00)');
     }
 
     /** Sin el permiso de los niveles altos no hay columna Map, pero el voucher sí se ve. */
@@ -215,6 +248,7 @@ class ReportePagosDireccionesVoucherTest extends TestCase
 
         Livewire::test(Payments::class)
             ->assertDontSee('Ver direcciones')
-            ->assertSee('Ver voucher');
+            ->assertSee('Ver foto del depósito')
+            ->assertSee('Ver recibo');
     }
 }

@@ -146,13 +146,16 @@
                                     <th>A</th>
                                     <th style="background:#949696;">Motivo</th>
                                     <th class="text-center">S/.</th>
-                                    {{-- 22/10 (Antony): voucher del cobro, con la cámara de ingresos/egresos
-                                         (ícono + contador, sin miniatura); se abre en la ventana movible. --}}
-                                    <th class="text-center" style="background:#949696;" title="Voucher"><i class="ti ti-camera"></i></th>
+                                    {{-- 22/10 (Antony): foto del depósito, con la cámara de ingresos/egresos
+                                         (sin miniatura ni contador); se abre en la ventana movible. --}}
+                                    <th class="text-center" style="background:#949696;" title="Foto del depósito"><i class="ti ti-camera"></i></th>
+                                    {{-- 22/10 (Antony): "Voucher" = el recibo que genera el sistema por cada
+                                         cobro (uno por lote), en la ventana flotante del recibo con "Copiar imagen". --}}
+                                    <th class="text-center">Voucher</th>
                                     @if($isAdmin)
                                         {{-- Como en el legacy, solo para los niveles altos; ahora abre las
                                              direcciones del cliente (los cobros nuevos no traen coordenadas). --}}
-                                        <th class="text-center">Map</th>
+                                        <th class="text-center" style="background:#949696;">Map</th>
                                     @endif
                                 </tr>
                             </thead>
@@ -174,14 +177,24 @@
                                                      que Livewire los regenere en cada filtro; la fila queda 'congelada'. --}}
                                                 @php $nV = count($row['vouchers']); @endphp
                                                 <a href="#" data-foto-fila style="cursor: zoom-in;"
-                                                   title="Ver voucher{{ $nV > 1 ? ' ('.$nV.' fotos)' : '' }}"
+                                                   title="Ver foto del depósito{{ $nV > 1 ? ' ('.$nV.' fotos)' : '' }}"
                                                    x-on:click.prevent="verVouchers(@js($row['vouchers']), {{ $row['n'] }})">
                                                     <i class="ti ti-camera f-s-16 text-info"></i>
                                                 </a>
                                             @else
-                                                {{-- Sin voucher: cámara tachada en gris, para que se note cuál no tiene foto. --}}
-                                                <i class="ti ti-camera-off f-s-16 text-muted" title="Sin voucher"></i>
+                                                {{-- Sin foto: cámara tachada en gris, para que se note cuál no tiene. --}}
+                                                <i class="ti ti-camera-off f-s-16 text-muted" title="Sin foto del depósito"></i>
                                             @endif
+                                        </td>
+                                        <td class="text-center" style="white-space:nowrap;">
+                                            {{-- Un recibo por lote del día; con varios, cada ícono lleva su hora. --}}
+                                            @foreach($row['recibos'] as $rec)
+                                                <a href="#" class="{{ $loop->last ? '' : 'me-2' }}"
+                                                   title="Ver recibo{{ count($row['recibos']) > 1 ? ' de las '.$rec['hora'] : '' }} (S/ {{ number_format($rec['monto'], 2) }})"
+                                                   onclick="abrirRecibo(@js($rec['url'])); return false;">
+                                                    <i class="ti ti-receipt f-s-16 text-primary"></i>
+                                                </a>
+                                            @endforeach
                                         </td>
                                         @if($isAdmin)
                                             <td class="text-center" style="white-space:nowrap;">
@@ -203,7 +216,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="{{ $isAdmin ? 10 : 9 }}" class="text-center py-4 text-muted">
+                                        <td colspan="{{ $isAdmin ? 11 : 10 }}" class="text-center py-4 text-muted">
                                             No se encontraron pagos en el rango seleccionado
                                         </td>
                                     </tr>
@@ -216,11 +229,13 @@
                                     <td></td>
                                     <td class="text-end">{{ number_format($totals['total'], 2) }}</td>
                                     <td></td>
+                                    <td></td>
                                     @if($isAdmin)<td></td>@endif
                                 </tr>
                                 <tr style="background-color:#f0f0f0; font-weight:500;">
                                     <td class="text-center">Fijos</td>
                                     <td class="text-end">{{ number_format($totals['fijos'], 2) }}</td>
+                                    <td></td>
                                     <td></td>
                                     <td></td>
                                     @if($isAdmin)<td></td>@endif
@@ -230,6 +245,7 @@
                                     <td class="text-end">{{ number_format($totals['otros'], 2) }}</td>
                                     <td></td>
                                     <td></td>
+                                    <td></td>
                                     @if($isAdmin)<td></td>@endif
                                 </tr>
                                 <tr style="background-color:#f0f0f0; font-weight:500;">
@@ -237,11 +253,13 @@
                                     <td class="text-end">{{ number_format($totals['capital'], 2) }}</td>
                                     <td></td>
                                     <td></td>
+                                    <td></td>
                                     @if($isAdmin)<td></td>@endif
                                 </tr>
                                 <tr style="background-color:#f0f0f0; font-weight:500;">
                                     <td class="text-center">Interes</td>
                                     <td class="text-end">{{ number_format($totals['interes'], 2) }}</td>
+                                    <td></td>
                                     <td></td>
                                     <td></td>
                                     @if($isAdmin)<td></td>@endif
@@ -252,12 +270,14 @@
                                         <td class="text-end">{{ number_format($totals['excedente'], 2) }}</td>
                                         <td></td>
                                         <td></td>
+                                        <td></td>
                                         @if($isAdmin)<td></td>@endif
                                     </tr>
                                 @endif
                                 <tr style="background-color:#f0f0f0; font-weight:500;">
                                     <td class="text-center">Mora</td>
                                     <td class="text-end">{{ number_format($totals['mora'], 2) }}</td>
+                                    <td></td>
                                     <td></td>
                                     <td></td>
                                     @if($isAdmin)<td></td>@endif
@@ -325,7 +345,9 @@
         </div>
     </div>
 
-    {{-- Visor flotante de vouchers: el mismo partial que caja, galerías y auditoría. --}}
+    {{-- Visor flotante de las fotos del depósito: el mismo partial que caja, galerías y auditoría. --}}
     @include('livewire.cash.partials._lightbox')
+    {{-- Ventana flotante del recibo (abrirRecibo), la misma del cronograma y la ficha. --}}
+    @include('livewire.payments.partials._modal-recibo')
 <span id="final"></span>
 </div>
