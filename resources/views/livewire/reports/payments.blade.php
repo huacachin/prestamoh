@@ -163,7 +163,10 @@
                         <table class="table table-bordered table-striped table-hover table-autofit">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
-                                    <th class="text-center" style="background:#949696;">Nº</th>
+                                    <th class="text-center">Nº</th>
+                                    {{-- 23/10 (Antony): la foto del depósito va como SEGUNDA columna, tras el Nº
+                                         (cámara de ingresos/egresos, sin miniatura ni contador; abre la ventana movible). --}}
+                                    <th class="text-center" style="background:#949696;" title="Foto del depósito"><i class="ti ti-camera"></i></th>
                                     <th class="text-center">Fecha</th>
                                     <th class="text-center" style="background:#949696;">Hora</th>
                                     <th class="text-center">Usuario</th>
@@ -171,16 +174,13 @@
                                     <th>A</th>
                                     <th style="background:#949696;">Motivo</th>
                                     <th class="text-center">S/.</th>
-                                    {{-- 22/10 (Antony): foto del depósito, con la cámara de ingresos/egresos
-                                         (sin miniatura ni contador); se abre en la ventana movible. --}}
-                                    <th class="text-center" style="background:#949696;" title="Foto del depósito"><i class="ti ti-camera"></i></th>
                                     {{-- 22/10 (Antony): "Voucher" = el recibo que genera el sistema por cada
                                          cobro (uno por lote), en la ventana flotante del recibo con "Copiar imagen". --}}
-                                    <th class="text-center">Voucher</th>
+                                    <th class="text-center" style="background:#949696;">Voucher</th>
                                     @if($isAdmin)
                                         {{-- Como en el legacy, solo para los niveles altos: el lugar desde donde
                                              se registró el pago (22/10: ubicación obligatoria al cobrar). --}}
-                                        <th class="text-center" style="background:#949696;">Map</th>
+                                        <th class="text-center">Map</th>
                                     @endif
                                 </tr>
                             </thead>
@@ -188,13 +188,6 @@
                                 @forelse($rows as $row)
                                     <tr :class="{ 'fila-sel': selectedId === {{ $row['n'] }}, 'fila-recibo': conRecibo({{ $row['n'] }}) }">
                                         <td class="text-center">{{ $row['n'] }}</td>
-                                        <td>{{ $row['fecha'] }}</td>
-                                        <td>{{ $row['hora'] }}</td>
-                                        <td>{{ $row['usuario'] }}</td>
-                                        <td>{{ $row['asesor'] }}</td>
-                                        <td>{{ $row['cliente'] }}</td>
-                                        <td>{{ $row['detalle'] }}</td>
-                                        <td class="text-end">{{ number_format($row['monto'], 2) }}</td>
                                         <td class="text-center" style="white-space:nowrap;">
                                             @if($row['vouchers'])
                                                 {{-- Misma cámara que caja, sin el contador (Antony, 22/10: "la foto y el
@@ -211,6 +204,13 @@
                                                 <i class="ti ti-camera-off f-s-16 text-muted" title="Sin foto del depósito"></i>
                                             @endif
                                         </td>
+                                        <td>{{ $row['fecha'] }}</td>
+                                        <td>{{ $row['hora'] }}</td>
+                                        <td>{{ $row['usuario'] }}</td>
+                                        <td>{{ $row['asesor'] }}</td>
+                                        <td>{{ $row['cliente'] }}</td>
+                                        <td>{{ $row['detalle'] }}</td>
+                                        <td class="text-end">{{ number_format($row['monto'], 2) }}</td>
                                         <td class="text-center" style="white-space:nowrap;">
                                             {{-- Un recibo por lote del día; con varios, cada ícono lleva su hora.
                                                  Cada clic abre una ventanita más (pueden verse varios a la vez). --}}
@@ -248,18 +248,16 @@
 
                                 {{-- Totales --}}
                                 <tr style="background-color:#f0f0f0; font-weight:500;">
-                                    <td colspan="5" rowspan="{{ $totals['excedente'] > 0 ? 7 : 6 }}" class="text-center">Total</td>
+                                    <td colspan="6" rowspan="{{ $totals['excedente'] > 0 ? 7 : 6 }}" class="text-center">Total</td>
                                     <td></td>
                                     <td></td>
                                     <td class="text-end">{{ number_format($totals['total'], 2) }}</td>
-                                    <td></td>
                                     <td></td>
                                     @if($isAdmin)<td></td>@endif
                                 </tr>
                                 <tr style="background-color:#f0f0f0; font-weight:500;">
                                     <td class="text-center">Fijos</td>
                                     <td class="text-end">{{ number_format($totals['fijos'], 2) }}</td>
-                                    <td></td>
                                     <td></td>
                                     <td></td>
                                     @if($isAdmin)<td></td>@endif
@@ -269,7 +267,6 @@
                                     <td class="text-end">{{ number_format($totals['otros'], 2) }}</td>
                                     <td></td>
                                     <td></td>
-                                    <td></td>
                                     @if($isAdmin)<td></td>@endif
                                 </tr>
                                 <tr style="background-color:#f0f0f0; font-weight:500;">
@@ -277,13 +274,11 @@
                                     <td class="text-end">{{ number_format($totals['capital'], 2) }}</td>
                                     <td></td>
                                     <td></td>
-                                    <td></td>
                                     @if($isAdmin)<td></td>@endif
                                 </tr>
                                 <tr style="background-color:#f0f0f0; font-weight:500;">
                                     <td class="text-center">Interes</td>
                                     <td class="text-end">{{ number_format($totals['interes'], 2) }}</td>
-                                    <td></td>
                                     <td></td>
                                     <td></td>
                                     @if($isAdmin)<td></td>@endif
@@ -294,14 +289,12 @@
                                         <td class="text-end">{{ number_format($totals['excedente'], 2) }}</td>
                                         <td></td>
                                         <td></td>
-                                        <td></td>
                                         @if($isAdmin)<td></td>@endif
                                     </tr>
                                 @endif
                                 <tr style="background-color:#f0f0f0; font-weight:500;">
                                     <td class="text-center">Mora</td>
                                     <td class="text-end">{{ number_format($totals['mora'], 2) }}</td>
-                                    <td></td>
                                     <td></td>
                                     <td></td>
                                     @if($isAdmin)<td></td>@endif
