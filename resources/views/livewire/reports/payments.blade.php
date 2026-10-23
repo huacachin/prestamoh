@@ -221,7 +221,11 @@
                                         <td style="white-space:nowrap;">
                                             <div>{{ $row['motivo']['resumen'] }}</div>
                                             @if($row['motivo']['desglose'] !== '' || $row['motivo']['situacion'] !== '')
-                                                <small class="text-muted">{{ implode(' · ', array_filter([$row['motivo']['desglose'], $row['motivo']['situacion']])) }}</small>
+                                                <small class="text-muted">
+                                                    {{ $row['motivo']['desglose'] }}@if($row['motivo']['desglose'] !== '' && $row['motivo']['situacion'] !== '') · @endif
+                                                    {{-- 23/10 (Antony): el atraso en rojo y negrita --}}
+                                                    <span class="{{ str_starts_with($row['motivo']['situacion'], 'Atraso') ? 'text-danger fw-bold' : '' }}">{{ $row['motivo']['situacion'] }}</span>
+                                                </small>
                                             @endif
                                         </td>
                                         <td class="text-end">{{ number_format($row['monto'], 2) }}</td>

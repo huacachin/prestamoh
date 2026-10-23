@@ -110,7 +110,8 @@ class MotivoCobroTest extends TestCase
 
         $comp = Livewire::test(Payments::class)->set('fei', '2026-10-22')->set('fef', '2026-10-22')->call('search');
 
-        $comp->assertSee('Cuota 6 de 48')->assertSee('Capital 208.33 · Interés 125.00 · Atraso 16 días');
+        $comp->assertSee('Cuota 6 de 48')->assertSee('Capital 208.33 · Interés 125.00')
+            ->assertSeeHtml('<span class="text-danger fw-bold">Atraso 16 días</span>'); // el atraso en rojo y negrita (23/10)
         $fila = $comp->viewData('rows')[0];
         $this->assertSame('Cuota 6 de 48 · Capital 208.33 · Interés 125.00 · Atraso 16 días', $fila['detalle'], 'el Excel recibe la misma descripción en una línea');
     }
