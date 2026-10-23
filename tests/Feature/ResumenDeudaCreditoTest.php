@@ -17,9 +17,9 @@ use Tests\TestCase;
 
 /**
  * 23/10/2026 (Antony): en la ficha del cliente, el clic en el código del
- * crédito abre un modal con el resumen de cobranza para copiar. La regla del
- * crédito mensual es la de su ejemplo: 16 800 al 5 % del 28/01/2026 →
- * "Retraso 9 meses", 9 × 840 = 7 560, "Total de deuda indicado" 24 360.
+ * crédito abre un modal con el resumen de cobranza para copiar. El retraso
+ * va EXACTO en meses y días (Antony: "no lo redondees"), y el monto suma
+ * meses × interés mensual + días × interés diario (interés mensual ÷ 30).
  */
 class ResumenDeudaCreditoTest extends TestCase
 {
@@ -58,7 +58,7 @@ class ResumenDeudaCreditoTest extends TestCase
         ]);
     }
 
-    public function test_credito_mensual_de_una_cuota_sin_pagos_cobra_un_interes_por_cada_mes_iniciado_como_el_ejemplo(): void
+    public function test_credito_mensual_de_una_cuota_sin_pagos_cuenta_el_retraso_exacto_en_meses_y_dias_desde_la_fecha_del_credito(): void
     {
         $client = $this->cliente();
         $credit = $this->credito($client, ['fecha_prestamo' => '2026-01-28', 'importe' => 16800, 'cuotas' => 1, 'tipo_planilla' => 3, 'interes' => 5, 'interes_total' => 840, 'fecha_vencimiento' => '2026-02-28']);
@@ -66,29 +66,38 @@ class ResumenDeudaCreditoTest extends TestCase
 
         $r = ResumenDeudaCredito::de($credit->fresh(), $client);
 
-        $this->assertSame([9, 'meses', 840.0, 7560.0, 24360.0, 16800.0, '5'], [$r['retraso'], $r['unidad'], $r['interes'], $r['monto_retraso'], $r['total'], $r['capital_pendiente'], $r['interes_pct']]);
+        // 28/01 → 23/10 = 8 meses y 25 días; 8 × 840 + 25 × 28 = 7 420; total 16 800 + 7 420.
+        $this->assertSame([8, 25, '8 meses y 25 días', 840.0, 28.0, 7420.0, 24220.0, 16800.0, '5'], [
+            $r['retraso_meses'], $r['retraso_dias'], $r['retraso_texto'], $r['interes'], $r['interes_diario'], $r['monto_retraso'], $r['total'], $r['capital_pendiente'], $r['interes_pct'],
+        ]);
         $this->assertSame(implode("\n", [
             'DATOS DEL CRÉDITO', '',
             'Janampa Cahuana Mauro', '',
             'Fecha del crédito 28/01/2026', '',
             'Capital prestado', 'S/ 16,800.00', '',
             'Interés del 5% S/ 840.00', '',
-            'Retraso 9 meses', '',
-            'Monto Retraso S/ 7,560.00', '',
-            'Total de deuda indicado', 'S/ 24,360.00',
+            'Retraso 8 meses y 25 días', '',
+            'Monto Retraso S/ 7,420.00', '',
+            'Total de deuda indicado', 'S/ 24,220.00',
         ]), $r['texto']);
     }
 
-    public function test_los_meses_iniciados_cuentan_entero_el_mes_en_curso_y_cero_el_mismo_dia(): void
+    public function test_los_meses_y_dias_se_cuentan_como_a_mano_y_el_texto_omite_lo_que_es_cero(): void
     {
-        $this->assertSame(9, ResumenDeudaCredito::mesesIniciados(Carbon::parse('2026-01-28'), Carbon::parse('2026-10-23')));
-        $this->assertSame(8, ResumenDeudaCredito::mesesIniciados(Carbon::parse('2026-01-28'), Carbon::parse('2026-09-28')), 'el día del vencimiento del 8.º mes no abre el 9.º');
-        $this->assertSame(1, ResumenDeudaCredito::mesesIniciados(Carbon::parse('2026-10-22'), Carbon::parse('2026-10-23')));
-        $this->assertSame(0, ResumenDeudaCredito::mesesIniciados(Carbon::parse('2026-10-23'), Carbon::parse('2026-10-23')));
-        $this->assertSame(2, ResumenDeudaCredito::mesesIniciados(Carbon::parse('2026-01-31'), Carbon::parse('2026-03-05')), 'fin de mes sin desbordar: 28/02 y 31/03');
+        $this->assertSame([8, 25], ResumenDeudaCredito::mesesYDias(Carbon::parse('2026-01-28'), Carbon::parse('2026-10-23')));
+        $this->assertSame([8, 0], ResumenDeudaCredito::mesesYDias(Carbon::parse('2026-01-28'), Carbon::parse('2026-09-28')));
+        $this->assertSame([0, 1], ResumenDeudaCredito::mesesYDias(Carbon::parse('2026-10-22'), Carbon::parse('2026-10-23')));
+        $this->assertSame([0, 0], ResumenDeudaCredito::mesesYDias(Carbon::parse('2026-10-23'), Carbon::parse('2026-10-23')));
+        $this->assertSame([13, 2], ResumenDeudaCredito::mesesYDias(Carbon::parse('2025-09-21'), Carbon::parse('2026-10-23')), 'más de un año se expresa en meses');
+
+        $this->assertSame('8 meses y 25 días', ResumenDeudaCredito::textoRetraso(8, 25));
+        $this->assertSame('1 mes y 1 día', ResumenDeudaCredito::textoRetraso(1, 1));
+        $this->assertSame('8 meses', ResumenDeudaCredito::textoRetraso(8, 0));
+        $this->assertSame('25 días', ResumenDeudaCredito::textoRetraso(0, 25));
+        $this->assertSame('0 días', ResumenDeudaCredito::textoRetraso(0, 0));
     }
 
-    public function test_credito_mensual_en_cuotas_descuenta_los_meses_de_interes_pagados_y_muestra_el_capital_pendiente(): void
+    public function test_credito_mensual_en_cuotas_empieza_a_contar_tras_los_meses_de_interes_pagados_y_muestra_el_capital_pendiente(): void
     {
         $client = $this->cliente('Henry Nestor', 'Acosta', 'Cumpa');
         $credit = $this->credito($client, ['fecha_prestamo' => '2026-01-03', 'importe' => 10000, 'cuotas' => 12, 'tipo_planilla' => 3, 'interes' => 5, 'interes_total' => 6000, 'fecha_vencimiento' => '2027-01-03']);
@@ -98,9 +107,10 @@ class ResumenDeudaCreditoTest extends TestCase
 
         $r = ResumenDeudaCredito::de($credit->fresh(), $client);
 
-        // 10 meses iniciados (03/01 → 23/10) menos 7 pagados = 3; capital pendiente 10 000 − 7 × 833.33.
-        $this->assertSame([3, 1500.0, 4166.69, 5666.69], [$r['retraso'], $r['monto_retraso'], $r['capital_pendiente'], $r['total']]);
-        $this->assertStringContainsString("Capital prestado\nS/ 10,000.00\n\nCapital pendiente\nS/ 4,166.69\n\nInterés del 5% S/ 500.00\n\nRetraso 3 meses\n\nMonto Retraso S/ 1,500.00\n\nTotal de deuda indicado\nS/ 5,666.69", $r['texto']);
+        // 7 meses pagados → el retraso corre desde el 03/08: hasta el 23/10 son 2 meses y 20 días;
+        // 2 × 500 + 20 × 16.67 = 1 333.40; capital pendiente 10 000 − 7 × 833.33 = 4 166.69.
+        $this->assertSame([2, 20, 16.67, 1333.4, 4166.69, 5500.09], [$r['retraso_meses'], $r['retraso_dias'], $r['interes_diario'], $r['monto_retraso'], $r['capital_pendiente'], $r['total']]);
+        $this->assertStringContainsString("Capital prestado\nS/ 10,000.00\n\nCapital pendiente\nS/ 4,166.69\n\nInterés del 5% S/ 500.00\n\nRetraso 2 meses y 20 días\n\nMonto Retraso S/ 1,333.40\n\nTotal de deuda indicado\nS/ 5,500.09", $r['texto']);
     }
 
     public function test_credito_semanal_cuenta_cuotas_vencidas_y_saldo_del_cronograma_y_el_cancelado_no_debe_nada(): void
@@ -112,12 +122,12 @@ class ResumenDeudaCreditoTest extends TestCase
         }
 
         $r = ResumenDeudaCredito::de($credit->fresh(), $client);
-        $this->assertSame([1, 'cuota', 333.33, 666.66, 416.66], [$r['retraso'], $r['unidad'], $r['monto_retraso'], $r['total'], $r['capital_pendiente']]);
+        $this->assertSame(['1 cuota', 333.33, 666.66, 416.66], [$r['retraso_texto'], $r['monto_retraso'], $r['total'], $r['capital_pendiente']]);
         $this->assertStringContainsString("Retraso 1 cuota\n\nMonto Retraso S/ 333.33\n\nTotal de deuda indicado\nS/ 666.66", $r['texto']);
 
         $credit->update(['situacion' => 'Cancelado', 'estado' => 0, 'fecha_cancelacion' => '2026-10-20']);
         $c = ResumenDeudaCredito::de($credit->fresh(), $client);
-        $this->assertSame([0, 0.0, 0.0, '20/10/2026'], [$c['retraso'], $c['monto_retraso'], $c['total'], $c['cancelado']]);
+        $this->assertSame([0.0, 0.0, '20/10/2026'], [$c['monto_retraso'], $c['total'], $c['cancelado']]);
         $this->assertStringEndsWith("Total de deuda indicado\nS/ 0.00\n\nCrédito cancelado el 20/10/2026", $c['texto']);
     }
 
@@ -134,8 +144,8 @@ class ResumenDeudaCreditoTest extends TestCase
             ->assertSeeHtml('wire:click.prevent="verResumen('.$credit->id.')"')
             ->call('verResumen', $credit->id)
             ->assertDispatched('resumen-credito-listo')
-            ->assertSee('Retraso 9 meses')
-            ->assertSee('S/ 24,360.00');
+            ->assertSee('Retraso 8 meses y 25 días')
+            ->assertSee('S/ 24,220.00');
         $this->assertSame($credit->id, $ficha->get('resumen')['codigo']);
 
         $ficha->call('verResumen', $ajeno->id)->assertDispatched('errorAlert')->assertNotDispatched('resumen-credito-listo');
