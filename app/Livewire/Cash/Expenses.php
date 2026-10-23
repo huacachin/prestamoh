@@ -3,6 +3,7 @@
 namespace App\Livewire\Cash;
 
 use App\Models\Expense;
+use App\Support\FiltrosSeguros;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
@@ -56,11 +57,14 @@ class Expenses extends Component
                 ->where('reason', 'Diario');
         }
 
-        // Lógica fechas + búsqueda (estilo legacy)
-        if ($term !== '' && ($this->fei === '' || $this->fef === '')) {
-            // Solo búsqueda, sin filtro de fecha
-        } elseif ($this->fei !== '' && $this->fef !== '') {
-            $query->where('date', '>=', $this->fei)->where('date', '<=', $this->fef);
+        // Lógica fechas + búsqueda (estilo legacy). 23/10: las fechas se sanean
+        // (vacía o a medias = sin fecha, cruzadas se intercambian) y el listado
+        // tiene tope de filas: con texto y sin fechas se buscaba en toda la historia.
+        [$fei, $fef] = FiltrosSeguros::rangoLegacy($this->fei, $this->fef);
+        if ($term !== '' && ($fei === null || $fef === null)) {
+            // Solo búsqueda, sin filtro de fecha (protegido por el tope de filas)
+        } elseif ($fei !== null && $fef !== null) {
+            $query->where('date', '>=', $fei)->where('date', '<=', $fef);
         } else {
             $query->where('date', now()->format('Y-m-d'));
         }
@@ -78,7 +82,9 @@ class Expenses extends Component
             };
         }
 
-        $expenses = $query->orderBy('date', 'asc')->orderBy('id', 'asc')->get();
+        // Tope de filas en pantalla (el Excel no pasa por aquí).
+        $topeFilas = FiltrosSeguros::aviso((clone $query)->count(), 'caja');
+        $expenses = $topeFilas ? collect() : $query->orderBy('date', 'asc')->orderBy('id', 'asc')->get();
 
         // Subtotales
         $tofijo = 0;
@@ -130,6 +136,7 @@ class Expenses extends Component
         }
 
         return view('livewire.cash.expenses', [
+            'topeFilas' => $topeFilas,
             'expenses' => $expenses,
             'galleries' => $galleries,
             'totalGeneral' => $totalGeneral,

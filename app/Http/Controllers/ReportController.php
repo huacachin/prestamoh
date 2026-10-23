@@ -151,6 +151,7 @@ class ReportController extends Controller
         $c->cdni = (string) $request->query('cdni', '');
         $c->cnombre = (string) $request->query('cnombre', '');
         $c->casesor = (string) $request->query('casesor', '');
+        $c->sinTope = true; // el Excel trae todo
 
         $d = $c->render()->getData();
 

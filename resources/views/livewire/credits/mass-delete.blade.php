@@ -25,20 +25,20 @@
                                 <label class="form-label mb-0 small"><b>BUSCAR X</b></label>
                                 <div class="d-flex gap-3 mb-1">
                                     <div class="form-check">
-                                        <input class="form-check-input me-1" type="radio" wire:model.live="tipo" value="1" id="tipoCodigo">
+                                        <input class="form-check-input me-1" type="radio" wire:model="tipo" value="1" id="tipoCodigo">
                                         <label class="form-check-label small" for="tipoCodigo">Código</label>
                                     </div>
                                     <div class="form-check">
-                                        <input class="form-check-input me-1" type="radio" wire:model.live="tipo" value="2" id="tipoAsesor">
+                                        <input class="form-check-input me-1" type="radio" wire:model="tipo" value="2" id="tipoAsesor">
                                         <label class="form-check-label small" for="tipoAsesor">Asesor</label>
                                     </div>
                                     <div class="form-check">
-                                        <input class="form-check-input me-1" type="radio" wire:model.live="tipo" value="3" id="tipoUsuario">
+                                        <input class="form-check-input me-1" type="radio" wire:model="tipo" value="3" id="tipoUsuario">
                                         <label class="form-check-label small" for="tipoUsuario">Usuario</label>
                                     </div>
                                 </div>
                                 <input type="text" name="compra" autocomplete="off" class="form-control form-control-sm"
-                                       wire:model.live.debounce.300ms="compra"
+                                       wire:model="compra"
                                        placeholder="Ingrese el texto a buscar"
        list="hist_mass_delete" data-search-history="mass_delete">
 <datalist id="hist_mass_delete" wire:ignore></datalist>
@@ -46,12 +46,12 @@
 
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small"><b>Fecha Inicio</b></label>
-                                <input type="text" name="fei" autocomplete="off" class="form-control form-control-sm dates" wire:model.live.debounce.500ms="fei">
+                                <input type="text" name="fei" autocomplete="off" class="form-control form-control-sm dates" wire:model="fei">
                             </div>
 
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small"><b>Fecha Fin</b></label>
-                                <input type="text" name="fef" autocomplete="off" class="form-control form-control-sm dates" wire:model.live.debounce.500ms="fef">
+                                <input type="text" name="fef" autocomplete="off" class="form-control form-control-sm dates" wire:model="fef">
                             </div>
                         </div>
                         <div class="d-flex gap-2 mb-2">
@@ -71,6 +71,7 @@
                     @endphp
 
                     {{-- Tabla Desktop --}}
+                    @include('livewire.partials._tope-filas')
                     <div class="table-responsive d-none d-md-block">
                         <table class="table table-bordered table-striped table-hover table-autofit" style="font-size: 11px;">
                             <thead class="bg-primary">

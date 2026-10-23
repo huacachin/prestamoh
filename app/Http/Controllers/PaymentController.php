@@ -157,6 +157,7 @@ class PaymentController extends Controller
         $c->ejecutivo = (string) $request->query('ejecutivo', 'Todos');
         $c->eestado = (string) $request->query('eestado', 'Vigente');
         $c->codio1 = (string) $request->query('codio1', '');
+        $c->sinTope = true; // el Excel trae todo
 
         $d = $c->render()->getData();
 
@@ -175,6 +176,7 @@ class PaymentController extends Controller
         $c->ejecutivo = (string) $request->query('ejecutivo', 'Todos');
         $c->eestado = (string) $request->query('eestado', 'Vigente');
         $c->codio1 = (string) $request->query('codio1', '');
+        $c->sinTope = true; // el Excel trae todo
 
         $d = $c->render()->getData();
 
@@ -193,6 +195,7 @@ class PaymentController extends Controller
         $c->ejecutivo = (string) $request->query('ejecutivo', 'Todos');
         $c->eestado = (string) $request->query('eestado', 'Vigente');
         $c->codio1 = (string) $request->query('codio1', '');
+        $c->sinTope = true; // el Excel trae todo
 
         $d = $c->render()->getData();
 

@@ -72,6 +72,7 @@
                         {{-- Incomes table --}}
                         <div class="col-md-6">
                             <h6 class="fw-bold text-success">Ingresos</h6>
+                    @include('livewire.partials._tope-filas')
                             <div class="table-responsive">
                                 <table class="table table-bordered table-striped table-hover">
                                     <thead class="bg-primary">

@@ -22,17 +22,25 @@ class PaymentsDailyExport implements FromCollection, WithEvents
     use LegacyExcelStyle;
 
     private const FIXED = 12;          // columnas fijas antes de los días
+
     private const DAYS = 32;
+
     private const LASTCOL_IDX = 48;    // 12 + 32 + 4
 
     private const DARK = '005F8C';
+
     private const YELLOW = 'FFFF00';
 
     protected array $rows = [];
+
     protected array $tot = [];
+
     protected array $sub = [];
+
     protected float $morosidadPct = 0;
+
     protected float $activosPct = 0;
+
     protected string $today = '';
 
     public function __construct(
@@ -41,10 +49,11 @@ class PaymentsDailyExport implements FromCollection, WithEvents
 
     public function collection()
     {
-        $c = new Daily();
+        $c = new Daily;
         $c->ejecutivo = (string) ($this->filters['ejecutivo'] ?? 'Todos');
-        $c->eestado   = (string) ($this->filters['eestado'] ?? 'Vigente');
-        $c->codio1    = (string) ($this->filters['codio1'] ?? '');
+        $c->eestado = (string) ($this->filters['eestado'] ?? 'Vigente');
+        $c->codio1 = (string) ($this->filters['codio1'] ?? '');
+        $c->sinTope = true; // el Excel trae todo; el tope de filas es solo de pantalla
 
         $data = $c->render()->getData();
         $this->rows = $data['rows'] ?? [];
@@ -87,27 +96,27 @@ class PaymentsDailyExport implements FromCollection, WithEvents
         $sheet->setCellValue('A1', 'REPORTE CREDITO DIARIO');
         $sheet->mergeCells("A1:{$last}1");
         $sheet->getStyle('A1')->applyFromArray([
-            'font'      => ['bold' => true, 'size' => 14, 'color' => ['rgb' => self::COLOR_TITULO]],
+            'font' => ['bold' => true, 'size' => 14, 'color' => ['rgb' => self::COLOR_TITULO]],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
         ]);
         $sheet->getRowDimension(1)->setRowHeight(22);
 
         $fixed = ['N.', 'FECHA', 'EXP.', 'COD.', 'N.C', 'DNI', 'CLIENTE', 'CAPITAL', '%', 'INT.', 'T.P', 'C.'];
         foreach ($fixed as $i => $h) {
-            $sheet->setCellValue($this->colLetter($i + 1) . '2', $h);
+            $sheet->setCellValue($this->colLetter($i + 1).'2', $h);
         }
         for ($d = 1; $d <= self::DAYS; $d++) {
-            $sheet->setCellValue($this->colLetter(self::FIXED + $d) . '2', $d);
+            $sheet->setCellValue($this->colLetter(self::FIXED + $d).'2', $d);
         }
         $tail = ['TOTAL', 'MORA', 'OTROS', 'SALDOS'];
         foreach ($tail as $i => $h) {
-            $sheet->setCellValue($this->colLetter(self::FIXED + self::DAYS + $i + 1) . '2', $h);
+            $sheet->setCellValue($this->colLetter(self::FIXED + self::DAYS + $i + 1).'2', $h);
         }
 
         $sheet->getStyle("A2:{$last}2")->applyFromArray([
-            'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
-            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::COLOR_HEADER]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::COLOR_HEADER]],
         ]);
 
         // Anchos: fijas legibles, días angostos
@@ -147,15 +156,15 @@ class PaymentsDailyExport implements FromCollection, WithEvents
             $monto = (float) $day['monto'];
             $sheet->setCellValue("{$col}{$r}", $monto > 0 ? $monto : '');
             $styles = [];
-            if (!empty($day['bg'])) {
+            if (! empty($day['bg'])) {
                 $rgb = $day['bg'] === 'yellow' ? 'FFFF00' : ($day['bg'] === 'red' ? 'FF0000' : '999999');
                 $styles['fill'] = ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $rgb]];
             }
             $font = [];
-            if (!empty($day['color'])) {
+            if (! empty($day['color'])) {
                 $font['color'] = ['rgb' => $day['color'] === 'red' ? 'FF0000' : ($day['color'] === 'green' ? '008000' : 'E7E7E7')];
             }
-            if (!empty($day['weight'])) {
+            if (! empty($day['weight'])) {
                 $font['bold'] = true;
             }
             if ($font) {
@@ -168,10 +177,10 @@ class PaymentsDailyExport implements FromCollection, WithEvents
         }
 
         $base = self::FIXED + self::DAYS;
-        $sheet->setCellValue($this->colLetter($base + 1) . $r, (float) $row['pagado']);
-        $sheet->setCellValue($this->colLetter($base + 2) . $r, (float) $row['mora']);
-        $sheet->setCellValue($this->colLetter($base + 3) . $r, (float) $row['otros']);
-        $sheet->setCellValue($this->colLetter($base + 4) . $r, (float) $row['saldo']);
+        $sheet->setCellValue($this->colLetter($base + 1).$r, (float) $row['pagado']);
+        $sheet->setCellValue($this->colLetter($base + 2).$r, (float) $row['mora']);
+        $sheet->setCellValue($this->colLetter($base + 3).$r, (float) $row['otros']);
+        $sheet->setCellValue($this->colLetter($base + 4).$r, (float) $row['saldo']);
     }
 
     private function buildTotal(Worksheet $sheet, int $r, string $last): void
@@ -184,10 +193,10 @@ class PaymentsDailyExport implements FromCollection, WithEvents
         $sheet->setCellValue("K{$r}", (float) ($t['apagar'] ?? 0));
         $sheet->setCellValue("L{$r}", (float) ($t['cuota'] ?? 0));
         $base = self::FIXED + self::DAYS;
-        $sheet->setCellValue($this->colLetter($base + 1) . $r, (float) ($t['pagado'] ?? 0));
-        $sheet->setCellValue($this->colLetter($base + 2) . $r, (float) ($t['mora'] ?? 0));
-        $sheet->setCellValue($this->colLetter($base + 3) . $r, (float) ($t['otros'] ?? 0));
-        $sheet->setCellValue($this->colLetter($base + 4) . $r, (float) ($t['saldo'] ?? 0));
+        $sheet->setCellValue($this->colLetter($base + 1).$r, (float) ($t['pagado'] ?? 0));
+        $sheet->setCellValue($this->colLetter($base + 2).$r, (float) ($t['mora'] ?? 0));
+        $sheet->setCellValue($this->colLetter($base + 3).$r, (float) ($t['otros'] ?? 0));
+        $sheet->setCellValue($this->colLetter($base + 4).$r, (float) ($t['saldo'] ?? 0));
         $this->markTotalRow($sheet, $r, $last);
     }
 
@@ -210,7 +219,7 @@ class PaymentsDailyExport implements FromCollection, WithEvents
         foreach ($blocks as $b) {
             $d = $b['d'];
             $sheet->mergeCells("A{$r}:C{$r}");
-            $sheet->setCellValue("A{$r}", number_format($b['pct'], 2) . '%');
+            $sheet->setCellValue("A{$r}", number_format($b['pct'], 2).'%');
             $sheet->getStyle("A{$r}")->applyFromArray(['font' => ['bold' => true, 'color' => ['rgb' => $b['pctColor']]], 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER]]);
 
             $sheet->setCellValue("D{$r}", $b['lbl']);
@@ -226,10 +235,10 @@ class PaymentsDailyExport implements FromCollection, WithEvents
             $sheet->setCellValue("K{$r}", (float) ($d['apagar'] ?? 0));
             $sheet->setCellValue("L{$r}", (float) ($d['cuota'] ?? 0));
             $base = self::FIXED + self::DAYS;
-            $sheet->setCellValue($this->colLetter($base + 1) . $r, (float) ($d['pagado'] ?? 0));
-            $sheet->setCellValue($this->colLetter($base + 2) . $r, (float) ($d['mora'] ?? 0));
-            $sheet->setCellValue($this->colLetter($base + 3) . $r, (float) ($d['otros'] ?? 0));
-            $sheet->setCellValue($this->colLetter($base + 4) . $r, (float) ($d['saldo'] ?? 0));
+            $sheet->setCellValue($this->colLetter($base + 1).$r, (float) ($d['pagado'] ?? 0));
+            $sheet->setCellValue($this->colLetter($base + 2).$r, (float) ($d['mora'] ?? 0));
+            $sheet->setCellValue($this->colLetter($base + 3).$r, (float) ($d['otros'] ?? 0));
+            $sheet->setCellValue($this->colLetter($base + 4).$r, (float) ($d['saldo'] ?? 0));
 
             $sheet->mergeCells("{$dayStart}{$r}:{$dayEnd}{$r}");
             $sheet->getStyle("H{$r}:{$lastCol}{$r}")->applyFromArray(['font' => ['bold' => true], 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::YELLOW]]]);

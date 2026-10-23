@@ -24,7 +24,7 @@
                             <div class="d-flex flex-wrap align-items-end gap-2 overflow-auto py-1">
                                 <div class="flex-shrink-0" style="width: 140px;">
                                     <label class="form-label mb-0 small">Mes</label>
-                                    <select class="form-select form-select-sm" wire:model.live="selemes">
+                                    <select class="form-select form-select-sm" wire:model="selemes">
                                         <option value="00">Seleccione</option>
                                         @foreach($months as $key => $nombre)
                                             <option value="{{ $key }}">{{ $nombre }}</option>
@@ -33,7 +33,7 @@
                                 </div>
                                 <div class="flex-shrink-0" style="width: 110px;">
                                     <label class="form-label mb-0 small">Año</label>
-                                    <select class="form-select form-select-sm" wire:model.live="selecano">
+                                    <select class="form-select form-select-sm" wire:model="selecano">
                                         <option value="0000">Seleccione</option>
                                         @for($y = 2015; $y <= 2028; $y++)
                                             <option value="{{ $y }}">{{ $y }}</option>
@@ -42,7 +42,7 @@
                                 </div>
                                 <div class="flex-shrink-0" style="width: 130px;">
                                     <label class="form-label mb-0 small">Tipo</label>
-                                    <select class="form-select form-select-sm" wire:model.live="seletipl">
+                                    <select class="form-select form-select-sm" wire:model="seletipl">
                                         <option value="">Seleccione</option>
                                         <option value="1">Semanal</option>
                                         <option value="3">Mensual</option>
@@ -51,7 +51,7 @@
                                 </div>
                                 <div class="flex-shrink-0" style="width: 130px;">
                                     <label class="form-label mb-0 small">Intereses %</label>
-                                    <select class="form-select form-select-sm" wire:model.live="intereses">
+                                    <select class="form-select form-select-sm" wire:model="intereses">
                                         <option value="">Seleccione</option>
                                         <option value="0">0</option>
                                         <option value="3">3</option>
@@ -84,31 +84,31 @@
                             <div class="d-flex flex-wrap align-items-end gap-2 overflow-auto py-1">
                                 <div class="flex-shrink-0" style="width: 110px;">
                                     <label class="form-label mb-0 small">Exp</label>
-                                    <input type="text" name="exp" autocomplete="off" class="form-control form-control-sm" wire:model.live.debounce.500ms="exp"
+                                    <input type="text" name="exp" autocomplete="off" class="form-control form-control-sm" wire:model="exp" wire:keydown.enter="search"
        list="hist_cancelled_exp" data-search-history="cancelled_exp">
 <datalist id="hist_cancelled_exp" wire:ignore></datalist>
                                 </div>
                                 <div class="flex-shrink-0" style="width: 110px;">
                                     <label class="form-label mb-0 small">Codigo</label>
-                                    <input type="text" name="codigo" autocomplete="off" class="form-control form-control-sm" wire:model.live.debounce.500ms="codigo"
+                                    <input type="text" name="codigo" autocomplete="off" class="form-control form-control-sm" wire:model="codigo" wire:keydown.enter="search"
        list="hist_cancelled_codigo" data-search-history="cancelled_codigo">
 <datalist id="hist_cancelled_codigo" wire:ignore></datalist>
                                 </div>
                                 <div class="flex-shrink-0" style="width: 130px;">
                                     <label class="form-label mb-0 small">Dni</label>
-                                    <input type="text" name="cdni" autocomplete="off" class="form-control form-control-sm" wire:model.live.debounce.500ms="cdni"
+                                    <input type="text" name="cdni" autocomplete="off" class="form-control form-control-sm" wire:model="cdni" wire:keydown.enter="search"
        list="hist_cancelled_cdni" data-search-history="cancelled_cdni">
 <datalist id="hist_cancelled_cdni" wire:ignore></datalist>
                                 </div>
                                 <div class="flex-shrink-0" style="width: 220px;">
                                     <label class="form-label mb-0 small">Nombre</label>
-                                    <input type="text" name="cnombre" autocomplete="off" class="form-control form-control-sm" wire:model.live.debounce.500ms="cnombre"
+                                    <input type="text" name="cnombre" autocomplete="off" class="form-control form-control-sm" wire:model="cnombre" wire:keydown.enter="search"
        list="hist_cancelled_cnombre" data-search-history="cancelled_cnombre">
 <datalist id="hist_cancelled_cnombre" wire:ignore></datalist>
                                 </div>
                                 <div class="flex-shrink-0" style="width: 180px;">
                                     <label class="form-label mb-0 small">Asesor</label>
-                                    <input type="text" name="casesor" autocomplete="off" class="form-control form-control-sm" wire:model.live.debounce.500ms="casesor"
+                                    <input type="text" name="casesor" autocomplete="off" class="form-control form-control-sm" wire:model="casesor" wire:keydown.enter="search"
        list="hist_cancelled_casesor" data-search-history="cancelled_casesor">
 <datalist id="hist_cancelled_casesor" wire:ignore></datalist>
                                 </div>
@@ -117,6 +117,7 @@
                     </div>
 
                     {{-- Tabla principal --}}
+                    @include('livewire.partials._tope-filas')
                     <div id="tabla-cancelados" class="table-responsive" style="max-height: 650px; overflow:auto;">
                         {{-- Zebra en las filas limpias; las filas con estado (verde
                              refinanciado / amarillo pendiente / rojo capital pendiente) y los

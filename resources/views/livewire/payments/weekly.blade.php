@@ -57,6 +57,7 @@
                         </div>
                     </div>
 
+                    @include('livewire.partials._tope-filas')
                     <div id="tabla-pagos" class="table-responsive" style="max-height: 650px; overflow:auto;">
                         <table class="table table-bordered table-striped table-hover table-autofit" style="font-size: 11px;">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">

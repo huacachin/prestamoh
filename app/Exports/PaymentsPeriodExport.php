@@ -21,15 +21,23 @@ abstract class PaymentsPeriodExport implements FromCollection, WithEvents
     use LegacyExcelStyle;
 
     private const FIXED = 13;
+
     private const PERIODS = 12;
+
     private const LAST_IDX = 29; // 13 + 12 + 4
+
     private const DARK = '005F8C';
+
     private const YELLOW = 'FFFF00';
 
     protected array $rows = [];
+
     protected array $tot = [];
+
     protected array $sub = [];
+
     protected float $morosidadPct = 0;
+
     protected float $activosPct = 0;
 
     public function __construct(
@@ -43,10 +51,11 @@ abstract class PaymentsPeriodExport implements FromCollection, WithEvents
     public function collection()
     {
         $cls = $this->componentClass();
-        $c = new $cls();
+        $c = new $cls;
         $c->ejecutivo = (string) ($this->filters['ejecutivo'] ?? 'Todos');
         $c->eestado = (string) ($this->filters['eestado'] ?? 'Vigente');
         $c->codio1 = (string) ($this->filters['codio1'] ?? '');
+        $c->sinTope = true; // el Excel trae todo; el tope de filas es solo de pantalla
 
         $data = $c->render()->getData();
         $this->rows = $data['rows'] ?? [];
@@ -98,26 +107,26 @@ abstract class PaymentsPeriodExport implements FromCollection, WithEvents
         $sheet->setCellValue('A1', $this->reportTitle());
         $sheet->mergeCells("A1:{$last}1");
         $sheet->getStyle('A1')->applyFromArray([
-            'font'      => ['bold' => true, 'size' => 14, 'color' => ['rgb' => self::COLOR_TITULO]],
+            'font' => ['bold' => true, 'size' => 14, 'color' => ['rgb' => self::COLOR_TITULO]],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
         ]);
         $sheet->getRowDimension(1)->setRowHeight(22);
 
         $fixed = ['N.', 'F.Cr.', 'F.Ve.', 'EXP.', 'COD.', 'N.C', 'DNI', 'CLIENTE', 'CAPITAL', '%', 'INT.', 'T.P', 'C.'];
         foreach ($fixed as $i => $h) {
-            $sheet->setCellValue($this->colLetter($i + 1) . '2', $h);
+            $sheet->setCellValue($this->colLetter($i + 1).'2', $h);
         }
         for ($d = 1; $d <= self::PERIODS; $d++) {
-            $sheet->setCellValue($this->periodCol($d) . '2', $d);
+            $sheet->setCellValue($this->periodCol($d).'2', $d);
         }
         foreach (['TOTAL', 'MORA', 'OTROS', 'SALDOS'] as $i => $h) {
-            $sheet->setCellValue($this->tailCol($i + 1) . '2', $h);
+            $sheet->setCellValue($this->tailCol($i + 1).'2', $h);
         }
 
         $sheet->getStyle("A2:{$last}2")->applyFromArray([
-            'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
-            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::COLOR_HEADER]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::COLOR_HEADER]],
         ]);
 
         $fixedW = [6, 11, 11, 7, 8, 5, 11, 30, 11, 5, 10, 11, 9];
@@ -153,17 +162,17 @@ abstract class PaymentsPeriodExport implements FromCollection, WithEvents
 
         $d = 1;
         foreach ($row['cuotas_cols'] as $col) {
-            $cell = $this->periodCol($d) . $r;
+            $cell = $this->periodCol($d).$r;
             $monto = $col['monto'];
             $sheet->setCellValue($cell, ($monto !== null && (float) $monto != 0) ? (float) $monto : '');
             $this->applyCellColor($sheet, $cell, $col['bg'] ?? '', $col['color'] ?? '');
             $d++;
         }
 
-        $sheet->setCellValue($this->tailCol(1) . $r, (float) $row['pagado']);
-        $sheet->setCellValue($this->tailCol(2) . $r, (float) $row['mora']);
-        $sheet->setCellValue($this->tailCol(3) . $r, (float) $row['otros']);
-        $sheet->setCellValue($this->tailCol(4) . $r, (float) $row['saldo']);
+        $sheet->setCellValue($this->tailCol(1).$r, (float) $row['pagado']);
+        $sheet->setCellValue($this->tailCol(2).$r, (float) $row['mora']);
+        $sheet->setCellValue($this->tailCol(3).$r, (float) $row['otros']);
+        $sheet->setCellValue($this->tailCol(4).$r, (float) $row['saldo']);
     }
 
     private function applyCellColor(Worksheet $sheet, string $cell, string $bg, string $color): void
@@ -172,7 +181,7 @@ abstract class PaymentsPeriodExport implements FromCollection, WithEvents
         if ($bg !== '') {
             $rgb = $bg === 'yellow' ? self::YELLOW : ($bg === 'red' ? 'FF0000' : ($bg === 'green' ? '008000' : ltrim($bg, '#')));
             if (strlen($rgb) === 3) {
-                $rgb = $rgb[0] . $rgb[0] . $rgb[1] . $rgb[1] . $rgb[2] . $rgb[2];
+                $rgb = $rgb[0].$rgb[0].$rgb[1].$rgb[1].$rgb[2].$rgb[2];
             }
             $styles['fill'] = ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => strtoupper($rgb)]];
         }
@@ -194,10 +203,10 @@ abstract class PaymentsPeriodExport implements FromCollection, WithEvents
         $sheet->setCellValue("K{$r}", (float) ($t['interes'] ?? 0));
         $sheet->setCellValue("L{$r}", (float) ($t['apagar'] ?? 0));
         $sheet->setCellValue("M{$r}", (float) ($t['cuota'] ?? 0));
-        $sheet->setCellValue($this->tailCol(1) . $r, (float) ($t['pagado'] ?? 0));
-        $sheet->setCellValue($this->tailCol(2) . $r, (float) ($t['mora'] ?? 0));
-        $sheet->setCellValue($this->tailCol(3) . $r, (float) ($t['otros'] ?? 0));
-        $sheet->setCellValue($this->tailCol(4) . $r, (float) ($t['saldo'] ?? 0));
+        $sheet->setCellValue($this->tailCol(1).$r, (float) ($t['pagado'] ?? 0));
+        $sheet->setCellValue($this->tailCol(2).$r, (float) ($t['mora'] ?? 0));
+        $sheet->setCellValue($this->tailCol(3).$r, (float) ($t['otros'] ?? 0));
+        $sheet->setCellValue($this->tailCol(4).$r, (float) ($t['saldo'] ?? 0));
         $this->markTotalRow($sheet, $r, $last);
     }
 
@@ -217,7 +226,7 @@ abstract class PaymentsPeriodExport implements FromCollection, WithEvents
         foreach ($blocks as $b) {
             $d = $b['data'];
             $sheet->mergeCells("A{$r}:C{$r}");
-            $sheet->setCellValue("A{$r}", number_format($b['pct'], 2) . '%');
+            $sheet->setCellValue("A{$r}", number_format($b['pct'], 2).'%');
             $sheet->getStyle("A{$r}")->applyFromArray(['font' => ['bold' => true, 'color' => ['rgb' => $b['pctColor']]], 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER]]);
 
             $sheet->setCellValue("D{$r}", $b['lbl']);
@@ -232,13 +241,13 @@ abstract class PaymentsPeriodExport implements FromCollection, WithEvents
             $sheet->setCellValue("K{$r}", (float) ($d['interes'] ?? 0));
             $sheet->setCellValue("L{$r}", (float) ($d['apagar'] ?? 0));
             $sheet->setCellValue("M{$r}", (float) ($d['cuota'] ?? 0));
-            $sheet->setCellValue($this->tailCol(1) . $r, (float) ($d['pagado'] ?? 0));
-            $sheet->setCellValue($this->tailCol(2) . $r, (float) ($d['mora'] ?? 0));
-            $sheet->setCellValue($this->tailCol(3) . $r, (float) ($d['otros'] ?? 0));
-            $sheet->setCellValue($this->tailCol(4) . $r, (float) ($d['saldo'] ?? 0));
+            $sheet->setCellValue($this->tailCol(1).$r, (float) ($d['pagado'] ?? 0));
+            $sheet->setCellValue($this->tailCol(2).$r, (float) ($d['mora'] ?? 0));
+            $sheet->setCellValue($this->tailCol(3).$r, (float) ($d['otros'] ?? 0));
+            $sheet->setCellValue($this->tailCol(4).$r, (float) ($d['saldo'] ?? 0));
 
             // Celdas amarillas (I..M y periodos y cola)
-            $sheet->getStyle("I{$r}:" . $this->colLetter(self::LAST_IDX) . $r)
+            $sheet->getStyle("I{$r}:".$this->colLetter(self::LAST_IDX).$r)
                 ->applyFromArray(['font' => ['bold' => true], 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::YELLOW]]]);
             // Capital(I), T.P(L), Saldo(AC) en rojo
             foreach (['I', 'L', $this->tailCol(4)] as $rc) {

@@ -3,6 +3,7 @@
 namespace App\Livewire\Credits;
 
 use App\Models\MassDeletion;
+use App\Support\FiltrosSeguros;
 use App\Support\XlsResponse;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -39,11 +40,12 @@ class MassDelete extends Component
 
         $query = MassDeletion::query()->with(['credit.client']);
 
-        if ($term !== '' && ($this->fei === '' || $this->fef === '')) {
+        [$fei, $fef] = FiltrosSeguros::rangoLegacy($this->fei, $this->fef); // 23/10: fechas saneadas
+        if ($term !== '' && ($fei === null || $fef === null)) {
             // Solo búsqueda, sin filtro de fecha
-        } elseif ($this->fei !== '' && $this->fef !== '') {
-            $query->where('date', '>=', $this->fei)
-                ->where('date', '<=', $this->fef);
+        } elseif ($fei !== null && $fef !== null) {
+            $query->where('date', '>=', $fei)
+                ->where('date', '<=', $fef);
         } else {
             $query->where('date', now()->format('Y-m-d'));
         }
@@ -77,11 +79,12 @@ class MassDelete extends Component
         //  - compra + fechas → ambos filtros
         //  - sin compra + fechas → solo fechas
         //  - default → solo hoy
-        if ($term !== '' && ($this->fei === '' || $this->fef === '')) {
+        [$fei, $fef] = FiltrosSeguros::rangoLegacy($this->fei, $this->fef); // 23/10: fechas saneadas
+        if ($term !== '' && ($fei === null || $fef === null)) {
             // Solo búsqueda, sin filtro de fecha
-        } elseif ($this->fei !== '' && $this->fef !== '') {
-            $query->where('date', '>=', $this->fei)
-                ->where('date', '<=', $this->fef);
+        } elseif ($fei !== null && $fef !== null) {
+            $query->where('date', '>=', $fei)
+                ->where('date', '<=', $fef);
         } else {
             $query->where('date', now()->format('Y-m-d'));
         }
@@ -96,10 +99,12 @@ class MassDelete extends Component
             };
         }
 
-        $records = $query->orderBy('date', 'asc')->get();
+        // 23/10: tope de filas en pantalla (el Excel de exportExcel no pasa por aquí).
+        $topeFilas = FiltrosSeguros::aviso((clone $query)->count(), 'lotes');
+        $records = $topeFilas ? collect() : $query->orderBy('date', 'asc')->get();
 
         $totalSum = $records->sum('amount');
 
-        return view('livewire.credits.mass-delete', compact('records', 'totalSum'));
+        return view('livewire.credits.mass-delete', compact('records', 'totalSum', 'topeFilas'));
     }
 }

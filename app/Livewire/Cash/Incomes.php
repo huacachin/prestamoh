@@ -4,6 +4,7 @@ namespace App\Livewire\Cash;
 
 use App\Models\Income;
 use App\Models\Payment;
+use App\Support\FiltrosSeguros;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
@@ -74,7 +75,9 @@ class Incomes extends Component
             };
         }
 
-        $incomes = $incomeQuery->get();
+        // 23/10: tope de filas en pantalla (ingresos + pagos); se cuenta antes de cargar.
+        $nIngresos = (clone $incomeQuery)->count();
+        $incomes = $nIngresos > FiltrosSeguros::tope('caja') ? collect() : $incomeQuery->get();
 
         // ─── PAGOS DE CRÉDITOS (CREDITO) ───────────────────────────────
         $payQuery = Payment::query()
@@ -105,7 +108,11 @@ class Incomes extends Component
             };
         }
 
-        $payments = $payQuery->get();
+        $topeFilas = FiltrosSeguros::aviso($nIngresos + (clone $payQuery)->count(), 'caja');
+        if ($topeFilas) {
+            $incomes = collect();
+        }
+        $payments = $topeFilas ? collect() : $payQuery->get();
 
         // ─── UNIFICAR INGRESOS + PAGOS ──────────────────────────────────
         $rows = collect();
@@ -203,6 +210,7 @@ class Incomes extends Component
         }
 
         return view('livewire.cash.incomes', [
+            'topeFilas' => $topeFilas,
             'rows' => $rows,
             'galleries' => $galleries,
             'totalGeneral' => $totalGeneral,
@@ -224,13 +232,15 @@ class Incomes extends Component
      */
     private function applyDateFilter($query, string $col, string $term): void
     {
-        if ($term !== '' && ($this->fei === '' || $this->fef === '')) {
-            return;
+        // 23/10: fechas saneadas (vacía o a medias = sin fecha; cruzadas se intercambian).
+        [$fei, $fef] = FiltrosSeguros::rangoLegacy($this->fei, $this->fef);
+        if ($term !== '' && ($fei === null || $fef === null)) {
+            return; // solo búsqueda: lo protege el tope de filas
         }
 
-        if ($this->fei !== '' && $this->fef !== '') {
-            $query->where($col, '>=', $this->fei)
-                ->where($col, '<=', $this->fef);
+        if ($fei !== null && $fef !== null) {
+            $query->where($col, '>=', $fei)
+                ->where($col, '<=', $fef);
         } else {
             $query->where($col, now()->format('Y-m-d'));
         }

@@ -45,4 +45,25 @@ return [
 
     'ubicacion_obligatoria' => (bool) env('COBRO_UBICACION_OBLIGATORIA', true),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Tope de filas en pantalla (23/10/2026, pedido de Antony)
+    |--------------------------------------------------------------------------
+    |
+    | Los listados sin paginar no pintan la tabla si el filtro devuelve más
+    | filas que esto: avisan y dejan el resultado completo para el Excel. Es
+    | lo que colgaba el navegador de la oficina (p. ej. Cancelados con mes
+    | "Seleccione" = 20 mil créditos, caja con texto y fecha vacía = toda la
+    | historia). Ver App\Support\FiltrosSeguros.
+    |
+    */
+
+    'tope_filas' => [
+        'caja' => 1000,        // Caja: ingresos y egresos
+        'lotes' => 1000,       // Eliminar masivo (cobros por lotes)
+        'cancelados' => 500,   // Resumen de cancelados (22 columnas)
+        'periodo' => 500,      // Crédito Diario / Semanal / Mensual (29-48 columnas)
+        'reporte_caja' => 1000, // Reporte de caja por rango
+    ],
+
 ];

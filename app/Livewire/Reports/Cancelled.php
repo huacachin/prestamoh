@@ -3,6 +3,7 @@
 namespace App\Livewire\Reports;
 
 use App\Models\Credit;
+use App\Support\FiltrosSeguros;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -35,6 +36,9 @@ class Cancelled extends Component
 
     #[Url(as: 'asesor', except: '')]
     public $casesor = '';
+
+    /** Los exports lo encienden: el Excel trae todo; la pantalla respeta el tope de filas. */
+    public bool $sinTope = false;
 
     public function mount()
     {
@@ -83,7 +87,9 @@ class Cancelled extends Component
             $query->where('asesor', 'like', "%{$this->casesor}%");
         }
 
-        $credits = $query->orderBy('fecha_cancelacion')->orderBy('id')->orderBy('client_id')->get();
+        // 23/10: tope de filas en pantalla (mes "Seleccione" = todos los cancelados de la historia).
+        $topeFilas = $this->sinTope ? null : FiltrosSeguros::aviso((clone $query)->count(), 'cancelados');
+        $credits = $topeFilas ? collect() : $query->orderBy('fecha_cancelacion')->orderBy('id')->orderBy('client_id')->get();
 
         // Pre-cargar sums de payments por crédito (excluyendo Gat.)
         $creditIds = $credits->pluck('id')->toArray();
@@ -294,6 +300,7 @@ class Cancelled extends Component
         ];
 
         return view('livewire.reports.cancelled', [
+            'topeFilas' => $topeFilas,
             'rows' => $rows,
             'totals' => $totals,
             'distribution' => $distribution,

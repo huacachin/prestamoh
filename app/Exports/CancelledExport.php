@@ -5,9 +5,9 @@ namespace App\Exports;
 use App\Exports\Concerns\LegacyExcelStyle;
 use App\Livewire\Reports\Cancelled;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
@@ -19,13 +19,16 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * Título "CREDITO CANCELADO". Cabecera de 2 filas (Capital / Interes Ganado / Mora x Cob.),
  * 22 columnas (Nº ocupa 2: global + por día), total general de 2 filas y tabla de distribución.
  */
-class CancelledExport implements FromCollection, WithMapping, WithCustomStartCell, WithEvents
+class CancelledExport implements FromCollection, WithCustomStartCell, WithEvents, WithMapping
 {
     use LegacyExcelStyle;
 
     protected array $totals = [];
+
     protected array $distribution = [];
+
     protected int $rowCount = 0;
+
     /** @var array<int,array{fill:?string,font:string}> estilo por fila de datos (sheet row => estilo) */
     protected array $rowFills = [];
 
@@ -41,21 +44,22 @@ class CancelledExport implements FromCollection, WithMapping, WithCustomStartCel
 
     public function collection()
     {
-        $c = new Cancelled();
-        $c->selemes  = $this->filters['selemes']  ?? date('m');
+        $c = new Cancelled;
+        $c->selemes = $this->filters['selemes'] ?? date('m');
         $c->selecano = $this->filters['selecano'] ?? date('Y');
         $c->seletipl = (string) ($this->filters['seletipl'] ?? '');
-        $c->exp      = (string) ($this->filters['exp']      ?? '');
-        $c->codigo   = (string) ($this->filters['codigo']   ?? '');
-        $c->cdni     = (string) ($this->filters['cdni']     ?? '');
-        $c->cnombre  = (string) ($this->filters['cnombre']  ?? '');
-        $c->casesor  = (string) ($this->filters['casesor']  ?? '');
+        $c->exp = (string) ($this->filters['exp'] ?? '');
+        $c->codigo = (string) ($this->filters['codigo'] ?? '');
+        $c->cdni = (string) ($this->filters['cdni'] ?? '');
+        $c->cnombre = (string) ($this->filters['cnombre'] ?? '');
+        $c->casesor = (string) ($this->filters['casesor'] ?? '');
+        $c->sinTope = true; // el Excel trae todo
 
         $data = $c->render()->getData();
         $rows = collect($data['rows'] ?? []);
-        $this->totals       = $data['totals'] ?? [];
+        $this->totals = $data['totals'] ?? [];
         $this->distribution = $data['distribution'] ?? [];
-        $this->rowCount     = $rows->count();
+        $this->rowCount = $rows->count();
 
         // Estilo de resaltado por fila (réplica de los bg del legacy). Datos desde fila 4.
         foreach ($rows->values() as $idx => $r) {
@@ -81,28 +85,28 @@ class CancelledExport implements FromCollection, WithMapping, WithCustomStartCel
     public function map($r): array
     {
         return [
-            $r['n']            ?? '',  // A  Nº global
-            $r['tot2']         ?? '',  // B  Nº por día
-            $r['exp']          ?? '',  // C  Exp
-            $r['codigo']       ?? '',  // D  Codigo
-            (string) ($r['dni'] ?? ''),// E  Dni
-            $r['nombre']       ?? '',  // F  Nombre
-            (float) ($r['capital']      ?? 0), // G  Capital
-            (float) ($r['r_capital']    ?? 0), // H  R./ Capital
+            $r['n'] ?? '',  // A  Nº global
+            $r['tot2'] ?? '',  // B  Nº por día
+            $r['exp'] ?? '',  // C  Exp
+            $r['codigo'] ?? '',  // D  Codigo
+            (string) ($r['dni'] ?? ''), // E  Dni
+            $r['nombre'] ?? '',  // F  Nombre
+            (float) ($r['capital'] ?? 0), // G  Capital
+            (float) ($r['r_capital'] ?? 0), // H  R./ Capital
             (float) ($r['capital_neto'] ?? 0), // I  Capital Neto
             strip_tags((string) ($r['detalles'] ?? '')), // J  Detalles
-            (float) ($r['interes_pct']  ?? 0), // K  %
-            (float) ($r['interes_s']    ?? 0), // L  S/ (interés)
-            (float) ($r['mora']         ?? 0), // M  Mora
-            (float) ($r['total']        ?? 0), // N  Total
-            (float) ($r['mxd']          ?? 0), // O  S/ (mora x cob)
-            (float) ($r['mora_s']       ?? 0), // P  MxD
-            (int)   ($r['dias']         ?? 0), // Q  Dias
-            $r['fec_cred']     ?? '',  // R  Fec/Cred
-            $r['fec_venc']     ?? '',  // S  Fec/Venc
-            $r['fec_cancel']   ?? '',  // T  Fecha Cancelado
-            $r['estado']       ?? '',  // U  Estado
-            $r['asesor']       ?? '',  // V  Ases.
+            (float) ($r['interes_pct'] ?? 0), // K  %
+            (float) ($r['interes_s'] ?? 0), // L  S/ (interés)
+            (float) ($r['mora'] ?? 0), // M  Mora
+            (float) ($r['total'] ?? 0), // N  Total
+            (float) ($r['mxd'] ?? 0), // O  S/ (mora x cob)
+            (float) ($r['mora_s'] ?? 0), // P  MxD
+            (int) ($r['dias'] ?? 0), // Q  Dias
+            $r['fec_cred'] ?? '',  // R  Fec/Cred
+            $r['fec_venc'] ?? '',  // S  Fec/Venc
+            $r['fec_cancel'] ?? '',  // T  Fecha Cancelado
+            $r['estado'] ?? '',  // U  Estado
+            $r['asesor'] ?? '',  // V  Ases.
         ];
     }
 
@@ -129,7 +133,7 @@ class CancelledExport implements FromCollection, WithMapping, WithCustomStartCel
         $sheet->setCellValue('A1', 'CREDITO CANCELADO');
         $sheet->mergeCells("A1:{$lastCol}1");
         $sheet->getStyle('A1')->applyFromArray([
-            'font'      => ['bold' => true, 'size' => 14, 'color' => ['rgb' => self::COLOR_TITULO]],
+            'font' => ['bold' => true, 'size' => 14, 'color' => ['rgb' => self::COLOR_TITULO]],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
         ]);
         $sheet->getRowDimension(1)->setRowHeight(22);
@@ -155,9 +159,9 @@ class CancelledExport implements FromCollection, WithMapping, WithCustomStartCel
 
         // Estilo header (azul, blanco, bold, centrado) en filas 2-3
         $sheet->getStyle("A2:{$lastCol}3")->applyFromArray([
-            'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
-            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::COLOR_HEADER]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::COLOR_HEADER]],
         ]);
 
         // Bordes punteados en cabecera + datos
@@ -176,7 +180,7 @@ class CancelledExport implements FromCollection, WithMapping, WithCustomStartCel
             return;
         }
         $first = 4;
-        $last  = 3 + $this->rowCount;
+        $last = 3 + $this->rowCount;
 
         $sheet->getStyle("A{$first}:V{$last}")->getAlignment()
             ->setHorizontal(Alignment::HORIZONTAL_CENTER)
@@ -204,17 +208,17 @@ class CancelledExport implements FromCollection, WithMapping, WithCustomStartCel
     private function buildTotals(Worksheet $sheet, string $lastCol): void
     {
         $t = $this->totals;
-        $tg  = 4 + $this->rowCount;       // fila Total General (1)
+        $tg = 4 + $this->rowCount;       // fila Total General (1)
         $tg2 = $tg + 1;                   // fila Total General (2)
 
         $sheet->setCellValue("A{$tg}", 'Total General');
         $sheet->mergeCells("A{$tg}:F{$tg2}");
-        $sheet->setCellValue("G{$tg}", number_format($t['cancecapi']    ?? 0, 2));
-        $sheet->setCellValue("H{$tg}", number_format($t['canceinteg']   ?? 0, 2));
-        $sheet->setCellValue("I{$tg}", number_format($t['todf1']        ?? 0, 2));
-        $sheet->setCellValue("L{$tg}", number_format($t['canceinte']    ?? 0, 2));
-        $sheet->setCellValue("M{$tg}", number_format($t['cancemora']    ?? 0, 2));
-        $sheet->setCellValue("N{$tg}", number_format($t['totGP']        ?? 0, 2));
+        $sheet->setCellValue("G{$tg}", number_format($t['cancecapi'] ?? 0, 2));
+        $sheet->setCellValue("H{$tg}", number_format($t['canceinteg'] ?? 0, 2));
+        $sheet->setCellValue("I{$tg}", number_format($t['todf1'] ?? 0, 2));
+        $sheet->setCellValue("L{$tg}", number_format($t['canceinte'] ?? 0, 2));
+        $sheet->setCellValue("M{$tg}", number_format($t['cancemora'] ?? 0, 2));
+        $sheet->setCellValue("N{$tg}", number_format($t['totGP'] ?? 0, 2));
         $sheet->setCellValue("O{$tg}", number_format($t['montomorxdia'] ?? 0, 2));
 
         // Fila 2: total combinado (interés + mora + gat) bajo L:N
@@ -240,9 +244,9 @@ class CancelledExport implements FromCollection, WithMapping, WithCustomStartCel
         $sheet->mergeCells("K{$dh}:L{$dh}");
         $sheet->setCellValue("K{$dh}", 'S/');
         $sheet->getStyle("A{$dh}:L{$dh}")->applyFromArray([
-            'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
-            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::COLOR_HEADER]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::COLOR_HEADER]],
         ]);
 
         $r = $dh;
@@ -263,7 +267,7 @@ class CancelledExport implements FromCollection, WithMapping, WithCustomStartCel
         }
         $sheet->getStyle("A{$dh}:L{$r}")->applyFromArray([
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
-            'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_DOTTED, 'color' => ['rgb' => '999999']]],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_DOTTED, 'color' => ['rgb' => '999999']]],
         ]);
     }
 }

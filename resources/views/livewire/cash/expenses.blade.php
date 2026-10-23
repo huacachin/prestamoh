@@ -119,6 +119,7 @@
 
                     {{-- Tabla Desktop con FAB scroll --}}
                     <div class="position-relative d-none d-md-block">
+                    @include('livewire.partials._tope-filas')
                         <div id="expensesTable" class="table-responsive" style="max-height: 70vh; overflow: auto;">
                         <table class="table table-bordered table-hover table-autofit expenses-legacy">
                             <thead style="position: sticky; top: 0; z-index: 2;">

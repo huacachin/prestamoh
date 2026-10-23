@@ -4,6 +4,7 @@ namespace App\Livewire\Payments;
 
 use App\Models\Credit;
 use App\Models\User;
+use App\Support\FiltrosSeguros;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Url;
@@ -16,6 +17,9 @@ class Daily extends Component
 
     #[Url(as: 'estado', except: 'Vigente')]
     public $eestado = 'Vigente'; // Vigente | Cancelado | Vencida
+
+    /** Los exports lo encienden: el Excel trae todo; la pantalla respeta el tope de filas. */
+    public bool $sinTope = false;
 
     #[Url(as: 'codigo', except: '')]
     public $codio1 = '';
@@ -54,7 +58,9 @@ class Daily extends Component
             $query->where('id', $this->codio1);
         }
 
-        $credits = $query->orderBy('fecha_prestamo')->get();
+        // 23/10: tope de filas en pantalla (estado 'Cancelado' = todos los cancelados de la historia).
+        $topeFilas = $this->sinTope ? null : FiltrosSeguros::aviso((clone $query)->count(), 'periodo');
+        $credits = $topeFilas ? collect() : $query->orderBy('fecha_prestamo')->get();
         $creditIds = $credits->pluck('id')->all();
 
         // Pre-cargar TODOS los pagos relevantes (no-MORA, no-Gat) en una sola query
@@ -220,6 +226,7 @@ class Daily extends Component
             ->orderBy('name')->get(['id', 'name']);
 
         return view('livewire.payments.daily', [
+            'topeFilas' => $topeFilas,
             'rows' => $rows,
             'tot' => $tot,
             'sub' => $sub,
