@@ -122,18 +122,27 @@ final class EliminadorCredito
     }
 
     /**
-     * Deja el correlativo de créditos en el mayor id existente, de modo que el
-     * próximo crédito tome el código liberado por el último eliminado. Nunca
-     * sube el correlativo (si está por encima del máximo, baja; si está por
-     * debajo, se respeta lo que haya hecho la creación).
+     * Deja el correlativo de créditos en el mayor código existente que no pase
+     * del correlativo, de modo que el próximo crédito tome el código liberado
+     * por el último eliminado. Nunca sube el correlativo.
+     *
+     * 23/10/2026: solo cuentan los códigos que no pasan del correlativo. Hay
+     * créditos migrados del legacy con ids fuera de la serie (#87421, de 2017)
+     * y con max(id) a secas el contador no bajaba nunca: se eliminó el #29494 y
+     * el siguiente iba a salir 29495 (Antony: "debe seguir desde ahí").
      */
     public static function recontarCorrelativo(): int
     {
-        $maximo = (int) (DB::table('credits')->max('id') ?? 0);
-        DB::table('correlativos')
-            ->where('tipo', 'Credito')
-            ->where('correl', '>', $maximo)
-            ->update(['correl' => $maximo, 'updated_at' => now()]);
+        $actual = (int) (DB::table('correlativos')->where('tipo', 'Credito')->value('correl') ?? 0);
+        $maximo = (int) (DB::table('credits')->where('id', '<=', $actual)->max('id') ?? 0);
+        // Sin ningún código por debajo del contador (estado anómalo) no se toca: bajarlo a 0
+        // haría que el próximo crédito saliera #1.
+        if ($maximo > 0) {
+            DB::table('correlativos')
+                ->where('tipo', 'Credito')
+                ->where('correl', '>', $maximo)
+                ->update(['correl' => $maximo, 'updated_at' => now()]);
+        }
 
         return $maximo;
     }

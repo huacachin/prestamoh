@@ -75,6 +75,44 @@ class CodigoPrestamoRecontarTest extends TestCase
         Livewire::test(Create::class)->assertSet('codpre_', 502);
     }
 
+    /**
+     * 23/10/2026: en producción hay un crédito migrado fuera de la serie (#87421).
+     * Con max(id) el contador no bajaba y el siguiente salía 29495 tras borrar el 29494.
+     */
+    public function test_un_codigo_migrado_fuera_de_la_serie_no_impide_reusar_el_del_ultimo_eliminado(): void
+    {
+        $this->mundo();
+        DB::table('correlativos')->insertOrIgnore(['tipo' => 'Credito', 'correl' => 501, 'created_at' => now(), 'updated_at' => now()]);
+        $this->credito(499);
+        $penultimo = $this->credito(500);
+        $ultimo = $this->credito(501);
+        $this->credito(87421); // el migrado del legacy, muy por encima del correlativo
+
+        EliminadorCredito::eliminar($ultimo);
+        $this->assertSame(500, (int) DB::table('correlativos')->where('tipo', 'Credito')->value('correl'));
+        Livewire::test(Create::class)->assertSet('codpre_', 501, 'el siguiente sigue desde el código eliminado');
+
+        EliminadorCredito::eliminar($penultimo);
+        $this->assertSame(499, (int) DB::table('correlativos')->where('tipo', 'Credito')->value('correl'), 'borrar el nuevo último también retrocede');
+        Livewire::test(Create::class)->assertSet('codpre_', 500);
+    }
+
+    public function test_el_recuento_nunca_sube_el_contador_y_un_hueco_del_medio_se_queda_aunque_haya_codigos_fuera_de_serie(): void
+    {
+        $this->mundo();
+        DB::table('correlativos')->insertOrIgnore(['tipo' => 'Credito', 'correl' => 501, 'created_at' => now(), 'updated_at' => now()]);
+        $medio = $this->credito(500);
+        $this->credito(501);
+        $this->credito(87421);
+
+        EliminadorCredito::eliminar($medio);
+        $this->assertSame(501, (int) DB::table('correlativos')->where('tipo', 'Credito')->value('correl'), 'el hueco del medio se queda');
+
+        DB::table('correlativos')->where('tipo', 'Credito')->update(['correl' => 300]);
+        $this->assertSame(0, EliminadorCredito::recontarCorrelativo(), 'sin códigos por debajo del contador no hay a qué bajar');
+        $this->assertSame(300, (int) DB::table('correlativos')->where('tipo', 'Credito')->value('correl'), 'y nunca lo sube');
+    }
+
     public function test_el_codigo_de_prestamo_no_se_edita_y_va_en_plomo(): void
     {
         $this->mundo();
