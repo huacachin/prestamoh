@@ -158,7 +158,7 @@ class ReportePagosDireccionesVoucherTest extends TestCase
         $this->assertSame([], $rows[0]['direcciones']['ubicaciones']);
         $this->assertSame('Av. Sin GPS 9', $rows[0]['direcciones']['direccion'], 'la dirección escrita sí se muestra');
         $c->assertDontSee('Ver voucher')
-            ->assertSeeHtml('ti-camera f-s-16 text-muted')
+            ->assertDontSeeHtml('ti-camera f-s-16') // sin voucher la celda va vacía: la cámara solo donde hay foto
             ->assertSee('Ver direcciones (sin GPS)')
             ->assertSeeHtml('ti-map-pin-off f-s-16');
     }

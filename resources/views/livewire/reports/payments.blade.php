@@ -177,9 +177,8 @@
                                                     <i class="ti ti-camera f-s-16 text-info"></i>
                                                     <span class="badge bg-info" style="font-size:9px; padding:1px 4px;">{{ count($row['vouchers']) }}</span>
                                                 </a>
-                                            @else
-                                                <i class="ti ti-camera f-s-16 text-muted" title="Sin voucher"></i>
                                             @endif
+                                            {{-- Sin voucher: celda vacía (Antony, 22/10: la cámara solo donde hay foto). --}}
                                         </td>
                                         @if($isAdmin)
                                             <td class="text-center" style="white-space:nowrap;">
