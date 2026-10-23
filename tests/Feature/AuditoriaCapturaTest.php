@@ -187,8 +187,8 @@ class AuditoriaCapturaTest extends TestCase
             'resources/views/livewire/cash/create-income.blade.php' => ["\$captura('save')", 'data-captura'],
             'resources/views/livewire/cash/edit-expense.blade.php' => ["\$captura('update')"],
             'resources/views/livewire/cash/edit-income.blade.php' => ["\$captura('update')"],
-            'resources/views/livewire/clients/documentos.blade.php' => ["\$captura('generar')", "\$captura('generarContrato')", "\$captura('generarAnexo2')", "\$captura('anular', {{ \$doc->id }})"],
-            'resources/views/livewire/credits/index.blade.php' => ["\$captura('delete', {{ \$credit->id }})"],
+            'resources/views/livewire/clients/documentos.blade.php' => ["\$captura('generar')", "\$captura('generarContrato')", "\$captura('generarAnexo2')", "\$captura('anular', {{ \$doc->id }})", 'style="font-size:11px;" data-captura>'],
+            'resources/views/livewire/credits/index.blade.php' => ["\$captura('delete', {{ \$credit->id }})", 'data-captura="fila"', '<div class="card mb-2 shadow-sm" data-captura>'],
             'resources/views/livewire/credits/create.blade.php' => ["x-on:submit.prevent=\"\$captura('save')\" data-captura"],
             'resources/views/livewire/credits/edit.blade.php' => ["\$captura('update')"],
             'resources/views/livewire/credits/activate.blade.php' => ["\$captura('activate')"],
@@ -209,5 +209,29 @@ class AuditoriaCapturaTest extends TestCase
             ->assertSee('assets/js/html2canvas.min.js')
             ->assertSee('assets/js/auditoria-captura.js');
         $this->assertFileExists(public_path('assets/js/html2canvas.min.js'));
+    }
+
+    /**
+     * 23/10/2026: html2canvas clonaba el documento entero (tres getComputedStyle
+     * por elemento) y analizaba los iframes aunque la foto fuera solo del modal;
+     * en las PCs de la oficina congelaba el navegador antes de cada cobro. El
+     * script recorta el clon a la zona, no copia iframes y deja la medida en
+     * CapturaAuditoria.ultima; las previas de Documentos avisan qué se omitió.
+     */
+    public function test_la_captura_recorta_el_clon_a_la_zona_y_no_copia_los_iframes(): void
+    {
+        $js = file_get_contents(public_path('assets/js/auditoria-captura.js'));
+
+        $this->assertStringContainsString('ignoreElements: ignorar', $js, 'el recorte se pasa a html2canvas como ignoreElements');
+        $this->assertStringContainsString("e.tagName === 'IFRAME'", $js, 'los iframes no se copian nunca');
+        $this->assertStringContainsString('padre.contains(z)', $js, 'los hermanos de los ancestros se conservan vacíos');
+        $this->assertStringContainsString("data-captura') !== 'fila'", $js, 'data-captura="fila" deja solo la fila pulsada');
+        $this->assertStringContainsString('[data-captura-omitido]', $js, 'el contenedor de un iframe omitido dice qué falta');
+        $this->assertStringContainsString('window.CapturaAuditoria.ultima = {', $js, 'queda la medida de la última foto');
+        $this->assertStringContainsString("querySelectorAll('style')", $js, 'las hojas <style> del body se copian al clon');
+
+        $documentos = file_get_contents(base_path('resources/views/livewire/clients/documentos.blade.php'));
+        $this->assertSame(3, substr_count($documentos, 'data-captura-omitido="Vista previa del documento'), 'las tres previas (Anexo 1, contrato, Anexo 2) avisan en la foto');
+        $this->assertSame(3, substr_count($documentos, '<iframe srcdoc='), 'cada iframe de previa tiene su contenedor marcado');
     }
 }

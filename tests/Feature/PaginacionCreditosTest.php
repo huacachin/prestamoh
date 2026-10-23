@@ -23,7 +23,7 @@ class PaginacionCreditosTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const TABLA = '<table class="table table-bordered table-striped table-hover table-autofit" style="font-size: 11px;">';
+    private const TABLA = '<table class="table table-bordered table-striped table-hover table-autofit" style="font-size: 11px;" data-captura="fila">';
 
     /** Un cliente y $creditos préstamos activos; el importe distingue cada fila (1001, 1002, ...). */
     private function mundo(int $creditos): void

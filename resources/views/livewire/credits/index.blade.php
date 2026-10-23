@@ -91,7 +91,9 @@
                     @endif
                     @unless($movil)
                     <div id="tabla-creditos" class="table-responsive d-none d-md-block" style="max-height: 70vh; overflow: auto;">
-                        <table class="table table-bordered table-striped table-hover table-autofit" style="font-size: 11px;">
+                        {{-- data-captura="fila" (23/10): la foto de auditoría de Eliminar lleva la cabecera y SOLO esa fila,
+                             no las 100 del listado (html2canvas congelaba el navegador de la oficina). --}}
+                        <table class="table table-bordered table-striped table-hover table-autofit" style="font-size: 11px;" data-captura="fila">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
                                 <tr>
                                     <th class="text-center" width="40">N°</th>
@@ -206,7 +208,7 @@
                                     && (int) $credit->user_id === (int) auth()->id()
                                 ));
                             @endphp
-                            <div class="card mb-2 shadow-sm">
+                            <div class="card mb-2 shadow-sm" data-captura>
                                 <div class="card-body p-3">
                                     <div class="d-flex justify-content-between align-items-start mb-1">
                                         <h6 class="mb-0">

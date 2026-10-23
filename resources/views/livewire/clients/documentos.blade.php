@@ -108,7 +108,9 @@
                 </div>
             @else
                 <div class="table-responsive">
-                    <table class="table table-sm table-bordered table-hover align-middle" style="font-size:11px;">
+                    {{-- data-captura (23/10): la foto de auditoría de Anular es esta tabla (pocas filas), no toda la
+                         ficha con los modales y sus previas en iframe. --}}
+                    <table class="table table-sm table-bordered table-hover align-middle" style="font-size:11px;" data-captura>
                         <thead class="bg-primary">
                             <tr>
                                 <th class="text-center">N°</th>
@@ -366,7 +368,8 @@
 
                         {{-- Vista previa (render 'previa' del snapshot congelado) --}}
                         @if($htmlPreview !== '')
-                            <div class="border rounded mt-3 p-2 bg-light" style="max-height:65vh; overflow:auto;">
+                            <div class="border rounded mt-3 p-2 bg-light" style="max-height:65vh; overflow:auto;"
+                                 data-captura-omitido="Vista previa del documento: no se incluye en la foto de auditoría (el documento emitido queda guardado).">
                                 {{-- Proporción A4 VERTICAL: el iframe al 100% del modal hacía
                                      ver el documento apaisado aunque el PDF sale parado. --}}
                                 <iframe srcdoc="{{ $htmlPreview }}"
@@ -980,7 +983,8 @@
 
                         {{-- Vista previa (mismo render 'previa' del snapshot que se emitirá) --}}
                         @if($htmlPreviewContrato !== '')
-                            <div class="border rounded mt-3 p-2 bg-light" style="max-height:65vh; overflow:auto;">
+                            <div class="border rounded mt-3 p-2 bg-light" style="max-height:65vh; overflow:auto;"
+                                 data-captura-omitido="Vista previa del documento: no se incluye en la foto de auditoría (el documento emitido queda guardado).">
                                 {{-- Proporción A4 VERTICAL: el iframe al 100% del modal hacía
                                      ver el documento apaisado aunque el PDF sale parado. --}}
                                 <iframe srcdoc="{{ $htmlPreviewContrato }}"
@@ -1366,7 +1370,8 @@
 
                         {{-- Vista previa (render 'previa' del snapshot; la foto sale como recuadro placeholder) --}}
                         @if($htmlPreviewAnexo2 !== '')
-                            <div class="border rounded mt-3 p-2 bg-light" style="max-height:65vh; overflow:auto;">
+                            <div class="border rounded mt-3 p-2 bg-light" style="max-height:65vh; overflow:auto;"
+                                 data-captura-omitido="Vista previa del documento: no se incluye en la foto de auditoría (el documento emitido queda guardado).">
                                 {{-- Proporción A4 VERTICAL: el iframe al 100% del modal hacía
                                      ver el documento apaisado aunque el PDF sale parado. --}}
                                 <iframe srcdoc="{{ $htmlPreviewAnexo2 }}"
