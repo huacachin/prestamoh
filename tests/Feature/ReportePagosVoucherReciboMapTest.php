@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Livewire\Reports\Payments;
 use App\Models\Client;
-use App\Models\ClientUbicacion;
 use App\Models\Credit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -15,14 +14,14 @@ use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
- * Reporte de pagos (22/10, pedido de Antony): la columna Map "jala" las
- * direcciones del cliente (dirección de la ficha + ubicaciones GPS con su
- * enlace a Google Maps) en una ventana flotante, y cada cobro muestra la foto
- * de su voucher (el adjunto del egreso "Banco" colgado del lote) en el visor
- * movible. Los cobros nuevos no traen coordenadas propias (payments.latitud),
- * que era lo único que enlazaba el Map del legacy.
+ * Reporte de pagos (22/10, pedidos de Antony): cada cobro muestra la foto de
+ * su depósito con la cámara de caja (el adjunto del egreso "Banco" colgado del
+ * lote, en el visor movible), el recibo que genera el sistema (uno por lote,
+ * en ventanitas flotantes, varias a la vez, con la fila en amarillo mientras
+ * estén abiertas) y, en Map, SOLO el lugar desde donde se registró el pago
+ * (payments.latitud/longitud, obligatorio al cobrar desde hoy).
  */
-class ReportePagosDireccionesVoucherTest extends TestCase
+class ReportePagosVoucherReciboMapTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -57,12 +56,12 @@ class ReportePagosDireccionesVoucherTest extends TestCase
      *
      * @return array{client: Client, credit: Credit, lote: int}
      */
-    private function cobro(array $cliente = [], ?string $latitudPago = null): array
+    private function cobro(?string $latitudPago = null): array
     {
-        $client = Client::create(array_merge([
+        $client = Client::create([
             'nombre' => 'Edwin', 'apellido_pat' => 'Leoncio', 'apellido_mat' => 'Escalera',
             'headquarter_id' => 1, 'status' => 'active',
-        ], $cliente));
+        ]);
         $credit = Credit::create([
             'client_id' => $client->id, 'fecha_prestamo' => '2026-08-25', 'importe' => 10000, 'cuotas' => 48,
             'tipo_planilla' => 1, 'interes' => 60, 'interes_total' => 6000, 'situacion' => 'Activo', 'estado' => 1,
@@ -101,34 +100,18 @@ class ReportePagosDireccionesVoucherTest extends TestCase
         return $egreso;
     }
 
-    public function test_la_fila_trae_las_direcciones_del_cliente_y_la_foto_del_voucher(): void
+    public function test_la_fila_trae_la_foto_del_deposito_y_el_recibo_del_sistema(): void
     {
         $this->usuario();
-        ['client' => $client, 'lote' => $lote] = $this->cobro([
-            'direccion' => 'Jr. Los Pinos 123', 'referencia' => 'Frente al parque', 'distrito' => 'Ate', 'provincia' => 'Lima', 'zona' => 'Z3',
-        ]);
-        ClientUbicacion::create(['client_id' => $client->id, 'tipo' => 'casa', 'nombre' => 'Casa', 'latitud' => '-12.0464', 'longitud' => '-77.0428', 'registrado_at' => '2026-10-15 09:00:00']);
-        ClientUbicacion::create(['client_id' => $client->id, 'tipo' => 'negocio', 'nombre' => 'Negocio']); // sin coordenadas: no se lista
-        ClientUbicacion::create(['client_id' => $client->id, 'tipo' => 'otra', 'nombre' => 'Chacra', 'latitud' => '-12.1', 'longitud' => '-77.1']);
+        ['lote' => $lote] = $this->cobro();
         $egreso = $this->voucher($lote);
 
         $c = Livewire::test(Payments::class);
         $rows = $c->viewData('rows');
 
         $this->assertCount(1, $rows, 'un cobro = una fila');
-        $dir = $rows[0]['direcciones'];
         $this->assertSame('Leoncio Escalera Edwin', $rows[0]['cliente']);
-        $this->assertSame('Jr. Los Pinos 123', $dir['direccion']);
-        $this->assertSame('Frente al parque', $dir['referencia']);
-        $this->assertSame('Ate · Lima', $dir['lugar']);
-        $this->assertSame('Z3', $dir['zona']);
-        $this->assertNull($dir['pago'], 'los cobros nuevos no traen coordenadas');
-        $this->assertSame(['Casa', 'Chacra'], array_column($dir['ubicaciones'], 'nombre'), 'solo las que tienen coordenadas, Casa primero');
-        // El enlace lleva las coordenadas tal como se guardan (decimal(10,7)), igual que en la ficha;
-        // el texto que se lee va sin los ceros de relleno.
-        $this->assertSame('https://maps.google.com/?q=-12.0464000,-77.0428000', $dir['ubicaciones'][0]['url']);
-        $this->assertSame('-12.0464, -77.0428', $dir['ubicaciones'][0]['coordenadas']);
-        $this->assertSame('15/10/2026', $dir['ubicaciones'][0]['fecha']);
+        $this->assertArrayNotHasKey('direcciones', $rows[0], 'Map ya no trae las direcciones del cliente');
 
         $this->assertCount(1, $rows[0]['vouchers']);
         $this->assertSame("/storage/expenses/{$egreso}/voucher.jpg", $rows[0]['vouchers'][0]['url']);
@@ -142,67 +125,49 @@ class ReportePagosDireccionesVoucherTest extends TestCase
         $this->assertSame(333.33, $rows[0]['recibos'][0]['monto']);
         $this->assertStringContainsString("/recibo/{$lote}?signature=", $rows[0]['recibos'][0]['url']);
 
-        // La pantalla: la cámara de caja (sin miniatura ni contador) con las fotos inline, el recibo
-        // con la ventana flotante del recibo, pin verde con las 2 ubicaciones, la ventana y el visor.
+        // La pantalla: cámara de caja (sin miniatura ni contador) con las fotos inline, el recibo en
+        // ventanitas (varias a la vez, fila amarilla), y Map con el mundo tachado (cobro sin ubicación).
         $c->assertSeeHtml('ti-camera f-s-16 text-info')
             ->assertSeeHtml('title="Ver foto del depósito"')
             ->assertDontSeeHtml('badge bg-info') // sin contador: "la foto y el número es mucho"
             ->assertDontSeeHtml('<img src="/storage/expenses/')
             ->assertSee('Ver recibo (S/ 333.33)')
             ->assertSeeHtml('ti-receipt f-s-16')
-            ->assertSeeHtml("verRecibo({$lote}, ") // cada clic abre una ventanita más (varias a la vez)
+            ->assertSeeHtml("verRecibo({$lote}, ")
             ->assertSeeHtml('class="recibos-ventanas"')
-            ->assertSeeHtml("'fila-recibo': conRecibo(1)") // la fila va en amarillo mientras su recibo esté abierto
+            ->assertSeeHtml("'fila-recibo': conRecibo(1)")
             ->assertDontSeeHtml('id="modal-recibo"')
-            ->assertSee('Ver direcciones (2 con GPS)')
-            ->assertSeeHtml('ti-map-pin f-s-16')
-            ->assertSeeHtml('id="direccionesModal"')
+            ->assertSeeHtml('ti-world-off f-s-16 text-muted')
+            ->assertSee('Pago sin ubicación')
+            ->assertDontSee('Ver direcciones')
+            ->assertDontSeeHtml('ti-map-pin')
             ->assertSeeHtml('class="huac-lb"');
     }
 
-    public function test_sin_voucher_ni_gps_la_fila_no_inventa_nada(): void
-    {
-        $this->usuario();
-        $this->cobro(['direccion' => 'Av. Sin GPS 9']);
-
-        $c = Livewire::test(Payments::class);
-        $rows = $c->viewData('rows');
-
-        $this->assertSame([], $rows[0]['vouchers']);
-        $this->assertSame([], $rows[0]['direcciones']['ubicaciones']);
-        $this->assertSame('Av. Sin GPS 9', $rows[0]['direcciones']['direccion'], 'la dirección escrita sí se muestra');
-        $c->assertDontSee('Ver foto del depósito')
-            ->assertSeeHtml('ti-camera-off f-s-16 text-muted') // sin foto: cámara tachada en gris
-            ->assertSee('Ver recibo (S/ 333.33)') // el recibo del sistema sí existe aunque no haya foto
-            ->assertSee('Ver direcciones (sin GPS)')
-            ->assertSeeHtml('ti-map-pin-off f-s-16');
-    }
-
-    /** Un pago migrado con coordenadas propias conserva el enlace del legacy ("Lugar del pago"). */
-    public function test_el_pago_con_coordenadas_propias_conserva_su_enlace(): void
-    {
-        $this->usuario();
-        $this->cobro(latitudPago: '-12.0500');
-
-        $c = Livewire::test(Payments::class);
-        $rows = $c->viewData('rows');
-
-        $this->assertSame('https://maps.google.com/?q=-12.0500000,-77.0428000', $rows[0]['direcciones']['pago']);
-        // Map enlaza el lugar del pago (quien cobró), como en el legacy.
-        $c->assertSeeHtml('href="https://maps.google.com/?q=-12.0500000,-77.0428000"')
-            ->assertSee('Lugar del pago (ubicación de quien cobró)')
-            ->assertSeeHtml('ti-world f-s-16 text-primary');
-    }
-
-    /** Sin coordenadas del pago (cobros anteriores a la validación) Map muestra el mundo tachado. */
-    public function test_el_pago_sin_coordenadas_muestra_el_mundo_tachado(): void
+    public function test_sin_voucher_la_camara_va_tachada_y_el_recibo_sigue(): void
     {
         $this->usuario();
         $this->cobro();
 
+        $c = Livewire::test(Payments::class);
+
+        $this->assertSame([], $c->viewData('rows')[0]['vouchers']);
+        $c->assertDontSee('Ver foto del depósito')
+            ->assertSeeHtml('ti-camera-off f-s-16 text-muted') // sin foto: cámara tachada en gris
+            ->assertSee('Ver recibo (S/ 333.33)');
+    }
+
+    /** Map: el lugar desde donde se registró el pago (coordenadas del cobrador), como en el legacy. */
+    public function test_map_enlaza_el_lugar_del_pago(): void
+    {
+        $this->usuario();
+        $this->cobro(latitudPago: '-12.0500');
+
         Livewire::test(Payments::class)
-            ->assertSeeHtml('ti-world-off f-s-16 text-muted')
-            ->assertSee('Pago sin ubicación');
+            ->assertSeeHtml('href="https://maps.google.com/?q=-12.0500000,-77.0428000"')
+            ->assertSee('Lugar del pago (ubicación de quien cobró)')
+            ->assertSeeHtml('ti-world f-s-16 text-primary')
+            ->assertDontSeeHtml('ti-world-off');
     }
 
     /** Dos fotos en el mismo cobro: las dos van al visor, en orden. */
@@ -221,8 +186,8 @@ class ReportePagosDireccionesVoucherTest extends TestCase
         $c->assertSee('Ver foto del depósito (2 fotos)');
     }
 
-    /** El voucher de OTRO día del mismo crédito no se cuelga de este cobro. */
-    public function test_el_voucher_de_otro_dia_no_se_mezcla(): void
+    /** El voucher y el recibo de OTRO día del mismo crédito no se cuelgan de este cobro. */
+    public function test_el_voucher_y_el_recibo_de_otro_dia_no_se_mezclan(): void
     {
         $this->usuario();
         ['credit' => $credit] = $this->cobro();
@@ -257,16 +222,16 @@ class ReportePagosDireccionesVoucherTest extends TestCase
             ->assertSee('Ver recibo de las 16:20 (S/ 50.00)');
     }
 
-    /** Sin el permiso de los niveles altos no hay columna Map, pero el voucher sí se ve. */
-    public function test_sin_permiso_no_hay_map_pero_si_voucher(): void
+    /** Sin el permiso de los niveles altos no hay columna Map, pero la foto y el recibo sí se ven. */
+    public function test_sin_permiso_no_hay_map_pero_si_foto_y_recibo(): void
     {
         $this->usuario(admin: false);
-        ['client' => $client, 'lote' => $lote] = $this->cobro(['direccion' => 'Jr. Los Pinos 123']);
-        ClientUbicacion::create(['client_id' => $client->id, 'tipo' => 'casa', 'nombre' => 'Casa', 'latitud' => '-12.0464', 'longitud' => '-77.0428']);
+        ['lote' => $lote] = $this->cobro(latitudPago: '-12.0500');
         $this->voucher($lote);
 
         Livewire::test(Payments::class)
-            ->assertDontSee('Ver direcciones')
+            ->assertDontSeeHtml('ti-world')
+            ->assertDontSee('Lugar del pago')
             ->assertSee('Ver foto del depósito')
             ->assertSee('Ver recibo');
     }

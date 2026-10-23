@@ -3,7 +3,6 @@
 namespace App\Livewire\Reports;
 
 use App\Models\Client;
-use App\Models\ClientUbicacion;
 use App\Models\Credit;
 use App\Models\Payment;
 use App\Support\Usernames;
@@ -73,13 +72,7 @@ class Payments extends Component
     {
         // ─── Listado agrupado por nroentrada+fecha (legacy) ─────────────
         $base = Payment::query()
-            ->with([
-                'credit:id,client_id',
-                // 22/10 (Antony): la columna Map abre la ventana "Direcciones" del cliente:
-                // dirección escrita + ubicaciones GPS (client_ubicaciones) con su enlace a Maps.
-                'credit.client:id,nombre,apellido_pat,apellido_mat,direccion,referencia,distrito,provincia,departamento,zona',
-                'credit.client.ubicaciones',
-            ])
+            ->with(['credit:id,client_id', 'credit.client:id,nombre,apellido_pat,apellido_mat'])
             ->where('modo', 'CREDITO');
 
         if ($this->fei) {
@@ -152,9 +145,8 @@ class Payments extends Component
                 'moneda' => $first->moneda,
                 'latitud' => $first->latitud,
                 'longitud' => $first->longitud,
-                // 22/10 (Antony): direcciones del cliente (ventana "Direcciones") y
-                // fotos del voucher del cobro (visor flotante), ambas por fila.
-                'direcciones' => $cliente ? $this->direccionesDe($cliente, $first) : null,
+                // 22/10 (Antony): fotos del voucher del cobro (visor flotante) y recibos del
+                // sistema (ventanitas), por fila. Map usa latitud/longitud del pago (arriba).
                 'vouchers' => $vouchers[$clave] ?? [],
                 'recibos' => $recibos[$clave] ?? [],
             ];
@@ -190,50 +182,6 @@ class Payments extends Component
             'totals' => $totals,
             'isAdmin' => $isAdmin,
         ]);
-    }
-
-    /**
-     * Lo que muestra la ventana "Direcciones" de una fila: la dirección escrita
-     * de la ficha y las ubicaciones GPS con coordenadas (Casa, Negocio y las
-     * adicionales), cada una con su enlace a Google Maps. El legacy solo
-     * enlazaba las coordenadas del pago (payments.latitud/longitud), que los
-     * cobros nuevos no traen; si un pago migrado las tiene, se conservan.
-     *
-     * @return array{cliente: string, direccion: ?string, referencia: ?string, lugar: ?string, zona: ?string, ubicaciones: list<array{id: int, nombre: string, coordenadas: string, url: string, fecha: ?string}>, pago: ?string}
-     */
-    private function direccionesDe(Client $cliente, Payment $pago): array
-    {
-        // Las coordenadas se guardan decimal(10,7): para leerlas, sin los ceros de relleno.
-        $limpia = fn ($v) => rtrim(rtrim((string) $v, '0'), '.');
-        $ubicaciones = [];
-        foreach ($cliente->ubicaciones as $u) {
-            if (! $u->tieneCoordenadas()) {
-                continue;
-            }
-            $ubicaciones[] = [
-                'id' => (int) $u->id,
-                'nombre' => $u->nombre ?: (ClientUbicacion::TIPOS[$u->tipo] ?? 'Otra'),
-                'coordenadas' => $limpia($u->latitud).', '.$limpia($u->longitud),
-                'url' => (string) $u->url(),
-                'fecha' => $u->registradoEl()?->format('d/m/Y'),
-            ];
-        }
-        $lugar = implode(' · ', array_filter(array_map(
-            fn ($v) => trim((string) $v),
-            [$cliente->distrito, $cliente->provincia, $cliente->departamento]
-        )));
-
-        return [
-            'cliente' => $cliente->fullName(),
-            'direccion' => trim((string) $cliente->direccion) ?: null,
-            'referencia' => trim((string) $cliente->referencia) ?: null,
-            'lugar' => $lugar ?: null,
-            'zona' => trim((string) $cliente->zona) ?: null,
-            'ubicaciones' => $ubicaciones,
-            'pago' => ($pago->latitud && $pago->longitud)
-                ? "https://maps.google.com/?q={$pago->latitud},{$pago->longitud}"
-                : null,
-        ];
     }
 
     /**

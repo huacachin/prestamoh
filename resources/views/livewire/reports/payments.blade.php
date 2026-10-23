@@ -1,7 +1,6 @@
-{{-- 22/10 (Antony): la raíz lleva el visor flotante de vouchers (partial _lightbox, contrato
-     open / idx / items / close / next / prev, la misma cámara de ingresos/egresos con la fila
-     'congelada' mientras se miran las fotos) y el estado de la ventana "Direcciones" (dir),
-     que cada fila llena con verDirecciones() y muestra el modal flotante del final. --}}
+{{-- 22/10 (Antony): la raíz lleva el visor flotante de las fotos del depósito (partial _lightbox,
+     contrato open / idx / items / close / next / prev, la misma cámara de ingresos/egresos con la
+     fila 'congelada' mientras se miran las fotos) y las ventanitas de recibos. --}}
 <div class="container-fluid"
      x-data="{
         open: false, idx: 0, items: [], selectedId: null,
@@ -18,8 +17,6 @@
         close() { this.open = false; },
         next() { this.idx = (this.idx + 1) % this.items.length; },
         prev() { this.idx = (this.idx - 1 + this.items.length) % this.items.length; },
-        dir: null,
-        verDirecciones(d) { this.dir = d; this.$dispatch('direcciones-open'); },
         // Recibos del sistema: varias ventanitas a la vez (como las del simulador), en cascada;
         // la tocada pasa al frente, Esc cierra la de arriba. Mientras haya recibos abiertos de
         // un cobro, su fila va en amarillo (conRecibo).
@@ -181,8 +178,8 @@
                                          cobro (uno por lote), en la ventana flotante del recibo con "Copiar imagen". --}}
                                     <th class="text-center">Voucher</th>
                                     @if($isAdmin)
-                                        {{-- Como en el legacy, solo para los niveles altos; ahora abre las
-                                             direcciones del cliente (los cobros nuevos no traen coordenadas). --}}
+                                        {{-- Como en el legacy, solo para los niveles altos: el lugar desde donde
+                                             se registró el pago (22/10: ubicación obligatoria al cobrar). --}}
                                         <th class="text-center" style="background:#949696;">Map</th>
                                     @endif
                                 </tr>
@@ -227,29 +224,16 @@
                                         </td>
                                         @if($isAdmin)
                                             <td class="text-center" style="white-space:nowrap;">
-                                                {{-- 22/10 (Antony): Map = desde dónde se registró el pago (latitud/longitud
+                                                {{-- 22/10 (Antony): Map = SOLO desde dónde se registró el pago (latitud/longitud
                                                      del navegador de quien cobró, obligatoria desde hoy), como en el legacy. --}}
                                                 @if($row['latitud'] && $row['longitud'])
-                                                    <a target="_blank" rel="noopener" class="me-1"
+                                                    <a target="_blank" rel="noopener"
                                                        href="https://maps.google.com/?q={{ $row['latitud'] }},{{ $row['longitud'] }}"
                                                        title="Lugar del pago (ubicación de quien cobró)">
                                                         <i class="ti ti-world f-s-16 text-primary"></i>
                                                     </a>
                                                 @else
-                                                    <i class="ti ti-world-off f-s-16 text-muted me-1" title="Pago sin ubicación (cobro anterior a la validación)"></i>
-                                                @endif
-                                                @php
-                                                    $dir = $row['direcciones'];
-                                                    $nUb = $dir ? count($dir['ubicaciones']) : 0;
-                                                @endphp
-                                                @if($dir && ($nUb > 0 || $dir['direccion'] || $dir['pago']))
-                                                    <button type="button" class="btn btn-link p-0 {{ $nUb ? 'text-success' : 'text-secondary' }}"
-                                                            title="Ver direcciones{{ $nUb ? ' ('.$nUb.' con GPS)' : ' (sin GPS)' }}"
-                                                            x-on:click="verDirecciones(@js($dir))">
-                                                        <i class="ti {{ $nUb ? 'ti-map-pin' : 'ti-map-pin-off' }} f-s-16"></i>@if($nUb > 1)<sup>{{ $nUb }}</sup>@endif
-                                                    </button>
-                                                @else
-                                                    <i class="ti ti-map-pin-off text-muted" title="Sin dirección registrada"></i>
+                                                    <i class="ti ti-world-off f-s-16 text-muted" title="Pago sin ubicación (cobro anterior a la validación)"></i>
                                                 @endif
                                             </td>
                                         @endif
@@ -325,61 +309,6 @@
                             </tbody>
                         </table>
                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {{-- Ventana flotante "Direcciones" (modalFlotante, arrastrable; mismo patrón que la confirmación
-         del cobro). Todo su contenido lo pinta Alpine con `dir`, por eso va con wire:ignore. --}}
-    <div class="modal fade" id="direccionesModal" tabindex="-1" aria-hidden="true" wire:ignore
-         x-data="modalFlotante('direcciones')"
-         x-on:direcciones-open.window="modal.show()">
-        <div class="modal-dialog modal-dialog-centered" style="max-width:440px;" x-ref="dialogo">
-            <div class="modal-content">
-                <div class="modal-header py-2"
-                     x-on:pointerdown="iniciarArrastre($event)" x-on:pointermove="arrastrar($event)"
-                     x-on:pointerup="soltar($event)" x-on:pointercancel="soltar($event)">
-                    <h6 class="modal-title mb-0"><i class="ti ti-map-pin text-success"></i> Direcciones</h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                </div>
-                <div class="modal-body py-2 small">
-                    <template x-if="dir">
-                        <div>
-                            <div class="fw-semibold mb-2" x-text="dir.cliente"></div>
-                            <div class="mb-2">
-                                <div><span class="text-muted">Dirección:</span> <span x-text="dir.direccion || '—'"></span></div>
-                                <div x-show="dir.referencia"><span class="text-muted">Referencia:</span> <span x-text="dir.referencia"></span></div>
-                                <div x-show="dir.lugar"><span class="text-muted">Lugar:</span> <span x-text="dir.lugar"></span></div>
-                                <div x-show="dir.zona"><span class="text-muted">Zona:</span> <span x-text="dir.zona"></span></div>
-                            </div>
-                            <div class="text-muted">Ubicaciones GPS</div>
-                            <template x-if="! dir.ubicaciones.length">
-                                <div class="fst-italic text-muted py-1">Sin coordenadas en la ficha (pestaña GPS).</div>
-                            </template>
-                            <template x-for="u in dir.ubicaciones" :key="u.id">
-                                <div class="d-flex justify-content-between align-items-center gap-2 py-1 border-top">
-                                    <div>
-                                        <div class="fw-semibold" x-text="u.nombre"></div>
-                                        <div class="text-muted" style="font-size:.75rem;">
-                                            <span x-text="u.coordenadas"></span><span x-show="u.fecha"> · <span x-text="u.fecha"></span></span>
-                                        </div>
-                                    </div>
-                                    <a :href="u.url" target="_blank" rel="noopener" class="btn btn-sm btn-outline-success text-nowrap">
-                                        <i class="ti ti-world"></i> Google Maps
-                                    </a>
-                                </div>
-                            </template>
-                            <template x-if="dir.pago">
-                                <div class="d-flex justify-content-between align-items-center gap-2 py-1 border-top">
-                                    <div class="fw-semibold">Lugar del pago</div>
-                                    <a :href="dir.pago" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary text-nowrap">
-                                        <i class="ti ti-world"></i> Google Maps
-                                    </a>
-                                </div>
-                            </template>
-                        </div>
-                    </template>
                 </div>
             </div>
         </div>
