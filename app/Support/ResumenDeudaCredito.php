@@ -25,7 +25,7 @@ use Carbon\Carbon;
 final class ResumenDeudaCredito
 {
     /**
-     * @return array{codigo: int, nombre: string, fecha: string, mensual: bool, capital: float, capital_pendiente: float, interes_pct: string, interes: float, interes_diario: float, retraso_meses: int, retraso_dias: int, retraso_texto: string, monto_retraso: float, monto_meses: float, monto_dias: float, total: float, cancelado: ?string, texto: string}
+     * @return array{codigo: int, nombre: string, fecha: string, mensual: bool, capital: float, capital_pendiente: float, interes_pct: string, interes: float, interes_diario: float, retraso_meses: int, retraso_dias: int, retraso_texto: string, monto_retraso: float, monto_meses: float, monto_dias: float, total: float, cancelado: ?string, texto: string, texto_copia: string}
      */
     public static function de(Credit $credit, Client $client, ?Carbon $hoy = null): array
     {
@@ -88,6 +88,8 @@ final class ResumenDeudaCredito
             'cancelado' => $cancelado ? ($credit->fecha_cancelacion ? Carbon::parse($credit->fecha_cancelacion)->format('d/m/Y') : 'sí') : null,
         ];
         $datos['texto'] = self::texto($datos);
+        // Lo que va al portapapeles (Antony, 23/10): las mismas líneas sin las vacías.
+        $datos['texto_copia'] = implode("\n", array_values(array_filter(explode("\n", $datos['texto']), fn ($l) => trim($l) !== '')));
 
         return $datos;
     }

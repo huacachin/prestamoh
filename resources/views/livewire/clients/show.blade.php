@@ -282,7 +282,8 @@
                 </div>
                 <div class="modal-body py-3">
                     @if($resumen)
-                        <pre x-ref="texto" class="resumen-credito mb-0">{{ $resumen['texto'] }}</pre>
+                        {{-- data-copia: lo que se copia (sin líneas en blanco, pedido de Antony); en pantalla se ve con aire --}}
+                        <pre x-ref="texto" class="resumen-credito mb-0" data-copia="{{ $resumen['texto_copia'] }}">{{ $resumen['texto'] }}</pre>
                     @endif
                 </div>
                 <div class="modal-footer py-2 justify-content-between">
@@ -303,7 +304,7 @@
                 copiado: false,
                 abrir() { window.bootstrap.Modal.getOrCreateInstance(this.$el).show(); this.copiado = false; },
                 copiar() {
-                    const texto = this.$refs.texto ? this.$refs.texto.innerText : '';
+                    const texto = this.$refs.texto ? (this.$refs.texto.dataset.copia || this.$refs.texto.innerText) : '';
                     const listo = () => { this.copiado = true; setTimeout(() => { this.copiado = false; }, 1800); };
                     if (navigator.clipboard && window.isSecureContext) {
                         navigator.clipboard.writeText(texto).then(listo, () => this.copiarViejo(texto, listo));

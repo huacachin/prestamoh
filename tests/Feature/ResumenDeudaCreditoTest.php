@@ -82,6 +82,12 @@ class ResumenDeudaCreditoTest extends TestCase
             'Por 25 días (S/ 28.00 x día) S/ 700.00', '',
             'Total de deuda indicado', 'S/ 24,220.00',
         ]), $r['texto']);
+        // Lo que se copia: las mismas líneas, sin las vacías.
+        $this->assertSame(implode("\n", [
+            'DATOS DEL CRÉDITO', 'Janampa Cahuana Mauro', 'Fecha del crédito 28/01/2026', 'Capital prestado', 'S/ 16,800.00',
+            'Interés del 5% S/ 840.00', 'Retraso 8 meses y 25 días', 'Monto Retraso S/ 7,420.00', 'Por 8 meses S/ 6,720.00',
+            'Por 25 días (S/ 28.00 x día) S/ 700.00', 'Total de deuda indicado', 'S/ 24,220.00',
+        ]), $r['texto_copia']);
     }
 
     public function test_los_meses_y_dias_se_cuentan_como_a_mano_y_el_texto_omite_lo_que_es_cero(): void
@@ -147,7 +153,8 @@ class ResumenDeudaCreditoTest extends TestCase
             ->call('verResumen', $credit->id)
             ->assertDispatched('resumen-credito-listo')
             ->assertSee('Retraso 8 meses y 25 días')
-            ->assertSee('S/ 24,220.00');
+            ->assertSee('S/ 24,220.00')
+            ->assertSeeHtml("data-copia=\"DATOS DEL CRÉDITO\nJanampa Cahuana Mauro\nFecha del crédito 28/01/2026\n");
         $this->assertSame($credit->id, $ficha->get('resumen')['codigo']);
 
         $ficha->call('verResumen', $ajeno->id)->assertDispatched('errorAlert')->assertNotDispatched('resumen-credito-listo');
