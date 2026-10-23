@@ -82,6 +82,7 @@ class ResumenDeudaCreditoTest extends TestCase
             'Fecha de corte: 23/10/2026',
             'Capital prestado: S/ 16,800.00',
             'Interés del 5%: S/ 840.00',
+            'Interés pendiente: S/ 7,420.00', // en el mensual, el interés del tiempo transcurrido
             'Retraso: 8 meses y 25 días · S/ 7,420.00',
             'Por 8 meses: S/ 6,720.00 · Por 25 días (S/ 28.00 x día): S/ 700.00',
             'Mora cuota 1: 237 días (S/ 29.40 x día) · S/ 6,967.80',
@@ -128,6 +129,7 @@ class ResumenDeudaCreditoTest extends TestCase
             'Capital amortizado: S/ 5,833.31',
             'Capital pendiente: S/ 4,166.69',
             'Interés del 5%: S/ 500.00',
+            'Interés pendiente: S/ 1,333.40',
             'Retraso: 2 meses y 20 días · S/ 1,333.40',
             'Por 2 meses: S/ 1,000.00 · Por 20 días (S/ 16.67 x día): S/ 333.40',
             'Mora por cuota (S/ 2.22 x día):',
@@ -161,7 +163,11 @@ class ResumenDeudaCreditoTest extends TestCase
         $this->assertSame([10, 23.8, 690.46], [$r['mora_dias'], $r['mora'], $r['total_con_mora']]);
         // Acumulada: la cuota 2 se pagó 3 días tarde → 3 × 2.38 = 7.14; informativa, no entra en los totales.
         $this->assertSame(['dias' => 3, 'monto' => 7.14], $r['mora_acumulada']);
+        // Interés pendiente: el de las cuotas 3 y 4 (125 c/u), aunque la 4 no venza; capital pendiente + esto = total.
+        $this->assertSame([250.0, 666.66], [$r['interes_pendiente'], round($r['capital_pendiente'] + $r['interes_pendiente'], 2)]);
         $this->assertStringContainsString(implode("\n", [
+            'Interés del 60%: S/ 499.99',
+            'Interés pendiente: S/ 250.00',
             'Retraso: 1 cuota · S/ 333.33',
             'Mora cuota 3: 10 días (S/ 2.38 x día) · S/ 23.80',
             'Mora acumulada (cuotas ya pagadas): 3 días · S/ 7.14',
@@ -197,6 +203,8 @@ class ResumenDeudaCreditoTest extends TestCase
             'Mora total: 51 días · S/ 118.32',
         ]), $r['texto']);
         $this->assertSame(round($r['total'] + 118.32, 2), $r['total_con_mora'], 'el total con mora suma la mora de todas las cuotas vencidas');
+        // Interés pendiente: 75 × 4 − 10 abonados a la cuota 1 = 290; capital 1000 + 290 = el total sin mora.
+        $this->assertSame([290.0, 1290.0], [$r['interes_pendiente'], $r['total']]);
     }
 
     public function test_el_codigo_de_la_ficha_abre_el_resumen_solo_de_los_creditos_de_ese_cliente(): void

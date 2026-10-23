@@ -28,7 +28,7 @@ use Carbon\Carbon;
 final class ResumenDeudaCredito
 {
     /**
-     * @return array{codigo: int, nombre: string, fecha: string, fecha_corte: string, mensual: bool, capital: float, capital_pendiente: float, capital_amortizado: float, interes_pct: string, interes: float, interes_diario: float, retraso_meses: int, retraso_dias: int, retraso_texto: string, monto_retraso: float, monto_meses: float, monto_dias: float, mora_cuotas: list<array{cuota: int, dias: int, por_dia: float, monto: float}>, mora_dias: int, mora: float, mora_acumulada: array{dias: int, monto: float}, total: float, total_con_mora: float, cancelado: ?string, texto: string, texto_copia: string}
+     * @return array{codigo: int, nombre: string, fecha: string, fecha_corte: string, mensual: bool, capital: float, capital_pendiente: float, capital_amortizado: float, interes_pendiente: float, interes_pct: string, interes: float, interes_diario: float, retraso_meses: int, retraso_dias: int, retraso_texto: string, monto_retraso: float, monto_meses: float, monto_dias: float, mora_cuotas: list<array{cuota: int, dias: int, por_dia: float, monto: float}>, mora_dias: int, mora: float, mora_acumulada: array{dias: int, monto: float}, total: float, total_con_mora: float, cancelado: ?string, texto: string, texto_copia: string}
      */
     public static function de(Credit $credit, Client $client, ?Carbon $hoy = null): array
     {
@@ -59,6 +59,8 @@ final class ResumenDeudaCredito
             $montoRetraso = round($montoMeses + $montoDias, 2);
             $retrasoTexto = self::textoRetraso($meses, $dias);
             $total = $cancelado ? 0.0 : round($capitalPendiente + $montoRetraso, 2);
+            // Interés pendiente (23/10, Antony): en el mensual es el interés del tiempo transcurrido, el retraso.
+            $interesPendiente = $cancelado ? 0.0 : $montoRetraso;
         } else {
             $vencidas = $cancelado ? collect() : $cuotas->filter(fn (CreditInstallment $c) => ! $c->pagado && $c->fecha_vencimiento !== null && $c->fecha_vencimiento->lt($hasta));
             $saldoDe = fn (CreditInstallment $c) => (float) $c->importe_cuota + (float) $c->importe_interes + (float) $c->importe_excedente
@@ -69,6 +71,10 @@ final class ResumenDeudaCredito
             $montoMeses = 0.0;
             $montoDias = 0.0;
             $total = $cancelado ? 0.0 : round(max(0, (float) $cuotas->sum($saldoDe)), 2);
+            // Interés pendiente (23/10, Antony): lo que falta del interés (y del redondeo) en el cronograma,
+            // también el de las cuotas que aún no vencen; capital pendiente + esto = total sin mora.
+            $interesPendiente = $cancelado ? 0.0 : round(max(0, (float) $cuotas->sum(fn (CreditInstallment $c) => (float) $c->importe_interes + (float) $c->importe_excedente
+                - (float) $c->interes_aplicado - (float) $c->excedente_aplicado)), 2);
         }
 
         // Mora POR CUOTA (23/10, Antony: "son 24 días de mora pero de la primera cuota vencida; debería ver el
@@ -109,6 +115,7 @@ final class ResumenDeudaCredito
             'capital_pendiente' => $capitalPendiente,
             // Lo que ya se pagó de capital (23/10, Antony): prestado − pendiente, así siempre cuadra la resta.
             'capital_amortizado' => $cancelado ? 0.0 : round($capital - $capitalPendiente, 2),
+            'interes_pendiente' => $interesPendiente,
             'interes_pct' => rtrim(rtrim(number_format($pct, 2, '.', ''), '0'), '.'),
             'interes' => $interes,
             'interes_diario' => $interesDiario,
@@ -153,6 +160,9 @@ final class ResumenDeudaCredito
             $lineas[] = 'Capital pendiente: '.$s($d['capital_pendiente']);
         }
         $lineas[] = 'Interés del '.$d['interes_pct'].'%: '.$s($d['interes']);
+        if ($d['cancelado'] === null) {
+            $lineas[] = 'Interés pendiente: '.$s($d['interes_pendiente']);
+        }
         $lineas[] = 'Retraso: '.$d['retraso_texto'].' · '.$s($d['monto_retraso']);
         // Desglose del retraso mensual en una línea: lo que corresponde a los meses y lo prorrateado por días.
         if ($d['mensual'] && ($d['retraso_meses'] > 0 || $d['retraso_dias'] > 0)) {
