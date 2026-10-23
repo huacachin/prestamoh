@@ -27,7 +27,7 @@ use Carbon\Carbon;
 final class ResumenDeudaCredito
 {
     /**
-     * @return array{codigo: int, nombre: string, fecha: string, fecha_corte: string, mensual: bool, capital: float, capital_pendiente: float, interes_pct: string, interes: float, interes_diario: float, retraso_meses: int, retraso_dias: int, retraso_texto: string, monto_retraso: float, monto_meses: float, monto_dias: float, mora_dias: int, mora_por_dia: float, mora: float, total: float, total_con_mora: float, cancelado: ?string, texto: string, texto_copia: string}
+     * @return array{codigo: int, nombre: string, fecha: string, fecha_corte: string, mensual: bool, capital: float, capital_pendiente: float, capital_amortizado: float, interes_pct: string, interes: float, interes_diario: float, retraso_meses: int, retraso_dias: int, retraso_texto: string, monto_retraso: float, monto_meses: float, monto_dias: float, mora_dias: int, mora_por_dia: float, mora: float, total: float, total_con_mora: float, cancelado: ?string, texto: string, texto_copia: string}
      */
     public static function de(Credit $credit, Client $client, ?Carbon $hoy = null): array
     {
@@ -91,6 +91,8 @@ final class ResumenDeudaCredito
             'mensual' => $mensual,
             'capital' => $capital,
             'capital_pendiente' => $capitalPendiente,
+            // Lo que ya se pagó de capital (23/10, Antony): prestado − pendiente, así siempre cuadra la resta.
+            'capital_amortizado' => $cancelado ? 0.0 : round($capital - $capitalPendiente, 2),
             'interes_pct' => rtrim(rtrim(number_format($pct, 2, '.', ''), '0'), '.'),
             'interes' => $interes,
             'interes_diario' => $interesDiario,
@@ -130,7 +132,7 @@ final class ResumenDeudaCredito
             $s($d['capital']),
         ];
         if ($d['cancelado'] === null && $d['capital_pendiente'] < $d['capital']) {
-            array_push($lineas, '', 'Capital pendiente', $s($d['capital_pendiente']));
+            array_push($lineas, '', 'Capital amortizado', $s($d['capital_amortizado']), '', 'Capital pendiente', $s($d['capital_pendiente']));
         }
         array_push($lineas,
             '',

@@ -126,7 +126,9 @@ class ResumenDeudaCreditoTest extends TestCase
         $this->assertSame([2, 20, 16.67, 1000.0, 333.4, 1333.4, 4166.69, 5500.09], [$r['retraso_meses'], $r['retraso_dias'], $r['interes_diario'], $r['monto_meses'], $r['monto_dias'], $r['monto_retraso'], $r['capital_pendiente'], $r['total']]);
         // Mora: la cuota 8 (1 333.33) venció el 03/09 → 50 días × 2.22 = 111.00.
         $this->assertSame([50, 2.22, 111.0, 5611.09], [$r['mora_dias'], $r['mora_por_dia'], $r['mora'], $r['total_con_mora']]);
-        $this->assertStringContainsString("Capital prestado\nS/ 10,000.00\n\nCapital pendiente\nS/ 4,166.69\n\nInterés del 5% S/ 500.00\n\nRetraso 2 meses y 20 días\n\nMonto Retraso S/ 1,333.40\nPor 2 meses S/ 1,000.00\nPor 20 días (S/ 16.67 x día) S/ 333.40\n\nMora 50 días (S/ 2.22 x día) S/ 111.00\n\nTotal de deuda sin mora\nS/ 5,500.09\n\nTotal de deuda con mora\nS/ 5,611.09", $r['texto']);
+        // Amortizado = prestado − pendiente (7 cuotas de 833.33 pagadas).
+        $this->assertSame([5833.31, 4166.69], [$r['capital_amortizado'], $r['capital_pendiente']]);
+        $this->assertStringContainsString("Capital prestado\nS/ 10,000.00\n\nCapital amortizado\nS/ 5,833.31\n\nCapital pendiente\nS/ 4,166.69\n\nInterés del 5% S/ 500.00\n\nRetraso 2 meses y 20 días\n\nMonto Retraso S/ 1,333.40\nPor 2 meses S/ 1,000.00\nPor 20 días (S/ 16.67 x día) S/ 333.40\n\nMora 50 días (S/ 2.22 x día) S/ 111.00\n\nTotal de deuda sin mora\nS/ 5,500.09\n\nTotal de deuda con mora\nS/ 5,611.09", $r['texto']);
     }
 
     public function test_credito_semanal_cuenta_cuotas_vencidas_y_saldo_del_cronograma_y_el_cancelado_no_debe_nada(): void
