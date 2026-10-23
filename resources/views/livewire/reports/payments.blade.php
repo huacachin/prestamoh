@@ -20,8 +20,28 @@
         prev() { this.idx = (this.idx - 1 + this.items.length) % this.items.length; },
         dir: null,
         verDirecciones(d) { this.dir = d; this.$dispatch('direcciones-open'); },
+        // Recibos del sistema: varias ventanitas a la vez (como las del simulador), en cascada;
+        // la tocada pasa al frente, Esc cierra la de arriba. Mientras haya recibos abiertos de
+        // un cobro, su fila va en amarillo (conRecibo).
+        recibos: [], seqRecibo: 0, topZ: 1080,
+        verRecibo(lote, url, titulo, n) {
+            const ya = this.recibos.find(v => v.lote === lote);
+            if (ya) { this.alFrente(ya); return; }
+            const k = this.recibos.length % 8;
+            this.recibos.push({ id: ++this.seqRecibo, lote: lote, url: url, titulo: titulo, n: n, x: 120 + k * 30, y: 70 + k * 30, z: ++this.topZ });
+        },
+        cerrarRecibo(id) { this.recibos = this.recibos.filter(v => v.id !== id); },
+        cerrarRecibos() { this.recibos = []; },
+        cerrarUltimoRecibo() {
+            if (this.open || ! this.recibos.length) return;
+            const top = this.recibos.reduce((a, b) => a.z >= b.z ? a : b);
+            this.cerrarRecibo(top.id);
+        },
+        alFrente(v) { if (v.z !== this.topZ) v.z = ++this.topZ; },
+        conRecibo(n) { return this.recibos.some(v => v.n === n); },
      }"
-     @click.window="deselect($event)">
+     @click.window="deselect($event)"
+     x-on:keydown.escape.window="cerrarUltimoRecibo()">
     <div class="row">
         <div class="col-sm-6">
             <h4 class="main-title title-modules" style="color:red;">REPORTE DE PAGO</h4>
@@ -101,6 +121,10 @@
                                 <button type="button" class="btn btn-sm btn-secondary flex-shrink-0" onclick="window.print()">
                                     <i class="ti ti-printer f-s-12"></i>
                                 </button>
+                                <button type="button" class="btn btn-sm btn-outline-dark flex-shrink-0"
+                                        x-show="recibos.length > 0" x-cloak x-on:click="cerrarRecibos()">
+                                    <i class="ti ti-x"></i> Cerrar recibos (<span x-text="recibos.length"></span>)
+                                </button>
                                 <x-scroll-bottom-btn scrollable="#tabla-pagos-rep" />
                             </div>
                             {{-- Filtro por crédito o cliente (26/09, viene del cronograma / ficha):
@@ -131,8 +155,12 @@
 
                     {{-- Tabla --}}
                     <style>
-                        /* Fila con las fotos abiertas (mismo verde que ingresos/egresos). */
-                        #tabla-pagos-rep tbody tr.fila-sel > td { background-color: #CCFF66 !important; }
+                        /* Fila con las fotos abiertas (mismo verde que ingresos/egresos); sin la cebra
+                           ni el hover de Bootstrap encima (box-shadow interior) para que el color sea exacto. */
+                        #tabla-pagos-rep tbody tr.fila-sel > td {
+                            background-color: #CCFF66 !important;
+                            --bs-table-bg-type: transparent; --bs-table-accent-bg: transparent; --bs-table-bg-state: transparent; box-shadow: none;
+                        }
                     </style>
                     <div id="tabla-pagos-rep" class="table-responsive" style="max-height: 650px; overflow:auto;">
                         <table class="table table-bordered table-striped table-hover table-autofit">
@@ -161,7 +189,7 @@
                             </thead>
                             <tbody>
                                 @forelse($rows as $row)
-                                    <tr :class="{ 'fila-sel': selectedId === {{ $row['n'] }} }">
+                                    <tr :class="{ 'fila-sel': selectedId === {{ $row['n'] }}, 'fila-recibo': conRecibo({{ $row['n'] }}) }">
                                         <td class="text-center">{{ $row['n'] }}</td>
                                         <td>{{ $row['fecha'] }}</td>
                                         <td>{{ $row['hora'] }}</td>
@@ -187,11 +215,12 @@
                                             @endif
                                         </td>
                                         <td class="text-center" style="white-space:nowrap;">
-                                            {{-- Un recibo por lote del día; con varios, cada ícono lleva su hora. --}}
+                                            {{-- Un recibo por lote del día; con varios, cada ícono lleva su hora.
+                                                 Cada clic abre una ventanita más (pueden verse varios a la vez). --}}
                                             @foreach($row['recibos'] as $rec)
                                                 <a href="#" class="{{ $loop->last ? '' : 'me-2' }}"
                                                    title="Ver recibo{{ count($row['recibos']) > 1 ? ' de las '.$rec['hora'] : '' }} (S/ {{ number_format($rec['monto'], 2) }})"
-                                                   onclick="abrirRecibo(@js($rec['url'])); return false;">
+                                                   x-on:click.prevent="verRecibo({{ $rec['lote'] }}, @js($rec['url']), @js('Recibo #'.str_pad((string) $rec['lote'], 6, '0', STR_PAD_LEFT).' · '.$rec['hora'].' · S/ '.number_format($rec['monto'], 2)), {{ $row['n'] }})">
                                                     <i class="ti ti-receipt f-s-16 text-primary"></i>
                                                 </a>
                                             @endforeach
@@ -347,7 +376,44 @@
 
     {{-- Visor flotante de las fotos del depósito: el mismo partial que caja, galerías y auditoría. --}}
     @include('livewire.cash.partials._lightbox')
-    {{-- Ventana flotante del recibo (abrirRecibo), la misma del cronograma y la ficha. --}}
-    @include('livewire.payments.partials._modal-recibo')
+    {{-- Ventanitas de recibos (Antony, 22/10: "debo poder abrir varios recibos a la vez"): una por
+         recibo abierto, en cascada, arrastrables (ventanaLibre), la tocada al frente. Teletransportadas
+         al <body> para que position:fixed se ancle al viewport. Cada una es un iframe del recibo público
+         (allow=clipboard-write para su botón "Copiar imagen"). --}}
+    <template x-teleport="body">
+        <div class="recibos-ventanas">
+            <template x-for="v in recibos" :key="v.id">
+                <div x-data="ventanaLibre({ x: v.x, y: v.y, w: 430 })" class="card shadow recibo-ventana"
+                     :style="{ zIndex: v.z }" x-on:pointerdown="alFrente(v)">
+                    <div class="card-header d-flex justify-content-between align-items-center py-2 recibo-ventana-cabecera"
+                         style="background:#009bdc; color:#fff;"
+                         x-on:pointerdown="iniciarArrastre($event)" x-on:pointermove="arrastrar($event)"
+                         x-on:pointerup="soltar($event)" x-on:pointercancel="soltar($event)">
+                        <b style="font-size:13px;" x-text="v.titulo"></b>
+                        <a href="#" x-on:click.prevent="cerrarRecibo(v.id)" title="Cerrar (Esc cierra la de arriba)"
+                           style="color:#fff; text-decoration:none; font-size:20px; line-height:1;">&times;</a>
+                    </div>
+                    <div class="card-body p-0">
+                        <iframe :src="v.url" allow="clipboard-write" style="width:100%; height:62vh; border:0; display:block;"></iframe>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </template>
+    <style>
+        /* Ventanitas de recibos: fijas, varias a la vez, arrastrables desde la cabecera.
+           transition: none → el tema anima toda .card y la ventana iba detrás del mouse. */
+        .recibo-ventana { position: fixed; width: 430px; max-width: 95vw; margin: 0; transition: none !important; }
+        .recibo-ventana-cabecera { cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none; }
+        .recibo-ventana-cabecera:active { cursor: grabbing; }
+        /* Fila con recibos abiertos: amarillo Huacachin (el mismo de las cuotas vencidas en Morosos).
+           Bootstrap pinta la cebra y el hover con un box-shadow interior sobre la celda, que tiñe el
+           amarillo; se apaga igual que en Morosos (.fila-vencida). */
+        #tabla-pagos-rep tbody tr.fila-recibo > td {
+            background-color: #ffff00 !important;
+            --bs-table-bg-type: transparent; --bs-table-accent-bg: transparent; --bs-table-bg-state: transparent; box-shadow: none;
+        }
+        @media print { .recibos-ventanas { display: none !important; } }
+    </style>
 <span id="final"></span>
 </div>

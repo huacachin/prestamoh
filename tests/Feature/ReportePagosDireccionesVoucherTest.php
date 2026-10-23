@@ -150,7 +150,10 @@ class ReportePagosDireccionesVoucherTest extends TestCase
             ->assertDontSeeHtml('<img src="/storage/expenses/')
             ->assertSee('Ver recibo (S/ 333.33)')
             ->assertSeeHtml('ti-receipt f-s-16')
-            ->assertSeeHtml('id="modal-recibo"')
+            ->assertSeeHtml("verRecibo({$lote}, ") // cada clic abre una ventanita más (varias a la vez)
+            ->assertSeeHtml('class="recibos-ventanas"')
+            ->assertSeeHtml("'fila-recibo': conRecibo(1)") // la fila va en amarillo mientras su recibo esté abierto
+            ->assertDontSeeHtml('id="modal-recibo"')
             ->assertSee('Ver direcciones (2 con GPS)')
             ->assertSeeHtml('ti-map-pin f-s-16')
             ->assertSeeHtml('id="direccionesModal"')
