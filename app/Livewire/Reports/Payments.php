@@ -66,21 +66,69 @@ class Payments extends Component
         }
     }
 
-    public function search() {}
+    /**
+     * 23/10 (Antony): sin filtro por crédito o cliente el rango se limita a
+     * 3 meses. Un "desde" vacío o a medias mientras se escribía abría la
+     * tabla a los 500 mil pagos de la historia y colgaba el navegador.
+     */
+    public const MAX_DIAS = 92;
+
+    /**
+     * Botón Buscar (y Enter en el texto). 23/10 (Antony): los filtros ya no son
+     * live: la fecha, el texto y el tipo se aplican aquí, no en cada tecla.
+     * Normaliza el rango para que la URL y los campos muestren lo que se aplicó.
+     */
+    public function search(): void
+    {
+        // Solo dispara el render: el rango efectivo lo calcula rangoSeguro() en cada render,
+        // sin pisar lo que el usuario escribió (la vista muestra el aviso si se recortó).
+    }
+
+    /**
+     * Rango con el que se consulta: fechas válidas (Y-m-d), inicio ≤ fin y, sin
+     * filtro por crédito/cliente, como máximo MAX_DIAS. Una fecha vacía o
+     * inválida cae al otro extremo (o a hoy), nunca a "sin límite".
+     *
+     * @return array{0: string, 1: string, 2: bool} [desde, hasta, recortado]
+     */
+    private function rangoSeguro(): array
+    {
+        $valida = function ($v): ?string {
+            if (! is_string($v) || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $v)) {
+                return null;
+            }
+
+            return checkdate((int) substr($v, 5, 2), (int) substr($v, 8, 2), (int) substr($v, 0, 4)) ? $v : null;
+        };
+        $hoy = Carbon::today()->format('Y-m-d');
+        $fef = $valida($this->fef) ?? $hoy;
+        $fei = $valida($this->fei) ?? $fef;
+        if ($fei > $fef) {
+            [$fei, $fef] = [$fef, $fei];
+        }
+
+        $recortado = false;
+        $conFiltro = ($this->creditoId !== '' && $this->creditoId !== null)
+            || ($this->clienteId !== '' && $this->clienteId !== null);
+        if (! $conFiltro && Carbon::parse($fei)->diffInDays(Carbon::parse($fef)) > self::MAX_DIAS) {
+            $fei = Carbon::parse($fef)->subDays(self::MAX_DIAS)->format('Y-m-d');
+            $recortado = true;
+        }
+
+        return [$fei, $fef, $recortado];
+    }
 
     public function render()
     {
+        // Rango efectivo (no se pisan fei/fef: la vista y el Excel usan estos valores).
+        [$fei, $fef, $rangoRecortado] = $this->rangoSeguro();
+
         // ─── Listado agrupado por nroentrada+fecha (legacy) ─────────────
         $base = Payment::query()
             ->with(['credit:id,client_id', 'credit.client:id,nombre,apellido_pat,apellido_mat'])
-            ->where('modo', 'CREDITO');
-
-        if ($this->fei) {
-            $base->where('fecha', '>=', $this->fei);
-        }
-        if ($this->fef) {
-            $base->where('fecha', '<=', $this->fef);
-        }
+            ->where('modo', 'CREDITO')
+            ->where('fecha', '>=', $fei)
+            ->where('fecha', '<=', $fef);
 
         $clienteFiltrado = null;
         $creditoFiltrado = null;
@@ -181,6 +229,10 @@ class Payments extends Component
             'rows' => $rows,
             'totals' => $totals,
             'isAdmin' => $isAdmin,
+            // Efectivos (las propiedades fei/fef guardan lo escrito; Livewire las pasa también a la vista)
+            'desdeEfectivo' => $fei,
+            'hastaEfectivo' => $fef,
+            'rangoRecortado' => $rangoRecortado,
         ]);
     }
 

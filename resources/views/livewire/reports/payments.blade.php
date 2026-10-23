@@ -66,19 +66,19 @@
                                     <label class="form-label mb-1 small fw-semibold">BUSCAR X</label>
                                     <div class="d-flex gap-2 flex-wrap">
                                         <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="radio" wire:model.live="tipo" value="1" id="tipo1">
+                                            <input class="form-check-input" type="radio" wire:model="tipo" value="1" id="tipo1">
                                             <label class="form-check-label" for="tipo1">A/</label>
                                         </div>
                                         <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="radio" wire:model.live="tipo" value="2" id="tipo2">
+                                            <input class="form-check-input" type="radio" wire:model="tipo" value="2" id="tipo2">
                                             <label class="form-check-label" for="tipo2">Motivo</label>
                                         </div>
                                         <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="radio" wire:model.live="tipo" value="3" id="tipo3">
+                                            <input class="form-check-input" type="radio" wire:model="tipo" value="3" id="tipo3">
                                             <label class="form-check-label" for="tipo3">Asesor</label>
                                         </div>
                                         <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="radio" wire:model.live="tipo" value="4" id="tipo4">
+                                            <input class="form-check-input" type="radio" wire:model="tipo" value="4" id="tipo4">
                                             <label class="form-check-label" for="tipo4">Usuario</label>
                                         </div>
                                     </div>
@@ -87,30 +87,32 @@
                         </div>
                     </div>
 
-                    {{-- Filtros: texto + fechas --}}
+                    {{-- Filtros: texto + fechas. 23/10 (Antony): se aplican al pulsar Buscar (o Enter),
+                         ya no en cada tecla: con wire:model.live cada cambio de fecha disparaba la consulta
+                         y el redibujado completo, y un "desde" vacío a medias colgaba el navegador. --}}
                     <div class="row my-2">
                         <div class="col-12">
                             <div class="d-flex flex-wrap align-items-end gap-2 py-1">
                                 <div class="flex-grow-1" style="min-width: 250px; max-width:400px;">
                                     <label class="form-label mb-0 small">Texto</label>
                                     <input type="text" name="compra" autocomplete="off" class="form-control form-control-sm"
-                                           wire:model.live.debounce.500ms="compra"
+                                           wire:model="compra" wire:keydown.enter="search"
                                            placeholder="Ingrese el texto a buscar"
        list="hist_reporte_pagos" data-search-history="reporte_pagos">
 <datalist id="hist_reporte_pagos" wire:ignore></datalist>
                                 </div>
                                 <div class="flex-shrink-0" style="width: 150px;">
                                     <label class="form-label mb-0 small">Fecha Inicio</label>
-                                    <input type="text" name="fei" autocomplete="off" class="form-control form-control-sm dates" wire:model.live.debounce.500ms="fei">
+                                    <input type="text" name="fei" autocomplete="off" class="form-control form-control-sm dates" wire:model="fei" wire:keydown.enter="search">
                                 </div>
                                 <div class="flex-shrink-0" style="width: 150px;">
                                     <label class="form-label mb-0 small">Fecha Fin</label>
-                                    <input type="text" name="fef" autocomplete="off" class="form-control form-control-sm dates" wire:model.live.debounce.500ms="fef">
+                                    <input type="text" name="fef" autocomplete="off" class="form-control form-control-sm dates" wire:model="fef" wire:keydown.enter="search">
                                 </div>
                                 <button class="btn btn-sm btn-dark flex-shrink-0" wire:click="search">
                                     <i class="ti ti-search f-s-12"></i> Buscar
                                 </button>
-                                <a href="{{ route('exports.reports.payments', ['tipo' => $tipo, 'compra' => $compra, 'fei' => $fei, 'fef' => $fef, 'cliente' => $clienteId, 'credito' => $creditoId]) }}"
+                                <a href="{{ route('exports.reports.payments', ['tipo' => $tipo, 'compra' => $compra, 'fei' => $desdeEfectivo, 'fef' => $hastaEfectivo, 'cliente' => $clienteId, 'credito' => $creditoId]) }}"
                                    target="_blank"
                                    class="btn btn-sm btn-success flex-shrink-0">
                                     <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
@@ -124,6 +126,11 @@
                                 </button>
                                 <x-scroll-bottom-btn scrollable="#tabla-pagos-rep" />
                             </div>
+                            @if($rangoRecortado)
+                                <div class="small text-warning py-1">
+                                    <i class="ti ti-alert-triangle"></i> Rango limitado a 3 meses ({{ $desdeEfectivo }} a {{ $hastaEfectivo }}): filtra por cliente o crédito para ver más.
+                                </div>
+                            @endif
                             {{-- Filtro por crédito o cliente (26/09, viene del cronograma / ficha):
                                  en su propia línea, alineado con los filtros. Con crédito, el reporte
                                  trae SOLO los pagos de ese crédito. --}}
