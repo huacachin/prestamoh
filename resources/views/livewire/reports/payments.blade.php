@@ -217,7 +217,13 @@
                                         <td>{{ $row['usuario'] }}</td>
                                         <td>{{ $row['asesor'] }}</td>
                                         <td>{{ $row['cliente'] }}</td>
-                                        <td>{{ $row['detalle'] }}</td>
+                                        {{-- 23/10 (Antony): motivo detallado desde las cuotas, ya no el detalle legacy --}}
+                                        <td style="white-space:nowrap;">
+                                            <div>{{ $row['motivo']['resumen'] }}</div>
+                                            @if($row['motivo']['desglose'] !== '' || $row['motivo']['situacion'] !== '')
+                                                <small class="text-muted">{{ implode(' · ', array_filter([$row['motivo']['desglose'], $row['motivo']['situacion']])) }}</small>
+                                            @endif
+                                        </td>
                                         <td class="text-end">{{ number_format($row['monto'], 2) }}</td>
                                         <td class="text-center" style="white-space:nowrap;">
                                             {{-- Un recibo por lote del día; con varios, cada ícono lleva su hora.

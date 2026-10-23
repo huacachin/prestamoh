@@ -4,7 +4,9 @@ namespace App\Livewire\Reports;
 
 use App\Models\Client;
 use App\Models\Credit;
+use App\Models\CreditInstallment;
 use App\Models\Payment;
+use App\Support\MotivoCobro;
 use App\Support\Usernames;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -125,7 +127,7 @@ class Payments extends Component
 
         // ─── Listado agrupado por nroentrada+fecha (legacy) ─────────────
         $base = Payment::query()
-            ->with(['credit:id,client_id', 'credit.client:id,nombre,apellido_pat,apellido_mat'])
+            ->with(['credit:id,client_id,cuotas,fecha_cancelacion,situacion', 'credit.client:id,nombre,apellido_pat,apellido_mat'])
             ->where('modo', 'CREDITO')
             ->where('fecha', '>=', $fei)
             ->where('fecha', '<=', $fef);
@@ -171,11 +173,24 @@ class Payments extends Component
         // Agrupacion por (credit_id + fecha) para mostrar fila por agrupacion
         $vouchers = $this->vouchersPorCobro($payments);
         $recibos = $this->recibosPorCobro($payments);
+        // 23/10 (Antony): el "Motivo" se arma con las cuotas del crédito (App\Support\MotivoCobro), no con el
+        // detalle legacy. Las cuotas de todos los créditos del rango se traen de una vez.
+        $cuotasPorCredito = $payments->isEmpty() ? collect() : CreditInstallment::query()
+            ->whereIn('credit_id', $payments->pluck('credit_id')->unique()->all())
+            ->get(['id', 'credit_id', 'num_cuota', 'fecha_vencimiento', 'importe_cuota', 'importe_interes', 'importe_excedente', 'importe_aplicado', 'interes_aplicado', 'excedente_aplicado', 'pagado'])
+            ->groupBy('credit_id');
         $rows = [];
         $contador = 0;
         foreach ($payments->groupBy(fn ($p) => $p->credit_id.'|'.$p->fecha->format('Y-m-d')) as $clave => $group) {
             $first = $group->first();
             $cliente = $first->credit?->client;
+            $cuotasDelCredito = $cuotasPorCredito[$first->credit_id] ?? collect();
+            $motivo = MotivoCobro::de(
+                $group->filter(fn ($p) => $p->detalle === null || ! str_ends_with((string) $p->detalle, 'Gat')),
+                $first->credit,
+                $cuotasDelCredito->keyBy('id')->all(),
+                $cuotasDelCredito->keyBy('num_cuota')->all(),
+            );
             $contador++;
             $rows[] = [
                 'n' => $contador,
@@ -188,7 +203,9 @@ class Payments extends Component
                 'cliente' => $cliente
                     ? trim(($cliente->apellido_pat ?? '').' '.($cliente->apellido_mat ?? '').' '.($cliente->nombre ?? ''))
                     : '',
-                'detalle' => $first->detalle,
+                // 'detalle' es lo que va al Excel (una línea); 'motivo' lo que pinta la tabla en dos.
+                'detalle' => $motivo['texto'],
+                'motivo' => $motivo,
                 'monto' => $group->sum('monto'),
                 'moneda' => $first->moneda,
                 'latitud' => $first->latitud,
