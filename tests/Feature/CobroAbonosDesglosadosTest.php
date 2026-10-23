@@ -120,6 +120,14 @@ class CobroAbonosDesglosadosTest extends TestCase
         $this->assertStringContainsString('12/10/2026', $html);
         $this->assertStringContainsString('Amortizada', $html);
         $this->assertStringContainsString('3 abonos', $html);
+        // 23/10 (Antony): el clic en "3 abonos" abre el modal con crédito, cliente y la lista del title.
+        $this->assertSame(1, preg_match('/x-on:click="\$dispatch\(\'ver-abonos\', JSON\.parse\(\'([^\']+)\'\)\)"/', $html, $m));
+        $this->assertSame([
+            'credito' => $c->id, 'cliente' => 'Cliente Abonos', 'cuota' => 21,
+            'abonos' => ['12/10/2026 · S/ 100.00', '14/10/2026 · S/ 100.00', '15/10/2026 · S/ 100.00'],
+        ], json_decode(json_decode('"'.$m[1].'"'), true), 'lo que recibe el modal: crédito, cliente, cuota y la lista del title');
+        $this->assertStringContainsString('id="abonosModal"', $html);
+        $this->assertStringContainsString('x-on:click="copiar()"', $html, 'con su botón de copiar');
         // La cuota en juego no se pliega (no lleva abono-pagada); cada abono fue un cobro de una sola cuota: sin nota.
         $this->assertStringNotContainsString('class="fila-abono abono-pagada"', $html);
         $this->assertStringNotContainsString('Cobro #', $html);

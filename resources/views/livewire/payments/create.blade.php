@@ -1468,6 +1468,67 @@
 
         @endif {{-- $esPagable: tarjetas de escenario --}}
 
+        {{-- 23/10 (Antony): clic en "N abonos" de una cuota → este modal con el número de crédito, el cliente
+             y la misma lista del title. Lo llena Alpine con el evento ver-abonos (sin ir al servidor);
+             wire:ignore para que el morph de Livewire no lo toque. --}}
+        <div class="modal fade" id="abonosModal" tabindex="-1" aria-hidden="true" wire:ignore
+             x-data="abonosModal()" x-on:ver-abonos.window="abrir($event.detail)">
+            <div class="modal-dialog modal-dialog-centered" style="max-width:360px;">
+                <div class="modal-content">
+                    <div class="modal-header py-2">
+                        <h6 class="modal-title mb-0" x-text="'Abonos de la cuota ' + d.cuota"></h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="fw-bold" x-text="'Crédito #' + d.credito"></div>
+                        <div class="mb-2" x-text="d.cliente"></div>
+                        <template x-for="(linea, i) in d.abonos" :key="i">
+                            <div x-text="linea"></div>
+                        </template>
+                    </div>
+                    <div class="modal-footer py-2 justify-content-between">
+                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                        <button type="button" class="btn btn-sm btn-primary" x-on:click="copiar()" title="Copiar para pegarlo en WhatsApp">
+                            <i class="ti" :class="copiado ? 'ti-check' : 'ti-copy'"></i> <span x-text="copiado ? 'Copiado' : 'Copiar'"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <script>
+                function abonosModal() {
+                    return {
+                        d: { credito: '', cliente: '', cuota: '', abonos: [] },
+                        copiado: false,
+                        abrir(detalle) {
+                            this.d = detalle;
+                            this.copiado = false;
+                            window.bootstrap.Modal.getOrCreateInstance(this.$root).show();
+                        },
+                        // Lo que se copia: crédito, cliente, cuota y cada abono, una línea cada uno y sin líneas en blanco.
+                        texto() {
+                            return ['Crédito #' + this.d.credito, this.d.cliente, 'Abonos de la cuota ' + this.d.cuota].concat(this.d.abonos).join('\n');
+                        },
+                        copiar() {
+                            const texto = this.texto();
+                            const listo = () => { this.copiado = true; setTimeout(() => { this.copiado = false; }, 1800); };
+                            if (navigator.clipboard && window.isSecureContext) {
+                                navigator.clipboard.writeText(texto).then(listo, () => this.copiarViejo(texto, listo));
+                            } else {
+                                this.copiarViejo(texto, listo);
+                            }
+                        },
+                        copiarViejo(texto, listo) {
+                            const t = document.createElement('textarea');
+                            t.value = texto; t.style.position = 'fixed'; t.style.opacity = '0';
+                            document.body.appendChild(t); t.select();
+                            try { document.execCommand('copy'); listo(); } catch (e) {}
+                            document.body.removeChild(t);
+                        },
+                    };
+                }
+            </script>
+        </div>
+
         {{-- Cronograma de cuotas (homologado con /credits/{id}) --}}
         <div class="card shadow-sm mt-2">
             {{-- 17/10: los abonos de las cuotas YA PAGADAS llegan plegados (son historia; el cronograma
@@ -1583,9 +1644,12 @@
                                     @if(isset($abonos[$inst->id]))
                                         @php
                                             $nAb = count($abonos[$inst->id]);
-                                            $listaAb = implode("\n", array_map(fn ($a) => ($a['fecha'] !== '' ? \Carbon\Carbon::parse($a['fecha'])->format('d/m/Y') : '—').' · S/ '.number_format($a['monto'], 2), $abonos[$inst->id]));
+                                            $lineasAb = array_map(fn ($a) => ($a['fecha'] !== '' ? \Carbon\Carbon::parse($a['fecha'])->format('d/m/Y') : '—').' · S/ '.number_format($a['monto'], 2), $abonos[$inst->id]);
+                                            $listaAb = implode("\n", $lineasAb);
                                         @endphp
-                                        <span class="badge bg-light text-dark border ms-1" title="{{ $listaAb }}">{{ $nAb }} {{ $nAb === 1 ? 'abono' : 'abonos' }}</span>
+                                        {{-- 23/10 (Antony): el clic abre el modal #abonosModal con el crédito, el cliente y la misma lista --}}
+                                        <span class="badge bg-light text-dark border ms-1" role="button" style="cursor:pointer;" title="{{ $listaAb }}"
+                                              x-on:click="$dispatch('ver-abonos', @js(['credito' => $credit->id, 'cliente' => $credit->client?->fullName() ?? '', 'cuota' => $inst->num_cuota, 'abonos' => $lineasAb]))">{{ $nAb }} {{ $nAb === 1 ? 'abono' : 'abonos' }}</span>
                                     @endif
                                 </td>
                                 <td>{{ $inst->pagado ? $inst->fecha_pago?->format('d/m/Y') : '' }}</td>
