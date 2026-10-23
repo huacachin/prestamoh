@@ -12,6 +12,7 @@ use App\Support\ResumenDeudaCredito;
 use Carbon\Carbon;
 use Database\Seeders\PermissionCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -71,29 +72,23 @@ class ResumenDeudaCreditoTest extends TestCase
         $this->assertSame([8, 25, '8 meses y 25 días', 840.0, 28.0, 6720.0, 700.0, 7420.0, 24220.0, 16800.0, '5'], [
             $r['retraso_meses'], $r['retraso_dias'], $r['retraso_texto'], $r['interes'], $r['interes_diario'], $r['monto_meses'], $r['monto_dias'], $r['monto_retraso'], $r['total'], $r['capital_pendiente'], $r['interes_pct'],
         ]);
-        $this->assertSame([237, 29.4, 6967.8, 31187.8], [$r['mora_dias'], $r['mora_por_dia'], $r['mora'], $r['total_con_mora']]);
+        $this->assertSame([237, 6967.8, 31187.8], [$r['mora_dias'], $r['mora'], $r['total_con_mora']]);
+        $this->assertSame([['cuota' => 1, 'dias' => 237, 'por_dia' => 29.4, 'monto' => 6967.8]], $r['mora_cuotas']);
+        // Compacto (23/10): una línea por dato, sin líneas en blanco; se copia igual.
         $this->assertSame(implode("\n", [
-            'DATOS DEL CRÉDITO #'.$credit->id, '',
-            'Janampa Cahuana Mauro', '',
-            'Fecha del crédito 28/01/2026',
-            'Fecha de corte 23/10/2026', '',
-            'Capital prestado', 'S/ 16,800.00', '',
-            'Interés del 5% S/ 840.00', '',
-            'Retraso 8 meses y 25 días', '',
-            'Monto Retraso S/ 7,420.00',
-            'Por 8 meses S/ 6,720.00',
-            'Por 25 días (S/ 28.00 x día) S/ 700.00', '',
-            'Mora 237 días (S/ 29.40 x día) S/ 6,967.80', '',
-            'Total de deuda sin mora', 'S/ 24,220.00', '',
-            'Total de deuda con mora', 'S/ 31,187.80',
+            'DATOS DEL CRÉDITO #'.$credit->id,
+            'Janampa Cahuana Mauro',
+            'Fecha del crédito: 28/01/2026',
+            'Fecha de corte: 23/10/2026',
+            'Capital prestado: S/ 16,800.00',
+            'Interés del 5%: S/ 840.00',
+            'Retraso: 8 meses y 25 días · S/ 7,420.00',
+            'Por 8 meses: S/ 6,720.00 · Por 25 días (S/ 28.00 x día): S/ 700.00',
+            'Mora cuota 1: 237 días (S/ 29.40 x día) · S/ 6,967.80',
+            'Total de deuda sin mora: S/ 24,220.00',
+            'Total de deuda con mora: S/ 31,187.80',
         ]), $r['texto']);
-        // Lo que se copia: las mismas líneas, sin las vacías.
-        $this->assertSame(implode("\n", [
-            'DATOS DEL CRÉDITO #'.$credit->id, 'Janampa Cahuana Mauro', 'Fecha del crédito 28/01/2026', 'Fecha de corte 23/10/2026', 'Capital prestado', 'S/ 16,800.00',
-            'Interés del 5% S/ 840.00', 'Retraso 8 meses y 25 días', 'Monto Retraso S/ 7,420.00', 'Por 8 meses S/ 6,720.00',
-            'Por 25 días (S/ 28.00 x día) S/ 700.00', 'Mora 237 días (S/ 29.40 x día) S/ 6,967.80',
-            'Total de deuda sin mora', 'S/ 24,220.00', 'Total de deuda con mora', 'S/ 31,187.80',
-        ]), $r['texto_copia']);
+        $this->assertSame($r['texto'], $r['texto_copia']);
     }
 
     public function test_los_meses_y_dias_se_cuentan_como_a_mano_y_el_texto_omite_lo_que_es_cero(): void
@@ -124,31 +119,84 @@ class ResumenDeudaCreditoTest extends TestCase
         // 7 meses pagados → el retraso corre desde el 03/08: hasta el 23/10 son 2 meses y 20 días;
         // 2 × 500 + 20 × 16.67 = 1 333.40; capital pendiente 10 000 − 7 × 833.33 = 4 166.69.
         $this->assertSame([2, 20, 16.67, 1000.0, 333.4, 1333.4, 4166.69, 5500.09], [$r['retraso_meses'], $r['retraso_dias'], $r['interes_diario'], $r['monto_meses'], $r['monto_dias'], $r['monto_retraso'], $r['capital_pendiente'], $r['total']]);
-        // Mora: la cuota 8 (1 333.33) venció el 03/09 → 50 días × 2.22 = 111.00.
-        $this->assertSame([50, 2.22, 111.0, 5611.09], [$r['mora_dias'], $r['mora_por_dia'], $r['mora'], $r['total_con_mora']]);
+        // Mora por cuota (23/10): la 8 (1 333.33) venció el 03/09 → 50 días × 2.22 = 111.00; la 9 el 03/10 → 20 × 2.22 = 44.40.
+        $this->assertSame([70, 155.4, 5655.49], [$r['mora_dias'], $r['mora'], $r['total_con_mora']]);
         // Amortizado = prestado − pendiente (7 cuotas de 833.33 pagadas).
         $this->assertSame([5833.31, 4166.69], [$r['capital_amortizado'], $r['capital_pendiente']]);
-        $this->assertStringContainsString("Capital prestado\nS/ 10,000.00\n\nCapital amortizado\nS/ 5,833.31\n\nCapital pendiente\nS/ 4,166.69\n\nInterés del 5% S/ 500.00\n\nRetraso 2 meses y 20 días\n\nMonto Retraso S/ 1,333.40\nPor 2 meses S/ 1,000.00\nPor 20 días (S/ 16.67 x día) S/ 333.40\n\nMora 50 días (S/ 2.22 x día) S/ 111.00\n\nTotal de deuda sin mora\nS/ 5,500.09\n\nTotal de deuda con mora\nS/ 5,611.09", $r['texto']);
+        $this->assertStringContainsString(implode("\n", [
+            'Capital prestado: S/ 10,000.00',
+            'Capital amortizado: S/ 5,833.31',
+            'Capital pendiente: S/ 4,166.69',
+            'Interés del 5%: S/ 500.00',
+            'Retraso: 2 meses y 20 días · S/ 1,333.40',
+            'Por 2 meses: S/ 1,000.00 · Por 20 días (S/ 16.67 x día): S/ 333.40',
+            'Mora por cuota (S/ 2.22 x día):',
+            'Cuota 8: 50 días · S/ 111.00',
+            'Cuota 9: 20 días · S/ 44.40',
+            'Mora total: 70 días · S/ 155.40',
+            'Total de deuda sin mora: S/ 5,500.09',
+            'Total de deuda con mora: S/ 5,655.49',
+        ]), $r['texto']);
     }
 
     public function test_credito_semanal_cuenta_cuotas_vencidas_y_saldo_del_cronograma_y_el_cancelado_no_debe_nada(): void
     {
         $client = $this->cliente('Mariela', 'Chagua', 'Chavez');
         $credit = $this->credito($client, ['fecha_prestamo' => '2026-09-18', 'importe' => 833.32, 'cuotas' => 4, 'tipo_planilla' => 1, 'interes' => 60, 'interes_total' => 499.99]);
+        $ids = [];
         foreach (['2026-09-25', '2026-10-02', '2026-10-13', '2026-10-30'] as $i => $venc) {
-            $this->cuota($credit, $i + 1, $venc, 208.33, 125.00, pagada: $i < 2);
+            $ids[$i + 1] = $this->cuota($credit, $i + 1, $venc, 208.33, 125.00, pagada: $i < 2)->id;
+        }
+        // Cobros reales: la cuota 1 a tiempo y la 2 el 05/10, 3 días tarde (mora que no se cobró: queda acumulada).
+        foreach ([['2026-09-25', 1], ['2026-10-05', 2]] as [$fecha, $n]) {
+            foreach ([['INTERES', 125.00], ['CAPITAL', 208.33]] as [$tipo, $monto]) {
+                DB::table('payments')->insert(['credit_id' => $credit->id, 'installment_id' => $ids[$n], 'modo' => 'CREDITO', 'tipo' => $tipo, 'documento' => $tipo,
+                    'fecha' => $fecha, 'hora' => '09:00:00', 'monto' => $monto, 'detalle' => "Pago : {$credit->id} {$tipo}: {$n}/4", 'created_at' => now(), 'updated_at' => now()]);
+            }
         }
 
         $r = ResumenDeudaCredito::de($credit->fresh(), $client);
         $this->assertSame(['1 cuota', 333.33, 666.66, 416.66], [$r['retraso_texto'], $r['monto_retraso'], $r['total'], $r['capital_pendiente']]);
         // Mora semanal: la cuota 3 (333.33) venció el 13/10 → 10 días × (333.33 × 5 % ÷ 7 = 2.38) = 23.80.
-        $this->assertSame([10, 2.38, 23.8, 690.46], [$r['mora_dias'], $r['mora_por_dia'], $r['mora'], $r['total_con_mora']]);
-        $this->assertStringContainsString("Retraso 1 cuota\n\nMonto Retraso S/ 333.33\n\nMora 10 días (S/ 2.38 x día) S/ 23.80\n\nTotal de deuda sin mora\nS/ 666.66\n\nTotal de deuda con mora\nS/ 690.46", $r['texto'], 'por cuotas no hay desglose de meses y días');
+        $this->assertSame([10, 23.8, 690.46], [$r['mora_dias'], $r['mora'], $r['total_con_mora']]);
+        // Acumulada: la cuota 2 se pagó 3 días tarde → 3 × 2.38 = 7.14; informativa, no entra en los totales.
+        $this->assertSame(['dias' => 3, 'monto' => 7.14], $r['mora_acumulada']);
+        $this->assertStringContainsString(implode("\n", [
+            'Retraso: 1 cuota · S/ 333.33',
+            'Mora cuota 3: 10 días (S/ 2.38 x día) · S/ 23.80',
+            'Mora acumulada (cuotas ya pagadas): 3 días · S/ 7.14',
+            'Total de deuda sin mora: S/ 666.66',
+            'Total de deuda con mora: S/ 690.46',
+        ]), $r['texto'], 'por cuotas no hay desglose de meses y días');
 
         $credit->update(['situacion' => 'Cancelado', 'estado' => 0, 'fecha_cancelacion' => '2026-10-20']);
         $c = ResumenDeudaCredito::de($credit->fresh(), $client);
         $this->assertSame([0.0, 0.0, 0.0, 0.0, '20/10/2026'], [$c['monto_retraso'], $c['mora'], $c['total'], $c['total_con_mora'], $c['cancelado']]);
-        $this->assertStringEndsWith("Mora S/ 0.00\n\nTotal de deuda sin mora\nS/ 0.00\n\nTotal de deuda con mora\nS/ 0.00\n\nCrédito cancelado el 20/10/2026", $c['texto']);
+        $this->assertStringEndsWith("Mora: S/ 0.00\nTotal de deuda sin mora: S/ 0.00\nTotal de deuda con mora: S/ 0.00\nCrédito cancelado el 20/10/2026", $c['texto']);
+    }
+
+    /** 23/10 (Antony, cliente 1406): la mora va por cada cuota vencida y al final la suma. */
+    public function test_con_varias_cuotas_vencidas_la_mora_va_por_cuota_y_se_suma(): void
+    {
+        $client = $this->cliente('Jose Miguel', 'Liza', 'Jaramillo');
+        $credit = $this->credito($client, ['fecha_prestamo' => '2026-08-18', 'importe' => 1000, 'cuotas' => 4, 'tipo_planilla' => 1, 'interes' => 30, 'interes_total' => 300]);
+        foreach (['2026-09-29', '2026-10-06', '2026-10-13', '2026-10-27'] as $i => $venc) {
+            $this->cuota($credit, $i + 1, $venc, 250, 75, intAplicado: $i === 0 ? 10 : 0);
+        }
+
+        $r = ResumenDeudaCredito::de($credit->fresh(), $client);
+
+        // 325 × 5 % ÷ 7 = 2.32 por día; la 1 vence el 29/09 (24 días, aunque tenga un abono), la 2 el 06/10 (17), la 3 el 13/10 (10).
+        $this->assertSame([[1, 24, 55.68], [2, 17, 39.44], [3, 10, 23.2]], array_map(fn ($m) => [$m['cuota'], $m['dias'], $m['monto']], $r['mora_cuotas']));
+        $this->assertSame([51, 118.32], [$r['mora_dias'], $r['mora']]);
+        $this->assertStringContainsString(implode("\n", [
+            'Mora por cuota (S/ 2.32 x día):',
+            'Cuota 1: 24 días · S/ 55.68',
+            'Cuota 2: 17 días · S/ 39.44',
+            'Cuota 3: 10 días · S/ 23.20',
+            'Mora total: 51 días · S/ 118.32',
+        ]), $r['texto']);
+        $this->assertSame(round($r['total'] + 118.32, 2), $r['total_con_mora'], 'el total con mora suma la mora de todas las cuotas vencidas');
     }
 
     public function test_el_codigo_de_la_ficha_abre_el_resumen_solo_de_los_creditos_de_ese_cliente(): void
@@ -164,11 +212,10 @@ class ResumenDeudaCreditoTest extends TestCase
             ->assertSeeHtml('wire:click.prevent="verResumen('.$credit->id.')"')
             ->call('verResumen', $credit->id)
             ->assertDispatched('resumen-credito-listo')
-            ->assertSee('Retraso 8 meses y 25 días')
-            ->assertSee('Total de deuda sin mora')
-            ->assertSee('S/ 24,220.00')
-            ->assertSee('S/ 31,187.80')
-            ->assertSeeHtml("data-copia=\"DATOS DEL CRÉDITO #{$credit->id}\nJanampa Cahuana Mauro\nFecha del crédito 28/01/2026\nFecha de corte 23/10/2026\n")
+            ->assertSee('Retraso: 8 meses y 25 días')
+            ->assertSee('Total de deuda sin mora: S/ 24,220.00')
+            ->assertSee('Total de deuda con mora: S/ 31,187.80')
+            ->assertSeeHtml("data-copia=\"DATOS DEL CRÉDITO #{$credit->id}\nJanampa Cahuana Mauro\nFecha del crédito: 28/01/2026\nFecha de corte: 23/10/2026\n")
             ->assertSeeHtml("x-data=\"Object.assign(modalFlotante('resumen'), resumenCredito())\""); // ventana movible (23/10)
         $this->assertSame($credit->id, $ficha->get('resumen')['codigo']);
 

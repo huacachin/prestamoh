@@ -21,13 +21,14 @@ use Carbon\Carbon;
  *   - Total sin mora = capital pendiente + monto retraso.
  * Crédito SEMANAL o DIARIO: se cuenta por cuotas del cronograma (cuotas
  * vencidas sin pagar, su saldo y el saldo total).
- * Mora (todos los tipos): la de la pantalla de cobro, días de atraso de la
- * cuota impaga más antigua × mora diaria; Total con mora = total sin mora + mora.
+ * Mora (todos los tipos, 23/10): la de CADA cuota vencida, como el modal
+ * "elegir cuotas" del cobro, y su suma; Total con mora = total sin mora + esa
+ * suma. La mora acumulada de cuotas ya pagadas se muestra aparte (informativa).
  */
 final class ResumenDeudaCredito
 {
     /**
-     * @return array{codigo: int, nombre: string, fecha: string, fecha_corte: string, mensual: bool, capital: float, capital_pendiente: float, capital_amortizado: float, interes_pct: string, interes: float, interes_diario: float, retraso_meses: int, retraso_dias: int, retraso_texto: string, monto_retraso: float, monto_meses: float, monto_dias: float, mora_dias: int, mora_por_dia: float, mora: float, total: float, total_con_mora: float, cancelado: ?string, texto: string, texto_copia: string}
+     * @return array{codigo: int, nombre: string, fecha: string, fecha_corte: string, mensual: bool, capital: float, capital_pendiente: float, capital_amortizado: float, interes_pct: string, interes: float, interes_diario: float, retraso_meses: int, retraso_dias: int, retraso_texto: string, monto_retraso: float, monto_meses: float, monto_dias: float, mora_cuotas: list<array{cuota: int, dias: int, por_dia: float, monto: float}>, mora_dias: int, mora: float, mora_acumulada: array{dias: int, monto: float}, total: float, total_con_mora: float, cancelado: ?string, texto: string, texto_copia: string}
      */
     public static function de(Credit $credit, Client $client, ?Carbon $hoy = null): array
     {
@@ -70,18 +71,33 @@ final class ResumenDeudaCredito
             $total = $cancelado ? 0.0 : round(max(0, (float) $cuotas->sum($saldoDe)), 2);
         }
 
-        // Mora como la calcula la pantalla de cobro (Payments\Create::moraCalcAt): días de atraso de la
-        // cuota impaga más antigua × mora diaria (5 % de la cuota al mes, prorrateado; diario: mora1).
-        $moraDias = 0;
-        $moraPorDia = 0.0;
+        // Mora POR CUOTA (23/10, Antony: "son 24 días de mora pero de la primera cuota vencida; debería ver el
+        // detalle de la siguiente y al final sumarlos"): la del modal "elegir cuotas" del cobro
+        // (Payments\Create::abrirMoraCuotas): por cada cuota impaga ya vencida, días desde SU vencimiento ×
+        // su mora diaria (5 % de la cuota al mes prorrateado; diario: mora1). La mora es la suma.
+        $moraCuotas = [];
         if (! $cancelado) {
-            $primeraImpaga = $cuotas->filter(fn (CreditInstallment $c) => ! $c->pagado && (float) $c->importe_cuota > 0)->sortBy('fecha_vencimiento')->first();
-            if ($primeraImpaga !== null && $primeraImpaga->fecha_vencimiento !== null) {
-                $moraDias = max(0, (int) floor($primeraImpaga->fecha_vencimiento->copy()->startOfDay()->diffInDays($hasta, false)));
-                $moraPorDia = $credit->moraDiaria((float) $primeraImpaga->importe_cuota + (float) $primeraImpaga->importe_interes + (float) $primeraImpaga->importe_excedente);
+            $impagas = $cuotas->filter(fn (CreditInstallment $c) => ! $c->pagado && (float) $c->importe_cuota > 0 && $c->fecha_vencimiento !== null)
+                ->sortBy('fecha_vencimiento');
+            foreach ($impagas as $c) {
+                $diasCuota = max(0, (int) floor($c->fecha_vencimiento->copy()->startOfDay()->diffInDays($hasta, false)));
+                if ($diasCuota === 0) {
+                    continue;
+                }
+                $porDia = $credit->moraDiaria((float) $c->importe_cuota + (float) $c->importe_interes + (float) $c->importe_excedente);
+                $moraCuotas[] = ['cuota' => (int) $c->num_cuota, 'dias' => $diasCuota, 'por_dia' => $porDia, 'monto' => round($diasCuota * $porDia, 2)];
             }
         }
-        $mora = round($moraDias * $moraPorDia, 2);
+        $mora = round(array_sum(array_column($moraCuotas, 'monto')), 2);
+        $moraDias = (int) array_sum(array_column($moraCuotas, 'dias'));
+
+        // Mora acumulada (23/10): la de las cuotas que ya se pagaron con atraso, la misma de las tarjetas
+        // "Días / Total Mora Acumulada" del cobro (MoraExonerada). Es informativa: no entra en los totales.
+        $acumulada = ['dias' => 0, 'monto' => 0.0];
+        if (! $cancelado) {
+            $exonerada = collect(MoraExonerada::porCuota($credit, MoraPagada::mostradaPorCuota($credit)));
+            $acumulada = ['dias' => (int) $exonerada->sum('dias'), 'monto' => round((float) $exonerada->sum('monto'), 2)];
+        }
 
         $datos = [
             'codigo' => (int) $credit->id,
@@ -102,66 +118,78 @@ final class ResumenDeudaCredito
             'monto_retraso' => $montoRetraso,
             'monto_meses' => $montoMeses,
             'monto_dias' => $montoDias,
+            'mora_cuotas' => $moraCuotas,
             'mora_dias' => $moraDias,
-            'mora_por_dia' => $moraPorDia,
             'mora' => $mora,
+            'mora_acumulada' => $acumulada,
             'total' => $total,
             'total_con_mora' => $cancelado ? 0.0 : round($total + $mora, 2),
             'cancelado' => $cancelado ? ($credit->fecha_cancelacion ? Carbon::parse($credit->fecha_cancelacion)->format('d/m/Y') : 'sí') : null,
         ];
         $datos['texto'] = self::texto($datos);
-        // Lo que va al portapapeles (Antony, 23/10): las mismas líneas sin las vacías.
-        $datos['texto_copia'] = implode("\n", array_values(array_filter(explode("\n", $datos['texto']), fn ($l) => trim($l) !== '')));
+        // Lo que va al portapapeles: desde el 23/10 el texto ya va compacto (sin líneas en blanco), es el mismo.
+        $datos['texto_copia'] = $datos['texto'];
 
         return $datos;
     }
 
-    /** El texto tal cual se copia, con la estructura que pidió Antony. */
+    /**
+     * El texto que se ve y se copia. Compacto (23/10, Antony: "tratar de comprimir todo porque ya se hace
+     * muy largo"): una línea por dato con "Etiqueta: valor" y sin líneas en blanco.
+     */
     public static function texto(array $d): string
     {
         $s = fn (float $n) => 'S/ '.number_format($n, 2);
+        $enDias = fn (int $n) => $n.' '.($n === 1 ? 'día' : 'días');
         $lineas = [
             'DATOS DEL CRÉDITO #'.$d['codigo'],
-            '',
             $d['nombre'],
-            '',
-            'Fecha del crédito '.$d['fecha'],
-            'Fecha de corte '.$d['fecha_corte'],
-            '',
-            'Capital prestado',
-            $s($d['capital']),
+            'Fecha del crédito: '.$d['fecha'],
+            'Fecha de corte: '.$d['fecha_corte'],
+            'Capital prestado: '.$s($d['capital']),
         ];
         if ($d['cancelado'] === null && $d['capital_pendiente'] < $d['capital']) {
-            array_push($lineas, '', 'Capital amortizado', $s($d['capital_amortizado']), '', 'Capital pendiente', $s($d['capital_pendiente']));
+            $lineas[] = 'Capital amortizado: '.$s($d['capital_amortizado']);
+            $lineas[] = 'Capital pendiente: '.$s($d['capital_pendiente']);
         }
-        array_push($lineas,
-            '',
-            'Interés del '.$d['interes_pct'].'% '.$s($d['interes']),
-            '',
-            'Retraso '.$d['retraso_texto'],
-            '',
-            'Monto Retraso '.$s($d['monto_retraso']),
-        );
-        // Desglose del retraso mensual (Antony, 23/10): lo que corresponde a los meses y lo prorrateado por días.
-        if ($d['mensual'] && $d['retraso_meses'] > 0) {
-            $lineas[] = 'Por '.$d['retraso_meses'].' '.($d['retraso_meses'] === 1 ? 'mes' : 'meses').' '.$s($d['monto_meses']);
+        $lineas[] = 'Interés del '.$d['interes_pct'].'%: '.$s($d['interes']);
+        $lineas[] = 'Retraso: '.$d['retraso_texto'].' · '.$s($d['monto_retraso']);
+        // Desglose del retraso mensual en una línea: lo que corresponde a los meses y lo prorrateado por días.
+        if ($d['mensual'] && ($d['retraso_meses'] > 0 || $d['retraso_dias'] > 0)) {
+            $partes = [];
+            if ($d['retraso_meses'] > 0) {
+                $partes[] = 'Por '.$d['retraso_meses'].' '.($d['retraso_meses'] === 1 ? 'mes' : 'meses').': '.$s($d['monto_meses']);
+            }
+            if ($d['retraso_dias'] > 0) {
+                $partes[] = 'Por '.$enDias($d['retraso_dias']).' ('.$s($d['interes_diario']).' x día): '.$s($d['monto_dias']);
+            }
+            $lineas[] = implode(' · ', $partes);
         }
-        if ($d['mensual'] && $d['retraso_dias'] > 0) {
-            $lineas[] = 'Por '.$d['retraso_dias'].' '.($d['retraso_dias'] === 1 ? 'día' : 'días').' ('.$s($d['interes_diario']).' x día) '.$s($d['monto_dias']);
+
+        // Mora por cuota vencida y su suma; la tasa diaria va una sola vez si es la misma en todas.
+        $moraCuotas = $d['mora_cuotas'];
+        if ($moraCuotas === []) {
+            $lineas[] = 'Mora: '.$s(0);
+        } elseif (count($moraCuotas) === 1) {
+            $m = $moraCuotas[0];
+            $lineas[] = 'Mora cuota '.$m['cuota'].': '.$enDias($m['dias']).' ('.$s($m['por_dia']).' x día) · '.$s($m['monto']);
+        } else {
+            $tasas = array_unique(array_map(fn ($m) => number_format($m['por_dia'], 2), $moraCuotas));
+            $mismaTasa = count($tasas) === 1;
+            $lineas[] = 'Mora por cuota'.($mismaTasa ? ' ('.$s($moraCuotas[0]['por_dia']).' x día)' : '').':';
+            foreach ($moraCuotas as $m) {
+                $lineas[] = 'Cuota '.$m['cuota'].': '.$enDias($m['dias']).($mismaTasa ? '' : ' ('.$s($m['por_dia']).' x día)').' · '.$s($m['monto']);
+            }
+            $lineas[] = 'Mora total: '.$enDias($d['mora_dias']).' · '.$s($d['mora']);
         }
-        $detalleMora = $d['mora_dias'] > 0 ? $d['mora_dias'].' '.($d['mora_dias'] === 1 ? 'día' : 'días').' ('.$s($d['mora_por_dia']).' x día) ' : '';
-        array_push($lineas,
-            '',
-            'Mora '.$detalleMora.$s($d['mora']),
-            '',
-            'Total de deuda sin mora',
-            $s($d['total']),
-            '',
-            'Total de deuda con mora',
-            $s($d['total_con_mora']),
-        );
+        if ($d['mora_acumulada']['dias'] > 0 || $d['mora_acumulada']['monto'] > 0) {
+            $lineas[] = 'Mora acumulada (cuotas ya pagadas): '.$enDias($d['mora_acumulada']['dias']).' · '.$s($d['mora_acumulada']['monto']);
+        }
+
+        $lineas[] = 'Total de deuda sin mora: '.$s($d['total']);
+        $lineas[] = 'Total de deuda con mora: '.$s($d['total_con_mora']);
         if ($d['cancelado'] !== null) {
-            array_push($lineas, '', 'Crédito cancelado'.($d['cancelado'] !== 'sí' ? ' el '.$d['cancelado'] : ''));
+            $lineas[] = 'Crédito cancelado'.($d['cancelado'] !== 'sí' ? ' el '.$d['cancelado'] : '');
         }
 
         return implode("\n", $lineas);
