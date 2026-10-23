@@ -135,9 +135,11 @@ class ReportePagosDireccionesVoucherTest extends TestCase
         $this->assertSame("/storage/expenses/{$egreso}/thumbs/voucher.jpg", $rows[0]['vouchers'][0]['thumb']);
         $this->assertSame('Voucher 22/10/2026 08:55 · WhatsApp Image.jpeg', $rows[0]['vouchers'][0]['name']);
 
-        // La pantalla: miniatura del voucher, pin verde con las 2 ubicaciones, la ventana y el visor.
-        $c->assertSeeHtml("/storage/expenses/{$egreso}/thumbs/voucher.jpg")
-            ->assertSee('Ver voucher')
+        // La pantalla: la cámara de caja (ícono + contador, sin miniatura) con las fotos inline,
+        // pin verde con las 2 ubicaciones, la ventana y el visor.
+        $c->assertSeeHtml('ti-camera f-s-16 text-info')
+            ->assertSee('Ver voucher (1)')
+            ->assertDontSeeHtml('<img src="/storage/expenses/')
             ->assertSee('Ver direcciones (2 con GPS)')
             ->assertSeeHtml('ti-map-pin f-s-16')
             ->assertSeeHtml('id="direccionesModal"')
@@ -156,6 +158,7 @@ class ReportePagosDireccionesVoucherTest extends TestCase
         $this->assertSame([], $rows[0]['direcciones']['ubicaciones']);
         $this->assertSame('Av. Sin GPS 9', $rows[0]['direcciones']['direccion'], 'la dirección escrita sí se muestra');
         $c->assertDontSee('Ver voucher')
+            ->assertSeeHtml('ti-camera f-s-16 text-muted')
             ->assertSee('Ver direcciones (sin GPS)')
             ->assertSeeHtml('ti-map-pin-off f-s-16');
     }
@@ -184,7 +187,7 @@ class ReportePagosDireccionesVoucherTest extends TestCase
 
         $this->assertSame(["/storage/expenses/{$e1}/a.jpg", "/storage/expenses/{$e2}/b.jpg"], array_column($v, 'url'));
         $this->assertSame("/storage/expenses/{$e2}/b.jpg", $v[1]['thumb'], 'sin miniatura se usa la foto');
-        $c->assertSee('Ver voucher (2 fotos)');
+        $c->assertSee('Ver voucher (2)');
     }
 
     /** El voucher de OTRO día del mismo crédito no se cuelga de este cobro. */

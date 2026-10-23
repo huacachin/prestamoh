@@ -1,16 +1,27 @@
 {{-- 22/10 (Antony): la raíz lleva el visor flotante de vouchers (partial _lightbox, contrato
-     open / idx / items / close / next / prev) y el estado de la ventana "Direcciones" (dir),
+     open / idx / items / close / next / prev, la misma cámara de ingresos/egresos con la fila
+     'congelada' mientras se miran las fotos) y el estado de la ventana "Direcciones" (dir),
      que cada fila llena con verDirecciones() y muestra el modal flotante del final. --}}
 <div class="container-fluid"
      x-data="{
-        open: false, idx: 0, items: [],
-        verVouchers(items) { this.items = items; this.idx = 0; this.open = true; },
+        open: false, idx: 0, items: [], selectedId: null,
+        verVouchers(items, rowId = null) {
+            if (! items || ! items.length) return;
+            this.items = items; this.idx = 0; this.open = true;
+            if (rowId !== null) this.selectedId = rowId;
+        },
+        deselect(e) {
+            if (this.selectedId === null) return;
+            if (e.target.closest('.huac-lb') || e.target.closest('[data-foto-fila]')) return;
+            this.selectedId = null;
+        },
         close() { this.open = false; },
         next() { this.idx = (this.idx + 1) % this.items.length; },
         prev() { this.idx = (this.idx - 1 + this.items.length) % this.items.length; },
         dir: null,
         verDirecciones(d) { this.dir = d; this.$dispatch('direcciones-open'); },
-     }">
+     }"
+     @click.window="deselect($event)">
     <div class="row">
         <div class="col-sm-6">
             <h4 class="main-title title-modules" style="color:red;">REPORTE DE PAGO</h4>
@@ -119,6 +130,10 @@
                     </div>
 
                     {{-- Tabla --}}
+                    <style>
+                        /* Fila con las fotos abiertas (mismo verde que ingresos/egresos). */
+                        #tabla-pagos-rep tbody tr.fila-sel > td { background-color: #CCFF66 !important; }
+                    </style>
                     <div id="tabla-pagos-rep" class="table-responsive" style="max-height: 650px; overflow:auto;">
                         <table class="table table-bordered table-striped table-hover table-autofit">
                             <thead class="bg-primary" style="position: sticky; top: 0; z-index: 2;">
@@ -131,8 +146,9 @@
                                     <th>A</th>
                                     <th style="background:#949696;">Motivo</th>
                                     <th class="text-center">S/.</th>
-                                    {{-- 22/10 (Antony): foto del voucher del cobro (se abre en la ventana movible). --}}
-                                    <th class="text-center" style="background:#949696;">Voucher</th>
+                                    {{-- 22/10 (Antony): voucher del cobro, con la cámara de ingresos/egresos
+                                         (ícono + contador, sin miniatura); se abre en la ventana movible. --}}
+                                    <th class="text-center" style="background:#949696;" title="Voucher"><i class="ti ti-camera"></i></th>
                                     @if($isAdmin)
                                         {{-- Como en el legacy, solo para los niveles altos; ahora abre las
                                              direcciones del cliente (los cobros nuevos no traen coordenadas). --}}
@@ -142,7 +158,7 @@
                             </thead>
                             <tbody>
                                 @forelse($rows as $row)
-                                    <tr>
+                                    <tr :class="{ 'fila-sel': selectedId === {{ $row['n'] }} }">
                                         <td class="text-center">{{ $row['n'] }}</td>
                                         <td>{{ $row['fecha'] }}</td>
                                         <td>{{ $row['hora'] }}</td>
@@ -153,16 +169,16 @@
                                         <td class="text-end">{{ number_format($row['monto'], 2) }}</td>
                                         <td class="text-center" style="white-space:nowrap;">
                                             @if($row['vouchers'])
-                                                @php $nV = count($row['vouchers']); @endphp
-                                                <button type="button" class="btn btn-link p-0 align-middle"
-                                                        title="Ver voucher{{ $nV > 1 ? ' ('.$nV.' fotos)' : '' }}"
-                                                        x-on:click="verVouchers(@js($row['vouchers']))">
-                                                    <img src="{{ $row['vouchers'][0]['thumb'] }}" alt="Voucher" loading="lazy"
-                                                         style="height:28px; width:auto; max-width:60px; border-radius:3px; border:1px solid #dee2e6; object-fit:cover;">
-                                                    @if($nV > 1)
-                                                        <span class="badge bg-secondary ms-1 align-middle">{{ $nV }}</span>
-                                                    @endif
-                                                </button>
+                                                {{-- Misma cámara que caja: los items van inline para que Livewire
+                                                     los regenere en cada filtro; la fila queda 'congelada'. --}}
+                                                <a href="#" data-foto-fila style="cursor: zoom-in;"
+                                                   title="Ver voucher ({{ count($row['vouchers']) }})"
+                                                   x-on:click.prevent="verVouchers(@js($row['vouchers']), {{ $row['n'] }})">
+                                                    <i class="ti ti-camera f-s-16 text-info"></i>
+                                                    <span class="badge bg-info" style="font-size:9px; padding:1px 4px;">{{ count($row['vouchers']) }}</span>
+                                                </a>
+                                            @else
+                                                <i class="ti ti-camera f-s-16 text-muted" title="Sin voucher"></i>
                                             @endif
                                         </td>
                                         @if($isAdmin)
