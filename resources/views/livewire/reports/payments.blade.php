@@ -181,9 +181,9 @@
                                     <th>A</th>
                                     <th style="background:#949696;">Motivo</th>
                                     <th class="text-center">S/.</th>
-                                    {{-- 22/10 (Antony): "Voucher" = el recibo que genera el sistema por cada
-                                         cobro (uno por lote), en la ventana flotante del recibo con "Copiar imagen". --}}
-                                    <th class="text-center" style="background:#949696;">Voucher</th>
+                                    {{-- 22/10 (Antony): el recibo que genera el sistema por cada cobro (uno por lote), en la
+                                         ventana flotante del recibo con "Copiar imagen". 23/10: la columna se llama "Recibo". --}}
+                                    <th class="text-center" style="background:#949696;">Recibo</th>
                                     @if($isAdmin)
                                         {{-- Como en el legacy, solo para los niveles altos: el lugar desde donde
                                              se registró el pago (22/10: ubicación obligatoria al cobrar). --}}
