@@ -13,6 +13,7 @@ use App\Services\Printing\TicketPrinter;
 use App\Support\AbonosPorCuota;
 use App\Support\Audit;
 use App\Support\Auditoria\ConCapturaDeAuditoria;
+use App\Support\CancelacionHastaCuota;
 use App\Support\ConSubidaDeArchivos;
 use App\Support\MoraExonerada;
 use App\Support\MoraPagada;
@@ -20,6 +21,8 @@ use App\Support\RecibosCuota;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\Locked;
+use Livewire\Attributes\Renderless;
 use Livewire\Component;
 
 class Create extends Component
@@ -93,6 +96,20 @@ class Create extends Component
     public string $condonarMotivo = 'Mora exonerada'; // pre-escrito, editable
 
     public bool $cancelUltimaCuota = false; // interés de todo el cronograma, no solo a la fecha
+
+    /**
+     * "Calcular cancelación" (23/10, Antony): hasta qué cuota se cobra el interés
+     * al cancelar (App\Support\CancelacionHastaCuota). Null = cancelación normal.
+     * Solo la fija aplicarCancelacion(); el navegador no puede cambiarla. Vale
+     * mientras el Monto a Pagar sea el de la fórmula (teclear otro, "elegir
+     * cuotas" o Interés completo la borran); con Cancelado apagado o "No,
+     * dejarlo vigente" el monto se cobra como pago normal y nada se exonera.
+     */
+    #[Locked]
+    public ?int $cancelHasta = null;
+
+    /** @var array<string, mixed>|false|null  false = aún sin calcular en esta petición */
+    private array|false|null $planCancelacionCache = false;
 
     // Vista previa del recibo que se muestra en el modal de confirmación
     // ANTES de registrar el cobro. Vacío = no hay nada que confirmar.
@@ -398,6 +415,7 @@ class Create extends Component
      */
     public function aplicarCuotas(): void
     {
+        $this->salirDeCancelacionHasta();
         $monto = 0.0;
         $mora = 0.0;
         $haySeleccion = false;
@@ -425,6 +443,131 @@ class Create extends Component
         }
         $this->refrescarPreview();
         $this->dispatch('mora-cuotas-close');
+    }
+
+    /**
+     * Abre "Calcular cancelación": entrega al modal (Alpine) los datos de la
+     * fórmula, así el total se recalcula en el navegador mientras el cajero
+     * elige la cuota, sin ir al servidor en cada cambio.
+     *
+     * @return array<string, mixed>|null
+     */
+    #[Renderless]
+    public function abrirCancelacion(): ?array
+    {
+        if (! $this->credit || $this->credit->situacion !== 'Activo') {
+            return null;
+        }
+
+        $plan = $this->planCancelacion();
+        if ($plan === null) {
+            $this->dispatch('errorAlert', ['message' => $this->motivoSinCalculoDeCancelacion()]);
+
+            return null;
+        }
+
+        $sugerida = $this->cancelHasta ?? $plan['vencidas'];
+
+        return $plan + [
+            'credito' => (int) $this->credit->id,
+            'sugerida' => max($plan['minimo'], min($plan['maximo'], $sugerida)),
+        ];
+    }
+
+    /**
+     * Lleva el total de "Calcular cancelación" al Monto a Pagar y enciende
+     * Cancelado: el resto es el cobro de siempre. El monto lo calcula el
+     * servidor; del navegador solo llega la cuota elegida.
+     */
+    public function aplicarCancelacion(int $hasta): bool
+    {
+        if (! $this->credit || $this->credit->situacion !== 'Activo') {
+            return false;
+        }
+
+        $plan = $this->planCancelacion();
+        if ($plan === null) {
+            $this->dispatch('errorAlert', ['message' => $this->motivoSinCalculoDeCancelacion()]);
+
+            return false;
+        }
+
+        if ($hasta < $plan['minimo'] || $hasta > $plan['maximo']) {
+            $this->dispatch('errorAlert', ['message' => "Elige una cuota entre la {$plan['minimo']} y la {$plan['maximo']}."]);
+
+            return false;
+        }
+
+        $this->monto = number_format(CancelacionHastaCuota::monto($plan, $hasta), 2, '.', '');
+        $this->updatedMonto();      // lo mismo que al teclear un monto (también sale de un cálculo anterior)
+        $this->cancelHasta = $hasta;
+        $this->cancelUltimaCuota = false;
+        $this->cancel = true;
+        $this->dispatch('monto-usado');
+
+        return true;
+    }
+
+    /**
+     * La cuenta de "Calcular cancelación" para el aviso del recibo, o null sin cálculo.
+     *
+     * @return array{cuota: int, interes_cuota: float, interes: float, capital: float, pagado: float, total: float, ultima: int, exonerado: float}|null
+     */
+    private function cuentaCancelacionHasta(): ?array
+    {
+        $plan = $this->cancelHasta !== null ? $this->planCancelacion() : null;
+        if ($plan === null) {
+            return null;
+        }
+
+        $cuota = max($plan['minimo'], min($plan['maximo'], $this->cancelHasta));
+        $total = CancelacionHastaCuota::monto($plan, $cuota);
+
+        return [
+            'cuota' => $cuota,
+            'interes_cuota' => $plan['interes_cuota'],
+            'interes' => round($plan['interes_cuota'] * $cuota, 2),
+            'capital' => $plan['capital'],
+            'pagado' => $plan['pagado'],
+            'total' => $total,
+            'ultima' => $plan['ultima_cuota'],
+            // Lo que condonarInteresFuturo() le quitará al interés de las cuotas siguientes.
+            'exonerado' => round(max(0.0, $plan['saldo_al_cancelar'] - $total), 2),
+        ];
+    }
+
+    private function motivoSinCalculoDeCancelacion(): string
+    {
+        return CancelacionHastaCuota::aplica($this->credit)
+            ? 'Este crédito no tiene interés por cuota pendiente para calcular la cancelación.'
+            : 'En los créditos mensuales de una cuota el interés corre por mes: usa el switch Cancelado.';
+    }
+
+    /** Plan de "Calcular cancelación" del crédito, una vez por petición. */
+    private function planCancelacion(): ?array
+    {
+        if ($this->planCancelacionCache === false) {
+            $this->planCancelacionCache = $this->credit
+                ? CancelacionHastaCuota::plan($this->credit, Carbon::parse($this->fecpag))
+                : null;
+        }
+
+        return $this->planCancelacionCache;
+    }
+
+    /**
+     * Otro monto (tecleado o de "elegir cuotas") deja sin efecto la
+     * cancelación calculada, y apaga Cancelado porque la encendió ella.
+     */
+    private function salirDeCancelacionHasta(): void
+    {
+        if ($this->cancelHasta === null) {
+            return;
+        }
+
+        $this->cancelHasta = null;
+        $this->cancel = false;
+        $this->decisionTotal = '';
     }
 
     /**
@@ -489,6 +632,7 @@ class Create extends Component
     {
         // El cajero volvió a teclear: lo guardado para el modo estricto caduca,
         // y el Total Mora deja de corresponder a las cuotas elegidas.
+        $this->salirDeCancelacionHasta();
         $this->montoTecleado = null;
         $this->moraCuotasAplicadas = [];
 
@@ -691,8 +835,9 @@ class Create extends Component
         }
 
         // Mapa 21/08: los cobros se registran SOLO con fecha del día (todos los roles).
+        // 23/10: ya no hay cuadro de fecha; si la pantalla quedó abierta desde otro día, se recarga.
         if (Carbon::parse($this->fecpag)->format('Y-m-d') !== now()->format('Y-m-d')) {
-            return 'Los cobros se registran solo con fecha del día.';
+            return 'Esta pantalla se abrió otro día: recárgala para cobrar con la fecha de hoy.';
         }
 
         if ($this->monto > $this->buildCalcs()['saldo_pendiente'] + 0.01) {
@@ -706,6 +851,10 @@ class Create extends Component
         if ($this->cancel) {
             $necesario = $this->necesarioParaCancelar();
             if ($necesario - (float) $this->monto > 0.01) {
+                if ($this->cancelHasta !== null) {
+                    return 'Para cancelar con interés hasta la cuota '.$this->cancelHasta.' debes cubrir '.number_format($necesario, 2).'.';
+                }
+
                 return $this->cancelUltimaCuota
                     ? 'Con interés completo debes cubrir capital pendiente + interés de todo el cronograma ('.number_format($necesario, 2).').'
                     : 'Para cancelar debes cubrir capital pendiente + interés a la fecha ('.number_format($necesario, 2).').';
@@ -778,7 +927,9 @@ class Create extends Component
             return false;
         }
 
-        $cancelarHoy = $this->deudaCalcs()['cancelar_cap_int'];
+        $cancelarHoy = $this->cancelHasta !== null
+            ? $this->necesarioParaCancelar()
+            : $this->deudaCalcs()['cancelar_cap_int'];
 
         return $cancelarHoy > 0.01 && ((float) $this->monto) - $cancelarHoy >= -0.01;
     }
@@ -791,6 +942,8 @@ class Create extends Component
             $this->ajustarMontoAlCancelar();
             $this->subirMontoAInteresCompleto();
         } elseif ($this->decisionTotal === 'no') {
+            // El cálculo de "Calcular cancelación" se conserva: con "No" el monto se cobra como un
+            // pago normal (sin exonerar nada) y si vuelve a "Sí" sigue valiendo la fórmula.
             $this->cancel = false;
             $this->restaurarMontoTecleado();
         }
@@ -831,6 +984,11 @@ class Create extends Component
      */
     private function necesarioParaCancelar(): float
     {
+        // "Calcular cancelación" (23/10): interés hasta la cuota elegida + capital − lo pagado.
+        if ($this->cancelHasta !== null && ($plan = $this->planCancelacion()) !== null) {
+            return CancelacionHastaCuota::monto($plan, $this->cancelHasta);
+        }
+
         $d = $this->deudaCalcs();
         $int = $this->cancelUltimaCuota
             ? round((float) $d['saldo_credito'] - (float) $d['cap_pendiente_total'], 2)
@@ -869,6 +1027,11 @@ class Create extends Component
      */
     public function updatedCancelUltimaCuota(): void
     {
+        // Cobrar el cronograma entero reemplaza a "Calcular cancelación".
+        if ($this->cancelUltimaCuota) {
+            $this->cancelHasta = null;
+        }
+
         // Desde el modal, marcarlo antes de responder "¿Cancelar el crédito?"
         // vale como "Sí": cobrar el cronograma entero es cancelar.
         if ($this->cancelUltimaCuota && $this->preview && $this->decisionTotal === '' && $this->cubreTotalidad()) {
@@ -935,11 +1098,13 @@ class Create extends Component
         }
 
         $calcs = $this->buildCalcs();
+        // La fórmula de "Calcular cancelación" con los saldos de ANTES del cobro, para la bitácora.
+        $planCancelacion = $this->cancel && $this->cancelHasta !== null ? $this->planCancelacion() : null;
 
         $massHeaderId = null;
         $totalCobrado = 0.0;
 
-        DB::transaction(function () use ($calcs, &$massHeaderId, &$totalCobrado) {
+        DB::transaction(function () use ($calcs, $planCancelacion, &$massHeaderId, &$totalCobrado) {
             $tipoPlani = (int) $this->credit->tipo_planilla;
             $obstipo = match ($tipoPlani) {
                 1 => 'S.', 3 => 'M.', 4 => 'D.', default => ''
@@ -994,6 +1159,8 @@ class Create extends Component
                 'credit_id' => $this->credit->id, 'amount' => $totalGeneral, 'date' => $this->fecpag,
                 'time' => $hora, 'user' => $usuario, 'advisor' => $this->credit->client?->asesor?->name,
                 'performed_by' => $usuario, 'created_at' => now(), 'updated_at' => now(),
+                // "Calcular cancelación" (23/10): la cuota elegida; el recibo lista una por una solo hasta ella.
+                'hasta_cuota' => $this->cancelHasta,
             ]);
 
             $isMensualUnaCuota = ($tipoPlani === 3 && (int) $this->credit->cuotas === 1);
@@ -1008,7 +1175,13 @@ class Create extends Component
                 // al cancelar solo se cobra el de cuotas ya vencidas; el de
                 // cuotas futuras se condona ANTES de calcular el descuento.
                 $this->condonarExcedenteFuturo();
-                $this->condonarInteresFuturo();
+                if ($planCancelacion !== null) {
+                    $this->corregirCapitalDeMas($planCancelacion);
+                }
+                $exonerado = $this->condonarInteresFuturo();
+                if ($planCancelacion !== null) {
+                    DB::table('mass_deletions')->where('id', $massHeaderId)->update(['interes_exonerado' => $exonerado]);
+                }
             }
 
             // ─── 3) DISTRIBUCIÓN DEL MONTO ─────────────────────────────────
@@ -1351,12 +1524,19 @@ class Create extends Component
 
         Audit::log(
             "Registró pago de {$this->monto} en el crédito #{$this->credit->id}".($this->cancel ? ' (canceló el crédito)' : '')
+            .($planCancelacion !== null ? " con interés hasta la cuota {$this->cancelHasta}" : '')
             .($this->cancel && $this->montoTecleado !== null
                 ? " — ajustado desde {$this->montoTecleado}: ".($this->cancelUltimaCuota ? 'cronograma completo (interés completo)' : 'solo lo necesario para cancelar')
                 : '')
                 .($this->metodoPago === 'deposito' ? ' vía depósito ('.$this->depCanal.')' : ''),
             $this->credit,
             ['monto' => $this->monto, 'fecha' => $this->fecpag]
+            + ($planCancelacion !== null ? ['cancelacion' => [
+                'hasta_cuota' => $this->cancelHasta,
+                'interes_cuota' => $planCancelacion['interes_cuota'],
+                'capital' => $planCancelacion['capital'],
+                'pagado' => $planCancelacion['pagado'],
+            ]] : [])
         );
 
         // Se queda en la pantalla de pagos (cobranza en serie): cierra el
@@ -1371,12 +1551,13 @@ class Create extends Component
 
         $this->reset([
             'monto', 'obs', 'ckmora', 'cancel', 'impointe2', 'impomora',
-            'idpre', 'moraManual', 'moraMotivo', 'quitarMora', 'quitarMoraAcum', 'condonarMotivo', 'cancelUltimaCuota', 'decisionTotal', 'montoTecleado',
+            'idpre', 'moraManual', 'moraMotivo', 'quitarMora', 'quitarMoraAcum', 'condonarMotivo', 'cancelUltimaCuota', 'decisionTotal', 'montoTecleado', 'cancelHasta',
             'metodoPago', 'depBanco', 'depCuenta', 'depCuentaOtra', 'depCanal',
             'depFecha', 'voucherFoto', 'egresoCreadoId',
         ]);
         $this->preview = [];
         $this->resetValidation();
+        $this->planCancelacionCache = false;   // el cronograma cambió con este cobro
 
         $this->credit = Credit::with([
             'client.asesor:id,name',
@@ -1447,6 +1628,12 @@ class Create extends Component
                 && (float) $ins->importe_excedente > (float) $ins->excedente_aplicado) {
                 $ins->importe_excedente = (float) $ins->excedente_aplicado;
             }
+        }
+
+        // Espejo de corregirCapitalDeMas() ("Calcular cancelación")
+        if ($this->cancelHasta !== null && ($plan = $this->planCancelacion()) !== null && $plan['capital_de_mas'] > 0.001) {
+            $ultima = $all->sortByDesc('num_cuota')->first();
+            $ultima->importe_cuota = round((float) $ultima->importe_cuota - (float) $plan['capital_de_mas'], 2);
         }
 
         // Espejo de condonarInteresFuturo()
@@ -1565,6 +1752,11 @@ class Create extends Component
         $nombre = $client
             ? trim(($client->apellido_pat ?? '').' '.($client->apellido_mat ?? '').' '.($client->nombre ?? ''))
             : null;
+        $cuentaCancelacion = $this->cuentaCancelacionHasta();
+        // 23/10 (Antony): con "Calcular cancelación", cancele o quede vigente, el recibo lista solo hasta la cuota elegida.
+        $agrupado = $cuentaCancelacion !== null
+            ? CancelacionHastaCuota::agrupar($detalleCuotas, $cuentaCancelacion['cuota'], $this->cancel)
+            : null;
 
         return [
             'sede' => $this->credit->headquarter?->name,
@@ -1574,8 +1766,10 @@ class Create extends Component
                 : null,
             'credit_id' => (int) $this->credit->id,
             'fecha' => Carbon::parse($this->fecpag)->format('d/m/Y'),
-            'cuotas' => $dist['cuotas'],
-            'detalle_cuotas' => $detalleCuotas,
+            'cuotas' => $agrupado['cuotas'] ?? $dist['cuotas'],
+            'detalle_cuotas' => $agrupado['detalle'] ?? $detalleCuotas,
+            // Lo que va a las cuotas siguientes a la elegida en "Calcular cancelación", en una línea.
+            'resto_cuotas' => $agrupado['resto'] ?? null,
             'detalle_cuotas_visible' => count($detalleCuotas) > 1 || array_any($detalleCuotas, fn ($c) => $c['parcial']),
             'capital' => $dist['capital'],
             'interes' => $dist['interes'],
@@ -1593,6 +1787,13 @@ class Create extends Component
             'cancela' => $this->cancel,
             // Para la pregunta del modal cuando el cobro liquida el crédito.
             'cubre_total' => $this->cubreTotalidad(),
+            // "Calcular cancelación": la cuenta que eligió el cajero, para mostrarla en el aviso,
+            // y las líneas que llevará el recibo (cuota elegida e interés exonerado).
+            'cancelacion_hasta' => $cuentaCancelacion,
+            // Solo si este cobro cancela: con "No, dejarlo vigente" no se exonera nada.
+            'recibo_cancelacion' => $cuentaCancelacion !== null && $this->cancel
+                ? CancelacionHastaCuota::lineasRecibo($cuentaCancelacion['cuota'], $cuentaCancelacion['ultima'], $cuentaCancelacion['exonerado'])
+                : null,
             'cancelar_cap_int' => $dc['cancelar_cap_int'],
             'cap_pendiente_total' => round((float) $dc['cap_pendiente_total'], 2),
             'int_cancelar' => round((float) $dc['int_cancelar'], 2),
@@ -1665,6 +1866,33 @@ class Create extends Component
      * cuotas que aún no vencen a la fecha de pago. El de cuotas ya vencidas
      * se mantiene (se cobra como parte de la deuda al día).
      */
+    /**
+     * "Calcular cancelación": la fórmula usa el capital del préstamo. Si la última cuota
+     * lleva céntimos de capital de más (CancelacionHastaCuota::plan, `capital_de_mas`),
+     * se corrigen antes de condonar, así lo exonerado es justo el interés de las
+     * cuotas siguientes y el capital cobrado es el del préstamo.
+     *
+     * @param  array{capital_de_mas: float}  $plan
+     */
+    private function corregirCapitalDeMas(array $plan): void
+    {
+        $deMas = (float) $plan['capital_de_mas'];
+        if ($deMas <= 0.001) {
+            return;
+        }
+
+        $ultima = DB::table('credit_installments')->where('credit_id', $this->credit->id)
+            ->orderByDesc('num_cuota')->first(['id', 'num_cuota', 'importe_cuota']);
+        $nuevo = round((float) $ultima->importe_cuota - $deMas, 2);
+        DB::table('credit_installments')->where('id', $ultima->id)->update(['importe_cuota' => $nuevo]);
+
+        Audit::log(sprintf(
+            'Cancelación del crédito %d: la cuota %d tenía %s de capital de más que el préstamo (%s a %s)',
+            $this->credit->id, $ultima->num_cuota, number_format($deMas, 2),
+            number_format((float) $ultima->importe_cuota, 2), number_format($nuevo, 2)
+        ), $this->credit);
+    }
+
     private function condonarExcedenteFuturo(): void
     {
         DB::table('credit_installments')
@@ -1675,7 +1903,8 @@ class Create extends Component
             ->update(['importe_excedente' => DB::raw('excedente_aplicado')]);
     }
 
-    private function condonarInteresFuturo(): void
+    /** Condona el interés que el monto no cubre, desde la última cuota hacia atrás. Devuelve lo condonado. */
+    private function condonarInteresFuturo(): float
     {
         $saldoPend = (float) DB::table('credit_installments')
             ->where('credit_id', $this->credit->id)
@@ -1683,7 +1912,7 @@ class Create extends Component
             ->value('s');
         $descuento = round($saldoPend - (float) $this->monto, 2);
         if ($descuento <= 0.01) {
-            return; // el monto cubre el cronograma completo: nada que condonar
+            return 0.0; // el monto cubre el cronograma completo: nada que condonar
         }
 
         $porCondonar = $descuento;
@@ -1708,10 +1937,13 @@ class Create extends Component
         }
 
         Audit::log(sprintf(
-            'Cancelación anticipada del crédito %d: descuento de interés no devengado %s',
+            'Cancelación anticipada del crédito %d: descuento de interés no devengado %s%s',
             $this->credit->id,
-            number_format($descuento - max(0, $porCondonar), 2)
+            number_format($descuento - max(0, $porCondonar), 2),
+            $this->cancelHasta !== null ? " (interés hasta la cuota {$this->cancelHasta})" : ''
         ), $this->credit);
+
+        return round($descuento - max(0, $porCondonar), 2);
     }
 
     /**

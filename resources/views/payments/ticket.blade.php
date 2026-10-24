@@ -52,6 +52,8 @@
         .row > span:last-child { text-align: right; white-space: nowrap; }
         /* 09/10 (Antony): el nombre arranca junto al rótulo y, si no cabe, sigue debajo sin salirse. */
         .row-abajo > span:last-child { flex: 1 1 auto; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+        /* 23/10: textos sueltos (cancelación): se parten dentro del ancho del ticket. */
+        .nota { white-space: normal; overflow-wrap: anywhere; }
 
         .total { font-size: 15px; font-weight: bold; }
 
@@ -148,6 +150,18 @@
                 <div class="row"><span>&nbsp;Cuota {{ $dc['num'] }} (Saldo):</span><span>{{ number_format($dc['saldo'] ?? 0, 2) }}</span></div>
             @endif
         @endforeach
+        {{-- 23/10 (Antony): con "Calcular cancelación" solo van una por una las cuotas hasta la elegida. --}}
+        @if(! empty($t['resto_cuotas']))
+            <div class="row"><span>&nbsp;{{ $t['resto_cuotas']['rotulo'] }}</span><span>{{ number_format($t['resto_cuotas']['monto'], 2) }}</span></div>
+        @endif
+    @endif
+    {{-- 23/10 (Antony): cobro de "Calcular cancelación": hasta qué cuota se cobró el interés y lo exonerado. --}}
+    @if(! empty($t['cancelacion']))
+        <div class="nota">{{ $t['cancelacion']['titulo'] }}</div>
+        @if($t['cancelacion']['exonera'] !== null)
+            <div class="nota">{{ $t['cancelacion']['exonera'] }}</div>
+            <div class="row"><span>Interés exonerado:</span><span>{{ number_format($t['cancelacion']['exonerado'], 2) }}</span></div>
+        @endif
     @endif
     {{-- 16/10 (Antony): la línea "Excedente" ya no se imprime en ningún voucher; el redondeo de la cuota
          uniforme va dentro de cada cuota y del TOTAL. --}}

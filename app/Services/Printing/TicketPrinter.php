@@ -7,6 +7,7 @@ namespace App\Services\Printing;
 use App\Models\CreditInstallment;
 use App\Models\MassDeletion;
 use App\Support\AbonosPorCuota;
+use App\Support\CancelacionHastaCuota;
 use App\Support\RangoCuotas;
 use App\Support\Usernames;
 use Carbon\Carbon;
@@ -80,8 +81,9 @@ final class TicketPrinter
      * @return array{
      *   numero:string, fecha_hora:string, sede:?string, cliente:?string,
      *   documento:?string, credit_id:int, cobrador:?string, asesor:?string,
-     *   cuotas:array<int,int|string>, capital:float, interes:float,
-     *   excedente:float, mora:float, total:float, saldo:float, proxima:?string
+     *   cuotas:array<int,int|string>, resto_cuotas:?array{rotulo:string, monto:float}, capital:float, interes:float,
+     *   excedente:float, mora:float, total:float, saldo:float, proxima:?string,
+     *   cancelacion:?array{titulo:string, exonera:?string, exonerado:float}
      * }
      */
     public function paymentTicketData(MassDeletion $masivo): array
@@ -124,6 +126,24 @@ final class TicketPrinter
         // Con interés-primero una cuota puede recibir solo interés: entra igual
         // al listado (antes solo se listaban las que recibían capital).
         $cuotasTocadas = array_keys($porCuota);
+        $detalleVisible = count($detalleCuotas) > 1 || array_any($detalleCuotas, fn ($c) => $c['parcial']);
+
+        // 23/10 (Antony): el cobro de "Calcular cancelación" lista una por una solo las cuotas hasta la
+        // elegida; lo que fue a las siguientes va en una línea. interes_exonerado marca que canceló.
+        $resto = null;
+        $cancelacion = null;
+        if ($masivo->hasta_cuota !== null) {
+            $cancelo = $masivo->interes_exonerado !== null;
+            $agrupado = CancelacionHastaCuota::agrupar($detalleCuotas, (int) $masivo->hasta_cuota, $cancelo);
+            [$detalleCuotas, $cuotasTocadas, $resto] = [$agrupado['detalle'], $agrupado['cuotas'], $agrupado['resto']];
+            if ($cancelo) {
+                $cancelacion = CancelacionHastaCuota::lineasRecibo(
+                    (int) $masivo->hasta_cuota,
+                    (int) CreditInstallment::where('credit_id', $masivo->credit_id)->max('num_cuota'),
+                    (float) $masivo->interes_exonerado,
+                );
+            }
+        }
 
         $client = $masivo->credit?->client;
         $nombre = $client
@@ -149,10 +169,10 @@ final class TicketPrinter
             'asesor' => $masivo->advisor ?: null,
             'cuotas' => $cuotasTocadas,
             'detalle_cuotas' => $detalleCuotas,
+            'resto_cuotas' => $resto,
             // El desglose por cuota solo aporta cuando hay varias o alguna
             // quedó amortizada; con una sola cuota completa duplicaría el total.
-            'detalle_cuotas_visible' => count($detalleCuotas) > 1
-                || array_any($detalleCuotas, fn ($c) => $c['parcial']),
+            'detalle_cuotas_visible' => $detalleVisible,
             'capital' => round($totales['C'], 2),
             'interes' => round($totales['I'], 2),
             'excedente' => round($totales['E'], 2),
@@ -163,6 +183,9 @@ final class TicketPrinter
             'saldo' => $saldosAlCobro['credito'],
             'proxima' => $this->proximaCuota((int) $masivo->credit_id),
             'metodo' => $this->metodoPago((int) $masivo->id),
+            // "Calcular cancelación" (23/10, Antony): el cobro canceló el crédito cobrando el interés
+            // hasta esa cuota; el de las siguientes se exoneró. Null en los demás cobros.
+            'cancelacion' => $cancelacion,
         ];
     }
 
@@ -257,6 +280,19 @@ final class TicketPrinter
                     if ($dc['parcial']) {
                         $this->pt($printer, $this->row(' Cuota '.$dc['num'].' (Saldo):', number_format($dc['saldo'] ?? 0, 2), $columns));
                     }
+                }
+                if (! empty($t['resto_cuotas'])) {
+                    $this->pt($printer, $this->row(' '.$t['resto_cuotas']['rotulo'], number_format($t['resto_cuotas']['monto'], 2), $columns));
+                }
+            }
+
+            // Cobro de "Calcular cancelación" (23/10): hasta qué cuota se cobró el interés y lo exonerado.
+            if (! empty($t['cancelacion'])) {
+                // Partidas al ancho del papel: ninguna línea se sale del ticket.
+                $this->pt($printer, wordwrap($this->ascii($t['cancelacion']['titulo']), $columns, "\n", true)."\n");
+                if ($t['cancelacion']['exonera'] !== null) {
+                    $this->pt($printer, wordwrap($this->ascii($t['cancelacion']['exonera']), $columns, "\n", true)."\n");
+                    $this->pt($printer, $this->row('Interés exonerado:', number_format($t['cancelacion']['exonerado'], 2), $columns));
                 }
             }
 

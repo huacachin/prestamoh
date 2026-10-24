@@ -21,11 +21,16 @@ class MassDeletion extends Model
         'user',
         'advisor',
         'performed_by',
+        'hasta_cuota',
+        'interes_exonerado',
     ];
 
     protected $casts = [
-        'date'   => 'date',
+        'date' => 'date',
         'amount' => 'decimal:2',
+        // "Calcular cancelación" (23/10): la cuota elegida y, si canceló, el interés exonerado.
+        'hasta_cuota' => 'integer',
+        'interes_exonerado' => 'decimal:2',
     ];
 
     public function credit(): BelongsTo

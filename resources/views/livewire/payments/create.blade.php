@@ -320,26 +320,35 @@
                                      número tan grande como los saldos. El input pierde su
                                      marco: la tarjeta es el marco. --}}
                                 <div class="saldo-kpi saldo-editable" style="--kpi: #f0ad4e;">
-                                    <div class="saldo-top d-flex justify-content-between align-items-center">
-                                        <span><i class="ti ti-coin"></i> Monto a Pagar</span>
-                                        <a href="#" wire:click.prevent="abrirMoraCuotas"
-                                           class="saldo-link text-decoration-underline"
-                                           title="Elegir qué cuotas pagar, cada una con su mora por días">
-                                            <i class="ti ti-list-check f-s-12"></i> elegir cuotas
-                                        </a>
-                                    </div>
+                                    <div class="saldo-top"><i class="ti ti-coin"></i> Monto a Pagar</div>
                                     <input type="number" name="monto" id="monto-a-pagar" autocomplete="off" class="saldo-input"
                                            wire:model.live.debounce.400ms="monto"
                                            min="0.00" max="{{ $c['saldo_pendiente'] }}" step="0.01"
                                            placeholder="0.00">
-                                    <div class="saldo-pie">máx. {{ number_format($c['saldo_pendiente'], 2) }}</div>
+                                    <div class="saldo-pie">
+                                        @if($cancelHasta !== null && $cancel)
+                                            <span class="text-danger fw-semibold">cancela · interés hasta la cuota {{ $cancelHasta }}</span>
+                                        @elseif($cancelHasta !== null)
+                                            calculado hasta la cuota {{ $cancelHasta }} · sin cancelar
+                                        @else
+                                            máx. {{ number_format($c['saldo_pendiente'], 2) }}
+                                        @endif
+                                    </div>
                                 </div>
-                                <div class="saldo-kpi" style="--kpi: #adb5bd;">
-                                    <div class="saldo-top"><i class="ti ti-calendar"></i> Fecha de Pago</div>
-                                    <input type="text" name="fecpag" autocomplete="off"
-                                           class="saldo-input saldo-fecha dates3"
-                                           wire:model="fecpag" readonly>
-                                    <div class="saldo-pie">{{ \Carbon\Carbon::parse($fecpag)->translatedFormat('l d \\d\\e F') }}</div>
+                                {{-- 23/10 (Antony): donde estaba el cuadro de Fecha de Pago (los cobros van
+                                     siempre con la fecha del día) van los dos botones que arman el Monto a Pagar. --}}
+                                @php $puedeCalcularCancelacion = \App\Support\CancelacionHastaCuota::aplica($credit); @endphp
+                                <div class="saldo-acciones">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" wire:click.prevent="abrirMoraCuotas"
+                                            title="Elegir qué cuotas pagar, cada una con su mora por días">
+                                        <i class="ti ti-list-check"></i> Elegir cuotas
+                                    </button>
+                                    <span class="d-grid" title="{{ $puedeCalcularCancelacion ? 'Elegir hasta qué cuota se cobra el interés y llevar el total para cancelar al Monto a Pagar' : 'En los créditos mensuales de una cuota el interés corre por mes: usa el switch Cancelado' }}">
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                x-on:click="$dispatch('calcular-cancelacion')" @disabled(! $puedeCalcularCancelacion)>
+                                            <i class="ti ti-calculator"></i> Calcular cancelación
+                                        </button>
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -682,13 +691,13 @@
             }
             .saldo-kpi input.saldo-input:focus { outline: 0; box-shadow: none; background: transparent; }
             .saldo-kpi input.saldo-input::placeholder { color: #e0c48a; font-weight: 600; }
-            /* El datepicker del legacy pinta su icono de fondo a la derecha:
-               se le deja aire para que no pise la fecha. */
-            .saldo-kpi input.saldo-fecha {
-                color: #495057; cursor: pointer;
-                padding-right: 22px; background-position: right center;
-            }
-            .saldo-link { font-size: 10.5px; font-weight: 400; color: #0d6efd; text-transform: none; letter-spacing: 0; }
+            /* 23/10: en el lugar de la fecha, los botones que arman el Monto a Pagar. */
+            .saldo-acciones { display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+            .saldo-acciones .btn { width: 100%; }
+            .cancelacion-cuenta td { padding: 4px 6px; }
+            /* El tema fuerza 10px en .btn e input: la cuota elegida es la cifra principal del modal. */
+            .cancelacion-paso .btn, .cancelacion-paso input { font-size: .95rem !important; }
+            .cancelacion-cuenta .cancelacion-total td { font-weight: 700; font-size: 1.05rem; color: #dc3545; border-top: 2px solid #dc3545; border-bottom: 0; }
             /* En móvil una debajo de la otra, sin apretar las cifras. */
             @media (max-width: 575.98px) { .saldo-band { grid-template-columns: 1fr; } }
         </style>
@@ -871,6 +880,18 @@
                                             <div class="tp-row"><span>&nbsp;Cuota {{ $dc['num'] }} (Saldo):</span><span>{{ number_format($dc['saldo'], 2) }}</span></div>
                                         @endif
                                     @endforeach
+                                    {{-- 23/10 (Antony): con "Calcular cancelación" solo van una por una las cuotas hasta la elegida. --}}
+                                    @if(! empty($preview['resto_cuotas']))
+                                        <div class="tp-row"><span>&nbsp;{{ $preview['resto_cuotas']['rotulo'] }}</span><span>{{ number_format($preview['resto_cuotas']['monto'], 2) }}</span></div>
+                                    @endif
+                                @endif
+                                {{-- 23/10 (Antony): igual que en el recibo, hasta qué cuota se cobra el interés y lo exonerado. --}}
+                                @if(! empty($preview['recibo_cancelacion']))
+                                    <div class="tp-nota">{{ $preview['recibo_cancelacion']['titulo'] }}</div>
+                                    @if($preview['recibo_cancelacion']['exonera'] !== null)
+                                        <div class="tp-nota">{{ $preview['recibo_cancelacion']['exonera'] }}</div>
+                                        <div class="tp-row"><span>Interés exonerado:</span><span>{{ number_format($preview['recibo_cancelacion']['exonerado'], 2) }}</span></div>
+                                    @endif
                                 @endif
                                 <div class="tp-row"><span>Capital:</span><span>{{ number_format($preview['capital'], 2) }}</span></div>
                                 <div class="tp-row"><span>Interes:</span><span>{{ number_format($preview['interes'], 2) }}</span></div>
@@ -890,6 +911,9 @@
                             @if($preview['cancela'])
                                 <div class="alert alert-warning py-1 px-2 mt-2 mb-0 small text-center" style="color:#000;">
                                     <i class="ti ti-alert-triangle"></i> Este cobro <strong>cancela</strong> el crédito.
+                                    @if(! empty($preview['cancelacion_hasta']))
+                                        <div class="mt-1">Con interés hasta la cuota <strong>{{ $preview['cancelacion_hasta']['cuota'] }}</strong>.</div>
+                                    @endif
                                     @if(($preview['monto_tecleado'] ?? null) !== null)
                                         {{-- Modo estricto (09/09): el excedente NO se cobra como interés.
                                              Con interés completo (30/09) el ajuste es hacia arriba: el
@@ -1007,15 +1031,26 @@
                                 </div>
 
                                 <div x-show="det" style="display:none;" class="mt-2 pt-2">
-                                    <div class="small mb-1" style="color:#000; border-top:1px dashed #ffb74d; padding-top:6px;">
-                                        Capital pendiente <b>S/ {{ number_format($preview['cap_pendiente_total'] ?? 0, 2) }}</b>
-                                        + interés {{ $sUltima ? 'hasta la última cuota' : 'al '.$preview['fecha'] }}
-                                        <b>S/ {{ number_format($sIntCancelar, 2) }}</b>
-                                        @if(($preview['exc_venc'] ?? 0) > 0.001)
-                                            + excedente vencido <b>S/ {{ number_format($preview['exc_venc'], 2) }}</b>
-                                        @endif
-                                        = <b>S/ {{ number_format($sMontoSi, 2) }}</b>
-                                    </div>
+                                    @if(! empty($preview['cancelacion_hasta']))
+                                        @php $sCuenta = $preview['cancelacion_hasta']; @endphp
+                                        <div class="small mb-1" style="color:#000; border-top:1px dashed #ffb74d; padding-top:6px;">
+                                            Interés hasta la cuota {{ $sCuenta['cuota'] }} (S/ {{ number_format($sCuenta['interes_cuota'], 2) }} × {{ $sCuenta['cuota'] }})
+                                            <b>S/ {{ number_format($sCuenta['interes'], 2) }}</b>
+                                            + capital del crédito <b>S/ {{ number_format($sCuenta['capital'], 2) }}</b>
+                                            − pagado <b>S/ {{ number_format($sCuenta['pagado'], 2) }}</b>
+                                            = <b>S/ {{ number_format($sCuenta['total'], 2) }}</b>
+                                        </div>
+                                    @else
+                                        <div class="small mb-1" style="color:#000; border-top:1px dashed #ffb74d; padding-top:6px;">
+                                            Capital pendiente <b>S/ {{ number_format($preview['cap_pendiente_total'] ?? 0, 2) }}</b>
+                                            + interés {{ $sUltima ? 'hasta la última cuota' : 'al '.$preview['fecha'] }}
+                                            <b>S/ {{ number_format($sIntCancelar, 2) }}</b>
+                                            @if(($preview['exc_venc'] ?? 0) > 0.001)
+                                                + excedente vencido <b>S/ {{ number_format($preview['exc_venc'], 2) }}</b>
+                                            @endif
+                                            = <b>S/ {{ number_format($sMontoSi, 2) }}</b>
+                                        </div>
+                                    @endif
                                     @if($sCondonaSi > 0.001 || $sQuedaNo > 0.001)
                                         <div class="small mb-1" style="color:#6b7280;">
                                             El saldo del cronograma es <b>S/ {{ number_format($sSaldo, 2) }}</b> porque incluye interés futuro.
@@ -1023,7 +1058,7 @@
                                                  NO compila una directiva pegada al final de una palabra
                                                  (ej. "...pendientes" seguido de else) y la vista revienta. --}}
                                             <div class="mt-1">
-                                                <b>Si cancela:</b> se cobran solo <b>S/ {{ number_format($sMontoSi, 2) }}</b>{{ $sRecorta ? ' (de los S/ '.number_format($sMontoNo, 2).' tecleados)' : '' }}{{ $sCondonaSi > 0.001 ? ' y se condonan S/ '.number_format($sCondonaSi, 2).' de interés futuro' : '' }}.
+                                                <b>Si cancela:</b> se cobran solo <b>S/ {{ number_format($sMontoSi, 2) }}</b>{{ $sRecorta ? ' (de los S/ '.number_format($sMontoNo, 2).' tecleados)' : '' }}{{ $sCondonaSi > 0.001 ? ' y se condonan S/ '.number_format($sCondonaSi, 2).(empty($preview['cancelacion_hasta']) ? ' de interés futuro' : ' de interés') : '' }}.
                                             </div>
                                             <div>
                                                 <b>Si lo deja vigente:</b> se aplican <b>S/ {{ number_format($sMontoNo, 2) }}</b> a las cuotas{{ $sQuedaNo > 0.001 ? ' y quedan S/ '.number_format($sQuedaNo, 2).' pendientes' : ' y el cronograma queda pagado' }}.
@@ -1147,6 +1182,8 @@
                si no cabe, sigue debajo (alineado a la derecha), sin salirse del ticket. */
             .ticket-preview .tp-abajo > span:last-child { flex: 1 1 auto; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
             .ticket-preview .tp-total { font-size: 13px; font-weight: bold; }
+            /* 23/10: textos sueltos del recibo (cancelación): se parten dentro del ancho, nunca se salen. */
+            .ticket-preview .tp-nota { white-space: normal; overflow-wrap: anywhere; }
             .ticket-preview .tp-sep { border-top: 1px dashed #000; margin: 4px 0; }
             .ticket-preview .tp-sep-dbl { border-top: 3px double #000; margin: 4px 0; }
         </style>
@@ -1527,6 +1564,129 @@
                             document.body.appendChild(t); t.select();
                             try { document.execCommand('copy'); listo(); } catch (e) {}
                             document.body.removeChild(t);
+                        },
+                    };
+                }
+            </script>
+        </div>
+
+        {{-- ═══ Modal: Calcular cancelación (23/10, Antony) ═══
+             El cajero elige hasta qué cuota se cobra el interés y el total
+             (interés por cuota × N + capital del crédito − monto pagado) va al
+             Monto a Pagar con Cancelado encendido; luego sigue el cobro normal.
+             Los datos llegan con abrirCancelacion() y la cuenta se rehace en el
+             navegador mientras se elige la cuota; el monto final lo calcula el
+             servidor en aplicarCancelacion(). Ventana movible como las demás. --}}
+        <div class="modal fade" id="cancelacionModal" tabindex="-1" aria-hidden="true" wire:ignore
+             x-data="Object.assign(modalFlotante('cancelacion'), calcularCancelacion())"
+             x-on:calcular-cancelacion.window="abrir()">
+            <div class="modal-dialog modal-dialog-centered" style="max-width:440px;" x-ref="dialogo">
+                <div class="modal-content">
+                    <div class="modal-header py-2"
+                         x-on:pointerdown="iniciarArrastre($event)" x-on:pointermove="arrastrar($event)"
+                         x-on:pointerup="soltar($event)" x-on:pointercancel="soltar($event)">
+                        <h6 class="modal-title mb-0"><i class="ti ti-calculator f-s-14"></i> Calcular cancelación</h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="small text-muted mb-2" x-text="'Crédito #' + p.credito + ' · ' + p.total_cuotas + ' cuotas · ' + p.pagadas + ' pagadas'"></div>
+
+                        <label class="form-label fw-semibold mb-1" for="cancelacion-hasta">¿Hasta qué cuota paga los intereses?</label>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="input-group input-group-sm cancelacion-paso" style="width: 150px;">
+                                <button type="button" class="btn btn-outline-secondary" x-on:click="mover(-1)" :disabled="n <= p.minimo" aria-label="Una cuota menos">−</button>
+                                <input type="number" id="cancelacion-hasta" class="form-control text-center fw-bold"
+                                       x-model.number="n" :min="p.minimo" :max="p.maximo" step="1"
+                                       x-on:blur="n = limitar(n)" x-on:keydown.enter.prevent="usar()">
+                                <button type="button" class="btn btn-outline-secondary" x-on:click="mover(1)" :disabled="n >= p.maximo" aria-label="Una cuota más">+</button>
+                            </div>
+                            <span class="small text-muted" x-text="valido() && vence() ? 'vence el ' + vence() : ''"></span>
+                        </div>
+                        <input type="range" class="form-range mt-2" :min="p.minimo" :max="p.maximo" step="1"
+                               x-model.number="n" aria-label="Cuota hasta la que se cobra el interés">
+                        <div class="d-flex justify-content-between small text-muted" style="margin-top:-4px;">
+                            <span x-text="'desde la ' + p.minimo"></span>
+                            <span x-text="'hasta la ' + p.maximo"></span>
+                        </div>
+                        <div class="d-flex gap-1 flex-wrap mt-1">
+                            <button type="button" class="btn btn-sm btn-light border" x-show="vencidasEnRango()"
+                                    x-on:click="n = limitar(p.vencidas)" x-text="'Hasta la última vencida (' + limitar(p.vencidas) + ')'"></button>
+                            <button type="button" class="btn btn-sm btn-light border"
+                                    x-on:click="n = p.maximo" x-text="'Todas (' + p.maximo + ')'"></button>
+                        </div>
+
+                        <table class="table table-sm mb-0 mt-3 cancelacion-cuenta">
+                            <tbody>
+                                <tr>
+                                    <td class="text-start">Interés <span class="text-muted" x-text="soles(p.interes_cuota) + ' × ' + (valido() ? n : '…') + ' cuotas'"></span></td>
+                                    <td class="text-end" x-text="valido() ? soles(interes()) : '—'"></td>
+                                </tr>
+                                <tr><td class="text-start">+ Capital del crédito</td><td class="text-end" x-text="soles(p.capital)"></td></tr>
+                                <tr><td class="text-start">− Monto pagado</td><td class="text-end" x-text="soles(p.pagado)"></td></tr>
+                                <tr class="cancelacion-total">
+                                    <td class="text-start">Total para cancelar</td>
+                                    <td class="text-end" x-text="valido() ? soles(total()) : '—'"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="small text-muted mt-2">
+                            <span x-show="valido() && n < p.maximo" x-text="'No se cobra el interés de las cuotas ' + (n + 1) + ' a ' + p.maximo + ': se descuentan ' + soles(descuento()) + ' del saldo.'"></span>
+                            <span x-show="valido() && n >= p.maximo">Se cobra el interés de todas las cuotas.</span>
+                            La mora va aparte, como en cualquier cobro.
+                        </div>
+                        <div class="small text-danger mt-1" x-show="! valido()" x-text="'Elige una cuota entre la ' + p.minimo + ' y la ' + p.maximo + '.'"></div>
+                    </div>
+                    <div class="modal-footer py-2 justify-content-between">
+                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                        <button type="button" class="btn btn-sm btn-danger" x-on:click="usar()" :disabled="! valido() || enviando">
+                            <i class="ti ti-check"></i> Usar en Monto a Pagar
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <script>
+                function calcularCancelacion() {
+                    return {
+                        p: { credito: '', interes_cuota: 0, capital: 0, pagado: 0, total_cuotas: 0, pagadas: 0, minimo: 1, maximo: 1, vencidas: 0, saldo: 0, saldo_al_cancelar: 0, vencimientos: {} },
+                        n: 1,
+                        cargando: false,
+                        enviando: false,
+                        abrir() {
+                            if (this.cargando) return;
+                            this.cargando = true;
+                            this.$wire.abrirCancelacion().then((plan) => {
+                                this.cargando = false;
+                                if (! plan) return;
+                                this.p = plan;
+                                this.n = plan.sugerida;
+                                this.modal.show(); // la instancia la crea modalFlotante (sin fondo oscuro en escritorio)
+                                // El número queda seleccionado: se escribe la cuota y Enter la usa.
+                                setTimeout(() => document.getElementById('cancelacion-hasta')?.select(), 60);
+                            }, () => { this.cargando = false; });
+                        },
+                        limitar(v) {
+                            v = Math.round(Number(v));
+                            if (! Number.isFinite(v)) v = this.p.minimo;
+                            return Math.min(this.p.maximo, Math.max(this.p.minimo, v));
+                        },
+                        mover(paso) { this.n = this.limitar(this.n + paso); },
+                        valido() { return Number.isInteger(this.n) && this.n >= this.p.minimo && this.n <= this.p.maximo; },
+                        vencidasEnRango() { return this.p.vencidas >= this.p.minimo && this.p.vencidas < this.p.maximo; },
+                        redondear(v) { return Math.round(v * 100) / 100; },
+                        interes() { return this.redondear(this.p.interes_cuota * this.n); },
+                        // Igual que CancelacionHastaCuota::monto(): nunca más que el saldo que queda al cancelar.
+                        total() { return this.redondear(Math.min(this.interes() + this.p.capital - this.p.pagado, this.p.saldo_al_cancelar)); },
+                        descuento() { return Math.max(0, this.redondear(this.p.saldo - this.total())); },
+                        vence() { return this.p.vencimientos[this.n] || ''; },
+                        soles(v) { return 'S/ ' + Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
+                        // Ojo: no llamarlo aplicar(); ese nombre es de modalFlotante (coloca la ventana al abrir).
+                        usar() {
+                            if (! this.valido() || this.enviando) return;
+                            this.enviando = true;
+                            this.$wire.aplicarCancelacion(this.n).then((ok) => {
+                                this.enviando = false;
+                                if (ok) this.modal.hide();
+                            }, () => { this.enviando = false; });
                         },
                     };
                 }

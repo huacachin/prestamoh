@@ -84,6 +84,18 @@
                 <tr><td>&nbsp;Cuota {{ $dc['num'] }} (Saldo):</td><td class="der">{{ number_format($dc['saldo'] ?? 0, 2) }}</td></tr>
             @endif
         @endforeach
+        {{-- 23/10 (Antony): con "Calcular cancelación" solo van una por una las cuotas hasta la elegida. --}}
+        @if(! empty($t['resto_cuotas']))
+            <tr><td>&nbsp;{{ $t['resto_cuotas']['rotulo'] }}</td><td class="der">{{ number_format($t['resto_cuotas']['monto'], 2) }}</td></tr>
+        @endif
+    @endif
+    {{-- 23/10 (Antony): cobro de "Calcular cancelación": hasta qué cuota se cobró el interés y lo exonerado. --}}
+    @if(! empty($t['cancelacion']))
+        <tr><td colspan="2" class="abajo">{{ $t['cancelacion']['titulo'] }}</td></tr>
+        @if($t['cancelacion']['exonera'] !== null)
+            <tr><td colspan="2" class="abajo">{{ $t['cancelacion']['exonera'] }}</td></tr>
+            <tr><td>Interés exonerado:</td><td class="der">{{ number_format($t['cancelacion']['exonerado'], 2) }}</td></tr>
+        @endif
     @endif
     {{-- 16/10 (Antony): sin línea "Excedente" (va dentro de cada cuota y del TOTAL). --}}
     @if($t['mora'] > 0.001)
