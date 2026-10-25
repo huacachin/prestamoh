@@ -21,17 +21,6 @@ use Illuminate\Support\Facades\DB;
  * cuota pagada y perdonada por los mismos días. Ahora, si la cuota pagó su
  * mora teórica completa, la exonerada es 0.
  *
- * 23/10/2026 (Antony, cliente 89, crédito 29413): solo cuentan las cuotas YA
- * PAGADAS. Antes la fecha de pago de una cuota era la del último abono que la
- * tocó aunque no la completara, así la cuota impaga con abonos salía "pagada
- * tarde" y sus días se contaban otra vez en la mora vigente (que corre desde el
- * vencimiento de la impaga más antigua): el mensual de una cuota 29413 mostraba
- * 533 días de acumulada dentro de sus 537 de mora, y al cancelar se cobraban
- * las dos. En prod eran 84 créditos activos. Solo en los ACTIVOS: en los
- * cerrados (cancelados, refinanciados) no hay mora vigente que la repita y sus
- * cuotas quedaron saldadas aunque el legacy no las marcara (1,090 cancelados del
- * último año tienen cuotas sin marcar); su cronograma se ve como antes.
- *
  * Misma lógica que el cronograma público (App\Livewire\Credits\Schedule);
  * si se ajusta una, ajustar la otra.
  */
@@ -46,7 +35,7 @@ class MoraExonerada
         $installments = DB::table('credit_installments')
             ->where('credit_id', $credit->id)
             ->orderBy('num_cuota')
-            ->get(['id', 'num_cuota', 'fecha_vencimiento', 'importe_cuota', 'importe_interes', 'pagado'])
+            ->get(['id', 'num_cuota', 'fecha_vencimiento', 'importe_cuota', 'importe_interes'])
             ->values();
 
         if ($installments->isEmpty()) {
@@ -111,9 +100,7 @@ class MoraExonerada
             $a = $alloc[$k] ?? null;
             $fechaPago = ($a && round($a['monto'], 2) >= 0.01) ? ($a['fecha'] ?? '') : '';
 
-            // En un crédito activo, la cuota todavía impaga (aunque tenga abonos) no es "ya pagada":
-            // su atraso va en la mora vigente.
-            if ($fechaPago === '' || ! $ins->fecha_vencimiento || ($credit->situacion === 'Activo' && (int) $ins->pagado !== 1)) {
+            if ($fechaPago === '' || ! $ins->fecha_vencimiento) {
                 continue;
             }
 

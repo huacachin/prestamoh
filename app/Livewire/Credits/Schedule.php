@@ -152,12 +152,10 @@ class Schedule extends Component
             // entre su vencimiento y su fecha de pago real (todos los tipos,
             // regla única desde 02/09) × tarifa, menos la mora que ESA cuota
             // pagó (su parte del reparto). Informativa: no afecta los totales.
-            // 23/10: en un crédito activo solo cuotas ya pagadas; la impaga con abonos va en la mora vigente
-            // (ver MoraExonerada). Los cerrados se ven como antes.
             $moraExon = 0.0;
             $moraExonDias = 0;
             $moraRate = $this->credit->moraDiaria((float) $ins->importe_cuota + (float) $ins->importe_interes + (float) $ins->importe_excedente);
-            if ($fechaPago !== '' && $ins->fecha_vencimiento && $moraRate > 0 && ($ins->pagado || $this->credit->situacion !== 'Activo')) {
+            if ($fechaPago !== '' && $ins->fecha_vencimiento && $moraRate > 0) {
                 $vencC = Carbon::parse($ins->fecha_vencimiento);
                 $diff = (int) floor($vencC->diffInDays(Carbon::parse($fechaPago), false));
                 if ($diff > 0) {
