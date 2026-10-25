@@ -99,8 +99,10 @@ final class ResumenDeudaCredito
 
         // Mora acumulada (23/10): la de las cuotas que ya se pagaron con atraso, la misma de las tarjetas
         // "Días / Total Mora Acumulada" del cobro (MoraExonerada). Es informativa: no entra en los totales.
+        // 25/10 (Antony, cliente 89, #29413): solo en préstamos de 2 o más cuotas. En los de una cuota esa
+        // cuota sigue impaga y la acumulada repetía los días de su propia mora (533 de los 537 días).
         $acumulada = ['dias' => 0, 'monto' => 0.0];
-        if (! $cancelado) {
+        if (! $cancelado && $cuotas->count() >= 2) {
             $exonerada = collect(MoraExonerada::porCuota($credit, MoraPagada::mostradaPorCuota($credit)));
             $acumulada = ['dias' => (int) $exonerada->sum('dias'), 'monto' => round((float) $exonerada->sum('monto'), 2)];
         }

@@ -8,6 +8,7 @@ use App\Models\Credit;
 use App\Models\CreditInstallment;
 use App\Models\Headquarter;
 use App\Models\User;
+use App\Support\MoraExonerada;
 use App\Support\ResumenDeudaCredito;
 use Carbon\Carbon;
 use Database\Seeders\PermissionCatalogSeeder;
@@ -90,6 +91,29 @@ class ResumenDeudaCreditoTest extends TestCase
             'Total de deuda con mora: S/ 31,187.80',
         ]), $r['texto']);
         $this->assertSame($r['texto'], $r['texto_copia']);
+    }
+
+    /**
+     * 25/10 (Antony, cliente 89): en un préstamo de una sola cuota el resumen no muestra la mora acumulada.
+     * Como el #29413: la cuota venció el 04/05/2025, sigue impaga y tiene dos abonos de interés; la acumulada
+     * (533 días, hasta el último abono) repetía los días de la mora de esa misma cuota (537, hasta hoy).
+     */
+    public function test_en_un_prestamo_de_una_cuota_el_resumen_no_muestra_la_mora_acumulada(): void
+    {
+        $client = $this->cliente('Gustavo Hugo', 'Huaman', 'Salazar');
+        $credit = $this->credito($client, ['fecha_prestamo' => '2025-04-04', 'importe' => 12473.17, 'cuotas' => 1, 'tipo_planilla' => 3, 'interes' => 5, 'interes_total' => 623.66]);
+        $cuota = $this->cuota($credit, 1, '2025-05-04', 12473.17, 623.66, intAplicado: 400);
+        foreach (['2026-10-02', '2026-10-19'] as $fecha) {
+            DB::table('payments')->insert(['credit_id' => $credit->id, 'installment_id' => $cuota->id, 'modo' => 'CREDITO', 'tipo' => 'INTERES', 'documento' => 'INTERES',
+                'fecha' => $fecha, 'hora' => '10:45:49', 'monto' => 200, 'detalle' => "Pago : {$credit->id} Interes:  1/1", 'created_at' => now(), 'updated_at' => now()]);
+        }
+
+        // El cálculo de la acumulada sigue igual (la pantalla de cobro la usa); el resumen no la muestra.
+        $this->assertSame([1 => ['monto' => 11635.39, 'dias' => 533]], MoraExonerada::porCuota($credit->fresh()));
+        $r = ResumenDeudaCredito::de($credit->fresh(), $client);
+        $this->assertSame(['dias' => 0, 'monto' => 0.0], $r['mora_acumulada']);
+        $this->assertStringContainsString('Mora cuota 1: 537 días (S/ 21.83 x día) · S/ 11,722.71', $r['texto']);
+        $this->assertStringNotContainsString('Mora acumulada', $r['texto']);
     }
 
     public function test_los_meses_y_dias_se_cuentan_como_a_mano_y_el_texto_omite_lo_que_es_cero(): void
