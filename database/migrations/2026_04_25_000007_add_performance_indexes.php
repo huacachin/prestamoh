@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -55,7 +55,7 @@ return new class extends Migration
     private function ensureIndex(string $table, string $indexName, array $columns): void
     {
         $exists = collect(DB::select("SHOW INDEX FROM {$table} WHERE Key_name = ?", [$indexName]))->isNotEmpty();
-        if (!$exists) {
+        if (! $exists) {
             Schema::table($table, function (Blueprint $t) use ($columns, $indexName) {
                 $t->index($columns, $indexName);
             });

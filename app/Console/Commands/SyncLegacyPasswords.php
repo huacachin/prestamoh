@@ -26,7 +26,8 @@ class SyncLegacyPasswords extends Command
         try {
             DB::connection('legacy')->getPdo();
         } catch (\Exception $e) {
-            $this->error('No se puede conectar a la base de datos legacy: ' . $e->getMessage());
+            $this->error('No se puede conectar a la base de datos legacy: '.$e->getMessage());
+
             return 1;
         }
 
@@ -54,19 +55,21 @@ class SyncLegacyPasswords extends Command
 
             $user = User::where('username', $username)->first();
 
-            if (!$user) {
+            if (! $user) {
                 $notFound++;
                 $rows[] = [$username, $lu->nombre, '❌ NO ENCONTRADO', '-'];
+
                 continue;
             }
 
             if (empty($obs3)) {
                 $skipped++;
                 $rows[] = [$username, $lu->nombre, '⚠️  obs3 vacío', '-'];
+
                 continue;
             }
 
-            if (!$dryRun) {
+            if (! $dryRun) {
                 $user->password = Hash::make($obs3);
                 $user->save();
             }
@@ -75,7 +78,7 @@ class SyncLegacyPasswords extends Command
             $rows[] = [
                 $username,
                 $lu->nombre,
-                '✅ ' . ($dryRun ? 'A actualizar' : 'Actualizada'),
+                '✅ '.($dryRun ? 'A actualizar' : 'Actualizada'),
                 $obs3,
             ];
         }
@@ -83,7 +86,7 @@ class SyncLegacyPasswords extends Command
         $this->table(['Username', 'Nombre', 'Estado', 'Contraseña'], $rows);
         $this->newLine();
 
-        $this->info("Resumen:");
+        $this->info('Resumen:');
         $this->line("  ✅ Actualizadas: {$updated}");
         $this->line("  ⚠️  Omitidas (sin obs3): {$skipped}");
         $this->line("  ❌ No encontradas en Laravel: {$notFound}");

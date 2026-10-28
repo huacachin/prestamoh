@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('cache_capital_cobrado')) {
+        if (! Schema::hasTable('cache_capital_cobrado')) {
             Schema::create('cache_capital_cobrado', function (Blueprint $table) {
                 $table->id();
                 $table->date('fecha')->unique();
@@ -17,7 +17,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('cache_credit_totals')) {
+        if (! Schema::hasTable('cache_credit_totals')) {
             Schema::create('cache_credit_totals', function (Blueprint $table) {
                 $table->id();
                 $table->date('fecha')->unique();

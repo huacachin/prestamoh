@@ -2,32 +2,72 @@
 
 namespace App\Http\Controllers;
 
+use App\Livewire\Credits\Index;
+use App\Livewire\Credits\MassDelete;
+use App\Livewire\Credits\Schedule;
+use App\Support\XlsResponse;
 use Illuminate\Http\Request;
 
 class CreditController extends Controller
 {
-    public function index() { return view('credits.index'); }
-    public function create(?int $clientId = null) { return view('credits.create', compact('clientId')); }
-    public function show(int $id) { return view('credits.show', compact('id')); }
-    public function schedule(int $id) { return view('credits.schedule', compact('id')); }
-    public function edit(int $id) { return view('credits.edit', compact('id')); }
-    public function activate() { return view('credits.activate'); }
-    public function changeStatus() { return view('credits.change-status'); }
-    public function massDelete() { return view('credits.mass-delete'); }
-    public function massDeleteEdit(int $id) { return view('credits.mass-delete-edit', compact('id')); }
+    public function index()
+    {
+        return view('credits.index');
+    }
+
+    public function create(?int $clientId = null)
+    {
+        return view('credits.create', compact('clientId'));
+    }
+
+    public function show(int $id)
+    {
+        return view('credits.show', compact('id'));
+    }
+
+    public function schedule(int $id)
+    {
+        return view('credits.schedule', compact('id'));
+    }
+
+    public function edit(int $id)
+    {
+        return view('credits.edit', compact('id'));
+    }
+
+    public function activate()
+    {
+        return view('credits.activate');
+    }
+
+    public function changeStatus()
+    {
+        return view('credits.change-status');
+    }
+
+    public function massDelete()
+    {
+        return view('credits.mass-delete');
+    }
+
+    public function massDeleteEdit(int $id)
+    {
+        return view('credits.mass-delete-edit', compact('id'));
+    }
+
     public function export(Request $request)
     {
-        $c = new \App\Livewire\Credits\Index();
+        $c = new Index;
         $c->todos = true; // el Excel exporta el conjunto completo, sin paginar
-        $c->nombre    = (string) $request->query('nombre', '');
-        $c->codigo    = (string) $request->query('codigo', '');
+        $c->nombre = (string) $request->query('nombre', '');
+        $c->codigo = (string) $request->query('codigo', '');
         $c->ejecutivo = (string) $request->query('ejecutivo', '');
-        $c->seletipl  = (string) $request->query('seletipl', '');
+        $c->seletipl = (string) $request->query('seletipl', '');
 
         $d = $c->render()->getData();
 
-        return \App\Support\XlsResponse::make('exports.credits', [
-            'credits'  => $d['credits'],
+        return XlsResponse::make('exports.credits', [
+            'credits' => $d['credits'],
             'pagosMap' => $d['pagosMap'],
             'sumtotal' => $d['sumtotal'],
             'suminter' => $d['suminter'],
@@ -42,7 +82,7 @@ class CreditController extends Controller
     // wire:click no descargaba nada.
     public function exportMassDeletions(Request $request)
     {
-        $c = new \App\Livewire\Credits\MassDelete();
+        $c = new MassDelete;
         $c->tipo = (string) $request->query('tipo', '1');
         $c->compra = (string) $request->query('buscar', '');
         $c->fei = (string) $request->query('desde', now()->format('Y-m-d'));
@@ -56,14 +96,14 @@ class CreditController extends Controller
         // Fuente de verdad: el mismo componente que pinta la pantalla del cronograma,
         // para que el Excel muestre exactamente los mismos datos (periodo=fecha_pago,
         // pagado/mora desde la tabla payments, OTROS para TODOS los tipos de planilla).
-        $c = new \App\Livewire\Credits\Schedule();
+        $c = new Schedule;
         $c->mount($id);
         $d = $c->render()->getData();
 
         // Homologado 21/08: el Excel es espejo de la pantalla (mismas columnas
         // Cuota..Fecha Pago, numeración de vencidas/pendientes, Mora unificada
         // y las filas del pie), así que recibe la data del componente tal cual.
-        return \App\Support\XlsResponse::make('exports.schedule', [
+        return XlsResponse::make('exports.schedule', [
             'credit' => $c->credit,
             'rows' => $d['rows'],
             'otrosRows' => $d['otrosRows'],

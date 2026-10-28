@@ -3,6 +3,7 @@
 namespace App\Traits;
 
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
 trait TransactionPolicyTrait
@@ -37,7 +38,7 @@ trait TransactionPolicyTrait
         $tz = config('app.timezone', 'America/Lima');
         $today = now($tz)->toDateString();
 
-        $date = $record->date instanceof \Carbon\Carbon
+        $date = $record->date instanceof Carbon
             ? $record->date->toDateString()
             : ($record->created_at?->timezone($tz)->toDateString());
 

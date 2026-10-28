@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('capital_neto')) {
+        if (! Schema::hasTable('capital_neto')) {
             Schema::create('capital_neto', function (Blueprint $table) {
                 $table->id();
                 $table->date('fecha')->unique();

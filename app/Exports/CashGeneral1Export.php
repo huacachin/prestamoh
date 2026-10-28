@@ -23,12 +23,17 @@ class CashGeneral1Export implements FromCollection, WithEvents
     use LegacyExcelStyle;
 
     private const BLUE = '0D6EFD';
+
     private const RED = 'FF0000';
+
     private const GRAY = 'B0B0B0';
+
     private const SUBT = 'F0F0F0';
+
     private const TC_LABELS = [1 => 'S', 3 => 'M', 4 => 'D'];
 
     protected array $days = [];
+
     protected array $tot = [];
 
     public function __construct(
@@ -37,8 +42,8 @@ class CashGeneral1Export implements FromCollection, WithEvents
 
     public function collection()
     {
-        $c = new CashGeneral1();
-        $c->selemes  = (string) ($this->filters['selemes']  ?? str_pad((string) now()->month, 2, '0', STR_PAD_LEFT));
+        $c = new CashGeneral1;
+        $c->selemes = (string) ($this->filters['selemes'] ?? str_pad((string) now()->month, 2, '0', STR_PAD_LEFT));
         $c->selecano = (string) ($this->filters['selecano'] ?? now()->year);
         $c->seletipl = (string) ($this->filters['seletipl'] ?? '0000');
 
@@ -76,7 +81,7 @@ class CashGeneral1Export implements FromCollection, WithEvents
         $sheet->setCellValue('A1', 'REPORTE GENERAL CAJA 1');
         $sheet->mergeCells('A1:S1');
         $sheet->getStyle('A1')->applyFromArray([
-            'font'      => ['bold' => true, 'size' => 14, 'color' => ['rgb' => self::COLOR_TITULO]],
+            'font' => ['bold' => true, 'size' => 14, 'color' => ['rgb' => self::COLOR_TITULO]],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
         ]);
         $sheet->getRowDimension(1)->setRowHeight(22);
@@ -103,9 +108,9 @@ class CashGeneral1Export implements FromCollection, WithEvents
         }
 
         $sheet->getStyle('A2:S4')->applyFromArray([
-            'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
-            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::COLOR_HEADER]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::COLOR_HEADER]],
         ]);
 
         $widths = ['A' => 5, 'B' => 7, 'C' => 22, 'D' => 16, 'E' => 8, 'F' => 11, 'G' => 11, 'H' => 11, 'I' => 10,
@@ -162,8 +167,8 @@ class CashGeneral1Export implements FromCollection, WithEvents
 
                 if ($e) {
                     $cli = $e['cliente'];
-                    if (!empty($e['cod_rem'])) {
-                        $cli .= ' (' . $e['cod_rem'] . ')';
+                    if (! empty($e['cod_rem'])) {
+                        $cli .= ' ('.$e['cod_rem'].')';
                     }
                     $sheet->setCellValue("L{$r}", $e['credit_id']);
                     $sheet->setCellValue("M{$r}", $cli);

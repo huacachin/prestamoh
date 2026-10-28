@@ -19,13 +19,13 @@ class LogModuleAccess
             $user = auth()->user();
             $route = $request->route();
             Log::channel('audit')->info('module_access', [
-                'user_id'   => $user->id,
-                'username'  => $user->username ?? $user->email ?? null,
-                'name'      => $user->name ?? null,
-                'route'     => $route?->getName(),
-                'path'      => $request->path(),
-                'ip'        => $request->ip(),
-                'agent'     => substr((string) $request->userAgent(), 0, 200),
+                'user_id' => $user->id,
+                'username' => $user->username ?? $user->email ?? null,
+                'name' => $user->name ?? null,
+                'route' => $route?->getName(),
+                'path' => $request->path(),
+                'ip' => $request->ip(),
+                'agent' => substr((string) $request->userAgent(), 0, 200),
             ]);
         }
 

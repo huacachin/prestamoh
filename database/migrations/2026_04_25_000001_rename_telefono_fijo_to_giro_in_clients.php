@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (Schema::hasColumn('clients', 'telefono_fijo') && !Schema::hasColumn('clients', 'giro')) {
+        if (Schema::hasColumn('clients', 'telefono_fijo') && ! Schema::hasColumn('clients', 'giro')) {
             Schema::table('clients', function (Blueprint $table) {
                 $table->renameColumn('telefono_fijo', 'giro');
             });
@@ -17,7 +17,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (Schema::hasColumn('clients', 'giro') && !Schema::hasColumn('clients', 'telefono_fijo')) {
+        if (Schema::hasColumn('clients', 'giro') && ! Schema::hasColumn('clients', 'telefono_fijo')) {
             Schema::table('clients', function (Blueprint $table) {
                 $table->renameColumn('giro', 'telefono_fijo');
             });

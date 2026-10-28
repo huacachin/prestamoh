@@ -7,27 +7,35 @@ use App\Models\Credit;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Events\AfterSheet;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
 
 /**
  * Excel del cronograma de un crédito (/credits/{id}/schedule) — réplica de cliente_viewexcel2.php.
  * Título "REPORTE DE PAGO". Domingos en rojo / sábados en verde. Total (2 filas).
  * Créditos diarios (tipoplani=4): filas extra de pagos antes/después del cronograma + Totales.
  */
-class ScheduleExport implements FromCollection, WithHeadings, WithMapping, WithCustomStartCell, WithEvents
+class ScheduleExport implements FromCollection, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
 {
     use LegacyExcelStyle;
 
     protected float $totCap = 0;
+
     protected float $totInt = 0;
+
     protected float $totMora = 0;
+
     protected float $totPag = 0;
+
     protected int $rowCount = 0;
+
     protected ?Credit $credit = null;
+
     /** @var array<int,string> sheetRow => color fin de semana */
     protected array $rowColors = [];
 
@@ -36,37 +44,42 @@ class ScheduleExport implements FromCollection, WithHeadings, WithMapping, WithC
     public function collection()
     {
         $this->credit = Credit::with(['installments' => fn ($q) => $q->orderBy('num_cuota')])->find($this->creditId);
-        if (!$this->credit) return collect();
+        if (! $this->credit) {
+            return collect();
+        }
 
         $installments = $this->credit->installments;
         $this->rowCount = $installments->count();
 
         $rows = $installments->values()->map(function ($i, $idx) {
-            $cap  = (float) $i->importe_cuota;
-            $int  = (float) $i->importe_interes;
+            $cap = (float) $i->importe_cuota;
+            $int = (float) $i->importe_interes;
             $mora = (float) $i->importe_mora;
-            $pag  = (float) $i->importe_aplicado + (float) $i->interes_aplicado;
+            $pag = (float) $i->importe_aplicado + (float) $i->interes_aplicado;
 
-            $this->totCap  += $cap;
-            $this->totInt  += $int;
+            $this->totCap += $cap;
+            $this->totInt += $int;
             $this->totMora += $mora;
-            $this->totPag  += $pag;
+            $this->totPag += $pag;
 
             // Color fin de semana según periodo (fecha_vencimiento)
             if ($i->fecha_vencimiento) {
                 $dow = $i->fecha_vencimiento->dayOfWeek;
-                if ($dow === Carbon::SUNDAY)        $this->rowColors[3 + $idx] = 'FF0000';
-                elseif ($dow === Carbon::SATURDAY)  $this->rowColors[3 + $idx] = '008000';
+                if ($dow === Carbon::SUNDAY) {
+                    $this->rowColors[3 + $idx] = 'FF0000';
+                } elseif ($dow === Carbon::SATURDAY) {
+                    $this->rowColors[3 + $idx] = '008000';
+                }
             }
 
             return (object) [
-                'num'        => $i->num_cuota,
-                'periodo'    => $i->fecha_vencimiento?->format('d/m/Y'),
-                'capital'    => $cap,
-                'interes'    => $int,
-                'total'      => $cap + $int,
-                'mora'       => $mora,
-                'pagado'     => $pag,
+                'num' => $i->num_cuota,
+                'periodo' => $i->fecha_vencimiento?->format('d/m/Y'),
+                'capital' => $cap,
+                'interes' => $int,
+                'total' => $cap + $int,
+                'mora' => $mora,
+                'pagado' => $pag,
                 'fecha_pago' => $i->pagado ? $i->fecha_pago?->format('d/m/Y') : '',
             ];
         });
@@ -94,10 +107,10 @@ class ScheduleExport implements FromCollection, WithHeadings, WithMapping, WithC
                 // Formato moneda + alineación centrada en el cronograma (datos desde fila 3)
                 if ($this->rowCount > 0) {
                     $first = 3;
-                    $last  = 2 + $this->rowCount;
+                    $last = 2 + $this->rowCount;
                     $sheet->getStyle("A{$first}:{$lastCol}{$last}")->getAlignment()
-                        ->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER)
-                        ->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
+                        ->setHorizontal(Alignment::HORIZONTAL_CENTER)
+                        ->setVertical(Alignment::VERTICAL_CENTER);
                     foreach (['C', 'D', 'E', 'F', 'G'] as $col) {
                         $sheet->getStyle("{$col}{$first}:{$col}{$last}")
                             ->getNumberFormat()->setFormatCode('#,##0.00');
@@ -140,12 +153,16 @@ class ScheduleExport implements FromCollection, WithHeadings, WithMapping, WithC
         $inst = $this->credit->installments;
         $minFec = $inst->min(fn ($i) => $i->fecha_vencimiento?->format('Y-m-d'));
         $maxFec = $inst->max(fn ($i) => $i->fecha_vencimiento?->format('Y-m-d'));
-        if (!$minFec || !$maxFec) return;
+        if (! $minFec || ! $maxFec) {
+            return;
+        }
 
         $base = fn () => DB::table('payments')
             ->where('credit_id', $this->creditId)
             ->where('documento', 'NOT LIKE', 'MORA%')
-            ->where(function ($q) { $q->whereNull('detalle')->orWhere('detalle', 'NOT LIKE', '%Gat'); });
+            ->where(function ($q) {
+                $q->whereNull('detalle')->orWhere('detalle', 'NOT LIKE', '%Gat');
+            });
 
         $before = (clone $base())->where('fecha', '<', $minFec)
             ->selectRaw('fecha, SUM(monto) tgm')->groupBy('fecha')->orderBy('fecha')->get();
@@ -162,7 +179,8 @@ class ScheduleExport implements FromCollection, WithHeadings, WithMapping, WithC
 
         $r = $startRow;
         $tt = $this->rowCount;
-        $sumImpo = 0; $sumMora = 0;
+        $sumImpo = 0;
+        $sumMora = 0;
         foreach ($before->concat($after) as $p) {
             $tt++;
             $mora = $moraEnFecha($p->fecha);
@@ -180,8 +198,8 @@ class ScheduleExport implements FromCollection, WithHeadings, WithMapping, WithC
 
         if ($r > $startRow) {
             // Bordes para las filas extra
-            $sheet->getStyle("A{$startRow}:{$lastCol}" . ($r - 1))->applyFromArray([
-                'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_DOTTED, 'color' => ['rgb' => '999999']]],
+            $sheet->getStyle("A{$startRow}:{$lastCol}".($r - 1))->applyFromArray([
+                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_DOTTED, 'color' => ['rgb' => '999999']]],
             ]);
             // Totales finales
             $sheet->mergeCells("A{$r}:E{$r}");

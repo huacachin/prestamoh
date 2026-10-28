@@ -9,10 +9,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('payments', function (Blueprint $table) {
-            if (!Schema::hasColumn('payments', 'hora')) {
+            if (! Schema::hasColumn('payments', 'hora')) {
                 $table->string('hora', 10)->nullable()->after('fecha');
             }
-            if (!Schema::hasColumn('payments', 'usuario')) {
+            if (! Schema::hasColumn('payments', 'usuario')) {
                 $table->string('usuario', 50)->nullable()->after('user_id');
             }
         });
@@ -21,8 +21,12 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('payments', function (Blueprint $table) {
-            if (Schema::hasColumn('payments', 'hora')) $table->dropColumn('hora');
-            if (Schema::hasColumn('payments', 'usuario')) $table->dropColumn('usuario');
+            if (Schema::hasColumn('payments', 'hora')) {
+                $table->dropColumn('hora');
+            }
+            if (Schema::hasColumn('payments', 'usuario')) {
+                $table->dropColumn('usuario');
+            }
         });
     }
 };

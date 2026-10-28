@@ -8,12 +8,12 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasColumn('incomes', 'caja')) {
+        if (! Schema::hasColumn('incomes', 'caja')) {
             Schema::table('incomes', function (Blueprint $table) {
                 $table->unsignedTinyInteger('caja')->default(1)->index()->after('headquarter_id');
             });
         }
-        if (!Schema::hasColumn('expenses', 'caja')) {
+        if (! Schema::hasColumn('expenses', 'caja')) {
             Schema::table('expenses', function (Blueprint $table) {
                 $table->unsignedTinyInteger('caja')->default(1)->index()->after('headquarter_id');
             });

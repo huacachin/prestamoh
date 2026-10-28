@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\Models\User;
+use Database\Seeders\RoleSetupSeeder;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -9,6 +11,7 @@ use Illuminate\Support\Facades\Schema;
 class InstallationCheck extends Command
 {
     protected $signature = 'installation:check';
+
     protected $description = 'Health check de la instalación (read-only). No modifica nada.';
 
     private array $issues = [];
@@ -32,21 +35,36 @@ class InstallationCheck extends Command
         $this->newLine();
         if (empty($this->issues)) {
             $this->info('✓ Sistema OK — sin problemas detectados.');
+
             return self::SUCCESS;
         }
 
-        $this->warn('⚠ Se detectaron ' . count($this->issues) . ' problema(s):');
+        $this->warn('⚠ Se detectaron '.count($this->issues).' problema(s):');
         foreach ($this->issues as $i => $msg) {
-            $this->line('  ' . ($i + 1) . '. ' . $msg);
+            $this->line('  '.($i + 1).'. '.$msg);
         }
         $this->newLine();
         $this->info('Para aplicar los fixes automáticos: php artisan installation:run-all');
+
         return self::FAILURE;
     }
 
-    private function ok2(string $msg): void { $this->line('  <fg=green>✓</> ' . $msg); }
-    private function warn2(string $msg): void { $this->line('  <fg=yellow>⚠</> ' . $msg); $this->issues[] = $msg; }
-    private function bad(string $msg): void { $this->line('  <fg=red>✗</> ' . $msg); $this->issues[] = $msg; }
+    private function ok2(string $msg): void
+    {
+        $this->line('  <fg=green>✓</> '.$msg);
+    }
+
+    private function warn2(string $msg): void
+    {
+        $this->line('  <fg=yellow>⚠</> '.$msg);
+        $this->issues[] = $msg;
+    }
+
+    private function bad(string $msg): void
+    {
+        $this->line('  <fg=red>✗</> '.$msg);
+        $this->issues[] = $msg;
+    }
 
     private function checkStorageSymlink(): void
     {
@@ -79,20 +97,20 @@ class InstallationCheck extends Command
     {
         $this->info('Roles y permisos:');
 
-        $expectedRoles = \Database\Seeders\RoleSetupSeeder::ROLES;
+        $expectedRoles = RoleSetupSeeder::ROLES;
         $existing = DB::table('roles')->where('guard_name', 'web')->pluck('name')->all();
 
         $missing = array_diff($expectedRoles, $existing);
-        $extra   = array_diff($existing, $expectedRoles);
+        $extra = array_diff($existing, $expectedRoles);
 
         if (empty($missing)) {
-            $this->ok2(count($expectedRoles) . ' roles homologados (' . implode(', ', $expectedRoles) . ')');
+            $this->ok2(count($expectedRoles).' roles homologados ('.implode(', ', $expectedRoles).')');
         } else {
-            $this->bad('Faltan roles: ' . implode(', ', $missing) . ' — ejecutar `php artisan db:seed --class=RoleSetupSeeder`');
+            $this->bad('Faltan roles: '.implode(', ', $missing).' — ejecutar `php artisan db:seed --class=RoleSetupSeeder`');
         }
 
-        if (!empty($extra)) {
-            $this->warn2('Roles legacy aún presentes: ' . implode(', ', $extra) . ' — usar `installation:migrate-roles`');
+        if (! empty($extra)) {
+            $this->warn2('Roles legacy aún presentes: '.implode(', ', $extra).' — usar `installation:migrate-roles`');
         }
 
         $perms = DB::table('permissions')->count();
@@ -112,18 +130,22 @@ class InstallationCheck extends Command
             $faltantes = array_diff($esperados, $assigned);
             $sobrantes = array_intersect($assigned, $restrictivos);
             if (empty($faltantes) && empty($sobrantes)) {
-                $this->ok2('Director tiene los ' . count($esperados) . ' permisos no-restrictivos (super-rol)');
+                $this->ok2('Director tiene los '.count($esperados).' permisos no-restrictivos (super-rol)');
             } else {
                 $msg = [];
-                if ($faltantes) $msg[] = 'faltan ' . count($faltantes);
-                if ($sobrantes) $msg[] = 'sobran restrictivos: ' . implode(',', $sobrantes);
-                $this->warn2('Director: ' . implode(', ', $msg) . ' — ejecutar `db:seed --class=RolePermissionSeeder`');
+                if ($faltantes) {
+                    $msg[] = 'faltan '.count($faltantes);
+                }
+                if ($sobrantes) {
+                    $msg[] = 'sobran restrictivos: '.implode(',', $sobrantes);
+                }
+                $this->warn2('Director: '.implode(', ', $msg).' — ejecutar `db:seed --class=RolePermissionSeeder`');
             }
         }
 
         // Verificar usuarios sin rol
         $sinRol = DB::table('users')
-            ->whereNotIn('id', DB::table('model_has_roles')->where('model_type', \App\Models\User::class)->pluck('model_id'))
+            ->whereNotIn('id', DB::table('model_has_roles')->where('model_type', User::class)->pluck('model_id'))
             ->where('status', 'active')
             ->count();
         $sinRol === 0
@@ -138,8 +160,8 @@ class InstallationCheck extends Command
         $this->info('Catálogo de Conceptos:');
         $ing = DB::table('concepts')->where('type', 'ingreso')->count();
         $egr = DB::table('concepts')->where('type', 'egreso')->count();
-        $ing > 0 ? $this->ok2("$ing conceptos de ingreso") : $this->warn2("Sin conceptos de ingreso — cargar seeder");
-        $egr > 0 ? $this->ok2("$egr conceptos de egreso") : $this->warn2("Sin conceptos de egreso — cargar seeder");
+        $ing > 0 ? $this->ok2("$ing conceptos de ingreso") : $this->warn2('Sin conceptos de ingreso — cargar seeder');
+        $egr > 0 ? $this->ok2("$egr conceptos de egreso") : $this->warn2('Sin conceptos de egreso — cargar seeder');
         $this->newLine();
     }
 
@@ -166,14 +188,16 @@ class InstallationCheck extends Command
             $n === 0
                 ? $this->ok2('payments sin 0000-00-00')
                 : $this->warn2("$n payments con fecha=0000-00-00 — usar `installation:fix-invalid-dates`");
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+        }
 
         try {
             $n = DB::table('credits')->whereRaw("CAST(fecha_cancelacion AS CHAR) = '0000-00-00'")->count();
             $n === 0
                 ? $this->ok2('credits.fecha_cancelacion sin 0000-00-00')
                 : $this->warn2("$n credits con fecha_cancelacion=0000-00-00");
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+        }
 
         $this->newLine();
     }
@@ -214,13 +238,13 @@ class InstallationCheck extends Command
             // MariaDB / versiones sin la variable: seguir normal
         }
         $tables = ['clients', 'credits', 'credit_installments', 'payments',
-                   'incomes', 'expenses', 'mass_deletions', 'mass_deletion_details'];
+            'incomes', 'expenses', 'mass_deletions', 'mass_deletion_details'];
         $bad = 0;
         foreach ($tables as $t) {
             $max = (int) DB::table($t)->max('id');
             try {
                 $row = DB::selectOne("SHOW TABLE STATUS LIKE '$t'");
-                $ai  = (int) ($row->Auto_increment ?? 0);
+                $ai = (int) ($row->Auto_increment ?? 0);
             } catch (\Throwable $e) {
                 continue;
             }

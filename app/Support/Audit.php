@@ -17,9 +17,9 @@ class Audit
     /**
      * Registra una acción de auditoría.
      *
-     * @param  string      $descripcion  Texto legible de la acción.
-     * @param  Model|null  $subject      Modelo afectado (opcional).
-     * @param  array       $props        Propiedades extra (opcional).
+     * @param  string  $descripcion  Texto legible de la acción.
+     * @param  Model|null  $subject  Modelo afectado (opcional).
+     * @param  array  $props  Propiedades extra (opcional).
      */
     public static function log(string $descripcion, ?Model $subject = null, array $props = []): void
     {

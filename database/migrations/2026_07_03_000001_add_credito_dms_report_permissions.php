@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Permission;
 use Illuminate\Database\Migrations\Migration;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -21,7 +22,7 @@ return new class extends Migration
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         foreach ($this->perms as $name => $extra) {
-            \App\Models\Permission::updateOrCreate(
+            Permission::updateOrCreate(
                 ['name' => $name, 'guard_name' => 'web'],
                 ['module' => 'reportes', 'module_label' => 'Reportes'] + $extra
             );
@@ -32,7 +33,7 @@ return new class extends Migration
         // App\Models\Permission es un modelo plano (catálogo); las relaciones
         // roles/users viven en el modelo de Spatie.
         $nombres = array_keys($this->perms);
-        $pagos = \Spatie\Permission\Models\Permission::where('name', 'pagos')->where('guard_name', 'web')->first();
+        $pagos = Spatie\Permission\Models\Permission::where('name', 'pagos')->where('guard_name', 'web')->first();
         if ($pagos) {
             foreach ($pagos->roles as $role) {
                 $role->givePermissionTo($nombres);
@@ -47,7 +48,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        \App\Models\Permission::whereIn('name', array_keys($this->perms))
+        Permission::whereIn('name', array_keys($this->perms))
             ->where('guard_name', 'web')
             ->delete();
 

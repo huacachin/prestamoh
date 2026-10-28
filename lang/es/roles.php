@@ -1,9 +1,10 @@
 <?php
+
 return [
-    'superusuario'  => 'SuperUsuario',
+    'superusuario' => 'SuperUsuario',
     'administrador' => 'Administrador',
-    'director'      => 'Director',
-    'asesor'        => 'Asesor',
-    'cobranza'      => 'Cobranza',
-    'web'           => 'Web',
+    'director' => 'Director',
+    'asesor' => 'Asesor',
+    'cobranza' => 'Cobranza',
+    'web' => 'Web',
 ];

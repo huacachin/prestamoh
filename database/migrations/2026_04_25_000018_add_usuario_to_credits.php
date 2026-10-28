@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('credits', function (Blueprint $table) {
-            if (!Schema::hasColumn('credits', 'usuario')) {
+            if (! Schema::hasColumn('credits', 'usuario')) {
                 $table->string('usuario', 50)->nullable()->after('user_id');
             }
         });
@@ -18,7 +18,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('credits', function (Blueprint $table) {
-            if (Schema::hasColumn('credits', 'usuario')) $table->dropColumn('usuario');
+            if (Schema::hasColumn('credits', 'usuario')) {
+                $table->dropColumn('usuario');
+            }
         });
     }
 };

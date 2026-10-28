@@ -5,9 +5,9 @@ namespace App\Exports;
 use App\Exports\Concerns\LegacyExcelStyle;
 use App\Livewire\Reports\Delinquent;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
@@ -19,16 +19,20 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * Tabla principal de 20 columnas (cabecera 2 filas, grupo "Interés": TC/%/S//C.),
  * filas Total Soles / Total Dólares. Datos del componente Delinquent.
  */
-class DelinquentExport implements FromCollection, WithMapping, WithCustomStartCell, WithEvents
+class DelinquentExport implements FromCollection, WithCustomStartCell, WithEvents, WithMapping
 {
     use LegacyExcelStyle;
 
     private const COLOR_BLUE = '0D6EFD';
+
     private const COLOR_YELLOW = 'FFFF00';
 
     protected array $totals = [];
+
     protected float $tc = 1;
+
     protected int $rowCount = 0;
+
     /** @var array<int,array{tipo:int,estado:string}> */
     protected array $rowMeta = [];
 
@@ -43,7 +47,7 @@ class DelinquentExport implements FromCollection, WithMapping, WithCustomStartCe
 
     public function collection()
     {
-        $c = new Delinquent();
+        $c = new Delinquent;
         foreach (['selemes0', 'selecano0', 'seletipl0', 'exp', 'codigo', 'cdni', 'cnombre', 'casesor', 'fechai', 'fechaf'] as $f) {
             $c->{$f} = (string) ($this->filters[$f] ?? '');
         }
@@ -62,31 +66,31 @@ class DelinquentExport implements FromCollection, WithMapping, WithCustomStartCe
         static $i = 0;
         $i++;
         $this->rowMeta[3 + $i] = [
-            'tipo'   => (int) ($r['tipo_planilla'] ?? 0),
+            'tipo' => (int) ($r['tipo_planilla'] ?? 0),
             'estado' => $r['estado'] ?? '',
         ];
 
         return [
-            $r['n']             ?? '',  // A  Nº
-            $r['exp']           ?? '',  // B  Exp
-            $r['codigo']        ?? '',  // C  Código
+            $r['n'] ?? '',  // A  Nº
+            $r['exp'] ?? '',  // B  Exp
+            $r['codigo'] ?? '',  // C  Código
             (string) ($r['dni'] ?? ''), // D  DNI
-            $r['cliente']       ?? '',  // E  Nombre y Apellidos
-            $r['cod_rem']       ?? '',  // F  Dt.
-            (float) ($r['cuota']         ?? 0), // G  Capital (importe cuota)
-            $r['tc_label']      ?? '',  // H  TC
-            (float) ($r['interes_pct']   ?? 0), // I  %
+            $r['cliente'] ?? '',  // E  Nombre y Apellidos
+            $r['cod_rem'] ?? '',  // F  Dt.
+            (float) ($r['cuota'] ?? 0), // G  Capital (importe cuota)
+            $r['tc_label'] ?? '',  // H  TC
+            (float) ($r['interes_pct'] ?? 0), // I  %
             (float) ($r['interes_monto'] ?? 0), // J  S/
-            $r['cuotas']        ?? '',  // K  C.
-            (float) ($r['total']         ?? 0), // L  Cuota (total)
-            (float) ($r['pago']          ?? 0), // M  Pago
-            (float) ($r['saldo']         ?? 0), // N  Saldo
-            $r['fecha_cred']     ?? '', // O  Fec/Cred
-            $r['fecha_venc']     ?? '', // P  Fec/Venc
+            $r['cuotas'] ?? '',  // K  C.
+            (float) ($r['total'] ?? 0), // L  Cuota (total)
+            (float) ($r['pago'] ?? 0), // M  Pago
+            (float) ($r['saldo'] ?? 0), // N  Saldo
+            $r['fecha_cred'] ?? '', // O  Fec/Cred
+            $r['fecha_venc'] ?? '', // P  Fec/Venc
             (string) ($r['celular'] ?? ''), // Q  Cel/Titu
-            $r['estado']         ?? '', // R  Estado
-            $r['tiempo']         ?? '', // S  Tiempo
-            $r['asesor']         ?? '', // T  Asesor
+            $r['estado'] ?? '', // R  Estado
+            $r['tiempo'] ?? '', // S  Tiempo
+            $r['asesor'] ?? '', // T  Asesor
         ];
     }
 
@@ -108,7 +112,7 @@ class DelinquentExport implements FromCollection, WithMapping, WithCustomStartCe
         $sheet->setCellValue('A1', 'PENDIENTES POR COBRAR');
         $sheet->mergeCells("A1:{$lastCol}1");
         $sheet->getStyle('A1')->applyFromArray([
-            'font'      => ['bold' => true, 'size' => 14, 'color' => ['rgb' => self::COLOR_TITULO]],
+            'font' => ['bold' => true, 'size' => 14, 'color' => ['rgb' => self::COLOR_TITULO]],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
         ]);
         $sheet->getRowDimension(1)->setRowHeight(22);
@@ -128,9 +132,9 @@ class DelinquentExport implements FromCollection, WithMapping, WithCustomStartCe
         }
 
         $sheet->getStyle("A2:{$lastCol}3")->applyFromArray([
-            'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
-            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::COLOR_HEADER]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::COLOR_HEADER]],
         ]);
 
         $lastData = 3 + $this->rowCount;
@@ -155,7 +159,7 @@ class DelinquentExport implements FromCollection, WithMapping, WithCustomStartCe
         }
 
         $first = 4;
-        $last  = 3 + $this->rowCount;
+        $last = 3 + $this->rowCount;
 
         $sheet->getStyle("A{$first}:T{$last}")->getAlignment()
             ->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
@@ -188,11 +192,11 @@ class DelinquentExport implements FromCollection, WithMapping, WithCustomStartCe
         $line = function (int $row, string $label, float $div) use ($sheet, $t) {
             $sheet->mergeCells("A{$row}:E{$row}");
             $sheet->setCellValue("A{$row}", $label);
-            $sheet->setCellValue("G{$row}", number_format(($t['cuota']   ?? 0) / $div, 2));
+            $sheet->setCellValue("G{$row}", number_format(($t['cuota'] ?? 0) / $div, 2));
             $sheet->setCellValue("J{$row}", number_format(($t['interes'] ?? 0) / $div, 2));
-            $sheet->setCellValue("L{$row}", number_format(($t['total']   ?? 0) / $div, 2));
-            $sheet->setCellValue("M{$row}", number_format(($t['pago']    ?? 0) / $div, 2));
-            $sheet->setCellValue("N{$row}", number_format(($t['saldo']   ?? 0) / $div, 2));
+            $sheet->setCellValue("L{$row}", number_format(($t['total'] ?? 0) / $div, 2));
+            $sheet->setCellValue("M{$row}", number_format(($t['pago'] ?? 0) / $div, 2));
+            $sheet->setCellValue("N{$row}", number_format(($t['saldo'] ?? 0) / $div, 2));
             $this->markTotalRow($sheet, $row, 'T');
             foreach (['G', 'J', 'L', 'M', 'N'] as $c) {
                 $sheet->getStyle("{$c}{$row}")->getFont()->getColor()->setRGB(self::COLOR_BLUE);

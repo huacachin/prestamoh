@@ -69,7 +69,7 @@ final class CupsRawPrintConnector implements PrintConnector
 
         if ($exit !== 0) {
             throw new RuntimeException(
-                "lp falló (exit {$exit}): " . implode("\n", $output),
+                "lp falló (exit {$exit}): ".implode("\n", $output),
             );
         }
     }

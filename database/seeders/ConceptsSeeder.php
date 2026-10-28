@@ -14,7 +14,7 @@ class ConceptsSeeder extends Seeder
             ['id' => 2, 'code' => 'INT',  'name' => 'INTERES',          'type' => 'ingreso', 'status' => 'active'],
             ['id' => 3, 'code' => 'MOR',  'name' => 'MORA',             'type' => 'ingreso', 'status' => 'active'],
             ['id' => 4, 'code' => 'DES',  'name' => 'DESEMBOLSO',       'type' => 'egreso',  'status' => 'active'],
-            ['id' => 5, 'code' => 'GAS',  'name' => 'GASTOS OPERATIVOS','type' => 'egreso',  'status' => 'active'],
+            ['id' => 5, 'code' => 'GAS',  'name' => 'GASTOS OPERATIVOS', 'type' => 'egreso',  'status' => 'active'],
             ['id' => 6, 'code' => 'OTR',  'name' => 'OTROS',            'type' => 'egreso',  'status' => 'active'],
         ];
 
@@ -22,9 +22,9 @@ class ConceptsSeeder extends Seeder
             Concept::updateOrCreate(
                 ['id' => $data['id']],
                 [
-                    'code'   => $data['code'],
-                    'name'   => $data['name'],
-                    'type'   => $data['type'],
+                    'code' => $data['code'],
+                    'name' => $data['name'],
+                    'type' => $data['type'],
                     'status' => $data['status'],
                 ]
             );

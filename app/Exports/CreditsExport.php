@@ -24,9 +24,13 @@ class CreditsExport implements FromCollection, WithCustomStartCell, WithEvents, 
     protected array $pagosMap = [];
 
     protected float $sumCapital = 0;
+
     protected float $sumInteres = 0;
+
     protected float $sumTotal = 0;
+
     protected float $sumPago = 0;
+
     protected float $sumSaldo = 0;
 
     public function __construct(
@@ -50,8 +54,8 @@ class CreditsExport implements FromCollection, WithCustomStartCell, WithEvents, 
             $t = trim($this->nombre);
             $query->whereHas('client', function ($c) use ($t) {
                 $c->where('nombre', 'like', "%{$t}%")
-                  ->orWhere('apellido_pat', 'like', "%{$t}%")
-                  ->orWhere('apellido_mat', 'like', "%{$t}%");
+                    ->orWhere('apellido_pat', 'like', "%{$t}%")
+                    ->orWhere('apellido_mat', 'like', "%{$t}%");
             });
         }
         if (trim($this->codigo) !== '') {

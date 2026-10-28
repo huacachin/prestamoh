@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('cache_resumen_mensual')) {
+        if (! Schema::hasTable('cache_resumen_mensual')) {
             Schema::create('cache_resumen_mensual', function (Blueprint $table) {
                 $table->id();
                 $table->unsignedSmallInteger('idmes');

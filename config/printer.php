@@ -54,7 +54,7 @@ return [
     | sobrescribir desde el TicketPrinter.
     */
     'company_name' => env('PRINTER_COMPANY_NAME', 'HUACACHIN'),
-    'company_ruc'  => env('PRINTER_COMPANY_RUC', ''),
+    'company_ruc' => env('PRINTER_COMPANY_RUC', ''),
     'company_addr' => env('PRINTER_COMPANY_ADDR', ''),
 
     /*
@@ -63,7 +63,7 @@ return [
     | Si el archivo no existe, el ticket arranca directo con el nombre.
     | Formatos: png, jpg, gif. Recomendado PNG b/n con fondo blanco.
     */
-    'print_logo'     => filter_var(env('PRINTER_PRINT_LOGO', true), FILTER_VALIDATE_BOOLEAN),
-    'logo_path'      => env('PRINTER_LOGO_PATH', 'printer/logo.png'),
+    'print_logo' => filter_var(env('PRINTER_PRINT_LOGO', true), FILTER_VALIDATE_BOOLEAN),
+    'logo_path' => env('PRINTER_LOGO_PATH', 'printer/logo.png'),
     'logo_max_width' => (int) env('PRINTER_LOGO_MAX_WIDTH', 300),
 ];

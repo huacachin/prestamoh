@@ -8,6 +8,7 @@ class InstallationRunAll extends Command
 {
     protected $signature = 'installation:run-all
                             {--force : Ejecutar todos los fixes sin pedir confirmación uno por uno}';
+
     protected $description = 'Ejecuta TODOS los comandos de saneamiento en orden seguro tras importación.';
 
     public function handle(): int
@@ -25,8 +26,9 @@ class InstallationRunAll extends Command
         $this->line(' 8. installation:check                   (health check final)');
         $this->newLine();
 
-        if (!$force && !$this->confirm('¿Continuar?', true)) {
+        if (! $force && ! $this->confirm('¿Continuar?', true)) {
             $this->info('Cancelado.');
+
             return self::SUCCESS;
         }
 
@@ -43,10 +45,10 @@ class InstallationRunAll extends Command
 
         foreach ($steps as $i => $cmd) {
             $this->newLine();
-            $this->line("─── Paso " . ($i + 1) . ": $cmd ───");
+            $this->line('─── Paso '.($i + 1).": $cmd ───");
             $code = $this->call($cmd, $opts);
-            if ($code !== self::SUCCESS && !$force) {
-                if (!$this->confirm("El paso falló. ¿Continuar con el siguiente?", false)) {
+            if ($code !== self::SUCCESS && ! $force) {
+                if (! $this->confirm('El paso falló. ¿Continuar con el siguiente?', false)) {
                     return self::FAILURE;
                 }
             }

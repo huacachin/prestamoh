@@ -22,6 +22,7 @@ class SimulatorExport implements FromCollection, WithEvents
     use LegacyExcelStyle;
 
     private const COLOR_CELESTE = '5BC0DE';
+
     private const COLOR_MORA = 'FF0000';
 
     public function __construct(
@@ -48,7 +49,7 @@ class SimulatorExport implements FromCollection, WithEvents
                 $sheet->setCellValue('A1', 'SIMULACION DE CREDITO');
                 $sheet->mergeCells("A1:{$last}1");
                 $sheet->getStyle('A1')->applyFromArray([
-                    'font'      => ['bold' => true, 'size' => 14, 'color' => ['rgb' => self::COLOR_TITULO]],
+                    'font' => ['bold' => true, 'size' => 14, 'color' => ['rgb' => self::COLOR_TITULO]],
                     'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
                 ]);
                 $sheet->getRowDimension(1)->setRowHeight(22);
@@ -59,7 +60,7 @@ class SimulatorExport implements FromCollection, WithEvents
                 $sheet->setCellValue('J2', 'Importe :');
                 $sheet->setCellValue('K2', number_format($this->capital, 2));
                 $sheet->setCellValue('S2', 'Interés :');
-                $sheet->setCellValue('T2', rtrim(rtrim(number_format($this->interes, 2), '0'), '.') . '%');
+                $sheet->setCellValue('T2', rtrim(rtrim(number_format($this->interes, 2), '0'), '.').'%');
                 $sheet->getStyle('A2:T2')->getFont()->setBold(true);
 
                 $r = 4;
@@ -85,7 +86,7 @@ class SimulatorExport implements FromCollection, WithEvents
         $sheet->mergeCells("A{$r}:{$last}{$r}");
         $sheet->setCellValue("A{$r}", $text);
         $sheet->getStyle("A{$r}")->applyFromArray([
-            'font'      => ['bold' => true, 'size' => 12, 'color' => ['rgb' => self::COLOR_TITULO]],
+            'font' => ['bold' => true, 'size' => 12, 'color' => ['rgb' => self::COLOR_TITULO]],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
         ]);
         $r++;
@@ -106,9 +107,9 @@ class SimulatorExport implements FromCollection, WithEvents
             $sheet->setCellValue("{$c1}{$r}", "Mes {$m}");
         }
         $sheet->getStyle("A{$r}:Z{$r}")->applyFromArray([
-            'font'      => ['bold' => true],
+            'font' => ['bold' => true],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
-            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::COLOR_CELESTE]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::COLOR_CELESTE]],
         ]);
         $r++;
 

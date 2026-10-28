@@ -5,9 +5,9 @@ namespace App\Exports;
 use App\Exports\Concerns\LegacyExcelStyle;
 use App\Livewire\Reports\Portfolio;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
@@ -20,23 +20,31 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * Total Soles/Dólares, clasificación MORA/ACTIVOS/TOTAL y 3 tablas resumen
  * (Vigente/Vencidas, por planilla, y por % de interés). Datos del componente Portfolio.
  */
-class PortfolioExport implements FromCollection, WithMapping, WithCustomStartCell, WithEvents
+class PortfolioExport implements FromCollection, WithCustomStartCell, WithEvents, WithMapping
 {
     use LegacyExcelStyle;
 
     private const COLOR_DARK = '005F8C';
+
     private const COLOR_YELLOW = 'FFFF00';
 
     /** @var array<int,array{tipo:int,estado:string,ref:bool}> estilo por fila de datos */
     protected array $rowMeta = [];
 
     protected array $totals = [];
+
     protected array $morisidad = [];
+
     protected array $tipoTotals = [];
+
     protected array $byInteres = [];
+
     protected int $vignt = 0;
+
     protected int $venc = 0;
+
     protected float $tc = 1;
+
     protected int $rowCount = 0;
 
     public function __construct(
@@ -50,28 +58,28 @@ class PortfolioExport implements FromCollection, WithMapping, WithCustomStartCel
 
     public function collection()
     {
-        $c = new Portfolio();
-        $c->selemes0  = (string) ($this->filters['selemes0']  ?? '');
+        $c = new Portfolio;
+        $c->selemes0 = (string) ($this->filters['selemes0'] ?? '');
         $c->selecano0 = (string) ($this->filters['selecano0'] ?? '');
         $c->seletipl0 = (string) ($this->filters['seletipl0'] ?? '');
-        $c->exp       = (string) ($this->filters['exp']       ?? '');
-        $c->codigo    = (string) ($this->filters['codigo']    ?? '');
-        $c->cdni      = (string) ($this->filters['cdni']      ?? '');
-        $c->cnombre   = (string) ($this->filters['cnombre']   ?? '');
-        $c->casesor   = (string) ($this->filters['casesor']   ?? '');
-        $c->fechai    = (string) ($this->filters['fechai']    ?? '');
-        $c->fechaf    = (string) ($this->filters['fechaf']    ?? '');
+        $c->exp = (string) ($this->filters['exp'] ?? '');
+        $c->codigo = (string) ($this->filters['codigo'] ?? '');
+        $c->cdni = (string) ($this->filters['cdni'] ?? '');
+        $c->cnombre = (string) ($this->filters['cnombre'] ?? '');
+        $c->casesor = (string) ($this->filters['casesor'] ?? '');
+        $c->fechai = (string) ($this->filters['fechai'] ?? '');
+        $c->fechaf = (string) ($this->filters['fechaf'] ?? '');
 
         $data = $c->render()->getData();
         $rows = collect($data['rows'] ?? []);
-        $this->totals     = $data['totals'] ?? [];
-        $this->morisidad  = $data['morisidad'] ?? [];
+        $this->totals = $data['totals'] ?? [];
+        $this->morisidad = $data['morisidad'] ?? [];
         $this->tipoTotals = $data['tipoTotals'] ?? [];
-        $this->byInteres  = $data['byInteres'] ?? [];
-        $this->vignt      = (int) ($data['vignt'] ?? 0);
-        $this->venc       = (int) ($data['venc'] ?? 0);
-        $this->tc         = (float) ($data['tc'] ?? 1) ?: 1;
-        $this->rowCount   = $rows->count();
+        $this->byInteres = $data['byInteres'] ?? [];
+        $this->vignt = (int) ($data['vignt'] ?? 0);
+        $this->venc = (int) ($data['venc'] ?? 0);
+        $this->tc = (float) ($data['tc'] ?? 1) ?: 1;
+        $this->rowCount = $rows->count();
 
         return $rows;
     }
@@ -81,33 +89,33 @@ class PortfolioExport implements FromCollection, WithMapping, WithCustomStartCel
         static $i = 0;
         $i++;
         $this->rowMeta[3 + $i] = [
-            'tipo'   => (int) ($r['tipo_planilla'] ?? 0),
+            'tipo' => (int) ($r['tipo_planilla'] ?? 0),
             'estado' => $r['estado'] ?? '',
-            'ref'    => !empty($r['is_refi']),
+            'ref' => ! empty($r['is_refi']),
         ];
 
         return [
-            $r['n']             ?? '',  // A  Nº
-            $r['exp']           ?? '',  // B  Exp
-            $r['codigo']        ?? '',  // C  Código
+            $r['n'] ?? '',  // A  Nº
+            $r['exp'] ?? '',  // B  Exp
+            $r['codigo'] ?? '',  // C  Código
             (string) ($r['dni'] ?? ''), // D  DNI
-            $r['cliente']       ?? '',  // E  Apellidos y Nombres
-            $r['cod_rem']       ?? '',  // F  Dt.
-            (float) ($r['capital']        ?? 0), // G  Capital
-            $r['tc_label']      ?? '',  // H  TC
-            (float) ($r['interes_pct']    ?? 0), // I  %
-            (float) ($r['interes_monto']  ?? 0), // J  S/
-            $r['cuotas']        ?? '',  // K  C.
-            (float) ($r['total']          ?? 0), // L  Total
-            (float) ($r['pago']           ?? 0), // M  Pago
-            (float) ($r['saldo']          ?? 0), // N  Saldo
-            $r['fecha_cred']     ?? '', // O  Fec/Cred
-            $r['fecha_venc']     ?? '', // P  Fec/Venc
+            $r['cliente'] ?? '',  // E  Apellidos y Nombres
+            $r['cod_rem'] ?? '',  // F  Dt.
+            (float) ($r['capital'] ?? 0), // G  Capital
+            $r['tc_label'] ?? '',  // H  TC
+            (float) ($r['interes_pct'] ?? 0), // I  %
+            (float) ($r['interes_monto'] ?? 0), // J  S/
+            $r['cuotas'] ?? '',  // K  C.
+            (float) ($r['total'] ?? 0), // L  Total
+            (float) ($r['pago'] ?? 0), // M  Pago
+            (float) ($r['saldo'] ?? 0), // N  Saldo
+            $r['fecha_cred'] ?? '', // O  Fec/Cred
+            $r['fecha_venc'] ?? '', // P  Fec/Venc
             $r['fecha_ult_pago'] ?? '', // Q  Fec/Ult/Pag
             (string) ($r['celular'] ?? ''), // R  Cel/Titu
-            $r['estado']         ?? '', // S  Estado
-            $r['tiempo']         ?? '', // T  Tiempo
-            $r['asesor']         ?? '', // U  Asesor
+            $r['estado'] ?? '', // S  Estado
+            $r['tiempo'] ?? '', // T  Tiempo
+            $r['asesor'] ?? '', // U  Asesor
         ];
     }
 
@@ -129,7 +137,7 @@ class PortfolioExport implements FromCollection, WithMapping, WithCustomStartCel
         $sheet->setCellValue('A1', 'RESUMEN DE CREDITOS');
         $sheet->mergeCells("A1:{$lastCol}1");
         $sheet->getStyle('A1')->applyFromArray([
-            'font'      => ['bold' => true, 'size' => 14, 'color' => ['rgb' => self::COLOR_TITULO]],
+            'font' => ['bold' => true, 'size' => 14, 'color' => ['rgb' => self::COLOR_TITULO]],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
         ]);
         $sheet->getRowDimension(1)->setRowHeight(22);
@@ -149,9 +157,9 @@ class PortfolioExport implements FromCollection, WithMapping, WithCustomStartCel
         }
 
         $sheet->getStyle("A2:{$lastCol}3")->applyFromArray([
-            'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
-            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::COLOR_HEADER]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::COLOR_HEADER]],
         ]);
 
         $lastData = 3 + $this->rowCount;
@@ -177,7 +185,7 @@ class PortfolioExport implements FromCollection, WithMapping, WithCustomStartCel
         }
 
         $first = 4;
-        $last  = 3 + $this->rowCount;
+        $last = 3 + $this->rowCount;
 
         $sheet->getStyle("A{$first}:U{$last}")->getAlignment()
             ->setHorizontal(Alignment::HORIZONTAL_CENTER)
@@ -189,7 +197,7 @@ class PortfolioExport implements FromCollection, WithMapping, WithCustomStartCel
         }
 
         foreach ($this->rowMeta as $row => $m) {
-            if (!empty($m['ref'])) {
+            if (! empty($m['ref'])) {
                 $sheet->getStyle("A{$row}:U{$row}")->applyFromArray([
                     'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::COLOR_YELLOW]],
                 ]);
@@ -213,23 +221,25 @@ class PortfolioExport implements FromCollection, WithMapping, WithCustomStartCel
 
         // ── Total Soles ──
         $r++;
-        $sheet->mergeCells("A{$r}:E{$r}"); $sheet->setCellValue("A{$r}", 'Total Soles');
+        $sheet->mergeCells("A{$r}:E{$r}");
+        $sheet->setCellValue("A{$r}", 'Total Soles');
         $sheet->setCellValue("G{$r}", number_format($t['capital'] ?? 0, 2));
         $sheet->setCellValue("J{$r}", number_format($t['interes'] ?? 0, 2));
-        $sheet->setCellValue("L{$r}", number_format($t['total']   ?? 0, 2));
-        $sheet->setCellValue("M{$r}", number_format($t['pago']    ?? 0, 2));
-        $sheet->setCellValue("N{$r}", number_format($t['saldo']   ?? 0, 2));
+        $sheet->setCellValue("L{$r}", number_format($t['total'] ?? 0, 2));
+        $sheet->setCellValue("M{$r}", number_format($t['pago'] ?? 0, 2));
+        $sheet->setCellValue("N{$r}", number_format($t['saldo'] ?? 0, 2));
         $this->markTotalRow($sheet, $r, 'U');
 
         // ── Total Dólares ──
         $tc = $this->tc > 0 ? $this->tc : 1;
         $r++;
-        $sheet->mergeCells("A{$r}:E{$r}"); $sheet->setCellValue("A{$r}", 'Total Dólares');
+        $sheet->mergeCells("A{$r}:E{$r}");
+        $sheet->setCellValue("A{$r}", 'Total Dólares');
         $sheet->setCellValue("G{$r}", number_format(($t['capital'] ?? 0) / $tc, 2));
         $sheet->setCellValue("J{$r}", number_format(($t['interes'] ?? 0) / $tc, 2));
-        $sheet->setCellValue("L{$r}", number_format(($t['total']   ?? 0) / $tc, 2));
-        $sheet->setCellValue("M{$r}", number_format(($t['pago']    ?? 0) / $tc, 2));
-        $sheet->setCellValue("N{$r}", number_format(($t['saldo']   ?? 0) / $tc, 2));
+        $sheet->setCellValue("L{$r}", number_format(($t['total'] ?? 0) / $tc, 2));
+        $sheet->setCellValue("M{$r}", number_format(($t['pago'] ?? 0) / $tc, 2));
+        $sheet->setCellValue("N{$r}", number_format(($t['saldo'] ?? 0) / $tc, 2));
         $this->markTotalRow($sheet, $r, 'U');
 
         // ── MORA / ACTIVOS / TOTAL ──
@@ -241,10 +251,11 @@ class PortfolioExport implements FromCollection, WithMapping, WithCustomStartCel
         ];
         foreach ($blocks as $b) {
             $r++;
-            $sheet->setCellValue("A{$r}", number_format($b['pct'], 2) . '%');
+            $sheet->setCellValue("A{$r}", number_format($b['pct'], 2).'%');
             $sheet->setCellValue("B{$r}", $b['lbl']);
             $sheet->setCellValue("C{$r}", $b['cnt']);
-            $sheet->mergeCells("D{$r}:F{$r}"); $sheet->setCellValue("D{$r}", 'TOTAL ' . $b['lbl']);
+            $sheet->mergeCells("D{$r}:F{$r}");
+            $sheet->setCellValue("D{$r}", 'TOTAL '.$b['lbl']);
             $sheet->setCellValue("G{$r}", number_format($b['cap'], 2));
             $sheet->setCellValue("J{$r}", number_format($b['int'], 2));
             $sheet->setCellValue("L{$r}", number_format($b['tot'], 2));
@@ -284,7 +295,7 @@ class PortfolioExport implements FromCollection, WithMapping, WithCustomStartCel
     {
         $cols = ['A', 'B'];
         foreach ($headers as $i => $h) {
-            $sheet->setCellValue($cols[$i] . $start, $h);
+            $sheet->setCellValue($cols[$i].$start, $h);
         }
         $sheet->getStyle("A{$start}:B{$start}")->applyFromArray([
             'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
@@ -296,7 +307,9 @@ class PortfolioExport implements FromCollection, WithMapping, WithCustomStartCel
             $r++;
             $sheet->setCellValue("A{$r}", $row[0]);
             $sheet->setCellValue("B{$r}", $row[1]);
-            if ($row[0] === 'Total') $this->markTotalRow($sheet, $r, 'B');
+            if ($row[0] === 'Total') {
+                $this->markTotalRow($sheet, $r, 'B');
+            }
         }
         $sheet->getStyle("A{$start}:B{$r}")->applyFromArray([
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
@@ -309,7 +322,7 @@ class PortfolioExport implements FromCollection, WithMapping, WithCustomStartCel
         $tt = $this->tipoTotals;
         $head = ['Tipo', 'Cnt.', 'Capital', 'Interés', '50%', '33%', '25%'];
         foreach ($head as $i => $h) {
-            $sheet->setCellValue($this->colLetter($i + 1) . $start, $h);
+            $sheet->setCellValue($this->colLetter($i + 1).$start, $h);
         }
         $sheet->getStyle("A{$start}:G{$start}")->applyFromArray([
             'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
@@ -336,7 +349,9 @@ class PortfolioExport implements FromCollection, WithMapping, WithCustomStartCel
             $sheet->setCellValue("E{$r}", number_format($int / 2, 2));
             $sheet->setCellValue("F{$r}", number_format($int / 3, 2));
             $sheet->setCellValue("G{$r}", number_format($int / 4, 2));
-            if ($row[0] === 'Total') $this->markTotalRow($sheet, $r, 'G');
+            if ($row[0] === 'Total') {
+                $this->markTotalRow($sheet, $r, 'G');
+            }
         }
         $sheet->getStyle("A{$start}:G{$r}")->applyFromArray([
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
@@ -352,7 +367,7 @@ class PortfolioExport implements FromCollection, WithMapping, WithCustomStartCel
         $head = ['%', 'Cnt.', 'Capital', 'Interés', 'Pagado', 'Total'];
         $hr = $start + 1;
         foreach ($head as $i => $h) {
-            $sheet->setCellValue($this->colLetter($i + 1) . $hr, $h);
+            $sheet->setCellValue($this->colLetter($i + 1).$hr, $h);
         }
         $sheet->getStyle("A{$start}:F{$hr}")->applyFromArray([
             'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
@@ -360,7 +375,11 @@ class PortfolioExport implements FromCollection, WithMapping, WithCustomStartCel
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::COLOR_HEADER]],
         ]);
 
-        $sumCnt = 0; $sumCap = 0; $sumInt = 0; $sumPag = 0; $sumTot = 0;
+        $sumCnt = 0;
+        $sumCap = 0;
+        $sumInt = 0;
+        $sumPag = 0;
+        $sumTot = 0;
         $r = $hr;
         foreach ($this->byInteres as $b) {
             $r++;
@@ -370,8 +389,11 @@ class PortfolioExport implements FromCollection, WithMapping, WithCustomStartCel
             $sheet->setCellValue("D{$r}", number_format($b['interes'] ?? 0, 2));
             $sheet->setCellValue("E{$r}", number_format($b['pago'] ?? 0, 2));
             $sheet->setCellValue("F{$r}", number_format($b['total'] ?? 0, 2));
-            $sumCnt += $b['ncount'] ?? 0; $sumCap += $b['capital'] ?? 0; $sumInt += $b['interes'] ?? 0;
-            $sumPag += $b['pago'] ?? 0; $sumTot += $b['total'] ?? 0;
+            $sumCnt += $b['ncount'] ?? 0;
+            $sumCap += $b['capital'] ?? 0;
+            $sumInt += $b['interes'] ?? 0;
+            $sumPag += $b['pago'] ?? 0;
+            $sumTot += $b['total'] ?? 0;
         }
         $r++;
         $sheet->setCellValue("A{$r}", 'Total');

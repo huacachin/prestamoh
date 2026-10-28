@@ -144,7 +144,7 @@ trait LegacyExcelStyle
             $col = Coordinate::stringFromColumnIndex($cI);
             $maxLen = 0;
             for ($r = 2; $r <= $highestRow; $r++) { // r=2: omite la fila 1 (título)
-                $ref = $col . $r;
+                $ref = $col.$r;
                 if (isset($merged[$ref]) || ! $sheet->cellExists($ref)) {
                     continue;
                 }

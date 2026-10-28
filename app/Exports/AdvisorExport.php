@@ -5,9 +5,9 @@ namespace App\Exports;
 use App\Exports\Concerns\LegacyExcelStyle;
 use App\Livewire\Reports\Advisor as AdvisorLivewire;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
@@ -19,15 +19,20 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  * Título "REPORTE DE ASESOR". DOS tablas (diaria + mensual) con cabecera multi-fila
  * (CLIENTES / COBRADOS / NO COBRADOS) y filas Totales + Promedio en cada una.
  */
-class AdvisorExport implements FromCollection, WithMapping, WithCustomStartCell, WithEvents
+class AdvisorExport implements FromCollection, WithCustomStartCell, WithEvents, WithMapping
 {
     use LegacyExcelStyle;
 
     protected array $tot = [];
+
     protected array $avg = [];
+
     protected array $monthly = [];
+
     protected int $rowCount = 0;
+
     protected int $year = 0;
+
     /** @var array<int,string> sheetRow => color de fin de semana */
     protected array $rowColors = [];
 
@@ -43,22 +48,22 @@ class AdvisorExport implements FromCollection, WithMapping, WithCustomStartCell,
 
     public function collection()
     {
-        $c = new AdvisorLivewire();
-        $c->selemes   = (string) ($this->filters['selemes']  ?? str_pad((string) now()->month, 2, '0', STR_PAD_LEFT));
-        $c->selecano  = (string) ($this->filters['selecano'] ?? now()->year);
+        $c = new AdvisorLivewire;
+        $c->selemes = (string) ($this->filters['selemes'] ?? str_pad((string) now()->month, 2, '0', STR_PAD_LEFT));
+        $c->selecano = (string) ($this->filters['selecano'] ?? now()->year);
         $c->ejecutivo = (string) ($this->filters['ejecutivo'] ?? 'Todos');
-        $this->year   = (int) $c->selecano;
+        $this->year = (int) $c->selecano;
 
         $data = $c->render()->getData();
         $rows = collect($data['rows'] ?? []);
-        $this->tot     = $data['tot'] ?? [];
-        $this->avg     = $data['avg'] ?? [];
+        $this->tot = $data['tot'] ?? [];
+        $this->avg = $data['avg'] ?? [];
         $this->monthly = $data['monthlyHistory'] ?? [];
         $this->rowCount = $rows->count();
 
         // Colores fin de semana por fila (datos desde fila 4)
         foreach ($rows->values() as $idx => $r) {
-            if (!empty($r['color'])) {
+            if (! empty($r['color'])) {
                 $this->rowColors[4 + $idx] = $r['color'] === 'red' ? 'FF0000' : '008000';
             }
         }
@@ -73,17 +78,17 @@ class AdvisorExport implements FromCollection, WithMapping, WithCustomStartCell,
 
         return [
             $i,                                  // A  Nº
-            $r['fecha']      ?? '',              // B  FECHA
-            (int)   ($r['nuevo']      ?? 0),     // C  NUEVO
-            (int)   ($r['renov']      ?? 0),     // D  REN./REF.
-            (int)   ($r['canc']       ?? 0),     // E  CANC.
-            (int)   ($r['total']      ?? 0),     // F  TOTAL
-            (float) ($r['capital']    ?? 0),     // G  CAPITAL
+            $r['fecha'] ?? '',              // B  FECHA
+            (int) ($r['nuevo'] ?? 0),     // C  NUEVO
+            (int) ($r['renov'] ?? 0),     // D  REN./REF.
+            (int) ($r['canc'] ?? 0),     // E  CANC.
+            (int) ($r['total'] ?? 0),     // F  TOTAL
+            (float) ($r['capital'] ?? 0),     // G  CAPITAL
             (float) ($r['imp_cobrar'] ?? 0),     // H  IMP. A COBRAR
-            (int)   ($r['cob_cnt']    ?? 0),     // I  COBRADOS CANT.
-            (float) ($r['cob_imp']    ?? 0),     // J  COBRADOS IMPORTE
-            (int)   ($r['noc_cnt']    ?? 0),     // K  NO COB. CANT.
-            (float) ($r['noc_imp']    ?? 0),     // L  NO COB. IMPORTE
+            (int) ($r['cob_cnt'] ?? 0),     // I  COBRADOS CANT.
+            (float) ($r['cob_imp'] ?? 0),     // J  COBRADOS IMPORTE
+            (int) ($r['noc_cnt'] ?? 0),     // K  NO COB. CANT.
+            (float) ($r['noc_imp'] ?? 0),     // L  NO COB. IMPORTE
         ];
     }
 
@@ -98,7 +103,7 @@ class AdvisorExport implements FromCollection, WithMapping, WithCustomStartCell,
                 $sheet->setCellValue('A1', 'REPORTE DE ASESOR');
                 $sheet->mergeCells("A1:{$lastCol}1");
                 $sheet->getStyle('A1')->applyFromArray([
-                    'font'      => ['bold' => true, 'size' => 14, 'color' => ['rgb' => self::COLOR_TITULO]],
+                    'font' => ['bold' => true, 'size' => 14, 'color' => ['rgb' => self::COLOR_TITULO]],
                     'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
                 ]);
                 $sheet->getRowDimension(1)->setRowHeight(22);
@@ -137,7 +142,7 @@ class AdvisorExport implements FromCollection, WithMapping, WithCustomStartCell,
                 // ── Tabla MENSUAL ──
                 $r += 2;
                 $sheet->mergeCells("A{$r}:{$lastCol}{$r}");
-                $sheet->setCellValue("A{$r}", 'REPORTE MENSUAL ' . $this->year);
+                $sheet->setCellValue("A{$r}", 'REPORTE MENSUAL '.$this->year);
                 $sheet->getStyle("A{$r}")->applyFromArray([
                     'font' => ['bold' => true, 'size' => 12, 'color' => ['rgb' => self::COLOR_TITULO]],
                     'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
@@ -189,9 +194,9 @@ class AdvisorExport implements FromCollection, WithMapping, WithCustomStartCell,
             $sheet->setCellValue($cell, $val);
         }
         $sheet->getStyle("A{$top}:L{$bot}")->applyFromArray([
-            'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
-            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::COLOR_HEADER]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::COLOR_HEADER]],
         ]);
     }
 

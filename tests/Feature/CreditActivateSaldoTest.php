@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\Credits\Activate;
+use App\Livewire\Credits\ChangeStatus;
 use App\Models\Client;
 use App\Models\Credit;
 use App\Models\CreditInstallment;
@@ -79,7 +80,7 @@ class CreditActivateSaldoTest extends TestCase
         $credit = $this->credito(0);
         $credit->update(['situacion' => 'Activo', 'estado' => 1, 'fecha_cancelacion' => null]);
 
-        Livewire::test(\App\Livewire\Credits\ChangeStatus::class)
+        Livewire::test(ChangeStatus::class)
             ->set('selectedId', $credit->id)
             ->call('changeStatus')
             ->assertDispatched('errorAlert');
@@ -93,7 +94,7 @@ class CreditActivateSaldoTest extends TestCase
         $credit = $this->credito(250);
         $credit->update(['situacion' => 'Activo', 'estado' => 1, 'fecha_cancelacion' => null]);
 
-        Livewire::test(\App\Livewire\Credits\ChangeStatus::class)
+        Livewire::test(ChangeStatus::class)
             ->set('selectedId', $credit->id)
             ->call('changeStatus')
             ->assertDispatched('successAlert');
