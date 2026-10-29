@@ -98,14 +98,17 @@ class Index extends Component
     }
 
     /**
-     * Usuarios del filtro: una consulta por render (sin persist: con el cache
-     * en base de datos la colección volvía rehidratada como texto y la vista
-     * caía con "Attempt to read property id on string").
+     * Usuarios del filtro: solo los ACTIVOS (29/10, Antony: "están saliendo
+     * usuarios inactivos"; eligió "solo activos" sabiendo que la historia de un
+     * usuario inactivo ya no se filtra desde aquí). Una consulta por render
+     * (sin persist: con el cache en base de datos la colección volvía
+     * rehidratada como texto y la vista caía con "Attempt to read property id
+     * on string").
      */
     #[Computed]
     public function usuarios(): Collection
     {
-        return User::orderBy('name')->get(['id', 'name', 'username']);
+        return User::where('status', 'active')->orderBy('name')->get(['id', 'name', 'username']);
     }
 
     /** Clase → nombre legible de cada modelo auditado (filtro Módulo y columna Afectado). */
