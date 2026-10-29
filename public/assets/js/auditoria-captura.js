@@ -35,11 +35,28 @@
  * de esos ancestros para que la maqueta no se mueva; los iframes nunca.
  * window.CapturaAuditoria.ultima guarda la medida de la última foto (ms,
  * elementos copiados/descartados, tamaño) para diagnosticar en la oficina.
+ *
+ * 29/10/2026 (Antony: "¿hay forma de mejorar la calidad de las capturas?"): se
+ * tomaban al 75 % y en JPEG 0.62, y la letra del tema (10-12 px) quedaba en
+ * 7-9 px y manchada. Ahora 2x y JPEG 0.85: en "Confirmar cobro" la foto pasa de
+ * 315 × 336 px y 13 KB a 840 × 898 px y 78 KB, con el mismo tiempo (~280 ms en
+ * la Mac: lo que pesa es copiar el DOM, no dibujarlo más grande). Una zona muy
+ * grande baja la escala (escalaPara) para no pasar de auditoria.capturas.max_bytes.
  */
 (function () {
-    const ESCALA = 0.75;      // 1200 px de modal → 900 px de foto
-    const CALIDAD = 0.62;     // JPEG; ~80-150 KB por captura
-    const LIMITE_MS = 4000;   // más que esto, la acción sale sin foto
+    const ESCALA = 2;              // nítida: cada px de pantalla son 2 de foto
+    const CALIDAD = 0.85;          // JPEG; ~30-130 KB por captura
+    const MAX_ANCHO = 2400;        // px de foto: una zona muy ancha baja la escala
+    const MAX_PIXELES = 4000000;   // ~4 MP: la foto queda muy por debajo del tope de 1.5 MB del servidor
+    const ESCALA_MIN = 0.75;       // nunca menos nítida que antes del 29/10
+    const LIMITE_MS = 4000;        // más que esto, la acción sale sin foto
+
+    /** 2x, salvo que la zona sea muy ancha o muy grande; nunca por debajo de ESCALA_MIN. */
+    function escalaPara(ancho, alto) {
+        if (!(ancho > 0 && alto > 0)) return ESCALA;
+        const tope = Math.min(ESCALA, MAX_ANCHO / ancho, Math.sqrt(MAX_PIXELES / (ancho * alto)));
+        return Math.max(ESCALA_MIN, Math.round(tope * 100) / 100);
+    }
 
     function zona(el) {
         return el.closest('[data-captura]')
@@ -121,9 +138,13 @@
     async function dibujar(z, fila, estado) {
         if (typeof html2canvas !== 'function') throw new Error('html2canvas no cargado');
         const { ignorar, cuenta } = recorte(z, fila);
+        // Con data-captura="fila" la foto lleva solo la cabecera y esa fila: se mide eso, no la tabla entera.
+        const caja = z.getBoundingClientRect();
+        const alto = fila ? (z.tHead ? z.tHead.getBoundingClientRect().height : 0) + fila.getBoundingClientRect().height : caja.height;
+        const escala = escalaPara(caja.width, alto);
         const inicio = performance.now();
         const canvas = await html2canvas(z, {
-            scale: ESCALA,
+            scale: escala,
             useCORS: true,
             logging: false,
             backgroundColor: '#ffffff',
@@ -140,6 +161,7 @@
             ms: Math.round(performance.now() - inicio),
             copiados: cuenta.copiados,
             descartados: cuenta.descartados,
+            escala,
             ancho: canvas.width,
             alto: canvas.height,
             kb: Math.round(foto.length * 0.75 / 1024),
