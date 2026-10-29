@@ -471,15 +471,24 @@ class Create extends Component
         return $plan + [
             'credito' => (int) $this->credit->id,
             'sugerida' => max($plan['minimo'], min($plan['maximo'], $sugerida)),
+            // 28/10 (Antony): checks para agregar la mora y la mora acumulada, desmarcados por defecto.
+            // Los montos son los que el cobro sumaría al cancelar; si ya hay un cálculo, vuelven sus checks.
+            'mora' => round((float) $this->buildCalcs()['total_mora'], 2),
+            'mora_acumulada' => round((float) collect(MoraExonerada::porCuota($this->credit))->sum('monto'), 2),
+            'con_mora' => $this->cancelHasta !== null && ! $this->quitarMora,
+            'con_mora_acumulada' => $this->cancelHasta !== null && ! $this->quitarMoraAcum,
         ];
     }
 
     /**
      * Lleva el total de "Calcular cancelación" al Monto a Pagar y enciende
      * Cancelado: el resto es el cobro de siempre. El monto lo calcula el
-     * servidor; del navegador solo llega la cuota elegida.
+     * servidor; del navegador solo llegan la cuota elegida y los dos checks de
+     * mora (28/10, Antony: desmarcados por defecto): sin marcar, la mora y la
+     * mora acumulada se exoneran al cancelar con los mismos switches de la
+     * tarjeta "Cancelar crédito"; marcados, se cobran como siempre.
      */
-    public function aplicarCancelacion(int $hasta): bool
+    public function aplicarCancelacion(int $hasta, bool $conMora = false, bool $conMoraAcumulada = false): bool
     {
         if (! $this->credit || $this->credit->situacion !== 'Activo') {
             return false;
@@ -503,6 +512,19 @@ class Create extends Component
         $this->cancelHasta = $hasta;
         $this->cancelUltimaCuota = false;
         $this->cancel = true;
+        $this->quitarMora = ! $conMora;
+        $this->quitarMoraAcum = ! $conMoraAcumulada;
+        if ($this->quitarMora) {
+            // Igual que el switch: exonerar manda sobre el Total Mora tecleado.
+            $this->moraManual = null;
+            $this->moraMotivo = 'Mora exonerada';
+        } else {
+            // Con Reserva Mora la mora no se cobraría: marcarla es cobrarla.
+            $this->ckmora = false;
+        }
+        if (($this->quitarMora || $this->quitarMoraAcum) && mb_strlen(trim($this->condonarMotivo)) < 5) {
+            $this->condonarMotivo = 'Mora exonerada';
+        }
         $this->dispatch('monto-usado');
 
         return true;
@@ -568,6 +590,9 @@ class Create extends Component
         $this->cancelHasta = null;
         $this->cancel = false;
         $this->decisionTotal = '';
+        // Los switches de exoneración los fijó el cálculo: vuelven a su valor normal.
+        $this->quitarMora = false;
+        $this->quitarMoraAcum = false;
     }
 
     /**

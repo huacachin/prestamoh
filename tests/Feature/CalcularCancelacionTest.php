@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
@@ -65,6 +67,21 @@ class CalcularCancelacionTest extends TestCase
                 'pagado' => $pagada ? 1 : 0,
             ]);
         }
+
+        return $credit;
+    }
+
+    /**
+     * El pago real de la cuota 1, 3 días después de vencer: deja 3 × 0.86 = 2.58 de mora acumulada.
+     * La vigente es la de la cuota 5, vencida hace 14 días: 14 × 0.86 = 12.04.
+     */
+    private function conCuotaPagadaTarde(Credit $credit): Credit
+    {
+        DB::table('payments')->insert([
+            'credit_id' => $credit->id, 'monto' => 120, 'tipo' => 'CAPITAL', 'documento' => 'CAPITAL',
+            'fecha' => now()->subWeeks(6)->addDays(3)->format('Y-m-d'), 'hora' => '10:00:00',
+            'headquarter_id' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ]);
 
         return $credit;
     }
@@ -252,9 +269,79 @@ class CalcularCancelacionTest extends TestCase
 
         Livewire::test(Create::class, ['creditId' => $credit->id])
             ->call('aplicarCancelacion', 8)
+            ->assertSet('quitarMora', true)
             ->set('monto', 700)
             ->assertSet('cancelHasta', null)
-            ->assertSet('cancel', false);
+            ->assertSet('cancel', false)
+            // Los switches de exoneración que encendió el cálculo vuelven a apagarse.
+            ->assertSet('quitarMora', false)
+            ->assertSet('quitarMoraAcum', false);
+    }
+
+    /** 28/10 (Antony): checks para agregar la mora y la mora acumulada, desmarcados por defecto. */
+    public function test_el_calculo_trae_la_mora_y_la_acumulada_con_los_checks_desmarcados(): void
+    {
+        $this->actingAs($this->actor());
+        $credit = $this->conCuotaPagadaTarde($this->credito());
+
+        Livewire::test(Create::class, ['creditId' => $credit->id])
+            ->call('abrirCancelacion')
+            ->assertReturned(fn ($plan) => $plan['mora'] === 12.04 && $plan['mora_acumulada'] === 2.58
+                && $plan['con_mora'] === false && $plan['con_mora_acumulada'] === false)
+            // Al volver a abrirlo con el cálculo ya aplicado, los checks quedan como se dejaron.
+            ->call('aplicarCancelacion', 8, true, false)
+            ->call('abrirCancelacion')
+            ->assertReturned(fn ($plan) => $plan['con_mora'] === true && $plan['con_mora_acumulada'] === false);
+    }
+
+    public function test_sin_marcar_los_checks_la_cancelacion_exonera_la_mora_y_la_acumulada(): void
+    {
+        $user = $this->actor();
+        $user->givePermissionTo(Permission::findOrCreate('pagos.mora-manual', 'web'));
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $this->actingAs($user);
+        $credit = $this->conCuotaPagadaTarde($this->credito());
+
+        Livewire::test(Create::class, ['creditId' => $credit->id])
+            ->set('moraManual', '5')
+            ->call('aplicarCancelacion', 8)
+            ->assertSet('quitarMora', true)
+            ->assertSet('quitarMoraAcum', true)
+            // Como el switch: exonerar manda sobre el Total Mora tecleado.
+            ->assertSet('moraManual', null)
+            ->call('confirmarPago')
+            ->call('pagar')
+            ->assertNotDispatched('errorAlert');
+
+        $this->assertSame('Cancelado', $credit->fresh()->situacion);
+        $this->assertSame(0, Payment::where('credit_id', $credit->id)->where('tipo', 'MORA')->count());
+        $this->assertEqualsWithDelta(675.00, (float) MassDeletion::where('credit_id', $credit->id)->latest('id')->value('amount'), 0.001);
+        $this->assertDatabaseHas('mora_overrides', ['credit_id' => $credit->id, 'tipo' => 'condonacion-vigente', 'mora_calculada' => 12.04, 'motivo' => 'Mora exonerada']);
+        $this->assertDatabaseHas('mora_overrides', ['credit_id' => $credit->id, 'tipo' => 'condonacion-acumulada', 'mora_calculada' => 2.58, 'motivo' => 'Mora exonerada']);
+    }
+
+    public function test_con_los_checks_marcados_la_mora_y_la_acumulada_se_cobran_al_cancelar(): void
+    {
+        $this->actingAs($this->actor());
+        $credit = $this->conCuotaPagadaTarde($this->credito());
+
+        Livewire::test(Create::class, ['creditId' => $credit->id])
+            // Con Reserva Mora la mora no se cobraría: marcar "Agregar mora" la apaga.
+            ->set('ckmora', true)
+            ->call('aplicarCancelacion', 8, true, true)
+            ->assertSet('quitarMora', false)
+            ->assertSet('quitarMoraAcum', false)
+            ->assertSet('ckmora', false)
+            ->assertSet('monto', '675.00')
+            ->call('confirmarPago')
+            ->call('pagar')
+            ->assertNotDispatched('errorAlert');
+
+        $this->assertSame('Cancelado', $credit->fresh()->situacion);
+        $this->assertEqualsWithDelta(14.62, (float) Payment::where('credit_id', $credit->id)->where('tipo', 'MORA')->sum('monto'), 0.001);
+        $this->assertEqualsWithDelta(2.58, (float) Payment::where('credit_id', $credit->id)->where('documento', 'MORA ACUM.')->sum('monto'), 0.001);
+        $this->assertEqualsWithDelta(689.62, (float) MassDeletion::where('credit_id', $credit->id)->latest('id')->value('amount'), 0.001);
+        $this->assertDatabaseMissing('mora_overrides', ['credit_id' => $credit->id]);
     }
 
     public function test_interes_completo_reemplaza_el_calculo(): void

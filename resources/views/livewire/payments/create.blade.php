@@ -1632,7 +1632,28 @@
                         <div class="small text-muted mt-2">
                             <span x-show="valido() && n < p.maximo" x-text="'No se cobra el interés de las cuotas ' + (n + 1) + ' a ' + p.maximo + ': se descuentan ' + soles(descuento()) + ' del saldo.'"></span>
                             <span x-show="valido() && n >= p.maximo">Se cobra el interés de todas las cuotas.</span>
-                            La mora va aparte, como en cualquier cobro.
+                        </div>
+
+                        {{-- 28/10 (Antony): checks para agregar la mora y la mora acumulada, desmarcados por defecto.
+                             Sin marcar se exoneran al cancelar (switches de la tarjeta "Cancelar crédito"). --}}
+                        <div class="mt-2" x-show="p.mora > 0.005 || p.mora_acumulada > 0.005">
+                            <div class="form-check mb-1" x-show="p.mora > 0.005">
+                                <input class="form-check-input" type="checkbox" id="cancelacion-con-mora" x-model="conMora">
+                                <label class="form-check-label small" for="cancelacion-con-mora">
+                                    Agregar mora <b x-text="soles(p.mora)"></b>
+                                </label>
+                            </div>
+                            <div class="form-check mb-1" x-show="p.mora_acumulada > 0.005">
+                                <input class="form-check-input" type="checkbox" id="cancelacion-con-mora-acumulada" x-model="conMoraAcumulada">
+                                <label class="form-check-label small" for="cancelacion-con-mora-acumulada">
+                                    Agregar mora acumulada (cuotas ya pagadas) <b x-text="soles(p.mora_acumulada)"></b>
+                                </label>
+                            </div>
+                            <div class="d-flex justify-content-between fw-bold border-top pt-1 mt-1">
+                                <span>Total a cobrar</span>
+                                <span x-text="valido() ? soles(totalACobrar()) : '—'"></span>
+                            </div>
+                            <div class="small text-muted" x-text="sinMarcar() ? 'Lo que no marques se exonera al cancelar.' : 'La mora marcada se cobra junto con la cancelación.'"></div>
                         </div>
                         <div class="small text-danger mt-1" x-show="! valido()" x-text="'Elige una cuota entre la ' + p.minimo + ' y la ' + p.maximo + '.'"></div>
                     </div>
@@ -1647,8 +1668,10 @@
             <script>
                 function calcularCancelacion() {
                     return {
-                        p: { credito: '', interes_cuota: 0, capital: 0, pagado: 0, total_cuotas: 0, pagadas: 0, minimo: 1, maximo: 1, vencidas: 0, saldo: 0, saldo_al_cancelar: 0, vencimientos: {} },
+                        p: { credito: '', interes_cuota: 0, capital: 0, pagado: 0, total_cuotas: 0, pagadas: 0, minimo: 1, maximo: 1, vencidas: 0, saldo: 0, saldo_al_cancelar: 0, vencimientos: {}, mora: 0, mora_acumulada: 0 },
                         n: 1,
+                        conMora: false,
+                        conMoraAcumulada: false,
                         cargando: false,
                         enviando: false,
                         abrir() {
@@ -1659,6 +1682,9 @@
                                 if (! plan) return;
                                 this.p = plan;
                                 this.n = plan.sugerida;
+                                // Desmarcados por defecto; si ya hay un cálculo aplicado, vuelven como quedaron.
+                                this.conMora = !! plan.con_mora;
+                                this.conMoraAcumulada = !! plan.con_mora_acumulada;
                                 this.modal.show(); // la instancia la crea modalFlotante (sin fondo oscuro en escritorio)
                                 // El número queda seleccionado: se escribe la cuota y Enter la usa.
                                 setTimeout(() => document.getElementById('cancelacion-hasta')?.select(), 60);
@@ -1677,13 +1703,19 @@
                         // Igual que CancelacionHastaCuota::monto(): nunca más que el saldo que queda al cancelar.
                         total() { return this.redondear(Math.min(this.interes() + this.p.capital - this.p.pagado, this.p.saldo_al_cancelar)); },
                         descuento() { return Math.max(0, this.redondear(this.p.saldo - this.total())); },
+                        totalACobrar() {
+                            return this.redondear(this.total() + (this.conMora ? this.p.mora : 0) + (this.conMoraAcumulada ? this.p.mora_acumulada : 0));
+                        },
+                        sinMarcar() {
+                            return (this.p.mora > 0.005 && ! this.conMora) || (this.p.mora_acumulada > 0.005 && ! this.conMoraAcumulada);
+                        },
                         vence() { return this.p.vencimientos[this.n] || ''; },
                         soles(v) { return 'S/ ' + Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
                         // Ojo: no llamarlo aplicar(); ese nombre es de modalFlotante (coloca la ventana al abrir).
                         usar() {
                             if (! this.valido() || this.enviando) return;
                             this.enviando = true;
-                            this.$wire.aplicarCancelacion(this.n).then((ok) => {
+                            this.$wire.aplicarCancelacion(this.n, this.conMora, this.conMoraAcumulada).then((ok) => {
                                 this.enviando = false;
                                 if (ok) this.modal.hide();
                             }, () => { this.enviando = false; });
