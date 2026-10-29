@@ -1653,7 +1653,12 @@
                                 <span>Total a cobrar</span>
                                 <span x-text="valido() ? soles(totalACobrar()) : '—'"></span>
                             </div>
-                            <div class="small text-muted" x-text="sinMarcar() ? 'Lo que no marques se exonera al cancelar.' : 'La mora marcada se cobra junto con la cancelación.'"></div>
+                            {{-- 28/10 (Antony): aviso visible de que lo no marcado se exonera. --}}
+                            <div class="rounded p-2 mt-2 small" style="background:#fff3cd; color:#664d03;" x-show="sinMarcar()">
+                                <i class="ti ti-alert-triangle f-s-12"></i>
+                                <span x-text="avisoExoneracion()"></span>
+                            </div>
+                            <div class="small text-muted mt-1" x-show="! sinMarcar()">La mora marcada se cobra aparte, como pago de mora.</div>
                         </div>
                         <div class="small text-danger mt-1" x-show="! valido()" x-text="'Elige una cuota entre la ' + p.minimo + ' y la ' + p.maximo + '.'"></div>
                     </div>
@@ -1708,6 +1713,19 @@
                         },
                         sinMarcar() {
                             return (this.p.mora > 0.005 && ! this.conMora) || (this.p.mora_acumulada > 0.005 && ! this.conMoraAcumulada);
+                        },
+                        avisoExoneracion() {
+                            const partes = [];
+                            if (this.p.mora > 0.005 && ! this.conMora) {
+                                partes.push('la mora (' + this.soles(this.p.mora) + ')');
+                            }
+                            if (this.p.mora_acumulada > 0.005 && ! this.conMoraAcumulada) {
+                                partes.push('la mora acumulada (' + this.soles(this.p.mora_acumulada) + ')');
+                            }
+                            const varias = partes.length > 1;
+                            return 'Ojo: al cancelar se ' + (varias ? 'exoneran ' : 'exonera ') + partes.join(' y ')
+                                + '. No se ' + (varias ? 'cobran' : 'cobra') + ' y queda registrado con el motivo «Mora exonerada». Para '
+                                + (varias ? 'cobrarlas, márcalas' : 'cobrarla, márcala') + ' arriba.';
                         },
                         vence() { return this.p.vencimientos[this.n] || ''; },
                         soles(v) { return 'S/ ' + Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
