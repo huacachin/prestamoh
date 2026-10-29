@@ -546,6 +546,17 @@ document.addEventListener('click', function (e) {
                 }
             });
         });
+
+        // Si Livewire cambió el valor desde el servidor (29/10, Antony: la consulta de placa trae el
+        // color y el cuadro seguía en "— Seleccione —"), select2 no se entera solo. Todos los cuadros
+        // se redibujan en la vuelta siguiente, cuando wire:model ya puso el valor en la lista: antes
+        // de eso la lista todavía tiene el anterior, también en los recién montados (el morph les
+        // reescribe la clase, p. ej. al marcarlos como "vino de la API", y se vuelven a montar).
+        // 'change.select2' solo redibuja el cuadro: no dispara el change nativo, así que no va al
+        // servidor ni hace bucle.
+        setTimeout(function () {
+            jQuery('select.select2-simple, select.select2-tags').filter('.select2-hidden-accessible').trigger('change.select2');
+        }, 0);
     }
 
     document.addEventListener('DOMContentLoaded', initSelect2);
