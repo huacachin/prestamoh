@@ -651,7 +651,7 @@ class Create extends Component
     /**
      * Vehículos: la lista puede ir VACÍA (paso opcional). Cada fila agregada
      * va completa, igual que al agregar un vehículo desde la ficha
-     * (Clients\Vehiculos, 16/10; aquí desde el 29/10, pedido de Antony): si
+     * (Clients\Vehiculos, 16/10; aquí desde el 28/10, pedido de Antony): si
      * falta un dato, no se guarda el cliente con ese vehículo.
      *
      * @return array<string, mixed>

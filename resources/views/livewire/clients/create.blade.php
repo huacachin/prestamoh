@@ -465,7 +465,7 @@
                                     </div>
                                     @error('vehiculos.'.$i.'.placa') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                                 </div>
-                                {{-- 29/10 (Antony): igual que al agregar un vehículo desde la ficha (pestaña Vehículos): todo
+                                {{-- 28/10 (Antony): igual que al agregar un vehículo desde la ficha (pestaña Vehículos): todo
                                      obligatorio, en amarillo lo que la consulta de placa no rellena y en rojo lo que sí. --}}
                                 @php
                                     $api = $autoVehiculo[$i] ?? [];

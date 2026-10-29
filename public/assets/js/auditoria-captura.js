@@ -36,7 +36,7 @@
  * window.CapturaAuditoria.ultima guarda la medida de la última foto (ms,
  * elementos copiados/descartados, tamaño) para diagnosticar en la oficina.
  *
- * 29/10/2026 (Antony: "¿hay forma de mejorar la calidad de las capturas?"): se
+ * 28/10/2026 (Antony: "¿hay forma de mejorar la calidad de las capturas?"): se
  * tomaban al 75 % y en JPEG 0.62, y la letra del tema (10-12 px) quedaba en
  * 7-9 px y manchada. Ahora 2x y JPEG 0.85: en "Confirmar cobro" la foto pasa de
  * 315 × 336 px y 13 KB a 840 × 898 px y 78 KB, con el mismo tiempo (~280 ms en
@@ -48,7 +48,7 @@
     const CALIDAD = 0.85;          // JPEG; ~30-130 KB por captura
     const MAX_ANCHO = 2400;        // px de foto: una zona muy ancha baja la escala
     const MAX_PIXELES = 4000000;   // ~4 MP: la foto queda muy por debajo del tope de 1.5 MB del servidor
-    const ESCALA_MIN = 0.75;       // nunca menos nítida que antes del 29/10
+    const ESCALA_MIN = 0.75;       // nunca menos nítida que antes del 28/10
     const LIMITE_MS = 4000;        // más que esto, la acción sale sin foto
 
     /** 2x, salvo que la zona sea muy ancha o muy grande; nunca por debajo de ESCALA_MIN. */

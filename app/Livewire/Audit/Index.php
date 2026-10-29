@@ -98,7 +98,7 @@ class Index extends Component
     }
 
     /**
-     * Usuarios del filtro: solo los ACTIVOS (29/10, Antony: "están saliendo
+     * Usuarios del filtro: solo los ACTIVOS (28/10, Antony: "están saliendo
      * usuarios inactivos"; eligió "solo activos" sabiendo que la historia de un
      * usuario inactivo ya no se filtra desde aquí). Una consulta por render
      * (sin persist: con el cache en base de datos la colección volvía

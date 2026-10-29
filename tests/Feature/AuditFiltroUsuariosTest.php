@@ -9,7 +9,7 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * Filtro de usuarios del visor de Auditoría (29/10/2026, Antony: "están saliendo
+ * Filtro de usuarios del visor de Auditoría (28/10/2026, Antony: "están saliendo
  * usuarios inactivos"): solo lista los usuarios activos.
  */
 class AuditFiltroUsuariosTest extends TestCase

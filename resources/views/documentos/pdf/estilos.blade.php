@@ -170,7 +170,7 @@
        (la del acreedor lleva 5 y la del deudor 3). */
     table.tabla-firmas td {
         width: 50%;
-        /* El padding superior ES el espacio para firmar sobre la línea. 29/10 (Antony, tarea 5
+        /* El padding superior ES el espacio para firmar sobre la línea. 28/10 (Antony, tarea 5
            observada: "un poco más de espacio para la firma, máximo 5 hojas"): 85px ≈ 2.25 cm (antes 62px
            ≈ 1.6 cm). Los 35 contratos guardados siguen en las mismas hojas (la hoja 5 lleva casi solo las
            firmas), pero el modelo a35 de ContratoPaginasTest, el más largo, pasa a 6 hojas con 95px: no
@@ -196,7 +196,7 @@
     table.tabla-firmas { table-layout: fixed; }
     table.tabla-firmas td { padding: 8pt 10pt; vertical-align: top; }
     table.tabla-firmas tr { page-break-inside: avoid; }
-    .firmas .linea-firma { margin-top: 64pt; } /* ≈ 2.25 cm, lo mismo que el PDF (29/10) */
+    .firmas .linea-firma { margin-top: 64pt; } /* ≈ 2.25 cm, lo mismo que el PDF (28/10) */
     @endif
 
     @if($medio === 'previa')

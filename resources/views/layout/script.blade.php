@@ -547,7 +547,7 @@ document.addEventListener('click', function (e) {
             });
         });
 
-        // Si Livewire cambió el valor desde el servidor (29/10, Antony: la consulta de placa trae el
+        // Si Livewire cambió el valor desde el servidor (28/10, Antony: la consulta de placa trae el
         // color y el cuadro seguía en "— Seleccione —"), select2 no se entera solo. Todos los cuadros
         // se redibujan en la vuelta siguiente, cuando wire:model ya puso el valor en la lista: antes
         // de eso la lista todavía tiene el anterior, también en los recién montados (el morph les

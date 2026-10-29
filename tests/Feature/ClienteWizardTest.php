@@ -184,7 +184,7 @@ class ClienteWizardTest extends TestCase
         $this->assertEqualsWithDelta(32000.50, (float) $vehiculos[1]->valor, 0.01);
     }
 
-    /** 29/10 (Antony): como al agregar un vehículo desde la ficha, no se guarda si le falta algún dato. */
+    /** 28/10 (Antony): como al agregar un vehículo desde la ficha, no se guarda si le falta algún dato. */
     public function test_un_vehiculo_incompleto_no_deja_guardar_y_marca_cada_campo(): void
     {
         $this->paso1()->call('siguientePaso')
