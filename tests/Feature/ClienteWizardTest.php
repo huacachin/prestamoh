@@ -152,17 +152,27 @@ class ClienteWizardTest extends TestCase
         $this->assertSame(0, Vehiculo::where('client_id', $cliente->id)->count());
     }
 
+    /** @param  array<string, mixed>  $datos */
+    private function vehiculoCompleto(Testable $comp, int $i, array $datos): Testable
+    {
+        $datos += [
+            'modelo' => 'Hiace', 'nro_motor' => '2kd123456', 'nro_serie' => 'jt123456789', 'categoria' => 'M2-C3',
+            'anio_modelo' => '2018', 'carroceria' => 'Microbus', 'color' => 'Blanco', 'combustible' => 'GNV',
+        ];
+        foreach ($datos as $campo => $valor) {
+            $comp->set("vehiculos.{$i}.{$campo}", $valor);
+        }
+
+        return $comp;
+    }
+
     public function test_se_guardan_vario_s_vehiculos_con_su_valor(): void
     {
         $comp = $this->paso1()->call('siguientePaso')
             ->call('agregarVehiculo')
-            ->call('agregarVehiculo')
-            ->set('vehiculos.0.placa', 'abc-123')
-            ->set('vehiculos.0.marca', 'Toyota')
-            ->set('vehiculos.0.valor', 45000)
-            ->set('vehiculos.1.placa', 'XYZ-789')
-            ->set('vehiculos.1.marca', 'Hyundai')
-            ->set('vehiculos.1.valor', 32000.50);
+            ->call('agregarVehiculo');
+        $this->vehiculoCompleto($comp, 0, ['placa' => 'abc-123', 'marca' => 'Toyota', 'valor' => 45000]);
+        $this->vehiculoCompleto($comp, 1, ['placa' => 'XYZ-789', 'marca' => 'Hyundai', 'valor' => 32000.50]);
 
         $comp->call('save');
 
@@ -172,6 +182,27 @@ class ClienteWizardTest extends TestCase
         $this->assertSame('ABC-123', $vehiculos[0]->placa, 'la placa se normaliza a mayúsculas');
         $this->assertEqualsWithDelta(45000, (float) $vehiculos[0]->valor, 0.01);
         $this->assertEqualsWithDelta(32000.50, (float) $vehiculos[1]->valor, 0.01);
+    }
+
+    /** 29/10 (Antony): como al agregar un vehículo desde la ficha, no se guarda si le falta algún dato. */
+    public function test_un_vehiculo_incompleto_no_deja_guardar_y_marca_cada_campo(): void
+    {
+        $this->paso1()->call('siguientePaso')
+            ->call('agregarVehiculo')
+            ->set('vehiculos.0.placa', 'ABC-123')
+            ->set('vehiculos.0.marca', 'Toyota')
+            ->set('vehiculos.0.valor', 0)
+            ->call('save')
+            ->assertHasErrors([
+                'vehiculos.0.modelo' => 'required', 'vehiculos.0.nro_motor' => 'required', 'vehiculos.0.nro_serie' => 'required',
+                'vehiculos.0.categoria' => 'required', 'vehiculos.0.anio_modelo' => 'required', 'vehiculos.0.carroceria' => 'required',
+                'vehiculos.0.color' => 'required', 'vehiculos.0.combustible' => 'required', 'vehiculos.0.valor' => 'gt',
+            ])
+            ->assertHasNoErrors(['vehiculos.0.placa', 'vehiculos.0.marca'])
+            ->assertSee('Selecciona el color.')
+            ->assertSee('El valor del vehículo debe ser mayor que cero.');
+
+        $this->assertSame(0, Client::where('documento', '45678912')->count());
     }
 
     public function test_placa_repetida_en_la_lista_no_pasa(): void

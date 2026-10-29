@@ -649,8 +649,10 @@ class Create extends Component
     }
 
     /**
-     * Vehículos: la lista puede ir VACÍA (paso opcional). De cada fila
-     * agregada solo se exige la placa — es la clave del registro.
+     * Vehículos: la lista puede ir VACÍA (paso opcional). Cada fila agregada
+     * va completa, igual que al agregar un vehículo desde la ficha
+     * (Clients\Vehiculos, 16/10; aquí desde el 29/10, pedido de Antony): si
+     * falta un dato, no se guarda el cliente con ese vehículo.
      *
      * @return array<string, mixed>
      */
@@ -659,16 +661,16 @@ class Create extends Component
         return [
             'vehiculos' => 'array',
             'vehiculos.*.placa' => 'required|string|max:10|distinct|unique:vehiculos,placa',
-            'vehiculos.*.marca' => 'nullable|string|max:50',
-            'vehiculos.*.modelo' => 'nullable|string|max:50',
-            'vehiculos.*.nro_motor' => 'nullable|string|max:30',
-            'vehiculos.*.nro_serie' => 'nullable|string|max:30',
-            'vehiculos.*.categoria' => 'nullable|string|max:30',
-            'vehiculos.*.anio_modelo' => 'nullable|string|max:10',
-            'vehiculos.*.carroceria' => 'nullable|string|max:50',
-            'vehiculos.*.color' => 'nullable|string|max:50',
-            'vehiculos.*.combustible' => 'nullable|string|max:30',
-            'vehiculos.*.valor' => 'nullable|numeric|min:0',
+            'vehiculos.*.marca' => 'required|string|max:50',
+            'vehiculos.*.modelo' => 'required|string|max:50',
+            'vehiculos.*.nro_motor' => 'required|string|max:30',
+            'vehiculos.*.nro_serie' => 'required|string|max:30',
+            'vehiculos.*.categoria' => 'required|string|max:30',
+            'vehiculos.*.anio_modelo' => 'required|string|max:10',
+            'vehiculos.*.carroceria' => 'required|string|max:50',
+            'vehiculos.*.color' => 'required|string|max:50',
+            'vehiculos.*.combustible' => 'required|string|max:30',
+            'vehiculos.*.valor' => 'required|numeric|gt:0',
         ];
     }
 
@@ -683,6 +685,18 @@ class Create extends Component
             'vehiculos.*.placa.required' => 'Ingresa la placa (o quita el vehículo de la lista).',
             'vehiculos.*.placa.unique' => 'Esa placa ya está registrada en otro cliente.',
             'vehiculos.*.placa.distinct' => 'La placa está repetida en la lista.',
+            // Los mismos mensajes que al agregar un vehículo desde la ficha (Clients\Vehiculos).
+            'vehiculos.*.marca.required' => 'Ingresa la marca.',
+            'vehiculos.*.modelo.required' => 'Ingresa el modelo.',
+            'vehiculos.*.nro_motor.required' => 'Ingresa el N° de motor.',
+            'vehiculos.*.nro_serie.required' => 'Ingresa el N° de serie.',
+            'vehiculos.*.categoria.required' => 'Selecciona la categoría.',
+            'vehiculos.*.anio_modelo.required' => 'Ingresa el año de modelo.',
+            'vehiculos.*.carroceria.required' => 'Selecciona la carrocería.',
+            'vehiculos.*.color.required' => 'Selecciona el color.',
+            'vehiculos.*.combustible.required' => 'Selecciona el combustible.',
+            'vehiculos.*.valor.required' => 'Ingresa el valor del vehículo.',
+            'vehiculos.*.valor.gt' => 'El valor del vehículo debe ser mayor que cero.',
             'email.required' => 'El correo electrónico es obligatorio.',
             'email.email' => 'Escribe un correo electrónico válido.',
             'emailUsuario.required' => 'Escribe el usuario del correo (lo que va antes de la @).',
