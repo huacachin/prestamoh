@@ -170,8 +170,12 @@
        (la del acreedor lleva 5 y la del deudor 3). */
     table.tabla-firmas td {
         width: 50%;
-        /* El padding superior ES el espacio para firmar sobre la línea. */
-        padding: 62px 14px 8px 14px;
+        /* El padding superior ES el espacio para firmar sobre la línea. 29/10 (Antony, tarea 5
+           observada: "un poco más de espacio para la firma, máximo 5 hojas"): 85px ≈ 2.25 cm (antes 62px
+           ≈ 1.6 cm). Los 35 contratos guardados siguen en las mismas hojas (la hoja 5 lleva casi solo las
+           firmas), pero el modelo a35 de ContratoPaginasTest, el más largo, pasa a 6 hojas con 95px: no
+           subir de aquí sin correr ese test. Si un contrato real se pasara, MaquetaContrato aprieta. */
+        padding: 85px 14px 8px 14px;
         text-align: center;
         vertical-align: top;
         font-size: 6.5pt;
@@ -180,7 +184,7 @@
 
     @if($medio === 'word')
     /* Word y las firmas (16/09). Dos cosas no sobreviven al importador:
-       1) El hueco para firmar es un padding-top de 62px en la celda. Word lo
+       1) El hueco para firmar es un padding-top de 85px en la celda. Word lo
           traduce a márgenes de celda y descarta los superiores asimétricos
           grandes: el espacio en blanco desaparecía y las cajas quedaban
           pegadas al párrafo de "EN SEÑAL DE CONFORMIDAD". Se pasa a
@@ -192,7 +196,7 @@
     table.tabla-firmas { table-layout: fixed; }
     table.tabla-firmas td { padding: 8pt 10pt; vertical-align: top; }
     table.tabla-firmas tr { page-break-inside: avoid; }
-    .firmas .linea-firma { margin-top: 46pt; }
+    .firmas .linea-firma { margin-top: 64pt; } /* ≈ 2.25 cm, lo mismo que el PDF (29/10) */
     @endif
 
     @if($medio === 'previa')
