@@ -18,6 +18,7 @@ use App\Support\ConSubidaDeArchivos;
 use App\Support\MoraExonerada;
 use App\Support\MoraPagada;
 use App\Support\RecibosCuota;
+use App\Support\RotuloCuotas;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -467,13 +468,16 @@ class Create extends Component
         }
 
         $sugerida = $this->cancelHasta ?? $plan['vencidas'];
+        $moraVencidas = $this->moraPorCuotasVencidas(now());
 
         return $plan + [
             'credito' => (int) $this->credit->id,
             'sugerida' => max($plan['minimo'], min($plan['maximo'], $sugerida)),
             // 28/10 (Antony): checks para agregar la mora y la mora acumulada, desmarcados por defecto.
             // Los montos son los que el cobro sumaría al cancelar; si ya hay un cálculo, vuelven sus checks.
-            'mora' => round((float) $this->buildCalcs()['total_mora'], 2),
+            // 30/10: la mora es la suma de la de cada cuota vencida (se cancelan todas), no solo la más antigua.
+            'mora' => $moraVencidas['monto'],
+            'mora_rotulo' => RotuloCuotas::de($moraVencidas['cuotas']),
             'mora_acumulada' => round((float) collect(MoraExonerada::porCuota($this->credit))->sum('monto'), 2),
             'con_mora' => $this->cancelHasta !== null && ! $this->quitarMora,
             'con_mora_acumulada' => $this->cancelHasta !== null && ! $this->quitarMoraAcum,
@@ -514,9 +518,11 @@ class Create extends Component
         $this->cancel = true;
         $this->quitarMora = ! $conMora;
         $this->quitarMoraAcum = ! $conMoraAcumulada;
+        // Con el cálculo la mora es la suma de cada cuota vencida (moraCalcAt): el Total Mora
+        // que updatedMonto() precargó (solo la más antigua) no debe mandar sobre ella.
+        $this->moraManual = null;
         if ($this->quitarMora) {
             // Igual que el switch: exonerar manda sobre el Total Mora tecleado.
-            $this->moraManual = null;
             $this->moraMotivo = 'Mora exonerada';
         } else {
             // Con Reserva Mora la mora no se cobraría: marcarla es cobrarla.
@@ -725,7 +731,7 @@ class Create extends Component
             'dias_atraso' => $diasddd, 'dias_final' => $diasFinal,
             'mora_rate' => $moraRate, 'total_mora' => $totMora, 'total_mora_calc' => $totMoraCalc,
             'mora_cuota' => $moraInfo['cuota_num'],
-            'mora_cuotas' => $usaManual ? $this->moraCuotasAplicadas : [],
+            'mora_cuotas' => $usaManual ? $this->moraCuotasAplicadas : $moraInfo['cuotas'],
             'mora_manual' => $usaManual, 'mora_acumulada' => $moraAcumulada,
             // Ajuste REAL: el override cambió el monto. El campo viene precargado
             // con la mora calculada, así que "manual" sin cambio no es un ajuste
@@ -768,6 +774,18 @@ class Create extends Component
             ? (float) $minIns->importe_cuota + (float) $minIns->importe_interes + (float) $minIns->importe_excedente
             : 0.0;
         $moraRate = $this->credit->moraDiaria($cuotaVencida);
+        $moraCalc = round($diasFinal * $moraRate, 2);
+
+        // 30/10 (Antony, 29427): con "Calcular cancelación" se pagan TODAS las cuotas vencidas, así que la
+        // mora es la suma de la de cada una (como "elegir cuotas"), no solo la de la más antigua.
+        $cuotasConMora = [];
+        $diasTotal = $diasFinal;
+        if ($this->cancelHasta !== null) {
+            $porCuotas = $this->moraPorCuotasVencidas($al);
+            $moraCalc = $porCuotas['monto'];
+            $cuotasConMora = $porCuotas['cuotas'];
+            $diasTotal = $porCuotas['dias'];
+        }
 
         return [
             'fecha_venc' => $minFechaStr,
@@ -777,8 +795,43 @@ class Create extends Component
             'dias_atraso' => $diasddd,
             'dias_final' => $diasFinal,
             'mora_rate' => $moraRate,
-            'mora_calc' => round($diasFinal * $moraRate, 2),
+            'mora_calc' => $moraCalc,
+            // Solo con el cálculo: las cuotas cuya mora se suma y sus días en total.
+            'cuotas' => $cuotasConMora,
+            'dias_total' => $diasTotal,
         ];
+    }
+
+    /**
+     * Mora de cada cuota impaga vencida al $al (días calendario × tarifa de la cuota, igual que
+     * "elegir cuotas"), sumada.
+     *
+     * @return array{monto: float, cuotas: list<int>, dias: int}
+     */
+    private function moraPorCuotasVencidas(Carbon $al): array
+    {
+        $dia = $al->copy()->startOfDay();
+        $monto = 0.0;
+        $cuotas = [];
+        $diasTotal = 0;
+        $pendientes = DB::table('credit_installments')
+            ->where('credit_id', $this->credit->id)
+            ->where('pagado', 0)->where('importe_cuota', '>', 0)
+            ->orderBy('fecha_vencimiento')
+            ->get(['num_cuota', 'fecha_vencimiento', 'importe_cuota', 'importe_interes', 'importe_excedente']);
+
+        foreach ($pendientes as $ins) {
+            $dias = max(0, (int) floor(Carbon::parse($ins->fecha_vencimiento)->startOfDay()->diffInDays($dia, false)));
+            if ($dias === 0) {
+                continue;
+            }
+            $cuota = (float) $ins->importe_cuota + (float) $ins->importe_interes + (float) $ins->importe_excedente;
+            $monto += round($dias * $this->credit->moraDiaria($cuota), 2);
+            $cuotas[] = (int) $ins->num_cuota;
+            $diasTotal += $dias;
+        }
+
+        return ['monto' => round($monto, 2), 'cuotas' => $cuotas, 'dias' => $diasTotal];
     }
 
     private function emptyCalcs(): array
@@ -2041,7 +2094,7 @@ class Create extends Component
                 'dias_adic' => 0, 'periodos' => 0, 'cap_dia' => 0.0, 'int_dia' => 0.0, 'periodo_dias' => 0,
                 'exc_hoy' => 0.0, 'exc_prox' => 0.0, 'exc_pendiente' => 0.0,
                 'cap_hoy' => 0.0, 'int_hoy' => 0.0, 'cap_prox' => 0.0, 'int_prox' => 0.0,
-                'mora' => 0.0, 'mora_dias' => 0, 'mora_rate' => 0.0,
+                'mora' => 0.0, 'mora_dias' => 0, 'mora_rate' => 0.0, 'mora_cuotas' => [], 'mora_dias_total' => 0,
                 'total_hoy' => 0.0, 'total_prox' => 0.0,
                 'cap_pendiente_total' => 0.0, 'saldo_credito' => 0.0,
                 'int_cancelar' => 0.0, 'cancelar_cap_int' => 0.0, 'total_cancelar' => 0.0,
@@ -2159,6 +2212,8 @@ class Create extends Component
             'mora' => $mora,
             'mora_dias' => $moraInfo['dias_final'],
             'mora_rate' => $moraInfo['mora_rate'],
+            'mora_cuotas' => $moraInfo['cuotas'],
+            'mora_dias_total' => $moraInfo['dias_total'],
             'total_hoy' => round($capHoy + $intHoy + $excVenc + $mora, 2),
             'total_prox' => round($capProx + $intProx + $excProx + $mora, 2),
             'cap_pendiente_total' => $capPendTotal,

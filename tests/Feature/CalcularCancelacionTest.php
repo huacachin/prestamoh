@@ -73,7 +73,8 @@ class CalcularCancelacionTest extends TestCase
 
     /**
      * El pago real de la cuota 1, 3 días después de vencer: deja 3 × 0.86 = 2.58 de mora acumulada.
-     * La vigente es la de la cuota 5, vencida hace 14 días: 14 × 0.86 = 12.04.
+     * La vigente, con el cálculo, suma la de cada cuota vencida: la 5 (14 días) y la 6 (7 días),
+     * (14 + 7) × 0.86 = 18.06; sin el cálculo es solo la de la 5, 12.04.
      */
     private function conCuotaPagadaTarde(Credit $credit): Credit
     {
@@ -286,7 +287,7 @@ class CalcularCancelacionTest extends TestCase
 
         Livewire::test(Create::class, ['creditId' => $credit->id])
             ->call('abrirCancelacion')
-            ->assertReturned(fn ($plan) => $plan['mora'] === 12.04 && $plan['mora_acumulada'] === 2.58
+            ->assertReturned(fn ($plan) => $plan['mora'] === 18.06 && $plan['mora_rotulo'] === 'cuotas 5 y 6' && $plan['mora_acumulada'] === 2.58
                 && $plan['con_mora'] === false && $plan['con_mora_acumulada'] === false)
             // Al volver a abrirlo con el cálculo ya aplicado, los checks quedan como se dejaron.
             ->call('aplicarCancelacion', 8, true, false)
@@ -316,8 +317,38 @@ class CalcularCancelacionTest extends TestCase
         $this->assertSame('Cancelado', $credit->fresh()->situacion);
         $this->assertSame(0, Payment::where('credit_id', $credit->id)->where('tipo', 'MORA')->count());
         $this->assertEqualsWithDelta(675.00, (float) MassDeletion::where('credit_id', $credit->id)->latest('id')->value('amount'), 0.001);
-        $this->assertDatabaseHas('mora_overrides', ['credit_id' => $credit->id, 'tipo' => 'condonacion-vigente', 'mora_calculada' => 12.04, 'motivo' => 'Mora exonerada']);
+        $this->assertDatabaseHas('mora_overrides', ['credit_id' => $credit->id, 'tipo' => 'condonacion-vigente', 'mora_calculada' => 18.06, 'motivo' => 'Mora exonerada']);
         $this->assertDatabaseHas('mora_overrides', ['credit_id' => $credit->id, 'tipo' => 'condonacion-acumulada', 'mora_calculada' => 2.58, 'motivo' => 'Mora exonerada']);
+    }
+
+    /**
+     * 30/10 (Antony, 29427: "al darle en agregar mora siempre se queda la mora de una sola cuota, si quiero pagar
+     * todas las cuotas vencidas no suma las moras de esas cuotas"): con el cálculo la mora es la suma de cada
+     * cuota vencida, aunque quien cobra tenga el Total Mora editable (precargado con la de la más antigua).
+     */
+    public function test_con_el_calculo_la_mora_suma_cada_cuota_vencida_y_sin_el_es_la_mas_antigua(): void
+    {
+        $user = $this->actor();
+        $user->givePermissionTo(Permission::findOrCreate('pagos.mora-manual', 'web'));
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $this->actingAs($user);
+        $credit = $this->credito();
+
+        $c = Livewire::test(Create::class, ['creditId' => $credit->id])
+            ->call('aplicarCancelacion', 8, true, false)
+            ->assertSet('moraManual', null)
+            ->assertSee('Mora cuotas 5 y 6 (21 días en total)')
+            ->call('confirmarPago');
+        $this->assertSame(18.06, $c->get('preview')['mora_cobrar']);
+        $c->assertSee('Mora cuotas 5 y 6:');
+
+        // Otro monto sale del cálculo: vuelve la regla de siempre, la mora de la impaga más antigua.
+        $c->set('monto', 700)->set('moraManual', null)->call('confirmarPago');
+        $this->assertSame(12.04, $c->get('preview')['mora_cobrar']);
+
+        $c->call('aplicarCancelacion', 8, true, false)->call('confirmarPago')->call('pagar')->assertNotDispatched('errorAlert');
+        $this->assertEqualsWithDelta(18.06, (float) Payment::where('credit_id', $credit->id)->where('tipo', 'MORA')->sum('monto'), 0.001);
+        $this->assertDatabaseMissing('mora_overrides', ['credit_id' => $credit->id]);
     }
 
     public function test_con_los_checks_marcados_la_mora_y_la_acumulada_se_cobran_al_cancelar(): void
@@ -338,9 +369,9 @@ class CalcularCancelacionTest extends TestCase
             ->assertNotDispatched('errorAlert');
 
         $this->assertSame('Cancelado', $credit->fresh()->situacion);
-        $this->assertEqualsWithDelta(14.62, (float) Payment::where('credit_id', $credit->id)->where('tipo', 'MORA')->sum('monto'), 0.001);
+        $this->assertEqualsWithDelta(20.64, (float) Payment::where('credit_id', $credit->id)->where('tipo', 'MORA')->sum('monto'), 0.001);
         $this->assertEqualsWithDelta(2.58, (float) Payment::where('credit_id', $credit->id)->where('documento', 'MORA ACUM.')->sum('monto'), 0.001);
-        $this->assertEqualsWithDelta(689.62, (float) MassDeletion::where('credit_id', $credit->id)->latest('id')->value('amount'), 0.001);
+        $this->assertEqualsWithDelta(695.64, (float) MassDeletion::where('credit_id', $credit->id)->latest('id')->value('amount'), 0.001);
         $this->assertDatabaseMissing('mora_overrides', ['credit_id' => $credit->id]);
     }
 

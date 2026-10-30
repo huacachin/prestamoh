@@ -32,11 +32,19 @@
             // de "elegir cuotas" (con permiso), nombra las cuotas elegidas con mora;
             // si no, es la calculada de la cuota impaga más antigua.
             $cuotaMora = $c['mora_cuota'] ?? null;
-            $cuotasMora = (($c['mora_manual'] ?? false) && ! empty($c['mora_cuotas']))
+            // 30/10: con "Calcular cancelación" (sin Total Mora tecleado) también nombra varias:
+            // la mora es la suma de cada cuota vencida.
+            $cuotasMora = ! empty($c['mora_cuotas'])
                 ? $c['mora_cuotas']
                 : ($cuotaMora ? [$cuotaMora] : []);
+            $moraDeVencidas = ! ($c['mora_manual'] ?? false) && count($cuotasMora) > 1;
             $rotuloMora = \App\Support\RotuloCuotas::de($cuotasMora);
             $totalMoraTxt = $rotuloMora !== '' ? ' · '.$rotuloMora : '';
+            // Rótulo de la mora en las tarjetas de escenario (a la fecha simulada).
+            $etqMoraSim = count($sim['mora_cuotas'] ?? []) > 1
+                ? 'Mora '.\App\Support\RotuloCuotas::de($sim['mora_cuotas']).' ('.$sim['mora_dias_total'].' días en total)'
+                : 'Mora'.($cuotaMora ? ' cuota '.$cuotaMora : '')
+                    .($sim['mora_dias'] > 0 ? ' ('.$sim['mora_dias'].' '.($sim['mora_dias'] === 1 ? 'día' : 'días').' × '.number_format($sim['mora_rate'], 2).')' : '');
         @endphp
 
         @php
@@ -181,7 +189,9 @@
                             ? "Días desde el vencimiento de la cuota {$cuotaMora}, la impaga más antigua (".\Carbon\Carbon::parse($c['fecha_venc'])->format('d/m/Y').')'
                             : '';
                         $cuotaMoraTitle = count($cuotasMora) > 1
-                            ? "Mora de las {$rotuloMora}: suma de la mora de cada cuota marcada en \"elegir cuotas\"."
+                            ? ($moraDeVencidas
+                                ? "Mora de las {$rotuloMora}: suma de la mora de cada cuota vencida (\"Calcular cancelación\" las cancela todas)."
+                                : "Mora de las {$rotuloMora}: suma de la mora de cada cuota marcada en \"elegir cuotas\".")
                             : ($cuotaMora
                                 ? "Mora de la cuota {$cuotaMora} (la impaga más antigua, vencida el ".\Carbon\Carbon::parse($c['fecha_venc'])->format('d/m/Y')."). No es la suma de la mora de todas las cuotas vencidas: para cobrar varias, usa \"elegir cuotas\"."
                                 : '');
@@ -1320,7 +1330,7 @@
                                 <div class="d-flex justify-content-between small"><span>Excedente</span><span>{{ number_format($sim['exc_hoy'], 2) }}</span></div>
                             @endif
                             <div class="d-flex justify-content-between small">
-                                <span>Mora{{ ($c['mora_cuota'] ?? null) ? ' cuota '.$c['mora_cuota'] : '' }} @if($sim['mora_dias'] > 0)({{ $sim['mora_dias'] }} {{ $sim['mora_dias'] === 1 ? 'día' : 'días' }} × {{ number_format($sim['mora_rate'], 2) }})@endif</span>
+                                <span>{{ $etqMoraSim }}</span>
                                 <span style="color:red;">{{ number_format($sim['mora'], 2) }}</span>
                             </div>
                             <div class="d-flex justify-content-between fw-bold border-top mt-1 pt-1"><span>Total</span><span>{{ number_format($sim['total_hoy'], 2) }}</span></div>
@@ -1359,7 +1369,7 @@
                                 <div class="d-flex justify-content-between small"><span>Excedente</span><span>{{ number_format($sim['exc_prox'], 2) }}</span></div>
                             @endif
                             <div class="d-flex justify-content-between small">
-                                <span>Mora{{ ($c['mora_cuota'] ?? null) ? ' cuota '.$c['mora_cuota'] : '' }} @if($sim['mora_dias'] > 0)({{ $sim['mora_dias'] }} {{ $sim['mora_dias'] === 1 ? 'día' : 'días' }} × {{ number_format($sim['mora_rate'], 2) }})@endif</span>
+                                <span>{{ $etqMoraSim }}</span>
                                 <span style="color:red;">{{ number_format($sim['mora'], 2) }}</span>
                             </div>
                             <div class="d-flex justify-content-between fw-bold border-top mt-1 pt-1"><span>Total</span><span>{{ number_format($sim['total_prox'], 2) }}</span></div>
@@ -1418,7 +1428,7 @@
                                 <div class="d-flex justify-content-between small"><span>{{ $cancelUltimaCuota ? 'Excedente de redondeo (todas las cuotas)' : 'Excedente vencido' }}</span><span>{{ number_format($excCancelar, 2) }}</span></div>
                             @endif
                             <div class="d-flex justify-content-between small">
-                                <span>Mora{{ ($c['mora_cuota'] ?? null) ? ' cuota '.$c['mora_cuota'] : '' }} @if($sim['mora_dias'] > 0)({{ $sim['mora_dias'] }} {{ $sim['mora_dias'] === 1 ? 'día' : 'días' }} × {{ number_format($sim['mora_rate'], 2) }})@endif</span>
+                                <span>{{ $etqMoraSim }}</span>
                                 <span style="{{ $quitarMora ? $tachado : 'color:red;' }}">{{ number_format($sim['mora'], 2) }}</span>
                             </div>
                             <div class="d-flex justify-content-between small">
@@ -1642,7 +1652,7 @@
                             <div class="form-check mb-1" x-show="p.mora > 0.005">
                                 <input class="form-check-input" type="checkbox" id="cancelacion-con-mora" x-model="conMora">
                                 <label class="form-check-label small" for="cancelacion-con-mora">
-                                    Agregar mora <b x-text="soles(p.mora)"></b>
+                                    Agregar mora<span x-show="p.mora_rotulo" x-text="' (' + p.mora_rotulo + ')'"></span> <b x-text="soles(p.mora)"></b>
                                 </label>
                             </div>
                             <div class="form-check mb-1" x-show="p.mora_acumulada > 0.005">
@@ -1675,7 +1685,7 @@
             <script>
                 function calcularCancelacion() {
                     return {
-                        p: { credito: '', interes_cuota: 0, capital: 0, pagado: 0, total_cuotas: 0, pagadas: 0, minimo: 1, maximo: 1, vencidas: 0, saldo: 0, saldo_al_cancelar: 0, vencimientos: {}, mora: 0, mora_acumulada: 0 },
+                        p: { credito: '', interes_cuota: 0, capital: 0, pagado: 0, total_cuotas: 0, pagadas: 0, minimo: 1, maximo: 1, vencidas: 0, saldo: 0, saldo_al_cancelar: 0, vencimientos: {}, mora: 0, mora_rotulo: '', mora_acumulada: 0 },
                         n: 1,
                         conMora: false,
                         conMoraAcumulada: false,
