@@ -52,7 +52,7 @@ class Panel extends Component
             return;
         }
         if (! config('chat.habilitado')) {
-            $this->dispatch('errorAlert', ['message' => 'El chat no está configurado (falta la clave de la API).']);
+            $this->dispatch('errorAlert', ['message' => 'El chat de consulta está desactivado.']);
 
             return;
         }

@@ -11,7 +11,7 @@ return [
     | un cliente o un crédito y Claude responde usando HERRAMIENTAS DE SOLO
     | LECTURA escritas en PHP (App\Services\Chat\Herramientas). El modelo
     | nunca escribe SQL ni toca la base: solo pide una de esas consultas y
-    | redacta con lo que devuelven. Sin CHAT_API_KEY el panel no se muestra.
+    | redacta con lo que devuelven. Sin CHAT_ACTIVO=true y CHAT_API_KEY el panel no se muestra.
     |
     | Prueba con los 200 USD de crédito que le regalaron a Antony: cada
     | respuesta guarda sus tokens y su costo (USD, según 'precios') y el panel
@@ -22,7 +22,9 @@ return [
     |
     */
 
-    'habilitado' => filled(env('CHAT_API_KEY')),
+    // 30/10 (Antony): "el chat de IA hay que desactivarlo". Apagado por defecto: el botón y el panel
+    // solo salen con CHAT_ACTIVO=true y la clave; datos, conversaciones y configuración quedan intactos.
+    'habilitado' => filter_var(env('CHAT_ACTIVO', false), FILTER_VALIDATE_BOOL) && filled(env('CHAT_API_KEY')),
     'api_key' => env('CHAT_API_KEY'),
     // Solo con una clave de usuario (sk-ant-usr-…) que la API exija atar a un workspace (wrkspc_…).
     'workspace' => env('CHAT_WORKSPACE_ID'),

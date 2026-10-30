@@ -275,4 +275,32 @@ class ChatConsultaTest extends TestCase
         auth()->logout();
         $this->get(route('perfil'))->assertRedirect(route('login'));
     }
+
+    /** 30/10 (Antony): "el chat de IA hay que desactivarlo" — apagado salvo CHAT_ACTIVO=true, aunque haya clave. */
+    public function test_el_chat_queda_apagado_aunque_haya_clave_salvo_que_se_active(): void
+    {
+        $antes = [$_SERVER['CHAT_API_KEY'] ?? null, $_SERVER['CHAT_ACTIVO'] ?? null];
+        try {
+            $_SERVER['CHAT_API_KEY'] = 'sk-ant-falsa';
+            unset($_SERVER['CHAT_ACTIVO']);
+            $this->assertFalse((require config_path('chat.php'))['habilitado'], 'por defecto, apagado');
+
+            $_SERVER['CHAT_ACTIVO'] = 'false';
+            $this->assertFalse((require config_path('chat.php'))['habilitado']);
+
+            $_SERVER['CHAT_ACTIVO'] = 'true';
+            $this->assertTrue((require config_path('chat.php'))['habilitado'], 'encendido a propósito y con clave');
+
+            $_SERVER['CHAT_API_KEY'] = '';
+            $this->assertFalse((require config_path('chat.php'))['habilitado'], 'sin clave no hay chat');
+        } finally {
+            foreach (['CHAT_API_KEY' => $antes[0], 'CHAT_ACTIVO' => $antes[1]] as $clave => $valor) {
+                if ($valor === null) {
+                    unset($_SERVER[$clave]);
+                } else {
+                    $_SERVER[$clave] = $valor;
+                }
+            }
+        }
+    }
 }
