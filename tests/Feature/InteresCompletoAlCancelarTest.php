@@ -229,6 +229,82 @@ class InteresCompletoAlCancelarTest extends TestCase
         $this->assertDatabaseHas('activity_log', ['description' => "Cancelación anticipada del crédito {$credit->id}: descuento de interés no devengado 150.00"]);
     }
 
+    /**
+     * Cuota uniforme con excedente de redondeo, como el 29427: semanal de 1,000 en 4 cuotas de
+     * 250 + 50 + 0.04. La 1 está pagada (venció hace 3 días) y las 2 a 4 aún no vencen: el
+     * cronograma pendiente es 3 × 300.04 = 900.12, de los que 0.12 son redondeo.
+     */
+    private function creditoConExcedente(): Credit
+    {
+        $client = Client::create(['nombre' => 'Cliente Semanal']);
+        $credit = Credit::create([
+            'client_id' => $client->id, 'fecha_prestamo' => now()->subDays(10)->format('Y-m-d'),
+            'importe' => 1000, 'cuotas' => 4, 'tipo_planilla' => 1, 'interes' => 20,
+            'interes_total' => 200, 'situacion' => 'Activo', 'estado' => 1,
+        ]);
+        foreach (range(1, 4) as $n) {
+            $pagada = $n === 1;
+            CreditInstallment::create([
+                'credit_id' => $credit->id, 'num_cuota' => $n,
+                'fecha_vencimiento' => now()->addDays(7 * $n - 10)->format('Y-m-d'),
+                'importe_cuota' => 250, 'importe_interes' => 50, 'importe_excedente' => 0.04,
+                'importe_aplicado' => $pagada ? 250 : 0, 'interes_aplicado' => $pagada ? 50 : 0,
+                'excedente_aplicado' => $pagada ? 0.04 : 0, 'pagado' => $pagada ? 1 : 0,
+            ]);
+        }
+
+        return $credit;
+    }
+
+    /** 28/10 (Antony, 29427: "todavía me sale como pendiente 0.48, ¿por qué no se paga todo?"). */
+    public function test_interes_completo_cobra_tambien_el_redondeo_de_las_cuotas_futuras_y_no_queda_saldo(): void
+    {
+        $this->actingAs($this->actor());
+        $credit = $this->creditoConExcedente();
+
+        $c = Livewire::test(Create::class, ['creditId' => $credit->id])
+            ->set('cancelUltimaCuota', true)
+            ->assertSee('Excedente de redondeo (todas las cuotas)')
+            ->assertSee('Usar 900.12 en Monto a Pagar')
+            ->call('usarMonto', 900.12)
+            ->call('confirmarPago')
+            ->set('decisionTotal', 'si');
+
+        $this->assertSame('900.12', (string) $c->get('monto'));
+        $p = $c->get('preview');
+        $this->assertSame([900.12, 0.0, 0.0, 0.12], [$p['monto_si_cancela'], $p['condona_si_cancela'], $p['queda_si_vigente'], $p['exc_venc']]);
+
+        $c->call('pagar')->assertNotDispatched('errorAlert');
+
+        $this->assertSame('Cancelado', $credit->fresh()->situacion);
+        $this->assertEqualsWithDelta(0.12, (float) Payment::where('credit_id', $credit->id)->where('tipo', 'EXCEDENTE')->sum('monto'), 0.001);
+        $this->assertEqualsWithDelta(150.00, (float) Payment::where('credit_id', $credit->id)->where('tipo', 'INTERES')->sum('monto'), 0.001);
+        // Nada condonado: las cuotas quedan pagadas con su interés y su redondeo completos.
+        $cuotas = CreditInstallment::where('credit_id', $credit->id)->whereIn('num_cuota', [2, 3, 4])->get();
+        $this->assertSame([1, 1, 1], $cuotas->pluck('pagado')->map(fn ($v) => (int) $v)->all());
+        $this->assertSame([0.04, 0.04, 0.04], $cuotas->pluck('excedente_aplicado')->map(fn ($v) => (float) $v)->all());
+        $this->assertSame([50.0, 50.0, 50.0], $cuotas->pluck('importe_interes')->map(fn ($v) => (float) $v)->all());
+    }
+
+    public function test_sin_interes_completo_el_redondeo_de_las_cuotas_futuras_se_sigue_condonando(): void
+    {
+        $this->actingAs($this->actor());
+        $credit = $this->creditoConExcedente();
+
+        // Cancelar hoy: capital 750 + interés de 3 días (3 × 50 / 7 = 21.43); el redondeo futuro no se cobra.
+        Livewire::test(Create::class, ['creditId' => $credit->id])
+            ->set('monto', 771.43)
+            ->set('cancel', true)
+            ->set('decisionTotal', 'si')
+            ->call('pagar')
+            ->assertNotDispatched('errorAlert');
+
+        $this->assertSame('Cancelado', $credit->fresh()->situacion);
+        $this->assertSame(0, Payment::where('credit_id', $credit->id)->where('tipo', 'EXCEDENTE')->count());
+        $this->assertSame([0.0, 0.0, 0.0], CreditInstallment::where('credit_id', $credit->id)->whereIn('num_cuota', [2, 3, 4])
+            ->pluck('importe_excedente')->map(fn ($v) => (float) $v)->all());
+    }
+
     public function test_la_tarjeta_explica_que_antes_del_primer_vencimiento_no_hay_interes_devengado(): void
     {
         $this->actingAs($this->actor());

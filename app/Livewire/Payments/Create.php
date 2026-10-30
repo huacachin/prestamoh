@@ -1005,7 +1005,9 @@ class Create extends Component
      * devengado a la fecha + excedente vencido. Con "Cancelar hasta la última
      * cuota" el cajero pide expresamente cobrar TODO el interés del
      * cronograma: el modo estricto respeta esa elección (misma fórmula que la
-     * tarjeta "Cancelar crédito").
+     * tarjeta "Cancelar crédito"). Desde el 28/10 (Antony, crédito 29427:
+     * "¿por qué no se paga todo?") ese modo cobra además el excedente de
+     * redondeo de las cuotas futuras: es el cronograma entero y no queda saldo.
      */
     private function necesarioParaCancelar(): float
     {
@@ -1015,11 +1017,11 @@ class Create extends Component
         }
 
         $d = $this->deudaCalcs();
-        $int = $this->cancelUltimaCuota
-            ? round((float) $d['saldo_credito'] - (float) $d['cap_pendiente_total'], 2)
-            : (float) $d['int_cancelar'];
+        if ($this->cancelUltimaCuota) {
+            return round((float) $d['saldo_credito'] + (float) $d['exc_pendiente'], 2);
+        }
 
-        return round((float) $d['cap_pendiente_total'] + $int + (float) $d['exc_hoy'], 2);
+        return round((float) $d['cap_pendiente_total'] + (float) $d['int_cancelar'] + (float) $d['exc_hoy'], 2);
     }
 
     /**
@@ -1199,7 +1201,11 @@ class Create extends Component
                 // El excedente es redondeo de comodidad de cobro, no deuda:
                 // al cancelar solo se cobra el de cuotas ya vencidas; el de
                 // cuotas futuras se condona ANTES de calcular el descuento.
-                $this->condonarExcedenteFuturo();
+                // Con "Interés completo" se cobra el cronograma entero (28/10):
+                // el monto ya trae ese redondeo y no se condona.
+                if (! $this->cancelUltimaCuota) {
+                    $this->condonarExcedenteFuturo();
+                }
                 if ($planCancelacion !== null) {
                     $this->corregirCapitalDeMas($planCancelacion);
                 }
@@ -1645,8 +1651,8 @@ class Create extends Component
             return $all;
         }
 
-        // Espejo de condonarExcedenteFuturo()
-        foreach ($all as $ins) {
+        // Espejo de condonarExcedenteFuturo() (con "Interés completo" no se condona)
+        foreach ($this->cancelUltimaCuota ? [] : $all as $ins) {
             if ((int) $ins->pagado === 0
                 && $ins->fecha_vencimiento
                 && Carbon::parse($ins->fecha_vencimiento)->gt(Carbon::parse($this->fecpag))
@@ -1823,8 +1829,9 @@ class Create extends Component
             'cap_pendiente_total' => round((float) $dc['cap_pendiente_total'], 2),
             'int_cancelar' => round((float) $dc['int_cancelar'], 2),
             // Excedente de redondeo vencido: entra en el umbral, así que la
-            // cuenta del aviso lo muestra cuando existe (cuota uniforme).
-            'exc_venc' => round((float) $dc['exc_hoy'], 2),
+            // cuenta del aviso lo muestra cuando existe (cuota uniforme). Con
+            // "Interés completo" es el de todas las cuotas (28/10).
+            'exc_venc' => round((float) ($this->cancelUltimaCuota ? $dc['exc_pendiente'] : $dc['exc_hoy']), 2),
             'saldo_pendiente' => round((float) $calcs['saldo_pendiente'], 2),
             'condona' => $condona,
             // Modo estricto: lo tecleado antes del ajuste (null si no hubo).
@@ -1836,9 +1843,9 @@ class Create extends Component
             // "No" y quedaba falsa para "Sí" en cuanto el modo estricto recorta.
             'monto_si_cancela' => $necesarioCancelar,
             // Lo que costaría cancelar con "Interés completo" (cronograma entero:
-            // capital + todo el interés pendiente + excedente vencido), para
-            // ofrecerlo en el modal cuando cancelar hoy condonaría interés.
-            'monto_interes_completo' => round((float) $dc['saldo_credito'] + (float) $dc['exc_hoy'], 2),
+            // capital + todo el interés pendiente + el excedente de todas las
+            // cuotas), para ofrecerlo en el modal cuando cancelar hoy condonaría interés.
+            'monto_interes_completo' => round((float) $dc['saldo_credito'] + (float) $dc['exc_pendiente'], 2),
             'monto_si_vigente' => $montoVigente,
             'condona_si_cancela' => $condonaSi,
             'queda_si_vigente' => $quedaNo,
@@ -2032,7 +2039,7 @@ class Create extends Component
         if (! $this->credit) {
             return ['fecha' => null, 'cuotas_vencidas' => 0, 'cap_vencidas' => 0.0, 'int_vencidas' => 0.0,
                 'dias_adic' => 0, 'periodos' => 0, 'cap_dia' => 0.0, 'int_dia' => 0.0, 'periodo_dias' => 0,
-                'exc_hoy' => 0.0, 'exc_prox' => 0.0,
+                'exc_hoy' => 0.0, 'exc_prox' => 0.0, 'exc_pendiente' => 0.0,
                 'cap_hoy' => 0.0, 'int_hoy' => 0.0, 'cap_prox' => 0.0, 'int_prox' => 0.0,
                 'mora' => 0.0, 'mora_dias' => 0, 'mora_rate' => 0.0,
                 'total_hoy' => 0.0, 'total_prox' => 0.0,
@@ -2106,6 +2113,9 @@ class Create extends Component
         $mora = $usaManual ? round((float) $this->moraManual, 2) : $moraInfo['mora_calc'];
 
         $capPendTotal = round($installments->sum('importe_cuota') - $installments->sum('importe_aplicado'), 2);
+        // Excedente de redondeo de TODAS las cuotas (vencidas y futuras): "Interés completo"
+        // cobra el cronograma entero, también este redondeo (28/10, Antony, crédito 29427).
+        $excPendiente = $installments->sum(fn ($i) => max(0, (float) $i->importe_excedente - (float) $i->excedente_aplicado));
         $saldoCredito = round(
             $installments->sum('importe_cuota') + $installments->sum('importe_interes')
             - $installments->sum('importe_aplicado') - $installments->sum('interes_aplicado'), 2
@@ -2145,6 +2155,7 @@ class Create extends Component
             'int_prox' => round($intProx, 2),
             'exc_hoy' => round($excVenc, 2),
             'exc_prox' => round($excProx, 2),
+            'exc_pendiente' => round($excPendiente, 2),
             'mora' => $mora,
             'mora_dias' => $moraInfo['dias_final'],
             'mora_rate' => $moraInfo['mora_rate'],
@@ -2227,7 +2238,7 @@ class Create extends Component
             // Gate del switch Cancelado: capital + interés a la fecha, o el
             // cronograma entero con "Interés completo" (30/09).
             'cancelarHoy' => $this->necesarioParaCancelar(),
-            'cancelarTodo' => round((float) $dHoy['saldo_credito'] + (float) $dHoy['exc_hoy'], 2),
+            'cancelarTodo' => round((float) $dHoy['saldo_credito'] + (float) $dHoy['exc_pendiente'], 2),
             'fecsimMin' => $fecsimMin,
             'moraExon' => $this->credit ? MoraExonerada::porCuota($this->credit, $moraCelda) : [],
             'recibos' => $this->recibosPorCuota(),

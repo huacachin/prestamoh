@@ -1046,7 +1046,7 @@
                                             + interés {{ $sUltima ? 'hasta la última cuota' : 'al '.$preview['fecha'] }}
                                             <b>S/ {{ number_format($sIntCancelar, 2) }}</b>
                                             @if(($preview['exc_venc'] ?? 0) > 0.001)
-                                                + excedente vencido <b>S/ {{ number_format($preview['exc_venc'], 2) }}</b>
+                                                + {{ $sUltima ? 'excedente de redondeo' : 'excedente vencido' }} <b>S/ {{ number_format($preview['exc_venc'], 2) }}</b>
                                             @endif
                                             = <b>S/ {{ number_format($sMontoSi, 2) }}</b>
                                         </div>
@@ -1398,8 +1398,10 @@
                                     : $sim['int_cancelar'];
                                 $morasCancelar = round(($quitarMora ? 0 : $sim['mora']) + ($quitarMoraAcum ? 0 : $moraAcumTotal), 2);
                                 // Excedente (cuota uniforme): solo el de cuotas vencidas;
-                                // el de cuotas futuras se condona al cancelar.
-                                $capIntCancelar = round($sim['cap_pendiente_total'] + $intCancelar + $sim['exc_hoy'], 2);
+                                // el de cuotas futuras se condona al cancelar. Con
+                                // "Interés completo" se cobra el de todas (28/10, 29427).
+                                $excCancelar = $cancelUltimaCuota ? $sim['exc_pendiente'] : $sim['exc_hoy'];
+                                $capIntCancelar = round($sim['cap_pendiente_total'] + $intCancelar + $excCancelar, 2);
                                 $totalCancelarCard = round($capIntCancelar + $morasCancelar, 2);
                                 // El botón llena solo capital + interés: la mora vigente y la
                                 // mora acumulada se cobran automáticamente como pagos MORA al
@@ -1412,8 +1414,8 @@
                                 <span>{{ $cancelUltimaCuota ? 'Interés hasta la última cuota' : 'Interés a la fecha' }}</span>
                                 <span>{{ number_format($intCancelar, 2) }}</span>
                             </div>
-                            @if($sim['exc_hoy'] > 0)
-                                <div class="d-flex justify-content-between small"><span>Excedente vencido</span><span>{{ number_format($sim['exc_hoy'], 2) }}</span></div>
+                            @if($excCancelar > 0)
+                                <div class="d-flex justify-content-between small"><span>{{ $cancelUltimaCuota ? 'Excedente de redondeo (todas las cuotas)' : 'Excedente vencido' }}</span><span>{{ number_format($excCancelar, 2) }}</span></div>
                             @endif
                             <div class="d-flex justify-content-between small">
                                 <span>Mora{{ ($c['mora_cuota'] ?? null) ? ' cuota '.$c['mora_cuota'] : '' }} @if($sim['mora_dias'] > 0)({{ $sim['mora_dias'] }} {{ $sim['mora_dias'] === 1 ? 'día' : 'días' }} × {{ number_format($sim['mora_rate'], 2) }})@endif</span>
