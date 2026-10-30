@@ -127,7 +127,7 @@ class MotivoCobroTest extends TestCase
         DB::table('headquarters')->insertOrIgnore(['id' => 1, 'name' => 'Principal', 'empresa' => 'Huacachin', 'status' => 'active', 'sort_order' => 1, 'created_at' => now(), 'updated_at' => now()]);
         $this->travelTo('2026-10-22 10:00:00');
         $this->actingAs(User::factory()->create(['username' => 'rep-motivo', 'headquarter_id' => 1]));
-        $client = Client::create(['nombre' => 'Edwin', 'apellido_pat' => 'Leoncio', 'apellido_mat' => 'Escalera', 'headquarter_id' => 1, 'status' => 'active']);
+        $client = Client::create(['expediente' => '1288', 'nombre' => 'Edwin', 'apellido_pat' => 'Leoncio', 'apellido_mat' => 'Escalera', 'headquarter_id' => 1, 'status' => 'active']);
         $credit = Credit::create(['client_id' => $client->id, 'fecha_prestamo' => '2026-08-25', 'importe' => 10000, 'cuotas' => 48, 'tipo_planilla' => 1, 'interes' => 60, 'interes_total' => 6000, 'situacion' => 'Activo', 'estado' => 1, 'headquarter_id' => 1]);
         $cuota = CreditInstallment::create(['credit_id' => $credit->id, 'num_cuota' => 6, 'fecha_vencimiento' => '2026-10-06', 'importe_cuota' => 208.33, 'importe_interes' => 125.00, 'importe_excedente' => 0, 'importe_aplicado' => 208.33, 'interes_aplicado' => 125.00, 'excedente_aplicado' => 0, 'importe_mora' => 0, 'mora_interes' => 0, 'pagado' => true, 'fecha_pago' => '2026-10-22']);
         foreach ([['INTERES', 125.00], ['CAPITAL', 208.33]] as [$tipo, $monto]) {
@@ -137,8 +137,9 @@ class MotivoCobroTest extends TestCase
         $comp = Livewire::test(Payments::class)->set('fei', '2026-10-22')->set('fef', '2026-10-22')->call('search');
 
         $comp->assertSee('Cuota 6 de 48')->assertSee('Capital 208.33 · Interés 125.00')
-            ->assertSeeHtml('<span class="text-danger fw-bold">Atraso 16 días</span>'); // el atraso en rojo y negrita (23/10)
+            ->assertSeeHtml('<span class="text-danger fw-bold">Atraso 16 días</span>') // el atraso en rojo y negrita (23/10)
+            ->assertSeeHtml('title="N° de expediente del cliente">Exp. 1288</span>'); // 30/10: el expediente encabeza el motivo
         $fila = $comp->viewData('rows')[0];
-        $this->assertSame('Cuota 6 de 48 · Capital 208.33 · Interés 125.00 · Atraso 16 días', $fila['detalle'], 'el Excel recibe la misma descripción en una línea');
+        $this->assertSame('Exp. 1288 · Cuota 6 de 48 · Capital 208.33 · Interés 125.00 · Atraso 16 días', $fila['detalle'], 'el Excel recibe la misma descripción en una línea');
     }
 }

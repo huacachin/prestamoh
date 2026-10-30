@@ -126,7 +126,7 @@ class Payments extends Component
 
         // ─── Listado agrupado por nroentrada+fecha (legacy) ─────────────
         $base = Payment::query()
-            ->with(['credit:id,client_id,cuotas,fecha_cancelacion,situacion', 'credit.client:id,nombre,apellido_pat,apellido_mat'])
+            ->with(['credit:id,client_id,cuotas,fecha_cancelacion,situacion', 'credit.client:id,nombre,apellido_pat,apellido_mat,expediente'])
             ->where('modo', 'CREDITO')
             ->where('fecha', '>=', $fei)
             ->where('fecha', '<=', $fef);
@@ -187,6 +187,7 @@ class Payments extends Component
                 $cuotas[$first->credit_id][1] ?? [],
             );
             $contador++;
+            $expediente = trim((string) ($cliente?->expediente ?? ''));
             $rows[] = [
                 'n' => $contador,
                 'fecha' => $first->fecha->format('Y-m-d'),
@@ -201,7 +202,9 @@ class Payments extends Component
                 'client_id' => $cliente?->id, // 23/10: el nombre enlaza a su ficha
 
                 // 'detalle' es lo que va al Excel (una línea); 'motivo' lo que pinta la tabla en dos.
-                'detalle' => $motivo['texto'],
+                // 30/10 (Antony): el N° de expediente del cliente encabeza el motivo.
+                'expediente' => $expediente,
+                'detalle' => ($expediente !== '' ? "Exp. {$expediente} · " : '').$motivo['texto'],
                 'motivo' => $motivo,
                 'monto' => $group->sum('monto'),
                 'moneda' => $first->moneda,

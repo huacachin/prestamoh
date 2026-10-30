@@ -227,7 +227,13 @@
                                         </td>
                                         {{-- 23/10 (Antony): motivo detallado desde las cuotas, ya no el detalle legacy --}}
                                         <td style="white-space:nowrap;">
-                                            <div>{{ $row['motivo']['resumen'] }}</div>
+                                            <div>
+                                                {{-- 30/10 (Antony): el N° de expediente del cliente, al inicio del motivo --}}
+                                                @if($row['expediente'] !== '')
+                                                    <span class="badge bg-light text-dark border me-1" title="N° de expediente del cliente">Exp. {{ $row['expediente'] }}</span>
+                                                @endif
+                                                {{ $row['motivo']['resumen'] }}
+                                            </div>
                                             @if($row['motivo']['desglose'] !== '' || $row['motivo']['situacion'] !== '')
                                                 <small class="text-muted">
                                                     {{ $row['motivo']['desglose'] }}@if($row['motivo']['desglose'] !== '' && $row['motivo']['situacion'] !== '') · @endif
