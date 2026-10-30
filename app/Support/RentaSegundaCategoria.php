@@ -20,7 +20,8 @@ use Illuminate\Support\Facades\DB;
  *
  * Por fila: Préstamo = capital de esas cuotas según el cronograma (el "=375*3" del Excel manual), Interés S/ =
  * su interés, Interés % = Interés ÷ Capital del crédito, Fec/Venc = la última de esas cuotas y Fecha Cancelado =
- * cuándo se pagó la última (vacía si alguna sigue impaga). Renovaciones (cancelado por refinanciación, el
+ * la fecha en que debió cancelarse según el cronograma, la misma (30/10, Antony; como el "=+Fec/Venc" del manual).
+ * Renovaciones (cancelado por refinanciación, el
  * mensual de 1 cuota que se renueva cada mes): entran con todo el interés, y en Préstamo solo el capital que de
  * verdad se pagó (el aplicado de la cuota = capital viejo − capital nuevo); el resto pasó al crédito nuevo.
  *
@@ -33,7 +34,7 @@ class RentaSegundaCategoria
     public const TIPOS_CREDITO = ['SIGM', 'GAR. HIP', 'GARANTIA MOBILIARIA'];
 
     /**
-     * @return list<array{credito: int, dni: string, nombre: string, capital: float, prestamo: float, pct: float, interes: float, cuotas: int, fec_cred: ?string, fec_venc: string, fec_cancelado: ?string}>
+     * @return list<array{credito: int, dni: string, nombre: string, capital: float, prestamo: float, pct: float, interes: float, cuotas: int, fec_cred: ?string, fec_venc: string, fec_cancelado: string}>
      */
     public static function filas(int $anio, int $mes): array
     {
@@ -49,9 +50,8 @@ class RentaSegundaCategoria
                 }
             })
             ->orderBy('i.fecha_vencimiento')->orderBy('i.num_cuota')
-            ->select(['i.id', 'i.credit_id', 'i.num_cuota', 'i.fecha_vencimiento', 'i.importe_cuota', 'i.importe_interes', 'i.importe_aplicado',
-                'i.pagado', 'i.fecha_pago', 'c.importe', 'c.fecha_prestamo', 'c.situacion', 'c.fecha_cancelacion', 'c.cancelado_por_refi',
-                'cl.documento', 'cl.apellido_pat', 'cl.apellido_mat', 'cl.nombre']);
+            ->select(['i.credit_id', 'i.fecha_vencimiento', 'i.importe_cuota', 'i.importe_interes', 'i.importe_aplicado',
+                'c.importe', 'c.fecha_prestamo', 'c.cancelado_por_refi', 'cl.documento', 'cl.apellido_pat', 'cl.apellido_mat', 'cl.nombre']);
 
         // Las que vencen en el mes; del cancelado a mitad de mes, solo hasta la cancelación (opción A).
         $cuotas = $base()
@@ -72,22 +72,11 @@ class RentaSegundaCategoria
             ->groupBy('credit_id')->map(fn (Collection $del) => $del->first())->values();
         $cuotas = $cuotas->concat($enCurso);
 
-        $fechasDePago = self::fechasDePago($cuotas->pluck('credit_id')->unique()->values());
-
-        $filas = $cuotas->groupBy('credit_id')->map(function (Collection $del) use ($fechasDePago) {
+        $filas = $cuotas->groupBy('credit_id')->map(function (Collection $del) {
             $c = $del->first();
+            $vence = substr((string) $del->max('fecha_vencimiento'), 0, 10);
             $capital = round((float) $c->importe, 2);
             $interes = round((float) $del->sum('importe_interes'), 2);
-            $cancelado = $c->situacion === 'Cancelado' && $c->fecha_cancelacion !== null;
-            // Fecha Cancelado: el pago de la última cuota del mes; las que el legacy dejó sin marcar en un
-            // crédito cancelado se pagaron en la cancelación. Si alguna sigue impaga, va vacía.
-            $pagos = $del->map(function (object $i) use ($fechasDePago, $cancelado, $c) {
-                if ((int) $i->pagado === 1) {
-                    return $fechasDePago[$i->credit_id][$i->num_cuota] ?? substr((string) $i->fecha_pago, 0, 10) ?: null;
-                }
-
-                return $cancelado ? substr((string) $c->fecha_cancelacion, 0, 10) : null;
-            });
 
             // Renovación: solo el capital que de verdad se pagó; el resto pasó al crédito nuevo.
             $prestamo = (int) $c->cancelado_por_refi === 1 ? $del->sum('importe_aplicado') : $del->sum('importe_cuota');
@@ -102,42 +91,12 @@ class RentaSegundaCategoria
                 'interes' => $interes,
                 'cuotas' => $del->count(),
                 'fec_cred' => $c->fecha_prestamo ? substr((string) $c->fecha_prestamo, 0, 10) : null,
-                'fec_venc' => substr((string) $del->max('fecha_vencimiento'), 0, 10),
-                'fec_cancelado' => $pagos->contains(null) ? null : $pagos->max(),
+                'fec_venc' => $vence,
+                'fec_cancelado' => $vence,
             ];
         });
 
         return $filas->sortBy([['fec_venc', 'asc'], ['credito', 'asc']])->values()->all();
-    }
-
-    /**
-     * Fecha del último pago de cada cuota (sin mora), por los pagos que la nombran: installment_id o el
-     * "n/N" del detalle en los migrados del legacy.
-     *
-     * @param  Collection<int, int>  $creditIds
-     * @return array<int, array<int, string>> [credit_id][num_cuota] => 'Y-m-d'
-     */
-    private static function fechasDePago(Collection $creditIds): array
-    {
-        if ($creditIds->isEmpty()) {
-            return [];
-        }
-        $numPorId = DB::table('credit_installments')->whereIn('credit_id', $creditIds)->pluck('num_cuota', 'id');
-        $fechas = [];
-        DB::table('payments')->whereIn('credit_id', $creditIds)->whereIn('tipo', ['CAPITAL', 'INTERES', 'EXCEDENTE'])
-            ->orderBy('fecha')
-            ->get(['credit_id', 'installment_id', 'detalle', 'fecha'])
-            ->each(function (object $p) use (&$fechas, $numPorId) {
-                $num = $p->installment_id ? ($numPorId[$p->installment_id] ?? null) : null;
-                if ($num === null && preg_match('/(\d+)\s*\/\s*\d+/', (string) $p->detalle, $m)) {
-                    $num = (int) $m[1];
-                }
-                if ($num !== null) {
-                    $fechas[$p->credit_id][(int) $num] = substr((string) $p->fecha, 0, 10);
-                }
-            });
-
-        return $fechas;
     }
 
     /** "SEPTIEMBRE 2026" para el título. */

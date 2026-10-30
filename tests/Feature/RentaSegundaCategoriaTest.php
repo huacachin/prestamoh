@@ -88,14 +88,15 @@ class RentaSegundaCategoriaTest extends TestCase
         $this->assertSame(['40000009', '40000003', '40000007', '40000002', '40000005', '40000001', '40000008'], array_column($lista, 'dni'), 'ordenadas por Fec/Venc');
         $ver = fn (string $dni) => [$filas[$dni]['cuotas'], $filas[$dni]['prestamo'], $filas[$dni]['interes'], $filas[$dni]['pct'], $filas[$dni]['fec_venc'], $filas[$dni]['fec_cancelado']];
         // Préstamo = capital de las cuotas del mes; Interés % = interés ÷ capital del crédito.
-        $this->assertSame([4, 2000.0, 200.0, 5.0, '2026-09-24', null], $ver('40000001'), 'dos de las cuatro siguen impagas');
-        $this->assertSame([1, 6000.0, 75.0, 1.25, '2026-09-15', null], $ver('40000002'));
+        // Fecha Cancelado = la fecha en que debió cancelarse según el cronograma (Fec/Venc), pagada o no.
+        $this->assertSame([4, 2000.0, 200.0, 5.0, '2026-09-24', '2026-09-24'], $ver('40000001'), 'dos de las cuatro siguen impagas: entran igual');
+        $this->assertSame([1, 6000.0, 75.0, 1.25, '2026-09-15', '2026-09-15'], $ver('40000002'));
         $this->assertSame([2, 1000.0, 50.0, 2.5, '2026-09-09', '2026-09-09'], $ver('40000003'));
         $this->assertSame('2026-08-03', $filas['40000003']['fec_cred']);
         $this->assertSame([1, 1000.0, 125.0, 1.25, '2026-09-15', '2026-09-15'], $ver('40000005'), 'renovación: capital pagado, interés completo');
-        $this->assertSame([1, 500.0, 25.0, 1.25, '2026-09-10', '2026-09-08'], $ver('40000007'), 'cuota en curso del cancelado antes de vencer');
-        $this->assertSame([1, 3000.0, 37.5, 1.25, '2026-10-12', '2026-09-20'], $ver('40000008'), 'mensual: la cuota del mes siguiente');
-        $this->assertSame([1, 800.0, 10.0, 1.25, '2026-09-05', null], $ver('40000009'));
+        $this->assertSame([1, 500.0, 25.0, 1.25, '2026-09-10', '2026-09-10'], $ver('40000007'), 'cuota en curso del cancelado antes de vencer');
+        $this->assertSame([1, 3000.0, 37.5, 1.25, '2026-10-12', '2026-10-12'], $ver('40000008'), 'mensual: la cuota del mes siguiente');
+        $this->assertSame([1, 800.0, 10.0, 1.25, '2026-09-05', '2026-09-05'], $ver('40000009'));
 
         // En octubre siguen los vigentes con cuotas de octubre; los cancelados de septiembre ya no (ni la cuota en
         // curso del 40000008, que se contó en septiembre).
@@ -124,6 +125,7 @@ class RentaSegundaCategoriaTest extends TestCase
         $this->assertEquals([1, '40000002', 6000, 6000, 1.25, 75], [$hoja->getCell('B4')->getValue(), $hoja->getCell('C4')->getValue(), $hoja->getCell('E4')->getValue(), $hoja->getCell('F4')->getValue(), $hoja->getCell('G4')->getValue(), $hoja->getCell('H4')->getValue()]);
         $this->assertSame('40000001', $hoja->getCell('C5')->getValue(), 'el DNI va como texto');
         $this->assertSame('dd/mm/yyyy', $hoja->getStyle('J4')->getNumberFormat()->getFormatCode());
+        $this->assertEquals($hoja->getCell('J4')->getValue(), $hoja->getCell('K4')->getValue(), 'Fecha Cancelado = Fec/Venc');
         $this->assertNull($hoja->getCell('L4')->getValue(), 'Descripción vacía');
         // Pie: las fórmulas del manual.
         $this->assertSame(['TOTAL CAPITAL', '=SUM(E4:E5)', '=SUM(F4:F5)', 'INT.', '=SUM(H4:H5)'],
