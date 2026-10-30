@@ -204,21 +204,27 @@ class VisorFlotanteTest extends TestCase
         $this->assertStringContainsString('body.arrastrando-ventana iframe { pointer-events: none; }', $html);
     }
 
-    /** "Ver recibo" (/payments/create, ficha del crédito y cronograma): el mismo modal, ahora partial y flotante. */
-    public function test_el_modal_del_recibo_es_uno_solo_compartido_y_flotante(): void
+    /**
+     * "Ver recibo" (/payments/create, ficha del crédito y cronograma): un solo partial compartido.
+     * 30/10 (Antony, 29186): multiventanas como el reporte de pagos — cada recibo en su ventanita
+     * arrastrable, en cascada, el mismo recibo no se duplica y Esc cierra la de arriba.
+     */
+    public function test_el_visor_de_recibos_es_uno_solo_compartido_y_abre_varias_ventanas(): void
     {
         $partial = file_get_contents(resource_path('views/livewire/payments/partials/_modal-recibo.blade.php'));
-        $this->assertStringContainsString('<div class="modal fade" id="modal-recibo" tabindex="-1" wire:ignore x-data="modalFlotante(\'recibo\')">', $partial);
-        $this->assertStringContainsString('<div class="modal-dialog modal-dialog-centered" style="max-width:430px;" x-ref="dialogo">', $partial);
+        $this->assertStringContainsString('<div id="visor-recibos" wire:ignore x-data="recibosFlotantes()"', $partial);
+        $this->assertStringContainsString('x-on:abrir-recibo.window="abrir($event.detail)"', $partial);
+        $this->assertStringContainsString('<template x-for="v in ventanas" :key="v.id">', $partial);
+        $this->assertStringContainsString('x-data="ventanaLibre({ x: v.x, y: v.y, w: 430 })"', $partial);
         $this->assertStringContainsString('x-on:pointerdown="iniciarArrastre($event)" x-on:pointermove="arrastrar($event)"', $partial);
-        $this->assertStringContainsString('<iframe id="iframe-recibo" src="about:blank" allow="clipboard-write"', $partial);
-        $this->assertStringContainsString('function abrirRecibo(url)', $partial, 'los botones onclick="abrirRecibo(...)" siguen igual');
-        $this->assertStringContainsString("document.getElementById('iframe-recibo').src = 'about:blank';", $partial, 'al cerrar se descarga el iframe');
+        $this->assertStringContainsString('<iframe :src="v.url" allow="clipboard-write"', $partial);
+        $this->assertStringContainsString('function abrirRecibo(url, titulo)', $partial, 'los botones onclick="abrirRecibo(...)" siguen igual');
+        $this->assertStringContainsString('if (ya) { this.alFrente(ya); return; }', $partial, 'el mismo recibo no se abre dos veces');
+        $this->assertStringNotContainsString('id="modal-recibo"', $partial, 'ya no es un modal único');
 
         foreach (['payments/create', 'credits/show', 'credits/schedule'] as $vista) {
             $fuente = file_get_contents(resource_path("views/livewire/{$vista}.blade.php"));
             $this->assertSame(1, substr_count($fuente, "@include('livewire.payments.partials._modal-recibo')"), $vista);
-            $this->assertStringNotContainsString('id="modal-recibo"', $fuente, "{$vista}: sin copia propia del modal");
             $this->assertStringNotContainsString('function abrirRecibo', $fuente, "{$vista}: la función vive en el partial");
         }
     }

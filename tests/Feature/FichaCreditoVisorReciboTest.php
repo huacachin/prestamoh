@@ -48,9 +48,9 @@ class FichaCreditoVisorReciboTest extends TestCase
         }
 
         Livewire::test(Show::class, ['id' => $credit->id])
-            ->assertSeeHtml('id="modal-recibo"')
+            ->assertSeeHtml('id="visor-recibos"')
             ->assertSeeHtml('allow="clipboard-write"')
-            ->assertSeeHtml('function abrirRecibo(url)')
+            ->assertSeeHtml('function abrirRecibo(url, titulo)')
             // 26/09: botón al reporte de pagos filtrado a ESTE crédito (igual que el cronograma).
             ->assertSee('Reporte de pagos')
             ->assertSeeHtml('credito='.$credit->id);

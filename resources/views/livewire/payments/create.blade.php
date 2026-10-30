@@ -1888,7 +1888,7 @@
                                              recibo en un modal sobre esta misma ventana, donde
                                              está el "Copiar imagen" --}}
                                         <button type="button" class="btn btn-sm btn-secondary py-0 px-1"
-                                                title="Ver recibo" onclick="abrirRecibo(@js($rec['ver']))">
+                                                title="Ver recibo" onclick="abrirRecibo(@js($rec['ver']), @js('Recibo · cuota '.$inst->num_cuota))">
                                             <i class="ti ti-eye"></i>
                                         </button>
                                     @endif

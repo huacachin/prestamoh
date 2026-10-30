@@ -42,7 +42,7 @@
         <td class="text-center" style="white-space:nowrap;">
             @if($ab['recibo'])
                 <button type="button" class="btn btn-sm btn-secondary py-0 px-1"
-                        title="Ver recibo" onclick="abrirRecibo(@js($ab['recibo']))">
+                        title="Ver recibo" onclick="abrirRecibo(@js($ab['recibo']), @js(trim('Recibo · abono '.$fechaAb.' '.($ab['hora'] ?? ''))))">
                     <i class="ti ti-eye"></i>
                 </button>
             @endif

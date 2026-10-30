@@ -272,7 +272,7 @@
                                 {{-- 26/09: el mismo visor que la pantalla de cobro: abre el recibo en un
                                      modal, con "Copiar imagen" (listo para pegar en WhatsApp) e "Imprimir". --}}
                                 <button type="button" class="btn btn-sm btn-secondary"
-                                        title="Ver recibo (copiar imagen / imprimir)" onclick="abrirRecibo(@js($verRecibo))">
+                                        title="Ver recibo (copiar imagen / imprimir)" onclick="abrirRecibo(@js($verRecibo), @js('Recibo #'.str_pad((string) $masivo->id, 6, '0', STR_PAD_LEFT)))">
                                     <i class="ti ti-eye"></i>
                                 </button>
                                 <a href="{{ \Illuminate\Support\Facades\URL::signedRoute('recibo.pdf', ['massDeletionId' => $masivo->id]) }}"

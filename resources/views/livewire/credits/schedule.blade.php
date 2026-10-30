@@ -190,7 +190,7 @@
                                     @php $rec = isset($abonos[$row['installment_id']]) ? null : ($recibos[$row['installment_id']] ?? null); @endphp
                                     @if($rec)
                                         <button type="button" class="btn btn-sm btn-secondary py-0 px-1"
-                                                title="Ver recibo" onclick="abrirRecibo(@js($rec['ver']))">
+                                                title="Ver recibo" onclick="abrirRecibo(@js($rec['ver']), @js('Recibo · cuota '.$row['n']))">
                                             <i class="ti ti-eye"></i>
                                         </button>
                                     @endif
