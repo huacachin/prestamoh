@@ -12,6 +12,8 @@ use App\Support\MotivoCobro;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
@@ -141,5 +143,12 @@ class MotivoCobroTest extends TestCase
             ->assertSeeHtml('title="N° de expediente del cliente">Exp. 1288</span>'); // 30/10: el expediente encabeza el motivo
         $fila = $comp->viewData('rows')[0];
         $this->assertSame('Exp. 1288 · Cuota 6 de 48 · Capital 208.33 · Interés 125.00 · Atraso 16 días', $fila['detalle'], 'el Excel recibe la misma descripción en una línea');
+
+        // 30/10 (Antony): con permiso de créditos, la etiqueta abre el crédito en otra pestaña.
+        auth()->user()->givePermissionTo(Permission::findOrCreate('creditos', 'web'));
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        Livewire::test(Payments::class)->set('fei', '2026-10-22')->set('fef', '2026-10-22')->call('search')
+            ->assertSeeHtml('<a href="'.route('credits.show', $credit->id).'" target="_blank" rel="noopener"')
+            ->assertSee('Exp. 1288');
     }
 }

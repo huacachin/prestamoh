@@ -204,6 +204,7 @@ class Payments extends Component
                 // 'detalle' es lo que va al Excel (una línea); 'motivo' lo que pinta la tabla en dos.
                 // 30/10 (Antony): el N° de expediente del cliente encabeza el motivo.
                 'expediente' => $expediente,
+                'credit_id' => $first->credit_id, // 30/10: la etiqueta del expediente enlaza al crédito
                 'detalle' => ($expediente !== '' ? "Exp. {$expediente} · " : '').$motivo['texto'],
                 'motivo' => $motivo,
                 'monto' => $group->sum('monto'),
@@ -248,6 +249,7 @@ class Payments extends Component
             'isAdmin' => $isAdmin,
             // 23/10 (Antony): el nombre del cliente lleva a su ficha, solo si puede abrirla (ruta con permission:clientes).
             'puedeVerFicha' => auth()->user()?->can('clientes') ?? false,
+            'puedeVerCredito' => auth()->user()?->can('creditos') ?? false,
             // Efectivos (las propiedades fei/fef guardan lo escrito; Livewire las pasa también a la vista)
             'desdeEfectivo' => $fei,
             'hastaEfectivo' => $fef,
