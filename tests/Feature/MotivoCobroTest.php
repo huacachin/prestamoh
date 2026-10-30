@@ -140,15 +140,17 @@ class MotivoCobroTest extends TestCase
 
         $comp->assertSee('Cuota 6 de 48')->assertSee('Capital 208.33 · Interés 125.00')
             ->assertSeeHtml('<span class="text-danger fw-bold">Atraso 16 días</span>') // el atraso en rojo y negrita (23/10)
-            ->assertSeeHtml('<span class="exp-motivo" title="N° de expediente del cliente">Exp. 1288</span>'); // 30/10: el expediente encabeza el motivo, sutil
+            // 30/10 (Antony): el código del crédito encabeza el motivo, sutil ("no va el número de expediente").
+            ->assertSeeHtml('<span class="exp-motivo" title="Código del crédito">Cód. '.$credit->id.'</span>')
+            ->assertDontSee('Exp. 1288');
         $fila = $comp->viewData('rows')[0];
-        $this->assertSame('Exp. 1288 · Cuota 6 de 48 · Capital 208.33 · Interés 125.00 · Atraso 16 días', $fila['detalle'], 'el Excel recibe la misma descripción en una línea');
+        $this->assertSame("Cód. {$credit->id} · Cuota 6 de 48 · Capital 208.33 · Interés 125.00 · Atraso 16 días", $fila['detalle'], 'el Excel recibe la misma descripción en una línea');
 
         // 30/10 (Antony): con permiso de créditos, la etiqueta abre el crédito en otra pestaña.
         auth()->user()->givePermissionTo(Permission::findOrCreate('creditos', 'web'));
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         Livewire::test(Payments::class)->set('fei', '2026-10-22')->set('fef', '2026-10-22')->call('search')
             ->assertSeeHtml('<a href="'.route('credits.show', $credit->id).'" target="_blank" rel="noopener" class="exp-motivo"')
-            ->assertSee('Exp. 1288');
+            ->assertSee('Cód. '.$credit->id);
     }
 }

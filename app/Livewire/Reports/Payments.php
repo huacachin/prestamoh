@@ -126,7 +126,7 @@ class Payments extends Component
 
         // ─── Listado agrupado por nroentrada+fecha (legacy) ─────────────
         $base = Payment::query()
-            ->with(['credit:id,client_id,cuotas,fecha_cancelacion,situacion', 'credit.client:id,nombre,apellido_pat,apellido_mat,expediente'])
+            ->with(['credit:id,client_id,cuotas,fecha_cancelacion,situacion', 'credit.client:id,nombre,apellido_pat,apellido_mat'])
             ->where('modo', 'CREDITO')
             ->where('fecha', '>=', $fei)
             ->where('fecha', '<=', $fef);
@@ -187,7 +187,6 @@ class Payments extends Component
                 $cuotas[$first->credit_id][1] ?? [],
             );
             $contador++;
-            $expediente = trim((string) ($cliente?->expediente ?? ''));
             $rows[] = [
                 'n' => $contador,
                 'fecha' => $first->fecha->format('Y-m-d'),
@@ -202,10 +201,10 @@ class Payments extends Component
                 'client_id' => $cliente?->id, // 23/10: el nombre enlaza a su ficha
 
                 // 'detalle' es lo que va al Excel (una línea); 'motivo' lo que pinta la tabla en dos.
-                // 30/10 (Antony): el N° de expediente del cliente encabeza el motivo.
-                'expediente' => $expediente,
-                'credit_id' => $first->credit_id, // 30/10: la etiqueta del expediente enlaza al crédito
-                'detalle' => ($expediente !== '' ? "Exp. {$expediente} · " : '').$motivo['texto'],
+                // 30/10 (Antony): el código del crédito encabeza el motivo y enlaza al crédito
+                // ("no va el número de expediente, sino el código de crédito").
+                'credit_id' => $first->credit_id,
+                'detalle' => "Cód. {$first->credit_id} · ".$motivo['texto'],
                 'motivo' => $motivo,
                 'monto' => $group->sum('monto'),
                 'moneda' => $first->moneda,

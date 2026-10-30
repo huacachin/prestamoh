@@ -326,7 +326,7 @@
                                                     <td class="text-center">
                                                         @if(! empty($ing['motivo']))
                                                             <div class="caja1-motivo">
-                                                                <div>@include('livewire.reports.partials._expediente-motivo', ['expediente' => $ing['expediente'] ?? '', 'creditId' => $ing['credit_id']]){{ $ing['motivo']['resumen'] }}</div>
+                                                                <div>@include('livewire.reports.partials._etiqueta-motivo', ['etiqueta' => ($ing['expediente'] ?? '') !== '' ? 'Exp. '.$ing['expediente'] : '', 'titulo' => 'N° de expediente del cliente', 'creditId' => $ing['credit_id']]){{ $ing['motivo']['resumen'] }}</div>
                                                                 @if($ing['motivo']['desglose'] !== '' || $ing['motivo']['situacion'] !== '')
                                                                     <small class="text-muted">{{ $ing['motivo']['desglose'] }}@if($ing['motivo']['desglose'] !== '' && $ing['motivo']['situacion'] !== '') · @endif<span class="{{ str_starts_with($ing['motivo']['situacion'], 'Atraso') ? 'text-danger fw-bold' : '' }}">{{ $ing['motivo']['situacion'] }}</span></small>
                                                                 @endif

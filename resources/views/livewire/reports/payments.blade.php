@@ -228,7 +228,7 @@
                                         {{-- 23/10 (Antony): motivo detallado desde las cuotas, ya no el detalle legacy --}}
                                         <td style="white-space:nowrap;">
                                             <div>
-                                                @include('livewire.reports.partials._expediente-motivo', ['expediente' => $row['expediente'], 'creditId' => $row['credit_id']])
+                                                @include('livewire.reports.partials._etiqueta-motivo', ['etiqueta' => 'Cód. '.$row['credit_id'], 'titulo' => 'Código del crédito', 'creditId' => $row['credit_id']])
                                                 {{ $row['motivo']['resumen'] }}
                                             </div>
                                             @if($row['motivo']['desglose'] !== '' || $row['motivo']['situacion'] !== '')
