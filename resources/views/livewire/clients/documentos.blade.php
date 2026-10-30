@@ -87,6 +87,11 @@
                             title="Generar declaración jurada de publicidad">
                         <i class="ti ti-speakerphone"></i> DJ Publicidad
                     </button>
+                    {{-- 30/10 (Agregado 03 del Área Legal): correo previo, resúmenes para el SIGM y registro de la inscripción. --}}
+                    <button type="button" class="btn btn-sm btn-outline-secondary" wire:click="abrirModalSigm"
+                            title="SIGM: correo previo, resumen de constitución, registro de la inscripción y resumen de cancelación">
+                        <i class="ti ti-shield-check"></i> SIGM
+                    </button>
                     @unless($embebido)
                         <a href="{{ route('clients.show', $client->id) }}" class="btn btn-sm btn-secondary">
                             <i class="ti ti-arrow-back"></i> Regresar al cliente
@@ -513,6 +518,153 @@
                         <span wire:loading.remove wire:target="generarDeclaracion">Generar</span>
                         <span wire:loading wire:target="generarDeclaracion">Generando…</span>
                     </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ═══ Modal "SIGM" (30/10/2026, Agregado 03 del Área Legal) ═══
+         Correo previo (se abre en Gmail listo para enviar), resumen de constitución (Copiar), registro de la
+         inscripción (formulario, folio y fecha) y resumen de cancelación (Copiar). Todo sale del contrato
+         emitido del crédito (GeneradorSigm); solo el registro se guarda. --}}
+    <div class="modal fade" id="sigmModal" tabindex="-1" aria-hidden="true" wire:ignore.self
+         x-data="{ modal: null }"
+         x-init="modal = bootstrap.Modal.getOrCreateInstance($el);"
+         x-on:sigm-modal-open.window="modal.show()">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content" x-data="{ tab: 'correo', copiado: null,
+                    copiar(ref, clave) { navigator.clipboard.writeText(this.$refs[ref].value).then(() => { this.copiado = clave; setTimeout(() => this.copiado = null, 1800); }); } }">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title mb-0">
+                        <i class="ti ti-shield-check text-secondary"></i> SIGM · {{ $client->fullName() }}
+                    </h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    @if($creditosConContrato->isEmpty())
+                        <div class="alert alert-warning py-2 small mb-0">
+                            <i class="ti ti-alert-triangle"></i>
+                            Primero genera el contrato del crédito: el correo y los resúmenes toman de ahí sus datos.
+                        </div>
+                    @else
+                        <label class="form-label small fw-semibold mb-1">Crédito (con contrato)</label>
+                        <div class="border rounded p-1 mb-2" style="background:#fcfcfa; max-height:120px; overflow:auto;">
+                            @foreach($creditosConContrato as $c)
+                                @php $insc = $inscripcionesSigm[$c->id] ?? null; @endphp
+                                <label class="d-flex align-items-center gap-2 small px-2 py-1 rounded" style="cursor:pointer;" wire:key="sigm-cred-{{ $c->id }}">
+                                    <input class="form-check-input mt-0" type="radio" name="creditoSigm" value="{{ $c->id }}" wire:model.live="sigmCreditoId">
+                                    <span>#{{ $c->id }} — S/ {{ number_format((float) $c->importe, 2) }} — {{ $c->cuotas }} cuotas ({{ $c->tipoPlanillaLabel() }})</span>
+                                    <span class="badge ms-auto {{ $insc ? 'bg-success' : 'bg-light text-dark border' }}" style="font-size:9px;">
+                                        {{ $insc ? 'Inscrita '.$insc->fecha_presentacion?->format('d/m/Y') : 'Sin inscribir' }}
+                                    </span>
+                                </label>
+                            @endforeach
+                        </div>
+
+                        @if($sigm && $sigm['error'])
+                            <div class="alert alert-warning py-2 small mb-0">{{ $sigm['error'] }}</div>
+                        @elseif($sigm)
+                            <ul class="nav nav-tabs small mb-2">
+                                @foreach(['correo' => '1. Correo previo', 'resumen' => '2. Resumen de constitución', 'registro' => '3. Registro de la inscripción', 'cancelacion' => '4. Resumen de cancelación'] as $clave => $titulo)
+                                    <li class="nav-item">
+                                        <a href="#" class="nav-link py-1 px-2" style="font-size:12px;" :class="{ 'active': tab === '{{ $clave }}' }" x-on:click.prevent="tab = '{{ $clave }}'">{{ $titulo }}</a>
+                                    </li>
+                                @endforeach
+                            </ul>
+
+                            {{-- 1. Correo previo --}}
+                            <div x-show="tab === 'correo'">
+                                @if($sigm['correo'])
+                                    <div class="small mb-1"><b>Para:</b> {{ $sigm['correo']['para'] ? implode(', ', $sigm['correo']['para']) : '—' }}</div>
+                                    @if(! $sigm['correo']['para'])
+                                        <div class="text-danger small mb-1"><i class="ti ti-alert-triangle"></i> El contrato no tiene el correo del cliente: escríbelo en Gmail.</div>
+                                    @endif
+                                    <div class="small mb-1"><b>Asunto:</b> {{ $sigm['correo']['asunto'] }}</div>
+                                    <textarea class="form-control form-control-sm" rows="12" readonly x-ref="txtCorreo">{{ $sigm['correo']['cuerpo'] }}</textarea>
+                                    <div class="d-flex gap-2 mt-2">
+                                        <a href="{{ $sigm['correo']['gmail'] }}" target="_blank" rel="noopener" class="btn btn-sm btn-danger">
+                                            <i class="ti ti-brand-gmail"></i> Abrir en Gmail
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" x-on:click="copiar('txtCorreo', 'correo')">
+                                            <i class="ti ti-copy"></i> <span x-text="copiado === 'correo' ? 'Copiado' : 'Copiar texto'"></span>
+                                        </button>
+                                    </div>
+                                    <div class="form-text" style="font-size:10px;">Gmail se abre con destinatario, asunto y texto ya puestos, en la cuenta {{ config('documentos.usuaria_sigm.correo') }} si está abierta en este navegador: revisa y envía.</div>
+                                @else
+                                    <div class="alert alert-light border py-2 small mb-0">{{ $sigm['sinCorreo'] }}</div>
+                                @endif
+                            </div>
+
+                            {{-- 2. Resumen de constitución --}}
+                            <div x-show="tab === 'resumen'" style="display:none;">
+                                @if($sigm['resumen'])
+                                    <div class="form-text mb-1" style="font-size:10px;">Para pegar en "Descripción de cláusula del contrato" del formulario de constitución del SIGM.</div>
+                                    <textarea class="form-control form-control-sm" rows="14" readonly x-ref="txtResumen">{{ $sigm['resumen'] }}</textarea>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary mt-2" x-on:click="copiar('txtResumen', 'resumen')">
+                                        <i class="ti ti-copy"></i> <span x-text="copiado === 'resumen' ? 'Copiado' : 'Copiar'"></span>
+                                    </button>
+                                @else
+                                    <div class="alert alert-light border py-2 small mb-0">{{ $sigm['sinResumen'] }}</div>
+                                @endif
+                            </div>
+
+                            {{-- 3. Registro de la inscripción --}}
+                            <div x-show="tab === 'registro'" style="display:none;">
+                                @if($sigm['registro'])
+                                    <div class="alert alert-success py-2 small mb-2">
+                                        <i class="ti ti-circle-check"></i>
+                                        Inscrita el <b>{{ $sigm['registro']->fecha_presentacion?->format('d/m/Y') }}</b> ·
+                                        formulario <b>{{ $sigm['registro']->nro_formulario }}</b> · folio <b>{{ $sigm['registro']->folio }}</b>
+                                    </div>
+                                @endif
+                                <div class="row g-2">
+                                    <div class="col-md-4">
+                                        <label class="form-label small fw-semibold mb-1">N° de formulario *</label>
+                                        <input type="text" class="form-control form-control-sm campo-obligatorio @error('sigmFormulario') is-invalid @enderror" wire:model="sigmFormulario" placeholder="2026-905021">
+                                        @error('sigmFormulario') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                                    </div>
+                                    <div class="col-md-5">
+                                        <label class="form-label small fw-semibold mb-1">N° de folio electrónico *</label>
+                                        <input type="text" class="form-control form-control-sm campo-obligatorio @error('sigmFolio') is-invalid @enderror" wire:model="sigmFolio" placeholder="20261027002239830">
+                                        @error('sigmFolio') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small fw-semibold mb-1">Fecha de la inscripción *</label>
+                                        <input type="date" class="form-control form-control-sm campo-obligatorio @error('sigmFecha') is-invalid @enderror" wire:model="sigmFecha" max="{{ now()->toDateString() }}">
+                                        @error('sigmFecha') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-2 mt-2">
+                                    <button type="button" class="btn btn-sm btn-success" wire:click="guardarRegistroSigm" wire:loading.attr="disabled" wire:target="guardarRegistroSigm">
+                                        <i class="ti ti-device-floppy"></i> {{ $sigm['registro'] ? 'Guardar corrección' : 'Registrar inscripción' }}
+                                    </button>
+                                    @if($sigm['registro'])
+                                        <button type="button" class="btn btn-sm btn-outline-danger" wire:click="quitarRegistroSigm"
+                                                data-confirmar="¿Quitar la inscripción SIGM registrada de este crédito? Solo se borra del sistema, no del SIGM.">
+                                            <i class="ti ti-trash"></i> Quitar registro
+                                        </button>
+                                    @endif
+                                </div>
+                                <div class="form-text" style="font-size:10px;">Los datos están en el formulario de constitución que entrega el SIGM (número de formulario, folio causal electrónico y fecha de inscripción).</div>
+                            </div>
+
+                            {{-- 4. Resumen de cancelación --}}
+                            <div x-show="tab === 'cancelacion'" style="display:none;">
+                                @if($sigm['cancelacion'])
+                                    <div class="form-text mb-1" style="font-size:10px;">Para pegar en "Descripción de otros" del formulario de cancelación del SIGM.</div>
+                                    <textarea class="form-control form-control-sm" rows="6" readonly x-ref="txtCancelacion">{{ $sigm['cancelacion'] }}</textarea>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary mt-2" x-on:click="copiar('txtCancelacion', 'cancelacion')">
+                                        <i class="ti ti-copy"></i> <span x-text="copiado === 'cancelacion' ? 'Copiado' : 'Copiar'"></span>
+                                    </button>
+                                @else
+                                    <div class="alert alert-light border py-2 small mb-0">{{ $sigm['sinCancelacion'] }}</div>
+                                @endif
+                            </div>
+                        @endif
+                    @endif
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                 </div>
             </div>
         </div>

@@ -11,6 +11,7 @@ use App\Services\Documentos\GeneradorAnexo1;
 use App\Services\Documentos\GeneradorAnexo2;
 use App\Services\Documentos\GeneradorContrato;
 use App\Services\Documentos\GeneradorDeclaracion;
+use App\Services\Documentos\GeneradorSigm;
 use App\Services\Documentos\Ocr\LectorDeVoucher;
 use App\Services\Documentos\Ocr\VoucherIlegible;
 use App\Services\Factiliza;
@@ -524,6 +525,132 @@ class Documentos extends Component
         $credit = $this->djCreditoId ? Credit::where('client_id', $this->clientId)->find($this->djCreditoId) : null;
 
         return $credit ? GeneradorDeclaracion::placasDe(Client::findOrFail($this->clientId), $credit) : [];
+    }
+
+    // ═══ SIGM: correo, resúmenes y registro de la inscripción (30/10/2026) ═══
+    // Agregado 03 del Área Legal (GeneradorSigm). Los textos salen del contrato emitido del
+    // crédito; lo único que se guarda es la inscripción (formulario, folio y fecha).
+
+    public ?int $sigmCreditoId = null;
+
+    public string $sigmFormulario = '';
+
+    public string $sigmFolio = '';
+
+    public string $sigmFecha = '';
+
+    public function abrirModalSigm(): void
+    {
+        $this->sigmCreditoId = $this->creditosConContrato()->first()?->id;
+        $this->cargarRegistroSigm();
+        $this->dispatch('sigm-modal-open');
+    }
+
+    public function updatedSigmCreditoId(): void
+    {
+        $this->cargarRegistroSigm();
+    }
+
+    public function guardarRegistroSigm(): void
+    {
+        $credit = $this->creditoSigm();
+        if (! $credit) {
+            return;
+        }
+        $this->sigmFormulario = trim($this->sigmFormulario);
+        $this->sigmFolio = preg_replace('/\s+/', '', $this->sigmFolio);
+        $actual = GeneradorSigm::constitucionDe($credit);
+        if ($actual && $this->edicionBloqueada($actual)) {
+            return;
+        }
+
+        $this->validate([
+            // Mismos formatos que el formulario de avisos del Área Legal (Legal\Garantias\AvisoModal).
+            'sigmFormulario' => ['required', 'regex:/^\d{4}-\d{1,7}$/', Rule::unique('sigm_avisos', 'nro_formulario')->ignore($actual?->id)],
+            'sigmFolio' => ['required', 'regex:/^\d{1,25}$/', Rule::unique('sigm_avisos', 'folio')->ignore($actual?->id)],
+            'sigmFecha' => ['required', 'date', 'before_or_equal:today'],
+        ], [
+            'sigmFormulario.required' => 'Escribe el N° de formulario.',
+            'sigmFormulario.regex' => 'El N° de formulario va como en el SIGM: 2026-905021.',
+            'sigmFormulario.unique' => 'Ese N° de formulario ya está registrado en otro crédito.',
+            'sigmFolio.required' => 'Escribe el N° de folio electrónico.',
+            'sigmFolio.regex' => 'El folio electrónico son solo números, como 20261027002239830.',
+            'sigmFolio.unique' => 'Ese folio ya está registrado en otro crédito.',
+            'sigmFecha.required' => 'Indica la fecha de la inscripción.',
+            'sigmFecha.before_or_equal' => 'La fecha de la inscripción no puede ser futura.',
+        ]);
+
+        try {
+            GeneradorSigm::registrar(Client::findOrFail($this->clientId), $credit, $this->sigmFormulario, $this->sigmFolio, $this->sigmFecha);
+            $this->dispatch('successAlert', ['message' => 'Inscripción SIGM registrada.']);
+        } catch (InvalidArgumentException $e) {
+            $this->dispatch('errorAlert', ['message' => $e->getMessage()]);
+        }
+    }
+
+    public function quitarRegistroSigm(): void
+    {
+        $credit = $this->creditoSigm();
+        $actual = $credit ? GeneradorSigm::constitucionDe($credit) : null;
+        if (! $actual || $this->eliminacionBloqueada($actual)) {
+            return;
+        }
+
+        GeneradorSigm::quitarRegistro($credit);
+        $this->cargarRegistroSigm();
+        $this->dispatch('successAlert', ['message' => 'Se quitó la inscripción SIGM registrada.']);
+    }
+
+    private function cargarRegistroSigm(): void
+    {
+        $credit = $this->sigmCreditoId ? $this->creditosConContrato()->firstWhere('id', $this->sigmCreditoId) : null;
+        $aviso = $credit ? GeneradorSigm::constitucionDe($credit) : null;
+        $this->sigmFormulario = (string) ($aviso?->nro_formulario ?? '');
+        $this->sigmFolio = (string) ($aviso?->folio ?? '');
+        $this->sigmFecha = $aviso?->fecha_presentacion?->format('Y-m-d') ?? '';
+        $this->resetErrorBag();
+    }
+
+    private function creditoSigm(): ?Credit
+    {
+        $credit = $this->creditosConContrato()->firstWhere('id', $this->sigmCreditoId);
+        if (! $credit) {
+            $this->addError('sigmCreditoId', 'Elige un crédito que ya tenga contrato.');
+        }
+
+        return $credit;
+    }
+
+    /**
+     * Lo que muestra el modal para el crédito elegido: correo, resumen, registro y cancelación.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function datosSigm(): ?array
+    {
+        $credit = $this->sigmCreditoId ? $this->creditosConContrato()->firstWhere('id', $this->sigmCreditoId) : null;
+        if (! $credit) {
+            return null;
+        }
+
+        try {
+            $ctx = GeneradorSigm::contexto(Client::findOrFail($this->clientId), $credit);
+        } catch (InvalidArgumentException $e) {
+            return ['error' => $e->getMessage()];
+        }
+        $registro = GeneradorSigm::constitucionDe($credit);
+
+        return [
+            'error' => null,
+            'placas' => $ctx['placas'],
+            'correo' => $ctx['sinCorreo'] === null ? GeneradorSigm::correo($ctx) : null,
+            'sinCorreo' => $ctx['sinCorreo'],
+            'resumen' => $ctx['sinResumen'] === null ? GeneradorSigm::resumen($ctx) : null,
+            'sinResumen' => $ctx['sinResumen'],
+            'registro' => $registro,
+            'cancelacion' => $registro && $ctx['sinCancelacion'] === null ? GeneradorSigm::cancelacion($ctx, $registro) : null,
+            'sinCancelacion' => $ctx['sinCancelacion'] ?? ($registro ? null : 'Primero registra la inscripción de la constitución (pestaña Registro).'),
+        ];
     }
 
     // ═══ Contrato de garantía mobiliaria (FASE 2) ═══
@@ -2307,6 +2434,10 @@ class Documentos extends Component
             // 30/10: declaraciones juradas (créditos con contrato y placas de ese contrato).
             'creditosConContrato' => $this->creditosConContrato(),
             'placasDeclaracion' => $this->placasDeclaracion(),
+            // 30/10: módulo SIGM (Agregado 03) del crédito elegido y lo inscrito de cada crédito con contrato.
+            'sigm' => $this->datosSigm(),
+            'inscripcionesSigm' => $this->creditosConContrato()
+                ->mapWithKeys(fn (Credit $c) => [$c->id => GeneradorSigm::constitucionDe($c)]),
             'vehiculos' => $this->vehiculosCliente(),
             // 18/09: los codeudores que saldrían en el Anexo 1 (copropietarios
             // de los vehículos MARCADOS), para mostrarlos en el modal.

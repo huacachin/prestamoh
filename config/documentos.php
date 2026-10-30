@@ -40,6 +40,11 @@ return [
     'usuaria_sigm' => [
         'nombre' => 'ROSA LINDA TAFUR CUENCA',
         'dni' => '72957633',
+        // Firma del correo previo a la constitución SIGM (30/10/2026). El correo se abre en Gmail con esta
+        // cuenta (authuser) si está abierta en el navegador.
+        'cargo' => 'Usuaria/Administradora del SIGM – Acreedor',
+        'correo' => 'legalhuacachin@gmail.com',
+        'celular' => '969353280',
         'domicilio' => 'UCV 158C, ZONA K, LOTE 36, AAHH HUAYCÁN, DISTRITO DE ATE, PROVINCIA Y DEPARTAMENTO DE LIMA',
     ],
 

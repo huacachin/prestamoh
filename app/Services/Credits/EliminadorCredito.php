@@ -46,7 +46,7 @@ final class EliminadorCredito
         if ($garantias > 0 || $contratos > 0) {
             throw new CreditoNoEliminableException(
                 "No se puede eliminar el crédito #{$credit->id}: tiene {$garantias} garantía(s) y {$contratos} contrato(s) "
-                .'del área legal. Hay que resolverlos allí antes.'
+                .'del área legal. Si es la inscripción SIGM registrada en Documentos → SIGM, quítala ahí primero.'
             );
         }
 
