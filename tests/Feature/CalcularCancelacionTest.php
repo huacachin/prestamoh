@@ -444,10 +444,13 @@ class CalcularCancelacionTest extends TestCase
 
         $this->assertNull(CancelacionHastaCuota::plan($credit));
         Livewire::test(Create::class, ['creditId' => $credit->id])
-            ->assertSee('En los créditos mensuales de una cuota el interés corre por mes')
             ->call('abrirCancelacion')
             ->assertReturned(null)
-            ->assertDispatched('errorAlert');
+            ->assertDispatched('errorAlert')
+            // 30/10: "Calcular pagos" abre igual; la pestaña de cancelación lo explica.
+            ->call('abrirCalcularPagos')
+            ->assertReturned(fn ($d) => $d['cancelacion'] === null
+                && str_contains($d['sin_cancelacion'], 'En los créditos mensuales de una cuota el interés corre por mes'));
     }
 
     public function test_la_pantalla_ya_no_tiene_fecha_de_pago_y_trae_los_dos_botones(): void
@@ -457,6 +460,6 @@ class CalcularCancelacionTest extends TestCase
 
         Livewire::test(Create::class, ['creditId' => $credit->id])
             ->assertDontSee('Fecha de Pago')
-            ->assertSeeInOrder(['Monto a Pagar', 'Elegir cuotas', 'Calcular cancelación']);
+            ->assertSeeInOrder(['Monto a Pagar', 'Elegir cuotas', 'Calcular pagos']); // 30/10: antes "Calcular cancelación"
     }
 }

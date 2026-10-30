@@ -347,16 +347,16 @@
                                 </div>
                                 {{-- 23/10 (Antony): donde estaba el cuadro de Fecha de Pago (los cobros van
                                      siempre con la fecha del día) van los dos botones que arman el Monto a Pagar. --}}
-                                @php $puedeCalcularCancelacion = \App\Support\CancelacionHastaCuota::aplica($credit); @endphp
                                 <div class="saldo-acciones">
                                     <button type="button" class="btn btn-sm btn-outline-primary" wire:click.prevent="abrirMoraCuotas"
                                             title="Elegir qué cuotas pagar, cada una con su mora por días">
                                         <i class="ti ti-list-check"></i> Elegir cuotas
                                     </button>
-                                    <span class="d-grid" title="{{ $puedeCalcularCancelacion ? 'Elegir hasta qué cuota se cobra el interés y llevar el total para cancelar al Monto a Pagar' : 'En los créditos mensuales de una cuota el interés corre por mes: usa el switch Cancelado' }}">
-                                        <button type="button" class="btn btn-sm btn-outline-danger"
-                                                x-on:click="$dispatch('calcular-cancelacion')" @disabled(! $puedeCalcularCancelacion)>
-                                            <i class="ti ti-calculator"></i> Calcular cancelación
+                                    {{-- 30/10 (Antony): "Calcular cancelación" pasa a "Calcular pagos", con dos pestañas:
+                                         la cancelación y lo que el cliente debe pagar a una fecha. --}}
+                                    <span class="d-grid" title="Calcular el total para cancelar, o lo que el cliente debe pagar a la fecha que elijas">
+                                        <button type="button" class="btn btn-sm btn-outline-danger" x-on:click="$dispatch('calcular-pagos')">
+                                            <i class="ti ti-calculator"></i> Calcular pagos
                                         </button>
                                     </span>
                                 </div>
@@ -1582,25 +1582,39 @@
             </script>
         </div>
 
-        {{-- ═══ Modal: Calcular cancelación (23/10, Antony) ═══
-             El cajero elige hasta qué cuota se cobra el interés y el total
-             (interés por cuota × N + capital del crédito − monto pagado) va al
-             Monto a Pagar con Cancelado encendido; luego sigue el cobro normal.
-             Los datos llegan con abrirCancelacion() y la cuenta se rehace en el
-             navegador mientras se elige la cuota; el monto final lo calcula el
-             servidor en aplicarCancelacion(). Ventana movible como las demás. --}}
+        {{-- ═══ Modal: Calcular pagos (23/10, Antony; antes "Calcular cancelación") ═══
+             Pestaña "Cancelación": el cajero elige hasta qué cuota se cobra el interés y el total
+             (interés por cuota × N + capital del crédito − monto pagado) va al Monto a Pagar con
+             Cancelado encendido; luego sigue el cobro normal. La cuenta se rehace en el navegador
+             mientras se elige la cuota; el monto final lo calcula el servidor en aplicarCancelacion().
+             Pestaña "Pagos a una fecha" (30/10, Antony, crédito 29393): en un calendario con los
+             vencimientos pintados se elige cualquier fecha y sale lo que el cliente debe pagar ese día
+             (PagosAUnaFecha), con el texto para mandarle y la opción de llevarlo al Monto a Pagar.
+             Ventana movible como las demás. --}}
         <div class="modal fade" id="cancelacionModal" tabindex="-1" aria-hidden="true" wire:ignore
              x-data="Object.assign(modalFlotante('cancelacion'), calcularCancelacion())"
-             x-on:calcular-cancelacion.window="abrir()">
-            <div class="modal-dialog modal-dialog-centered" style="max-width:440px;" x-ref="dialogo">
+             x-on:calcular-pagos.window="abrir()">
+            <div class="modal-dialog modal-dialog-centered" style="max-width:720px;" x-ref="dialogo">
                 <div class="modal-content">
                     <div class="modal-header py-2"
                          x-on:pointerdown="iniciarArrastre($event)" x-on:pointermove="arrastrar($event)"
                          x-on:pointerup="soltar($event)" x-on:pointercancel="soltar($event)">
-                        <h6 class="modal-title mb-0"><i class="ti ti-calculator f-s-14"></i> Calcular cancelación</h6>
+                        <h6 class="modal-title mb-0"><i class="ti ti-calculator f-s-14"></i> Calcular pagos</h6>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                     </div>
-                    <div class="modal-body">
+                    <ul class="nav nav-tabs px-3 pt-2 small">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link py-1" :class="{ 'active': tab === 'cancelacion' }" x-on:click.prevent="tab = 'cancelacion'">Cancelación</a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" class="nav-link py-1" :class="{ 'active': tab === 'fecha' }" x-on:click.prevent="verFecha()">Pagos a una fecha</a>
+                        </li>
+                    </ul>
+                    <div class="modal-body" x-show="tab === 'cancelacion' && ! hayCancelacion">
+                        <div class="alert alert-light border small mb-0" x-text="sinCancelacion"></div>
+                    </div>
+                    <div class="modal-body" x-show="tab === 'cancelacion' && hayCancelacion">
+                      <div class="mx-auto" style="max-width:420px;">
                         <div class="small text-muted mb-2" x-text="'Crédito #' + p.credito + ' · ' + p.total_cuotas + ' cuotas · ' + p.pagadas + ' pagadas'"></div>
 
                         <label class="form-label fw-semibold mb-1" for="cancelacion-hasta">¿Hasta qué cuota paga los intereses?</label>
@@ -1673,15 +1687,103 @@
                             <div class="small text-muted mt-1" x-show="! sinMarcar()">La mora marcada se cobra aparte, como pago de mora.</div>
                         </div>
                         <div class="small text-danger mt-1" x-show="! valido()" x-text="'Elige una cuota entre la ' + p.minimo + ' y la ' + p.maximo + '.'"></div>
+                      </div>
                     </div>
+
+                    {{-- Pestaña "Pagos a una fecha" (30/10, Antony): cualquier fecha; el calendario pinta los
+                         vencimientos para ubicarlos (vencidas, por vencer y pagadas). --}}
+                    <div class="modal-body" x-show="tab === 'fecha'">
+                        <div class="row g-3">
+                            <div class="col-md-5">
+                                <div class="calendario-pagos" x-ref="calendario"></div>
+                                <div class="d-flex flex-wrap gap-2 small mt-2 calendario-pagos-leyenda">
+                                    <span><i class="dp-muestra dp-vencida"></i> vencida</span>
+                                    <span><i class="dp-muestra dp-por-vencer"></i> por vencer</span>
+                                    <span><i class="dp-muestra dp-pagada"></i> pagada</span>
+                                </div>
+                                <div class="small text-muted mt-1">Puedes elegir cualquier fecha; los colores solo marcan los vencimientos.</div>
+                                <div class="d-flex gap-1 flex-wrap mt-2">
+                                    <button type="button" class="btn btn-sm btn-light border" x-on:click="elegirFecha(hoy)">Hoy</button>
+                                    <button type="button" class="btn btn-sm btn-light border" x-show="proximoVencimiento()"
+                                            x-on:click="elegirFecha(proximoVencimiento().fecha)"
+                                            x-text="proximoVencimiento() ? 'Próximo vencimiento (' + fechaCorta(proximoVencimiento().fecha) + ')' : ''"></button>
+                                </div>
+                            </div>
+                            <div class="col-md-7">
+                                <div class="fw-semibold mb-1">
+                                    Si paga el <span class="text-danger" x-text="r ? r.fecha : fechaCorta(fecha)"></span>
+                                    <span class="spinner-border spinner-border-sm text-secondary ms-1" x-show="calculando"></span>
+                                </div>
+                                <template x-if="r && r.filas.length === 0">
+                                    <div class="alert alert-light border small mb-0">No tiene cuotas por pagar hasta esa fecha.</div>
+                                </template>
+                                <template x-if="r && r.filas.length > 0">
+                                    <div>
+                                        <table class="table table-sm table-bordered mb-1 small pagos-fecha-tabla">
+                                            <thead>
+                                                <tr><th>Cuota</th><th>Vence</th><th class="text-end">Cuota</th><th class="text-end">Abonado</th><th>Estado</th><th class="text-end">Mora</th></tr>
+                                            </thead>
+                                            <tbody>
+                                                <template x-for="f in r.filas" :key="f.num">
+                                                    <tr>
+                                                        <td x-text="f.orden + '-' + f.num"></td>
+                                                        <td x-text="fechaCorta(f.venc)"></td>
+                                                        <td class="text-end" x-text="numero(f.cuota)"></td>
+                                                        <td class="text-end" x-text="numero(f.pagado)"></td>
+                                                        <td><span class="badge" :class="f.dias > 0 ? 'bg-danger' : 'bg-warning text-dark'" x-text="f.estado"></span></td>
+                                                        <td class="text-end" x-text="f.dias > 0 ? numero(f.mora) + ' (' + f.dias + ' d)' : '—'"></td>
+                                                    </tr>
+                                                </template>
+                                            </tbody>
+                                        </table>
+                                        <div class="d-flex justify-content-between small"><span>Cuotas</span><span x-text="soles(r.saldo)"></span></div>
+                                        <div class="d-flex justify-content-between small"><span>Mora</span><span x-text="soles(r.mora)"></span></div>
+                                        <div class="d-flex justify-content-between fw-bold border-top pt-1 mt-1"><span>Total a pagar</span><span x-text="soles(r.total)"></span></div>
+                                        <label class="form-label small text-muted mt-2 mb-1">Para enviar al cliente</label>
+                                        <textarea class="form-control form-control-sm pagos-fecha-texto" rows="5" readonly x-ref="textoPagos" :value="r.texto"></textarea>
+                                        <div class="small text-muted mt-1" x-show="fecha !== hoy">El cobro se registra con la fecha de hoy; la mora va calculada al <span x-text="r.fecha"></span>.</div>
+                                        <div class="small text-muted mt-1" x-show="! puedeMora">Al llevarlo al cobro, el Total Mora lo pone el sistema (no tienes permiso para cambiarlo).</div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="modal-footer py-2 justify-content-between">
                         <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                        <button type="button" class="btn btn-sm btn-danger" x-on:click="usar()" :disabled="! valido() || enviando">
+                        <button type="button" class="btn btn-sm btn-danger" x-show="tab === 'cancelacion' && hayCancelacion"
+                                x-on:click="usar()" :disabled="! valido() || enviando">
                             <i class="ti ti-check"></i> Usar en Monto a Pagar
                         </button>
+                        {{-- x-show en un div sin d-flex: el display:flex !important de Bootstrap le ganaba y los
+                             botones de esta pestaña salían también en la de cancelación. --}}
+                        <div x-show="tab === 'fecha'">
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" x-on:click="copiarPagos()" :disabled="! r || r.filas.length === 0">
+                                    <i class="ti ti-copy"></i> <span x-text="copiado ? 'Copiado' : 'Copiar'"></span>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-danger" x-on:click="usarFecha()" :disabled="! r || r.filas.length === 0 || enviando">
+                                    <i class="ti ti-check"></i> Usar en Monto a Pagar
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
+            <style>
+                .calendario-pagos .ui-datepicker { width: 100%; font-size: 12px; }
+                .calendario-pagos td.dp-vencida a { background: #f8d7da !important; color: #842029 !important; border-color: #f1aeb5 !important; font-weight: 600; }
+                .calendario-pagos td.dp-por-vencer a { background: #cfe2ff !important; color: #084298 !important; border-color: #9ec5fe !important; font-weight: 600; }
+                .calendario-pagos td.dp-pagada a { background: #d1e7dd !important; color: #0f5132 !important; border-color: #a3cfbb !important; }
+                .calendario-pagos td .ui-state-active { box-shadow: inset 0 0 0 2px #212529; }
+                .calendario-pagos-leyenda .dp-muestra { display: inline-block; width: 11px; height: 11px; border-radius: 2px; vertical-align: -1px; border: 1px solid; }
+                .calendario-pagos-leyenda .dp-vencida { background: #f8d7da; border-color: #f1aeb5; }
+                .calendario-pagos-leyenda .dp-por-vencer { background: #cfe2ff; border-color: #9ec5fe; }
+                .calendario-pagos-leyenda .dp-pagada { background: #d1e7dd; border-color: #a3cfbb; }
+                /* El tema fuerza white-space: normal en las tablas: sin !important las celdas se partían ("500.0 / 0"). */
+                .pagos-fecha-tabla th, .pagos-fecha-tabla td { padding: 2px 6px !important; white-space: nowrap !important; }
+                .pagos-fecha-texto { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; white-space: pre; }
+            </style>
             <script>
                 function calcularCancelacion() {
                     return {
@@ -1691,21 +1793,112 @@
                         conMoraAcumulada: false,
                         cargando: false,
                         enviando: false,
+                        // 30/10: pestañas y "Pagos a una fecha".
+                        tab: 'cancelacion',
+                        hayCancelacion: true,
+                        sinCancelacion: '',
+                        vencs: [],
+                        vencPorFecha: {},
+                        hoy: '',
+                        puedeMora: false,
+                        fecha: '',
+                        r: null,
+                        calculando: false,
+                        copiado: false,
                         abrir() {
                             if (this.cargando) return;
                             this.cargando = true;
-                            this.$wire.abrirCancelacion().then((plan) => {
+                            this.$wire.abrirCalcularPagos().then((d) => {
                                 this.cargando = false;
-                                if (! plan) return;
-                                this.p = plan;
-                                this.n = plan.sugerida;
-                                // Desmarcados por defecto; si ya hay un cálculo aplicado, vuelven como quedaron.
-                                this.conMora = !! plan.con_mora;
-                                this.conMoraAcumulada = !! plan.con_mora_acumulada;
+                                if (! d) return;
+                                this.hayCancelacion = !! d.cancelacion;
+                                this.sinCancelacion = d.sin_cancelacion || '';
+                                if (d.cancelacion) {
+                                    this.p = d.cancelacion;
+                                    this.n = d.cancelacion.sugerida;
+                                    // Desmarcados por defecto; si ya hay un cálculo aplicado, vuelven como quedaron.
+                                    this.conMora = !! d.cancelacion.con_mora;
+                                    this.conMoraAcumulada = !! d.cancelacion.con_mora_acumulada;
+                                }
+                                this.vencs = d.vencimientos;
+                                this.vencPorFecha = {};
+                                d.vencimientos.forEach((v) => {
+                                    const x = this.vencPorFecha[v.fecha] || (this.vencPorFecha[v.fecha] = { nums: [], pagada: true });
+                                    x.nums.push(v.num);
+                                    x.pagada = x.pagada && v.pagada;
+                                });
+                                this.hoy = d.hoy;
+                                this.puedeMora = !! d.puede_mora;
+                                this.fecha = d.hoy;
+                                this.r = null;
+                                if (! this.hayCancelacion) this.tab = 'fecha';
                                 this.modal.show(); // la instancia la crea modalFlotante (sin fondo oscuro en escritorio)
-                                // El número queda seleccionado: se escribe la cuota y Enter la usa.
-                                setTimeout(() => document.getElementById('cancelacion-hasta')?.select(), 60);
+                                setTimeout(() => {
+                                    if (this.tab === 'fecha') {
+                                        this.verFecha();
+                                    } else {
+                                        // El número queda seleccionado: se escribe la cuota y Enter la usa.
+                                        document.getElementById('cancelacion-hasta')?.select();
+                                    }
+                                }, 60);
                             }, () => { this.cargando = false; });
+                        },
+                        verFecha() {
+                            this.tab = 'fecha';
+                            this.prepararCalendario();
+                            if (! this.r && this.fecha) this.elegirFecha(this.fecha);
+                        },
+                        prepararCalendario() {
+                            const $cal = window.jQuery && jQuery(this.$refs.calendario);
+                            if (! $cal || ! $cal.datepicker) return;
+                            if (! $cal.hasClass('hasDatepicker')) {
+                                $cal.datepicker({
+                                    dateFormat: 'yy-mm-dd', changeMonth: true, changeYear: true, firstDay: 1,
+                                    beforeShowDay: (d) => this.diaCalendario(d),
+                                    onSelect: (texto) => this.elegirFecha(texto),
+                                });
+                            }
+                            $cal.datepicker('setDate', this.fecha);
+                            $cal.datepicker('refresh');
+                        },
+                        diaCalendario(d) {
+                            const ymd = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+                            const v = this.vencPorFecha[ymd];
+                            if (! v) return [true, '', ''];
+                            const cuotas = (v.nums.length > 1 ? 'Cuotas ' : 'Cuota ') + v.nums.join(', ');
+                            if (v.pagada) return [true, 'dp-pagada', cuotas + ' (pagada)'];
+                            return ymd < this.hoy ? [true, 'dp-vencida', cuotas + ' vencida'] : [true, 'dp-por-vencer', cuotas + ' por vencer'];
+                        },
+                        elegirFecha(f) {
+                            this.fecha = f;
+                            this.copiado = false;
+                            const $cal = window.jQuery && jQuery(this.$refs.calendario);
+                            if ($cal && $cal.hasClass('hasDatepicker')) $cal.datepicker('setDate', f);
+                            this.calculando = true;
+                            this.$wire.calcularPagosAl(f).then((r) => {
+                                // Solo la última fecha pedida manda (clics seguidos en el calendario).
+                                if (f !== this.fecha) return;
+                                this.calculando = false;
+                                this.r = r;
+                            }, () => { this.calculando = false; });
+                        },
+                        proximoVencimiento() { return this.vencs.find((v) => ! v.pagada && v.fecha >= this.hoy) || null; },
+                        fechaCorta(ymd) { return ymd ? ymd.split('-').reverse().join('/') : ''; },
+                        numero(v) { return Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
+                        copiarPagos() {
+                            if (! this.r) return;
+                            navigator.clipboard.writeText(this.r.texto).then(() => {
+                                this.copiado = true;
+                                setTimeout(() => this.copiado = false, 1800);
+                            });
+                        },
+                        usarFecha() {
+                            if (! this.r || this.enviando) return;
+                            this.enviando = true;
+                            this.$wire.usarPagosAl(this.fecha).then((ok) => {
+                                this.enviando = false;
+                                if (ok) this.modal.hide();
+                            }, () => { this.enviando = false; });
                         },
                         limitar(v) {
                             v = Math.round(Number(v));

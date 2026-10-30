@@ -17,6 +17,7 @@ use App\Support\CancelacionHastaCuota;
 use App\Support\ConSubidaDeArchivos;
 use App\Support\MoraExonerada;
 use App\Support\MoraPagada;
+use App\Support\PagosAUnaFecha;
 use App\Support\RecibosCuota;
 use App\Support\RotuloCuotas;
 use Carbon\Carbon;
@@ -467,6 +468,96 @@ class Create extends Component
             return null;
         }
 
+        return $this->datosCancelacion($plan);
+    }
+
+    /**
+     * Abre "Calcular pagos" (30/10, Antony: antes "Calcular cancelación"): la ventana con dos pestañas,
+     * la cancelación (si el crédito la admite) y los pagos a una fecha, con los vencimientos del crédito
+     * para pintarlos en el calendario.
+     *
+     * @return array{cancelacion: ?array, sin_cancelacion: ?string, vencimientos: list<array{num: int, fecha: string, pagada: bool}>, hoy: string, puede_mora: bool}|null
+     */
+    #[Renderless]
+    public function abrirCalcularPagos(): ?array
+    {
+        if (! $this->credit || $this->credit->situacion !== 'Activo') {
+            return null;
+        }
+
+        $plan = $this->planCancelacion();
+
+        return [
+            'cancelacion' => $plan !== null ? $this->datosCancelacion($plan) : null,
+            'sin_cancelacion' => $plan === null ? $this->motivoSinCalculoDeCancelacion() : null,
+            'vencimientos' => PagosAUnaFecha::vencimientos($this->credit),
+            'hoy' => now()->toDateString(),
+            // Sin permiso de Total Mora, el cobro pone su mora calculada (la de la impaga más antigua).
+            'puede_mora' => $this->canEditMora(),
+        ];
+    }
+
+    /**
+     * "Pagos a una fecha": lo que el cliente debe pagar si paga ese día (PagosAUnaFecha).
+     *
+     * @return array<string, mixed>|null
+     */
+    #[Renderless]
+    public function calcularPagosAl(string $fecha): ?array
+    {
+        $dia = $this->fechaDeCalculo($fecha);
+
+        return $this->credit && $dia ? PagosAUnaFecha::calcular($this->credit, $dia) : null;
+    }
+
+    /**
+     * Lleva "Pagos a una fecha" al cobro por el mismo camino de "elegir cuotas": Monto a Pagar = saldos
+     * de esas cuotas y, con permiso de Total Mora, la mora de cada una a la fecha elegida.
+     */
+    public function usarPagosAl(string $fecha): bool
+    {
+        $dia = $this->fechaDeCalculo($fecha);
+        if (! $this->credit || $this->credit->situacion !== 'Activo' || ! $dia) {
+            return false;
+        }
+
+        $calculo = PagosAUnaFecha::calcular($this->credit, $dia);
+        if ($calculo['filas'] === []) {
+            $this->dispatch('errorAlert', ['message' => "Al {$calculo['fecha']} no hay cuotas por pagar."]);
+
+            return false;
+        }
+
+        $this->moraCuotas = array_map(fn (array $f) => [
+            'num' => $f['num'], 'venc' => $f['venc'], 'saldo' => $f['saldo'], 'dias' => $f['dias'],
+            'rate' => $f['tarifa'], 'calc' => $f['mora'], 'valor' => number_format($f['mora'], 2, '.', ''), 'sel' => true,
+        ], $calculo['filas']);
+        $this->aplicarCuotas();
+        $this->dispatch('monto-usado');
+
+        return true;
+    }
+
+    private function fechaDeCalculo(string $fecha): ?Carbon
+    {
+        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
+            return null;
+        }
+        try {
+            return Carbon::createFromFormat('!Y-m-d', $fecha);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * Lo que la pestaña de cancelación necesita para recalcular en el navegador.
+     *
+     * @param  array<string, mixed>  $plan  CancelacionHastaCuota::plan()
+     * @return array<string, mixed>
+     */
+    private function datosCancelacion(array $plan): array
+    {
         $sugerida = $this->cancelHasta ?? $plan['vencidas'];
         $moraVencidas = $this->moraPorCuotasVencidas(now());
 
