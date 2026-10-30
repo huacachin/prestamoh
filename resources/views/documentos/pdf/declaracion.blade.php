@@ -25,16 +25,16 @@
         /* Los tamaños de los modelos: 7 pt (propiedad) y 8 pt (publicidad), en la Bookman de la casa
            (el contrato va en 6.5 pt). Una sola hoja: con 7.5 pt la de bien futuro con dos declarantes
            dejaba las firmas en una segunda hoja. */
-        body { font-size: {{ $propiedad ? '7pt' : '8pt' }}; line-height: 1.3; }
+        body { font-size: {{ $propiedad ? '7pt' : '8pt' }}; line-height: {{ $propiedad ? '1.25' : '1.3' }}; }
         .dj-titulo { text-align: center; font-weight: bold; text-decoration: underline;
                      font-size: {{ $propiedad ? '8pt' : '9pt' }}; margin: 0 0 8px 0; }
         .dj-fecha { text-align: right; margin-top: 10px; }
         table.dj-firmas { width: 100%; border-collapse: collapse; margin-top: 6px; page-break-inside: avoid; }
-        /* Espacio para firmar sobre la línea (30/10, Antony: "bajarlo un poco más"): en la de publicidad
-           sobra hoja; en la de propiedad, lo más que deja una sola hoja con el texto más largo
-           (bien futuro, dos declarantes), apretando un poco los párrafos. */
+        /* Espacio para firmar sobre la línea (30/10, Antony: "bajarlo un poco más" y "un poco más abajo"):
+           en la de publicidad sobra hoja; en la de propiedad, con interlineado 1.25 y párrafos a 5px, el
+           texto más largo (bien futuro, dos declarantes) sigue en UNA hoja hasta ~120px: no subir sin medir. */
         .parrafo { margin: 0 0 {{ $propiedad ? '5px' : '8px' }} 0; }
-        table.dj-firmas td { vertical-align: top; text-align: center; padding: {{ $propiedad ? '80px' : '95px' }} 8px 2px 8px; }
+        table.dj-firmas td { vertical-align: top; text-align: center; padding: {{ $propiedad ? '110px' : '125px' }} 8px 2px 8px; }
         table.dj-firmas .linea { border-top: 0.8pt solid #000; padding-top: 3px; }
         table.dj-firmas.negrita td { font-weight: bold; }
     </style>
