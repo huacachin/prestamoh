@@ -21,9 +21,9 @@ use Illuminate\Support\Facades\DB;
  * Por fila: Préstamo = capital de esas cuotas según el cronograma (el "=375*3" del Excel manual), Interés S/ =
  * su interés, Interés % = Interés ÷ Capital del crédito, Fec/Venc = la última de esas cuotas y Fecha Cancelado =
  * la fecha en que debió cancelarse según el cronograma, la misma (30/10, Antony; como el "=+Fec/Venc" del manual).
- * Renovaciones (cancelado por refinanciación, el
- * mensual de 1 cuota que se renueva cada mes): entran con todo el interés, y en Préstamo solo el capital que de
- * verdad se pagó (el aplicado de la cuota = capital viejo − capital nuevo); el resto pasó al crédito nuevo.
+ * Renovaciones (cancelado por refinanciación, el mensual de 1 cuota que se renueva cada mes): NO entran, como en el
+ * Excel manual (30/10, Antony: "si en el Excel dice 1,200 entonces por ahí va"; el manual omite 5 de las 7 de
+ * septiembre y las otras 2 las lleva con créditos que en el sistema no existen así).
  *
  * Contra el Excel manual (ene–sep 2026) cuadra ~90 % de las filas; lo demás son créditos que el manual sigue
  * listando después de cancelados o reemplazados, cuentas a mano y un cliente que no está en el sistema.
@@ -44,14 +44,15 @@ class RentaSegundaCategoria
         $base = fn () => DB::table('credit_installments as i')
             ->join('credits as c', 'c.id', '=', 'i.credit_id')
             ->join('clients as cl', 'cl.id', '=', 'c.client_id')
+            ->where('c.cancelado_por_refi', 0)
             ->where(function ($q) {
                 foreach (self::TIPOS_CREDITO as $prefijo) {
                     $q->orWhereRaw('UPPER(TRIM(cl.zona)) LIKE ?', [$prefijo.'%']);
                 }
             })
             ->orderBy('i.fecha_vencimiento')->orderBy('i.num_cuota')
-            ->select(['i.credit_id', 'i.fecha_vencimiento', 'i.importe_cuota', 'i.importe_interes', 'i.importe_aplicado',
-                'c.importe', 'c.fecha_prestamo', 'c.cancelado_por_refi', 'cl.documento', 'cl.apellido_pat', 'cl.apellido_mat', 'cl.nombre']);
+            ->select(['i.credit_id', 'i.fecha_vencimiento', 'i.importe_cuota', 'i.importe_interes',
+                'c.importe', 'c.fecha_prestamo', 'cl.documento', 'cl.apellido_pat', 'cl.apellido_mat', 'cl.nombre']);
 
         // Las que vencen en el mes; del cancelado a mitad de mes, solo hasta la cancelación (opción A).
         $cuotas = $base()
@@ -78,15 +79,12 @@ class RentaSegundaCategoria
             $capital = round((float) $c->importe, 2);
             $interes = round((float) $del->sum('importe_interes'), 2);
 
-            // Renovación: solo el capital que de verdad se pagó; el resto pasó al crédito nuevo.
-            $prestamo = (int) $c->cancelado_por_refi === 1 ? $del->sum('importe_aplicado') : $del->sum('importe_cuota');
-
             return [
                 'credito' => (int) $c->credit_id,
                 'dni' => trim((string) $c->documento),
                 'nombre' => trim(implode(' ', array_filter([$c->apellido_pat, $c->apellido_mat, $c->nombre]))),
                 'capital' => $capital,
-                'prestamo' => round((float) $prestamo, 2),
+                'prestamo' => round((float) $del->sum('importe_cuota'), 2),
                 'pct' => $capital > 0 ? round($interes / $capital * 100, 2) : 0.0,
                 'interes' => $interes,
                 'cuotas' => $del->count(),

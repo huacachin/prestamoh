@@ -72,7 +72,7 @@ class RentaSegundaCategoriaTest extends TestCase
         // Fuera: sin garantía y sin cuotas en el mes.
         $this->credito('Sin Garantia', '40000004', 1000, 4, '2026-09-02');
         $this->credito('SIGM.S', '40000006', 3000, 4, '2026-10-07');
-        // Renovación (mensual de 1 cuota refinanciado al vencer): todo el interés; de capital, solo lo que se pagó.
+        // Renovación (mensual de 1 cuota refinanciado al vencer): no entra, como en el Excel manual.
         $renovado = $this->credito('SIGM.M', '40000005', 10000, 1, '2026-09-15', extra: ['tipo_planilla' => 3, 'situacion' => 'Cancelado', 'estado' => 0, 'fecha_cancelacion' => '2026-09-15', 'cancelado_por_refi' => true]);
         CreditInstallment::where('credit_id', $renovado->id)->update(['importe_aplicado' => 1000, 'interes_aplicado' => 125]);
         // Cancelado el 08/09, antes de su primera cuota del mes (10/09): cuenta la cuota en curso.
@@ -85,7 +85,7 @@ class RentaSegundaCategoriaTest extends TestCase
         $lista = RentaSegundaCategoria::filas(2026, 9);
         $filas = collect($lista)->keyBy('dni');
 
-        $this->assertSame(['40000009', '40000003', '40000007', '40000002', '40000005', '40000001', '40000008'], array_column($lista, 'dni'), 'ordenadas por Fec/Venc');
+        $this->assertSame(['40000009', '40000003', '40000007', '40000002', '40000001', '40000008'], array_column($lista, 'dni'), 'ordenadas por Fec/Venc, sin la renovación');
         $ver = fn (string $dni) => [$filas[$dni]['cuotas'], $filas[$dni]['prestamo'], $filas[$dni]['interes'], $filas[$dni]['pct'], $filas[$dni]['fec_venc'], $filas[$dni]['fec_cancelado']];
         // Préstamo = capital de las cuotas del mes; Interés % = interés ÷ capital del crédito.
         // Fecha Cancelado = la fecha en que debió cancelarse según el cronograma (Fec/Venc), pagada o no.
@@ -93,7 +93,6 @@ class RentaSegundaCategoriaTest extends TestCase
         $this->assertSame([1, 6000.0, 75.0, 1.25, '2026-09-15', '2026-09-15'], $ver('40000002'));
         $this->assertSame([2, 1000.0, 50.0, 2.5, '2026-09-09', '2026-09-09'], $ver('40000003'));
         $this->assertSame('2026-08-03', $filas['40000003']['fec_cred']);
-        $this->assertSame([1, 1000.0, 125.0, 1.25, '2026-09-15', '2026-09-15'], $ver('40000005'), 'renovación: capital pagado, interés completo');
         $this->assertSame([1, 500.0, 25.0, 1.25, '2026-09-10', '2026-09-10'], $ver('40000007'), 'cuota en curso del cancelado antes de vencer');
         $this->assertSame([1, 3000.0, 37.5, 1.25, '2026-10-12', '2026-10-12'], $ver('40000008'), 'mensual: la cuota del mes siguiente');
         $this->assertSame([1, 800.0, 10.0, 1.25, '2026-09-05', '2026-09-05'], $ver('40000009'));
