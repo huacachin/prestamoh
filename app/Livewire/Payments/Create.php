@@ -498,32 +498,36 @@ class Create extends Component
     }
 
     /**
-     * "Pagos a una fecha": lo que el cliente debe pagar si paga ese día (PagosAUnaFecha).
+     * "Pagos a una fecha": lo que el cliente debe pagar si paga ese día (PagosAUnaFecha), con las
+     * $cuantas cuotas marcadas desde la más antigua (null = todas).
      *
      * @return array<string, mixed>|null
      */
     #[Renderless]
-    public function calcularPagosAl(string $fecha): ?array
+    public function calcularPagosAl(string $fecha, ?int $cuantas = null): ?array
     {
         $dia = $this->fechaDeCalculo($fecha);
 
-        return $this->credit && $dia ? PagosAUnaFecha::calcular($this->credit, $dia) : null;
+        return $this->credit && $dia ? PagosAUnaFecha::calcular($this->credit, $dia, $cuantas) : null;
     }
 
     /**
      * Lleva "Pagos a una fecha" al cobro por el mismo camino de "elegir cuotas": Monto a Pagar = saldos
      * de esas cuotas y, con permiso de Total Mora, la mora de cada una a la fecha elegida.
      */
-    public function usarPagosAl(string $fecha): bool
+    public function usarPagosAl(string $fecha, ?int $cuantas = null): bool
     {
         $dia = $this->fechaDeCalculo($fecha);
         if (! $this->credit || $this->credit->situacion !== 'Activo' || ! $dia) {
             return false;
         }
 
-        $calculo = PagosAUnaFecha::calcular($this->credit, $dia);
-        if ($calculo['filas'] === []) {
-            $this->dispatch('errorAlert', ['message' => "Al {$calculo['fecha']} no hay cuotas por pagar."]);
+        $calculo = PagosAUnaFecha::calcular($this->credit, $dia, $cuantas);
+        $elegidas = array_values(array_filter($calculo['filas'], fn (array $f) => $f['sel']));
+        if ($elegidas === []) {
+            $this->dispatch('errorAlert', ['message' => $calculo['filas'] === []
+                ? "Al {$calculo['fecha']} no hay cuotas por pagar."
+                : 'Marca al menos una cuota.']);
 
             return false;
         }
@@ -531,7 +535,7 @@ class Create extends Component
         $this->moraCuotas = array_map(fn (array $f) => [
             'num' => $f['num'], 'venc' => $f['venc'], 'saldo' => $f['saldo'], 'dias' => $f['dias'],
             'rate' => $f['tarifa'], 'calc' => $f['mora'], 'valor' => number_format($f['mora'], 2, '.', ''), 'sel' => true,
-        ], $calculo['filas']);
+        ], $elegidas);
         $this->aplicarCuotas();
         $this->dispatch('monto-usado');
 

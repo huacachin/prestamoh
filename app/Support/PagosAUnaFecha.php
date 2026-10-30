@@ -12,19 +12,27 @@ use Illuminate\Support\Facades\DB;
  * ese día, cada una con su saldo y su mora por días calendario × la tarifa de la cuota, la misma regla de
  * "elegir cuotas" y del cobro (Credit::moraDiaria); sin la mora acumulada de las cuotas ya pagadas.
  *
- * El texto para mandar al cliente tiene el formato que pidió Antony:
- *   1-4    05/10/2026    500.00    0.00    Vencida    Mora 25 Dias 89.25
+ * El cajero marca qué cuotas entran (30/10: "tiene que haber checks y solo eso se debe seleccionar"):
+ * siempre de la más antigua en adelante, porque el cobro paga en ese orden; $cuantas = cuántas desde arriba.
+ *
+ * El texto para mandar al cliente (formato de Antony, ampliado el 30/10 con el nombre, la mora por día
+ * y los totales con y sin mora; sin la cancelación: "este módulo es para saber cuánto va a pagar"):
+ *   Cliente: Quispe Garcia Cristhian Zosimo
+ *   Pagos al 31/10/2026
+ *   Mora por día: S/ 3.57 por cuota vencida
+ *
+ *   1-4    05/10/2026    500.00    0.00    Vencida    Mora 26 Dias 92.82
  *   …
- *   Total 2,207.06
- * (orden-cuota, vencimiento, cuota, lo ya abonado, estado y mora). La cuota que vence justo ese día va
- * como "Vence", sin mora.
+ *   Total sin mora 2,000.00
+ *   Total con mora 2,221.34
+ * La cuota que vence justo ese día va como "Vence", sin mora.
  */
 class PagosAUnaFecha
 {
     /**
-     * @return array{fecha: string, filas: list<array{orden: int, num: int, venc: string, cuota: float, pagado: float, saldo: float, dias: int, tarifa: float, mora: float, estado: string}>, saldo: float, mora: float, total: float, texto: string}
+     * @return array{fecha: string, cliente: string, filas: list<array{orden: int, num: int, venc: string, cuota: float, pagado: float, saldo: float, dias: int, tarifa: float, mora: float, estado: string, sel: bool}>, cuantas: int, mora_dia: list<float>, saldo: float, mora: float, total: float, texto: string}
      */
-    public static function calcular(Credit $credit, Carbon $fecha): array
+    public static function calcular(Credit $credit, Carbon $fecha, ?int $cuantas = null): array
     {
         $dia = $fecha->copy()->startOfDay();
         $filas = [];
@@ -35,6 +43,7 @@ class PagosAUnaFecha
             ->orderBy('fecha_vencimiento')->orderBy('num_cuota')
             ->get(['num_cuota', 'fecha_vencimiento', 'importe_cuota', 'importe_interes', 'importe_excedente',
                 'importe_aplicado', 'interes_aplicado', 'excedente_aplicado']);
+        $cuantas = $cuantas === null ? $cuotas->count() : max(0, min($cuotas->count(), $cuantas));
 
         foreach ($cuotas as $ins) {
             $venc = Carbon::parse($ins->fecha_vencimiento)->startOfDay();
@@ -53,39 +62,56 @@ class PagosAUnaFecha
                 'tarifa' => $tarifa,
                 'mora' => round($dias * $tarifa, 2),
                 'estado' => $dias > 0 ? 'Vencida' : 'Vence',
+                'sel' => count($filas) < $cuantas,
             ];
         }
 
-        $saldo = round(array_sum(array_column($filas, 'saldo')), 2);
-        $mora = round(array_sum(array_column($filas, 'mora')), 2);
-        $total = round($saldo + $mora, 2);
-
-        return [
+        $elegidas = array_values(array_filter($filas, fn (array $f) => $f['sel']));
+        $saldo = round(array_sum(array_column($elegidas, 'saldo')), 2);
+        $mora = round(array_sum(array_column($elegidas, 'mora')), 2);
+        $moraDia = array_values(array_unique(array_column($elegidas ?: $filas, 'tarifa'), SORT_REGULAR));
+        $calculo = [
             'fecha' => $dia->format('d/m/Y'),
+            'cliente' => (string) $credit->client?->fullName(),
             'filas' => $filas,
+            'cuantas' => $cuantas,
+            'mora_dia' => $moraDia,
             'saldo' => $saldo,
             'mora' => $mora,
-            'total' => $total,
-            'texto' => self::texto($filas, $total),
+            'total' => round($saldo + $mora, 2),
         ];
+
+        return $calculo + ['texto' => self::texto($calculo, $elegidas)];
     }
 
     /**
-     * El mensaje para el cliente, una línea por cuota y el total.
+     * El mensaje para el cliente con las cuotas elegidas.
      *
-     * @param  list<array{orden: int, num: int, venc: string, cuota: float, pagado: float, dias: int, mora: float, estado: string}>  $filas
+     * @param  array{fecha: string, cliente: string, mora_dia: list<float>, saldo: float, total: float}  $calculo
+     * @param  list<array{orden: int, num: int, venc: string, cuota: float, pagado: float, dias: int, mora: float, estado: string}>  $elegidas
      */
-    public static function texto(array $filas, float $total): string
+    public static function texto(array $calculo, array $elegidas): string
     {
-        $lineas = array_map(fn (array $f) => implode('    ', array_filter([
-            $f['orden'].'-'.$f['num'],
-            Carbon::parse($f['venc'])->format('d/m/Y'),
-            number_format($f['cuota'], 2),
-            number_format($f['pagado'], 2),
-            $f['estado'],
-            $f['dias'] > 0 ? 'Mora '.$f['dias'].' Dias '.number_format($f['mora'], 2) : null,
-        ], fn ($parte) => $parte !== null)), $filas);
-        $lineas[] = 'Total '.number_format($total, 2);
+        $soles = fn (float $v) => 'S/ '.number_format($v, 2);
+        $lineas = array_filter([
+            $calculo['cliente'] !== '' ? 'Cliente: '.$calculo['cliente'] : null,
+            'Pagos al '.$calculo['fecha'],
+            $calculo['mora_dia'] !== [] ? 'Mora por día: '.implode(' / ', array_map($soles, $calculo['mora_dia'])).' por cuota vencida' : null,
+            '',
+        ], fn ($l) => $l !== null);
+
+        foreach ($elegidas as $f) {
+            $lineas[] = implode('    ', array_filter([
+                $f['orden'].'-'.$f['num'],
+                Carbon::parse($f['venc'])->format('d/m/Y'),
+                number_format($f['cuota'], 2),
+                number_format($f['pagado'], 2),
+                $f['estado'],
+                $f['dias'] > 0 ? 'Mora '.$f['dias'].' Dias '.number_format($f['mora'], 2) : null,
+            ], fn ($parte) => $parte !== null));
+        }
+        $lineas[] = 'Total sin mora '.number_format($calculo['saldo'], 2);
+        $lineas[] = 'Total con mora '.number_format($calculo['total'], 2);
 
         return implode("\n", $lineas);
     }

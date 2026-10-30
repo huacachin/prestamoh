@@ -1594,7 +1594,7 @@
         <div class="modal fade" id="cancelacionModal" tabindex="-1" aria-hidden="true" wire:ignore
              x-data="Object.assign(modalFlotante('cancelacion'), calcularCancelacion())"
              x-on:calcular-pagos.window="abrir()">
-            <div class="modal-dialog modal-dialog-centered" style="max-width:720px;" x-ref="dialogo">
+            <div class="modal-dialog modal-dialog-centered" style="max-width:820px;" x-ref="dialogo">
                 <div class="modal-content">
                     <div class="modal-header py-2"
                          x-on:pointerdown="iniciarArrastre($event)" x-on:pointermove="arrastrar($event)"
@@ -1694,7 +1694,7 @@
                          vencimientos para ubicarlos (vencidas, por vencer y pagadas). --}}
                     <div class="modal-body" x-show="tab === 'fecha'">
                         <div class="row g-3">
-                            <div class="col-md-5">
+                            <div class="col-md-4">
                                 <div class="calendario-pagos" x-ref="calendario"></div>
                                 <div class="d-flex flex-wrap gap-2 small mt-2 calendario-pagos-leyenda">
                                     <span><i class="dp-muestra dp-vencida"></i> vencida</span>
@@ -1709,7 +1709,7 @@
                                             x-text="proximoVencimiento() ? 'Próximo vencimiento (' + fechaCorta(proximoVencimiento().fecha) + ')' : ''"></button>
                                 </div>
                             </div>
-                            <div class="col-md-7">
+                            <div class="col-md-8">
                                 <div class="fw-semibold mb-1">
                                     Si paga el <span class="text-danger" x-text="r ? r.fecha : fechaCorta(fecha)"></span>
                                     <span class="spinner-border spinner-border-sm text-secondary ms-1" x-show="calculando"></span>
@@ -1719,13 +1719,17 @@
                                 </template>
                                 <template x-if="r && r.filas.length > 0">
                                     <div>
+                                        {{-- 30/10 (Antony): checks; solo las marcadas van al total, al texto y al cobro. Siempre
+                                             de la más antigua en adelante (el cobro paga en ese orden), como "Elegir cuotas". --}}
+                                        <div class="table-responsive">
                                         <table class="table table-sm table-bordered mb-1 small pagos-fecha-tabla">
                                             <thead>
-                                                <tr><th>Cuota</th><th>Vence</th><th class="text-end">Cuota</th><th class="text-end">Abonado</th><th>Estado</th><th class="text-end">Mora</th></tr>
+                                                <tr><th></th><th>Cuota</th><th>Vence</th><th class="text-end">Cuota</th><th class="text-end">Abonado</th><th>Estado</th><th class="text-end">Mora</th></tr>
                                             </thead>
                                             <tbody>
-                                                <template x-for="f in r.filas" :key="f.num">
-                                                    <tr>
+                                                <template x-for="(f, i) in r.filas" :key="f.num">
+                                                    <tr :class="{ 'text-muted': ! f.sel }">
+                                                        <td class="text-center"><input type="checkbox" class="form-check-input m-0" :checked="f.sel" x-on:change="marcar(i, $event.target.checked)"></td>
                                                         <td x-text="f.orden + '-' + f.num"></td>
                                                         <td x-text="fechaCorta(f.venc)"></td>
                                                         <td class="text-end" x-text="numero(f.cuota)"></td>
@@ -1736,11 +1740,15 @@
                                                 </template>
                                             </tbody>
                                         </table>
-                                        <div class="d-flex justify-content-between small"><span>Cuotas</span><span x-text="soles(r.saldo)"></span></div>
+                                        </div>
+                                        <div class="small text-muted mb-1" x-show="r.filas.length > 1">Al marcar una cuota se marcan las anteriores: el cobro paga de la más antigua en adelante.</div>
+                                        <div class="d-flex justify-content-between small"><span>Mora por día</span><span x-text="r.mora_dia.map((v) => soles(v)).join(' / ') + ' por cuota vencida'"></span></div>
+                                        <div class="d-flex justify-content-between small border-top pt-1 mt-1"><span>Cuotas marcadas</span><span x-text="r.cuantas + ' de ' + r.filas.length"></span></div>
                                         <div class="d-flex justify-content-between small"><span>Mora</span><span x-text="soles(r.mora)"></span></div>
-                                        <div class="d-flex justify-content-between fw-bold border-top pt-1 mt-1"><span>Total a pagar</span><span x-text="soles(r.total)"></span></div>
+                                        <div class="d-flex justify-content-between fw-semibold"><span>Total sin mora</span><span x-text="soles(r.saldo)"></span></div>
+                                        <div class="d-flex justify-content-between fw-bold"><span>Total con mora</span><span x-text="soles(r.total)"></span></div>
                                         <label class="form-label small text-muted mt-2 mb-1">Para enviar al cliente</label>
-                                        <textarea class="form-control form-control-sm pagos-fecha-texto" rows="5" readonly x-ref="textoPagos" :value="r.texto"></textarea>
+                                        <textarea class="form-control form-control-sm pagos-fecha-texto" readonly x-ref="textoPagos" :value="r.texto" :rows="Math.min(16, r.texto.split('\n').length + 1)"></textarea>
                                         <div class="small text-muted mt-1" x-show="fecha !== hoy">El cobro se registra con la fecha de hoy; la mora va calculada al <span x-text="r.fecha"></span>.</div>
                                         <div class="small text-muted mt-1" x-show="! puedeMora">Al llevarlo al cobro, el Total Mora lo pone el sistema (no tienes permiso para cambiarlo).</div>
                                     </div>
@@ -1759,10 +1767,10 @@
                              botones de esta pestaña salían también en la de cancelación. --}}
                         <div x-show="tab === 'fecha'">
                             <div class="d-flex gap-2">
-                                <button type="button" class="btn btn-sm btn-outline-secondary" x-on:click="copiarPagos()" :disabled="! r || r.filas.length === 0">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" x-on:click="copiarPagos()" :disabled="! r || r.cuantas === 0">
                                     <i class="ti ti-copy"></i> <span x-text="copiado ? 'Copiado' : 'Copiar'"></span>
                                 </button>
-                                <button type="button" class="btn btn-sm btn-danger" x-on:click="usarFecha()" :disabled="! r || r.filas.length === 0 || enviando">
+                                <button type="button" class="btn btn-sm btn-danger" x-on:click="usarFecha()" :disabled="! r || r.cuantas === 0 || enviando">
                                     <i class="ti ti-check"></i> Usar en Monto a Pagar
                                 </button>
                             </div>
@@ -1802,6 +1810,7 @@
                         hoy: '',
                         puedeMora: false,
                         fecha: '',
+                        cuantas: null, // cuotas marcadas desde la más antigua; null = todas
                         r: null,
                         calculando: false,
                         copiado: false,
@@ -1830,6 +1839,7 @@
                                 this.hoy = d.hoy;
                                 this.puedeMora = !! d.puede_mora;
                                 this.fecha = d.hoy;
+                                this.cuantas = null;
                                 this.r = null;
                                 if (! this.hayCancelacion) this.tab = 'fecha';
                                 this.modal.show(); // la instancia la crea modalFlotante (sin fondo oscuro en escritorio)
@@ -1871,13 +1881,23 @@
                         },
                         elegirFecha(f) {
                             this.fecha = f;
-                            this.copiado = false;
+                            this.cuantas = null; // otra fecha: vuelven a marcarse todas
                             const $cal = window.jQuery && jQuery(this.$refs.calendario);
                             if ($cal && $cal.hasClass('hasDatepicker')) $cal.datepicker('setDate', f);
+                            this.recalcular();
+                        },
+                        // Marcar una cuota marca las anteriores; desmarcarla desmarca las siguientes.
+                        marcar(i, marcada) {
+                            this.cuantas = marcada ? i + 1 : i;
+                            this.recalcular();
+                        },
+                        recalcular() {
+                            const f = this.fecha, cuantas = this.cuantas;
+                            this.copiado = false;
                             this.calculando = true;
-                            this.$wire.calcularPagosAl(f).then((r) => {
-                                // Solo la última fecha pedida manda (clics seguidos en el calendario).
-                                if (f !== this.fecha) return;
+                            this.$wire.calcularPagosAl(f, cuantas).then((r) => {
+                                // Solo la última petición manda (clics seguidos en el calendario o en los checks).
+                                if (f !== this.fecha || cuantas !== this.cuantas) return;
                                 this.calculando = false;
                                 this.r = r;
                             }, () => { this.calculando = false; });
@@ -1895,7 +1915,7 @@
                         usarFecha() {
                             if (! this.r || this.enviando) return;
                             this.enviando = true;
-                            this.$wire.usarPagosAl(this.fecha).then((ok) => {
+                            this.$wire.usarPagosAl(this.fecha, this.cuantas).then((ok) => {
                                 this.enviando = false;
                                 if (ok) this.modal.hide();
                             }, () => { this.enviando = false; });
