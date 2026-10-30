@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\Credits\Schedule;
+use App\Livewire\Credits\Show;
 use App\Models\Client;
 use App\Models\Credit;
 use App\Models\CreditInstallment;
@@ -15,7 +16,8 @@ use Tests\TestCase;
 /**
  * 30/10/2026 (Antony, crédito 29013): en un crédito cancelado, la cuota que el legacy dejó sin marcar
  * como pagada salía "Vencida" con su saldo y como capital e interés pendientes. Se muestra "Cancelado",
- * con lo que cobró caja para esa cuota y sin saldo; los datos no cambian.
+ * con lo que cobró caja para esa cuota y sin saldo, en el cronograma y en la ficha del crédito; los
+ * datos no cambian.
  */
 class CronogramaCreditoCanceladoTest extends TestCase
 {
@@ -78,6 +80,24 @@ class CronogramaCreditoCanceladoTest extends TestCase
 
         // Los datos no se tocan.
         $this->assertDatabaseHas('credit_installments', ['credit_id' => $this->credit->id, 'num_cuota' => 3, 'pagado' => 0, 'importe_aplicado' => 0]);
+    }
+
+    public function test_la_ficha_del_credito_muestra_lo_mismo(): void
+    {
+        $html = Livewire::test(Show::class, ['id' => $this->credit->id])->html();
+
+        $this->assertStringNotContainsString('>Vencida</span>', $html);
+        $this->assertStringNotContainsString('>Pendiente</span>', $html);
+        $this->assertStringContainsString('title="Crédito cancelado el 13/08/2026: la cuota quedó sin marcar como pagada en el sistema anterior." style="cursor:help;">Cancelado</span>', $html);
+        $this->assertStringContainsString('title="Crédito cancelado el 13/08/2026."', $html, 'saldo pendiente en 0, se cobró todo');
+        // Cuota 3: pagado capital 250 e interés 60 (lo que cobró caja), saldo 0; totales 750 / 180 / 0.
+        $texto = preg_replace('/\s+/', ' ', strip_tags($html));
+        $this->assertStringContainsString('3 06/08/2026 250.00 60.00 250.00 60.00 0.00 Cancelado', $texto);
+        $this->assertStringContainsString('Totales 750.00 180.00 750.00 180.00 0.00', $texto);
+
+        // Un crédito activo sigue igual.
+        $this->credit->update(['situacion' => 'Activo', 'estado' => 1, 'fecha_cancelacion' => null]);
+        $this->assertStringContainsString('>Vencida</span>', Livewire::test(Show::class, ['id' => $this->credit->id])->html());
     }
 
     public function test_lo_no_cobrado_se_mira_por_credito_y_no_por_cuota(): void

@@ -121,11 +121,8 @@
                         {{-- Cuotas regulares --}}
                         @php
                             $nVencida = 0; $nPendiente = 0; $hoy = now()->format('Y-m-d');
-                            // 30/10: cuota sin marcar de un crédito cancelado (ver Schedule::render).
-                            $canceladoEl = $credit->fecha_cancelacion?->format('d/m/Y');
-                            $tipCerrada = $credit->cancelado_por_refi
-                                ? 'Crédito cancelado por refinanciación'.($canceladoEl ? ' el '.$canceladoEl : '').': el saldo de esta cuota pasó al crédito nuevo.'
-                                : 'Crédito cancelado'.($canceladoEl ? ' el '.$canceladoEl : '').': la cuota quedó sin marcar como pagada en el sistema anterior.';
+                            // 30/10: cuota sin marcar de un crédito cancelado (App\Support\CreditoCancelado).
+                            $tipCerrada = \App\Support\CreditoCancelado::motivoCuota($credit);
                         @endphp
                         @foreach($rows as $row)
                             @php
@@ -352,12 +349,7 @@
                             {{-- Saldo = capital + interés − pagado (la mora se cobra aparte). Un crédito cancelado
                                  no debe nada (30/10): lo que del cronograma no entró a caja ($saldo, por crédito y no
                                  por cuota: el legacy a veces anotó en una cuota lo de la siguiente) va en el tooltip. --}}
-                            @php
-                                $tipSaldo = $creditoCerrado
-                                    ? 'Crédito cancelado'.($canceladoEl ? ' el '.$canceladoEl : '')
-                                        .($saldo > 0.01 ? ': S/ '.number_format($saldo, 2).($credit->cancelado_por_refi ? ' pasaron al crédito nuevo (refinanciación).' : ' del cronograma no se cobraron.') : '.')
-                                    : '';
-                            @endphp
+                            @php $tipSaldo = $creditoCerrado ? \App\Support\CreditoCancelado::motivoSaldo($credit, (float) $saldo) : ''; @endphp
                             <tr style="background-color:#f0f0f0; font-weight:500;">
                                 <td colspan="{{ $tieneExc ? 8 : 7 }}" class="text-center" style="color:red;"><b>Saldo</b></td>
                                 <td colspan="2" class="text-center" style="color:red;" @if($tipSaldo !== '') data-bs-toggle="tooltip" title="{{ $tipSaldo }}" @endif>
@@ -381,7 +373,7 @@
                             @php
                                 $intPendienteTotal = $creditoCerrado ? 0.0 : round($totals['interes'] - $tPagInt, 2);
                                 $tipIntPend = $creditoCerrado
-                                    ? 'Crédito cancelado'.($canceladoEl ? ' el '.$canceladoEl : '').': no tiene interés pendiente.'
+                                    ? 'Crédito cancelado: no tiene interés pendiente.'
                                     : 'Interés '.number_format($totals['interes'], 2).' − pagado '.number_format($tPagInt, 2).' = '.number_format($intPendienteTotal, 2);
                             @endphp
                             <tr style="background-color:#f0f0f0; font-weight:500;">

@@ -4,10 +4,10 @@ namespace App\Livewire\Credits;
 
 use App\Models\Credit;
 use App\Support\AbonosPorCuota;
+use App\Support\CreditoCancelado;
 use App\Support\MoraPagada;
 use App\Support\RecibosCuota;
 use Carbon\Carbon;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 
@@ -50,13 +50,10 @@ class Schedule extends Component
 
         $abonos = AbonosPorCuota::desdePagos($installments, $pays);
 
-        // 30/10/2026 (Antony, crédito 29013): en un crédito CANCELADO, las cuotas que quedaron sin marcar
-        // como pagadas no son deuda ni "Vencida". Son del legacy: 9 633 créditos migrados tienen la cuota
-        // cobrada (su pago dice "Cuota: n/N") sin marcar, y 507 con el resto condonado al cancelar; en los
-        // refinanciados el saldo pasó al crédito nuevo. Se muestran canceladas, con lo que cobró caja para
-        // esa cuota y saldo 0. Los datos no se tocan.
-        $creditoCerrado = $this->credit->situacion === 'Cancelado';
-        $pagadoPropio = $creditoCerrado ? $this->pagadoPorCuota($installments, $pays) : [];
+        // 30/10/2026 (Antony, crédito 29013): en un crédito CANCELADO, las cuotas que el legacy dejó sin
+        // marcar no son deuda ni "Vencida" (ver CreditoCancelado). Los datos no se tocan.
+        $creditoCerrado = CreditoCancelado::es($this->credit);
+        $pagadoPropio = $creditoCerrado ? CreditoCancelado::cobradoPorCuota($installments, $pays) : [];
 
         // Pagos capital/interés agrupados por EVENTO (misma fecha+hora = un
         // pago registrado en ventanilla). La mora NO se cuelga por fecha
@@ -323,38 +320,5 @@ class Schedule extends Component
             // 30/10: crédito cancelado → sin cuotas vencidas ni pendientes.
             'creditoCerrado' => $creditoCerrado,
         ]);
-    }
-
-    /**
-     * Lo que caja cobró para cada cuota: capital, interés y excedente de los pagos que la nombran
-     * (installment_id, o el "n/N" del detalle en los migrados, como AbonosPorCuota). Sin la mora.
-     *
-     * @param  Collection<int, object>  $installments
-     * @param  Collection<int, object>  $pays
-     * @return array<int, array{cap: float, int: float, exc: float}> por installment_id
-     */
-    private function pagadoPorCuota(Collection $installments, Collection $pays): array
-    {
-        $idPorNum = $installments->pluck('id', 'num_cuota')->map(fn ($v) => (int) $v)->all();
-        $porCuota = [];
-        foreach ($pays as $p) {
-            if (strtoupper(substr($p->documento ?? '', 0, 4)) === 'MORA' || strtoupper((string) $p->tipo) === 'MORA') {
-                continue;
-            }
-            $insId = $p->installment_id ? (int) $p->installment_id : null;
-            if ($insId === null && preg_match('/(\d+)\s*\/\s*\d+/', (string) $p->detalle, $m)) {
-                $insId = $idPorNum[(int) $m[1]] ?? null;
-            }
-            if ($insId === null) {
-                continue;
-            }
-            $campo = match (strtoupper((string) $p->tipo)) {
-                'INTERES' => 'int', 'EXCEDENTE' => 'exc', default => 'cap',
-            };
-            $porCuota[$insId] ??= ['cap' => 0.0, 'int' => 0.0, 'exc' => 0.0];
-            $porCuota[$insId][$campo] += (float) $p->monto;
-        }
-
-        return $porCuota;
     }
 }

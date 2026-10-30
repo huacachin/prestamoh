@@ -5,6 +5,7 @@ namespace App\Livewire\Credits;
 use App\Models\Credit;
 use App\Models\MassDeletion;
 use App\Services\Printing\TicketPrinter;
+use App\Support\CreditoCancelado;
 use Livewire\Component;
 
 class Show extends Component
@@ -51,6 +52,19 @@ class Show extends Component
         $totalDeuda = $this->credit->installments->sum(fn ($i) => $i->importe_cuota + $i->importe_interes + $i->importe_excedente);
         $saldoPendiente = $totalDeuda - $totalPagado;
 
-        return view('livewire.credits.show', compact('totalPagado', 'totalDeuda', 'saldoPendiente'));
+        // 30/10 (Antony, crédito 29013): en un crédito cancelado las cuotas que el legacy dejó sin marcar
+        // salen "Cancelado", con lo que cobró caja para ellas y sin saldo, como en el cronograma.
+        $creditoCerrado = CreditoCancelado::es($this->credit);
+        $cobradoPorCuota = $creditoCerrado ? CreditoCancelado::cobradoPorCuotaDe($this->credit) : [];
+        $noCobrado = $saldoPendiente;
+        if ($creditoCerrado) {
+            $noCobrado = $totalDeuda - $this->credit->payments
+                ->reject(fn ($p) => strtoupper(substr((string) $p->documento, 0, 4)) === 'MORA' || strtoupper((string) $p->tipo) === 'MORA'
+                    || str_ends_with((string) $p->detalle, 'Gat'))
+                ->sum('monto');
+            $saldoPendiente = 0.0;
+        }
+
+        return view('livewire.credits.show', compact('totalPagado', 'totalDeuda', 'saldoPendiente', 'creditoCerrado', 'cobradoPorCuota', 'noCobrado'));
     }
 }

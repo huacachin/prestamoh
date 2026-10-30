@@ -83,7 +83,11 @@
                 <div class="col-auto">
                     <div class="p-2 rounded" style="background:#fff3e0;">
                         <small class="text-muted">Saldo Pendiente</small><br>
-                        <strong>{{ number_format($saldoPendiente, 2) }}</strong>
+                        @if($creditoCerrado)
+                            <strong data-bs-toggle="tooltip" title="{{ \App\Support\CreditoCancelado::motivoSaldo($credit, (float) $noCobrado) }}" style="cursor:help;">{{ number_format($saldoPendiente, 2) }}</strong>
+                        @else
+                            <strong>{{ number_format($saldoPendiente, 2) }}</strong>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -135,10 +139,26 @@
                     </tr>
                     </thead>
                     <tbody>
+                    @php
+                        // 30/10: cuota sin marcar de un crédito cancelado (App\Support\CreditoCancelado).
+                        $filasCuota = $credit->installments->map(function ($inst) use ($creditoCerrado, $cobradoPorCuota) {
+                            $cerrada = $creditoCerrado && ! $inst->pagado;
+                            $cobrado = $cobradoPorCuota[$inst->id] ?? ['cap' => 0.0, 'int' => 0.0];
+
+                            return [
+                                'cerrada' => $cerrada,
+                                'cap' => $cerrada ? max((float) $inst->importe_aplicado, $cobrado['cap']) : (float) $inst->importe_aplicado,
+                                'int' => $cerrada ? max((float) $inst->interes_aplicado, $cobrado['int']) : (float) $inst->interes_aplicado,
+                                'saldo' => $cerrada ? 0.0 : $inst->saldoPendiente(),
+                            ];
+                        })->values();
+                        $tipCerrada = $creditoCerrado ? \App\Support\CreditoCancelado::motivoCuota($credit) : '';
+                    @endphp
                     @foreach($credit->installments as $inst)
                         @php
-                            $saldo = $inst->saldoPendiente();
-                            $vencida = !$inst->pagado && $inst->fecha_vencimiento?->isPast();
+                            $fila = $filasCuota[$loop->index];
+                            $saldo = $fila['saldo'];
+                            $vencida = !$inst->pagado && ! $fila['cerrada'] && $inst->fecha_vencimiento?->isPast();
                         @endphp
                         <tr class="{{ $vencida ? 'table-danger' : '' }}">
                             <td>{{ $inst->num_cuota }}</td>
@@ -148,19 +168,21 @@
                             @if($tieneExc)
                                 <td class="text-end">{{ number_format($inst->importe_excedente, 2) }}</td>
                             @endif
-                            <td class="text-end">{{ number_format($inst->importe_aplicado, 2) }}</td>
-                            <td class="text-end">{{ number_format($inst->interes_aplicado, 2) }}</td>
+                            <td class="text-end">{{ number_format($fila['cap'], 2) }}</td>
+                            <td class="text-end">{{ number_format($fila['int'], 2) }}</td>
                             <td class="text-end">{{ number_format($saldo, 2) }}</td>
                             <td>
                                 @if($inst->pagado)
                                     <span class="badge bg-success">Pagado</span>
+                                @elseif($fila['cerrada'])
+                                    <span class="badge bg-secondary" data-bs-toggle="tooltip" title="{{ $tipCerrada }}" style="cursor:help;">Cancelado</span>
                                 @elseif($vencida)
                                     <span class="badge bg-danger">Vencida</span>
                                 @else
                                     <span class="badge bg-warning">Pendiente</span>
                                 @endif
                                 {{-- 16/10 (Antony): la cuota con pago parcial se marca Amortizada además de su estado. --}}
-                                @if(! $inst->pagado && ($inst->importe_aplicado + $inst->interes_aplicado + $inst->excedente_aplicado) > 0.001)
+                                @if(! $inst->pagado && ! $fila['cerrada'] && ($inst->importe_aplicado + $inst->interes_aplicado + $inst->excedente_aplicado) > 0.001)
                                     <span class="badge bg-info text-dark" title="Cuota con pago parcial: aún le falta">Amortizada</span>
                                 @endif
                             </td>
@@ -171,9 +193,9 @@
                         $tCap    = $credit->installments->sum('importe_cuota');
                         $tInt    = $credit->installments->sum('importe_interes');
                         $tExc    = $credit->installments->sum('importe_excedente');
-                        $tPagCap = $credit->installments->sum('importe_aplicado');
-                        $tPagInt = $credit->installments->sum('interes_aplicado');
-                        $tSaldo  = $credit->installments->sum(fn ($i) => $i->saldoPendiente());
+                        $tPagCap = $filasCuota->sum('cap');
+                        $tPagInt = $filasCuota->sum('int');
+                        $tSaldo  = $creditoCerrado ? 0.0 : $filasCuota->sum('saldo');
                     @endphp
                     <tfoot>
                         <tr class="fw-bold" style="background:#f0f0f0;">
