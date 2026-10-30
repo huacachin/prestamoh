@@ -1802,12 +1802,16 @@ class Create extends Component
                 - (float) $ins->importe_aplicado - (float) $ins->interes_aplicado - (float) $ins->excedente_aplicado;
             $porCuota[$num]['monto'] = ($porCuota[$num]['monto'] ?? 0.0) + $recibe;
             $porCuota[$num]['pendiente'] = $pendienteAntes;
+            $porCuota[$num]['cuota'] = (float) $ins->importe_cuota + (float) $ins->importe_interes + (float) $ins->importe_excedente;
         }
         ksort($porCuota);
         $detalleCuotas = [];
         foreach ($porCuota as $num => $info) {
             $saldoCuota = max(0.0, round($info['pendiente'] - $info['monto'], 2));
-            $detalleCuotas[] = ['num' => $num, 'monto' => round($info['monto'], 2), 'parcial' => $saldoCuota > 0.001, 'saldo' => $saldoCuota];
+            $detalleCuotas[] = [
+                'num' => $num, 'monto' => round($info['monto'], 2), 'parcial' => $saldoCuota > 0.001, 'saldo' => $saldoCuota,
+                'pago_saldo' => $saldoCuota <= 0.001 && $info['monto'] < $info['cuota'] - 0.01,
+            ];
         }
 
         // Disclaimer del modal (08/09): "cubre el total" confundía porque la
@@ -1854,7 +1858,8 @@ class Create extends Component
             'detalle_cuotas' => $agrupado['detalle'] ?? $detalleCuotas,
             // Lo que va a las cuotas siguientes a la elegida en "Calcular cancelación", en una línea.
             'resto_cuotas' => $agrupado['resto'] ?? null,
-            'detalle_cuotas_visible' => count($detalleCuotas) > 1 || array_any($detalleCuotas, fn ($c) => $c['parcial']),
+            // Misma regla que el ticket (30/10): también con una sola cuota si no es todo el total.
+            'detalle_cuotas_visible' => TicketPrinter::detalleVisible($detalleCuotas, $total),
             'capital' => $dist['capital'],
             'interes' => $dist['interes'],
             'excedente' => $dist['excedente'],

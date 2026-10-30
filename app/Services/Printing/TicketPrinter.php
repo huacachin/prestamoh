@@ -86,6 +86,32 @@ final class TicketPrinter
      *   cancelacion:?array{titulo:string, exonera:?string, exonerado:float}
      * }
      */
+    /**
+     * ¿El recibo lista el monto de cada cuota? Con varias, con alguna amortizada o cuando la única
+     * no es todo el total (30/10, Antony, crédito 29186: el recibo del 28/10 decía "Cuotas: 17" y
+     * "Mora: 532.80" sin los 167.60 que completaron la cuota, y parecía que la mora era la cuota).
+     * Solo se omite con una cuota cuyo monto repite el total.
+     *
+     * @param  list<array{monto: float, parcial: bool}>  $detalle
+     */
+    public static function detalleVisible(array $detalle, float $total): bool
+    {
+        return count($detalle) > 1
+            || array_any($detalle, fn ($c) => $c['parcial'])
+            || (count($detalle) === 1 && abs($detalle[0]['monto'] - $total) > 0.01);
+    }
+
+    /**
+     * "Cuota 17", "Cuota 17 (amortizada)" si quedó sin completar, o "Cuota 17 (pago de saldo)" si este
+     * cobro completó una cuota que ya tenía abonos.
+     *
+     * @param  array{num: int, parcial: bool, pago_saldo?: bool}  $dc
+     */
+    public static function rotuloCuota(array $dc): string
+    {
+        return 'Cuota '.$dc['num'].($dc['parcial'] ? ' (amortizada)' : (($dc['pago_saldo'] ?? false) ? ' (pago de saldo)' : ''));
+    }
+
     public function paymentTicketData(MassDeletion $masivo): array
     {
         $masivo->loadMissing(['credit.client', 'credit.headquarter:id,name']);
@@ -115,18 +141,23 @@ final class TicketPrinter
                 $porCuota[$num]['monto'] = ($porCuota[$num]['monto'] ?? 0.0) + (float) $d->amount;
                 $porCuota[$num]['saldo'] = $saldosAlCobro['cuotas'][(int) $d->installment->id] ?? self::saldoDeCuota($d->installment);
                 $porCuota[$num]['parcial'] = $porCuota[$num]['saldo'] > 0.001;
+                $porCuota[$num]['cuota'] = (float) $d->installment->importe_cuota + (float) $d->installment->importe_interes + (float) $d->installment->importe_excedente;
             }
         }
         ksort($porCuota);
 
         $detalleCuotas = [];
         foreach ($porCuota as $num => $info) {
-            $detalleCuotas[] = ['num' => $num, 'monto' => round($info['monto'], 2), 'parcial' => $info['parcial'], 'saldo' => round($info['saldo'], 2)];
+            $detalleCuotas[] = [
+                'num' => $num, 'monto' => round($info['monto'], 2), 'parcial' => $info['parcial'], 'saldo' => round($info['saldo'], 2),
+                // 30/10: completó una cuota que ya tenía abonos (recibió menos que la cuota entera).
+                'pago_saldo' => ! $info['parcial'] && $info['monto'] < $info['cuota'] - 0.01,
+            ];
         }
         // Con interés-primero una cuota puede recibir solo interés: entra igual
         // al listado (antes solo se listaban las que recibían capital).
         $cuotasTocadas = array_keys($porCuota);
-        $detalleVisible = count($detalleCuotas) > 1 || array_any($detalleCuotas, fn ($c) => $c['parcial']);
+        $detalleVisible = self::detalleVisible($detalleCuotas, (float) $masivo->amount);
 
         // 23/10 (Antony): el cobro de "Calcular cancelación" lista una por una solo las cuotas hasta la
         // elegida; lo que fue a las siguientes va en una línea. interes_exonerado marca que canceló.
@@ -170,8 +201,6 @@ final class TicketPrinter
             'cuotas' => $cuotasTocadas,
             'detalle_cuotas' => $detalleCuotas,
             'resto_cuotas' => $resto,
-            // El desglose por cuota solo aporta cuando hay varias o alguna
-            // quedó amortizada; con una sola cuota completa duplicaría el total.
             'detalle_cuotas_visible' => $detalleVisible,
             'capital' => round($totales['C'], 2),
             'interes' => round($totales['I'], 2),
@@ -273,7 +302,7 @@ final class TicketPrinter
             if ($t['detalle_cuotas_visible'] ?? false) {
                 foreach ($t['detalle_cuotas'] as $dc) {
                     $this->pt($printer, $this->row(
-                        ' Cuota '.$dc['num'].($dc['parcial'] ? ' (amortizada)' : '').':',
+                        ' '.self::rotuloCuota($dc).':',
                         number_format($dc['monto'], 2),
                         $columns
                     ));

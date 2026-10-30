@@ -144,7 +144,7 @@
     {{-- Desglose por cuota (solo si hay varias o alguna quedó amortizada). --}}
     @if($t['detalle_cuotas_visible'] ?? false)
         @foreach($t['detalle_cuotas'] as $dc)
-            <div class="row"><span>&nbsp;Cuota {{ $dc['num'] }}{{ $dc['parcial'] ? ' (amortizada)' : '' }}:</span><span>{{ number_format($dc['monto'], 2) }}</span></div>
+            <div class="row"><span>&nbsp;{{ \App\Services\Printing\TicketPrinter::rotuloCuota($dc) }}:</span><span>{{ number_format($dc['monto'], 2) }}</span></div>
             @if($dc['parcial'])
                 {{-- 16/10 (Antony): debajo de la amortizada, lo que le falta a esa cuota. --}}
                 <div class="row"><span>&nbsp;Cuota {{ $dc['num'] }} (Saldo):</span><span>{{ number_format($dc['saldo'] ?? 0, 2) }}</span></div>

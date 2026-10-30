@@ -885,7 +885,7 @@
                                      completa y debajo "Cuota n (Saldo)" con lo que le falta. --}}
                                 @if($preview['detalle_cuotas_visible'] ?? false)
                                     @foreach($preview['detalle_cuotas'] as $dc)
-                                        <div class="tp-row"><span>&nbsp;Cuota {{ $dc['num'] }}{{ $dc['parcial'] ? ' (amortizada)' : '' }}:</span><span>{{ number_format($dc['monto'], 2) }}</span></div>
+                                        <div class="tp-row"><span>&nbsp;{{ \App\Services\Printing\TicketPrinter::rotuloCuota($dc) }}:</span><span>{{ number_format($dc['monto'], 2) }}</span></div>
                                         @if($dc['parcial'])
                                             <div class="tp-row"><span>&nbsp;Cuota {{ $dc['num'] }} (Saldo):</span><span>{{ number_format($dc['saldo'], 2) }}</span></div>
                                         @endif

@@ -179,4 +179,49 @@ class TicketSaldoCuotaAmortizadaTest extends TestCase
         $this->assertStringNotContainsString('amortizada', $html);
         $this->assertStringNotContainsString('(Saldo)', $html);
     }
+
+    /**
+     * 30/10 (Antony, crédito 29186): el recibo del 28/10 decía "Cuotas: 17" y "Mora: 532.80" sin los 167.60
+     * que completaron la cuota, y parecía que la mora era el pago de la cuota. Si la cuota no es todo el
+     * total, su línea va siempre; si completó una amortizada, dice "(pago de saldo)".
+     */
+    public function test_completar_la_amortizada_con_mora_lista_el_pago_de_saldo_aparte_de_la_mora(): void
+    {
+        $this->actingAs($this->actor());
+        $credit = $this->credito();
+        Livewire::test(Create::class, ['creditId' => $credit->id])->set('monto', 400.08)->call('pagar');
+
+        $this->travel(17)->days(); // la cuota 2 venció hace 3 días: el cobro lleva mora
+        $c = Livewire::test(Create::class, ['creditId' => $credit->id])->set('monto', 150.08)->call('confirmarPago');
+        $this->assertTrue($c->get('preview')['detalle_cuotas_visible']);
+        $c->assertSee('Cuota 2 (pago de saldo):');
+        $c->call('pagar')->assertNotDispatched('errorAlert');
+
+        $t = $this->ultimoTicket($credit);
+        $this->assertTrue($t['detalle_cuotas_visible']);
+        $this->assertSame([2, 150.08, true], [$t['detalle_cuotas'][0]['num'], $t['detalle_cuotas'][0]['monto'], $t['detalle_cuotas'][0]['pago_saldo']]);
+        $this->assertEqualsWithDelta(5.88, $t['mora'], 0.001);
+        $this->assertEqualsWithDelta(155.96, $t['total'], 0.001);
+
+        $html = view('payments.ticket', ['t' => $t, 'autoprint' => false, 'esCopia' => false, 'logo' => null])->render();
+        $this->assertStringContainsString('Cuota 2 (pago de saldo):', $html);
+        $bytes = app(TicketPrinter::class)->buildPaymentTicketBytes(MassDeletion::where('credit_id', $credit->id)->latest('id')->first());
+        $this->assertMatchesRegularExpression('/Cuota 2 \(pago de saldo\): +150\.08/', $bytes);
+    }
+
+    public function test_una_sola_cuota_completa_con_mora_tambien_lista_la_cuota(): void
+    {
+        $this->actingAs($this->actor());
+        $credit = $this->credito();
+
+        $this->travel(10)->days(); // la cuota 1 venció hace 3 días
+        Livewire::test(Create::class, ['creditId' => $credit->id])->set('monto', 275.08)->call('pagar')->assertNotDispatched('errorAlert');
+
+        $t = $this->ultimoTicket($credit);
+        $this->assertTrue($t['detalle_cuotas_visible'], 'la cuota no es todo el total: va su línea');
+        $this->assertSame([1, 275.08, false, false], [$t['detalle_cuotas'][0]['num'], $t['detalle_cuotas'][0]['monto'], $t['detalle_cuotas'][0]['parcial'], $t['detalle_cuotas'][0]['pago_saldo']]);
+        $html = view('payments.ticket', ['t' => $t, 'autoprint' => false, 'esCopia' => false, 'logo' => null])->render();
+        $this->assertStringContainsString('Cuota 1:', $html);
+        $this->assertStringNotContainsString('pago de saldo', $html);
+    }
 }
