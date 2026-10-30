@@ -11,8 +11,8 @@
 @endif
 @once
     <style>
-        .exp-motivo { font-size: .8em; color: #8a929a; text-decoration: none; }
+        .exp-motivo { font-size: .8em; color: #5c656e; text-decoration: none; }
         a.exp-motivo:hover { color: #0d6efd; text-decoration: underline; }
-        .exp-motivo-sep { color: #b0b6bc; }
+        .exp-motivo-sep { color: #8a929a; }
     </style>
 @endonce
