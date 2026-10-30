@@ -79,7 +79,7 @@ class RentaSegundaCategoria
                 'nombre' => trim(implode(' ', array_filter([$c->apellido_pat, $c->apellido_mat, $c->nombre]))),
                 'capital' => $capital,
                 'prestamo' => round((float) $del->sum('importe_cuota'), 2),
-                'pct' => $capital > 0 ? round($interes / $capital * 100, 4) : 0.0,
+                'pct' => $capital > 0 ? round($interes / $capital * 100, 2) : 0.0,
                 'interes' => $interes,
                 'cuotas' => $del->count(),
                 'fec_cred' => $c->fecha_prestamo ? substr((string) $c->fecha_prestamo, 0, 10) : null,

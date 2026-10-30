@@ -63,7 +63,11 @@ class RentaSegundaCategoriaExport implements FromArray, WithEvents, WithTitle
     private function armar(Worksheet $hoja): void
     {
         $hoja->getParent()->getDefaultStyle()->getFont()->setName('Calibri')->setSize(10);
-        foreach (['A' => 3.7, 'B' => 4.3, 'C' => 11.7, 'D' => 30.4, 'E' => 11.7, 'F' => 11.3, 'G' => 4.4, 'H' => 12.0, 'I' => 10.4, 'J' => 10.4, 'K' => 13.7, 'L' => 24.0, 'M' => 3.7] as $col => $ancho) {
+        // Anchos del manual, pero los de montos crecen con el número más grande del mes (el total incluido) y
+        // las fechas van completas (dd/mm/aaaa): con los anchos fijos Excel mostraba "#####" (30/10, Antony).
+        $cabe = fn (string $clave, float $base) => max($base, strlen(number_format(array_sum(array_column($this->filas, $clave)), 2)) + 4.5);
+        foreach (['A' => 3.7, 'B' => 4.3, 'C' => 11.7, 'D' => 30.4, 'E' => $cabe('capital', 11.7), 'F' => $cabe('prestamo', 11.3), 'G' => 5.5,
+            'H' => $cabe('interes', 12.0), 'I' => 11.5, 'J' => 11.5, 'K' => 13.7, 'L' => 24.0, 'M' => 3.7] as $col => $ancho) {
             $hoja->getColumnDimension($col)->setWidth($ancho);
         }
 
