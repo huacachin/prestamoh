@@ -15,7 +15,8 @@ use Illuminate\Support\Facades\DB;
  * o no, aunque el crédito no se haya cancelado. Si el crédito se canceló a mitad de mes, solo las cuotas que
  * vencían hasta la cancelación (opción A); si se canceló antes de que le venciera ninguna cuota del mes, cuenta
  * la cuota en curso (la siguiente a la cancelación, en los mensuales la del mes siguiente) en el mes de la
- * cancelación. Después de la cancelación el crédito ya no aparece. Descripción vacía. Entran los clientes con
+ * cancelación, con su capital, SIN interés y con la fecha de la cancelación (30/10, Antony, caso Chaname: canceló
+ * el 02/09 antes de su cuota del 07/09 → "que quede en el 2 de septiembre, que no considere los intereses"). Después de la cancelación el crédito ya no aparece. Descripción vacía. Entran los clientes con
  * T. Crédito (clients.zona) "SIGM…", "Gar. Hip…" o "Garantia Mobiliaria…".
  *
  * Por fila: Préstamo = capital de esas cuotas según el cronograma (el "=375*3" del Excel manual), Interés S/ =
@@ -52,7 +53,7 @@ class RentaSegundaCategoria
             })
             ->orderBy('i.fecha_vencimiento')->orderBy('i.num_cuota')
             ->select(['i.credit_id', 'i.fecha_vencimiento', 'i.importe_cuota', 'i.importe_interes',
-                'c.importe', 'c.fecha_prestamo', 'cl.documento', 'cl.apellido_pat', 'cl.apellido_mat', 'cl.nombre']);
+                'c.importe', 'c.fecha_prestamo', 'c.fecha_cancelacion', 'cl.documento', 'cl.apellido_pat', 'cl.apellido_mat', 'cl.nombre']);
 
         // Las que vencen en el mes; del cancelado a mitad de mes, solo hasta la cancelación (opción A).
         $cuotas = $base()
@@ -70,14 +71,16 @@ class RentaSegundaCategoria
             ->whereColumn('i.fecha_vencimiento', '>', 'c.fecha_cancelacion')
             ->whereNotIn('c.id', $cuotas->pluck('credit_id')->unique()->all() ?: [0])
             ->get()
-            ->groupBy('credit_id')->map(fn (Collection $del) => $del->first())->values();
+            ->groupBy('credit_id')->map(fn (Collection $del) => (object) ((array) $del->first() + ['en_curso' => true]))->values();
         $cuotas = $cuotas->concat($enCurso);
 
         $filas = $cuotas->groupBy('credit_id')->map(function (Collection $del) {
             $c = $del->first();
-            $vence = substr((string) $del->max('fecha_vencimiento'), 0, 10);
+            // Cuota en curso: va con la fecha de la cancelación y sin interés (no llegó a vencer).
+            $enCurso = $c->en_curso ?? false;
+            $vence = $enCurso ? substr((string) $c->fecha_cancelacion, 0, 10) : substr((string) $del->max('fecha_vencimiento'), 0, 10);
             $capital = round((float) $c->importe, 2);
-            $interes = round((float) $del->sum('importe_interes'), 2);
+            $interes = $enCurso ? 0.0 : round((float) $del->sum('importe_interes'), 2);
 
             return [
                 'credito' => (int) $c->credit_id,
