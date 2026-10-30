@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\DB;
  *
  * El texto para mandar al cliente (formato de Antony, ampliado el 30/10 con el nombre, la mora por día
  * y los totales con y sin mora; sin la cancelación: "este módulo es para saber cuánto va a pagar"):
- *   Cliente: Quispe Garcia Cristhian Zosimo
+ *   Cliente: *Quispe Garcia Cristhian Zosimo*      (entre asteriscos: negrita al pegarlo en WhatsApp)
  *   Pagos al 31/10/2026
  *   Mora por día: S/ 3.57 por cuota vencida
  *
@@ -94,7 +94,7 @@ class PagosAUnaFecha
     {
         $soles = fn (float $v) => 'S/ '.number_format($v, 2);
         $lineas = array_filter([
-            $calculo['cliente'] !== '' ? 'Cliente: '.$calculo['cliente'] : null,
+            $calculo['cliente'] !== '' ? 'Cliente: *'.$calculo['cliente'].'*' : null,
             'Pagos al '.$calculo['fecha'],
             $calculo['mora_dia'] !== [] ? 'Mora por día: '.implode(' / ', array_map($soles, $calculo['mora_dia'])).' por cuota vencida' : null,
             '',

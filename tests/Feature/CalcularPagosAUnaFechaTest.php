@@ -64,7 +64,7 @@ class CalcularPagosAUnaFechaTest extends TestCase
         $this->assertSame([89.25, 64.26, 39.27, 14.28], array_column($calculo['filas'], 'mora'));
         $this->assertSame([2000.0, 207.06, 2207.06], [$calculo['saldo'], $calculo['mora'], $calculo['total']]);
         $this->assertSame(
-            "Cliente: Quispe Garcia Cristhian Zosimo\n"
+            "Cliente: *Quispe Garcia Cristhian Zosimo*\n"
             ."Pagos al 30/10/2026\n"
             ."Mora por día: S/ 3.57 por cuota vencida\n"
             ."\n"
