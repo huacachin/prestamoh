@@ -30,7 +30,11 @@
                      font-size: {{ $propiedad ? '8pt' : '9pt' }}; margin: 0 0 8px 0; }
         .dj-fecha { text-align: right; margin-top: 10px; }
         table.dj-firmas { width: 100%; border-collapse: collapse; margin-top: 6px; page-break-inside: avoid; }
-        table.dj-firmas td { vertical-align: top; text-align: center; padding: 42px 8px 2px 8px; }
+        /* Espacio para firmar sobre la línea (30/10, Antony: "bajarlo un poco más"): en la de publicidad
+           sobra hoja; en la de propiedad, lo más que deja una sola hoja con el texto más largo
+           (bien futuro, dos declarantes), apretando un poco los párrafos. */
+        .parrafo { margin: 0 0 {{ $propiedad ? '5px' : '8px' }} 0; }
+        table.dj-firmas td { vertical-align: top; text-align: center; padding: {{ $propiedad ? '80px' : '95px' }} 8px 2px 8px; }
         table.dj-firmas .linea { border-top: 0.8pt solid #000; padding-top: 3px; }
         table.dj-firmas.negrita td { font-weight: bold; }
     </style>
