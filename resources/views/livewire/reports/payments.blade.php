@@ -228,15 +228,7 @@
                                         {{-- 23/10 (Antony): motivo detallado desde las cuotas, ya no el detalle legacy --}}
                                         <td style="white-space:nowrap;">
                                             <div>
-                                                {{-- 30/10 (Antony): el N° de expediente del cliente, al inicio del motivo --}}
-                                                @if($row['expediente'] !== '' && $puedeVerCredito && $row['credit_id'])
-                                                    {{-- 30/10 (Antony): clic en la etiqueta → el crédito, en otra pestaña para no perder el reporte --}}
-                                                    <a href="{{ route('credits.show', $row['credit_id']) }}" target="_blank" rel="noopener"
-                                                       class="badge bg-light text-dark border me-1 text-decoration-none"
-                                                       title="N° de expediente del cliente · ver el crédito #{{ $row['credit_id'] }}">Exp. {{ $row['expediente'] }}</a>
-                                                @elseif($row['expediente'] !== '')
-                                                    <span class="badge bg-light text-dark border me-1" title="N° de expediente del cliente">Exp. {{ $row['expediente'] }}</span>
-                                                @endif
+                                                @include('livewire.reports.partials._expediente-motivo', ['expediente' => $row['expediente'], 'creditId' => $row['credit_id']])
                                                 {{ $row['motivo']['resumen'] }}
                                             </div>
                                             @if($row['motivo']['desglose'] !== '' || $row['motivo']['situacion'] !== '')

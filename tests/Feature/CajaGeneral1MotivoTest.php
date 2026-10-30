@@ -33,7 +33,7 @@ class CajaGeneral1MotivoTest extends TestCase
         $sede = Headquarter::create(['name' => 'Sede Caja', 'status' => 'active']);
         $this->actingAs(User::factory()->create(['username' => 'caja1-motivo', 'headquarter_id' => $sede->id]));
 
-        $client = Client::create(['nombre' => 'CAJA', 'apellido_pat' => 'UNO', 'headquarter_id' => $sede->id, 'status' => 'active']);
+        $client = Client::create(['expediente' => '777', 'nombre' => 'CAJA', 'apellido_pat' => 'UNO', 'headquarter_id' => $sede->id, 'status' => 'active']);
         $credit = Credit::create([
             'client_id' => $client->id, 'fecha_prestamo' => '2026-08-01', 'importe' => 1000, 'cuotas' => 4, 'tipo_planilla' => 1,
             'interes' => 10, 'situacion' => 'Activo', 'estado' => 1, 'headquarter_id' => $sede->id,
@@ -61,6 +61,21 @@ class CajaGeneral1MotivoTest extends TestCase
             ->assertDontSee('Pago : X Cuota: 1/4');
     }
 
+    /** 30/10 (Antony): el expediente encabeza el motivo, sutil, y con permiso de créditos abre el crédito en otra pestaña. */
+    public function test_el_expediente_encabeza_el_motivo_y_enlaza_al_credito_solo_con_permiso(): void
+    {
+        $credito = 'href="'.route('credits.show', Credit::firstOrFail()->id).'" target="_blank" rel="noopener" class="exp-motivo"';
+
+        Livewire::withQueryParams(['mes' => '08', 'anio' => '2026'])->test(CashGeneral1::class)
+            ->assertSeeHtml('<span class="exp-motivo" title="N° de expediente del cliente">Exp. 777</span>')
+            ->assertDontSeeHtml($credito);
+
+        auth()->user()->givePermissionTo(Permission::findOrCreate('creditos', 'web'));
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        Livewire::withQueryParams(['mes' => '08', 'anio' => '2026'])->test(CashGeneral1::class)
+            ->assertSeeHtml($credito);
+    }
+
     public function test_el_nombre_del_cliente_en_ingresos_y_egresos_enlaza_a_su_ficha_solo_si_puede_verla(): void
     {
         Credit::query()->update(['fecha_actualizacion' => '2026-08-01']); // también sale como egreso del mes
@@ -81,10 +96,10 @@ class CajaGeneral1MotivoTest extends TestCase
         $c->selemes = '08';
         $c->selecano = '2026';
         $ingreso = $c->render()->getData()['days'][0]['ingresos'][0];
-        $this->assertSame('Cuota 1 de 4 · Capital 250.00 · Interés 25.00 · Atraso 7 días', $ingreso['nro_cuotas']);
+        $this->assertSame('Exp. 777 · Cuota 1 de 4 · Capital 250.00 · Interés 25.00 · Atraso 7 días', $ingreso['nro_cuotas']);
 
         $sinMotivo = app(CajaDailyService::class)->ingresosPorDia(2026, 8, null, '2026-08-20')['2026-08-15'][0];
-        $this->assertSame('Pago : X Cuota: 1/4', $sinMotivo['nro_cuotas']);
+        $this->assertSame('Pago : X Cuota: 1/4', $sinMotivo['nro_cuotas']); // sin motivo, tampoco expediente
         $this->assertNull($sinMotivo['motivo']);
     }
 }

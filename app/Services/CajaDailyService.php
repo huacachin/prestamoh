@@ -33,7 +33,7 @@ class CajaDailyService
             ->where('fecha', '>=', $startMonth)
             ->where('fecha', '<=', $endLimit)
             ->with(['credit:id,client_id,tipo_planilla,refinanciado,cancelado_por_refi,fecha_cancelacion,importe,interes,cuotas,cod_rem',
-                'credit.client:id,nombre,apellido_pat,apellido_mat,asesor_id',
+                'credit.client:id,nombre,apellido_pat,apellido_mat,asesor_id,expediente',
                 'credit.client.asesor:id,name,username']);
 
         if ($tipoFilter !== null) {
@@ -156,12 +156,18 @@ class CajaDailyService
                     );
                 }
 
+                // 30/10 (Antony): el N° de expediente encabeza el motivo, como en el reporte de pagos.
+                $expediente = $motivo !== null ? trim((string) ($cli?->expediente ?? '')) : '';
+
                 $ingresos[] = [
                     'credit_id' => $cid,
                     'cliente' => $cliName,
                     'client_id' => $cli?->id, // 23/10: el nombre enlaza a su ficha en Caja General 1
                     'detalle' => $marcador,
-                    'nro_cuotas' => $motivo['texto'] ?? ($pays->sortBy('id')->first()?->detalle ?? ''),
+                    'expediente' => $expediente,
+                    'nro_cuotas' => $motivo !== null
+                        ? ($expediente !== '' ? "Exp. {$expediente} · " : '').$motivo['texto']
+                        : ($pays->sortBy('id')->first()?->detalle ?? ''),
                     'motivo' => $motivo,
                     'total' => $total,
                     'capital' => $capital,

@@ -190,6 +190,8 @@ class CashGeneral1 extends Component
             'prevStats' => $prevStats,
             // 23/10 (Antony): el nombre del cliente lleva a su ficha, solo si puede abrirla (ruta con permission:clientes).
             'puedeVerFicha' => auth()->user()?->can('clientes') ?? false,
+            // 30/10: el expediente del motivo abre el crédito (ruta con permission:creditos).
+            'puedeVerCredito' => auth()->user()?->can('creditos') ?? false,
         ]);
     }
 
