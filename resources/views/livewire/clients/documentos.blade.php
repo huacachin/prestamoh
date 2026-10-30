@@ -532,8 +532,27 @@
          x-init="modal = bootstrap.Modal.getOrCreateInstance($el);"
          x-on:sigm-modal-open.window="modal.show()">
         <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content" x-data="{ tab: 'correo', copiado: null,
-                    copiar(ref, clave) { navigator.clipboard.writeText(this.$refs[ref].value).then(() => { this.copiado = clave; setTimeout(() => this.copiado = null, 1800); }); } }">
+            {{-- copiarCorreo(): el enlace de Gmail no admite formato, así que el cuerpo (con sus negritas y la firma
+                 centrada) se copia como HTML y se pega en Gmail. Se copia en el mismo clic, antes de abrir Gmail
+                 (execCommand + evento copy: síncrono; el portapapeles asíncrono falla si la pestaña pierde el foco);
+                 si el navegador no deja copiar, Gmail se abre con el texto sin formato ya puesto. --}}
+            <div class="modal-content" x-data="{ tab: 'correo', copiado: null, pegar: false,
+                    copiar(ref, clave) { navigator.clipboard.writeText(this.$refs[ref].value).then(() => { this.copiado = clave; setTimeout(() => this.copiado = null, 1800); }); },
+                    copiarCorreo() {
+                        const html = this.$refs.correoHtml.innerHTML, texto = this.$refs.correoTexto.value;
+                        const alCopiar = (e) => { e.clipboardData.setData('text/html', html); e.clipboardData.setData('text/plain', texto); e.preventDefault(); };
+                        this.$refs.correoTexto.select();
+                        document.addEventListener('copy', alCopiar);
+                        let ok = false;
+                        try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+                        document.removeEventListener('copy', alCopiar);
+                        if (ok) { this.copiado = 'correo'; setTimeout(() => this.copiado = null, 1800); }
+                        return ok;
+                    },
+                    abrirGmail(sinCuerpo, conCuerpo) {
+                        this.pegar = this.copiarCorreo();
+                        window.open(this.pegar ? sinCuerpo : conCuerpo, '_blank', 'noopener');
+                    } }">
                 <div class="modal-header py-2">
                     <h6 class="modal-title mb-0">
                         <i class="ti ti-shield-check text-secondary"></i> SIGM · {{ $client->fullName() }}
@@ -575,21 +594,31 @@
                             {{-- 1. Correo previo --}}
                             <div x-show="tab === 'correo'">
                                 @if($sigm['correo'])
-                                    <div class="small mb-1"><b>Para:</b> {{ $sigm['correo']['para'] ? implode(', ', $sigm['correo']['para']) : '—' }}</div>
                                     @if(! $sigm['correo']['para'])
                                         <div class="text-danger small mb-1"><i class="ti ti-alert-triangle"></i> El contrato no tiene el correo del cliente: escríbelo en Gmail.</div>
                                     @endif
-                                    <div class="small mb-1"><b>Asunto:</b> {{ $sigm['correo']['asunto'] }}</div>
-                                    <textarea class="form-control form-control-sm" rows="12" readonly x-ref="txtCorreo">{{ $sigm['correo']['cuerpo'] }}</textarea>
+                                    {{-- Como en el modelo del área: Destinatario, Asunto y Contenido; la letra es la de Gmail. --}}
+                                    <div class="border rounded p-3" style="background:#fff; max-height:340px; overflow:auto; font-family:Arial, Helvetica, sans-serif; font-size:13px; color:#222; line-height:1.45;">
+                                        <div><b>Destinatario: {{ $sigm['correo']['para'] ? implode(', ', $sigm['correo']['para']) : '—' }}</b></div>
+                                        <div><b>Asunto: {{ $sigm['correo']['asunto'] }}</b></div>
+                                        <div class="mb-2"><b>Contenido:</b></div>
+                                        <div x-ref="correoHtml">{!! $sigm['correo']['html'] !!}</div>
+                                    </div>
+                                    <textarea class="visually-hidden" tabindex="-1" aria-hidden="true" readonly x-ref="correoTexto">{{ $sigm['correo']['cuerpo'] }}</textarea>
                                     <div class="d-flex gap-2 mt-2">
-                                        <a href="{{ $sigm['correo']['gmail'] }}" target="_blank" rel="noopener" class="btn btn-sm btn-danger">
+                                        <button type="button" class="btn btn-sm btn-danger"
+                                                x-on:click="abrirGmail(@js($sigm['correo']['gmailSinCuerpo']), @js($sigm['correo']['gmail']))">
                                             <i class="ti ti-brand-gmail"></i> Abrir en Gmail
-                                        </a>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" x-on:click="copiar('txtCorreo', 'correo')">
-                                            <i class="ti ti-copy"></i> <span x-text="copiado === 'correo' ? 'Copiado' : 'Copiar texto'"></span>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" x-on:click="copiarCorreo()">
+                                            <i class="ti ti-copy"></i> <span x-text="copiado === 'correo' ? 'Copiado' : 'Copiar con formato'"></span>
                                         </button>
                                     </div>
-                                    <div class="form-text" style="font-size:10px;">Gmail se abre con destinatario, asunto y texto ya puestos, en la cuenta {{ config('documentos.usuaria_sigm.correo') }} si está abierta en este navegador: revisa y envía.</div>
+                                    <div class="alert alert-info py-1 px-2 small mt-2 mb-0" x-show="pegar" x-cloak>
+                                        <i class="ti ti-clipboard-check"></i>
+                                        El contenido ya está copiado con su formato: en Gmail haz clic en el cuerpo del mensaje, pega (<b>Ctrl+V</b>; en Mac <b>Cmd+V</b>) y envía.
+                                    </div>
+                                    <div class="form-text" style="font-size:10px;">Gmail se abre con el destinatario y el asunto puestos, en la cuenta {{ config('documentos.usuaria_sigm.correo') }} si está abierta en este navegador.</div>
                                 @else
                                     <div class="alert alert-light border py-2 small mb-0">{{ $sigm['sinCorreo'] }}</div>
                                 @endif

@@ -94,9 +94,12 @@ class GeneradorSigm
     }
 
     /**
-     * 3.1: el correo previo, con el enlace que lo abre en Gmail listo para enviar.
+     * 3.1: el correo previo. 'html' lleva el formato del modelo (negritas, justificado, firma centrada) para
+     * pegarlo en Gmail; 'cuerpo' es el mismo texto sin formato. El enlace de Gmail no admite formato:
+     * 'gmailSinCuerpo' abre la redacción con destinatario y asunto (el cuerpo se pega con formato) y 'gmail'
+     * trae además el texto plano, de respaldo si el navegador no deja copiar.
      *
-     * @return array{para: list<string>, asunto: string, cuerpo: string, gmail: string}
+     * @return array{para: list<string>, asunto: string, html: string, cuerpo: string, gmail: string, gmailSinCuerpo: string}
      */
     public static function correo(array $ctx): array
     {
@@ -106,7 +109,7 @@ class GeneradorSigm
         $plural = $ctx['persona'] === 'deudores';
         $firma = (array) config('documentos.usuaria_sigm');
 
-        $cuerpo = self::texto('correo', [
+        $html = self::texto('correo', [
             'saludo' => ['deudor' => 'Estimado señor', 'deudora' => 'Estimada señora', 'deudores' => 'Estimados señores'][$ctx['persona']],
             'nombres' => implode(' y ', $ctx['nombres']),
             'plural' => $plural,
@@ -121,20 +124,27 @@ class GeneradorSigm
                 'celular' => (string) ($firma['celular'] ?? ''),
             ],
         ]);
+        $cuerpo = self::textoPlano($html);
         $asunto = 'Comunicación sobre la '.($ctx['futuro'] ? 'Pre-constitución' : 'constitución')
             .' de garantía mobiliaria en el SIGM – PLACA N° '.$ctx['placas'][0].'.';
 
-        // Redacción de Gmail con todo puesto; authuser elige la cuenta del área si está abierta.
-        $gmail = 'https://mail.google.com/mail/?'.http_build_query(array_filter([
+        // Redacción de Gmail; authuser elige la cuenta del área si está abierta.
+        $gmail = fn (array $extra) => 'https://mail.google.com/mail/?'.http_build_query(array_filter([
             'view' => 'cm',
             'fs' => '1',
             'authuser' => $firma['correo'] ?? null,
             'to' => implode(',', $ctx['correos']),
             'su' => $asunto,
-            'body' => $cuerpo,
-        ], fn ($v) => $v !== null && $v !== ''), '', '&', PHP_QUERY_RFC3986);
+        ] + $extra, fn ($v) => $v !== null && $v !== ''), '', '&', PHP_QUERY_RFC3986);
 
-        return ['para' => $ctx['correos'], 'asunto' => $asunto, 'cuerpo' => $cuerpo, 'gmail' => $gmail];
+        return [
+            'para' => $ctx['correos'],
+            'asunto' => $asunto,
+            'html' => $html,
+            'cuerpo' => $cuerpo,
+            'gmail' => $gmail(['body' => $cuerpo]),
+            'gmailSinCuerpo' => $gmail([]),
+        ];
     }
 
     /** 3.2: el resumen para "Descripción de cláusula del contrato". */
@@ -288,6 +298,17 @@ class GeneradorSigm
         $f = filled($fecha) ? GeneradorContrato::fechaDelSnapshot((string) $fecha) : Carbon::parse($contrato->created_at);
 
         return mb_strtoupper($f->format('d').' DE '.FechaEnLetras::mes($f->month).' DEL '.$f->format('Y'));
+    }
+
+    /** El HTML del correo (un div por línea, div vacío entre párrafos) como texto plano, línea por línea. */
+    private static function textoPlano(string $html): string
+    {
+        preg_match_all('#<div[^>]*>(.*?)</div>#s', $html, $lineas);
+
+        return implode("\n", array_map(
+            fn (string $linea) => trim(preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags($linea), ENT_QUOTES | ENT_HTML5, 'UTF-8'))),
+            $lineas[1]
+        ));
     }
 
     /** Las plantillas son texto plano: se quita el comentario de cabecera y los saltos de los bordes. */

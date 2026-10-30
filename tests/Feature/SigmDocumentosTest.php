@@ -138,10 +138,27 @@ class SigmDocumentosTest extends TestCase
         $this->assertStringContainsString('otorgada por usted en la Cláusula Décimo Tercera del referido contrato, mediante la cual me faculta', $correo['cuerpo']);
         $this->assertStringEndsWith("Correo: legalhuacachin@gmail.com\nCel.: 969353280", $correo['cuerpo']);
 
+        // El formato del modelo (.docx): las mismas negritas, párrafos justificados y la firma centrada.
+        foreach ([
+            '<div style="text-align:justify">Estimada señora <b>QUISPE MAMANI ROSA LINDA</b>:</div>',
+            '<b>usuaria autorizada del Sistema Informativo de Garantías Mobiliarias (SIGM)</b> del acreedor <b>Guilmer Nicefaro Huacachin Paucar</b>',
+            '<b>constitución de la garantía mobiliaria</b>',
+            '<b>Contrato de Crédito Vehicular con Constitución de Garantía Mobiliaria en el Sistema Informativo de Garantías Mobiliarias – SIGM de fecha 28 DE AGOSTO DEL 2026</b>, suscrito',
+            '<b>Decreto Legislativo N.º 1400</b> y a la <b>autorización expresa</b>',
+            '<b>Cláusula Décimo Tercera</b>',
+            'carácter <b>informativo</b>,',
+            '<div style="text-align:center"><b>Rosa Linda Tafur Cuenca</b></div>',
+            '<div style="text-align:center">Cel.: 969353280</div>',
+        ] as $trozo) {
+            $this->assertStringContainsString($trozo, $correo['html']);
+        }
+
+        // Gmail: sin cuerpo (se pega con formato) y, de respaldo, con el texto plano.
+        parse_str(parse_url($correo['gmailSinCuerpo'], PHP_URL_QUERY), $q);
+        $this->assertSame(['view' => 'cm', 'fs' => '1', 'authuser' => 'legalhuacachin@gmail.com', 'to' => 'rosa.p@example.com', 'su' => $correo['asunto']], $q);
         $this->assertStringStartsWith('https://mail.google.com/mail/?', $correo['gmail']);
         parse_str(parse_url($correo['gmail'], PHP_URL_QUERY), $q);
-        $this->assertSame(['cm', '1', 'legalhuacachin@gmail.com', 'rosa.p@example.com', $correo['asunto'], $correo['cuerpo']],
-            [$q['view'], $q['fs'], $q['authuser'], $q['to'], $q['su'], $q['body']]);
+        $this->assertSame([$correo['asunto'], $correo['cuerpo']], [$q['su'], $q['body']]);
     }
 
     public function test_el_resumen_de_constitucion_lleva_la_fecha_los_montos_y_la_numeracion_del_modelo(): void
@@ -172,6 +189,7 @@ class SigmDocumentosTest extends TestCase
         $this->assertSame(['deudores', 'gps'], [$ctx['persona'], $ctx['resumen']]);
         $this->assertSame(['rosa.p@example.com', 'juan.t@example.com'], $correo['para']);
         $this->assertStringStartsWith('Estimados señores QUISPE MAMANI ROSA LINDA y TAFUR CUENCA JUAN:', $correo['cuerpo']);
+        $this->assertStringContainsString('Estimados señores <b>QUISPE MAMANI ROSA LINDA y TAFUR CUENCA JUAN</b>:', $correo['html']);
         $this->assertStringContainsString('cumplo con informarles', $correo['cuerpo']);
         $this->assertStringContainsString('otorgada por ustedes en la Cláusula Décimo Tercera del referido contrato, mediante la cual me facultan', $correo['cuerpo']);
         $this->assertStringContainsString('LOS DEUDORES', GeneradorSigm::resumen($ctx));
@@ -221,6 +239,7 @@ class SigmDocumentosTest extends TestCase
             ->assertDispatched('sigm-modal-open')
             ->assertSet('sigmCreditoId', $this->credit->id)
             ->assertSee('Abrir en Gmail')
+            ->assertSee('Copiar con formato')
             ->assertSee('Primero registra la inscripción de la constitución')
             ->set('sigmFormulario', '905021')
             ->set('sigmFolio', '2026-10-27')
