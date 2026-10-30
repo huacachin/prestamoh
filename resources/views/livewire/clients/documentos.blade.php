@@ -29,6 +29,21 @@
         .credito-vigente { background-color: #fff3cd; }
         .credito-contratado { font-weight: 700; }
         .credito-anterior { color: #c0392b; }
+        /* 30/10 (Antony, Trello "1. Colores en los botones de documentos"): opción 1 "Azul corporativo".
+           Con las variables de Bootstrap (--bs-btn-*): el :hover de .btn pinta var(--bs-btn-hover-bg) y, sin ellas,
+           el botón quedaba blanco al pasar el mouse. Al pasar el mouse, un tono más oscuro. */
+        .btn-doc {
+            --bs-btn-color: #fff; --bs-btn-hover-color: #fff; --bs-btn-active-color: #fff; --bs-btn-disabled-color: #fff;
+            --bs-btn-border-color: transparent; --bs-btn-hover-border-color: transparent; --bs-btn-active-border-color: transparent;
+        }
+        .btn-doc-contrato { --bs-btn-bg: #17365D; --bs-btn-hover-bg: #132D4E; --bs-btn-active-bg: #10263F; --bs-btn-disabled-bg: #17365D; }
+        .btn-doc-anexo1 { --bs-btn-bg: #2563EB; --bs-btn-hover-bg: #1D4ED8; --bs-btn-active-bg: #1E40AF; --bs-btn-disabled-bg: #2563EB; }
+        .btn-doc-anexo2 { --bs-btn-bg: #0284C7; --bs-btn-hover-bg: #0369A1; --bs-btn-active-bg: #075985; --bs-btn-disabled-bg: #0284C7; }
+        .btn-doc-djprop { --bs-btn-bg: #0F766E; --bs-btn-hover-bg: #115E59; --bs-btn-active-bg: #134E4A; --bs-btn-disabled-bg: #0F766E; }
+        .btn-doc-djpubli { --bs-btn-bg: #475569; --bs-btn-hover-bg: #334155; --bs-btn-active-bg: #1E293B; --bs-btn-disabled-bg: #475569; }
+        /* 30/10 (Trello "2. Agregar botón SIGM en cada contrato"): SIGM morado por crédito y Anular solo con el ícono. */
+        .btn-doc-sigm { --bs-btn-bg: #6D28D9; --bs-btn-hover-bg: #5B21B6; --bs-btn-active-bg: #4C1D95; padding: 5px 14px; font-size: 12px; font-weight: 600; }
+        .btn-anular-doc { padding: 1px 7px; font-size: 12px; line-height: 1.4; }
     </style>
     @unless($embebido)
     <div class="row">
@@ -68,29 +83,25 @@
                 </div>
                 <div class="d-flex gap-2 flex-wrap">
                     {{-- 16/10 (Antony): el orden de trabajo es Contrato → Anexo 1 → Anexo 2. --}}
-                    <button type="button" class="btn btn-sm btn-dark" wire:click="abrirModalContrato">
+                    {{-- 30/10 (Antony): colores "Azul corporativo" (.btn-doc-*). Las declaraciones juradas van al final
+                         del orden de trabajo (Agregado 02), con el nombre completo al pasar el mouse. El SIGM se abre
+                         desde la tabla, uno por crédito. --}}
+                    <button type="button" class="btn btn-sm btn-doc btn-doc-contrato" wire:click="abrirModalContrato">
                         <i class="ti ti-file-plus"></i> Generar Contrato
                     </button>
-                    <button type="button" class="btn btn-sm btn-success" wire:click="abrirModalAnexo1">
+                    <button type="button" class="btn btn-sm btn-doc btn-doc-anexo1" wire:click="abrirModalAnexo1">
                         <i class="ti ti-file-plus"></i> Generar Anexo 1
                     </button>
-                    <button type="button" class="btn btn-sm btn-info" wire:click="abrirModalAnexo2">
+                    <button type="button" class="btn btn-sm btn-doc btn-doc-anexo2" wire:click="abrirModalAnexo2">
                         <i class="ti ti-file-plus"></i> Generar Anexo 2
                     </button>
-                    {{-- 30/10 (Agregados 01 y 02 del Área Legal): las declaraciones juradas, al final del orden de
-                         trabajo y discretas (solo borde); el nombre completo va al pasar el mouse. --}}
-                    <button type="button" class="btn btn-sm btn-outline-secondary" wire:click="abrirModalDeclaracion('djprop')"
+                    <button type="button" class="btn btn-sm btn-doc btn-doc-djprop" wire:click="abrirModalDeclaracion('djprop')"
                             title="Generar declaración jurada de propiedad">
                         <i class="ti ti-file-certificate"></i> DJ Propiedad
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" wire:click="abrirModalDeclaracion('djpubli')"
+                    <button type="button" class="btn btn-sm btn-doc btn-doc-djpubli" wire:click="abrirModalDeclaracion('djpubli')"
                             title="Generar declaración jurada de publicidad">
                         <i class="ti ti-speakerphone"></i> DJ Publicidad
-                    </button>
-                    {{-- 30/10 (Agregado 03 del Área Legal): correo previo, resúmenes para el SIGM y registro de la inscripción. --}}
-                    <button type="button" class="btn btn-sm btn-outline-secondary" wire:click="abrirModalSigm"
-                            title="SIGM: correo previo, resumen de constitución, registro de la inscripción y resumen de cancelación">
-                        <i class="ti ti-shield-check"></i> SIGM
                     </button>
                     @unless($embebido)
                         <a href="{{ route('clients.show', $client->id) }}" class="btn btn-sm btn-secondary">
@@ -137,7 +148,8 @@
                                 <th class="text-center">Generado por</th>
                                 <th class="text-center">Estado</th>
                                 <th class="text-center">Descargas</th>
-                                <th class="text-center"></th>
+                                <th class="text-center">SIGM</th>
+                                <th class="text-center">Anular</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -153,6 +165,8 @@
                             // 30/10 (Agregado 02): después del Anexo 2 van las declaraciones de propiedad y de publicidad.
                             $ordenTipo = ['contrato' => 1, 'anexo1' => 2, 'anexo2' => 3, 'djprop' => 4, 'djpubli' => 5];
                             $grupos = $documentos->groupBy('credit_id')->sortBy(fn ($docs) => $docs->min('id'))->values();
+                            // 30/10: el botón SIGM sale solo en los créditos con contrato emitido (de ahí salen sus textos).
+                            $conContratoSigm = $creditosConContrato->pluck('id')->all();
                         @endphp
                         @foreach($grupos as $g => $docsCredito)
                         @php
@@ -233,14 +247,27 @@
                                         <i class="ti ti-file-text"></i> Word
                                     </a>
                                 </td>
+                                {{-- 30/10 (Trello "2. Agregar botón SIGM en cada contrato"): un botón por crédito, en una
+                                     celda combinada como la del N°; abre la ventana SIGM en ese crédito. --}}
+                                @if($k === 0)
+                                    <td class="text-center align-middle" rowspan="{{ $filasCredito->count() }}">
+                                        @if(in_array((int) $doc->credit_id, array_map('intval', $conContratoSigm), true))
+                                            <button type="button" class="btn btn-sm btn-doc btn-doc-sigm" wire:click="abrirModalSigm({{ $doc->credit_id }})"
+                                                    title="SIGM del crédito #{{ $doc->credit_id }}: correo previo, resumen de constitución, registro de la inscripción y resumen de cancelación">
+                                                <i class="ti ti-shield-check"></i> SIGM
+                                            </button>
+                                        @else
+                                            <span class="text-muted" title="Primero genera el contrato del crédito">—</span>
+                                        @endif
+                                    </td>
+                                @endif
                                 <td class="text-center">
                                     @if(! $anulado)
-                                        <button type="button" class="btn btn-xs btn-outline-danger"
-                                                style="padding: 2px 8px; font-size: 10px;"
+                                        <button type="button" class="btn btn-xs btn-outline-danger btn-anular-doc"
                                                 x-on:click="$captura('anular', {{ $doc->id }})" @creadoEl($doc)
                                                 data-confirmar="¿Anular {{ $doc->tipoLabel() }} v{{ $doc->version }} del crédito #{{ $doc->credit_id }}? Quedará tachado, pero sus descargas seguirán disponibles."
-                                                title="Anular documento">
-                                            <i class="ti ti-ban"></i> Anular
+                                                title="Anular documento" aria-label="Anular documento">
+                                            <i class="ti ti-ban"></i>
                                         </button>
                                     @endif
                                 </td>

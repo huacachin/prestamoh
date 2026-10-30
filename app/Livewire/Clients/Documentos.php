@@ -539,9 +539,12 @@ class Documentos extends Component
 
     public string $sigmFecha = '';
 
-    public function abrirModalSigm(): void
+    /** 30/10: se abre desde el botón SIGM de cada crédito en la tabla ($creditId); sin él, el más reciente. */
+    public function abrirModalSigm(?int $creditId = null): void
     {
-        $this->sigmCreditoId = $this->creditosConContrato()->first()?->id;
+        $conContrato = $this->creditosConContrato();
+        $this->sigmCreditoId = ($creditId !== null ? $conContrato->firstWhere('id', $creditId)?->id : null)
+            ?? $conContrato->first()?->id;
         $this->cargarRegistroSigm();
         $this->dispatch('sigm-modal-open');
     }

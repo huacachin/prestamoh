@@ -282,6 +282,41 @@ class SigmDocumentosTest extends TestCase
         $this->assertSame([0, 0], [SigmAviso::count(), Garantia::count()]);
     }
 
+    public function test_el_boton_sigm_va_en_la_tabla_uno_por_credito_con_contrato(): void
+    {
+        // 30/10 (Trello "2. Agregar botón SIGM en cada contrato"): la columna SIGM de la tabla, un botón por crédito
+        // con contrato emitido, y Anular solo con el ícono.
+        $this->contratoReal();
+        $nuevo = fn (string $fecha) => Credit::create([
+            'client_id' => $this->client->id, 'fecha_prestamo' => $fecha, 'importe' => 3000, 'cuotas' => 2, 'tipo_planilla' => 3,
+            'interes' => 10, 'situacion' => 'Activo', 'estado' => 1, 'headquarter_id' => $this->credit->headquarter_id,
+        ]);
+        $conContrato = $nuevo('2026-10-01');
+        DocumentoCliente::create([
+            'client_id' => $this->client->id, 'credit_id' => $conContrato->id, 'tipo' => 'contrato', 'modelo' => 'a1', 'version' => 1, 'estado' => 'emitido',
+            'snapshot' => ['fecha' => '01/10/2026', 'gps' => true, 'deudores' => [$this->persona('QUISPE MAMANI ROSA LINDA', 'F', 'ROSA.P@EXAMPLE.COM')],
+                'bienes' => [$this->bien('SIG222')], 'montos' => ['valor_bien' => 9000, 'obligacion' => 3000, 'monto_maximo' => 3600]],
+        ]);
+        $sinContrato = $nuevo('2026-10-20');
+        DocumentoCliente::create([
+            'client_id' => $this->client->id, 'credit_id' => $sinContrato->id, 'tipo' => 'anexo1', 'version' => 1, 'estado' => 'emitido', 'snapshot' => [],
+        ]);
+
+        $c = Livewire::test(Documentos::class, ['id' => $this->client->id]);
+        $html = $c->html();
+        $this->assertSame(2, substr_count($html, 'wire:click="abrirModalSigm('), 'uno por crédito con contrato, ninguno arriba');
+        $this->assertStringContainsString('wire:click="abrirModalSigm('.$this->credit->id.')"', $html);
+        $this->assertStringContainsString('wire:click="abrirModalSigm('.$conContrato->id.')"', $html);
+        $this->assertStringContainsString('title="Primero genera el contrato del crédito">—</span>', $html);
+        $this->assertStringContainsString('title="Anular documento" aria-label="Anular documento">', $html);
+        $this->assertStringNotContainsString('</i> Anular', $html);
+
+        // Abre en el crédito de la fila; sin contrato (o sin crédito), en el más reciente con contrato.
+        $c->call('abrirModalSigm', $this->credit->id)->assertSet('sigmCreditoId', $this->credit->id)->assertDispatched('sigm-modal-open')
+            ->call('abrirModalSigm', $sinContrato->id)->assertSet('sigmCreditoId', $conContrato->id)
+            ->call('abrirModalSigm')->assertSet('sigmCreditoId', $conContrato->id);
+    }
+
     public function test_no_repite_folios_ni_pisa_ni_borra_una_garantia_del_area_legal(): void
     {
         $this->contratoReal();
