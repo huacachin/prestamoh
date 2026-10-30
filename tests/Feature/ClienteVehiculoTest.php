@@ -142,7 +142,7 @@ class ClienteVehiculoTest extends TestCase
         $c->call('agregarVehiculo')
             ->set('vehiculos.0.placa', 'abc123') // se normaliza a ABC123 antes de validar
             ->call('save')
-            ->assertHasErrors(['vehiculos.0.placa' => 'unique']);
+            ->assertHasErrors(['vehiculos.0.placa' => 'La placa ABC123 ya está registrada en el cliente Original Placa Dueño.']);
 
         $this->assertSame(0, Client::where('documento', '87654321')->count());
     }

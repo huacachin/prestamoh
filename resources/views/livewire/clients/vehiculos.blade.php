@@ -65,6 +65,17 @@
                             <span wire:loading wire:target="consultarPlaca" class="small">…</span>
                         </button>
                     </div>
+                    {{-- 30/10 (Antony): la placa ya registrada dice en qué cliente está, con enlace a su ficha. --}}
+                    @error('placa')
+                        <div class="text-danger small mt-1">
+                            {{ $message }}
+                            @if($placaRegistrada && $placaRegistrada['client_id'] !== $clientId)
+                                <a href="{{ $placaRegistrada['url'] }}" target="_blank" rel="noopener" class="fw-semibold text-nowrap">
+                                    <i class="ti ti-external-link"></i> Ver cliente
+                                </a>
+                            @endif
+                        </div>
+                    @enderror
                 </div>
                 <div class="col-md-3">
                     <label class="form-label mb-0 small fw-semibold">Marca <span class="text-danger">*</span></label>

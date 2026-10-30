@@ -218,6 +218,35 @@ class ClienteWizardTest extends TestCase
         $this->assertSame(0, Client::where('documento', '45678912')->count());
     }
 
+    /** 30/10 (Antony): la placa ya registrada se avisa al buscarla y al guardar, con el cliente y enlace a su ficha. */
+    public function test_placa_de_otro_cliente_avisa_al_buscar_y_al_guardar_con_enlace(): void
+    {
+        $duenio = Client::create([
+            'expediente' => '950', 'nombre' => 'Maria', 'apellido_pat' => 'Quispe', 'apellido_mat' => 'Lopez',
+            'tipo_documento' => 'DNI', 'documento' => '11112222', 'sexo' => 'F', 'status' => 'active',
+        ]);
+        Vehiculo::create(['client_id' => $duenio->id, 'placa' => 'XYZ789']);
+        $aviso = 'La placa XYZ789 ya está registrada en el cliente Quispe Lopez Maria.';
+        $enlace = route('clients.edit', ['id' => $duenio->id, 'tab' => 'vehiculos']);
+        Http::fake();
+
+        $comp = $this->paso1()->call('siguientePaso')
+            ->call('agregarVehiculo')
+            ->set('vehiculos.0.placa', 'xyz-789')
+            ->call('consultarPlaca', 0)
+            ->assertHasErrors('vehiculos.0.placa')
+            ->assertSee($aviso)
+            ->assertSeeHtml('href="'.e($enlace).'"');
+        Http::assertNothingSent();
+
+        $this->vehiculoCompleto($comp, 0, ['marca' => 'Toyota', 'valor' => 30000])
+            ->call('save')
+            ->assertHasErrors('vehiculos.0.placa')
+            ->assertSee($aviso)
+            ->assertSeeHtml('href="'.e($enlace).'"');
+        $this->assertSame(0, Client::where('documento', '45678912')->count());
+    }
+
     public function test_quitar_vehiculo_reindexa_la_lista(): void
     {
         $comp = Livewire::test(Create::class)

@@ -83,22 +83,54 @@ class ClienteVehiculosTabTest extends TestCase
         $this->assertNull($v->fresh());
     }
 
-    public function test_no_permite_placa_de_otro_cliente(): void
+    /** 30/10 (Antony): el aviso de placa registrada nombra al cliente y enlaza su ficha, al guardar y al buscar. */
+    public function test_no_permite_placa_de_otro_cliente_y_dice_de_quien_es(): void
     {
         $otro = Client::create([
             'expediente' => '901', 'nombre' => 'Otro', 'apellido_pat' => 'Duenio', 'apellido_mat' => 'Placa',
             'tipo_documento' => 'DNI', 'documento' => '11223399', 'sexo' => 'M', 'status' => 'active',
         ]);
-        Vehiculo::create(['client_id' => $otro->id, 'placa' => 'DUP-111']);
+        Vehiculo::create(['client_id' => $otro->id, 'placa' => 'DUP111']);
         $c = $this->cliente();
+        $aviso = 'La placa DUP111 ya está registrada en el cliente Duenio Placa Otro.';
+        $enlace = route('clients.edit', ['id' => $otro->id, 'tab' => 'vehiculos']);
+
+        // Al guardar, también escrita con guion y en minúsculas.
+        Livewire::test(Vehiculos::class, ['id' => $c->id])
+            ->call('nuevo')
+            ->set('placa', 'dup-111')
+            ->call('guardar')
+            ->assertHasErrors(['placa'])
+            ->assertSee($aviso)
+            ->assertSeeHtml('href="'.e($enlace).'"');
+        $this->assertSame(0, Vehiculo::where('client_id', $c->id)->count());
+
+        // Al buscarla: el aviso sale sin consultar la API.
+        config(['services.factiliza.token' => 'token-de-prueba']);
+        Http::fake();
+        Livewire::test(Vehiculos::class, ['id' => $c->id])
+            ->call('nuevo')
+            ->set('placa', 'DUP111')
+            ->call('consultarPlaca')
+            ->assertHasErrors(['placa'])
+            ->assertSee($aviso)
+            ->assertSeeHtml('href="'.e($enlace).'"')
+            ->assertSet('marca', '');
+        Http::assertNothingSent();
+    }
+
+    public function test_la_placa_repetida_en_el_mismo_cliente_no_lleva_enlace(): void
+    {
+        $c = $this->cliente();
+        Vehiculo::create(['client_id' => $c->id, 'placa' => 'MIA-222']);
 
         Livewire::test(Vehiculos::class, ['id' => $c->id])
             ->call('nuevo')
-            ->set('placa', 'DUP-111')
+            ->set('placa', 'MIA-222')
             ->call('guardar')
-            ->assertHasErrors(['placa' => 'unique']);
-
-        $this->assertSame(0, Vehiculo::where('client_id', $c->id)->count());
+            ->assertHasErrors(['placa'])
+            ->assertSee('La placa MIA-222 ya está registrada en este cliente.')
+            ->assertDontSee('Ver cliente');
     }
 
     public function test_consulta_de_placa_autocompleta_el_formulario(): void

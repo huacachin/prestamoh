@@ -463,7 +463,17 @@
                                             <span wire:loading wire:target="consultarPlaca({{ $i }})" class="small">…</span>
                                         </button>
                                     </div>
-                                    @error('vehiculos.'.$i.'.placa') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                                    @error('vehiculos.'.$i.'.placa')
+                                        <div class="text-danger small mt-1">
+                                            {{ $message }}
+                                            {{-- 30/10 (Antony): enlace a la ficha del cliente que ya tiene la placa. --}}
+                                            @if($registrada = $placaRegistrada[$i] ?? null)
+                                                <a href="{{ $registrada['url'] }}" target="_blank" rel="noopener" class="fw-semibold text-nowrap">
+                                                    <i class="ti ti-external-link"></i> Ver cliente
+                                                </a>
+                                            @endif
+                                        </div>
+                                    @enderror
                                 </div>
                                 {{-- 28/10 (Antony): igual que al agregar un vehículo desde la ficha (pestaña Vehículos): todo
                                      obligatorio, en amarillo lo que la consulta de placa no rellena y en rojo lo que sí. --}}

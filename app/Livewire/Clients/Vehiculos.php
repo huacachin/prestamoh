@@ -8,6 +8,7 @@ use App\Services\Factiliza;
 use App\Support\Audit;
 use App\Support\ConReglasDeEliminacion;
 use App\Support\Documentos\Nacionalidades;
+use App\Support\PlacaRegistrada;
 use App\Support\VehiculoCatalogos;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -69,6 +70,14 @@ class Vehiculos extends Component
      */
     public array $autoCampos = [];
 
+    /**
+     * Vehículo que ya tiene la placa escrita (30/10): el aviso nombra al cliente
+     * y enlaza su ficha. Lo llenan consultarPlaca() y la validación de guardar().
+     *
+     * @var array{placa: string, vehiculo_id: int, client_id: int, cliente: string, url: string}|null
+     */
+    public ?array $placaRegistrada = null;
+
     // ── Copropietario (tramo D) ──
     // El vehículo compartido habilita los contratos de dos deudores (a.3.x):
     // el wizard precarga al copropietario como codeudor y filtra los modelos.
@@ -128,7 +137,13 @@ class Vehiculos extends Component
 
         return [
             // 16/10 (Antony): el vehículo no se guarda si no están TODOS los campos completos.
-            'placa' => 'required|string|max:10|unique:vehiculos,placa'.($ignorar ? ",{$ignorar}" : ''),
+            // 30/10: la placa repetida dice en qué cliente está (PlacaRegistrada, sin guiones ni espacios).
+            'placa' => ['required', 'string', 'max:10', function (string $attribute, mixed $value, \Closure $fail) use ($ignorar): void {
+                if ($registrada = PlacaRegistrada::buscar((string) $value, $ignorar)) {
+                    $this->placaRegistrada = $registrada;
+                    $fail(PlacaRegistrada::mensaje($registrada, $this->clientId));
+                }
+            }],
             'marca' => 'required|string|max:50',
             'modelo' => 'required|string|max:50',
             'nro_motor' => 'required|string|max:30',
@@ -157,7 +172,6 @@ class Vehiculos extends Component
             'valor.required' => 'Ingresa el valor del vehículo.',
             'valor.gt' => 'El valor del vehículo debe ser mayor que cero.',
             'placa.required' => 'La placa es obligatoria.',
-            'placa.unique' => 'Esa placa ya está registrada en otro cliente.',
         ];
     }
 
@@ -177,6 +191,7 @@ class Vehiculos extends Component
         $this->editandoId = $id;
         $this->creando = false;
         $this->autoCampos = [];
+        $this->placaRegistrada = null;
         foreach (['placa', 'marca', 'modelo', 'nro_motor', 'nro_serie', 'categoria', 'anio_modelo', 'carroceria', 'color', 'combustible'] as $campo) {
             $this->{$campo} = (string) ($v->{$campo} ?? '');
         }
@@ -197,6 +212,7 @@ class Vehiculos extends Component
         foreach (['placa', 'nro_motor', 'nro_serie'] as $campo) {
             $this->{$campo} = strtoupper(trim($this->{$campo}));
         }
+        $this->placaRegistrada = null;
         $this->validate();
 
         $datos = [
@@ -253,6 +269,16 @@ class Vehiculos extends Component
         if ($placa === '') {
             $this->msgType = 'err';
             $this->msg = 'Escribe la placa que quieres consultar.';
+
+            return;
+        }
+
+        // 30/10 (Antony): la placa ya registrada se avisa al buscarla, sin consultar la API.
+        $this->resetErrorBag('placa');
+        $this->placaRegistrada = PlacaRegistrada::buscar($placa, $this->editandoId ?: null);
+        if ($this->placaRegistrada !== null) {
+            $this->msg = null;
+            $this->addError('placa', PlacaRegistrada::mensaje($this->placaRegistrada, $this->clientId));
 
             return;
         }
@@ -544,7 +570,7 @@ class Vehiculos extends Component
     private function limpiarFormulario(): void
     {
         $this->reset(['placa', 'marca', 'modelo', 'nro_motor', 'nro_serie', 'categoria',
-            'anio_modelo', 'carroceria', 'color', 'combustible', 'valor', 'editandoId', 'creando', 'autoCampos']);
+            'anio_modelo', 'carroceria', 'color', 'combustible', 'valor', 'editandoId', 'creando', 'autoCampos', 'placaRegistrada']);
         $this->resetErrorBag();
     }
 

@@ -10,6 +10,7 @@ use App\Support\Audit;
 use App\Support\Auditoria\ConCapturaDeAuditoria;
 use App\Support\Documentos\DomicilioLegal;
 use App\Support\Documentos\Nacionalidades;
+use App\Support\PlacaRegistrada;
 use App\Support\Ubigeo;
 use App\Support\VehiculoCatalogos;
 use Illuminate\Support\Facades\DB;
@@ -221,6 +222,14 @@ class Create extends Component
     /** @var array<int, array<int, string>> por índice de vehículo */
     public array $autoVehiculo = [];
 
+    /**
+     * Por índice de vehículo: el que ya tiene esa placa (30/10), para nombrar al
+     * cliente y enlazar su ficha junto al error de la placa.
+     *
+     * @var array<int, array{placa: string, vehiculo_id: int, client_id: int, cliente: string, url: string}>
+     */
+    public array $placaRegistrada = [];
+
     public $asesores;
 
     public ?int $newClientId = null;
@@ -431,6 +440,7 @@ class Create extends Component
         unset($this->vehiculos[$i], $this->autoVehiculo[$i]);
         $this->vehiculos = array_values($this->vehiculos);
         $this->autoVehiculo = array_values($this->autoVehiculo);
+        $this->placaRegistrada = [];
         $this->resetErrorBag();
         $this->vehMsg = null;
     }
@@ -445,6 +455,16 @@ class Create extends Component
         if ($placa === '') {
             $this->vehMsgType = 'err';
             $this->vehMsg = 'Escribe la placa que quieres consultar.';
+
+            return;
+        }
+
+        // 30/10 (Antony): la placa ya registrada se avisa al buscarla, sin consultar la API.
+        $this->resetErrorBag("vehiculos.{$i}.placa");
+        unset($this->placaRegistrada[$i]);
+        if ($registrada = PlacaRegistrada::buscar($placa)) {
+            $this->placaRegistrada[$i] = $registrada;
+            $this->addError("vehiculos.{$i}.placa", PlacaRegistrada::mensaje($registrada));
 
             return;
         }
@@ -539,7 +559,7 @@ class Create extends Component
             'documento', 'tipo_documento', 'email', 'ocupacion', 'estado_civil',
             'nacionalidad', 'direccion', 'distrito', 'provincia', 'departamento',
             'giro', 'zona', 'celular1', 'celular2',
-            'vehiculos', 'vehMsg', 'vehMsgType', 'autoCliente', 'autoVehiculo',
+            'vehiculos', 'vehMsg', 'vehMsgType', 'autoCliente', 'autoVehiculo', 'placaRegistrada',
         ]);
         $this->sexo = 'M';
         $this->tipo_documento = 'DNI';
@@ -660,7 +680,13 @@ class Create extends Component
     {
         return [
             'vehiculos' => 'array',
-            'vehiculos.*.placa' => 'required|string|max:10|distinct|unique:vehiculos,placa',
+            // 30/10: la placa ya registrada dice en qué cliente está (PlacaRegistrada, sin guiones ni espacios).
+            'vehiculos.*.placa' => ['required', 'string', 'max:10', 'distinct', function (string $attribute, mixed $value, \Closure $fail): void {
+                if ($registrada = PlacaRegistrada::buscar((string) $value)) {
+                    $this->placaRegistrada[(int) explode('.', $attribute)[1]] = $registrada;
+                    $fail(PlacaRegistrada::mensaje($registrada));
+                }
+            }],
             'vehiculos.*.marca' => 'required|string|max:50',
             'vehiculos.*.modelo' => 'required|string|max:50',
             'vehiculos.*.nro_motor' => 'required|string|max:30',
@@ -683,7 +709,6 @@ class Create extends Component
     {
         return [
             'vehiculos.*.placa.required' => 'Ingresa la placa (o quita el vehículo de la lista).',
-            'vehiculos.*.placa.unique' => 'Esa placa ya está registrada en otro cliente.',
             'vehiculos.*.placa.distinct' => 'La placa está repetida en la lista.',
             // Los mismos mensajes que al agregar un vehículo desde la ficha (Clients\Vehiculos).
             'vehiculos.*.marca.required' => 'Ingresa la marca.',
@@ -733,6 +758,7 @@ class Create extends Component
         }
 
         $this->componerEmail();
+        $this->placaRegistrada = [];
         $this->validate();
 
         // Re-confirmar duplicado al guardar (race condition) — los
