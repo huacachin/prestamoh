@@ -20,6 +20,9 @@ class DocumentoCliente extends Model
         'anexo1' => 'Anexo 1 — Cronograma',
         'contrato' => 'Contrato',
         'anexo2' => 'Anexo 2 — Constancia de entrega',
+        // 30/10/2026 (Agregado 01 del Área Legal); el nombre completo, en GeneradorDeclaracion::TIPOS.
+        'djprop' => 'DJ de propiedad',
+        'djpubli' => 'DJ de publicidad',
     ];
 
     public const ESTADOS = [

@@ -19,6 +19,16 @@ return [
         'domicilio' => 'DPTO. SEC. B UCV 72 LOTE 51 ZONA E AA.HH HUAYCÁN, DISTRITO DE ATE, PROVINCIA Y DEPARTAMENTO DE LIMA',
     ],
 
+    /*
+     * Declaración jurada de PUBLICIDAD (30/10/2026): la marca para la que el cliente autoriza
+     * grabar y difundir imágenes del vehículo, y la empresa titular de esa marca.
+     */
+    'publicidad' => [
+        'marca' => 'PRESTA EXPRESS',
+        'titular' => 'INVERSIONES HUACACHIN S.A.C.',
+        'ruc' => '20516719452',
+    ],
+
     'apoderada' => [
         'nombre' => 'LICET TAFUR COLLANTES',
         'dni' => '45861856',
@@ -61,6 +71,8 @@ return [
             'contrato' => false,
             'anexo1' => true,
             'anexo2' => true,
+            'djprop' => false,
+            'djpubli' => false,
         ],
     ],
 

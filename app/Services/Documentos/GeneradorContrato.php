@@ -194,7 +194,7 @@ class GeneradorContrato
      * La fecha llega 'd/m/Y' desde el wizard o 'Y-m-d' del default —
      * Carbon::parse interpreta las barras como m/d/Y y revienta con día > 12.
      */
-    private static function fechaDelSnapshot(string $fecha): Carbon
+    public static function fechaDelSnapshot(string $fecha): Carbon
     {
         return preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $fecha)
             ? Carbon::createFromFormat('d/m/Y', $fecha)->startOfDay()

@@ -20,6 +20,8 @@ class RenderDocumento
             'anexo1' => 'documentos.pdf.anexo1',
             'contrato' => 'documentos.pdf.contrato',
             'anexo2' => 'documentos.pdf.anexo2',
+            // 30/10/2026: declaraciones juradas de propiedad y de publicidad (un envoltorio, 8 modelos).
+            'djprop', 'djpubli' => 'documentos.pdf.declaracion',
             default => abort(404),
         };
     }

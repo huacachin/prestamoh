@@ -77,6 +77,16 @@
                     <button type="button" class="btn btn-sm btn-info" wire:click="abrirModalAnexo2">
                         <i class="ti ti-file-plus"></i> Generar Anexo 2
                     </button>
+                    {{-- 30/10 (Agregados 01 y 02 del Área Legal): las declaraciones juradas, al final del orden de
+                         trabajo y discretas (solo borde); el nombre completo va al pasar el mouse. --}}
+                    <button type="button" class="btn btn-sm btn-outline-secondary" wire:click="abrirModalDeclaracion('djprop')"
+                            title="Generar declaración jurada de propiedad">
+                        <i class="ti ti-file-certificate"></i> DJ Propiedad
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" wire:click="abrirModalDeclaracion('djpubli')"
+                            title="Generar declaración jurada de publicidad">
+                        <i class="ti ti-speakerphone"></i> DJ Publicidad
+                    </button>
                     @unless($embebido)
                         <a href="{{ route('clients.show', $client->id) }}" class="btn btn-sm btn-secondary">
                             <i class="ti ti-arrow-back"></i> Regresar al cliente
@@ -135,7 +145,8 @@
                              trabajo —Contrato, Anexo 1, Anexo 2— y, dentro de cada tipo, del
                              más viejo al más nuevo. --}}
                         @php
-                            $ordenTipo = ['contrato' => 1, 'anexo1' => 2, 'anexo2' => 3];
+                            // 30/10 (Agregado 02): después del Anexo 2 van las declaraciones de propiedad y de publicidad.
+                            $ordenTipo = ['contrato' => 1, 'anexo1' => 2, 'anexo2' => 3, 'djprop' => 4, 'djpubli' => 5];
                             $grupos = $documentos->groupBy('credit_id')->sortBy(fn ($docs) => $docs->min('id'))->values();
                         @endphp
                         @foreach($grupos as $g => $docsCredito)
@@ -150,8 +161,10 @@
                                     'anexo1' => 'bg-primary',
                                     'contrato' => 'bg-dark',
                                     'anexo2' => 'bg-info text-dark',
+                                    'djprop', 'djpubli' => 'bg-light text-dark border',
                                     default => 'bg-secondary',
                                 };
+                                $esDeclaracion = isset(\App\Services\Documentos\GeneradorDeclaracion::TIPOS[$doc->tipo]);
                             @endphp
                             {{-- Gris explícito para el grupo par: table-light casi no se distinguía del blanco.
                                  Bootstrap pinta las celdas con --bs-table-bg, así que se fija la variable en la fila. --}}
@@ -162,10 +175,17 @@
                                 <td class="text-center text-muted">{{ $k + 1 }}</td>
                                 <td>
                                     <span class="badge {{ $badgeTipo }}"
-                                          style="font-size:10px; {{ $anulado ? 'text-decoration: line-through;' : '' }}">
+                                          style="font-size:10px; {{ $anulado ? 'text-decoration: line-through;' : '' }}"
+                                          @if($esDeclaracion) title="{{ \App\Services\Documentos\GeneradorDeclaracion::TIPOS[$doc->tipo] }}" @endif>
                                         {{ $doc->tipoLabel() }}
                                     </span>
-                                    @if($doc->modelo)
+                                    @if($esDeclaracion)
+                                        {{-- Una declaración por vehículo: la placa y el modelo que se usó. --}}
+                                        <br>
+                                        <small class="text-muted" style="font-size:9px;">
+                                            Placa {{ $doc->snapshot['bien']['placa'] ?? '—' }} · {{ \App\Services\Documentos\GeneradorDeclaracion::VARIANTES[$doc->modelo] ?? $doc->modelo }}
+                                        </small>
+                                    @elseif($doc->modelo)
                                         @php $nombreModelo = $this->nombreModelo($doc->modelo); @endphp
                                         <br>
                                         <small class="text-muted" style="font-size:9px;">
@@ -399,6 +419,99 @@
                         <i class="ti ti-file-check"></i>
                         <span wire:loading.remove wire:target="generar">Generar</span>
                         <span wire:loading wire:target="generar">Generando…</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ═══ Modal "DJ Propiedad" / "DJ Publicidad" (30/10/2026, Agregado 01 del Área Legal) ═══
+         Todo sale del contrato emitido del crédito: aquí solo se elige el crédito y, si el contrato
+         tiene dos vehículos, la placa (una declaración por vehículo). --}}
+    <div class="modal fade" id="declaracionModal" tabindex="-1" aria-hidden="true" wire:ignore.self
+         x-data="{ modal: null }"
+         x-init="modal = bootstrap.Modal.getOrCreateInstance($el);"
+         x-on:declaracion-modal-open.window="modal.show()"
+         x-on:declaracion-modal-close.window="modal.hide()">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title mb-0">
+                        <i class="ti {{ $djTipo === 'djprop' ? 'ti-file-certificate' : 'ti-speakerphone' }} text-secondary"></i>
+                        {{ \App\Services\Documentos\GeneradorDeclaracion::TIPOS[$djTipo] }} · {{ $client->fullName() }}
+                    </h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    @if($creditosConContrato->isEmpty())
+                        <div class="alert alert-warning py-2 small mb-0">
+                            <i class="ti ti-alert-triangle"></i>
+                            Primero genera el contrato del crédito: la declaración toma de ahí los nombres, documentos, domicilios, la placa y la fecha.
+                        </div>
+                    @else
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold mb-1">Crédito (con contrato) *</label>
+                                <div class="border rounded p-1 @error('djCreditoId') border-danger @enderror" style="background:#fcfcfa; max-height:150px; overflow:auto;">
+                                    @foreach($creditosConContrato as $c)
+                                        <label class="d-flex align-items-center gap-2 small px-2 py-1 rounded" style="cursor:pointer;" wire:key="dj-cred-{{ $c->id }}">
+                                            <input class="form-check-input mt-0" type="radio" name="creditoDeclaracion"
+                                                   value="{{ $c->id }}" wire:model.live="djCreditoId">
+                                            <span>#{{ $c->id }} — S/ {{ number_format((float) $c->importe, 2) }} — {{ $c->cuotas }} cuotas ({{ $c->tipoPlanillaLabel() }})</span>
+                                        </label>
+                                    @endforeach
+                                </div>
+                                @error('djCreditoId') <div class="text-danger small">{{ $message }}</div> @enderror
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold mb-1">Vehículo</label>
+                                @if(count($placasDeclaracion) > 1)
+                                    <select class="form-select form-select-sm campo-obligatorio" wire:model.live="djPlaca">
+                                        @foreach($placasDeclaracion as $placa)
+                                            <option value="{{ $placa }}">{{ $placa }}</option>
+                                        @endforeach
+                                    </select>
+                                    <div class="form-text" style="font-size:10px;">El contrato tiene dos vehículos: una declaración por cada uno.</div>
+                                @else
+                                    <input type="text" class="form-control form-control-sm bg-light" readonly value="{{ $placasDeclaracion[0] ?? '—' }}">
+                                @endif
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold mb-1">Fecha del documento</label>
+                                <input type="text" class="form-control form-control-sm bg-light" readonly value="{{ now()->format('d/m/Y') }}">
+                                <div class="form-text" style="font-size:10px;">Siempre la fecha del día.</div>
+                            </div>
+                        </div>
+
+                        @if($djPreview !== '')
+                            <div class="border rounded mt-3 p-2 bg-light" style="max-height:65vh; overflow:auto;"
+                                 data-captura-omitido="Vista previa del documento: no se incluye en la foto de auditoría (el documento emitido queda guardado).">
+                                <iframe srcdoc="{{ $djPreview }}"
+                                        style="width:21cm; height:29.7cm; max-width:100%; border:1px solid #ccc;
+                                               background:#fff; display:block; margin:0 auto;"
+                                        title="Vista previa de la declaración jurada"></iframe>
+                                <div class="text-center mt-1" style="font-size:11px;color:#555;">
+                                    En <span style="color:#ff0000;font-weight:700;">rojo</span>: los datos que vienen del contrato. El PDF sale todo en negro.
+                                </div>
+                            </div>
+                        @endif
+                    @endif
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-sm btn-outline-dark"
+                            wire:click="previsualizarDeclaracion" wire:loading.attr="disabled" wire:target="previsualizarDeclaracion,generarDeclaracion"
+                            @disabled($creditosConContrato->isEmpty())>
+                        <i class="ti ti-eye"></i>
+                        <span wire:loading.remove wire:target="previsualizarDeclaracion">Vista previa</span>
+                        <span wire:loading wire:target="previsualizarDeclaracion">Generando previa…</span>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-success"
+                            x-on:click="$captura('generarDeclaracion')" wire:loading.attr="disabled" wire:target="previsualizarDeclaracion,generarDeclaracion"
+                            @disabled($creditosConContrato->isEmpty())>
+                        <i class="ti ti-file-check"></i>
+                        <span wire:loading.remove wire:target="generarDeclaracion">Generar</span>
+                        <span wire:loading wire:target="generarDeclaracion">Generando…</span>
                     </button>
                 </div>
             </div>

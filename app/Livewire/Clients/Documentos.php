@@ -10,6 +10,7 @@ use App\Models\Vehiculo;
 use App\Services\Documentos\GeneradorAnexo1;
 use App\Services\Documentos\GeneradorAnexo2;
 use App\Services\Documentos\GeneradorContrato;
+use App\Services\Documentos\GeneradorDeclaracion;
 use App\Services\Documentos\Ocr\LectorDeVoucher;
 use App\Services\Documentos\Ocr\VoucherIlegible;
 use App\Services\Factiliza;
@@ -412,6 +413,117 @@ class Documentos extends Component
             report($e);
             $this->dispatch('errorAlert', ['message' => 'No se pudo generar el documento: '.$e->getMessage()]);
         }
+    }
+
+    // ═══ Declaraciones juradas de propiedad y de publicidad (30/10/2026) ═══
+    // Agregado 01 del Área Legal. Todo sale del contrato ya emitido del crédito
+    // (GeneradorDeclaracion): aquí solo se elige el crédito y, si el contrato tiene
+    // dos vehículos, la placa (una declaración por vehículo).
+
+    /** 'djprop' (propiedad) o 'djpubli' (publicidad): el modal sirve para las dos. */
+    public string $djTipo = 'djprop';
+
+    public ?int $djCreditoId = null;
+
+    public string $djPlaca = '';
+
+    public string $djPreview = '';
+
+    public function abrirModalDeclaracion(string $tipo): void
+    {
+        abort_unless(isset(GeneradorDeclaracion::TIPOS[$tipo]), 404);
+
+        $this->djTipo = $tipo;
+        // El crédito con contrato más reciente es el que se está trabajando.
+        $this->djCreditoId = $this->creditosConContrato()->first()?->id;
+        $this->djPlaca = $this->placasDeclaracion()[0] ?? '';
+        $this->djPreview = '';
+        $this->resetErrorBag();
+
+        $this->dispatch('declaracion-modal-open');
+    }
+
+    public function updatedDjCreditoId(): void
+    {
+        $this->djPlaca = $this->placasDeclaracion()[0] ?? '';
+        $this->djPreview = '';
+    }
+
+    public function updatedDjPlaca(): void
+    {
+        $this->djPreview = '';
+    }
+
+    public function previsualizarDeclaracion(): void
+    {
+        $credit = $this->creditoDeclaracion();
+        if (! $credit) {
+            return;
+        }
+
+        try {
+            $this->djPreview = GeneradorDeclaracion::previsualizar(
+                Client::findOrFail($this->clientId), $credit, $this->djTipo, $this->djPlaca ?: null
+            );
+        } catch (InvalidArgumentException $e) {
+            $this->dispatch('errorAlert', ['message' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('errorAlert', ['message' => 'No se pudo generar la vista previa: '.$e->getMessage()]);
+        }
+    }
+
+    public function generarDeclaracion(): void
+    {
+        $credit = $this->creditoDeclaracion();
+        if (! $credit) {
+            return;
+        }
+
+        try {
+            // El Audit lo registra el propio servicio (patrón de los generadores).
+            $doc = GeneradorDeclaracion::generar(
+                Client::findOrFail($this->clientId), $credit, $this->djTipo, $this->djPlaca ?: null
+            );
+
+            $this->djPreview = '';
+            $this->dispatch('declaracion-modal-close');
+            $this->dispatch('successAlert', ['message' => GeneradorDeclaracion::TIPOS[$this->djTipo]." v{$doc->version} generada."]);
+        } catch (InvalidArgumentException $e) {
+            $this->dispatch('errorAlert', ['message' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('errorAlert', ['message' => 'No se pudo generar el documento: '.$e->getMessage()]);
+        }
+    }
+
+    /** El crédito elegido, siempre que sea de este cliente y tenga contrato emitido. */
+    private function creditoDeclaracion(): ?Credit
+    {
+        $credit = $this->creditosConContrato()->firstWhere('id', $this->djCreditoId);
+        if (! $credit) {
+            $this->addError('djCreditoId', 'Elige un crédito que ya tenga contrato.');
+        }
+
+        return $credit;
+    }
+
+    /** Créditos del cliente con contrato emitido, el más reciente primero. */
+    private function creditosConContrato(): Collection
+    {
+        $ids = DocumentoCliente::where('client_id', $this->clientId)
+            ->where('tipo', 'contrato')->where('estado', 'emitido')
+            ->pluck('credit_id');
+
+        return Credit::where('client_id', $this->clientId)->whereIn('id', $ids)->orderByDesc('id')->get();
+    }
+
+    /** @return list<string> */
+    private function placasDeclaracion(): array
+    {
+        $credit = $this->djCreditoId ? Credit::where('client_id', $this->clientId)->find($this->djCreditoId) : null;
+
+        return $credit ? GeneradorDeclaracion::placasDe(Client::findOrFail($this->clientId), $credit) : [];
     }
 
     // ═══ Contrato de garantía mobiliaria (FASE 2) ═══
@@ -2192,6 +2304,9 @@ class Documentos extends Component
             'documentosAnulados' => $anulados,
             'creditosActivos' => $this->creditosActivos(),
             'creditosConEstado' => $this->creditosConEstado(),
+            // 30/10: declaraciones juradas (créditos con contrato y placas de ese contrato).
+            'creditosConContrato' => $this->creditosConContrato(),
+            'placasDeclaracion' => $this->placasDeclaracion(),
             'vehiculos' => $this->vehiculosCliente(),
             // 18/09: los codeudores que saldrían en el Anexo 1 (copropietarios
             // de los vehículos MARCADOS), para mostrarlos en el modal.

@@ -231,7 +231,8 @@ class AuditoriaCapturaTest extends TestCase
         $this->assertStringContainsString("querySelectorAll('style')", $js, 'las hojas <style> del body se copian al clon');
 
         $documentos = file_get_contents(base_path('resources/views/livewire/clients/documentos.blade.php'));
-        $this->assertSame(3, substr_count($documentos, 'data-captura-omitido="Vista previa del documento'), 'las tres previas (Anexo 1, contrato, Anexo 2) avisan en la foto');
-        $this->assertSame(3, substr_count($documentos, '<iframe srcdoc='), 'cada iframe de previa tiene su contenedor marcado');
+        // 30/10: también la de las declaraciones juradas.
+        $this->assertSame(4, substr_count($documentos, 'data-captura-omitido="Vista previa del documento'), 'las cuatro previas (Anexo 1, contrato, Anexo 2 y declaraciones) avisan en la foto');
+        $this->assertSame(4, substr_count($documentos, '<iframe srcdoc='), 'cada iframe de previa tiene su contenedor marcado');
     }
 }
