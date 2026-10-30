@@ -7,6 +7,7 @@ use App\Support\AbonosPorCuota;
 use App\Support\MoraPagada;
 use App\Support\RecibosCuota;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 
@@ -48,6 +49,14 @@ class Schedule extends Component
             ->get();
 
         $abonos = AbonosPorCuota::desdePagos($installments, $pays);
+
+        // 30/10/2026 (Antony, crédito 29013): en un crédito CANCELADO, las cuotas que quedaron sin marcar
+        // como pagadas no son deuda ni "Vencida". Son del legacy: 9 633 créditos migrados tienen la cuota
+        // cobrada (su pago dice "Cuota: n/N") sin marcar, y 507 con el resto condonado al cancelar; en los
+        // refinanciados el saldo pasó al crédito nuevo. Se muestran canceladas, con lo que cobró caja para
+        // esa cuota y saldo 0. Los datos no se tocan.
+        $creditoCerrado = $this->credit->situacion === 'Cancelado';
+        $pagadoPropio = $creditoCerrado ? $this->pagadoPorCuota($installments, $pays) : [];
 
         // Pagos capital/interés agrupados por EVENTO (misma fecha+hora = un
         // pago registrado en ventanilla). La mora NO se cuelga por fecha
@@ -148,6 +157,14 @@ class Schedule extends Component
             $int = (float) $ins->importe_interes;
             $exc = (float) $ins->importe_excedente;
 
+            // Cuota sin marcar de un crédito cancelado: lo cobrado según caja, sin saldo (ver arriba).
+            $cerrada = $creditoCerrado && ! $ins->pagado;
+            $propio = $pagadoPropio[(int) $ins->id] ?? ['cap' => 0.0, 'int' => 0.0, 'exc' => 0.0];
+            $pagCap = $cerrada ? max((float) $ins->importe_aplicado, $propio['cap']) : (float) $ins->importe_aplicado;
+            $pagInt = $cerrada ? max((float) $ins->interes_aplicado, $propio['int']) : (float) $ins->interes_aplicado;
+            $pagExc = $cerrada ? max((float) $ins->excedente_aplicado, $propio['exc']) : (float) $ins->excedente_aplicado;
+            $saldoCuota = round($cap + $int + $exc - $pagCap - $pagInt - $pagExc, 2);
+
             // Mora exonerada teórica POR CUOTA: días calendario de atraso
             // entre su vencimiento y su fecha de pago real (todos los tipos,
             // regla única desde 02/09) × tarifa, menos la mora que ESA cuota
@@ -193,14 +210,15 @@ class Schedule extends Component
                 'pagado' => $pagado,
                 // Vista cronograma (homologada con /payments/create): lo
                 // aplicado por tipo, el saldo y el estado real de la cuota.
-                'pagado_cap' => (float) $ins->importe_aplicado,
-                'pagado_int' => (float) $ins->interes_aplicado,
-                'pagado_exc' => (float) $ins->excedente_aplicado,
-                'saldo' => round($cap + $int + $exc
-                    - (float) $ins->importe_aplicado - (float) $ins->interes_aplicado - (float) $ins->excedente_aplicado, 2),
+                'pagado_cap' => $pagCap,
+                'pagado_int' => $pagInt,
+                'pagado_exc' => $pagExc,
+                'saldo' => $cerrada ? 0.0 : $saldoCuota,
                 'flag_pagado' => (bool) $ins->pagado,
+                // 30/10: sin marcar en un crédito cancelado (lo no cobrado se mira por crédito: $saldo).
+                'cerrada' => $cerrada,
                 // 16/10: con abonos pero sin completar → badge Amortizada (por los aplicados de la cuota, no por payments).
-                'amortizada' => ! $ins->pagado && ((float) $ins->importe_aplicado + (float) $ins->interes_aplicado + (float) $ins->excedente_aplicado) > 0.001,
+                'amortizada' => ! $cerrada && ! $ins->pagado && ((float) $ins->importe_aplicado + (float) $ins->interes_aplicado + (float) $ins->excedente_aplicado) > 0.001,
                 'hora' => $hora,
                 'fecha_pago' => $fechaPago,
                 'color' => $color,
@@ -279,8 +297,8 @@ class Schedule extends Component
         $totalGeneral = $totals['pagado'] + $sumOtros + $totals['mora'] + $sumOtrosMora;
 
         // Capital pendiente total: misma fórmula que /payments/create
-        // (SUM importe_cuota − SUM importe_aplicado)
-        $capPendienteTotal = round($installments->sum('importe_cuota') - $installments->sum('importe_aplicado'), 2);
+        // (SUM importe_cuota − SUM importe_aplicado). Un crédito cancelado no debe nada (30/10).
+        $capPendienteTotal = $creditoCerrado ? 0.0 : round($installments->sum('importe_cuota') - $installments->sum('importe_aplicado'), 2);
 
         return view('livewire.credits.schedule', [
             'rows' => $rows,
@@ -302,6 +320,41 @@ class Schedule extends Component
             'moraCelda' => $moraCelda,
             // 02/10: abonos desglosados debajo de las cuotas pagadas en varias veces.
             'abonos' => $abonos,
+            // 30/10: crédito cancelado → sin cuotas vencidas ni pendientes.
+            'creditoCerrado' => $creditoCerrado,
         ]);
+    }
+
+    /**
+     * Lo que caja cobró para cada cuota: capital, interés y excedente de los pagos que la nombran
+     * (installment_id, o el "n/N" del detalle en los migrados, como AbonosPorCuota). Sin la mora.
+     *
+     * @param  Collection<int, object>  $installments
+     * @param  Collection<int, object>  $pays
+     * @return array<int, array{cap: float, int: float, exc: float}> por installment_id
+     */
+    private function pagadoPorCuota(Collection $installments, Collection $pays): array
+    {
+        $idPorNum = $installments->pluck('id', 'num_cuota')->map(fn ($v) => (int) $v)->all();
+        $porCuota = [];
+        foreach ($pays as $p) {
+            if (strtoupper(substr($p->documento ?? '', 0, 4)) === 'MORA' || strtoupper((string) $p->tipo) === 'MORA') {
+                continue;
+            }
+            $insId = $p->installment_id ? (int) $p->installment_id : null;
+            if ($insId === null && preg_match('/(\d+)\s*\/\s*\d+/', (string) $p->detalle, $m)) {
+                $insId = $idPorNum[(int) $m[1]] ?? null;
+            }
+            if ($insId === null) {
+                continue;
+            }
+            $campo = match (strtoupper((string) $p->tipo)) {
+                'INTERES' => 'int', 'EXCEDENTE' => 'exc', default => 'cap',
+            };
+            $porCuota[$insId] ??= ['cap' => 0.0, 'int' => 0.0, 'exc' => 0.0];
+            $porCuota[$insId][$campo] += (float) $p->monto;
+        }
+
+        return $porCuota;
     }
 }

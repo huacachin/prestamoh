@@ -119,14 +119,21 @@
                     </thead>
                     <tbody>
                         {{-- Cuotas regulares --}}
-                        @php $nVencida = 0; $nPendiente = 0; $hoy = now()->format('Y-m-d'); @endphp
+                        @php
+                            $nVencida = 0; $nPendiente = 0; $hoy = now()->format('Y-m-d');
+                            // 30/10: cuota sin marcar de un crédito cancelado (ver Schedule::render).
+                            $canceladoEl = $credit->fecha_cancelacion?->format('d/m/Y');
+                            $tipCerrada = $credit->cancelado_por_refi
+                                ? 'Crédito cancelado por refinanciación'.($canceladoEl ? ' el '.$canceladoEl : '').': el saldo de esta cuota pasó al crédito nuevo.'
+                                : 'Crédito cancelado'.($canceladoEl ? ' el '.$canceladoEl : '').': la cuota quedó sin marcar como pagada en el sistema anterior.';
+                        @endphp
                         @foreach($rows as $row)
                             @php
                                 $st = $row['color'] ? 'color:'.$row['color'].';' : '';
                                 // Vencidas y pendientes con contador legacy delante del
                                 // número (1-16, 2-17, ...) como /payments/create
-                                $vencida = ! $row['flag_pagado'] && $row['periodo'] !== '' && $row['periodo'] < $hoy;
-                                $pendiente = ! $row['flag_pagado'] && ! $vencida;
+                                $vencida = ! $row['flag_pagado'] && ! $row['cerrada'] && $row['periodo'] !== '' && $row['periodo'] < $hoy;
+                                $pendiente = ! $row['flag_pagado'] && ! $row['cerrada'] && ! $vencida;
                                 if ($vencida) $nVencida++;
                                 if ($pendiente) $nPendiente++;
                             @endphp
@@ -168,6 +175,8 @@
                                 <td class="text-center">
                                     @if($row['flag_pagado'])
                                         <span class="badge bg-success">Pagado</span>
+                                    @elseif($row['cerrada'])
+                                        <span class="badge bg-secondary" data-bs-toggle="tooltip" title="{{ $tipCerrada }}" style="cursor:help;">Cancelado</span>
                                     @elseif($vencida)
                                         <span class="badge bg-danger">Vencida</span>
                                     @else
@@ -259,7 +268,8 @@
                                 $tPagCap = collect($rows)->sum('pagado_cap');
                                 $tPagInt = collect($rows)->sum('pagado_int');
                                 $tPagExc = collect($rows)->sum('pagado_exc');
-                                $tSaldoCol = collect($rows)->sum('saldo');
+                                // 30/10: un crédito cancelado no debe nada (aunque el legacy dejara una cuota con saldo negativo).
+                                $tSaldoCol = $creditoCerrado ? 0.0 : collect($rows)->sum('saldo');
                             @endphp
                             <tr style="background-color:#f0f0f0; font-weight:500;">
                                 <td colspan="2" class="text-center"><b>Totales</b></td>
@@ -310,7 +320,7 @@
                                  de las cuotas vencidas, alineado bajo la columna Saldo --}}
                             @php
                                 $vencidasRetraso = collect($rows)
-                                    ->filter(fn ($r) => ! $r['flag_pagado'] && $r['periodo'] !== '' && $r['periodo'] < $hoy);
+                                    ->filter(fn ($r) => ! $r['flag_pagado'] && ! $r['cerrada'] && $r['periodo'] !== '' && $r['periodo'] < $hoy);
                                 $tRetraso = $vencidasRetraso->sum('saldo');
                                 $nVencRetraso = $vencidasRetraso->count();
                                 $montoCuotaVenc = (float) ($vencidasRetraso->first()['total'] ?? 0);
@@ -339,11 +349,19 @@
                                     <td></td>
                                 </tr>
                             @endif
-                            {{-- Saldo = capital + interés − pagado (la mora se cobra aparte) --}}
+                            {{-- Saldo = capital + interés − pagado (la mora se cobra aparte). Un crédito cancelado
+                                 no debe nada (30/10): lo que del cronograma no entró a caja ($saldo, por crédito y no
+                                 por cuota: el legacy a veces anotó en una cuota lo de la siguiente) va en el tooltip. --}}
+                            @php
+                                $tipSaldo = $creditoCerrado
+                                    ? 'Crédito cancelado'.($canceladoEl ? ' el '.$canceladoEl : '')
+                                        .($saldo > 0.01 ? ': S/ '.number_format($saldo, 2).($credit->cancelado_por_refi ? ' pasaron al crédito nuevo (refinanciación).' : ' del cronograma no se cobraron.') : '.')
+                                    : '';
+                            @endphp
                             <tr style="background-color:#f0f0f0; font-weight:500;">
                                 <td colspan="{{ $tieneExc ? 8 : 7 }}" class="text-center" style="color:red;"><b>Saldo</b></td>
-                                <td colspan="2" class="text-center" style="color:red;">
-                                    <b>{{ number_format(abs($saldo), 2) }}</b>
+                                <td colspan="2" class="text-center" style="color:red;" @if($tipSaldo !== '') data-bs-toggle="tooltip" title="{{ $tipSaldo }}" @endif>
+                                    <b @if($tipSaldo !== '') style="cursor:help;" @endif>{{ number_format($creditoCerrado ? 0 : abs($saldo), 2) }}</b>
                                 </td>
                                 <td></td>
                                 <td></td>
@@ -361,8 +379,10 @@
                             </tr>
                             {{-- Interés pendiente total: interés del cronograma − pagado --}}
                             @php
-                                $intPendienteTotal = round($totals['interes'] - $tPagInt, 2);
-                                $tipIntPend = 'Interés '.number_format($totals['interes'], 2).' − pagado '.number_format($tPagInt, 2).' = '.number_format($intPendienteTotal, 2);
+                                $intPendienteTotal = $creditoCerrado ? 0.0 : round($totals['interes'] - $tPagInt, 2);
+                                $tipIntPend = $creditoCerrado
+                                    ? 'Crédito cancelado'.($canceladoEl ? ' el '.$canceladoEl : '').': no tiene interés pendiente.'
+                                    : 'Interés '.number_format($totals['interes'], 2).' − pagado '.number_format($tPagInt, 2).' = '.number_format($intPendienteTotal, 2);
                             @endphp
                             <tr style="background-color:#f0f0f0; font-weight:500;">
                                 <td colspan="{{ $tieneExc ? 8 : 7 }}" class="text-center" style="color:red;"
