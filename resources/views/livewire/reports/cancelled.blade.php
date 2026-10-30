@@ -70,6 +70,21 @@
                                    class="btn btn-sm btn-success flex-shrink-0">
                                     <i class="ti ti-file-spreadsheet f-s-12"></i> Excel
                                 </a>
+                                {{-- 30/10 (Antony): el Excel de la renta de 2da categoría del mes elegido (formato del
+                                     "2-cat-prestamoh" manual; sale del cronograma, ver RentaSegundaCategoria). --}}
+                                @if($selemes !== '00' && $selecano !== '0000')
+                                    <a href="{{ route('exports.reports.renta-2da-categoria', ['selemes' => $selemes, 'selecano' => $selecano]) }}"
+                                       class="btn btn-sm btn-outline-success flex-shrink-0"
+                                       title="Renta de 2da categoría del mes: cuotas que vencen en el mes de los créditos SIGM y con garantía hipotecaria, y el 5 % para la SUNAT">
+                                        <i class="ti ti-file-spreadsheet f-s-12"></i> Excel 2da categoría
+                                    </a>
+                                @else
+                                    <span class="d-inline-block flex-shrink-0" title="Elige el mes y el año">
+                                        <button type="button" class="btn btn-sm btn-outline-success" disabled>
+                                            <i class="ti ti-file-spreadsheet f-s-12"></i> Excel 2da categoría
+                                        </button>
+                                    </span>
+                                @endif
                                 <button type="button" class="btn btn-sm btn-secondary flex-shrink-0" onclick="window.print()">
                                     <i class="ti ti-printer f-s-12"></i>
                                 </button>

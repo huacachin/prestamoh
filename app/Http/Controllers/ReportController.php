@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\RentaSegundaCategoriaExport;
 use App\Livewire\Reports\Advisor;
 use App\Livewire\Reports\Cancelled;
 use App\Livewire\Reports\CashGeneral1;
@@ -12,8 +13,11 @@ use App\Livewire\Reports\CreditStatistics;
 use App\Livewire\Reports\Delinquent;
 use App\Livewire\Reports\Payments;
 use App\Livewire\Reports\Portfolio;
+use App\Support\RentaSegundaCategoria;
 use App\Support\XlsResponse;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ReportController extends Controller
 {
@@ -159,6 +163,21 @@ class ReportController extends Controller
             'rows' => $d['rows'],
             'totals' => $d['totals'],
         ], 'Cancelado.xls');
+    }
+
+    /**
+     * "Excel 2da categoría" (30/10/2026, Antony): el Excel de la renta de segunda categoría del mes elegido en
+     * Reportes → Cancelados (RentaSegundaCategoriaExport).
+     */
+    public function exportRentaSegundaCategoria(Request $request): BinaryFileResponse
+    {
+        $mes = (int) $request->query('selemes', date('m'));
+        $anio = (int) $request->query('selecano', date('Y'));
+        abort_unless($mes >= 1 && $mes <= 12 && $anio >= 2015 && $anio <= 2100, 422, 'Elige el mes y el año.');
+
+        $nombre = ucfirst(mb_strtolower(RentaSegundaCategoria::nombreMes($anio, $mes)));
+
+        return Excel::download(new RentaSegundaCategoriaExport($anio, $mes), "2da categoria - {$nombre}.xlsx");
     }
 
     public function exportPayments(Request $request)

@@ -194,6 +194,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/exports/reports/portfolio', [ReportController::class, 'exportPortfolio'])->name('exports.reports.portfolio')->middleware('permission:reportes.cartera');
     Route::get('/exports/reports/delinquent', [ReportController::class, 'exportDelinquent'])->name('exports.reports.delinquent')->middleware('permission:reportes.morosidad');
     Route::get('/exports/reports/cancelled', [ReportController::class, 'exportCancelled'])->name('exports.reports.cancelled')->middleware('permission:reportes.cancelados');
+    Route::get('/exports/reports/renta-2da-categoria', [ReportController::class, 'exportRentaSegundaCategoria'])->name('exports.reports.renta-2da-categoria')->middleware('permission:reportes.cancelados');
     Route::get('/exports/reports/payments', [ReportController::class, 'exportPayments'])->name('exports.reports.payments')->middleware('permission:reportes.pagos');
     Route::get('/exports/reports/cash-general-1', [ReportController::class, 'exportCashGeneral1'])->name('exports.reports.cash-general-1')->middleware('permission:reportes.caja-general-1');
     Route::get('/exports/reports/cash-general-2', [ReportController::class, 'exportCashGeneral2'])->name('exports.reports.cash-general-2')->middleware('permission:reportes.caja-general-2');
