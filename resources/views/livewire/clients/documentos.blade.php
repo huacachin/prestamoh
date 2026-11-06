@@ -27,7 +27,7 @@
         }
         /* Obs. 1.1: estado de cada crédito en el Anexo 1. */
         .credito-vigente { background-color: #fff3cd; }
-        .credito-contratado { font-weight: 700; }
+        .credito-contratado { font-weight: 700; color: #000; } /* 06/11 (tarjeta 7): negrita negra */
         .credito-anterior { color: #c0392b; }
         /* 30/10 (Antony, Trello "1. Colores en los botones de documentos"): opción 1 "Azul corporativo".
            Con las variables de Bootstrap (--bs-btn-*): el :hover de .btn pinta var(--bs-btn-hover-bg) y, sin ellas,
@@ -36,13 +36,27 @@
             --bs-btn-color: #fff; --bs-btn-hover-color: #fff; --bs-btn-active-color: #fff; --bs-btn-disabled-color: #fff;
             --bs-btn-border-color: transparent; --bs-btn-hover-border-color: transparent; --bs-btn-active-border-color: transparent;
         }
-        .btn-doc-contrato { --bs-btn-bg: #17365D; --bs-btn-hover-bg: #132D4E; --bs-btn-active-bg: #10263F; --bs-btn-disabled-bg: #17365D; }
-        .btn-doc-anexo1 { --bs-btn-bg: #2563EB; --bs-btn-hover-bg: #1D4ED8; --bs-btn-active-bg: #1E40AF; --bs-btn-disabled-bg: #2563EB; }
-        .btn-doc-anexo2 { --bs-btn-bg: #0284C7; --bs-btn-hover-bg: #0369A1; --bs-btn-active-bg: #075985; --bs-btn-disabled-bg: #0284C7; }
-        .btn-doc-djprop { --bs-btn-bg: #0F766E; --bs-btn-hover-bg: #115E59; --bs-btn-active-bg: #134E4A; --bs-btn-disabled-bg: #0F766E; }
-        .btn-doc-djpubli { --bs-btn-bg: #475569; --bs-btn-hover-bg: #334155; --bs-btn-active-bg: #1E293B; --bs-btn-disabled-bg: #475569; }
-        /* 30/10 (Trello "2. Agregar botón SIGM en cada contrato"): SIGM morado por crédito y Anular solo con el ícono. */
-        .btn-doc-sigm { --bs-btn-bg: #6D28D9; --bs-btn-hover-bg: #5B21B6; --bs-btn-active-bg: #4C1D95; padding: 5px 14px; font-size: 12px; font-weight: 600; }
+        /* 06/11 (Trello, tarjeta 5 "Cambio de colores de botones en Documentos", con la imagen de muestra): cada
+           botón lleva el color de su tipo de documento, el mismo de la etiqueta en la tabla (.doc-tipo-*). Anexo 1 y
+           Anexo 2 son claros, con letra oscura. Reemplaza el "Azul corporativo" del 30/10. */
+        .btn-doc-contrato { --bs-btn-bg: #6D8BA0; --bs-btn-hover-bg: #5B778B; --bs-btn-active-bg: #4E687A; --bs-btn-disabled-bg: #6D8BA0; }
+        .btn-doc-anexo1 { --bs-btn-bg: #DCEBD9; --bs-btn-hover-bg: #C8DFC4; --bs-btn-active-bg: #B8D5B3; --bs-btn-disabled-bg: #DCEBD9;
+                          --bs-btn-color: #1E4D2B; --bs-btn-hover-color: #1E4D2B; --bs-btn-active-color: #1E4D2B; --bs-btn-disabled-color: #1E4D2B; }
+        .btn-doc-anexo2 { --bs-btn-bg: #EEE1C7; --bs-btn-hover-bg: #E3D1AE; --bs-btn-active-bg: #D8C299; --bs-btn-disabled-bg: #EEE1C7;
+                          --bs-btn-color: #5A3A12; --bs-btn-hover-color: #5A3A12; --bs-btn-active-color: #5A3A12; --bs-btn-disabled-color: #5A3A12; }
+        .btn-doc-djprop { --bs-btn-bg: #2EB8A5; --bs-btn-hover-bg: #27A090; --bs-btn-active-bg: #218A7C; --bs-btn-disabled-bg: #2EB8A5; }
+        .btn-doc-djpubli { --bs-btn-bg: #9BB7CD; --bs-btn-hover-bg: #86A5BE; --bs-btn-active-bg: #7394AF; --bs-btn-disabled-bg: #9BB7CD; }
+        .doc-tipo-contrato { background-color: #6D8BA0; color: #fff; }
+        .doc-tipo-anexo1 { background-color: #DCEBD9; color: #1E4D2B; }
+        .doc-tipo-anexo2 { background-color: #EEE1C7; color: #5A3A12; }
+        .doc-tipo-djprop { background-color: #2EB8A5; color: #fff; }
+        .doc-tipo-djpubli { background-color: #9BB7CD; color: #fff; }
+        /* 30/10 (Trello "2. Agregar botón SIGM en cada contrato"): SIGM por crédito y Anular solo con el ícono.
+           06/11 (tarjeta 5): verde lima con el visto, como en la imagen de muestra (antes morado). */
+        .btn-doc-sigm { --bs-btn-bg: #B4DC4E; --bs-btn-hover-bg: #A3CC3D; --bs-btn-active-bg: #93BB2F;
+                        --bs-btn-color: #254F61; --bs-btn-hover-color: #254F61; --bs-btn-active-color: #254F61;
+                        padding: 5px 14px; font-size: 12px; font-weight: 600; }
+        .btn-doc-sigm .ti { color: #3F8F00; }
         .btn-anular-doc { padding: 1px 7px; font-size: 12px; line-height: 1.4; }
     </style>
     @unless($embebido)
@@ -83,7 +97,7 @@
                 </div>
                 <div class="d-flex gap-2 flex-wrap">
                     {{-- 16/10 (Antony): el orden de trabajo es Contrato → Anexo 1 → Anexo 2. --}}
-                    {{-- 30/10 (Antony): colores "Azul corporativo" (.btn-doc-*). Las declaraciones juradas van al final
+                    {{-- 30/10 (Antony): colores propios (.btn-doc-*; desde el 06/11, los de cada tipo). Las declaraciones juradas van al final
                          del orden de trabajo (Agregado 02), con el nombre completo al pasar el mouse. El SIGM se abre
                          desde la tabla, uno por crédito. --}}
                     <button type="button" class="btn btn-sm btn-doc btn-doc-contrato" wire:click="abrirModalContrato">
@@ -176,13 +190,10 @@
                         @foreach($filasCredito as $k => $doc)
                             @php
                                 $anulado = $doc->estado === 'anulado';
-                                $badgeTipo = match ($doc->tipo) {
-                                    'anexo1' => 'bg-primary',
-                                    'contrato' => 'bg-dark',
-                                    'anexo2' => 'bg-info text-dark',
-                                    'djprop', 'djpubli' => 'bg-light text-dark border',
-                                    default => 'bg-secondary',
-                                };
+                                // 06/11 (tarjeta 5): el color del tipo es el de su botón de arriba.
+                                $badgeTipo = in_array($doc->tipo, ['contrato', 'anexo1', 'anexo2', 'djprop', 'djpubli'], true)
+                                    ? 'doc-tipo-'.$doc->tipo
+                                    : 'bg-secondary';
                                 $esDeclaracion = isset(\App\Services\Documentos\GeneradorDeclaracion::TIPOS[$doc->tipo]);
                             @endphp
                             {{-- Gris explícito para el grupo par: table-light casi no se distinguía del blanco.
@@ -202,7 +213,8 @@
                                         {{-- Una declaración por vehículo: la placa y el modelo que se usó. --}}
                                         <br>
                                         <small class="text-muted" style="font-size:9px;">
-                                            Placa {{ $doc->snapshot['bien']['placa'] ?? '—' }} · {{ \App\Services\Documentos\GeneradorDeclaracion::VARIANTES[$doc->modelo] ?? $doc->modelo }}
+                                            @php $placasDj = array_column($doc->snapshot['bienes'] ?? [$doc->snapshot['bien'] ?? []], 'placa'); @endphp
+                                            {{ count($placasDj) > 1 ? 'Placas' : 'Placa' }} {{ $placasDj ? implode(' y ', $placasDj) : '—' }} · {{ \App\Services\Documentos\GeneradorDeclaracion::VARIANTES[$doc->modelo] ?? $doc->modelo }}
                                         </small>
                                     @elseif($doc->modelo)
                                         @php $nombreModelo = $this->nombreModelo($doc->modelo); @endphp
@@ -253,8 +265,8 @@
                                     <td class="text-center align-middle" rowspan="{{ $filasCredito->count() }}">
                                         @if(in_array((int) $doc->credit_id, array_map('intval', $conContratoSigm), true))
                                             <button type="button" class="btn btn-sm btn-doc btn-doc-sigm" wire:click="abrirModalSigm({{ $doc->credit_id }})"
-                                                    title="SIGM del crédito #{{ $doc->credit_id }}: correo previo, resumen de constitución, registro de la inscripción y resumen de cancelación">
-                                                <i class="ti ti-shield-check"></i> SIGM
+                                                    title="SIGM del crédito #{{ $doc->credit_id }}: correo previo, resumen de constitución, registro de constitución de GM y resumen de cancelación">
+                                                <i class="ti ti-circle-check-filled"></i> SIGM
                                             </button>
                                         @else
                                             <span class="text-muted" title="Primero genera el contrato del crédito">—</span>
@@ -308,8 +320,8 @@
                             <div class="col-md-6">
                                 <label class="form-label small fw-semibold mb-1">Crédito *</label>
                                 {{-- Obs. 1.1 (Área Legal, 29/09): un <select> no pinta sus opciones en
-                                     Mac/Safari, así que es una lista: amarillo = el más reciente sin
-                                     contrato (el que toca), negrita = ya con contrato, rojo = anteriores. --}}
+                                     Mac/Safari, así que es una lista: amarillo = creado hoy sin contrato
+                                     (06/11), negrita = ya con contrato, rojo = anteriores sin contrato. --}}
                                 <div class="border rounded p-1 @error('creditoId') border-danger @enderror" style="background:#fcfcfa; max-height:150px; overflow:auto;">
                                     @foreach($creditosConEstado as $item)
                                         @php $c = $item['credit']; @endphp
@@ -497,15 +509,16 @@
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label small fw-semibold mb-1">Vehículo</label>
-                                @if(count($placasDeclaracion) > 1)
+                                @if($djEligePlaca)
                                     <select class="form-select form-select-sm campo-obligatorio" wire:model.live="djPlaca">
                                         @foreach($placasDeclaracion as $placa)
                                             <option value="{{ $placa }}">{{ $placa }}</option>
                                         @endforeach
                                     </select>
-                                    <div class="form-text" style="font-size:10px;">El contrato tiene dos vehículos: una declaración por cada uno.</div>
+                                    <div class="form-text" style="font-size:10px;">La empresa tiene modelo de un vehículo: una declaración por cada uno.</div>
                                 @else
-                                    <input type="text" class="form-control form-control-sm bg-light" readonly value="{{ $placasDeclaracion[0] ?? '—' }}">
+                                    {{-- 06/11 (tarjeta 2): la persona natural declara todos los vehículos del contrato juntos. --}}
+                                    <input type="text" class="form-control form-control-sm bg-light" readonly value="{{ $placasDeclaracion ? implode(' y ', $placasDeclaracion) : '—' }}">
                                 @endif
                             </div>
                             <div class="col-md-3">
@@ -600,8 +613,9 @@
                                 <label class="d-flex align-items-center gap-2 small px-2 py-1 rounded" style="cursor:pointer;" wire:key="sigm-cred-{{ $c->id }}">
                                     <input class="form-check-input mt-0" type="radio" name="creditoSigm" value="{{ $c->id }}" wire:model.live="sigmCreditoId">
                                     <span>#{{ $c->id }} — S/ {{ number_format((float) $c->importe, 2) }} — {{ $c->cuotas }} cuotas ({{ $c->tipoPlanillaLabel() }})</span>
-                                    <span class="badge ms-auto {{ $insc ? 'bg-success' : 'bg-light text-dark border' }}" style="font-size:9px;">
-                                        {{ $insc ? 'Inscrita '.$insc->fecha_presentacion?->format('d/m/Y') : 'Sin inscribir' }}
+                                    <span class="badge ms-auto {{ $insc ? 'bg-success' : 'bg-danger' }}" style="font-size:9px;"
+                                          @if($insc) title="Inscrita el {{ $insc->fecha_presentacion?->format('d/m/Y') }}" @endif>
+                                        {{ $insc ? 'CONSTITUIDO' : 'NO CONSTITUIDO' }}
                                     </span>
                                 </label>
                             @endforeach
@@ -611,7 +625,7 @@
                             <div class="alert alert-warning py-2 small mb-0">{{ $sigm['error'] }}</div>
                         @elseif($sigm)
                             <ul class="nav nav-tabs small mb-2">
-                                @foreach(['correo' => '1. Correo previo', 'resumen' => '2. Resumen de constitución', 'registro' => '3. Registro de la inscripción', 'cancelacion' => '4. Resumen de cancelación'] as $clave => $titulo)
+                                @foreach(['correo' => '1. Correo previo', 'resumen' => '2. Resumen de constitución', 'registro' => '3. Registro de Constitución de GM', 'cancelacion' => '4. Resumen de cancelación'] as $clave => $titulo)
                                     <li class="nav-item">
                                         <a href="#" class="nav-link py-1 px-2" style="font-size:12px;" :class="{ 'active': tab === '{{ $clave }}' }" x-on:click.prevent="tab = '{{ $clave }}'">{{ $titulo }}</a>
                                     </li>
@@ -664,7 +678,7 @@
                                 @endif
                             </div>
 
-                            {{-- 3. Registro de la inscripción --}}
+                            {{-- 3. Registro de Constitución de GM --}}
                             <div x-show="tab === 'registro'" style="display:none;">
                                 @if($sigm['registro'])
                                     <div class="alert alert-success py-2 small mb-2">
@@ -960,69 +974,83 @@
                                 </div>
 
                                 @if($presetContrato['personas'] === 'empresa')
+                                    {{-- 06/11 (Trello, tarjeta 6): razón social, RUC, correo y domicilio salen de la ficha y van
+                                         bloqueados (se corrigen en Datos); en amarillo lo que se completa aquí. --}}
                                     <div class="row g-2">
                                         <div class="col-md-6">
                                             <label class="form-label small mb-1">Razón social *</label>
-                                            <input type="text" class="form-control form-control-sm @error('empresa.razon_social') is-invalid @enderror"
-                                                   wire:model.blur="empresa.razon_social">
+                                            <input type="text" class="form-control form-control-sm bg-light @error('empresa.razon_social') is-invalid @enderror"
+                                                   wire:model="empresa.razon_social" readonly>
                                             @error('empresa.razon_social') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                         </div>
                                         <div class="col-md-3">
                                             <label class="form-label small mb-1">RUC *</label>
-                                            <input type="text" class="form-control form-control-sm @error('empresa.ruc') is-invalid @enderror"
-                                                   wire:model.blur="empresa.ruc">
+                                            <input type="text" class="form-control form-control-sm bg-light @error('empresa.ruc') is-invalid @enderror"
+                                                   wire:model="empresa.ruc" readonly>
                                             @error('empresa.ruc') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                         </div>
                                         <div class="col-md-3">
                                             <label class="form-label small mb-1">Partida registral</label>
-                                            <input type="text" class="form-control form-control-sm" wire:model.blur="empresa.partida">
+                                            <input type="text" class="form-control form-control-sm campo-elegir" wire:model.blur="empresa.partida">
                                         </div>
                                         <div class="col-md-4">
                                             <label class="form-label small mb-1">Oficina registral</label>
-                                            <input type="text" class="form-control form-control-sm" wire:model.blur="empresa.oficina_registral">
+                                            <input type="text" class="form-control form-control-sm campo-elegir" wire:model.blur="empresa.oficina_registral">
                                         </div>
                                         <div class="col-md-4">
                                             <label class="form-label small mb-1">Correo</label>
-                                            <input type="email" class="form-control form-control-sm @error('empresa.correo') is-invalid @enderror"
-                                                   wire:model.blur="empresa.correo">
+                                            <input type="email" class="form-control form-control-sm bg-light @error('empresa.correo') is-invalid @enderror"
+                                                   wire:model="empresa.correo" readonly>
                                             @error('empresa.correo') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                         </div>
                                         <div class="col-md-4">
                                             <label class="form-label small mb-1">Domicilio</label>
-                                            <input type="text" class="form-control form-control-sm" wire:model.blur="empresa.domicilio">
+                                            <input type="text" class="form-control form-control-sm bg-light" wire:model="empresa.domicilio" readonly>
                                         </div>
+                                        <div class="col-12 form-text mt-0" style="font-size:10px;">Razón social, RUC, correo y domicilio son los de la ficha; se corrigen en la pestaña Datos.</div>
                                     </div>
 
-                                    <div class="small fw-semibold mt-2 mb-1">Gerente general (firma en representación)</div>
+                                    <div class="d-flex align-items-center gap-2 mt-2 mb-1">
+                                        <span class="small fw-semibold">Gerente general (firma en representación)</span>
+                                        @if($gerenteDeFicha)
+                                            <span class="small text-muted"><i class="ti ti-lock"></i> registrado en el alta del cliente</span>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 ms-auto" style="font-size:11px;"
+                                                    wire:click="cambiarGerente" title="El poder cambió de titular: escribe al gerente nuevo (el anterior queda en el historial)">
+                                                <i class="ti ti-arrows-exchange"></i> Cambiar gerente
+                                            </button>
+                                        @endif
+                                    </div>
                                     <div class="row g-2">
                                         <div class="col-md-6">
                                             <label class="form-label small mb-1">Nombre completo *</label>
-                                            <input type="text" class="form-control form-control-sm @error('gerente.nombre') is-invalid @enderror @if(in_array('nombre', $autoGerente)) campo-api @endif"
-                                                   wire:model.blur="gerente.nombre">
+                                            <input type="text" class="form-control form-control-sm {{ $gerenteDeFicha ? 'bg-light' : 'campo-elegir' }} @error('gerente.nombre') is-invalid @enderror @if(in_array('nombre', $autoGerente)) campo-api @endif"
+                                                   wire:model.blur="gerente.nombre" @readonly($gerenteDeFicha)>
                                             @error('gerente.nombre') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                         </div>
                                         <div class="col-md-3">
                                             <label class="form-label small mb-1">Documento *</label>
                                             <div class="input-group input-group-sm">
                                                 <select class="form-select form-select-sm @error('gerente.tipo_documento') is-invalid @enderror"
-                                                        style="max-width: 5.5rem;" wire:model.live="gerente.tipo_documento">
+                                                        style="max-width: 5.5rem;" wire:model.live="gerente.tipo_documento" @disabled($gerenteDeFicha)>
                                                     <option value="DNI">DNI</option>
                                                     <option value="CE">CE</option>
                                                 </select>
-                                                <input type="text" class="form-control form-control-sm @error('gerente.dni') is-invalid @enderror"
-                                                       wire:model.blur="gerente.dni">
+                                                <input type="text" class="form-control form-control-sm {{ $gerenteDeFicha ? 'bg-light' : 'campo-elegir' }} @error('gerente.dni') is-invalid @enderror"
+                                                       wire:model.blur="gerente.dni" @readonly($gerenteDeFicha)>
+                                                @unless($gerenteDeFicha)
                                                 <button type="button" class="btn btn-danger" wire:click="consultarDocGerente"
                                                         wire:loading.attr="disabled" wire:target="consultarDocGerente"
                                                         title="Consultar: hereda de la ficha si está registrado; si no, RENIEC/Migraciones">
                                                     <span wire:loading.remove wire:target="consultarDocGerente"><i class="ti ti-search"></i></span>
                                                     <span wire:loading wire:target="consultarDocGerente" class="small">…</span>
                                                 </button>
+                                                @endunless
                                             </div>
                                             @error('gerente.dni') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                                         </div>
                                         <div class="col-md-3">
                                             <label class="form-label small mb-1">Género *</label>
-                                            <select class="form-select form-select-sm @error('gerente.sexo') is-invalid @enderror @if(in_array('sexo', $autoGerente)) campo-api @endif"
+                                            <select class="form-select form-select-sm campo-elegir @error('gerente.sexo') is-invalid @enderror @if(in_array('sexo', $autoGerente)) campo-api @endif"
                                                     wire:model.live="gerente.sexo">
                                                 <option value="M">Masculino</option>
                                                 <option value="F">Femenino</option>
@@ -1032,7 +1060,7 @@
                                         <div class="col-md-3">
                                             <label class="form-label small mb-1">Nacionalidad *</label>
                                             {{-- No flexiona (misma regla que el deudor). --}}
-                                            <select class="form-select form-select-sm @error('gerente.nacionalidad') is-invalid @enderror @if(in_array('nacionalidad', $autoGerente)) campo-api @endif"
+                                            <select class="form-select form-select-sm campo-elegir @error('gerente.nacionalidad') is-invalid @enderror @if(in_array('nacionalidad', $autoGerente)) campo-api @endif"
                                                     wire:model.blur="gerente.nacionalidad">
                                                 @foreach(\App\Support\Documentos\Nacionalidades::paraValor($gerente['nacionalidad'] ?? null) as $opcion)
                                                     <option value="{{ $opcion }}">{{ $opcion }}</option>
@@ -1042,21 +1070,32 @@
                                         </div>
                                         <div class="col-md-4">
                                             <label class="form-label small mb-1">Ocupación</label>
-                                            <input type="text" class="form-control form-control-sm @if(in_array('ocupacion', $autoGerente)) campo-api @endif" wire:model.blur="gerente.ocupacion">
+                                            <input type="text" class="form-control form-control-sm campo-elegir @if(in_array('ocupacion', $autoGerente)) campo-api @endif" wire:model.blur="gerente.ocupacion">
                                         </div>
                                         <div class="col-md-4">
                                             <label class="form-label small mb-1">Estado civil</label>
-                                            <select class="form-select form-select-sm @if(in_array('estado_civil', $autoGerente)) campo-api @endif" wire:model.live="gerente.estado_civil">
+                                            <select class="form-select form-select-sm campo-elegir @if(in_array('estado_civil', $autoGerente)) campo-api @endif" wire:model.live="gerente.estado_civil">
                                                 <option value="">—</option>
                                                 @foreach($estadosCiviles as $valor => $etiqueta)
                                                     <option value="{{ $valor }}">{{ $etiqueta }}</option>
                                                 @endforeach
                                             </select>
                                         </div>
-                                        <div class="col-md-4">
-                                            <label class="form-label small mb-1">Domicilio</label>
-                                            <input type="text" class="form-control form-control-sm @if(in_array('domicilio', $autoGerente)) campo-api @endif" wire:model.blur="gerente.domicilio">
-                                        </div>
+                                        @if($domicilioGerenteDeFicha)
+                                            <div class="col-md-4">
+                                                <label class="form-label small mb-1">Domicilio</label>
+                                                <input type="text" class="form-control form-control-sm bg-light" wire:model="gerente.domicilio" readonly>
+                                            </div>
+                                        @else
+                                            {{-- 06/11 (tarjeta 6): sin domicilio en la ficha, dirección + ubigeo para elegir. Selects simples:
+                                                 el buscador de select2 no recibe el foco dentro de un modal de Bootstrap. --}}
+                                            <div class="col-md-4">
+                                                <label class="form-label small mb-1">Domicilio (dirección)</label>
+                                                <input type="text" class="form-control form-control-sm campo-elegir @if(in_array('direccion', $autoGerente)) campo-api @endif"
+                                                       wire:model.blur="gerente.direccion" placeholder="Av. Arequipa Nro. 3400">
+                                            </div>
+                                            @include('livewire.clients.partials._ubigeo-cascada', ['prop' => 'gerente', 'datos' => $gerente, 'auto' => $autoGerente, 'col' => 'col-md-4', 'conBuscador' => false, 'amarillo' => 'campo-elegir', 'obligatorio' => false])
+                                        @endif
                                         {{-- 19/10 (Antony): el depósito va siempre a la cuenta personal del gerente; su banco es el
                                              "Banco del desembolso" de abajo y la plantilla no imprime el número de cuenta: no se pide. --}}
                                     </div>

@@ -79,7 +79,8 @@ class Anexo2CreditosColoreadosTest extends TestCase
     {
         $viejo = $this->credito('2026-06-01');       // anterior sin contrato → rojo
         $contratado = $this->credito('2026-08-01');  // con contrato → negrita
-        $nuevo = $this->credito('2026-10-01');       // el más reciente sin contrato → amarillo
+        $nuevo = $this->credito('2026-10-01');       // creado hoy sin contrato → amarillo (06/11, tarjeta 7)
+        Credit::whereKey([$viejo->id, $contratado->id])->update(['created_at' => '2026-06-01 09:00:00']);
         $this->contratoEmitido($contratado);
 
         $c = Livewire::test(Documentos::class, ['id' => $this->client->id])->call('abrirModalAnexo2');

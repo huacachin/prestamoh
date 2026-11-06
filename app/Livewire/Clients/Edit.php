@@ -8,8 +8,10 @@ use App\Models\User;
 use App\Support\Audit;
 use App\Support\Auditoria\ConCapturaDeAuditoria;
 use App\Support\ConReglasDeEliminacion;
+use App\Support\CorreoEnPartes;
 use App\Support\Documentos\Nacionalidades;
 use App\Support\Ubigeo;
+use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
@@ -352,10 +354,14 @@ class Edit extends Component
         $this->coproForm = collect(self::COPRO_CAMPOS)->mapWithKeys(fn ($c) => [$c => (string) ($persona->{$c} ?? '')])->all();
         $this->coproForm['nacionalidad'] = Nacionalidades::normalizar($this->coproForm['nacionalidad'] ?: 'PERUANO');
         // Fichas migradas traen otra caja ("Lima", "Transportista"): se ajustan a las claves de los selects.
-        $this->coproForm['provincia'] = mb_strtoupper($this->coproForm['provincia']);
         $this->coproForm['ocupacion'] = mb_strtolower($this->coproForm['ocupacion']);
         $this->coproForm['estado_civil'] = mb_strtolower($this->coproForm['estado_civil']);
-        foreach (['provincia' => Create::PROVINCIAS, 'ocupacion' => Create::OCUPACIONES, 'estado_civil' => Create::ESTADOS_CIVILES] as $campo => $opciones) {
+        // 05/11 (Trello, tarjeta 4): ubigeo con el catálogo de Nuevo cliente (Lima si la ficha no lo
+        // tiene) y el correo en dos partes. La provincia ya no se limita a Lima o Callao.
+        $this->coproForm['departamento'] = $this->coproForm['departamento'] ?: 'Lima';
+        $this->coproForm['provincia'] = $this->coproForm['provincia'] ?: 'Lima';
+        $this->coproForm = CorreoEnPartes::partir($this->coproForm['email']) + Ubigeo::encadenar($this->coproForm);
+        foreach (['ocupacion' => Create::OCUPACIONES, 'estado_civil' => Create::ESTADOS_CIVILES] as $campo => $opciones) {
             if (! array_key_exists($this->coproForm[$campo], $opciones)) {
                 $this->coproForm[$campo] = array_key_first($opciones);
             }
@@ -369,6 +375,15 @@ class Edit extends Component
         $this->coproAbierto = null;
         $this->coproForm = [];
         $this->resetErrorBag();
+    }
+
+    /** Cascada Departamento → Provincia → Distrito del copropietario (Trello, tarjeta 4). */
+    public function updatedCoproForm(mixed $valor, ?string $clave = null): void
+    {
+        // Sin clave se cambió el arreglo entero: solo se normaliza.
+        if ($clave === null || in_array($clave, ['departamento', 'provincia'], true)) {
+            $this->coproForm = Ubigeo::encadenar($this->coproForm, $clave);
+        }
     }
 
     public function guardarCopro(): void
@@ -394,6 +409,7 @@ class Edit extends Component
         }
         $this->coproForm['documento'] = trim((string) ($this->coproForm['documento'] ?? ''));
         $this->coproForm['nacionalidad'] = Nacionalidades::normalizar((string) ($this->coproForm['nacionalidad'] ?? ''));
+        $this->coproForm = CorreoEnPartes::completar($this->coproForm);
 
         $this->validate([
             'coproForm.tipo_documento' => 'required|in:DNI,CE,RUC',
@@ -407,20 +423,21 @@ class Edit extends Component
             'coproForm.estado_civil' => 'required|in:'.implode(',', array_keys(Create::ESTADOS_CIVILES)),
             'coproForm.direccion' => 'required|string|max:255',
             'coproForm.distrito' => 'required|string|max:100',
-            'coproForm.provincia' => 'required|in:'.implode(',', array_keys(Create::PROVINCIAS)),
-            'coproForm.departamento' => 'nullable|string|max:100',
+            'coproForm.provincia' => 'required|string|max:100',
+            'coproForm.departamento' => 'required|string|max:100',
             'coproForm.email' => 'required|email|max:150',
             'coproForm.celular1' => 'required|string|max:20',
-        ], [], [
+        ] + CorreoEnPartes::reglas('coproForm'), [], [
             'coproForm.documento' => 'documento', 'coproForm.nombre' => 'nombres', 'coproForm.apellido_pat' => 'apellido paterno',
             'coproForm.email' => 'correo', 'coproForm.celular1' => 'celular', 'coproForm.direccion' => 'dirección',
-            'coproForm.distrito' => 'distrito', 'coproForm.provincia' => 'provincia',
-        ]);
+            'coproForm.distrito' => 'distrito', 'coproForm.provincia' => 'provincia', 'coproForm.departamento' => 'departamento',
+        ] + CorreoEnPartes::atributos('coproForm'));
 
-        $datos = $this->coproForm;
+        $datos = Arr::only($this->coproForm, self::COPRO_CAMPOS);
         $datos['apellido_mat'] = $datos['apellido_mat'] ?: null;
         $datos['distrito'] = mb_strtoupper(trim($datos['distrito']));
-        $datos['departamento'] = mb_strtoupper(trim($datos['departamento'] ?: 'LIMA'));
+        $datos['provincia'] = mb_strtoupper(trim($datos['provincia']));
+        $datos['departamento'] = mb_strtoupper(trim($datos['departamento']));
         $datos['email'] = trim($datos['email']);
         $datos['celular1'] = trim($datos['celular1']);
 

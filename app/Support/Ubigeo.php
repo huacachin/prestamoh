@@ -139,6 +139,41 @@ class Ubigeo
         return $opciones;
     }
 
+    /**
+     * La cascada de Nuevo cliente para los formularios que guardan el ubigeo
+     * en un arreglo (copropietarios, Trello tarjeta 4, 05/11). Siempre deja
+     * los valores con la escritura del catálogo, para que el select los
+     * muestre. Si cambió el departamento y la provincia no es suya, va a la
+     * capital; si cambió la provincia y es de otro departamento, arrastra a
+     * ese departamento; en los dos casos el distrito que no es de la provincia
+     * se limpia. Sin $cambio (datos de la ficha o de la API) solo normaliza:
+     * lo que está fuera del catálogo se queda como vino.
+     *
+     * @param  array<string, mixed>  $datos  con departamento, provincia y distrito
+     * @return array<string, mixed>
+     */
+    public static function encadenar(array $datos, ?string $cambio = null): array
+    {
+        $dep = trim((string) ($datos['departamento'] ?? ''));
+        $prov = trim((string) ($datos['provincia'] ?? ''));
+        $dist = trim((string) ($datos['distrito'] ?? ''));
+
+        $dep = self::resolverDepartamento($dep) ?? $dep;
+        if (self::resolverProvincia($dep, $prov) === null && $cambio === 'departamento') {
+            $prov = self::provinciasDe($dep)[0] ?? $prov;
+        } elseif (self::resolverProvincia($dep, $prov) === null && $cambio === 'provincia') {
+            [$dep, $prov] = self::buscarProvincia($prov) ?? [$dep, $prov];
+        }
+        $prov = self::resolverProvincia($dep, $prov) ?? $prov;
+
+        $distritos = self::distritosDe($dep, $prov);
+        if ($dist !== '' && $distritos !== []) {
+            $dist = self::resolverEn($distritos, $dist) ?? ($cambio !== null ? '' : $dist);
+        }
+
+        return array_merge($datos, ['departamento' => $dep, 'provincia' => $prov, 'distrito' => $dist]);
+    }
+
     private static function resolverEn(array $opciones, ?string $valor): ?string
     {
         $v = mb_strtoupper(trim((string) $valor));

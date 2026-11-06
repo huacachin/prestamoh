@@ -195,7 +195,18 @@ class Create extends Component
         'nombre' => '', 'tipo_documento' => 'DNI', 'dni' => '', 'sexo' => 'M',
         'nacionalidad' => 'PERUANO', 'ocupacion' => 'independiente',
         'estado_civil' => 'soltero', 'domicilio' => '',
+        // 06/11 (Trello, tarjeta 6): 'domicilio' es la dirección y el ubigeo se
+        // elige de las listas; al guardar se arma el domicilio legal.
+        'departamento' => 'Lima', 'provincia' => 'Lima', 'distrito' => '',
     ];
+
+    /** Cascada Departamento → Provincia → Distrito del domicilio del representante (tarjeta 6). */
+    public function updatedRepresentante(mixed $valor, ?string $clave = null): void
+    {
+        if (in_array($clave, ['departamento', 'provincia'], true)) {
+            $this->representante = Ubigeo::encadenar($this->representante, $clave);
+        }
+    }
 
     /** Campos del representante llenados por consulta/herencia (van en rojo). @var array<int, string> */
     public array $autoRep = [];
@@ -661,7 +672,10 @@ class Create extends Component
                 'representante.nacionalidad' => 'required|in:'.implode(',', Nacionalidades::OPCIONES),
                 'representante.ocupacion' => 'required|in:'.implode(',', array_keys(self::OCUPACIONES)),
                 'representante.estado_civil' => 'required|in:'.implode(',', array_keys(self::ESTADOS_CIVILES)),
-                'representante.domicilio' => 'nullable|string|max:300',
+                'representante.domicilio' => 'nullable|string|max:255',
+                'representante.distrito' => 'nullable|required_with:representante.domicilio|string|max:100',
+                'representante.provincia' => 'nullable|required_with:representante.domicilio|string|max:100',
+                'representante.departamento' => 'nullable|required_with:representante.domicilio|string|max:100',
             ];
         }
 
@@ -842,10 +856,15 @@ class Create extends Component
                     'nacionalidad' => Nacionalidades::normalizar($this->representante['nacionalidad']),
                     'ocupacion' => $this->representante['ocupacion'],
                     'estado_civil' => $this->representante['estado_civil'],
-                    'domicilio' => trim((string) $this->representante['domicilio'])
-                        ?: (DomicilioLegal::armar(
+                    // Sin dirección propia, el de la empresa (armar() solo con ubigeo no sirve de domicilio).
+                    'domicilio' => (filled(trim((string) $this->representante['domicilio']))
+                        ? DomicilioLegal::armar(
+                            $this->representante['domicilio'], $this->representante['distrito'],
+                            $this->representante['provincia'], $this->representante['departamento']
+                        )
+                        : DomicilioLegal::armar(
                             $this->direccion, $this->distrito, $this->provincia, $this->departamento
-                        ) ?: null),
+                        )) ?: null,
                     'vigente' => true,
                 ]);
             }

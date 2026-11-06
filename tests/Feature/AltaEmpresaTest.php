@@ -8,6 +8,7 @@ use App\Models\Client;
 use App\Models\ClientEmpresa;
 use App\Models\Credit;
 use App\Models\CreditInstallment;
+use App\Models\DocumentoCliente;
 use App\Models\Headquarter;
 use App\Models\User;
 use App\Models\Vehiculo;
@@ -137,7 +138,7 @@ class AltaEmpresaTest extends TestCase
         }
         Vehiculo::create([
             'client_id' => $empresa->id, 'placa' => 'EMP111', 'marca' => 'TOYOTA',
-            'modelo' => 'HIACE', 'valor' => 15000,
+            'modelo' => 'HIACE', 'valor' => 15000, 'nro_serie' => 'SER-EMP111', 'nro_motor' => 'MOT-EMP111',
         ]);
 
         $comp = Livewire::test(Documentos::class, ['id' => $empresa->id])
@@ -151,6 +152,46 @@ class AltaEmpresaTest extends TestCase
         $this->assertSame('VENEZOLANO', $g['nacionalidad']);
         $this->assertSame('independiente', $g['ocupacion']);
         $this->assertSame('casado', $g['estado_civil']);
+
+        // 06/11 (Trello, tarjeta 6): empresa y gerente del alta van bloqueados y lo tecleado encima no cuenta.
+        $this->assertTrue($comp->get('gerenteDeFicha'));
+        $this->assertTrue($comp->get('domicilioGerenteDeFicha'), 'heredó el domicilio de la empresa');
+        $html = $comp->html();
+        $this->assertMatchesRegularExpression('/wire:model="empresa\.razon_social"\s+readonly/', $html);
+        $this->assertMatchesRegularExpression('/wire:model\.blur="gerente\.dni"\s+readonly/', $html);
+        $this->assertStringContainsString('Cambiar gerente', $html);
+        $this->assertStringNotContainsString('wire:click="consultarDocGerente"', $html);
+
+        $comp->set('contratoCreditoId', $credit->id)->set('modeloContrato', 'a4')
+            ->set('contratoVehiculos.0.vehiculo_id', Vehiculo::where('placa', 'EMP111')->value('id'))
+            ->set('bancoDesembolso', 'bcp')->set('empresa.partida', '15626194')->set('empresa.oficina_registral', 'LIMA')
+            ->set('empresa.razon_social', 'OTRA EMPRESA')->set('empresa.ruc', '20999999999')
+            ->set('gerente.nombre', 'OTRA PERSONA')->set('gerente.dni', '99999999')
+            ->call('generarContrato')->assertDispatched('successAlert');
+        $deudora = DocumentoCliente::where('client_id', $empresa->id)->where('tipo', 'contrato')->firstOrFail()->snapshot['deudores'][0];
+        $this->assertSame(['20601234599', 'ROSA QUISPE MAMANI', '41752169'],
+            [$deudora['ruc'], $deudora['gerente']['nombre'], $deudora['gerente']['dni']]);
+        $this->assertNotSame('OTRA EMPRESA', $deudora['nombre']);
+    }
+
+    public function test_el_domicilio_del_representante_elige_su_ubigeo(): void
+    {
+        // 06/11 (Trello, tarjeta 6): dirección + Departamento/Provincia/Distrito de las listas.
+        $comp = $this->altaRuc()
+            ->set('representante.nombre', 'DAVID GALIANO GOMEZ')
+            ->set('representante.dni', '43372841');
+        $this->assertStringContainsString('wire:model.live="representante.departamento"', $comp->html());
+
+        $comp->set('representante.domicilio', 'Mz. E Lt. 13 Urb. Trabajadores Had Naranjal')
+            ->set('representante.provincia', 'Huaral')
+            ->assertSet('representante.departamento', 'Lima')
+            ->call('siguientePaso')
+            ->assertHasErrors(['representante.distrito' => 'required_with']);
+
+        $comp->set('representante.distrito', 'Chancay')->call('siguientePaso')->call('save')->assertHasNoErrors();
+
+        $vigente = ClientEmpresa::where('client_id', Client::where('documento', '20601234599')->value('id'))->firstOrFail()->representanteVigente;
+        $this->assertSame('MZ. E LT. 13 URB. TRABAJADORES HAD NARANJAL, DISTRITO DE CHANCAY, PROVINCIA DE HUARAL, DEPARTAMENTO DE LIMA', $vigente->domicilio);
     }
 
     public function test_el_alta_con_dni_no_pide_representante(): void

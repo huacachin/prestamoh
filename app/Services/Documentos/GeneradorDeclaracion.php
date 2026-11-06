@@ -21,11 +21,16 @@ use InvalidArgumentException;
  * tiene a los deudores, la empresa y su gerente, los vehículos, y en bien futuro el kárdex y
  * el notario. Así la declaración dice exactamente lo mismo que el contrato que acompaña.
  *
- * Una declaración por VEHÍCULO (el contrato puede tener dos): los modelos hablan de "EL
- * VEHÍCULO DE PLACA …" y así su texto legal queda intacto. El modelo se elige solo:
- *   propiedad: uno · dos · empresa · futuro-uno · futuro-dos (bien futuro del contrato)
- *   publicidad: uno · dos · empresa
- * La empresa no tiene modelo de bien futuro (el área no lo entregó): se rechaza con aviso.
+ * Desde el 06/11 (Trello, tarjeta 2: modelos nuevos del área, Drive 04/11, 16 en lugar de 8)
+ * la persona natural declara TODOS los vehículos del contrato en una sola declaración: hay
+ * modelos de uno o dos vehículos, presentes, futuros o uno de cada, con uno o dos declarantes.
+ * La empresa solo tiene modelo de un vehículo presente, así que sigue siendo una por vehículo
+ * (se elige la placa) y la de bien futuro se rechaza con aviso. El modelo se elige solo:
+ *   propiedad: uno · uno-futuro · uno-2-presentes · uno-2-futuros · uno-futuro-presente
+ *              (y lo mismo con dos-) · empresa
+ *   publicidad: uno · uno-2 · dos · dos-2 · empresa
+ * Los cuerpos nuevos están en declaraciones/v2 (snapshot 'formato' 2). Los de antes (una por
+ * vehículo, con kárdex y notario) se quedan para volver a armar las ya emitidas tal cual.
  */
 class GeneradorDeclaracion
 {
@@ -40,9 +45,34 @@ class GeneradorDeclaracion
         'uno' => 'un declarante',
         'dos' => 'dos declarantes',
         'empresa' => 'empresa',
+        'uno-futuro' => 'bien futuro, un declarante',
+        'dos-futuro' => 'bien futuro, dos declarantes',
+        'uno-2-presentes' => 'dos bienes, un declarante',
+        'dos-2-presentes' => 'dos bienes, dos declarantes',
+        'uno-2-futuros' => 'dos bienes futuros, un declarante',
+        'dos-2-futuros' => 'dos bienes futuros, dos declarantes',
+        'uno-futuro-presente' => 'bien futuro y presente, un declarante',
+        'dos-futuro-presente' => 'bien futuro y presente, dos declarantes',
+        'uno-2' => 'dos vehículos, un declarante',
+        'dos-2' => 'dos vehículos, dos declarantes',
+        // Formato 1 (hasta el 06/11), para las ya emitidas.
         'futuro-uno' => 'bien futuro, un declarante',
         'futuro-dos' => 'bien futuro, dos declarantes',
     ];
+
+    /** La empresa declara un vehículo por vez (no hay modelo de dos): entonces se elige la placa. */
+    public static function eligePlaca(Client $client, Credit $credit): bool
+    {
+        $s = self::contratoDe($client, $credit)?->snapshot ?? [];
+
+        return self::esEmpresa($s) && count($s['bienes'] ?? []) > 1;
+    }
+
+    /** @param  array<string, mixed>  $s  snapshot del contrato */
+    private static function esEmpresa(array $s): bool
+    {
+        return (bool) ($s['conjunto']['juridica'] ?? ($s['deudores'][0]['esJuridica'] ?? false));
+    }
 
     /** El contrato vigente del crédito (el emitido más reciente), o null si aún no hay. */
     public static function contratoDe(Client $client, Credit $credit): ?DocumentoCliente
@@ -74,7 +104,7 @@ class GeneradorDeclaracion
     /**
      * Snapshot congelado de la declaración.
      *
-     * @return array{tipo: string, variante: string, credito: array{numero: int}, contrato: array{id: int, version: int, modelo: ?string, fecha: string, fecha_texto: string}, fecha: string, fecha_de: string, fecha_del: string, ciudad: string, declarantes: list<array{nombre: string, documento_tipo: string, documento: string, domicilio: string}>, empresa: ?array<string, mixed>, bien: array{placa: string, es_futuro: bool, kardex: ?string, notario: ?string}, constantes: array<string, mixed>}
+     * @return array{formato: int, tipo: string, variante: string, credito: array{numero: int}, contrato: array{id: int, version: int, modelo: ?string, fecha: string, fecha_texto: string}, fecha: string, fecha_de: string, fecha_del: string, ciudad: string, declarantes: list<array{nombre: string, documento_tipo: string, documento: string, domicilio: string}>, empresa: ?array<string, mixed>, bienes: list<array{placa: string, es_futuro: bool}>, bien: array{placa: string, es_futuro: bool}, constantes: array<string, mixed>}
      */
     public static function construirSnapshot(Client $client, Credit $credit, string $tipo, ?string $placa = null): array
     {
@@ -88,31 +118,44 @@ class GeneradorDeclaracion
         }
         $s = $contrato->snapshot;
 
-        $bienes = $s['bienes'] ?? [];
-        $bien = $placa === null || $placa === ''
-            ? ($bienes[0] ?? null)
-            : collect($bienes)->first(fn ($b) => ($b['placa'] ?? null) === $placa);
-        if ($bien === null) {
-            throw new InvalidArgumentException($placa
-                ? "La placa {$placa} no está en el contrato del crédito #{$credit->id}."
-                : "El contrato del crédito #{$credit->id} no tiene vehículos.");
-        }
-
         $deudores = $s['deudores'] ?? [];
-        $esEmpresa = (bool) ($s['conjunto']['juridica'] ?? ($deudores[0]['esJuridica'] ?? false));
-        $esFuturo = $tipo === 'djprop' && (bool) ($bien['esFuturo'] ?? false);
+        $esEmpresa = self::esEmpresa($s);
 
-        if ($esEmpresa && $esFuturo) {
-            throw new InvalidArgumentException('No hay modelo de declaración de propiedad de bien futuro para empresas.');
+        // Persona natural: todos los vehículos del contrato en una declaración. Empresa: el elegido.
+        $todos = array_values($s['bienes'] ?? []);
+        if ($esEmpresa && filled($placa)) {
+            $bienes = array_values(array_filter($todos, fn ($b) => ($b['placa'] ?? null) === $placa));
+            if ($bienes === []) {
+                throw new InvalidArgumentException("La placa {$placa} no está en el contrato del crédito #{$credit->id}.");
+            }
+        } else {
+            $bienes = $esEmpresa ? array_slice($todos, 0, 1) : $todos;
         }
-        if ($esFuturo && (blank($bien['kardex'] ?? null) || blank($bien['notario'] ?? null))) {
-            throw new InvalidArgumentException("Al contrato le falta el kárdex o el notario del bien futuro {$bien['placa']}: corrígelo en el contrato.");
+        if ($bienes === []) {
+            throw new InvalidArgumentException("El contrato del crédito #{$credit->id} no tiene vehículos.");
+        }
+        if (count($bienes) > 2) {
+            throw new InvalidArgumentException('No hay modelo de declaración para más de dos vehículos.');
+        }
+
+        // El bien futuro solo cambia la de propiedad (la de publicidad no lo distingue).
+        $futuros = $tipo === 'djprop' ? count(array_filter($bienes, fn ($b) => (bool) ($b['esFuturo'] ?? false))) : 0;
+        if ($esEmpresa && $futuros > 0) {
+            throw new InvalidArgumentException('No hay modelo de declaración de propiedad de bien futuro para empresas.');
         }
 
         $variante = $esEmpresa ? 'empresa' : (count($deudores) > 1 ? 'dos' : 'uno');
-        if ($esFuturo) {
-            $variante = 'futuro-'.$variante;
+        if (! $esEmpresa && $tipo === 'djpubli') {
+            $variante .= count($bienes) === 2 ? '-2' : '';
+        } elseif (! $esEmpresa) {
+            $variante .= match (true) {
+                count($bienes) === 1 => $futuros === 1 ? '-futuro' : '',
+                $futuros === 2 => '-2-futuros',
+                $futuros === 1 => '-futuro-presente',
+                default => '-2-presentes',
+            };
         }
+        $bien = $bienes[0];
 
         $hoy = now();
         // La del contrato llega 'd/m/Y' (wizard) o 'Y-m-d': el mismo lector que usa el contrato.
@@ -121,6 +164,8 @@ class GeneradorDeclaracion
             : Carbon::parse($contrato->created_at);
 
         return [
+            // 2 = modelos del 04/11 (declaraciones/v2); sin la clave, los del 30/10.
+            'formato' => 2,
             'tipo' => $tipo,
             'variante' => $variante,
             'credito' => ['numero' => (int) $credit->id],
@@ -154,11 +199,14 @@ class GeneradorDeclaracion
                     'documento' => (string) ($deudores[0]['gerente']['dni'] ?? ''),
                 ],
             ] : null,
+            // Los vehículos declarados, en el orden del contrato; 'bien' es el primero (listado y auditoría).
+            'bienes' => array_map(fn (array $b) => [
+                'placa' => (string) $b['placa'],
+                'es_futuro' => $tipo === 'djprop' && (bool) ($b['esFuturo'] ?? false),
+            ], $bienes),
             'bien' => [
                 'placa' => (string) $bien['placa'],
-                'es_futuro' => $esFuturo,
-                'kardex' => $bien['kardex'] ?? null,
-                'notario' => $bien['notario'] ?? null,
+                'es_futuro' => $tipo === 'djprop' && (bool) ($bien['esFuturo'] ?? false),
             ],
             'constantes' => [
                 'acreedor' => [
@@ -209,9 +257,11 @@ class GeneradorDeclaracion
             ]);
             $doc->sinAuditoriaAutomatica(fn () => $doc->save());
 
+            $placas = array_column($snapshot['bienes'], 'placa');
             Audit::log(sprintf(
-                'Generó la %s v%d del crédito #%d (placa %s, %s)',
-                mb_strtolower(self::TIPOS[$tipo]), $version, $credit->id, $snapshot['bien']['placa'],
+                'Generó la %s v%d del crédito #%d (%s %s, %s)',
+                mb_strtolower(self::TIPOS[$tipo]), $version, $credit->id,
+                count($placas) > 1 ? 'placas' : 'placa', implode(' y ', $placas),
                 self::VARIANTES[$snapshot['variante']] ?? $snapshot['variante']
             ), $doc);
 

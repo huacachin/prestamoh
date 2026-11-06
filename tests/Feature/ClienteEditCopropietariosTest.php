@@ -107,9 +107,16 @@ class ClienteEditCopropietariosTest extends TestCase
         // Persona relacionada: su identidad se puede editar desde aquí (no hay candado).
         $this->assertStringNotContainsString('Es cliente titular: su documento', $html);
 
+        // 05/11 (Trello, tarjeta 4): correo en dos partes y ubigeo con el catálogo de Nuevo cliente.
+        $comp->assertSet('coproForm.email_usuario', 'joselyn')->assertSet('coproForm.email_dominio', 'otro')
+            ->assertSet('coproForm.email_dominio_otro', 'example.com')
+            ->assertSet('coproForm.departamento', 'Lima')->assertSet('coproForm.provincia', 'Lima')->assertSet('coproForm.distrito', 'Ate');
+        $this->assertStringContainsString('wire:model.live="coproForm.departamento"', $html);
+        $this->assertStringContainsString('@GMAIL.COM', $html);
+
         // Validación: correo obligatorio y documento único.
-        $comp->set('coproForm.email', '')->call('guardarCopro')->assertHasErrors(['coproForm.email']);
-        $comp->set('coproForm.email', 'joselyn@example.com')->set('coproForm.documento', '41001468')->call('guardarCopro')->assertHasErrors(['coproForm.documento']);
+        $comp->set('coproForm.email_usuario', '')->call('guardarCopro')->assertHasErrors(['coproForm.email_usuario', 'coproForm.email']);
+        $comp->set('coproForm.email_usuario', 'joselyn')->set('coproForm.documento', '41001468')->call('guardarCopro')->assertHasErrors(['coproForm.documento']);
 
         // Guardar: solo cambia a Joselyn, con rastro en auditoría, y el acordeón se cierra.
         Activity::query()->delete();

@@ -14,6 +14,7 @@ use App\Services\Documentos\GeneradorContrato;
 use App\Services\Documentos\GeneradorDeclaracion;
 use App\Services\Documentos\RenderDocumento;
 use App\Support\Documentos\MaquetaContrato;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -23,8 +24,9 @@ use Tests\TestCase;
 
 /**
  * Declaraciones juradas de propiedad y de publicidad (30/10/2026, Agregados 01 y 02 del Área Legal):
- * salen del contrato emitido del crédito, una por vehículo, con el modelo que corresponde (uno o dos
- * declarantes, empresa o bien futuro), y van al final del orden Contrato → Anexo 1 → Anexo 2.
+ * salen del contrato emitido del crédito con el modelo que corresponde (uno o dos declarantes, empresa o
+ * bien futuro), y van al final del orden Contrato → Anexo 1 → Anexo 2. Desde el 06/11 (Trello, tarjeta 2:
+ * modelos del 04/11) la persona natural declara sus dos vehículos en una sola; la empresa, uno por vez.
  */
 class DeclaracionesJuradasTest extends TestCase
 {
@@ -128,7 +130,7 @@ class DeclaracionesJuradasTest extends TestCase
             $this->assertStringContainsString($rojo($dato), $previa, "Debió salir en rojo: {$dato}");
         }
         $texto = $this->texto($previa);
-        $this->assertStringContainsString('DECLARACIÓN JURADA DE PROPIEDAD, POSESIÓN', $texto);
+        $this->assertStringStartsWith('DECLARACIÓN JURADA DE PROPIEDAD YO, ', $texto, 'el título del modelo del 04/11');
         $this->assertStringContainsString('YO, QUISPE MAMANI ROSA LINDA, IDENTIFICADO(A) CON DNI N.° 46781900, CON DOMICILIO EN CALLE LAS BEGONIAS 450', $texto);
         $this->assertStringContainsString('EL VEHÍCULO DE PLACA DE RODAJE N.° DJP111 ES DE MI PROPIEDAD', $texto);
         $this->assertStringContainsString('LIMA, 30 DE OCTUBRE DE 2026. FIRMA DEL(DE LA) DECLARANTE QUISPE MAMANI ROSA LINDA DNI N.° 46781900 HUELLA DIGITAL', $texto);
@@ -175,12 +177,13 @@ class DeclaracionesJuradasTest extends TestCase
         $this->assertSame(1, substr_count($texto, 'FIRMA DECLARANTE 2'), 'un bloque de firma por declarante (en el .docx salía repetido)');
         $this->assertStringContainsString('QUIENES SUSCRIBIMOS', $this->texto(GeneradorDeclaracion::previsualizar($this->client, $this->credit, 'djpubli')));
 
-        // Bien futuro: kárdex y notario del contrato (el .docx 2.1 ponía el kárdex donde va el notario).
+        // Bien futuro: desde el 04/11 el modelo remite al kárdex y al notario de la constitución (no los copia);
+        // el .docx 1.3 traía "NÚMERO DE PLACA" sin corchetes donde va la placa.
         DocumentoCliente::query()->delete();
         $this->contratoCon([$rosa], [$this->bien('FUT333', futuro: true)]);
         $s = GeneradorDeclaracion::construirSnapshot($this->client, $this->credit, 'djprop');
-        $this->assertSame('futuro-uno', $s['variante']);
-        $this->assertStringContainsString('PLACA N° FUT333, CONFORME A LA TRANSFERENCIA VEHICULAR CON KARDEX N° 2026-4512 REALIZADO ANTE EL NOTARIO PAÚL JHON HINOJOSA CARRILLO.', $this->texto(RenderDocumento::html($s, 'djprop', 'pdf')));
+        $this->assertSame('uno-futuro', $s['variante']);
+        $this->assertStringContainsString('PLACA N° FUT333, CONFORME A LA TRANSFERENCIA VEHICULAR CON KARDEX QUE SE INDICA EN LA CONSTITUCIÓN DE LA GARANTÍA MOBILIARIA, REALIZADA ANTE EL NOTARIO PÚBLICO CORRESPONDIENTE.', $this->texto(RenderDocumento::html($s, 'djprop', 'pdf')));
         $this->assertSame('uno', GeneradorDeclaracion::construirSnapshot($this->client, $this->credit, 'djpubli')['variante'], 'la de publicidad no distingue el bien futuro');
 
         // Empresa: razón social, RUC y la firma de su gerente.
@@ -198,9 +201,10 @@ class DeclaracionesJuradasTest extends TestCase
         $this->assertStringContainsString('FIRMA DE TITULAR TRANSPORTES ROSA S.A.C. RUC N.º 20601234567', $publi);
     }
 
-    public function test_una_declaracion_por_vehiculo_y_los_rechazos(): void
+    public function test_los_dos_vehiculos_van_en_una_declaracion_y_los_rechazos(): void
     {
         $rosa = $this->persona('QUISPE MAMANI ROSA LINDA', '46781900', 'AV. AREQUIPA 3400');
+        $juan = $this->persona('TAFUR CUENCA JUAN', '72957633', 'JR. LOS GERANIOS 12');
 
         try {
             GeneradorDeclaracion::construirSnapshot($this->client, $this->credit, 'djprop');
@@ -209,11 +213,82 @@ class DeclaracionesJuradasTest extends TestCase
             $this->assertStringContainsString('primero genera el contrato', $e->getMessage());
         }
 
+        // Persona natural: los dos vehículos en una declaración, aunque se pida una placa.
         $this->contratoCon([$rosa], [$this->bien('UNO111'), $this->bien('DOS222')]);
-        $this->assertSame(['UNO111', 'DOS222'], GeneradorDeclaracion::placasDe($this->client, $this->credit));
-        $this->assertSame('DOS222', GeneradorDeclaracion::construirSnapshot($this->client, $this->credit, 'djprop', 'DOS222')['bien']['placa']);
+        $this->assertFalse(GeneradorDeclaracion::eligePlaca($this->client, $this->credit));
+        $s = GeneradorDeclaracion::construirSnapshot($this->client, $this->credit, 'djprop', 'DOS222');
+        $this->assertSame(['uno-2-presentes', ['UNO111', 'DOS222']], [$s['variante'], array_column($s['bienes'], 'placa')]);
+        $this->assertStringContainsString('LOS DOS VEHÍCULOS PRESENTES DE PLACAS DE RODAJE N.° UNO111 Y N.° DOS222 SON DE MI PROPIEDAD', $this->texto(RenderDocumento::html($s, 'djprop', 'pdf')));
+        $publi = GeneradorDeclaracion::construirSnapshot($this->client, $this->credit, 'djpubli');
+        $this->assertSame('uno-2', $publi['variante']);
+        $this->assertStringContainsString('UNO111', $this->texto(RenderDocumento::html($publi, 'djpubli', 'pdf')));
+        $this->assertStringContainsString('DOS222', $this->texto(RenderDocumento::html($publi, 'djpubli', 'pdf')));
+
+        // Uno futuro y uno presente, dos declarantes: cada placa en su lugar.
+        DocumentoCliente::query()->delete();
+        $this->contratoCon([$rosa, $juan], [$this->bien('PRE111'), $this->bien('FUT222', futuro: true)]);
+        $s = GeneradorDeclaracion::construirSnapshot($this->client, $this->credit, 'djprop');
+        $this->assertSame('dos-futuro-presente', $s['variante']);
+        $texto = $this->texto(RenderDocumento::html($s, 'djprop', 'pdf'));
+        $this->assertMatchesRegularExpression('/FUT222.*PRE111|PRE111.*FUT222/', $texto);
+        $this->assertSame('dos-2', GeneradorDeclaracion::construirSnapshot($this->client, $this->credit, 'djpubli')['variante']);
+
+        // Los dos futuros.
+        DocumentoCliente::query()->delete();
+        $this->contratoCon([$rosa], [$this->bien('FUA111', futuro: true), $this->bien('FUB222', futuro: true)]);
+        $this->assertSame('uno-2-futuros', GeneradorDeclaracion::construirSnapshot($this->client, $this->credit, 'djprop')['variante']);
+
+        // Empresa con dos vehículos: una por vehículo, eligiendo la placa.
+        DocumentoCliente::query()->delete();
+        $this->contratoCon([['esJuridica' => true, 'nombre' => 'EMPRESA S.A.C.', 'ruc' => '20600000001', 'gerente' => []]],
+            [$this->bien('EMA111'), $this->bien('EMB222')], juridica: true);
+        $this->assertTrue(GeneradorDeclaracion::eligePlaca($this->client, $this->credit));
+        $s = GeneradorDeclaracion::construirSnapshot($this->client, $this->credit, 'djprop', 'EMB222');
+        $this->assertSame(['empresa', ['EMB222']], [$s['variante'], array_column($s['bienes'], 'placa')]);
         $this->expectExceptionMessage('La placa ZZZ999 no está en el contrato');
         GeneradorDeclaracion::construirSnapshot($this->client, $this->credit, 'djprop', 'ZZZ999');
+    }
+
+    public function test_las_ya_emitidas_se_vuelven_a_armar_con_su_modelo(): void
+    {
+        // Snapshot del 30/10 (sin 'formato'): el Word de una declaración ya firmada sale con su texto de entonces.
+        $this->contratoCon([$this->persona('QUISPE MAMANI ROSA LINDA', '46781900', 'AV. AREQUIPA 3400')], [$this->bien('FUT333', futuro: true)]);
+        $s = GeneradorDeclaracion::construirSnapshot($this->client, $this->credit, 'djprop');
+        unset($s['formato'], $s['bienes']);
+        $s['variante'] = 'futuro-uno';
+        $s['bien'] += ['kardex' => '2026-4512', 'notario' => 'PAÚL JHON HINOJOSA CARRILLO'];
+
+        $texto = $this->texto(RenderDocumento::html($s, 'djprop', 'word'));
+        $this->assertStringStartsWith('DECLARACIÓN JURADA DE COMPRA LEGÍTIMA', $texto);
+        $this->assertStringContainsString('CON KARDEX N° 2026-4512 REALIZADO ANTE EL NOTARIO PAÚL JHON HINOJOSA CARRILLO', $texto);
+    }
+
+    public function test_los_dieciseis_modelos_caben_en_una_hoja(): void
+    {
+        // Domicilios largos (los reales lo son) y el modelo más largo de cada tipo.
+        $dom = 'MZ. E LT. 13 URB. TRABAJADORES HAD NARANJAL, DISTRITO DE SAN MARTÍN DE PORRES, PROVINCIA Y DEPARTAMENTO DE LIMA';
+        $rosa = $this->persona('QUISPE MAMANI ROSA LINDA DEL CARMEN', '46781900', $dom);
+        $juan = $this->persona('TAFUR CUENCA JUAN ALBERTO', '72957633', $dom);
+        $empresa = ['esJuridica' => true, 'nombre' => 'TRANSPORTES Y SERVICIOS GENERALES ROSA S.A.C.', 'ruc' => '20601234567', 'domicilio' => $dom,
+            'partida' => '14512345', 'oficinaRegistral' => 'LIMA', 'gerente' => ['nombre' => 'QUISPE MAMANI ROSA LINDA', 'documentoTipo' => 'DNI', 'dni' => '46781900']];
+        $casos = [
+            [[$rosa], [false]], [[$rosa], [true]], [[$rosa], [false, false]], [[$rosa], [true, true]], [[$rosa], [true, false]],
+            [[$rosa, $juan], [false]], [[$rosa, $juan], [true]], [[$rosa, $juan], [false, false]], [[$rosa, $juan], [true, true]], [[$rosa, $juan], [true, false]],
+            [[$empresa], [false]],
+        ];
+        $vistas = [];
+        foreach ($casos as [$deudores, $futuros]) {
+            DocumentoCliente::query()->delete();
+            $bienes = array_map(fn ($f, $i) => $this->bien('HOJ'.$i.'00', $f), $futuros, array_keys($futuros));
+            $this->contratoCon($deudores, $bienes, juridica: ($deudores[0]['esJuridica'] ?? false));
+            foreach (['djprop', 'djpubli'] as $tipo) {
+                $s = GeneradorDeclaracion::construirSnapshot($this->client, $this->credit, $tipo);
+                $pdf = Pdf::loadHTML(RenderDocumento::html($s, $tipo, 'pdf'))->setPaper('a4')->output();
+                $this->assertSame(1, MaquetaContrato::hojas($pdf), "{$tipo} {$s['variante']} debe caber en una hoja");
+                $vistas["{$tipo}-{$s['variante']}"] = true;
+            }
+        }
+        $this->assertCount(16, $vistas, 'los 16 modelos del 04/11');
     }
 
     public function test_la_empresa_no_tiene_modelo_de_bien_futuro(): void

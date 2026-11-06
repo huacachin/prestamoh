@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\Vehiculo;
 use App\Services\Documentos\GeneradorContrato;
 use App\Support\Documentos\BancosVoucher;
+use App\Support\Documentos\DomicilioLegal;
 use App\Support\Documentos\Genero;
 use App\Support\Documentos\ModelosContrato;
 use Carbon\Carbon;
@@ -264,10 +265,12 @@ class ContratoEspecFinalTest extends TestCase
         $this->assertSame('VENEZOLANO', $g['nacionalidad']);
         $this->assertSame('INDEPENDIENTE', $g['ocupacion']);
         $this->assertSame('CASADO', $g['estado_civil']);
-        $this->assertStringContainsString('PROVINCIA CONSTITUCIONAL DEL CALLAO', $g['domicilio']);
+        // 06/11 (Trello, tarjeta 6): el domicilio llega en dirección + ubigeo del catálogo y se arma al generar.
+        $this->assertSame(['JR. LOS ALPES 69', 'Callao', 'Callao', 'Bellavista'], [$g['direccion'], $g['departamento'], $g['provincia'], $g['distrito']]);
+        $this->assertStringContainsString('PROVINCIA CONSTITUCIONAL DEL CALLAO', DomicilioLegal::armar($g['direccion'], $g['distrito'], $g['provincia'], $g['departamento']));
         // Y todo lo heredado queda marcado en rojo.
         $this->assertEqualsCanonicalizing(
-            ['nombre', 'sexo', 'nacionalidad', 'ocupacion', 'estado_civil', 'domicilio'],
+            ['nombre', 'sexo', 'nacionalidad', 'ocupacion', 'estado_civil', 'direccion', 'distrito', 'provincia', 'departamento'],
             $comp->get('autoGerente')
         );
     }
@@ -293,7 +296,8 @@ class ContratoEspecFinalTest extends TestCase
 
         $g = $comp->get('gerente');
         $this->assertSame('JACK YELTSIN BLAS SULLCA', $g['nombre']);
-        $this->assertStringContainsString('PROVINCIA Y DEPARTAMENTO DE LIMA', $g['domicilio']);
+        $this->assertSame(['Av. Salaverry 2900', 'Lima', 'Lima', 'Magdalena del Mar'], [$g['direccion'], $g['departamento'], $g['provincia'], $g['distrito']]);
+        $this->assertContains('direccion', $comp->get('autoGerente'));
         $this->assertSame('SOLTERO', $g['estado_civil'], 'el estado civil de la API fluye al gerente');
         $this->assertContains('nombre', $comp->get('autoGerente'));
         $this->assertContains('estado_civil', $comp->get('autoGerente'));

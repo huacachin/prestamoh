@@ -24,6 +24,7 @@ use App\Support\Documentos\DomicilioLegal;
 use App\Support\Documentos\ModelosContrato;
 use App\Support\Documentos\Nacionalidades;
 use App\Support\Documentos\Notarios;
+use App\Support\Ubigeo;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
@@ -31,6 +32,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /**
@@ -145,7 +147,23 @@ class Documentos extends Component
         'nombre' => '', 'tipo_documento' => 'DNI', 'dni' => '', 'sexo' => 'M',
         'nacionalidad' => 'PERUANO', 'ocupacion' => '', 'estado_civil' => '',
         'domicilio' => '', 'banco' => '', 'cuenta' => '',
+        // 06/11 (Trello, tarjeta 6): sin domicilio en la ficha, se arma con
+        // dirección + ubigeo elegido (DomicilioLegal), como en Nuevo cliente.
+        'direccion' => '', 'departamento' => 'Lima', 'provincia' => 'Lima', 'distrito' => '',
     ];
+
+    /**
+     * Trello, tarjeta 6 (06/11): el gerente registrado en el alta (representante
+     * vigente) va bloqueado —documento y nombre, y el domicilio si lo tiene— y
+     * "Cambiar gerente" lo libera para escribir a otro; el anterior queda como
+     * historial (persistirEmpresa). Lo bloqueado se vuelve a leer de la ficha al
+     * previsualizar y al generar (fijarDatosDeFicha).
+     */
+    #[Locked]
+    public bool $gerenteDeFicha = false;
+
+    #[Locked]
+    public bool $domicilioGerenteDeFicha = false;
 
     /**
      * Tercero autorizado a recibir el desembolso (modelos de depósito a tercero).
@@ -321,7 +339,7 @@ class Documentos extends Component
         $vehiculos = $this->vehiculosCliente();
 
         // Obs. 1.1 del Área Legal (02/10): se preselecciona el crédito "vigente"
-        // (el más reciente sin contrato); si todos tienen contrato, solo cuando hay uno.
+        // (desde el 06/11, el creado hoy sin contrato); si no hay, solo cuando hay uno.
         $vigente = collect($this->creditosConEstado())->firstWhere('estado', 'vigente');
         $this->creditoId = $vigente['credit']->id ?? ($creditos->count() === 1 ? $creditos->first()->id : null);
         // Se preseleccionan todos: lo habitual es anexar la garantía completa;
@@ -527,6 +545,14 @@ class Documentos extends Component
         return $credit ? GeneradorDeclaracion::placasDe(Client::findOrFail($this->clientId), $credit) : [];
     }
 
+    /** Solo la empresa con dos vehículos elige placa: la persona natural los declara juntos (tarjeta 2, 06/11). */
+    private function djEligePlaca(): bool
+    {
+        $credit = $this->djCreditoId ? Credit::where('client_id', $this->clientId)->find($this->djCreditoId) : null;
+
+        return $credit !== null && GeneradorDeclaracion::eligePlaca(Client::findOrFail($this->clientId), $credit);
+    }
+
     // ═══ SIGM: correo, resúmenes y registro de la inscripción (30/10/2026) ═══
     // Agregado 03 del Área Legal (GeneradorSigm). Los textos salen del contrato emitido del
     // crédito; lo único que se guarda es la inscripción (formulario, folio y fecha).
@@ -693,12 +719,9 @@ class Documentos extends Component
         $fichaEmpresa = $client->empresa;
         $vigente = $fichaEmpresa?->representanteVigente;
         $this->empresa = [
-            'razon_social' => mb_strtoupper($client->fullName()),
-            'ruc' => trim((string) $client->documento),
+            'razon_social' => '', 'ruc' => '', 'correo' => '', 'domicilio' => '',
             'partida' => (string) ($fichaEmpresa->partida_registral ?? ''),
             'oficina_registral' => (string) ($fichaEmpresa->oficina_registral ?? ''),
-            'correo' => (string) (($fichaEmpresa->correo ?? null) ?: $this->correoFicha($client)),
-            'domicilio' => (string) (($fichaEmpresa->domicilio ?? null) ?: $this->domicilioDe($client)),
         ];
         $this->gerente = [
             'nombre' => (string) ($vigente->nombre ?? ''),
@@ -712,7 +735,11 @@ class Documentos extends Component
             // Banco y cuenta personal (solo a.4.1): por desembolso, no de la
             // ficha — no se precargan ni se persisten.
             'banco' => '', 'cuenta' => '',
+            'direccion' => '', 'departamento' => 'Lima', 'provincia' => 'Lima', 'distrito' => '',
         ];
+        $this->gerenteDeFicha = filled($vigente?->documento) && filled($vigente?->nombre);
+        $this->domicilioGerenteDeFicha = $this->gerenteDeFicha && filled($vigente?->domicilio);
+        $this->fijarDatosDeFicha();
         $this->tercero = ['nombre' => '', 'dni' => '', 'cuenta' => ''];
         $this->valorBien = '';
         $this->bancoDesembolso = '';
@@ -935,6 +962,9 @@ class Documentos extends Component
      */
     public function consultarDocGerente(Factiliza $api): void
     {
+        if ($this->gerenteDeFicha) {
+            return; // bloqueado: es el del alta (tarjeta 6); "Cambiar gerente" lo libera
+        }
         $doc = trim((string) $this->gerente['dni']);
         if ($doc === '') {
             $this->dispatch('errorAlert', ['message' => 'Escribe el documento del gerente antes de consultar.']);
@@ -954,8 +984,8 @@ class Documentos extends Component
             if (isset(self::ESTADOS_CIVILES[$estadoCivil])) {
                 $this->gerente['estado_civil'] = $estadoCivil;
             }
-            $this->gerente['domicilio'] = $this->domicilioDe($ficha);
-            $this->autoGerente = ['nombre', 'sexo', 'nacionalidad', 'ocupacion', 'estado_civil', 'domicilio'];
+            $this->ubicarDomicilioGerente($ficha->direccion, $ficha->distrito, $ficha->provincia, $ficha->departamento);
+            $this->autoGerente = ['nombre', 'sexo', 'nacionalidad', 'ocupacion', 'estado_civil', 'direccion', 'distrito', 'provincia', 'departamento'];
             $this->dispatch('successAlert', ['message' => "Gerente heredado de la ficha de {$ficha->fullName()}. Verifica los datos."]);
 
             return;
@@ -984,17 +1014,80 @@ class Documentos extends Component
             $this->gerente['estado_civil'] = $estadoCivilApi;
             $this->autoGerente[] = 'estado_civil';
         }
-        $domicilio = DomicilioLegal::armar(
-            $r['data']['direccion'] ?? null,
-            $r['data']['distrito'] ?? null,
-            $r['data']['provincia'] ?? null,
-            $r['data']['departamento'] ?? null,
-        );
-        if ($domicilio !== '') {
-            $this->gerente['domicilio'] = $domicilio;
-            $this->autoGerente[] = 'domicilio';
+        if (filled($r['data']['direccion'] ?? null)) {
+            $this->ubicarDomicilioGerente($r['data']['direccion'], $r['data']['distrito'] ?? null, $r['data']['provincia'] ?? null, $r['data']['departamento'] ?? null);
+            array_push($this->autoGerente, 'direccion', 'distrito', 'provincia', 'departamento');
         }
         $this->dispatch('successAlert', ['message' => 'Datos del gerente cargados desde la consulta. Verifica y completa lo que falte.']);
+    }
+
+    /** Domicilio del gerente en dirección + ubigeo del catálogo (tarjeta 6); la provincia arrastra su departamento. */
+    private function ubicarDomicilioGerente(?string $direccion, ?string $distrito, ?string $provincia, ?string $departamento): void
+    {
+        [$departamento, $provincia] = Ubigeo::buscarProvincia($provincia) ?? [$departamento ?: 'Lima', $provincia ?: 'Lima'];
+        $this->gerente = Ubigeo::encadenar(array_merge($this->gerente, [
+            'direccion' => trim((string) $direccion), 'distrito' => (string) $distrito,
+            'provincia' => $provincia, 'departamento' => $departamento, 'domicilio' => '',
+        ]));
+    }
+
+    /** Cascada Departamento → Provincia → Distrito del domicilio del gerente (tarjeta 6). */
+    public function updatedGerente(mixed $valor, ?string $clave = null): void
+    {
+        if (in_array($clave, ['departamento', 'provincia'], true)) {
+            $this->gerente = Ubigeo::encadenar($this->gerente, $clave);
+        }
+    }
+
+    /** Libera al gerente bloqueado para escribir a otro: el poder cambió de titular (tarjeta 6). */
+    public function cambiarGerente(): void
+    {
+        $this->gerenteDeFicha = false;
+        $this->domicilioGerenteDeFicha = false;
+        $this->gerente = array_merge($this->gerente, [
+            'nombre' => '', 'tipo_documento' => 'DNI', 'dni' => '', 'domicilio' => '',
+            'direccion' => '', 'departamento' => 'Lima', 'provincia' => 'Lima', 'distrito' => '',
+        ]);
+        $this->autoGerente = [];
+        $this->htmlPreviewContrato = '';
+        $this->resetErrorBag();
+    }
+
+    /**
+     * Trello, tarjeta 6 (06/11): lo bloqueado sale de la ficha y no del
+     * formulario. Razón social, RUC, correo y domicilio de la empresa, de la
+     * ficha del cliente (lo que se corrige en Datos; la ficha de empresa solo si
+     * el cliente no lo tiene); documento, nombre y domicilio del gerente, de su
+     * representante vigente. Sin domicilio de la ficha, el del gerente se arma
+     * con su dirección y el ubigeo elegido.
+     */
+    private function fijarDatosDeFicha(): void
+    {
+        $client = Client::find($this->clientId);
+        if ($client === null) {
+            return;
+        }
+        $fichaEmpresa = $client->empresa;
+        $this->empresa['razon_social'] = mb_strtoupper($client->fullName());
+        $this->empresa['ruc'] = trim((string) $client->documento);
+        $this->empresa['correo'] = $this->correoFicha($client) ?: (string) ($fichaEmpresa->correo ?? '');
+        $this->empresa['domicilio'] = $this->domicilioDe($client) ?: (string) ($fichaEmpresa->domicilio ?? '');
+
+        $vigente = $fichaEmpresa?->representanteVigente;
+        if ($this->gerenteDeFicha && $vigente !== null) {
+            $this->gerente['nombre'] = (string) $vigente->nombre;
+            $this->gerente['tipo_documento'] = (string) ($vigente->tipo_documento ?: 'DNI');
+            $this->gerente['dni'] = (string) $vigente->documento;
+            if ($this->domicilioGerenteDeFicha) {
+                $this->gerente['domicilio'] = (string) $vigente->domicilio;
+            }
+        }
+        if (! $this->domicilioGerenteDeFicha && filled($this->gerente['direccion'] ?? null)) {
+            $this->gerente['domicilio'] = DomicilioLegal::armar(
+                $this->gerente['direccion'], $this->gerente['distrito'] ?? null,
+                $this->gerente['provincia'] ?? null, $this->gerente['departamento'] ?? null,
+            );
+        }
     }
 
     /**
@@ -1076,6 +1169,7 @@ class Documentos extends Component
 
     public function previsualizarContrato(): void
     {
+        $this->fijarDatosDeFicha();
         $this->validate($this->reglasContrato(), $this->mensajesContrato());
 
         $seleccion = $this->seleccionContrato();
@@ -1096,6 +1190,7 @@ class Documentos extends Component
 
     public function generarContrato(): void
     {
+        $this->fijarDatosDeFicha();
         $this->validate($this->reglasContrato(), $this->mensajesContrato());
 
         $seleccion = $this->seleccionContrato();
@@ -1777,9 +1872,14 @@ class Documentos extends Component
     /**
      * Créditos activos con su estado para el color (obs. 1.1 del Área Legal,
      * 29/09, en el Anexo 1; desde el 17/10 también en el Anexo 2, pedido de
-     * Antony): 'vigente' = el más reciente sin contrato emitido (amarillo: es
-     * el que toca contratar), 'contratado' = ya tiene contrato (negrita),
-     * 'anterior' = créditos previos sin contrato (rojo).
+     * Antony): 'contratado' = ya tiene contrato (negrita), 'vigente' = creado
+     * hoy y sin contrato (amarillo: se le está haciendo el contrato),
+     * 'anterior' = el resto sin contrato (rojo).
+     *
+     * Hasta el 06/11 'vigente' era el más reciente sin contrato aunque fuera
+     * viejo (Trello, tarjeta 7: el #28950 de marzo salía en amarillo). "Hoy"
+     * es el día en que se registró (created_at), no la fecha del préstamo, que
+     * a veces se pone días antes.
      *
      * @return list<array{credit: Credit, estado: string}>
      */
@@ -1789,17 +1889,13 @@ class Documentos extends Component
             ->where('tipo', 'contrato')->where('estado', '!=', 'anulado')
             ->pluck('credit_id')->map(fn ($id) => (int) $id)->all();
 
-        $vigenteAsignado = false;
         $lista = [];
         foreach ($this->creditosActivos() as $credit) { // id desc: el primero es el más reciente
-            if (in_array((int) $credit->id, $conContrato, true)) {
-                $estado = 'contratado';
-            } elseif (! $vigenteAsignado) {
-                $estado = 'vigente';
-                $vigenteAsignado = true;
-            } else {
-                $estado = 'anterior';
-            }
+            $estado = match (true) {
+                in_array((int) $credit->id, $conContrato, true) => 'contratado',
+                (bool) $credit->created_at?->isToday() => 'vigente',
+                default => 'anterior',
+            };
             $lista[] = ['credit' => $credit, 'estado' => $estado];
         }
 
@@ -2437,6 +2533,7 @@ class Documentos extends Component
             // 30/10: declaraciones juradas (créditos con contrato y placas de ese contrato).
             'creditosConContrato' => $this->creditosConContrato(),
             'placasDeclaracion' => $this->placasDeclaracion(),
+            'djEligePlaca' => $this->djEligePlaca(),
             // 30/10: módulo SIGM (Agregado 03) del crédito elegido y lo inscrito de cada crédito con contrato.
             'sigm' => $this->datosSigm(),
             'inscripcionesSigm' => $this->creditosConContrato()

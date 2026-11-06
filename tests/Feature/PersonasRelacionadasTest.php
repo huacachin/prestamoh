@@ -119,6 +119,41 @@ class PersonasRelacionadasTest extends TestCase
         $this->assertNull(Client::where('documento', '47000002')->first());
     }
 
+    /** 05/11 (Trello, tarjeta 4): ubigeo con opciones en cascada, correo en dos partes y obligatorios en amarillo. */
+    public function test_el_alta_rapida_elige_el_ubigeo_y_el_dominio_del_correo(): void
+    {
+        $titular = $this->titular();
+        $v = $this->vehiculo($titular);
+
+        $comp = Livewire::test(Vehiculos::class, ['id' => $titular->id])
+            ->call('abrirCopro', $v->id)
+            ->call('abrirCrearCopro');
+        $html = $comp->html();
+        foreach (['departamento', 'provincia'] as $campo) {
+            $this->assertStringContainsString("wire:model.live=\"nuevoCopro.{$campo}\"", $html);
+        }
+        $this->assertStringContainsString('<option value="San Juan de Lurigancho">', $html, 'los distritos de Lima para elegir');
+        $this->assertStringContainsString('@GMAIL.COM', $html);
+        $this->assertStringNotContainsString('wire:model.blur="nuevoCopro.email"', $html, 'ya no se escribe el correo entero');
+        $this->assertGreaterThanOrEqual(13, substr_count($html, 'campo-obligatorio'), 'todos los obligatorios en amarillo');
+
+        // Cascada: Callao cambia la provincia y limpia el distrito de Lima; Huaral arrastra a Lima.
+        $comp->set('nuevoCopro.distrito', 'Ate')
+            ->set('nuevoCopro.departamento', 'Callao')
+            ->assertSet('nuevoCopro.provincia', 'Callao')->assertSet('nuevoCopro.distrito', '')
+            ->set('nuevoCopro.provincia', 'Huaral')
+            ->assertSet('nuevoCopro.departamento', 'Lima');
+
+        $comp->set('nuevoCopro', array_merge($this->formularioCopro(), [
+            'email' => '', 'email_usuario' => 'maria.lopez', 'email_dominio' => 'gmail.com',
+            'departamento' => 'Lima', 'provincia' => 'Huaral', 'distrito' => 'Chancay',
+        ]))->call('crearYVincularCopro')->assertHasNoErrors();
+
+        $copro = Client::where('documento', '47000002')->firstOrFail();
+        $this->assertSame(['maria.lopez@gmail.com', 'CHANCAY', 'HUARAL', 'LIMA'],
+            [$copro->email, $copro->distrito, $copro->provincia, $copro->departamento]);
+    }
+
     public function test_documento_repetido_no_duplica_persona(): void
     {
         $titular = $this->titular();

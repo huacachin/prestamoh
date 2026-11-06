@@ -348,12 +348,12 @@
                                                     <div class="col-6 col-md-3">
                                                         <label class="form-label mb-0 small fw-semibold">Documento *</label>
                                                         <div class="input-group input-group-sm">
-                                                            <select class="form-select form-select-sm" style="max-width:4.8rem;"
+                                                            <select class="form-select form-select-sm campo-obligatorio" style="max-width:4.8rem;"
                                                                     wire:model.live="nuevoCopro.tipo_documento">
                                                                 <option value="DNI">DNI</option>
                                                                 <option value="CE">CE</option>
                                                             </select>
-                                                            <input type="text" class="form-control form-control-sm @error('nuevoCopro.documento') is-invalid @enderror"
+                                                            <input type="text" class="form-control form-control-sm campo-obligatorio @error('nuevoCopro.documento') is-invalid @enderror"
                                                                    wire:model.blur="nuevoCopro.documento">
                                                             <button type="button" class="btn btn-danger" wire:click="consultarDocCopro"
                                                                     wire:loading.attr="disabled" wire:target="consultarDocCopro" title="Consultar documento">
@@ -365,7 +365,7 @@
                                                     </div>
                                                     <div class="col-6 col-md-3">
                                                         <label class="form-label mb-0 small fw-semibold">Ap. paterno *</label>
-                                                        <input type="text" class="form-control form-control-sm @error('nuevoCopro.apellido_pat') is-invalid @enderror @if(in_array('apellido_pat', $autoCopro)) campo-api @endif"
+                                                        <input type="text" class="form-control form-control-sm campo-obligatorio @error('nuevoCopro.apellido_pat') is-invalid @enderror @if(in_array('apellido_pat', $autoCopro)) campo-api @endif"
                                                                wire:model.blur="nuevoCopro.apellido_pat">
                                                         @error('nuevoCopro.apellido_pat') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                                     </div>
@@ -375,21 +375,21 @@
                                                     </div>
                                                     <div class="col-6 col-md-3">
                                                         <label class="form-label mb-0 small fw-semibold">Nombres *</label>
-                                                        <input type="text" class="form-control form-control-sm @error('nuevoCopro.nombre') is-invalid @enderror @if(in_array('nombre', $autoCopro)) campo-api @endif"
+                                                        <input type="text" class="form-control form-control-sm campo-obligatorio @error('nuevoCopro.nombre') is-invalid @enderror @if(in_array('nombre', $autoCopro)) campo-api @endif"
                                                                wire:model.blur="nuevoCopro.nombre">
                                                         @error('nuevoCopro.nombre') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                                     </div>
 
                                                     <div class="col-6 col-md-2">
                                                         <label class="form-label mb-0 small fw-semibold">Sexo *</label>
-                                                        <select class="form-select form-select-sm @if(in_array('sexo', $autoCopro)) campo-api @endif" wire:model.blur="nuevoCopro.sexo">
+                                                        <select class="form-select form-select-sm campo-obligatorio @if(in_array('sexo', $autoCopro)) campo-api @endif" wire:model.blur="nuevoCopro.sexo">
                                                             <option value="M">Masculino</option>
                                                             <option value="F">Femenino</option>
                                                         </select>
                                                     </div>
                                                     <div class="col-6 col-md-2">
                                                         <label class="form-label mb-0 small fw-semibold">Nacionalidad *</label>
-                                                        <select class="form-select form-select-sm" wire:model.blur="nuevoCopro.nacionalidad">
+                                                        <select class="form-select form-select-sm campo-obligatorio" wire:model.blur="nuevoCopro.nacionalidad">
                                                             @foreach(\App\Support\Documentos\Nacionalidades::OPCIONES as $op)
                                                                 <option value="{{ $op }}">{{ $op }}</option>
                                                             @endforeach
@@ -397,7 +397,7 @@
                                                     </div>
                                                     <div class="col-6 col-md-2">
                                                         <label class="form-label mb-0 small fw-semibold">Ocupación *</label>
-                                                        <select class="form-select form-select-sm" wire:model.blur="nuevoCopro.ocupacion">
+                                                        <select class="form-select form-select-sm campo-obligatorio" wire:model.blur="nuevoCopro.ocupacion">
                                                             @foreach(\App\Livewire\Clients\Create::OCUPACIONES as $v => $et)
                                                                 <option value="{{ $v }}">{{ $et }}</option>
                                                             @endforeach
@@ -405,7 +405,7 @@
                                                     </div>
                                                     <div class="col-6 col-md-2">
                                                         <label class="form-label mb-0 small fw-semibold">Estado civil *</label>
-                                                        <select class="form-select form-select-sm" wire:model.blur="nuevoCopro.estado_civil">
+                                                        <select class="form-select form-select-sm campo-obligatorio @if(in_array('estado_civil', $autoCopro)) campo-api @endif" wire:model.blur="nuevoCopro.estado_civil">
                                                             @foreach(\App\Livewire\Clients\Create::ESTADOS_CIVILES as $v => $et)
                                                                 <option value="{{ $v }}">{{ $et }}</option>
                                                             @endforeach
@@ -414,43 +414,19 @@
                                                     <div class="col-6 col-md-2">
                                                         <label class="form-label mb-0 small fw-semibold">Celular / WhatsApp *</label>
                                                         <input type="text" inputmode="tel" maxlength="20"
-                                                               class="form-control form-control-sm @error('nuevoCopro.celular1') is-invalid @enderror"
+                                                               class="form-control form-control-sm campo-obligatorio @error('nuevoCopro.celular1') is-invalid @enderror"
                                                                wire:model.blur="nuevoCopro.celular1" placeholder="987654321">
                                                         @error('nuevoCopro.celular1') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                                     </div>
-                                                    <div class="col-12 col-md-4">
-                                                        <label class="form-label mb-0 small fw-semibold">Correo *</label>
-                                                        <input type="email" class="form-control form-control-sm @error('nuevoCopro.email') is-invalid @enderror"
-                                                               wire:model.blur="nuevoCopro.email" placeholder="persona@correo.com">
-                                                        @error('nuevoCopro.email') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                                                    </div>
+                                                    @include('livewire.clients.partials._correo-en-partes', ['prop' => 'nuevoCopro', 'datos' => $nuevoCopro])
 
                                                     <div class="col-12 col-md-4">
                                                         <label class="form-label mb-0 small fw-semibold">Dirección *</label>
-                                                        <input type="text" class="form-control form-control-sm @error('nuevoCopro.direccion') is-invalid @enderror @if(in_array('direccion', $autoCopro)) campo-api @endif"
+                                                        <input type="text" class="form-control form-control-sm campo-obligatorio @error('nuevoCopro.direccion') is-invalid @enderror @if(in_array('direccion', $autoCopro)) campo-api @endif"
                                                                wire:model.blur="nuevoCopro.direccion">
                                                         @error('nuevoCopro.direccion') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                                     </div>
-                                                    <div class="col-6 col-md-3">
-                                                        <label class="form-label mb-0 small fw-semibold">Distrito *</label>
-                                                        <input type="text" class="form-control form-control-sm text-uppercase @error('nuevoCopro.distrito') is-invalid @enderror @if(in_array('distrito', $autoCopro)) campo-api @endif"
-                                                               wire:model.blur="nuevoCopro.distrito">
-                                                        @error('nuevoCopro.distrito') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                                                    </div>
-                                                    <div class="col-6 col-md-2">
-                                                        <label class="form-label mb-0 small fw-semibold">Provincia *</label>
-                                                        <select class="form-select form-select-sm @if(in_array('provincia', $autoCopro)) campo-api @endif" wire:model.blur="nuevoCopro.provincia">
-                                                            @foreach(\App\Livewire\Clients\Create::PROVINCIAS as $v => $et)
-                                                                <option value="{{ $v }}">{{ $et }}</option>
-                                                            @endforeach
-                                                        </select>
-                                                    </div>
-                                                    <div class="col-6 col-md-3">
-                                                        <label class="form-label mb-0 small fw-semibold">Departamento *</label>
-                                                        <input type="text" class="form-control form-control-sm text-uppercase @error('nuevoCopro.departamento') is-invalid @enderror @if(in_array('departamento', $autoCopro)) campo-api @endif"
-                                                               wire:model.blur="nuevoCopro.departamento">
-                                                        @error('nuevoCopro.departamento') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                                                    </div>
+                                                    @include('livewire.clients.partials._ubigeo-cascada', ['prop' => 'nuevoCopro', 'datos' => $nuevoCopro, 'auto' => $autoCopro, 'col' => 'col-6 col-md-4'])
                                                 </div>
 
                                                 <div class="d-flex gap-2 mt-2">

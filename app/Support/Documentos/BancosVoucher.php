@@ -31,6 +31,9 @@ final class BancosVoucher
         'interbank' => 'EL BANCO INTERNACIONAL DEL PERÚ - INTERBANK',
         'caja_cusco' => 'LA CAJA MUNICIPAL DE AHORRO Y CRÉDITO CUSCO - CMAC CUSCO',
         'caja_huancayo' => 'LA CAJA MUNICIPAL DE AHORRO Y CRÉDITO HUANCAYO - CMAC HUANCAYO',
+        // Solo banco del desembolso (Trello, tarjeta 1, 04/11): el voucher de
+        // Yape sigue siendo el combo bcp/yape del Anexo 2, no un banco aparte.
+        'yape' => 'LA PLATAFORMA DIGITAL DE YAPE DEL BANCO DE CRÉDITO DEL PERÚ - BCP',
     ];
 
     public const MODALIDADES = [

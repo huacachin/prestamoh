@@ -1,5 +1,5 @@
 {{-- Declaraciones juradas de PROPIEDAD y de PUBLICIDAD (30/10/2026, Agregado 01 del Área Legal).
-     Un solo envoltorio para los 8 modelos de "4. Declaración jurada Propiedad" y "5. Declaración Jurada
+     Un solo envoltorio para los modelos de "4. Declaración jurada Propiedad" y "5. Declaración Jurada
      Publicidad": el cuerpo de cada uno vive en declaraciones/{propiedad|publicidad}-{variante}.blade.php
      (texto del .docx); aquí van la página, la fecha (solo la de propiedad la lleva aparte) y las firmas.
      Recibe el snapshot congelado ($d, ver GeneradorDeclaracion), $medio y $dato. --}}
@@ -14,6 +14,13 @@
         $e = $d['empresa'] ?? [];
         $g = $e['gerente'] ?? [];
         $b = $d['bien'];
+        // Formato 2 (modelos del 04/11, declaraciones/v2): los vehículos declarados, el presente y el futuro.
+        $v2 = ($d['formato'] ?? 1) === 2;
+        $bienes = $d['bienes'] ?? [$b];
+        $b1 = $bienes[0] ?? [];
+        $b2 = $bienes[1] ?? [];
+        $bf = collect($bienes)->firstWhere('es_futuro', true) ?? $b1;
+        $bp = collect($bienes)->firstWhere('es_futuro', false) ?? $b1;
         $acreedor = $d['constantes']['acreedor'];
         $publicidad = $d['constantes']['publicidad'];
         $ciudad = $d['ciudad'];
@@ -25,7 +32,9 @@
         /* Los tamaños de los modelos: 7 pt (propiedad) y 8 pt (publicidad), en la Bookman de la casa
            (el contrato va en 6.5 pt). Una sola hoja: con 7.5 pt la de bien futuro con dos declarantes
            dejaba las firmas en una segunda hoja. */
-        body { font-size: {{ $propiedad ? '7pt' : '8pt' }}; line-height: {{ $propiedad ? '1.25' : '1.3' }}; }
+        {{-- 06/11 (tarjeta 2): los de un bien futuro y uno presente son los más largos; en 7 pt pasaban
+             a dos hojas aun con poco espacio de firma: van en 6.5 pt (como el contrato) y el espacio queda. --}}
+        body { font-size: {{ $propiedad ? (str_ends_with($d['variante'], 'futuro-presente') ? '6.5pt' : '7pt') : '8pt' }}; line-height: {{ $propiedad ? '1.25' : '1.3' }}; }
         .dj-titulo { text-align: center; font-weight: bold; text-decoration: underline;
                      font-size: {{ $propiedad ? '8pt' : '9pt' }}; margin: 0 0 8px 0; }
         .dj-fecha { text-align: right; margin-top: 10px; }
@@ -40,7 +49,7 @@
     </style>
 </head>
 <body>
-    @include('documentos.pdf.declaraciones.'.($propiedad ? 'propiedad' : 'publicidad').'-'.$d['variante'])
+    @include('documentos.pdf.declaraciones.'.($v2 ? 'v2.' : '').($propiedad ? 'propiedad' : 'publicidad').'-'.$d['variante'])
 
     @if ($propiedad)
         <p class="parrafo dj-fecha">{{ $ciudad }}, {{ $dato($d['fecha_de']) }}.</p>

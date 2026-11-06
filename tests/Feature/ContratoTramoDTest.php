@@ -218,11 +218,14 @@ class ContratoTramoDTest extends TestCase
 
     // ── 3 · Empresa y representante persistidos ───────────────────────────
 
-    private function emitirContratoEmpresa(Client $empresa, Credit $credit, Vehiculo $v, array $gerente): void
+    /** 06/11 (Trello, tarjeta 6): el gerente ya registrado va bloqueado; $cambiarGerente pulsa "Cambiar gerente". */
+    private function emitirContratoEmpresa(Client $empresa, Credit $credit, Vehiculo $v, array $gerente, bool $cambiarGerente = false): void
     {
-        Livewire::test(Documentos::class, ['id' => $empresa->id])
-            ->call('abrirModalContrato')
-            ->set('contratoCreditoId', $credit->id)
+        $comp = Livewire::test(Documentos::class, ['id' => $empresa->id])->call('abrirModalContrato');
+        if ($cambiarGerente) {
+            $comp->call('cambiarGerente');
+        }
+        $comp->set('contratoCreditoId', $credit->id)
             ->set('modeloContrato', 'a4')
             ->set('contratoVehiculos.0.vehiculo_id', $v->id)
             ->set('bancoDesembolso', 'bcp')
@@ -288,10 +291,10 @@ class ContratoTramoDTest extends TestCase
         $this->emitirContratoEmpresa($empresa, $credit, $v, [
             'nombre' => 'JACK BLAS SULLCA', 'dni' => '46964491', 'sexo' => 'M',
         ]);
-        // El poder cambia de titular: gerenta nueva.
+        // El poder cambia de titular: gerenta nueva (con "Cambiar gerente", porque el registrado va bloqueado).
         $this->emitirContratoEmpresa($empresa, $credit, $v, [
             'nombre' => 'ROSA QUISPE MAMANI', 'dni' => '41752169', 'sexo' => 'F',
-        ]);
+        ], cambiarGerente: true);
 
         $ficha = ClientEmpresa::where('client_id', $empresa->id)->first();
 
@@ -299,6 +302,35 @@ class ContratoTramoDTest extends TestCase
         $this->assertSame('ROSA QUISPE MAMANI', $ficha->representanteVigente->nombre);
         $this->assertSame('F', $ficha->representanteVigente->sexo);
         $this->assertFalse((bool) $ficha->representantes()->where('documento', '46964491')->first()->vigente);
+    }
+
+    public function test_sin_gerente_registrado_su_domicilio_se_arma_con_el_ubigeo_elegido(): void
+    {
+        // 06/11 (Trello, tarjeta 6): sin representante en la ficha, dirección + listas de ubigeo.
+        $empresa = $this->cliente(['tipo_documento' => 'RUC', 'documento' => '20601234571', 'nombre' => 'TRANSPORTES TD5 S.A.C.']);
+        $credit = $this->credito($empresa);
+        $v = $this->vehiculo($empresa, 'TRD888');
+
+        $comp = Livewire::test(Documentos::class, ['id' => $empresa->id])->call('abrirModalContrato')
+            ->set('modeloContrato', 'a4');
+        $this->assertFalse($comp->get('gerenteDeFicha'));
+        $html = $comp->html();
+        $this->assertStringContainsString('wire:model.blur="gerente.direccion"', $html);
+        $this->assertStringContainsString('wire:model.live="gerente.provincia"', $html);
+        $this->assertStringNotContainsString('select2-tags campo-elegir', $html, 'dentro del modal, selects simples');
+
+        $comp->set('contratoCreditoId', $credit->id)->set('contratoVehiculos.0.vehiculo_id', $v->id)
+            ->set('bancoDesembolso', 'bcp')->set('empresa.partida', '15626194')->set('empresa.oficina_registral', 'LIMA')
+            ->set('gerente.nombre', 'JACK BLAS SULLCA')->set('gerente.dni', '46964491')->set('gerente.sexo', 'M')
+            ->set('gerente.ocupacion', 'EMPRESARIO')->set('gerente.estado_civil', 'CASADO')
+            ->set('gerente.direccion', 'Av. Salaverry 2900')->set('gerente.departamento', 'Callao')
+            ->assertSet('gerente.provincia', 'Callao')
+            ->set('gerente.distrito', 'Bellavista')
+            ->call('generarContrato')->assertDispatched('successAlert');
+
+        $vigente = ClientEmpresa::where('client_id', $empresa->id)->first()->representanteVigente;
+        $this->assertStringStartsWith('AV. SALAVERRY 2900, DISTRITO DE BELLAVISTA, ', $vigente->domicilio);
+        $this->assertStringContainsString('CALLAO', $vigente->domicilio);
     }
 
     public function test_reemitir_con_el_mismo_gerente_actualiza_sin_duplicar(): void
@@ -310,11 +342,20 @@ class ContratoTramoDTest extends TestCase
         $this->emitirContratoEmpresa($empresa, $credit, $v, [
             'nombre' => 'JACK BLAS SULLCA', 'dni' => '46964491', 'sexo' => 'M',
         ]);
+        // 06/11 (tarjeta 6): sin "Cambiar gerente", el nombre tecleado encima del bloqueado no cuenta.
+        $this->emitirContratoEmpresa($empresa, $credit, $v, [
+            'nombre' => 'OTRO NOMBRE', 'dni' => '99999999', 'sexo' => 'M',
+        ]);
+        $ficha = ClientEmpresa::where('client_id', $empresa->id)->first();
+        $this->assertSame([1, 'JACK BLAS SULLCA', '46964491'],
+            [$ficha->representantes()->count(), $ficha->representanteVigente->nombre, $ficha->representanteVigente->documento]);
+
+        // Con "Cambiar gerente" y el mismo documento se corrige la misma fila.
         $this->emitirContratoEmpresa($empresa, $credit, $v, [
             'nombre' => 'JACK YELTSIN BLAS SULLCA', 'dni' => '46964491', 'sexo' => 'M',
-        ]);
+        ], cambiarGerente: true);
 
-        $ficha = ClientEmpresa::where('client_id', $empresa->id)->first();
+        $ficha->refresh();
 
         $this->assertSame(1, $ficha->representantes()->count(), 'misma persona: se actualiza, no se duplica');
         $this->assertSame('JACK YELTSIN BLAS SULLCA', $ficha->representanteVigente->nombre);

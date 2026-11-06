@@ -132,4 +132,17 @@ class ContratoDepositoGerenteTest extends TestCase
         $this->assertStringContainsString('INTERBANK', $html, 'la constancia nombra el banco del desembolso');
         $this->assertStringNotContainsString('CUENTA BANCARIA N°', $html, 'ese número solo existe en el depósito a un tercero');
     }
+
+    /** Trello, tarjeta 1 (04/11): Yape del BCP como banco del desembolso. */
+    public function test_el_banco_del_desembolso_puede_ser_la_plataforma_yape_del_bcp(): void
+    {
+        $this->wizard()->assertSee('LA PLATAFORMA DIGITAL DE YAPE DEL BANCO DE CRÉDITO DEL PERÚ - BCP')
+            ->set('bancoDesembolso', 'yape')
+            ->call('generarContrato')->assertDispatched('successAlert')->assertNotDispatched('errorAlert');
+        $doc = DocumentoCliente::where('client_id', $this->empresa->id)->where('tipo', 'contrato')->first();
+        $html = RenderDocumento::html($doc->snapshot, 'contrato', 'pdf');
+
+        $this->assertSame('yape', $doc->snapshot['banco']);
+        $this->assertStringContainsString('EN LA PLATAFORMA DIGITAL DE YAPE DEL BANCO DE CRÉDITO DEL PERÚ - BCP', $html);
+    }
 }

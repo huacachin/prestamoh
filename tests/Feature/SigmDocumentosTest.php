@@ -241,6 +241,8 @@ class SigmDocumentosTest extends TestCase
             ->assertSee('Abrir en Gmail')
             ->assertSee('Copiar con formato')
             ->assertSee('Primero registra la inscripción de la constitución')
+            ->assertSee('3. Registro de Constitución de GM')
+            ->assertSee('NO CONSTITUIDO')
             ->set('sigmFormulario', '905021')
             ->set('sigmFolio', '2026-10-27')
             ->set('sigmFecha', '2026-11-02')
@@ -270,7 +272,8 @@ class SigmDocumentosTest extends TestCase
             'SE CANCELA LA CONSTITUCIÓN DE GARANTIA MOBILIARIA SOBRE EL VEHICULO DE PLACA N° SIG111 INSCRITA MEDIANTE FORMULARIO N° 2026-905021 Y FOLIO CAUSAL ELECTRÓNICO N° 20261027002239830 DE FECHA 27/10/2026, POR EL SUPUESTO DEL CUMPLIMIENTO DE LA OBLIGACIÓN, ES DECIR, LA DEUDORA QUISPE MAMANI ROSA LINDA HA CUMPLIDO CON EFECTUAR EL PAGO COMPLETO DEL MONTO DE LA GARANTÍA.',
             GeneradorSigm::cancelacion($this->contexto(), $aviso)
         );
-        $c->assertSee('INSCRITA MEDIANTE FORMULARIO N° 2026-905021')->assertSee('Inscrita 27/10/2026');
+        $c->assertSee('INSCRITA MEDIANTE FORMULARIO N° 2026-905021')->assertSee('CONSTITUIDO')
+            ->assertDontSee('NO CONSTITUIDO')->assertSee('Inscrita el 27/10/2026');
 
         // Corregir: el mismo aviso, no uno nuevo.
         $c->set('sigmFecha', '2026-10-28')->call('guardarRegistroSigm')->assertHasNoErrors();
@@ -310,6 +313,9 @@ class SigmDocumentosTest extends TestCase
         $this->assertStringContainsString('title="Primero genera el contrato del crédito">—</span>', $html);
         $this->assertStringContainsString('title="Anular documento" aria-label="Anular documento">', $html);
         $this->assertStringNotContainsString('</i> Anular', $html);
+        // 06/11 (Trello, tarjeta 5): la etiqueta de cada tipo lleva el color de su botón.
+        $this->assertStringContainsString('class="badge doc-tipo-contrato"', $html);
+        $this->assertStringContainsString('class="badge doc-tipo-anexo1"', $html);
 
         // Abre en el crédito de la fila; sin contrato (o sin crédito), en el más reciente con contrato.
         $c->call('abrirModalSigm', $this->credit->id)->assertSet('sigmCreditoId', $this->credit->id)->assertDispatched('sigm-modal-open')

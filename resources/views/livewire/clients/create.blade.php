@@ -235,12 +235,12 @@
                             <div class="col-md-3">
                                 <label class="form-label mb-0 small fw-semibold">Documento *</label>
                                 <div class="input-group input-group-sm">
-                                    <select class="form-select form-select-sm" style="max-width:4.8rem;"
+                                    <select class="form-select form-select-sm campo-obligatorio" style="max-width:4.8rem;"
                                             wire:model.live="representante.tipo_documento">
                                         <option value="DNI">DNI</option>
                                         <option value="CE">CE</option>
                                     </select>
-                                    <input type="text" class="form-control form-control-sm @error('representante.dni') is-invalid @enderror"
+                                    <input type="text" class="form-control form-control-sm campo-obligatorio @error('representante.dni') is-invalid @enderror"
                                            wire:model.blur="representante.dni">
                                     <button type="button" class="btn btn-danger" wire:click="consultarDocRepresentante"
                                             wire:loading.attr="disabled" wire:target="consultarDocRepresentante"
@@ -253,20 +253,20 @@
                             </div>
                             <div class="col-md-5">
                                 <label class="form-label mb-0 small fw-semibold">Nombre completo *</label>
-                                <input type="text" class="form-control form-control-sm @error('representante.nombre') is-invalid @enderror @if(in_array('nombre', $autoRep)) campo-api @endif"
+                                <input type="text" class="form-control form-control-sm campo-obligatorio @error('representante.nombre') is-invalid @enderror @if(in_array('nombre', $autoRep)) campo-api @endif"
                                        wire:model.blur="representante.nombre">
                                 @error('representante.nombre') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small fw-semibold">Sexo *</label>
-                                <select class="form-select form-select-sm @if(in_array('sexo', $autoRep)) campo-api @endif" wire:model.defer="representante.sexo">
+                                <select class="form-select form-select-sm campo-obligatorio @if(in_array('sexo', $autoRep)) campo-api @endif" wire:model.defer="representante.sexo">
                                     <option value="M">Masculino</option>
                                     <option value="F">Femenino</option>
                                 </select>
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small fw-semibold">Nacionalidad *</label>
-                                <select class="form-select form-select-sm @if(in_array('nacionalidad', $autoRep)) campo-api @endif" wire:model.defer="representante.nacionalidad">
+                                <select class="form-select form-select-sm campo-obligatorio @if(in_array('nacionalidad', $autoRep)) campo-api @endif" wire:model.defer="representante.nacionalidad">
                                     @foreach(\App\Support\Documentos\Nacionalidades::OPCIONES as $opcion)
                                         <option value="{{ $opcion }}">{{ $opcion }}</option>
                                     @endforeach
@@ -274,7 +274,7 @@
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label mb-0 small fw-semibold">Ocupación *</label>
-                                <select class="form-select form-select-sm @if(in_array('ocupacion', $autoRep)) campo-api @endif" wire:model.defer="representante.ocupacion">
+                                <select class="form-select form-select-sm campo-obligatorio @if(in_array('ocupacion', $autoRep)) campo-api @endif" wire:model.defer="representante.ocupacion">
                                     @foreach(\App\Livewire\Clients\Create::OCUPACIONES as $valor => $etiqueta)
                                         <option value="{{ $valor }}">{{ $etiqueta }}</option>
                                     @endforeach
@@ -282,7 +282,7 @@
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label mb-0 small fw-semibold">Estado civil *</label>
-                                <select class="form-select form-select-sm @if(in_array('estado_civil', $autoRep)) campo-api @endif" wire:model.defer="representante.estado_civil">
+                                <select class="form-select form-select-sm campo-obligatorio @if(in_array('estado_civil', $autoRep)) campo-api @endif" wire:model.defer="representante.estado_civil">
                                     @foreach(\App\Livewire\Clients\Create::estadosCivilesPara($estado_civil) as $valor => $etiqueta)
                                         <option value="{{ $valor }}">{{ $etiqueta }}</option>
                                     @endforeach
@@ -290,9 +290,12 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label mb-0 small fw-semibold">Domicilio <span class="text-muted">(si difiere del de la empresa)</span></label>
-                                <input type="text" class="form-control form-control-sm" wire:model.defer="representante.domicilio"
-                                       placeholder="Se usa el de la empresa si queda vacío">
+                                <input type="text" class="form-control form-control-sm @error('representante.domicilio') is-invalid @enderror" wire:model.defer="representante.domicilio"
+                                       placeholder="Dirección; se usa la de la empresa si queda vacía">
+                                @error('representante.domicilio') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
+                            {{-- 06/11 (Trello, tarjeta 6): el ubigeo del domicilio se elige, como el de la empresa. --}}
+                            @include('livewire.clients.partials._ubigeo-cascada', ['prop' => 'representante', 'datos' => $representante, 'col' => 'col-md-4', 'amarillo' => '', 'obligatorio' => false])
                         </div>
                     @endif
 

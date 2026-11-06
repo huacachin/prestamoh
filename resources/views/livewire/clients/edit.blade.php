@@ -42,6 +42,8 @@
             {{-- En móvil las pestañas no se apilan: se deslizan en una tira
                  horizontal (patrón habitual y no roba alto de pantalla). --}}
             <style>
+                /* 05/11 (Trello, tarjeta 4): obligatorios del copropietario en amarillo, como en Nuevo cliente. */
+                .campo-obligatorio, select.campo-obligatorio + .select2 .select2-selection { background-color: #fff8c5 !important; }
                 .tabs-cliente { display:flex; gap:4px; overflow-x:auto; -webkit-overflow-scrolling:touch;
                                 border-bottom:1px solid #e9ecef; padding-bottom:8px; margin-bottom:16px; }
                 .tabs-cliente::-webkit-scrollbar { height:0; }
@@ -372,18 +374,18 @@
                                             <div class="col-6 col-md-3">
                                                 <label class="form-label mb-0 small fw-semibold">Documento *</label>
                                                 <div class="input-group input-group-sm">
-                                                    <select class="form-select form-select-sm" style="max-width:4.8rem;" wire:model="coproForm.tipo_documento" @disabled(! $identidad)>
+                                                    <select class="form-select form-select-sm campo-obligatorio" style="max-width:4.8rem;" wire:model="coproForm.tipo_documento" @disabled(! $identidad)>
                                                         <option value="DNI">DNI</option>
                                                         <option value="CE">CE</option>
                                                         <option value="RUC">RUC</option>
                                                     </select>
-                                                    <input type="text" class="form-control form-control-sm @error('coproForm.documento') is-invalid @enderror" wire:model="coproForm.documento" @disabled(! $identidad)>
+                                                    <input type="text" class="form-control form-control-sm campo-obligatorio @error('coproForm.documento') is-invalid @enderror" wire:model="coproForm.documento" @disabled(! $identidad)>
                                                 </div>
                                                 @error('coproForm.documento') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                                             </div>
                                             <div class="col-6 col-md-3">
                                                 <label class="form-label mb-0 small fw-semibold">Ap. paterno *</label>
-                                                <input type="text" class="form-control form-control-sm @error('coproForm.apellido_pat') is-invalid @enderror" wire:model="coproForm.apellido_pat" @disabled(! $identidad)>
+                                                <input type="text" class="form-control form-control-sm campo-obligatorio @error('coproForm.apellido_pat') is-invalid @enderror" wire:model="coproForm.apellido_pat" @disabled(! $identidad)>
                                                 @error('coproForm.apellido_pat') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                             </div>
                                             <div class="col-6 col-md-3">
@@ -392,19 +394,19 @@
                                             </div>
                                             <div class="col-6 col-md-3">
                                                 <label class="form-label mb-0 small fw-semibold">Nombres *</label>
-                                                <input type="text" class="form-control form-control-sm @error('coproForm.nombre') is-invalid @enderror" wire:model="coproForm.nombre" @disabled(! $identidad)>
+                                                <input type="text" class="form-control form-control-sm campo-obligatorio @error('coproForm.nombre') is-invalid @enderror" wire:model="coproForm.nombre" @disabled(! $identidad)>
                                                 @error('coproForm.nombre') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                             </div>
                                             <div class="col-6 col-md-2">
                                                 <label class="form-label mb-0 small fw-semibold">Sexo *</label>
-                                                <select class="form-select form-select-sm" wire:model="coproForm.sexo" @disabled(! $identidad)>
+                                                <select class="form-select form-select-sm campo-obligatorio" wire:model="coproForm.sexo" @disabled(! $identidad)>
                                                     <option value="M">Masculino</option>
                                                     <option value="F">Femenino</option>
                                                 </select>
                                             </div>
                                             <div class="col-6 col-md-2">
                                                 <label class="form-label mb-0 small fw-semibold">Nacionalidad *</label>
-                                                <select class="form-select form-select-sm" wire:model="coproForm.nacionalidad" @disabled(! $identidad)>
+                                                <select class="form-select form-select-sm campo-obligatorio" wire:model="coproForm.nacionalidad" @disabled(! $identidad)>
                                                     @foreach(\App\Support\Documentos\Nacionalidades::OPCIONES as $op)
                                                         <option value="{{ $op }}">{{ $op }}</option>
                                                     @endforeach
@@ -412,7 +414,7 @@
                                             </div>
                                             <div class="col-6 col-md-2">
                                                 <label class="form-label mb-0 small fw-semibold">Ocupación *</label>
-                                                <select class="form-select form-select-sm @error('coproForm.ocupacion') is-invalid @enderror" wire:model="coproForm.ocupacion">
+                                                <select class="form-select form-select-sm campo-obligatorio @error('coproForm.ocupacion') is-invalid @enderror" wire:model="coproForm.ocupacion">
                                                     @foreach(\App\Livewire\Clients\Create::OCUPACIONES as $v => $et)
                                                         <option value="{{ $v }}">{{ $et }}</option>
                                                     @endforeach
@@ -420,7 +422,7 @@
                                             </div>
                                             <div class="col-6 col-md-2">
                                                 <label class="form-label mb-0 small fw-semibold">Estado civil *</label>
-                                                <select class="form-select form-select-sm @error('coproForm.estado_civil') is-invalid @enderror" wire:model="coproForm.estado_civil">
+                                                <select class="form-select form-select-sm campo-obligatorio @error('coproForm.estado_civil') is-invalid @enderror" wire:model="coproForm.estado_civil">
                                                     @foreach(\App\Livewire\Clients\Create::ESTADOS_CIVILES as $v => $et)
                                                         <option value="{{ $v }}">{{ $et }}</option>
                                                     @endforeach
@@ -428,33 +430,16 @@
                                             </div>
                                             <div class="col-6 col-md-2">
                                                 <label class="form-label mb-0 small fw-semibold">Celular / WhatsApp *</label>
-                                                <input type="text" inputmode="tel" maxlength="20" class="form-control form-control-sm @error('coproForm.celular1') is-invalid @enderror" wire:model="coproForm.celular1" placeholder="987654321">
+                                                <input type="text" inputmode="tel" maxlength="20" class="form-control form-control-sm campo-obligatorio @error('coproForm.celular1') is-invalid @enderror" wire:model="coproForm.celular1" placeholder="987654321">
                                                 @error('coproForm.celular1') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                             </div>
-                                            <div class="col-12 col-md-4">
-                                                <label class="form-label mb-0 small fw-semibold">Correo *</label>
-                                                <input type="email" class="form-control form-control-sm @error('coproForm.email') is-invalid @enderror" wire:model="coproForm.email" placeholder="persona@correo.com">
-                                                @error('coproForm.email') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                                            </div>
+                                            @include('livewire.clients.partials._correo-en-partes', ['prop' => 'coproForm', 'datos' => $coproForm])
                                             <div class="col-12 col-md-4">
                                                 <label class="form-label mb-0 small fw-semibold">Dirección *</label>
-                                                <input type="text" class="form-control form-control-sm @error('coproForm.direccion') is-invalid @enderror" wire:model="coproForm.direccion">
+                                                <input type="text" class="form-control form-control-sm campo-obligatorio @error('coproForm.direccion') is-invalid @enderror" wire:model="coproForm.direccion">
                                                 @error('coproForm.direccion') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                             </div>
-                                            <div class="col-6 col-md-2">
-                                                <label class="form-label mb-0 small fw-semibold">Distrito *</label>
-                                                <input type="text" class="form-control form-control-sm text-uppercase @error('coproForm.distrito') is-invalid @enderror" wire:model="coproForm.distrito">
-                                                @error('coproForm.distrito') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                                            </div>
-                                            <div class="col-6 col-md-2">
-                                                <label class="form-label mb-0 small fw-semibold">Provincia *</label>
-                                                <select class="form-select form-select-sm @error('coproForm.provincia') is-invalid @enderror" wire:model="coproForm.provincia">
-                                                    @foreach(\App\Livewire\Clients\Create::PROVINCIAS as $v => $et)
-                                                        <option value="{{ $v }}">{{ $et }}</option>
-                                                    @endforeach
-                                                </select>
-                                                @error('coproForm.provincia') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                                            </div>
+                                            @include('livewire.clients.partials._ubigeo-cascada', ['prop' => 'coproForm', 'datos' => $coproForm, 'col' => 'col-6 col-md-4'])
                                         </div>
                                         <div class="d-flex gap-2 mt-2">
                                             <button type="button" class="btn btn-sm btn-dark" wire:click="guardarCopro" wire:loading.attr="disabled" wire:target="guardarCopro">

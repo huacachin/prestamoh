@@ -95,7 +95,8 @@ class ObservacionesLegalBloqueBTest extends TestCase
     {
         $viejo = $this->credito('2026-06-01');     // anterior sin contrato → rojo
         $contratado = $this->credito('2026-08-01');  // con contrato → negrita
-        $nuevo = $this->credito('2026-10-01');       // el más reciente sin contrato → amarillo
+        $nuevo = $this->credito('2026-10-01');       // creado hoy sin contrato → amarillo
+        Credit::whereKey([$viejo->id, $contratado->id])->update(['created_at' => '2026-06-01 09:00:00']);
         $this->contratoEmitido($contratado);
 
         $c = Livewire::test(Documentos::class, ['id' => $this->client->id])->call('abrirModalAnexo1');
@@ -107,6 +108,14 @@ class ObservacionesLegalBloqueBTest extends TestCase
         $this->assertMatchesRegularExpression('/credito-anterior"[^>]*wire:key="anx-cred-'.$viejo->id.'"/', $html);
         $c->assertSee('Vigente del día')->assertSee('Con contrato')->assertSee('Anterior')
             ->assertDontSeeHtml('wire:model.live="creditoId"><option');
+
+        // 06/11 (Trello, tarjeta 7): el más reciente sin contrato pero creado antes de hoy ya no es
+        // "vigente" (el #28950 de marzo salía en amarillo): va en rojo y no se preselecciona.
+        Credit::whereKey($nuevo->id)->update(['created_at' => now()->subDay()]);
+        $ayer = Livewire::test(Documentos::class, ['id' => $this->client->id])->call('abrirModalAnexo1');
+        $this->assertNull($ayer->get('creditoId'));
+        $this->assertMatchesRegularExpression('/credito-anterior"[^>]*wire:key="anx-cred-'.$nuevo->id.'"/', $ayer->html());
+        $this->assertDoesNotMatchRegularExpression('/credito-vigente"[^>]*wire:key/', $ayer->html());
 
         // Todos con contrato y más de uno: no hay "vigente" y no se preselecciona.
         $this->contratoEmitido($viejo);
