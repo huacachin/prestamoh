@@ -4,6 +4,7 @@ namespace App\Livewire\Clients;
 
 use App\Models\Client;
 use App\Models\Vehiculo;
+use App\Models\VehiculoGpsCuenta;
 use App\Models\VehiculoGpsReporte;
 use App\Support\ConReglasDeEliminacion;
 use App\Support\Coordenadas;
@@ -20,6 +21,10 @@ use Livewire\Component;
  * y, debajo, sus ubicaciones. Sin vehículos, se avisa que aún no se agregaron.
  * La fecha de registro se pone sola al guardar. Editar (12/10): mismo
  * formulario; quien no es director solo edita lo registrado el mismo día.
+ *
+ * Cuenta GPS (06/11/2026, Trello; Antony: "una para cada placa, un botón que abre un modal
+ * al costado de agregar ubicación"): aplicativo, enlace, usuario y contraseña de la
+ * plataforma del GPS. La ve quien ve la pestaña; la registra o cambia quien puede editar.
  */
 class GpsVehiculos extends Component
 {
@@ -44,6 +49,12 @@ class GpsVehiculos extends Component
     public ?string $msg = null;
 
     public ?string $msgType = null;
+
+    /** Vehículo cuyo modal "Cuenta GPS" está abierto (null = ninguno). */
+    public ?int $cuentaVehiculoId = null;
+
+    /** @var array{aplicativo: string, enlace: string, usuario: string, contrasena: string} */
+    public array $cuenta = [];
 
     public function mount(int $id): void
     {
@@ -205,6 +216,85 @@ class GpsVehiculos extends Component
         $this->msg = "Ubicación del vehículo {$r->placa} eliminada.";
     }
 
+    /** Abre el modal "Cuenta GPS" de la placa con lo ya registrado (vacío si es nueva). */
+    public function abrirCuenta(int $vehiculoId): void
+    {
+        if (! $this->vehiculos()->firstWhere('id', $vehiculoId) instanceof Vehiculo) {
+            $this->dispatch('errorAlert', ['message' => 'Ese vehículo no es de este cliente.']);
+
+            return;
+        }
+        $cuenta = VehiculoGpsCuenta::where('vehiculo_id', $vehiculoId)->first();
+        if (! $cuenta && ! $this->puedeEditar) {
+            $this->dispatch('errorAlert', ['message' => 'Esta placa aún no tiene cuenta GPS registrada.']);
+
+            return;
+        }
+
+        $this->resetErrorBag();
+        $this->cuentaVehiculoId = $vehiculoId;
+        $this->cuenta = [
+            'aplicativo' => (string) $cuenta?->aplicativo,
+            'enlace' => (string) $cuenta?->enlace,
+            'usuario' => (string) $cuenta?->usuario,
+            'contrasena' => (string) $cuenta?->contrasena,
+        ];
+        $this->dispatch('cuenta-gps-modal-open');
+    }
+
+    /** Al cerrar el modal la contraseña sale del estado del componente. */
+    public function cerrarCuenta(): void
+    {
+        $this->cuentaVehiculoId = null;
+        $this->cuenta = [];
+        $this->resetErrorBag();
+    }
+
+    public function guardarCuenta(): void
+    {
+        abort_unless($this->puedeEditar, 403, 'No tienes permiso para registrar la cuenta del GPS.');
+        $vehiculo = $this->cuentaVehiculoId ? $this->vehiculos()->firstWhere('id', $this->cuentaVehiculoId) : null;
+        if (! $vehiculo instanceof Vehiculo) {
+            $this->dispatch('errorAlert', ['message' => 'Elige primero la placa con "Cuenta GPS".']);
+
+            return;
+        }
+
+        $this->cuenta = array_map(fn ($valor) => trim((string) $valor), $this->cuenta);
+        $this->cuenta['enlace'] = (string) VehiculoGpsCuenta::normalizarEnlace($this->cuenta['enlace'] ?? '');
+        $this->validate([
+            'cuenta.aplicativo' => 'required|string|max:100',
+            'cuenta.enlace' => 'nullable|url|max:500',
+            'cuenta.usuario' => 'required|string|max:150',
+            'cuenta.contrasena' => 'required|string|max:150',
+        ], [
+            'cuenta.aplicativo.required' => 'Indica el aplicativo o la plataforma del GPS.',
+            'cuenta.enlace.url' => 'El enlace no parece una dirección web (ej.: https://gps.empresa.com).',
+            'cuenta.usuario.required' => 'Indica el usuario de la cuenta.',
+            'cuenta.contrasena.required' => 'Indica la contraseña de la cuenta.',
+        ]);
+
+        $cuenta = VehiculoGpsCuenta::firstOrNew(['vehiculo_id' => $vehiculo->id]);
+        $cuenta->fill([
+            'aplicativo' => $this->cuenta['aplicativo'],
+            'enlace' => $this->cuenta['enlace'] ?: null,
+            'usuario' => $this->cuenta['usuario'],
+            'contrasena' => $this->cuenta['contrasena'],
+        ]);
+        $esNueva = ! $cuenta->exists;
+        if ($esNueva) {
+            $cuenta->registrado_por = auth()->id();
+        } elseif ($cuenta->isDirty()) {
+            $cuenta->actualizado_por = auth()->id();
+        }
+        $cuenta->save();
+
+        $this->cerrarCuenta();
+        $this->dispatch('cuenta-gps-modal-close');
+        $this->msgType = 'ok';
+        $this->msg = $esNueva ? "Cuenta GPS del vehículo {$vehiculo->placa} registrada." : "Cuenta GPS del vehículo {$vehiculo->placa} actualizada.";
+    }
+
     public function render()
     {
         $vehiculos = $this->vehiculos();
@@ -218,10 +308,21 @@ class GpsVehiculos extends Component
         // Ubicaciones cuyo vehículo ya no está en la ficha: se siguen viendo, por placa.
         $huerfanas = $reportes->whereNotIn('vehiculo_id', $vehiculos->pluck('id'))->groupBy('placa');
 
+        $cuentas = VehiculoGpsCuenta::with(['registradoPor:id,name,username', 'actualizadoPor:id,name,username'])
+            ->whereIn('vehiculo_id', $vehiculos->pluck('id'))
+            ->get()
+            ->keyBy('vehiculo_id');
+
         return view('livewire.clients.gps-vehiculos', [
             'vehiculos' => $vehiculos,
             'porVehiculo' => $porVehiculo,
             'huerfanas' => $huerfanas,
+            'cuentas' => $cuentas,
+            'vehiculoCuenta' => $this->cuentaVehiculoId ? $vehiculos->firstWhere('id', $this->cuentaVehiculoId) : null,
+            // Los aplicativos ya usados se sugieren para que el mismo no se escriba de dos formas.
+            'aplicativosPrevios' => $this->cuentaVehiculoId
+                ? VehiculoGpsCuenta::query()->distinct()->orderBy('aplicativo')->pluck('aplicativo')
+                : collect(),
         ]);
     }
 }

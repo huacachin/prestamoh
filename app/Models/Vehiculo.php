@@ -6,6 +6,7 @@ use App\Support\Auditable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * Vehículo del cliente — modelo UNIFICADO en la fusión con feat/area-legal
@@ -94,6 +95,12 @@ class Vehiculo extends Model
         return $this->belongsToMany(Garantia::class, 'garantia_vehiculo')
             ->withPivot(['es_bien_futuro', 'acta_notarial', 'kardex', 'notario', 'fecha_acta', 'orden'])
             ->withTimestamps();
+    }
+
+    /** Cuenta de la plataforma del GPS (06/11/2026): una por placa. */
+    public function gpsCuenta(): HasOne
+    {
+        return $this->hasOne(VehiculoGpsCuenta::class);
     }
 
     public function papeletas()

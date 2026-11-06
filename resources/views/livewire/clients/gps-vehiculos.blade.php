@@ -37,11 +37,22 @@
                     <span class="text-muted small ms-1">{{ trim($v->marca.' '.$v->modelo) }}</span>
                     <span class="text-muted small ms-1">· {{ $ubicaciones->count() }} {{ $ubicaciones->count() === 1 ? 'ubicación' : 'ubicaciones' }}</span>
                 </div>
-                @if($puedeEditar && $formVehiculoId !== $v->id)
-                    <button type="button" class="btn btn-sm btn-dark py-0" wire:click="nuevo({{ $v->id }})">
-                        <i class="ti ti-plus"></i> Agregar ubicación
-                    </button>
-                @endif
+                <div class="d-flex gap-1 flex-wrap">
+                    {{-- 06/11 (Trello): la cuenta del GPS de la placa, en un modal. Verde si ya está registrada. --}}
+                    @php $cuentaV = $cuentas->get($v->id); @endphp
+                    @if($cuentaV || $puedeEditar)
+                        <button type="button" class="btn btn-sm py-0 {{ $cuentaV ? 'btn-success' : 'btn-outline-dark' }}"
+                                wire:click="abrirCuenta({{ $v->id }})" wire:loading.attr="disabled" wire:target="abrirCuenta({{ $v->id }})"
+                                title="{{ $cuentaV ? 'Cuenta GPS: '.$cuentaV->aplicativo : 'Registrar la cuenta del GPS de esta placa' }}">
+                            <i class="ti ti-key"></i> Cuenta GPS
+                        </button>
+                    @endif
+                    @if($puedeEditar && $formVehiculoId !== $v->id)
+                        <button type="button" class="btn btn-sm btn-dark py-0" wire:click="nuevo({{ $v->id }})">
+                            <i class="ti ti-plus"></i> Agregar ubicación
+                        </button>
+                    @endif
+                </div>
             </div>
             <div class="placa-cuerpo">
                 @if($formVehiculoId === $v->id)
@@ -103,4 +114,104 @@
             </div>
         </div>
     @endforeach
+
+    {{-- ═══ Modal "Cuenta GPS" de una placa (06/11/2026, Trello) ═══
+         Aplicativo, enlace, usuario y contraseña de la plataforma del GPS. Al cerrarse, la contraseña
+         sale del estado del componente (cerrarCuenta). --}}
+    <div class="modal fade" id="cuentaGpsModal" tabindex="-1" aria-hidden="true" wire:ignore.self
+         x-data="{ modal: null, ver: false, copiado: null,
+                   copiar(texto, clave) { navigator.clipboard.writeText(texto || '').then(() => { this.copiado = clave; setTimeout(() => this.copiado = null, 1500); }); } }"
+         x-init="modal = bootstrap.Modal.getOrCreateInstance($el);
+                 $el.addEventListener('hidden.bs.modal', () => { ver = false; if ($wire.cuentaVehiculoId) $wire.cerrarCuenta(); });"
+         x-on:cuenta-gps-modal-open.window="ver = false; modal.show()"
+         x-on:cuenta-gps-modal-close.window="modal.hide()">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title mb-0">
+                        <i class="ti ti-key text-secondary"></i> Cuenta GPS
+                        @if($vehiculoCuenta)
+                            · <span class="fw-bold">{{ $vehiculoCuenta->placa }}</span>
+                            <span class="text-muted small fw-normal">{{ trim($vehiculoCuenta->marca.' '.$vehiculoCuenta->modelo) }}</span>
+                        @endif
+                    </h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    @php $guardada = $vehiculoCuenta ? $cuentas->get($vehiculoCuenta->id) : null; @endphp
+                    <div class="mb-2">
+                        <label class="form-label small mb-1">Aplicativo *</label>
+                        <input type="text" class="form-control form-control-sm {{ $puedeEditar ? 'campo-obligatorio' : 'bg-light' }} @error('cuenta.aplicativo') is-invalid @enderror"
+                               wire:model="cuenta.aplicativo" list="aplicativos-gps" maxlength="100" autocomplete="off" @readonly(! $puedeEditar)
+                               placeholder="Ej.: GPS Perú, Protrack, Wialon">
+                        <datalist id="aplicativos-gps">
+                            @foreach($aplicativosPrevios as $app)
+                                <option value="{{ $app }}"></option>
+                            @endforeach
+                        </datalist>
+                        @error('cuenta.aplicativo') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small mb-1">Enlace <span class="text-muted">(página para entrar)</span></label>
+                        <div class="input-group input-group-sm has-validation">
+                            <input type="text" class="form-control {{ $puedeEditar ? '' : 'bg-light' }} @error('cuenta.enlace') is-invalid @enderror"
+                                   wire:model="cuenta.enlace" maxlength="500" autocomplete="off" @readonly(! $puedeEditar)
+                                   placeholder="https://…">
+                            @if($guardada?->enlace)
+                                <a class="btn btn-outline-secondary" href="{{ $guardada->enlace }}" target="_blank" rel="noopener noreferrer" title="Abrir el enlace en otra pestaña">
+                                    <i class="ti ti-external-link"></i> Abrir
+                                </a>
+                            @endif
+                            @error('cuenta.enlace') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small mb-1">Usuario *</label>
+                        <div class="input-group input-group-sm has-validation">
+                            <input type="text" class="form-control {{ $puedeEditar ? 'campo-obligatorio' : 'bg-light' }} @error('cuenta.usuario') is-invalid @enderror"
+                                   wire:model="cuenta.usuario" maxlength="150" autocomplete="off" @readonly(! $puedeEditar)>
+                            <button type="button" class="btn btn-outline-secondary" x-on:click="copiar($wire.cuenta.usuario, 'usuario')" title="Copiar el usuario">
+                                <i class="ti" :class="copiado === 'usuario' ? 'ti-check' : 'ti-copy'"></i>
+                            </button>
+                            @error('cuenta.usuario') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+                    </div>
+                    <div class="mb-1">
+                        <label class="form-label small mb-1">Contraseña *</label>
+                        <div class="input-group input-group-sm has-validation">
+                            {{-- autocomplete="new-password": que el navegador no la guarde ni rellene con la clave del sistema. --}}
+                            <input :type="ver ? 'text' : 'password'" type="password"
+                                   class="form-control {{ $puedeEditar ? 'campo-obligatorio' : 'bg-light' }} @error('cuenta.contrasena') is-invalid @enderror"
+                                   wire:model="cuenta.contrasena" maxlength="150" autocomplete="new-password" @readonly(! $puedeEditar)>
+                            <button type="button" class="btn btn-outline-secondary" x-on:click="ver = ! ver" :title="ver ? 'Ocultar' : 'Ver la contraseña'">
+                                <i class="ti" :class="ver ? 'ti-eye-off' : 'ti-eye'"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" x-on:click="copiar($wire.cuenta.contrasena, 'contrasena')" title="Copiar la contraseña">
+                                <i class="ti" :class="copiado === 'contrasena' ? 'ti-check' : 'ti-copy'"></i>
+                            </button>
+                            @error('cuenta.contrasena') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+                    </div>
+                    @if($guardada)
+                        <div class="text-muted small mt-2">
+                            Registrada por {{ $guardada->registradoPor?->name ?? '—' }} el {{ $guardada->created_at->format('d/m/Y H:i') }}
+                            @if($guardada->actualizadoPor)
+                                · actualizada por {{ $guardada->actualizadoPor->name }} el {{ $guardada->updated_at->format('d/m/Y H:i') }}
+                            @endif
+                        </div>
+                    @endif
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal"><i class="ti ti-x"></i> {{ $puedeEditar ? 'Cancelar' : 'Cerrar' }}</button>
+                    @if($puedeEditar)
+                        <button type="button" class="btn btn-sm btn-dark" wire:click="guardarCuenta" wire:loading.attr="disabled" wire:target="guardarCuenta">
+                            <i class="ti ti-device-floppy"></i>
+                            <span wire:loading.remove wire:target="guardarCuenta">Guardar</span>
+                            <span wire:loading wire:target="guardarCuenta">Guardando…</span>
+                        </button>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
 </div>

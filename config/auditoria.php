@@ -33,6 +33,7 @@ use App\Models\SigmAviso;
 use App\Models\TramiteNotarial;
 use App\Models\User;
 use App\Models\Vehiculo;
+use App\Models\VehiculoGpsCuenta;
 use App\Models\VehiculoGpsReporte;
 
 /*
@@ -78,6 +79,7 @@ return [
         PapeletaRecurso::class => 'Recurso de papeleta',
         LegalSetting::class => 'Configuración legal',
         VehiculoGpsReporte::class => 'Reporte GPS',
+        VehiculoGpsCuenta::class => 'Cuenta GPS',
         // Adjuntos
         ClientAttachment::class => 'Adjunto de cliente',
         IncomeAttachment::class => 'Adjunto de ingreso',
@@ -150,6 +152,11 @@ return [
         CashOpening::class => [
             'fecha' => 'Fecha', 'hora' => 'Hora', 'saldo_inicial' => 'Saldo inicial', 'saldo_final' => 'Saldo final',
             'estado' => 'Estado', 'moneda' => 'Moneda', 'user_id' => 'Usuario', 'headquarter_id' => 'Sucursal',
+        ],
+
+        VehiculoGpsCuenta::class => [
+            'vehiculo_id' => 'Vehículo', 'aplicativo' => 'Aplicativo', 'enlace' => 'Enlace', 'usuario' => 'Usuario',
+            'contrasena' => 'Contraseña', 'registrado_por' => 'Registrado por', 'actualizado_por' => 'Actualizado por',
         ],
 
         Vehiculo::class => [
