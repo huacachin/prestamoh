@@ -153,6 +153,38 @@ class ClienteVehiculosTabTest extends TestCase
             ->assertSet('msgType', 'ok');
     }
 
+    /** 06/11 (Antony: "no están jalando los datos de las placas"): Factiliza se cuelga a ratos. */
+    public function test_si_factiliza_no_responde_reintenta_una_vez(): void
+    {
+        config(['services.factiliza.token' => 'token-de-prueba']);
+        Http::fake(['*/placa/info/*' => Http::sequence()
+            ->pushFailedConnection('cURL error 28: Operation timed out')
+            ->push(['status' => 200, 'success' => true, 'data' => ['placa' => 'X1Q723', 'marca' => 'TOYOTA', 'modelo' => 'COASTER LX']], 200)]);
+
+        Livewire::test(Vehiculos::class, ['id' => $this->cliente()->id])
+            ->call('nuevo')
+            ->set('placa', 'X1Q723')
+            ->call('consultarPlaca')
+            ->assertSet('marca', 'Toyota')
+            ->assertSet('msgType', 'ok');
+        Http::assertSentCount(2);
+    }
+
+    public function test_un_dni_en_el_campo_placa_se_avisa_sin_consultar(): void
+    {
+        // 06/11: se consultó cuatro veces el DNI 42452613 como placa.
+        config(['services.factiliza.token' => 'token-de-prueba']);
+        Http::fake();
+
+        Livewire::test(Vehiculos::class, ['id' => $this->cliente()->id])
+            ->call('nuevo')
+            ->set('placa', '42452613')
+            ->call('consultarPlaca')
+            ->assertSet('msgType', 'err')
+            ->assertSee('no es una placa: solo tiene números (¿es un DNI?)');
+        Http::assertNothingSent();
+    }
+
     public function test_analista_no_puede_editar_vehiculos_ajenos(): void
     {
         $otroAsesor = User::factory()->create(['username' => 'duenio-cartera']);

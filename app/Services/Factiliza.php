@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Carbon\Carbon;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -70,6 +71,16 @@ class Factiliza
 
     public function placa(string $placa): array
     {
+        // 06/11 (Antony: "no están jalando los datos de las placas"): ese día se consultó cuatro veces
+        // un DNI como placa. Una placa tiene 5 a 7 letras y números con al menos una letra; lo que no
+        // lo parece se avisa sin gastar la consulta.
+        $sinGuion = preg_replace('/[\s-]+/', '', strtoupper(trim($placa)));
+        if ($sinGuion !== '' && ! preg_match('/^(?=.*[A-Z])[A-Z0-9]{5,7}$/', $sinGuion)) {
+            return $this->error(ctype_digit($sinGuion)
+                ? "«{$placa}» no es una placa: solo tiene números (¿es un DNI?). Escribe la placa del vehículo, por ejemplo ABC123."
+                : "«{$placa}» no parece una placa. Escribe la placa del vehículo, por ejemplo ABC123.");
+        }
+
         return $this->consultar('placa', strtoupper(trim($placa)), fn (array $d) => [
             'placa' => strtoupper($this->limpiar($d['placa'] ?? '')),
             'marca' => $this->limpiar($d['marca'] ?? ''),
@@ -102,15 +113,18 @@ class Factiliza
 
         try {
             $base = rtrim((string) config('services.factiliza.base'), '/');
+            // 06/11: un reintento si Factiliza no responde. Desde octubre se cuelga a ratos (cURL 28,
+            // sin respuesta en 10 s); las fallas sueltas pasan al segundo intento.
             $resp = Http::withToken($token)
                 ->acceptJson()
                 ->connectTimeout(5)
                 ->timeout(self::TIMEOUT)
+                ->retry(2, 300, fn ($e) => $e instanceof ConnectionException, throw: false)
                 ->get("{$base}/{$recurso}/info/".rawurlencode($valor));
         } catch (\Throwable $e) {
             Log::warning('Factiliza: excepción de red', ['recurso' => $recurso, 'error' => $e->getMessage()]);
 
-            return $this->error('No se pudo conectar con el servicio de consulta. Ingresa los datos a mano.');
+            return $this->error('Factiliza (el servicio de consulta) no respondió: está lento o caído en este momento. Vuelve a intentar en unos minutos o ingresa los datos a mano.');
         }
 
         $json = $resp->json();
