@@ -174,11 +174,13 @@
                              crédito desde 1 (se reinicia por préstamo). El zebra alterna por
                              crédito. 16/10 (Antony): dentro de cada crédito el orden es el de
                              trabajo —Contrato, Anexo 1, Anexo 2— y, dentro de cada tipo, del
-                             más viejo al más nuevo. --}}
+                             más viejo al más nuevo. 06/11 (Trello, tarjeta 8): los créditos van del más
+                             nuevo arriba al N° 1 abajo; el número sigue siendo el cronológico. --}}
                         @php
                             // 30/10 (Agregado 02): después del Anexo 2 van las declaraciones de propiedad y de publicidad.
                             $ordenTipo = ['contrato' => 1, 'anexo1' => 2, 'anexo2' => 3, 'djprop' => 4, 'djpubli' => 5];
-                            $grupos = $documentos->groupBy('credit_id')->sortBy(fn ($docs) => $docs->min('id'))->values();
+                            // reverse() conserva las claves: $g + 1 sigue siendo el N° cronológico.
+                            $grupos = $documentos->groupBy('credit_id')->sortBy(fn ($docs) => $docs->min('id'))->values()->reverse();
                             // 30/10: el botón SIGM sale solo en los créditos con contrato emitido (de ahí salen sus textos).
                             $conContratoSigm = $creditosConContrato->pluck('id')->all();
                         @endphp

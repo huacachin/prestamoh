@@ -22,6 +22,9 @@ use Tests\TestCase;
  * números del 1…". Orden cronológico: el crédito más antiguo arriba (N° 1) y,
  * dentro, del documento más viejo al más nuevo; columna # con 1, 2, 3… que se
  * reinicia por préstamo ("por cada préstamo el contador de # se debe reiniciar").
+ *
+ * 06/11/2026 (Trello, tarjeta 8 "ORDEN documentos"): los créditos se muestran del más
+ * nuevo arriba al más antiguo abajo, que conserva el N° 1. Dentro de cada crédito no cambia.
  */
 class DocumentosNumeroPorCreditoTest extends TestCase
 {
@@ -84,10 +87,10 @@ class DocumentosNumeroPorCreditoTest extends TestCase
         ], $m);
     }
 
-    public function test_los_creditos_van_agrupados_en_orden_cronologico_numerados_y_con_la_celda_combinada(): void
+    public function test_los_creditos_van_agrupados_del_mas_nuevo_al_n1_numerados_y_con_la_celda_combinada(): void
     {
-        $a = $this->credito();   // el más viejo → N° 1, arriba
-        $b = $this->credito();   // el más reciente → N° 2, abajo
+        $a = $this->credito();   // el más viejo → N° 1, abajo
+        $b = $this->credito();   // el más reciente → N° 2, arriba
         // Intercalados a propósito: contrato A, anexo1 B, anexo1 A, anexo2 B.
         $this->documento($a, 'contrato');
         $this->documento($b, 'anexo1');
@@ -98,20 +101,20 @@ class DocumentosNumeroPorCreditoTest extends TestCase
         $filas = $this->filas($html);
         $this->assertCount(4, $filas);
 
-        // Arriba el crédito A (el primero que tuvo documento), dentro del más viejo al
-        // más nuevo; después el crédito B. Los intercalados quedan juntos.
-        $this->assertSame([(string) $a->id, (string) $a->id, (string) $b->id, (string) $b->id], array_column($filas, 'credito'));
-        foreach (['Contrato', 'Anexo 1', 'Anexo 1', 'Anexo 2'] as $i => $prefijo) {
+        // Arriba el crédito B (el último que tuvo documento) y abajo el A; dentro de cada
+        // uno, del más viejo al más nuevo. Los intercalados quedan juntos.
+        $this->assertSame([(string) $b->id, (string) $b->id, (string) $a->id, (string) $a->id], array_column($filas, 'credito'));
+        foreach (['Anexo 1', 'Anexo 2', 'Contrato', 'Anexo 1'] as $i => $prefijo) {
             $this->assertStringStartsWith($prefijo, trim(preg_replace('/\s+/', ' ', $filas[$i]['tipo'])), "fila {$i}");
         }
 
-        // # se reinicia por préstamo (1, 2 | 1, 2) y N° ascendente (1 arriba, 2 abajo) en una sola celda combinada por crédito.
+        // # se reinicia por préstamo (1, 2 | 1, 2) y N° descendente (2 arriba, 1 abajo) en una sola celda combinada por crédito.
         $this->assertSame(['1', '2', '1', '2'], array_column($filas, 'fila'));
-        $this->assertSame(['1', null, '2', null], array_column($filas, 'num'));
+        $this->assertSame(['2', null, '1', null], array_column($filas, 'num'));
         $this->assertSame(['2', null, '2', null], array_column($filas, 'rowspan'));
 
-        // Zebra por crédito: el grupo 2 (par) en gris, el 1 en blanco.
-        $this->assertSame([false, false, true, true], array_column($filas, 'gris'));
+        // Zebra por crédito (sigue al N°): el grupo 2 (par) en gris, el 1 en blanco.
+        $this->assertSame([true, true, false, false], array_column($filas, 'gris'));
         $this->assertStringNotContainsString('table-striped', $html);
         // N° (por crédito) primero y # (por fila) después.
         $this->assertStringContainsString('<th class="text-center">N°</th>'."\n".'                                <th class="text-center">#</th>', $html);
