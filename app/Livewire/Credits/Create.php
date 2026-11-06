@@ -104,6 +104,10 @@ class Create extends Component
                 $this->codigoc = $client->documento;
                 $this->codigod = $client->id;
                 $this->nombreb = $client->fullName();
+                if ($bloqueo = $client->bloqueoParaPrestamos()) {
+                    $this->dniMsg = $bloqueo;
+                    $this->dniMsgType = 'err';
+                }
             }
         }
     }
@@ -126,8 +130,10 @@ class Create extends Component
         if ($client) {
             $this->codigod = $client->id;
             $this->nombreb = $client->fullName();
-            $this->dniMsg = 'Cliente encontrado.';
-            $this->dniMsgType = 'ok';
+            // 06/11: un cliente cesado se encuentra, pero no se le presta hasta darlo de alta (save() lo frena).
+            $bloqueo = $client->bloqueoParaPrestamos();
+            $this->dniMsg = $bloqueo ?? 'Cliente encontrado.';
+            $this->dniMsgType = $bloqueo ? 'err' : 'ok';
         } else {
             $this->codigod = null;
             $this->nombreb = null;
@@ -244,6 +250,13 @@ class Create extends Component
         abort_if(auth()->user()?->can('clientes.scope-propio') ?? false, 403,
             'Tu rol no permite esta acción.');
         $this->validate();
+
+        // 06/11 (Antony, #29531): a un cliente cesado no se le presta; primero hay que darlo de alta.
+        if ($bloqueo = Client::find($this->codigod)?->bloqueoParaPrestamos()) {
+            $this->addError('codigoc', $bloqueo);
+
+            return;
+        }
 
         // Mapa 21/08: sin bypass-fecha-anterior el crédito se registra con fecha del día.
         if (! auth()->user()->can('caja.bypass-fecha-anterior')

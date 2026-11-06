@@ -11,7 +11,15 @@
         <h6 class="mb-0" style="color:red;">
             Préstamos <span class="text-muted small fw-normal">({{ $conteo }})</span>
         </h6>
-        @if($puedeCrear)
+        @if($puedeCrear && $bloqueoPrestamo)
+            {{-- 06/11 (Antony): a un cliente cesado no se le presta; primero hay que darlo de alta. --}}
+            <div class="small rounded px-2 py-1" style="background:#fdecea; color:#a1271b;">
+                <i class="ti ti-ban"></i> {{ $bloqueoPrestamo }}
+                @can('registro.cesados')
+                    <a href="{{ route('clients.ceased', ['documento' => $client->documento]) }}" class="ms-1">Ir a Cliente Cesados</a>
+                @endcan
+            </div>
+        @elseif($puedeCrear)
             <button type="button" class="btn btn-sm btn-success" x-show="! abierto"
                     x-on:click="abierto = true; setTimeout(() => $refs.alta.querySelector('input[name=impopres]')?.focus(), 320)">
                 <i class="ti ti-plus"></i> Nuevo préstamo
@@ -20,7 +28,7 @@
     </div>
 
     {{-- ════════ Alta de crédito, aquí mismo (el formulario de /credits/create/{id}) ════════ --}}
-    @if($puedeCrear)
+    @if($puedeCrear && ! $bloqueoPrestamo)
         <div class="border rounded p-2 mb-3 alta-prestamo" x-ref="alta" style="display:none;"
              x-show="abierto" x-transition.opacity.duration.300ms>
             <div class="d-flex justify-content-between align-items-center mb-1">

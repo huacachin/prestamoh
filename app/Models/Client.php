@@ -331,6 +331,21 @@ class Client extends Model
     }
 
     /**
+     * Por qué no se le puede hacer un préstamo, o null si está activo. 06/11/2026 (Antony, crédito
+     * #29531 a una cliente cesada): "crear una validación para que no se le pueda hacer préstamos a un
+     * cliente cesado, que lo tenga que dar de alta antes". El legacy lo impedía al buscar el DNI (solo
+     * encontraba personas con cestpersona = 1).
+     */
+    public function bloqueoParaPrestamos(): ?string
+    {
+        return match ($this->status) {
+            'active' => null,
+            'inactive' => "El cliente {$this->fullName()} está cesado: dalo de alta en Cliente Cesados antes de hacerle un préstamo.",
+            default => "El cliente {$this->fullName()} no está activo: no se le pueden hacer préstamos.",
+        };
+    }
+
+    /**
      * Búsqueda por nombre como la teclea la gente (10/10/2026, Antony): cada
      * palabra del texto tiene que estar en el nombre completo, en cualquier
      * orden. "Torres Tapia Vda de Puma Julia Isabel", "Julia Torres" o "Torres"

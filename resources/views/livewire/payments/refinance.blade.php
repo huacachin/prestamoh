@@ -174,7 +174,12 @@
                 </div>
 
                 <div class="d-flex gap-2 mt-3 justify-content-center">
-                    @if($importePagadoAlgo > 0)
+                    @if($bloqueoCliente)
+                        {{-- 06/11 (Antony): a un cliente cesado no se le presta; primero hay que darlo de alta. --}}
+                        <div class="alert alert-danger mb-0" style="font-size: 12px; padding: 6px 12px;">
+                            <i class="ti ti-ban"></i> {{ $bloqueoCliente }}
+                        </div>
+                    @elseif($importePagadoAlgo > 0)
                         <button type="submit" class="btn btn-sm btn-dark" wire:loading.attr="disabled">
                             <i class="ti ti-coin"></i> Refinanciar
                         </button>

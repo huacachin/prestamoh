@@ -45,6 +45,9 @@ class Refinance extends Component
     // Datos para mostrar
     public $importePagadoAlgo = 0;  // Si > 0, se permite refinanciar
 
+    /** 06/11 (Antony, #29531): la refinanciación es un préstamo nuevo; a un cliente cesado no se le hace. */
+    public ?string $bloqueoCliente = null;
+
     public function mount(int $creditId)
     {
         // Analista (scope-propio): solo ve/paga SUS créditos — no crea ni edita
@@ -55,6 +58,7 @@ class Refinance extends Component
 
         $hoy = Carbon::today();
         $this->fechar = $hoy->format('Y-m-d');
+        $this->bloqueoCliente = $this->credit->client?->bloqueoParaPrestamos();
 
         // Pagado total (suma de TODOS los aplicados)
         $totals = DB::table('credit_installments')->where('credit_id', $this->credit->id)
@@ -121,6 +125,13 @@ class Refinance extends Component
         // fechar es la fecha de REGISTRO (caja/reportes): siempre hoy, la
         // propiedad pública es manipulable desde el cliente.
         $this->fechar = now()->format('Y-m-d');
+
+        // Se vuelve a mirar al guardar: el cliente pudo cesarse con la pantalla abierta.
+        if ($bloqueo = $this->credit->client()->first()?->bloqueoParaPrestamos()) {
+            $this->addError('refinance', $bloqueo);
+
+            return;
+        }
 
         if ($this->importePagadoAlgo <= 0) {
             $this->addError('refinance', 'No se puede refinanciar: el crédito no tiene pagos previos.');

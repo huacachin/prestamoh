@@ -29,14 +29,20 @@ class Prestamos extends Component
 
     public bool $puedeCrear = false;
 
+    /** 06/11: por qué no se le puede prestar (cliente cesado); null si se puede. */
+    public ?string $bloqueoPrestamo = null;
+
     public function mount(int $id): void
     {
-        $this->clientId = Client::findOrFail($id)->id;
+        $client = Client::findOrFail($id);
+        $this->clientId = $client->id;
 
         $user = auth()->user();
         $this->puedeVerCreditos = $user?->can('creditos') ?? false;
         // Misma regla que Credits\Create::mount: el analista (scope propio) ve, no crea.
         $this->puedeCrear = $this->puedeVerCreditos && ! ($user?->can('clientes.scope-propio') ?? false);
+        // 06/11 (Antony, #29531): a un cliente cesado no se le presta hasta darlo de alta.
+        $this->bloqueoPrestamo = $client->bloqueoParaPrestamos();
     }
 
     #[On('prestamo-creado')]
