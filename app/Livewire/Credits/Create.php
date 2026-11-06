@@ -5,12 +5,14 @@ namespace App\Livewire\Credits;
 use App\Models\Client;
 use App\Models\Credit;
 use App\Models\User;
+use App\Services\Credits\EliminadorCredito;
 use App\Support\Audit;
 use App\Support\Auditoria\ConCapturaDeAuditoria;
 use App\Support\CuotaUniforme;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 class Create extends Component
@@ -30,6 +32,16 @@ class Create extends Component
 
     // Crédito
     public $codpre_ = null;          // Código del préstamo (correlativo)
+
+    /**
+     * Códigos que dejaron libres los créditos eliminados hoy en medio de la serie. 06/11/2026
+     * (Antony): "no te debe permitir ir al siguiente correlativo si hay un hueco en el día": mientras
+     * haya uno, el préstamo toma el menor (ver asignarCodigo).
+     *
+     * @var list<array{id: int, hora: string, por: string, cliente: string, importe: float}>
+     */
+    #[Locked]
+    public array $codigosLiberados = [];
 
     public string $selecmoned = 'S'; // Moneda fija Soles
 
@@ -84,9 +96,7 @@ class Create extends Component
         $this->selecano = $hoy->format('Y');
         $this->selecmes = $hoy->format('m');
 
-        // Próximo correlativo de crédito (legacy: huaca_tabla.correl + 1)
-        $correl = (int) (DB::table('correlativos')->where('tipo', 'Credito')->value('correl') ?? 0);
-        $this->codpre_ = $correl + 1;
+        $this->asignarCodigo();
 
         if ($clientId) {
             $client = Client::find($clientId);
@@ -124,6 +134,17 @@ class Create extends Component
             $this->dniMsg = 'Cliente no registrado. Regístralo primero en /clients/create.';
             $this->dniMsgType = 'err';
         }
+    }
+
+    /**
+     * El código que le toca al préstamo: el menor de los liberados hoy y, si no hay ninguno, el
+     * siguiente del correlativo (legacy: huaca_tabla.correl + 1).
+     */
+    private function asignarCodigo(): void
+    {
+        $this->codigosLiberados = EliminadorCredito::codigosLiberadosHoy()->all();
+        $this->codpre_ = $this->codigosLiberados[0]['id']
+            ?? (int) (DB::table('correlativos')->where('tipo', 'Credito')->value('correl') ?? 0) + 1;
     }
 
     public function updatedSeletipl()
@@ -232,6 +253,17 @@ class Create extends Component
             return;
         }
 
+        // 06/11 (Antony): con un código liberado hoy no se sigue con el siguiente. Se vuelve a mirar
+        // al guardar: mientras se llenaba, otro usuario pudo eliminar un crédito o tomar el código.
+        $mostrado = (int) $this->codpre_;
+        $this->asignarCodigo();
+        if ((int) $this->codpre_ !== $mostrado) {
+            $this->addError('codpre_', "El código del préstamo cambió a #{$this->codpre_}: mientras llenabas el formulario se eliminó un crédito de hoy o se ocupó el código #{$mostrado}. Revisa y vuelve a guardar.");
+
+            return;
+        }
+        $usaLiberado = in_array((int) $this->codpre_, array_column($this->codigosLiberados, 'id'), true);
+
         // Validar que el código de préstamo no esté en uso (race condition / edición manual)
         if (DB::table('credits')->where('id', $this->codpre_)->exists()) {
             $this->addError('codpre_', 'El código de préstamo ya está utilizado.');
@@ -247,8 +279,9 @@ class Create extends Component
             $pid = (int) $this->codpre_;
             $fechaBase = Carbon::parse($this->fechad);
 
-            // Actualizar correlativo (legacy: UPDATE huaca_tabla SET correl=$pid WHERE tipo='Credito')
-            DB::table('correlativos')->where('tipo', 'Credito')->update([
+            // Actualizar correlativo (legacy: UPDATE huaca_tabla SET correl=$pid WHERE tipo='Credito').
+            // Solo sube: con un código liberado hoy (menor) el contador se queda donde está.
+            DB::table('correlativos')->where('tipo', 'Credito')->where('correl', '<', $pid)->update([
                 'correl' => $pid,
                 'updated_at' => now(),
             ]);
@@ -483,7 +516,7 @@ class Create extends Component
             CuotaUniforme::aplicar($pid, $impopres, $interesTotalExacto);
         });
 
-        Audit::log('Creó el crédito #'.$this->codpre_);
+        Audit::log('Creó el crédito #'.$this->codpre_.($usaLiberado ? ' con el código del crédito eliminado hoy' : ''));
 
         if ($this->embebido) {
             $this->dispatch('successAlert', ['message' => 'Crédito #'.$this->codpre_.' creado.']);
@@ -512,7 +545,7 @@ class Create extends Component
         $this->fechad = $hoy->format('Y-m-d');
         $this->selecano = $hoy->format('Y');
         $this->selecmes = $hoy->format('m');
-        $this->codpre_ = (int) (DB::table('correlativos')->where('tipo', 'Credito')->value('correl') ?? 0) + 1;
+        $this->asignarCodigo();
     }
 
     public function render()

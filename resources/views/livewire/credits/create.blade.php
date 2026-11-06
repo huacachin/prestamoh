@@ -69,6 +69,24 @@
                         <input type="text" class="form-control form-control-sm bg-light" value="Soles" readonly>
                     </div>
 
+                    {{-- 06/11 (Antony): "no te debe permitir ir al siguiente correlativo si hay un hueco en el día".
+                         Mientras quede un código liberado hoy en medio de la serie, el préstamo lo toma (el menor)
+                         y aquí se dice cuál y por qué. Los eliminados en días anteriores no cuentan. --}}
+                    @if($codigosLiberados !== [])
+                        @php $libre = $codigosLiberados[0]; $otros = array_slice(array_column($codigosLiberados, 'id'), 1); @endphp
+                        <div class="col-12">
+                            <div class="rounded p-2 small" style="background:#fff8c5;">
+                                <i class="ti ti-alert-triangle text-warning"></i>
+                                Este préstamo toma el código <b>#{{ $libre['id'] }}</b>, que quedó libre porque hoy se eliminó ese crédito
+                                <span class="text-muted">(a las {{ $libre['hora'] }} por {{ $libre['por'] }}; {{ $libre['cliente'] }}, S/ {{ number_format($libre['importe'], 2) }})</span>.
+                                No se sigue con el siguiente código mientras haya un código libre del día.
+                                @if($otros !== [])
+                                    <span class="d-block mt-1">También quedan libres de hoy: {{ collect($otros)->map(fn ($id) => '#'.$id)->implode(', ') }}.</span>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
+
                     {{-- ─── Capital y Periodo ─── --}}
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">Capital</label>

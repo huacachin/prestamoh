@@ -2,6 +2,7 @@
 
 namespace App\Services\Credits;
 
+use App\Models\Client;
 use App\Models\Contrato;
 use App\Models\Credit;
 use App\Models\CreditInstallment;
@@ -10,6 +11,8 @@ use App\Models\Garantia;
 use App\Models\Payment;
 use App\Services\Documentos\CopiaImpresion;
 use App\Support\Audit;
+use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -131,6 +134,45 @@ final class EliminadorCredito
      * y con max(id) a secas el contador no bajaba nunca: se eliminó el #29494 y
      * el siguiente iba a salir 29495 (Antony: "debe seguir desde ahí").
      */
+    /**
+     * Códigos que dejaron libres los créditos eliminados HOY en medio de la serie (06/11/2026,
+     * Antony: que al crear "pregunte si quiere seguir con el siguiente correlativo o usar el
+     * hueco reciente; solo del mismo día, no de días anteriores"). Salen de la auditoría
+     * ("Eliminó el crédito #N"): los de hoy que nadie volvió a usar y que quedan por debajo del
+     * correlativo (el último eliminado no deja hueco: recontarCorrelativo() ya lo ofrece como siguiente).
+     *
+     * @return Collection<int, array{id: int, hora: string, por: string, cliente: string, importe: float}>
+     */
+    public static function codigosLiberadosHoy(): Collection
+    {
+        $correl = (int) (DB::table('correlativos')->where('tipo', 'Credito')->value('correl') ?? 0);
+        $eliminaciones = DB::table('activity_log')
+            ->where('log_name', 'auditoria')
+            ->where('created_at', '>=', today())
+            ->where('subject_type', (new Credit)->getMorphClass())
+            ->where('description', 'like', 'Eliminó el crédito #%')
+            ->where('subject_id', '<=', $correl)
+            ->orderBy('subject_id')
+            ->get(['subject_id', 'created_at', 'user_name', 'properties'])
+            ->unique('subject_id');
+        if ($eliminaciones->isEmpty()) {
+            return collect();
+        }
+
+        $usados = Credit::whereIn('id', $eliminaciones->pluck('subject_id'))->pluck('id')->all();
+        $libres = $eliminaciones->reject(fn ($a) => in_array((int) $a->subject_id, $usados, true));
+        $datos = $libres->mapWithKeys(fn ($a) => [(int) $a->subject_id => json_decode((string) $a->properties, true) ?: []]);
+        $clientes = Client::whereIn('id', $datos->pluck('cliente_id')->filter())->get()->keyBy('id');
+
+        return $libres->map(fn ($a) => [
+            'id' => (int) $a->subject_id,
+            'hora' => Carbon::parse($a->created_at)->format('H:i'),
+            'por' => (string) ($a->user_name ?: '—'),
+            'cliente' => $clientes->get($datos[(int) $a->subject_id]['cliente_id'] ?? 0)?->fullName() ?? '—',
+            'importe' => (float) ($datos[(int) $a->subject_id]['importe'] ?? 0),
+        ])->values();
+    }
+
     public static function recontarCorrelativo(): int
     {
         $actual = (int) (DB::table('correlativos')->where('tipo', 'Credito')->value('correl') ?? 0);

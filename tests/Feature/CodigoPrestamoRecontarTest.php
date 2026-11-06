@@ -8,16 +8,22 @@ use App\Models\Credit;
 use App\Models\Headquarter;
 use App\Models\User;
 use App\Services\Credits\EliminadorCredito;
+use Carbon\Carbon;
 use Database\Seeders\PermissionCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
+use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
 /**
  * 16/10/2026 (Antony, pestaña Préstamos): "cuando se elimine un préstamo
  * creado, se vuelva a recontar el código de préstamo eliminado" y "bloquear
  * la opción de editar el código de préstamo, de color plomo".
+ *
+ * 06/11/2026 (Antony): si hoy se eliminó un crédito del medio, al crear otro "pregunte si
+ * quiere seguir con el siguiente correlativo o usar el hueco reciente; OJO solo del mismo día".
  */
 class CodigoPrestamoRecontarTest extends TestCase
 {
@@ -72,7 +78,8 @@ class CodigoPrestamoRecontarTest extends TestCase
         EliminadorCredito::eliminar($medio);
 
         $this->assertSame(501, (int) DB::table('correlativos')->where('tipo', 'Credito')->value('correl'), 'el hueco se queda; no se reordena');
-        Livewire::test(Create::class)->assertSet('codpre_', 502);
+        // 06/11: eliminado HOY, el siguiente préstamo toma su código (abajo, los tests del hueco del día).
+        Livewire::test(Create::class)->assertSet('codpre_', 500);
     }
 
     /**
@@ -121,5 +128,110 @@ class CodigoPrestamoRecontarTest extends TestCase
         $html = Livewire::test(Create::class)->assertSet('codpre_', 701)->html();
         $this->assertMatchesRegularExpression('/<input type="number" name="codpre_"[^>]*class="form-control form-control-sm bg-light[^"]*"[^>]*wire:model\.defer="codpre_" readonly tabindex="-1"/', $html);
         $this->assertDoesNotMatchRegularExpression('/name="codpre_"[^>]*background-color:yellow/', $html, 'el código ya no va en amarillo (otros campos sí)');
+    }
+
+    /** Créditos 500 y 501 con el 500 (el del medio) eliminado hoy. */
+    private function conElDelMedioEliminadoHoy(): void
+    {
+        $this->mundo();
+        DB::table('correlativos')->insertOrIgnore(['tipo' => 'Credito', 'correl' => 501, 'created_at' => now(), 'updated_at' => now()]);
+        $medio = $this->credito(500);
+        $this->credito(501);
+        EliminadorCredito::eliminar($medio);
+    }
+
+    /** El formulario de nuevo préstamo listo para guardar (solo falta elegir el código si se pregunta). */
+    private function formulario(): Testable
+    {
+        return Livewire::test(Create::class, ['clientId' => $this->client->id])
+            ->set('seletipl', '1')->set('impopres', 1000)->set('cuot', 4)->set('inte', 10)->set('nomasesores', 'codigo-tester');
+    }
+
+    private function correlativo(): int
+    {
+        return (int) DB::table('correlativos')->where('tipo', 'Credito')->value('correl');
+    }
+
+    public function test_si_hoy_se_elimino_uno_del_medio_el_nuevo_toma_su_codigo_y_el_contador_no_baja(): void
+    {
+        $this->conElDelMedioEliminadoHoy();
+
+        $this->formulario()
+            ->assertSet('codpre_', 500)
+            ->assertSee('Este préstamo toma el código')
+            ->assertSee('CODIGO TEST ANA, S/ 1,000.00')
+            ->call('save')->assertHasNoErrors()->assertRedirect(route('credits.show', 500));
+
+        $this->assertSame($this->client->id, (int) Credit::findOrFail(500)->client_id);
+        $this->assertFalse(Credit::whereKey(502)->exists(), 'no se pasa al siguiente');
+        $this->assertSame(501, $this->correlativo(), 'el contador no baja');
+        $this->assertTrue(Activity::where('description', 'Creó el crédito #500 con el código del crédito eliminado hoy')->exists());
+
+        // Usado el código, sigue la serie.
+        $this->formulario()->assertSet('codigosLiberados', [])->assertSet('codpre_', 502)->assertDontSee('Este préstamo toma el código');
+    }
+
+    public function test_con_varios_codigos_libres_del_dia_los_usa_de_menor_a_mayor_antes_de_seguir_la_serie(): void
+    {
+        $this->mundo();
+        DB::table('correlativos')->insertOrIgnore(['tipo' => 'Credito', 'correl' => 502, 'created_at' => now(), 'updated_at' => now()]);
+        $a = $this->credito(500);
+        $b = $this->credito(501);
+        $this->credito(502);
+        EliminadorCredito::eliminar($b);
+        EliminadorCredito::eliminar($a);
+
+        $this->formulario()->assertSet('codpre_', 500)->assertSee('También quedan libres de hoy: #501.')
+            ->call('save')->assertHasNoErrors();
+        $this->formulario()->assertSet('codpre_', 501)->call('save')->assertHasNoErrors();
+        $this->formulario()->assertSet('codpre_', 503);
+        $this->assertSame(502, $this->correlativo());
+    }
+
+    public function test_un_codigo_eliminado_ayer_ya_no_se_ofrece(): void
+    {
+        $this->mundo();
+        DB::table('correlativos')->insertOrIgnore(['tipo' => 'Credito', 'correl' => 501, 'created_at' => now(), 'updated_at' => now()]);
+        $medio = $this->credito(500);
+        $this->credito(501);
+        Carbon::setTestNow(now()->subDay()->setTime(17, 0));
+        EliminadorCredito::eliminar($medio);
+        Carbon::setTestNow();
+
+        $this->formulario()->assertSet('codigosLiberados', [])->assertDontSee('Este préstamo toma el código')
+            ->call('save')->assertHasNoErrors();
+        $this->assertTrue(Credit::whereKey(502)->exists(), 'el de ayer no cuenta: sigue la serie');
+        $this->assertFalse(Credit::whereKey(500)->exists());
+    }
+
+    public function test_al_eliminar_el_ultimo_no_hay_hueco_porque_su_codigo_ya_es_el_siguiente(): void
+    {
+        $this->mundo();
+        DB::table('correlativos')->insertOrIgnore(['tipo' => 'Credito', 'correl' => 501, 'created_at' => now(), 'updated_at' => now()]);
+        $this->credito(500);
+        EliminadorCredito::eliminar($this->credito(501));
+
+        $this->formulario()->assertSet('codigosLiberados', [])->assertSet('codpre_', 501);
+    }
+
+    public function test_si_el_codigo_cambia_mientras_se_llena_el_formulario_avisa_el_nuevo_y_no_guarda_hasta_volver_a_guardar(): void
+    {
+        $this->conElDelMedioEliminadoHoy();
+
+        // Otro usuario tomó el 500 mientras tanto: el formulario pasa al 502 y avisa.
+        $comp = $this->formulario()->assertSet('codpre_', 500);
+        $this->credito(500);
+        $comp->call('save')->assertHasErrors('codpre_')->assertSee('El código del préstamo cambió a #502')->assertSet('codpre_', 502);
+        $this->assertFalse(Credit::whereKey(502)->exists(), 'no se guarda con un número que no se vio');
+        $comp->call('save')->assertHasNoErrors();
+        $this->assertTrue(Credit::whereKey(502)->exists());
+
+        // Al revés: se abrió con el siguiente (503) y mientras tanto se eliminó hoy uno del medio.
+        $comp = $this->formulario()->assertSet('codpre_', 503);
+        EliminadorCredito::eliminar(Credit::findOrFail(501));
+        $comp->call('save')->assertHasErrors('codpre_')->assertSee('El código del préstamo cambió a #501')->assertSet('codpre_', 501);
+        $comp->call('save')->assertHasNoErrors();
+        $this->assertTrue(Credit::whereKey(501)->exists());
+        $this->assertFalse(Credit::whereKey(503)->exists());
     }
 }
