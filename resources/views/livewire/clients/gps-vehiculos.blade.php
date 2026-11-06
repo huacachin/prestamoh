@@ -157,6 +157,10 @@
                             <input type="text" class="form-control {{ $puedeEditar ? '' : 'bg-light' }} @error('cuenta.enlace') is-invalid @enderror"
                                    wire:model="cuenta.enlace" maxlength="500" autocomplete="off" @readonly(! $puedeEditar)
                                    placeholder="https://…">
+                            {{-- 06/11 (Antony): el enlace también se copia, como el usuario y la contraseña. --}}
+                            <button type="button" class="btn btn-outline-secondary" x-on:click="copiar($wire.cuenta.enlace, 'enlace')" title="Copiar el enlace">
+                                <i class="ti" :class="copiado === 'enlace' ? 'ti-check' : 'ti-copy'"></i>
+                            </button>
                             @if($guardada?->enlace)
                                 <a class="btn btn-outline-secondary" href="{{ $guardada->enlace }}" target="_blank" rel="noopener noreferrer" title="Abrir el enlace en otra pestaña">
                                     <i class="ti ti-external-link"></i> Abrir
