@@ -915,7 +915,7 @@
                                 <div class="tp-sep"></div>
                                 {{-- Con el aviso de cancelación abierto, este saldo es el de
                                      "No, dejarlo vigente": si cancela, se condona. --}}
-                                <div class="tp-row"><span>{{ ($preview['cubre_total'] ?? false) && ! $preview['cancela'] ? 'Saldo si no cancela:' : 'Saldo restante:' }}</span><span>S/ {{ number_format($preview['saldo'], 2) }}</span></div>
+                                <div class="tp-row"><span>{{ ($preview['cubre_total'] ?? false) && ! $preview['cancela'] && ! ($preview['solo_monto'] ?? false) ? 'Saldo si no cancela:' : 'Saldo restante:' }}</span><span>S/ {{ number_format($preview['saldo'], 2) }}</span></div>
                             </div>
 
                             @if($preview['cancela'])
@@ -988,7 +988,16 @@
                     {{-- Cobro que liquida el crédito: hay que decidir si se cierra.
                          Antes se podía cobrar el total con el switch apagado y el
                          crédito quedaba Vigente sin que nadie avisara. --}}
-                    @if($preview['cubre_total'] ?? false)
+                    {{-- 06/11 (Antony, 28732): el monto de "Calcular pagos → Cancelación" se cobra como un pago
+                         normal y el crédito queda vigente; la cancelación la hacen después, en su proceso. --}}
+                    @if($preview['solo_monto'] ?? false)
+                        <div class="mx-3 mt-3 mb-2 p-2 rounded small" style="background:#e8f4fd; border:1px solid #90caf9; color:#0b3d62;">
+                            <i class="ti ti-info-circle"></i>
+                            Monto de <b>Calcular pagos → Cancelación</b> ({{ $cancelHasta !== null ? 'interés hasta la cuota '.$cancelHasta : 'capital e interés a la fecha' }}): se cobra como un pago normal
+                            y el crédito <b>queda vigente</b>{{ (float) ($preview['saldo'] ?? 0) > 0.001 ? ' con S/ '.number_format((float) $preview['saldo'], 2).' pendiente' : '' }}. La cancelación del crédito se hace después.
+                        </div>
+                    @endif
+                    @if(($preview['cubre_total'] ?? false) && ! ($preview['solo_monto'] ?? false))
                         <div class="mx-3 mt-3 mb-2 p-2 rounded" style="background:#fff4e5; border:1px solid #ffb74d;">
                             <div class="fw-bold mb-1" style="color:#b26a00;">
                                 <i class="ti ti-alert-triangle"></i> Este monto alcanza para CANCELAR el crédito hoy
@@ -1584,8 +1593,9 @@
 
         {{-- ═══ Modal: Calcular pagos (23/10, Antony; antes "Calcular cancelación") ═══
              Pestaña "Cancelación": el cajero elige hasta qué cuota se cobra el interés y el total
-             (interés por cuota × N + capital del crédito − monto pagado) va al Monto a Pagar con
-             Cancelado encendido; luego sigue el cobro normal. La cuenta se rehace en el navegador
+             (interés por cuota × N + capital del crédito − monto pagado) va al Monto a Pagar; luego
+             sigue el cobro normal. Desde el 06/11 (Antony, 28732) NO enciende Cancelado: el crédito
+             queda vigente y la cancelación la hacen después. La cuenta se rehace en el navegador
              mientras se elige la cuota; el monto final lo calcula el servidor en aplicarCancelacion().
              Pestaña "Pagos a una fecha" (30/10, Antony, crédito 29393): en un calendario con los
              vencimientos pintados se elige cualquier fecha y sale lo que el cliente debe pagar ese día
@@ -1610,8 +1620,32 @@
                             <a href="#" class="nav-link py-1" :class="{ 'active': tab === 'fecha' }" x-on:click.prevent="verFecha()">Pagos a una fecha</a>
                         </li>
                     </ul>
-                    <div class="modal-body" x-show="tab === 'cancelacion' && ! hayCancelacion">
+                    <div class="modal-body" x-show="tab === 'cancelacion' && ! hayCancelacion && ! alDia">
                         <div class="alert alert-light border small mb-0" x-text="sinCancelacion"></div>
+                    </div>
+                    {{-- 06/11 (Antony, 28732): sin la fórmula por cuota (mensual de una cuota), lo de cancelar hoy:
+                         capital + interés a la fecha, la cifra del switch Cancelado; va al Monto a Pagar sin cancelar. --}}
+                    <div class="modal-body" x-show="tab === 'cancelacion' && ! hayCancelacion && alDia">
+                      <div class="mx-auto" style="max-width:420px;" x-show="alDia">
+                        <table class="table table-sm mb-0 cancelacion-cuenta">
+                            <tbody>
+                                <tr><td class="text-start">Capital pendiente</td><td class="text-end" x-text="alDia ? soles(alDia.capital) : ''"></td></tr>
+                                <tr><td class="text-start">+ Interés a la fecha</td><td class="text-end" x-text="alDia ? soles(alDia.interes) : ''"></td></tr>
+                                <tr class="cancelacion-total">
+                                    <td class="text-start">Total para cancelar hoy</td>
+                                    <td class="text-end" x-text="alDia ? soles(alDia.total) : ''"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="d-flex justify-content-between small mt-2" x-show="alDia && alDia.mora > 0.005">
+                            <span>Mora: se cobra aparte, como en cualquier cobro</span>
+                            <b x-text="alDia ? soles(alDia.mora) : ''"></b>
+                        </div>
+                        <div class="rounded p-2 mt-2 small" style="background:#e8f4fd; color:#0b3d62;">
+                            <i class="ti ti-info-circle f-s-12"></i>
+                            El crédito <b>queda vigente</b>: este monto se cobra como un pago normal. La cancelación del crédito se hace después.
+                        </div>
+                      </div>
                     </div>
                     <div class="modal-body" x-show="tab === 'cancelacion' && hayCancelacion">
                       <div class="mx-auto" style="max-width:420px;">
@@ -1656,35 +1690,20 @@
                             </tbody>
                         </table>
                         <div class="small text-muted mt-2">
-                            <span x-show="valido() && n < p.maximo" x-text="'No se cobra el interés de las cuotas ' + (n + 1) + ' a ' + p.maximo + ': se descuentan ' + soles(descuento()) + ' del saldo.'"></span>
-                            <span x-show="valido() && n >= p.maximo">Se cobra el interés de todas las cuotas.</span>
+                            <span x-show="valido() && n < p.maximo" x-text="'Quedan ' + soles(descuento()) + ' pendientes en el crédito: el interés de las cuotas ' + (n + 1) + ' a ' + p.maximo + ' no entra en este monto.'"></span>
+                            <span x-show="valido() && n >= p.maximo">Incluye el interés de todas las cuotas.</span>
                         </div>
 
-                        {{-- 28/10 (Antony): checks para agregar la mora y la mora acumulada, desmarcados por defecto.
-                             Sin marcar se exoneran al cancelar (switches de la tarjeta "Cancelar crédito"). --}}
-                        <div class="mt-2" x-show="p.mora > 0.005 || p.mora_acumulada > 0.005">
-                            <div class="form-check mb-1" x-show="p.mora > 0.005">
-                                <input class="form-check-input" type="checkbox" id="cancelacion-con-mora" x-model="conMora">
-                                <label class="form-check-label small" for="cancelacion-con-mora">
-                                    Agregar mora<span x-show="p.mora_rotulo" x-text="' (' + p.mora_rotulo + ')'"></span> <b x-text="soles(p.mora)"></b>
-                                </label>
-                            </div>
-                            <div class="form-check mb-1" x-show="p.mora_acumulada > 0.005">
-                                <input class="form-check-input" type="checkbox" id="cancelacion-con-mora-acumulada" x-model="conMoraAcumulada">
-                                <label class="form-check-label small" for="cancelacion-con-mora-acumulada">
-                                    Agregar mora acumulada (cuotas ya pagadas) <b x-text="soles(p.mora_acumulada)"></b>
-                                </label>
-                            </div>
-                            <div class="d-flex justify-content-between fw-bold border-top pt-1 mt-1">
-                                <span>Total a cobrar</span>
-                                <span x-text="valido() ? soles(totalACobrar()) : '—'"></span>
-                            </div>
-                            {{-- 28/10 (Antony): aviso visible de que lo no marcado se exonera. --}}
-                            <div class="rounded p-2 mt-2 small" style="background:#fff3cd; color:#664d03;" x-show="sinMarcar()">
-                                <i class="ti ti-alert-triangle f-s-12"></i>
-                                <span x-text="avisoExoneracion()"></span>
-                            </div>
-                            <div class="small text-muted mt-1" x-show="! sinMarcar()">La mora marcada se cobra aparte, como pago de mora.</div>
+                        {{-- 06/11 (Antony, 28732): esta pestaña solo pone el monto; no cancela el crédito. Fuera los
+                             checks de mora del 28/10 (sin marcar exoneraban al cancelar): la mora la cobra el cobro como
+                             siempre, aparte (o Reserva Mora). Aquí solo se informa. --}}
+                        <div class="d-flex justify-content-between small mt-2" x-show="p.mora > 0.005">
+                            <span>Mora<span x-show="p.mora_rotulo" x-text="' (' + p.mora_rotulo + ')'"></span>: se cobra aparte, como en cualquier cobro</span>
+                            <b x-text="soles(p.mora)"></b>
+                        </div>
+                        <div class="rounded p-2 mt-2 small" style="background:#e8f4fd; color:#0b3d62;">
+                            <i class="ti ti-info-circle f-s-12"></i>
+                            El crédito <b>queda vigente</b>: este monto se cobra como un pago normal. La cancelación del crédito se hace después.
                         </div>
                         <div class="small text-danger mt-1" x-show="! valido()" x-text="'Elige una cuota entre la ' + p.minimo + ' y la ' + p.maximo + '.'"></div>
                       </div>
@@ -1759,8 +1778,8 @@
 
                     <div class="modal-footer py-2 justify-content-between">
                         <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                        <button type="button" class="btn btn-sm btn-danger" x-show="tab === 'cancelacion' && hayCancelacion"
-                                x-on:click="usar()" :disabled="! valido() || enviando">
+                        <button type="button" class="btn btn-sm btn-danger" x-show="tab === 'cancelacion' && (hayCancelacion || alDia)"
+                                x-on:click="usar()" :disabled="(hayCancelacion && ! valido()) || enviando">
                             <i class="ti ti-check"></i> Usar en Monto a Pagar
                         </button>
                         {{-- x-show en un div sin d-flex: el display:flex !important de Bootstrap le ganaba y los
@@ -1795,15 +1814,14 @@
             <script>
                 function calcularCancelacion() {
                     return {
-                        p: { credito: '', interes_cuota: 0, capital: 0, pagado: 0, total_cuotas: 0, pagadas: 0, minimo: 1, maximo: 1, vencidas: 0, saldo: 0, saldo_al_cancelar: 0, vencimientos: {}, mora: 0, mora_rotulo: '', mora_acumulada: 0 },
+                        p: { credito: '', interes_cuota: 0, capital: 0, pagado: 0, total_cuotas: 0, pagadas: 0, minimo: 1, maximo: 1, vencidas: 0, saldo: 0, saldo_al_cancelar: 0, vencimientos: {}, mora: 0, mora_rotulo: '' },
                         n: 1,
-                        conMora: false,
-                        conMoraAcumulada: false,
                         cargando: false,
                         enviando: false,
                         // 30/10: pestañas y "Pagos a una fecha".
                         tab: 'cancelacion',
                         hayCancelacion: true,
+                        alDia: null, // 06/11: cancelar hoy de un crédito sin la fórmula por cuota
                         sinCancelacion: '',
                         vencs: [],
                         vencPorFecha: {},
@@ -1821,13 +1839,11 @@
                                 this.cargando = false;
                                 if (! d) return;
                                 this.hayCancelacion = !! d.cancelacion;
+                                this.alDia = d.cancelacion_al_dia || null;
                                 this.sinCancelacion = d.sin_cancelacion || '';
                                 if (d.cancelacion) {
                                     this.p = d.cancelacion;
                                     this.n = d.cancelacion.sugerida;
-                                    // Desmarcados por defecto; si ya hay un cálculo aplicado, vuelven como quedaron.
-                                    this.conMora = !! d.cancelacion.con_mora;
-                                    this.conMoraAcumulada = !! d.cancelacion.con_mora_acumulada;
                                 }
                                 this.vencs = d.vencimientos;
                                 this.vencPorFecha = {};
@@ -1933,32 +1949,14 @@
                         // Igual que CancelacionHastaCuota::monto(): nunca más que el saldo que queda al cancelar.
                         total() { return this.redondear(Math.min(this.interes() + this.p.capital - this.p.pagado, this.p.saldo_al_cancelar)); },
                         descuento() { return Math.max(0, this.redondear(this.p.saldo - this.total())); },
-                        totalACobrar() {
-                            return this.redondear(this.total() + (this.conMora ? this.p.mora : 0) + (this.conMoraAcumulada ? this.p.mora_acumulada : 0));
-                        },
-                        sinMarcar() {
-                            return (this.p.mora > 0.005 && ! this.conMora) || (this.p.mora_acumulada > 0.005 && ! this.conMoraAcumulada);
-                        },
-                        avisoExoneracion() {
-                            const partes = [];
-                            if (this.p.mora > 0.005 && ! this.conMora) {
-                                partes.push('la mora (' + this.soles(this.p.mora) + ')');
-                            }
-                            if (this.p.mora_acumulada > 0.005 && ! this.conMoraAcumulada) {
-                                partes.push('la mora acumulada (' + this.soles(this.p.mora_acumulada) + ')');
-                            }
-                            const varias = partes.length > 1;
-                            return 'Ojo: al cancelar se ' + (varias ? 'exoneran ' : 'exonera ') + partes.join(' y ')
-                                + '. No se ' + (varias ? 'cobran' : 'cobra') + ' y queda registrado con el motivo «Mora exonerada». Para '
-                                + (varias ? 'cobrarlas, márcalas' : 'cobrarla, márcala') + ' arriba.';
-                        },
                         vence() { return this.p.vencimientos[this.n] || ''; },
                         soles(v) { return 'S/ ' + Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
                         // Ojo: no llamarlo aplicar(); ese nombre es de modalFlotante (coloca la ventana al abrir).
                         usar() {
-                            if (! this.valido() || this.enviando) return;
+                            if (this.enviando || (this.hayCancelacion && ! this.valido())) return;
                             this.enviando = true;
-                            this.$wire.aplicarCancelacion(this.n, this.conMora, this.conMoraAcumulada).then((ok) => {
+                            const llamada = this.hayCancelacion ? this.$wire.aplicarCancelacion(this.n) : this.$wire.aplicarMontoDeCancelacion();
+                            llamada.then((ok) => {
                                 this.enviando = false;
                                 if (ok) this.modal.hide();
                             }, () => { this.enviando = false; });

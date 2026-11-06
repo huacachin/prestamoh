@@ -24,7 +24,11 @@ use Tests\TestCase;
  * "Calcular cancelación" (23/10/2026, Antony, crédito 28603): el cajero elige hasta
  * qué cuota se cobra el interés y el total para cancelar es
  * interés por cuota × N + capital del crédito − monto pagado. Va al Monto a Pagar
- * con Cancelado encendido y sigue el cobro normal.
+ * y sigue el cobro normal.
+ *
+ * 06/11/2026 (Antony, crédito 28732): "no debería cancelar el crédito, debería quedar aún como
+ * pendiente": ya no enciende Cancelado ni exonera la mora; el crédito queda vigente. Cancelar con la
+ * fórmula solo pasa si el cajero enciende a mano el switch Cancelado (tests con ->set('cancel', true)).
  */
 class CalcularCancelacionTest extends TestCase
 {
@@ -98,7 +102,7 @@ class CalcularCancelacionTest extends TestCase
         $this->assertSame(715.0, CancelacionHastaCuota::monto($plan, 10));  // todas: el cronograma entero
     }
 
-    public function test_usar_el_calculo_lleva_el_total_al_monto_y_enciende_cancelado(): void
+    public function test_usar_el_calculo_lleva_el_total_al_monto_y_deja_el_credito_vigente(): void
     {
         $this->actingAs($this->actor());
         $credit = $this->credito();
@@ -109,10 +113,11 @@ class CalcularCancelacionTest extends TestCase
             ->call('aplicarCancelacion', 8)
             ->assertReturned(true)
             ->assertSet('monto', '675.00')
-            ->assertSet('cancel', true)
+            ->assertSet('cancel', false)
+            ->assertSet('decisionTotal', 'no')
             ->assertSet('cancelHasta', 8)
             ->assertDispatched('monto-usado')
-            ->assertSee('cancela · interés hasta la cuota 8');
+            ->assertSee('calculado hasta la cuota 8 · sin cancelar');
     }
 
     public function test_no_deja_elegir_una_cuota_fuera_del_rango(): void
@@ -131,13 +136,14 @@ class CalcularCancelacionTest extends TestCase
         }
     }
 
-    public function test_cobrar_cancela_el_credito_con_el_monto_del_calculo_y_condona_el_interes_que_sobra(): void
+    public function test_con_el_switch_cancelado_a_mano_cancela_con_el_monto_del_calculo_y_condona_el_interes_que_sobra(): void
     {
         $this->actingAs($this->actor());
         $credit = $this->credito();
 
         $c = Livewire::test(Create::class, ['creditId' => $credit->id])
             ->call('aplicarCancelacion', 8)
+            ->set('cancel', true)
             ->call('confirmarPago');
 
         // El modo estricto no lo baja al interés a la fecha: 675 se queda.
@@ -174,6 +180,7 @@ class CalcularCancelacionTest extends TestCase
 
         Livewire::test(Create::class, ['creditId' => $credit->id])
             ->call('aplicarCancelacion', 8)
+            ->set('cancel', true)
             ->call('confirmarPago')
             ->call('pagar')
             ->assertNotDispatched('errorAlert');
@@ -218,12 +225,11 @@ class CalcularCancelacionTest extends TestCase
     }
 
     /**
-     * 23/10 (Antony: "ojo que en este caso es cuando también le dé a no dejarlo vigente al darle en
-     * cobrar"): las líneas del recibo van solo si al cobrar se cancela. Con "No, dejarlo vigente" el
-     * monto es un pago normal: nada se exonera y el crédito sigue activo. Volver a "Sí" recupera el
-     * cálculo (antes el modo estricto lo bajaba al interés a la fecha).
+     * 06/11 (Antony, 28732): "no debería cancelar el crédito, debería quedar aún como pendiente". Con el
+     * monto del cálculo el cobro no pregunta si se cancela: es un pago normal, nada se exonera y el
+     * crédito sigue activo. El recibo lista solo hasta la cuota elegida (23/10) y lo demás en una línea.
      */
-    public function test_no_dejarlo_vigente_cobra_sin_exonerar_y_volver_a_si_recupera_el_calculo(): void
+    public function test_cobrar_el_monto_del_calculo_es_un_pago_normal_y_el_credito_queda_vigente(): void
     {
         $this->actingAs($this->actor());
         $credit = $this->credito();
@@ -231,26 +237,23 @@ class CalcularCancelacionTest extends TestCase
         $c = Livewire::test(Create::class, ['creditId' => $credit->id])
             ->call('aplicarCancelacion', 8)
             ->call('confirmarPago')
-            ->set('decisionTotal', 'no')
             ->assertSet('cancel', false)
+            ->assertSet('decisionTotal', 'no')
             ->assertSet('cancelHasta', 8)
             ->assertSee('calculado hasta la cuota 8 · sin cancelar')
-            ->assertDontSee('Cancelación hasta la cuota 8')
-            ->set('decisionTotal', 'si')
-            ->assertSet('cancel', true)
-            ->assertSet('monto', '675.00');
+            ->assertSeeHtml('y el crédito <b>queda vigente</b>')
+            ->assertDontSee('¿Cancelar el crédito?')
+            ->assertDontSee('Cancelación hasta la cuota 8');
         $p = $c->get('preview');
-        $this->assertTrue($p['cancela']);
-        $this->assertSame([[5, 6, 7, 8], ['rotulo' => "Capital cuotas\u{00A0}9\u{00A0}y\u{00A0}10:", 'monto' => 200.0]], [array_column($p['detalle_cuotas'], 'num'), $p['resto_cuotas']]);
-        $c->assertSee('Cancelación hasta la cuota 8');
-
-        // Con "No" la vista previa también lista solo hasta la 8; lo demás llega en orden a la 9 y la 10.
-        $c->set('decisionTotal', 'no');
-        $p = $c->get('preview');
+        $this->assertFalse($p['cancela']);
+        $this->assertTrue($p['solo_monto']);
         $this->assertSame([[5, 6, 7, 8], ['rotulo' => "Cuotas\u{00A0}9\u{00A0}y\u{00A0}10:", 'monto' => 200.0]], [array_column($p['detalle_cuotas'], 'num'), $p['resto_cuotas']]);
         $c->call('pagar')->assertNotDispatched('errorAlert');
 
         $this->assertSame('Activo', $credit->fresh()->situacion);
+        $this->assertDatabaseHas('activity_log', ['description' => "Registró pago de 675.00 en el crédito #{$credit->id} (monto de Calcular pagos → Cancelación con interés hasta la cuota 8; el crédito queda vigente)"]);
+        $this->assertEqualsWithDelta(40.00, (float) CreditInstallment::where('credit_id', $credit->id)->get()
+            ->sum(fn ($i) => $i->importe_cuota + $i->importe_interes + $i->importe_excedente - $i->importe_aplicado - $i->interes_aplicado - $i->excedente_aplicado), 0.001, 'quedan pendientes los 40 del interés de las cuotas 9 y 10');
         $masivo = MassDeletion::where('credit_id', $credit->id)->latest('id')->first();
         $this->assertSame([8, null], [$masivo->hasta_cuota, $masivo->interes_exonerado]);
         // Nada condonado: el interés de las cuotas 9 y 10 sigue en el cronograma y queda pendiente.
@@ -263,62 +266,62 @@ class CalcularCancelacionTest extends TestCase
             ->assertDontSee('Se exonera el interés');
     }
 
-    public function test_teclear_otro_monto_sale_del_calculo_y_apaga_cancelado(): void
+    public function test_teclear_otro_monto_sale_del_calculo(): void
     {
         $this->actingAs($this->actor());
         $credit = $this->credito();
 
         Livewire::test(Create::class, ['creditId' => $credit->id])
             ->call('aplicarCancelacion', 8)
-            ->assertSet('quitarMora', true)
             ->set('monto', 700)
             ->assertSet('cancelHasta', null)
             ->assertSet('cancel', false)
-            // Los switches de exoneración que encendió el cálculo vuelven a apagarse.
-            ->assertSet('quitarMora', false)
-            ->assertSet('quitarMoraAcum', false);
+            ->assertSet('decisionTotal', '');
     }
 
-    /** 28/10 (Antony): checks para agregar la mora y la mora acumulada, desmarcados por defecto. */
-    public function test_el_calculo_trae_la_mora_y_la_acumulada_con_los_checks_desmarcados(): void
+    /**
+     * 06/11 (Antony, 28732): la pestaña solo pone el monto. Ya no trae los checks de mora del 28/10 (sin
+     * marcar exoneraban al cancelar): informa la mora y el cobro la cobra como siempre; la acumulada
+     * (cuotas pagadas tarde) solo se cobra al cancelar, así que aquí no entra.
+     */
+    public function test_la_pestana_no_exonera_la_mora_se_cobra_como_en_cualquier_cobro(): void
     {
         $this->actingAs($this->actor());
         $credit = $this->conCuotaPagadaTarde($this->credito());
 
         Livewire::test(Create::class, ['creditId' => $credit->id])
             ->call('abrirCancelacion')
-            ->assertReturned(fn ($plan) => $plan['mora'] === 18.06 && $plan['mora_rotulo'] === 'cuotas 5 y 6' && $plan['mora_acumulada'] === 2.58
-                && $plan['con_mora'] === false && $plan['con_mora_acumulada'] === false)
-            // Al volver a abrirlo con el cálculo ya aplicado, los checks quedan como se dejaron.
-            ->call('aplicarCancelacion', 8, true, false)
-            ->call('abrirCancelacion')
-            ->assertReturned(fn ($plan) => $plan['con_mora'] === true && $plan['con_mora_acumulada'] === false);
-    }
-
-    public function test_sin_marcar_los_checks_la_cancelacion_exonera_la_mora_y_la_acumulada(): void
-    {
-        $user = $this->actor();
-        $user->givePermissionTo(Permission::findOrCreate('pagos.mora-manual', 'web'));
-        app(PermissionRegistrar::class)->forgetCachedPermissions();
-        $this->actingAs($user);
-        $credit = $this->conCuotaPagadaTarde($this->credito());
-
-        Livewire::test(Create::class, ['creditId' => $credit->id])
-            ->set('moraManual', '5')
+            ->assertReturned(fn ($plan) => $plan['mora'] === 18.06 && $plan['mora_rotulo'] === 'cuotas 5 y 6' && ! array_key_exists('con_mora', $plan))
             ->call('aplicarCancelacion', 8)
-            ->assertSet('quitarMora', true)
-            ->assertSet('quitarMoraAcum', true)
-            // Como el switch: exonerar manda sobre el Total Mora tecleado.
-            ->assertSet('moraManual', null)
+            ->assertSet('quitarMora', false)
+            ->assertSet('quitarMoraAcum', false)
             ->call('confirmarPago')
             ->call('pagar')
             ->assertNotDispatched('errorAlert');
 
-        $this->assertSame('Cancelado', $credit->fresh()->situacion);
+        $this->assertSame('Activo', $credit->fresh()->situacion);
+        $this->assertEqualsWithDelta(18.06, (float) Payment::where('credit_id', $credit->id)->where('tipo', 'MORA')->sum('monto'), 0.001);
+        $this->assertSame(0, Payment::where('credit_id', $credit->id)->where('documento', 'MORA ACUM.')->count());
+        $this->assertEqualsWithDelta(693.06, (float) MassDeletion::where('credit_id', $credit->id)->latest('id')->value('amount'), 0.001);
+        $this->assertDatabaseMissing('mora_overrides', ['credit_id' => $credit->id]);
+    }
+
+    public function test_con_reserva_mora_la_mora_no_se_cobra_y_el_calculo_no_la_cambia(): void
+    {
+        $this->actingAs($this->actor());
+        $credit = $this->conCuotaPagadaTarde($this->credito());
+
+        Livewire::test(Create::class, ['creditId' => $credit->id])
+            ->set('ckmora', true)
+            ->call('aplicarCancelacion', 8)
+            ->assertSet('ckmora', true)
+            ->call('confirmarPago')
+            ->call('pagar')
+            ->assertNotDispatched('errorAlert');
+
+        $this->assertSame('Activo', $credit->fresh()->situacion);
         $this->assertSame(0, Payment::where('credit_id', $credit->id)->where('tipo', 'MORA')->count());
         $this->assertEqualsWithDelta(675.00, (float) MassDeletion::where('credit_id', $credit->id)->latest('id')->value('amount'), 0.001);
-        $this->assertDatabaseHas('mora_overrides', ['credit_id' => $credit->id, 'tipo' => 'condonacion-vigente', 'mora_calculada' => 18.06, 'motivo' => 'Mora exonerada']);
-        $this->assertDatabaseHas('mora_overrides', ['credit_id' => $credit->id, 'tipo' => 'condonacion-acumulada', 'mora_calculada' => 2.58, 'motivo' => 'Mora exonerada']);
     }
 
     /**
@@ -335,7 +338,7 @@ class CalcularCancelacionTest extends TestCase
         $credit = $this->credito();
 
         $c = Livewire::test(Create::class, ['creditId' => $credit->id])
-            ->call('aplicarCancelacion', 8, true, false)
+            ->call('aplicarCancelacion', 8)
             ->assertSet('moraManual', null)
             ->assertSee('Mora cuotas 5 y 6 (21 días en total)')
             ->call('confirmarPago');
@@ -346,23 +349,22 @@ class CalcularCancelacionTest extends TestCase
         $c->set('monto', 700)->set('moraManual', null)->call('confirmarPago');
         $this->assertSame(12.04, $c->get('preview')['mora_cobrar']);
 
-        $c->call('aplicarCancelacion', 8, true, false)->call('confirmarPago')->call('pagar')->assertNotDispatched('errorAlert');
+        $c->call('aplicarCancelacion', 8)->call('confirmarPago')->call('pagar')->assertNotDispatched('errorAlert');
         $this->assertEqualsWithDelta(18.06, (float) Payment::where('credit_id', $credit->id)->where('tipo', 'MORA')->sum('monto'), 0.001);
         $this->assertDatabaseMissing('mora_overrides', ['credit_id' => $credit->id]);
     }
 
-    public function test_con_los_checks_marcados_la_mora_y_la_acumulada_se_cobran_al_cancelar(): void
+    /** Cancelar a mano con el cálculo ya no exonera la mora por su cuenta: se cobran la mora y la acumulada. */
+    public function test_con_el_switch_cancelado_a_mano_la_mora_y_la_acumulada_se_cobran(): void
     {
         $this->actingAs($this->actor());
         $credit = $this->conCuotaPagadaTarde($this->credito());
 
         Livewire::test(Create::class, ['creditId' => $credit->id])
-            // Con Reserva Mora la mora no se cobraría: marcar "Agregar mora" la apaga.
-            ->set('ckmora', true)
-            ->call('aplicarCancelacion', 8, true, true)
+            ->call('aplicarCancelacion', 8)
+            ->set('cancel', true)
             ->assertSet('quitarMora', false)
             ->assertSet('quitarMoraAcum', false)
-            ->assertSet('ckmora', false)
             ->assertSet('monto', '675.00')
             ->call('confirmarPago')
             ->call('pagar')
@@ -382,6 +384,7 @@ class CalcularCancelacionTest extends TestCase
 
         Livewire::test(Create::class, ['creditId' => $credit->id])
             ->call('aplicarCancelacion', 8)
+            ->set('cancel', true)
             ->set('cancelUltimaCuota', true)
             ->assertSet('cancelHasta', null)
             ->assertSet('cancel', true)
@@ -414,6 +417,7 @@ class CalcularCancelacionTest extends TestCase
 
         Livewire::test(Create::class, ['creditId' => $credit->id])
             ->call('aplicarCancelacion', 6)
+            ->set('cancel', true)
             ->call('confirmarPago')
             ->call('pagar')
             ->assertNotDispatched('errorAlert');
@@ -443,14 +447,44 @@ class CalcularCancelacionTest extends TestCase
         ]);
 
         $this->assertNull(CancelacionHastaCuota::plan($credit));
-        Livewire::test(Create::class, ['creditId' => $credit->id])
+        $alDia = null;
+        $c = Livewire::test(Create::class, ['creditId' => $credit->id])
             ->call('abrirCancelacion')
             ->assertReturned(null)
             ->assertDispatched('errorAlert')
-            // 30/10: "Calcular pagos" abre igual; la pestaña de cancelación lo explica.
+            // 06/11 (Antony, 28732): en vez de mandar al switch Cancelado, la pestaña da lo de cancelar hoy.
             ->call('abrirCalcularPagos')
-            ->assertReturned(fn ($d) => $d['cancelacion'] === null
-                && str_contains($d['sin_cancelacion'], 'En los créditos mensuales de una cuota el interés corre por mes'));
+            ->assertReturned(function ($d) use (&$alDia) {
+                $alDia = $d['cancelacion_al_dia'];
+
+                return $d['cancelacion'] === null && $d['sin_cancelacion'] === null;
+            });
+        $this->assertEqualsWithDelta(3000.0, $alDia['capital'], 0.001);
+        $this->assertEqualsWithDelta($alDia['capital'] + $alDia['interes'], $alDia['total'], 0.001);
+
+        // Va al Monto a Pagar sin encender Cancelado: el crédito queda vigente.
+        $c->call('aplicarMontoDeCancelacion')
+            ->assertReturned(true)
+            ->assertSet('monto', number_format($alDia['total'], 2, '.', ''))
+            ->assertSet('cancel', false)
+            ->assertSet('decisionTotal', 'no')
+            ->assertDispatched('monto-usado')
+            ->call('confirmarPago')
+            ->assertSet('decisionTotal', 'no')
+            ->assertSeeHtml('capital e interés a la fecha): se cobra como un pago normal')
+            ->assertDontSee('¿Cancelar el crédito?');
+        $this->assertTrue($c->get('preview')['solo_monto']);
+        $c->call('pagar')->assertNotDispatched('errorAlert');
+
+        $this->assertSame('Activo', $credit->fresh()->situacion);
+        $this->assertDatabaseHas('activity_log', ['description' => 'Registró pago de '.number_format($alDia['total'], 2, '.', '')." en el crédito #{$credit->id} (monto de Calcular pagos → Cancelación con capital e interés a la fecha; el crédito queda vigente)"]);
+
+        // Teclear otro monto sale del cálculo: vuelve a preguntar si se cancela cuando cubre el total.
+        Livewire::test(Create::class, ['creditId' => $credit->id])
+            ->call('aplicarMontoDeCancelacion')
+            ->set('monto', 10)
+            ->assertSet('montoDeCancelacion', false)
+            ->assertSet('decisionTotal', '');
     }
 
     public function test_la_pantalla_ya_no_tiene_fecha_de_pago_y_trae_los_dos_botones(): void

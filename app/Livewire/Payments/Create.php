@@ -110,6 +110,14 @@ class Create extends Component
     #[Locked]
     public ?int $cancelHasta = null;
 
+    /**
+     * El Monto a Pagar es el de cancelar hoy (capital + interés a la fecha) que puso la pestaña
+     * "Cancelación" en un crédito sin la fórmula por cuota (mensual de una cuota, 06/11, crédito
+     * 28732). Como con $cancelHasta, el crédito queda vigente.
+     */
+    #[Locked]
+    public bool $montoDeCancelacion = false;
+
     /** @var array<string, mixed>|false|null  false = aún sin calcular en esta petición */
     private array|false|null $planCancelacionCache = false;
 
@@ -486,10 +494,13 @@ class Create extends Component
         }
 
         $plan = $this->planCancelacion();
+        // 06/11 (28732): sin la fórmula por cuota (mensual de una cuota) la pestaña da lo de cancelar hoy.
+        $alDia = $plan === null ? $this->cancelacionAlDia() : null;
 
         return [
             'cancelacion' => $plan !== null ? $this->datosCancelacion($plan) : null,
-            'sin_cancelacion' => $plan === null ? $this->motivoSinCalculoDeCancelacion() : null,
+            'cancelacion_al_dia' => $alDia,
+            'sin_cancelacion' => $plan === null && $alDia === null ? $this->motivoSinCalculoDeCancelacion() : null,
             'vencimientos' => PagosAUnaFecha::vencimientos($this->credit),
             'hoy' => now()->toDateString(),
             // Sin permiso de Total Mora, el cobro pone su mora calculada (la de la impaga más antigua).
@@ -568,26 +579,25 @@ class Create extends Component
         return $plan + [
             'credito' => (int) $this->credit->id,
             'sugerida' => max($plan['minimo'], min($plan['maximo'], $sugerida)),
-            // 28/10 (Antony): checks para agregar la mora y la mora acumulada, desmarcados por defecto.
-            // Los montos son los que el cobro sumaría al cancelar; si ya hay un cálculo, vuelven sus checks.
-            // 30/10: la mora es la suma de la de cada cuota vencida (se cancelan todas), no solo la más antigua.
+            // Solo para informar: la mora la cobra el cobro como siempre (06/11). Con el cálculo es la suma
+            // de la de cada cuota vencida (30/10), porque el monto las paga todas.
             'mora' => $moraVencidas['monto'],
             'mora_rotulo' => RotuloCuotas::de($moraVencidas['cuotas']),
-            'mora_acumulada' => round((float) collect(MoraExonerada::porCuota($this->credit))->sum('monto'), 2),
-            'con_mora' => $this->cancelHasta !== null && ! $this->quitarMora,
-            'con_mora_acumulada' => $this->cancelHasta !== null && ! $this->quitarMoraAcum,
         ];
     }
 
     /**
-     * Lleva el total de "Calcular cancelación" al Monto a Pagar y enciende
-     * Cancelado: el resto es el cobro de siempre. El monto lo calcula el
-     * servidor; del navegador solo llegan la cuota elegida y los dos checks de
-     * mora (28/10, Antony: desmarcados por defecto): sin marcar, la mora y la
-     * mora acumulada se exoneran al cancelar con los mismos switches de la
-     * tarjeta "Cancelar crédito"; marcados, se cobran como siempre.
+     * Lleva el total de la pestaña "Cancelación" al Monto a Pagar. El monto lo calcula el servidor; del
+     * navegador solo llega la cuota elegida.
+     *
+     * 06/11/2026 (Antony, crédito 28732): "no debería cancelar el crédito, debería quedar aún como
+     * pendiente; ellos luego tienen otro proceso de cancelación, esto solo serviría para cancelar el
+     * monto". Ya no enciende Cancelado ni toca la mora: el cobro es un pago normal (la mora, como en
+     * cualquier cobro) y el crédito queda Activo. Antes encendía Cancelado y exoneraba la mora y el
+     * interés de las cuotas siguientes. Cancelar con la fórmula sigue posible solo encendiendo a mano
+     * el switch "Cancelado".
      */
-    public function aplicarCancelacion(int $hasta, bool $conMora = false, bool $conMoraAcumulada = false): bool
+    public function aplicarCancelacion(int $hasta): bool
     {
         if (! $this->credit || $this->credit->situacion !== 'Activo') {
             return false;
@@ -610,25 +620,73 @@ class Create extends Component
         $this->updatedMonto();      // lo mismo que al teclear un monto (también sale de un cálculo anterior)
         $this->cancelHasta = $hasta;
         $this->cancelUltimaCuota = false;
-        $this->cancel = true;
-        $this->quitarMora = ! $conMora;
-        $this->quitarMoraAcum = ! $conMoraAcumulada;
+        $this->cancel = false;
+        // El crédito queda vigente: el cobro no pregunta si se cancela (confirmarPago).
+        $this->decisionTotal = 'no';
         // Con el cálculo la mora es la suma de cada cuota vencida (moraCalcAt): el Total Mora
         // que updatedMonto() precargó (solo la más antigua) no debe mandar sobre ella.
         $this->moraManual = null;
-        if ($this->quitarMora) {
-            // Igual que el switch: exonerar manda sobre el Total Mora tecleado.
-            $this->moraMotivo = 'Mora exonerada';
-        } else {
-            // Con Reserva Mora la mora no se cobraría: marcarla es cobrarla.
-            $this->ckmora = false;
-        }
-        if (($this->quitarMora || $this->quitarMoraAcum) && mb_strlen(trim($this->condonarMotivo)) < 5) {
-            $this->condonarMotivo = 'Mora exonerada';
-        }
         $this->dispatch('monto-usado');
 
         return true;
+    }
+
+    /**
+     * Lo de cancelar hoy en un crédito sin la fórmula por cuota (mensual de una cuota): capital
+     * pendiente + interés a la fecha, la misma cifra que habilita el switch Cancelado. La mora es la
+     * que el cobro cobraría, solo para informar. Null si no queda nada por cancelar.
+     *
+     * @return array{capital: float, interes: float, total: float, mora: float}|null
+     */
+    private function cancelacionAlDia(): ?array
+    {
+        $d = $this->deudaCalcs();
+        $interes = round((float) $d['int_cancelar'] + (float) $d['exc_hoy'], 2);
+        $total = round((float) $d['cap_pendiente_total'] + $interes, 2);
+        if ($total <= 0.01) {
+            return null;
+        }
+
+        return [
+            'capital' => round((float) $d['cap_pendiente_total'], 2),
+            'interes' => $interes,
+            'total' => $total,
+            'mora' => round((float) $this->buildCalcs()['total_mora_calc'], 2),
+        ];
+    }
+
+    /**
+     * Pestaña "Cancelación" de un crédito sin la fórmula por cuota (06/11, Antony, crédito 28732): lleva
+     * lo de cancelar hoy al Monto a Pagar sin encender Cancelado. El crédito queda vigente.
+     */
+    public function aplicarMontoDeCancelacion(): bool
+    {
+        if (! $this->credit || $this->credit->situacion !== 'Activo' || $this->planCancelacion() !== null) {
+            return false;
+        }
+
+        $datos = $this->cancelacionAlDia();
+        if ($datos === null) {
+            $this->dispatch('errorAlert', ['message' => 'Este crédito no tiene saldo por cancelar.']);
+
+            return false;
+        }
+
+        $this->monto = number_format($datos['total'], 2, '.', '');
+        $this->updatedMonto();      // lo mismo que al teclear un monto
+        $this->montoDeCancelacion = true;
+        $this->cancelUltimaCuota = false;
+        $this->cancel = false;
+        $this->decisionTotal = 'no';
+        $this->dispatch('monto-usado');
+
+        return true;
+    }
+
+    /** El monto viene de la pestaña "Cancelación" y el crédito queda vigente (06/11). */
+    private function esSoloMontoDelCalculo(): bool
+    {
+        return ($this->cancelHasta !== null || $this->montoDeCancelacion) && ! $this->cancel;
     }
 
     /**
@@ -684,11 +742,12 @@ class Create extends Component
      */
     private function salirDeCancelacionHasta(): void
     {
-        if ($this->cancelHasta === null) {
+        if ($this->cancelHasta === null && ! $this->montoDeCancelacion) {
             return;
         }
 
         $this->cancelHasta = null;
+        $this->montoDeCancelacion = false;
         $this->cancel = false;
         $this->decisionTotal = '';
         // Los switches de exoneración los fijó el cálculo: vuelven a su valor normal.
@@ -1080,8 +1139,9 @@ class Create extends Component
         }
 
         // Si el cajero ya marcó el switch, la decisión está tomada y no se le
-        // vuelve a preguntar; si no, el modal exigirá que responda.
-        $this->decisionTotal = $this->cancel ? 'si' : '';
+        // vuelve a preguntar; si no, el modal exigirá que responda. Con el monto de la
+        // pestaña "Cancelación" (06/11) el crédito queda vigente: no se pregunta.
+        $this->decisionTotal = $this->cancel ? 'si' : ($this->esSoloMontoDelCalculo() ? 'no' : '');
 
         $this->preview = $this->construirPreview();
         $this->dispatch('ticket-confirm');
@@ -1704,6 +1764,11 @@ class Create extends Component
         Audit::log(
             "Registró pago de {$this->monto} en el crédito #{$this->credit->id}".($this->cancel ? ' (canceló el crédito)' : '')
             .($planCancelacion !== null ? " con interés hasta la cuota {$this->cancelHasta}" : '')
+            .($this->esSoloMontoDelCalculo()
+                ? ' (monto de Calcular pagos → Cancelación '
+                    .($this->cancelHasta !== null ? "con interés hasta la cuota {$this->cancelHasta}" : 'con capital e interés a la fecha')
+                    .'; el crédito queda vigente)'
+                : '')
             .($this->cancel && $this->montoTecleado !== null
                 ? " — ajustado desde {$this->montoTecleado}: ".($this->cancelUltimaCuota ? 'cronograma completo (interés completo)' : 'solo lo necesario para cancelar')
                 : '')
@@ -1730,7 +1795,7 @@ class Create extends Component
 
         $this->reset([
             'monto', 'obs', 'ckmora', 'cancel', 'impointe2', 'impomora',
-            'idpre', 'moraManual', 'moraMotivo', 'quitarMora', 'quitarMoraAcum', 'condonarMotivo', 'cancelUltimaCuota', 'decisionTotal', 'montoTecleado', 'cancelHasta',
+            'idpre', 'moraManual', 'moraMotivo', 'quitarMora', 'quitarMoraAcum', 'condonarMotivo', 'cancelUltimaCuota', 'decisionTotal', 'montoTecleado', 'cancelHasta', 'montoDeCancelacion',
             'metodoPago', 'depBanco', 'depCuenta', 'depCuentaOtra', 'depCanal',
             'depFecha', 'voucherFoto', 'egresoCreadoId',
         ]);
@@ -1971,6 +2036,8 @@ class Create extends Component
             'cancela' => $this->cancel,
             // Para la pregunta del modal cuando el cobro liquida el crédito.
             'cubre_total' => $this->cubreTotalidad(),
+            // 06/11: monto de la pestaña "Cancelación" con el crédito vigente (no se pregunta si se cancela).
+            'solo_monto' => $this->esSoloMontoDelCalculo(),
             // "Calcular cancelación": la cuenta que eligió el cajero, para mostrarla en el aviso,
             // y las líneas que llevará el recibo (cuota elegida e interés exonerado).
             'cancelacion_hasta' => $cuentaCancelacion,

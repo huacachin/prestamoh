@@ -158,7 +158,8 @@ class CalcularPagosAUnaFechaTest extends TestCase
 
         Livewire::test(Create::class, ['creditId' => $this->credit->id])
             ->call('abrirCalcularPagos')
-            ->assertReturned(fn ($d) => $d['cancelacion'] === null && str_contains($d['sin_cancelacion'], 'usa el switch Cancelado'))
+            // 06/11: en vez de mandar al switch Cancelado, la pestaña da lo de cancelar hoy (CalcularCancelacionTest).
+            ->assertReturned(fn ($d) => $d['cancelacion'] === null && $d['cancelacion_al_dia'] !== null && $d['sin_cancelacion'] === null)
             ->assertNotDispatched('errorAlert')
             ->call('calcularPagosAl', '2026-10-30')
             ->assertReturned(fn ($c) => count($c['filas']) === 1 && $c['filas'][0]['dias'] === 46);
