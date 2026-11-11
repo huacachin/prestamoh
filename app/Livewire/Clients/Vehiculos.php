@@ -12,6 +12,7 @@ use App\Support\Documentos\Nacionalidades;
 use App\Support\PlacaRegistrada;
 use App\Support\Ubigeo;
 use App\Support\VehiculoCatalogos;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 
@@ -566,11 +567,22 @@ class Vehiculos extends Component
         $this->vincularCopro($vehiculoId, $copro->id);
     }
 
-    public function quitarCopro(int $vehiculoId, int $clientId): void
+    /**
+     * Botón "Quitar" del copropietario. 10/11/2026 (Antony): con la regla del
+     * mismo día, como el resto de eliminar: quien no es director solo quita al
+     * que se vinculó HOY (fecha de la fila de cliente_vehiculo); se llama
+     * eliminar* para que horario-eliminar.js apague también el botón.
+     */
+    public function eliminarCopro(int $vehiculoId, int $clientId): void
     {
         $this->autorizarEdicion();
         $v = Vehiculo::where('client_id', $this->clientId)->findOrFail($vehiculoId);
         $copro = Client::find($clientId);
+
+        $vinculo = DB::table('cliente_vehiculo')->where('vehiculo_id', $v->id)->where('client_id', $clientId)->first();
+        if (! $vinculo || $this->eliminacionBloqueada($vinculo)) {
+            return;
+        }
 
         $v->copropietarios()->detach($clientId);
 

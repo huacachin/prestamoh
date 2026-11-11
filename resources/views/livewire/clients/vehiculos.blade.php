@@ -272,7 +272,7 @@
                                                                 </a>
                                                             @endif
                                                             <button type="button" class="btn btn-sm btn-outline-danger py-0"
-                                                                    wire:click="quitarCopro({{ $v->id }}, {{ $cop->id }})"
+                                                                    wire:click="eliminarCopro({{ $v->id }}, {{ $cop->id }})" @creadoEl($cop->pivot)
                                                                     data-confirmar="¿Quitar a {{ $cop->fullName() }} como copropietario de {{ $v->placa }}?">
                                                                 <i class="ti ti-x"></i> Quitar
                                                             </button>

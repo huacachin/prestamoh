@@ -108,7 +108,7 @@ class ContratoTramoDTest extends TestCase
         $this->assertTrue($v->fresh()->perteneceA($titular->id), 'el titular sigue siendo dueño');
 
         Livewire::test(Vehiculos::class, ['id' => $titular->id])
-            ->call('quitarCopro', $v->id, $copro->id);
+            ->call('eliminarCopro', $v->id, $copro->id);
 
         $this->assertFalse($v->fresh()->copropietarios->contains($copro->id));
     }

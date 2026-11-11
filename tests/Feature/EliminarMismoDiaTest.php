@@ -8,6 +8,7 @@ use App\Livewire\Clients\Documentos;
 use App\Livewire\Clients\Gallery;
 use App\Livewire\Clients\Gps;
 use App\Livewire\Clients\GpsVehiculos;
+use App\Livewire\Clients\Vehiculos;
 use App\Livewire\Credits\Index as CreditsIndex;
 use App\Models\Client;
 use App\Models\ClientAttachment;
@@ -294,6 +295,41 @@ class EliminarMismoDiaTest extends TestCase
             ->dispatch('register_destroy', id: $deAyer->id)
             ->assertDispatched('errorAlert');
         $this->assertNotNull($deAyer->fresh(), 'subido ayer: sigue');
+    }
+
+    /** 10/11/2026 (Antony): "Quitar" copropietario de un vehículo, solo si se vinculó hoy (salvo el director). */
+    public function test_quitar_copropietario_solo_si_se_vinculo_hoy(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-11-10 17:00', 'America/Lima'));
+        $titular = $this->cliente();
+        $coproDeHoy = Client::create([...$titular->only(['nombre', 'apellido_pat', 'apellido_mat', 'tipo_documento', 'sexo', 'status', 'headquarter_id']), 'expediente' => '951', 'documento' => '33445567']);
+        $coproDeAyer = Client::create([...$titular->only(['nombre', 'apellido_pat', 'apellido_mat', 'tipo_documento', 'sexo', 'status', 'headquarter_id']), 'expediente' => '952', 'documento' => '33445568']);
+        $vehiculo = Vehiculo::create([
+            'client_id' => $titular->id, 'placa' => 'CPR111', 'marca' => 'TOYOTA', 'modelo' => 'HIACE',
+            'nro_serie' => 'SER-CPR111', 'nro_motor' => 'MOT-CPR111', 'valor' => 15000,
+        ]);
+        $vehiculo->copropietarios()->attach([$coproDeHoy->id, $coproDeAyer->id]);
+        $vehiculo->copropietarios()->updateExistingPivot($coproDeAyer->id, ['created_at' => '2026-11-09 16:00:00']);
+
+        Livewire::test(Vehiculos::class, ['id' => $titular->id])
+            ->call('abrirCopro', $vehiculo->id)
+            ->assertSeeHtml('wire:click="eliminarCopro('.$vehiculo->id.', '.$coproDeHoy->id.')" data-creado="2026-11-10"')
+            ->assertSeeHtml('wire:click="eliminarCopro('.$vehiculo->id.', '.$coproDeAyer->id.')" data-creado="2026-11-09"')
+            ->call('eliminarCopro', $vehiculo->id, $coproDeAyer->id)
+            ->assertDispatched('errorAlert');
+        $this->assertTrue($vehiculo->fresh()->copropietarios->contains($coproDeAyer->id), 'vinculado ayer: sigue');
+
+        Livewire::test(Vehiculos::class, ['id' => $titular->id])
+            ->call('eliminarCopro', $vehiculo->id, $coproDeHoy->id)
+            ->assertNotDispatched('errorAlert');
+        $this->assertFalse($vehiculo->fresh()->copropietarios->contains($coproDeHoy->id), 'vinculado hoy: se quita');
+
+        $director = User::factory()->create(['username' => 'dir-copro', 'headquarter_id' => $this->sede->id]);
+        $director->syncRoles([Role::findOrCreate('director', 'web')]);
+        Livewire::actingAs($director)->test(Vehiculos::class, ['id' => $titular->id])
+            ->call('eliminarCopro', $vehiculo->id, $coproDeAyer->id)
+            ->assertNotDispatched('errorAlert');
+        $this->assertFalse($vehiculo->fresh()->copropietarios->contains($coproDeAyer->id), 'el director quita el de ayer');
     }
 
     public function test_las_acciones_que_no_eliminan_no_se_tocan(): void
