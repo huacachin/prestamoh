@@ -22,8 +22,6 @@ class Gallery extends Component
 
     public array $files = [];
 
-    public bool $puedeEliminar = true;
-
     protected function rules(): array
     {
         return [
@@ -57,8 +55,6 @@ class Gallery extends Component
             403, 'Este cliente no pertenece a tu cartera.'
         );
         $this->clientId = $id;
-
-        $this->puedeEliminar = auth()->user()?->can('clientes.eliminar') ?? false;
     }
 
     public function save()
@@ -117,11 +113,15 @@ class Gallery extends Component
         }
     }
 
+    /**
+     * 10/11/2026 (Antony): con los adjuntos del cliente pasa lo mismo que con
+     * el resto de eliminar: quien entra a la galería borra lo subido HOY (el
+     * director, cualquier día). Antes exigía clientes.eliminar, que solo tiene
+     * el director, y nadie más podía quitar ni la foto equivocada que acababa
+     * de subir. La regla del día la pone eliminacionBloqueada.
+     */
     public function questionDelete(int $id): void
     {
-        if (! $this->puedeEliminar) {
-            return;
-        }
         $att = ClientAttachment::where('client_id', $this->clientId)->find($id);
         if (! $att || $this->eliminacionBloqueada($att)) {
             return;
@@ -132,10 +132,6 @@ class Gallery extends Component
     #[On('register_destroy')]
     public function deleteAttachment(int $id): void
     {
-        if (! $this->puedeEliminar) {
-            return;
-        }
-
         $att = ClientAttachment::where('client_id', $this->clientId)->find($id);
         if (! $att || $this->eliminacionBloqueada($att)) {
             return;

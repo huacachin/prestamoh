@@ -24,6 +24,7 @@ use App\Support\HorarioEliminacion;
 use Carbon\Carbon;
 use Database\Seeders\PermissionCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Role;
@@ -253,6 +254,46 @@ class EliminarMismoDiaTest extends TestCase
         $this->assertNotNull($credito->fresh(), 'crédito de ayer: sigue');
 
         $this->assertSame(5, $this->intentos('Intentó eliminar un registro de otro día'), 'un intento por cada bloqueo');
+    }
+
+    /** 10/11/2026 (Antony): los adjuntos del cliente ya no exigen clientes.eliminar (solo director); rige el mismo día. */
+    public function test_sin_clientes_eliminar_se_borra_el_adjunto_del_cliente_subido_hoy_y_no_el_de_ayer(): void
+    {
+        Storage::fake('public');
+        Carbon::setTestNow(Carbon::parse('2026-11-10 17:00', 'America/Lima'));
+        $this->user->givePermissionTo('clientes');
+        $cliente = $this->cliente();
+        $adjunto = fn (string $nombre) => ClientAttachment::create([
+            'client_id' => $cliente->id, 'filename' => $nombre, 'original_name' => $nombre, 'path' => "clients/{$cliente->id}/{$nombre}",
+            'thumb_path' => null, 'mime' => 'image/jpeg', 'size' => 10, 'uploaded_by' => $this->user->username,
+        ]);
+        $deHoy = $adjunto('hoy.jpg');
+        Storage::disk('public')->put($deHoy->path, 'x');
+        $deAyer = $adjunto('ayer.jpg');
+        ClientAttachment::whereKey($deAyer->id)->update(['created_at' => '2026-11-09 16:00:00']);
+
+        Livewire::test(Gallery::class, ['id' => $cliente->id])
+            ->assertSeeHtml('wire:click="questionDelete('.$deHoy->id.')" data-creado="2026-11-10"')
+            ->assertSeeHtml('wire:click="questionDelete('.$deAyer->id.')" data-creado="2026-11-09"');
+
+        Livewire::test(Gallery::class, ['id' => $cliente->id])
+            ->call('questionDelete', $deHoy->id)
+            ->assertDispatched('questionDelete')
+            ->assertNotDispatched('errorAlert');
+        Livewire::test(Gallery::class, ['id' => $cliente->id])
+            ->dispatch('register_destroy', id: $deHoy->id)
+            ->assertNotDispatched('errorAlert');
+        $this->assertNull($deHoy->fresh(), 'subido hoy: se borra');
+        Storage::disk('public')->assertMissing($deHoy->path);
+
+        Livewire::test(Gallery::class, ['id' => $cliente->id])
+            ->call('questionDelete', $deAyer->id)
+            ->assertNotDispatched('questionDelete')
+            ->assertDispatched('errorAlert');
+        Livewire::test(Gallery::class, ['id' => $cliente->id])
+            ->dispatch('register_destroy', id: $deAyer->id)
+            ->assertDispatched('errorAlert');
+        $this->assertNotNull($deAyer->fresh(), 'subido ayer: sigue');
     }
 
     public function test_las_acciones_que_no_eliminan_no_se_tocan(): void

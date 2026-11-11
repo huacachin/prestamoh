@@ -242,13 +242,11 @@
                                     <span class="text-muted text-truncate" title="{{ $att->original_name }}">
                                         {{ \Illuminate\Support\Str::limit($att->original_name, 18) }}
                                     </span>
-                                    @if($puedeEliminar)
-                                        <button type="button" class="btn btn-sm btn-link text-danger p-0"
-                                                wire:click="questionDelete({{ $att->id }})" @creadoEl($att)
-                                                title="Eliminar">
-                                            <i class="ti ti-trash"></i>
-                                        </button>
-                                    @endif
+                                    <button type="button" class="btn btn-sm btn-link text-danger p-0"
+                                            wire:click="questionDelete({{ $att->id }})" @creadoEl($att)
+                                            title="Eliminar">
+                                        <i class="ti ti-trash"></i>
+                                    </button>
                                 </div>
                             </div>
                         </div>
