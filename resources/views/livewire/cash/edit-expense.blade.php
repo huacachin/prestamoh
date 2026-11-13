@@ -46,13 +46,20 @@
                         <div class="col-md-3">
                             <div class="mb-3">
                                 <label class="form-label">A (*)</label>
-                                <select class="form-select form-select-sm @error('reason') is-invalid @enderror"
-                                        wire:model.defer="reason">
-                                    <option value="">-- Seleccionar --</option>
-                                    @foreach($concepts as $concept)
-                                        <option value="{{ $concept->name }}">{{ $concept->name }}</option>
-                                    @endforeach
-                                </select>
+                                {{-- Como al crearlo: "Fijos" elige concepto, "Otros" (p. ej. "Banco" del cobro por depósito) es texto libre (13/11) --}}
+                                @if($modo === 'Fijos')
+                                    <select class="form-select form-select-sm @error('reason') is-invalid @enderror"
+                                            wire:model.defer="reason">
+                                        <option value="">-- Seleccionar --</option>
+                                        @foreach($concepts as $concept)
+                                            <option value="{{ $concept }}">{{ $concept }}</option>
+                                        @endforeach
+                                    </select>
+                                @else
+                                    <input type="text" name="reason" autocomplete="on" maxlength="255"
+                                           class="form-control form-control-sm @error('reason') is-invalid @enderror"
+                                           placeholder="Motivo libre" wire:model.defer="reason">
+                                @endif
                                 @error('reason') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
                         </div>

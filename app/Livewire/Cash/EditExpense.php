@@ -50,6 +50,14 @@ class EditExpense extends Component
 
     public bool $canEditDate = false;
 
+    /**
+     * 13/11 (Antony, egreso 30430): "Fijos" elige el motivo de los conceptos; "Otros" lo
+     * escribe libre, igual que al crearlo. Los "Banco" del cobro por depósito son "Otros":
+     * con el select de conceptos el campo "A" salía vacío.
+     */
+    #[Locked]
+    public string $modo = '';
+
     public function mount(int $id): void
     {
         $this->expense = Expense::findOrFail($id);
@@ -62,6 +70,7 @@ class EditExpense extends Component
         $this->autorizar();
         $this->canEditDate = auth()->user()?->can('caja.bypass-fecha-anterior') ?? false;
 
+        $this->modo = (string) ($this->expense->modo ?? '');
         $this->date = $this->expense->date->format('Y-m-d');
         $this->reason = (string) $this->expense->reason;
         $this->detail = (string) ($this->expense->detail ?? '');
@@ -200,7 +209,12 @@ class EditExpense extends Component
         $concepts = Concept::where('type', 'egreso')
             ->where('status', 'active')
             ->orderBy('name')
-            ->get();
+            ->pluck('name');
+
+        // Un "Fijos" cuyo concepto ya se desactivó sigue mostrando su motivo.
+        if ($this->modo === 'Fijos' && $this->reason !== '' && ! $concepts->contains($this->reason)) {
+            $concepts->prepend($this->reason);
+        }
 
         return view('livewire.cash.edit-expense', compact('concepts'));
     }

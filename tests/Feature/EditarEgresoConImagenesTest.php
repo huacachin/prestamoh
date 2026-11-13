@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Livewire\Cash\EditExpense;
 use App\Livewire\Cash\ExpenseGallery;
+use App\Models\Concept;
 use App\Models\Expense;
 use App\Models\ExpenseAttachment;
 use App\Models\User;
@@ -103,6 +104,32 @@ class EditarEgresoConImagenesTest extends TestCase
         // Con imágenes elegidas el botón lo dice: no hace falta otro botón "Subir".
         $comp->set('files', [UploadedFile::fake()->image('a.jpg')])
             ->assertSee('Guardar cambios y subir 1 imagen');
+    }
+
+    /** 13/11 (egreso 30430): el "A" del "Banco" automático salía vacío porque solo se listaban los conceptos activos. */
+    public function test_el_campo_a_muestra_el_motivo_otros_como_texto_y_el_fijos_aunque_su_concepto_este_inactivo(): void
+    {
+        Concept::create(['name' => 'Diario', 'type' => 'egreso', 'status' => 'active']);
+        Concept::create(['name' => 'Sunarp', 'type' => 'egreso', 'status' => 'inactive']);
+        $this->egreso->update(['reason' => 'Banco']);
+
+        Livewire::test(EditExpense::class, ['id' => $this->egreso->id])
+            ->assertSet('reason', 'Banco')
+            ->assertSeeHtml('<input type="text" name="reason"')
+            ->assertDontSeeHtml('<option value="Diario">')
+            ->set('reason', 'Banco BBVA')
+            ->call('update')
+            ->assertHasNoErrors();
+        $this->assertSame('Banco BBVA', $this->egreso->fresh()->reason);
+
+        $fijo = Expense::create([
+            'date' => now()->format('Y-m-d'), 'reason' => 'Sunarp', 'detail' => 'x', 'total' => 50,
+            'modo' => 'Fijos', 'caja' => 1, 'user_id' => $this->director->id, 'headquarter_id' => 1,
+        ]);
+        Livewire::test(EditExpense::class, ['id' => $fijo->id])
+            ->assertDontSeeHtml('<input type="text" name="reason"')
+            ->assertSeeHtml('<option value="Sunarp">')
+            ->assertSeeHtml('<option value="Diario">');
     }
 
     public function test_la_galeria_embebida_solo_lista_y_no_sube(): void
