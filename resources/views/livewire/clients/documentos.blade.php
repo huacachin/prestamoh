@@ -594,7 +594,22 @@
                     abrirGmail(sinCuerpo, conCuerpo) {
                         this.pegar = this.copiarCorreo();
                         window.open(this.pegar ? sinCuerpo : conCuerpo, '_blank', 'noopener');
-                    } }">
+                    },
+                    subirFormulario(archivo) {
+                        if (! archivo || ! this.$refs.imagenSigm || ! (archivo.type || '').startsWith('image/')) { return; }
+                        const dt = new DataTransfer();
+                        dt.items.add(archivo);
+                        this.$refs.imagenSigm.files = dt.files;
+                        this.$refs.imagenSigm.dispatchEvent(new Event('change', { bubbles: true }));
+                    },
+                    pegarFormulario(evento) {
+                        if (this.tab !== 'registro' || ! this.$root.closest('.modal').classList.contains('show')) { return; }
+                        const item = [...((evento.clipboardData || {}).items || [])].find(i => (i.type || '').startsWith('image/'));
+                        if (! item) { return; }
+                        evento.preventDefault();
+                        this.subirFormulario(item.getAsFile());
+                    } }"
+                 x-on:paste.window="pegarFormulario($event)">
                 <div class="modal-header py-2">
                     <h6 class="modal-title mb-0">
                         <i class="ti ti-shield-check text-secondary"></i> SIGM · {{ $client->fullName() }}
@@ -690,6 +705,30 @@
                                     </div>
                                 @endif
                                 @php $sigmBloqueado = $sigm['registroBloqueado'] ?? null; @endphp
+                                {{-- Trello #137, punto 4 (13/11): la captura del formulario de constitución se pega (Ctrl+V con esta
+                                     pestaña abierta), se arrastra o se elige; Claude lee formulario, folio y fecha y los deja en los
+                                     campos para revisarlos. Mismo camino que el voucher del Anexo 2: <input wire:model> → updatedSigmImagen. --}}
+                                @if(! $sigmBloqueado && config('services.anthropic.habilitado'))
+                                    <div class="border rounded p-2 mb-2 text-center small @error('sigmImagen') border-danger @enderror"
+                                         style="border-style: dashed !important; border-width: 2px !important; border-color: #6D28D9 !important; background: #f5f3ff; cursor: pointer;"
+                                         x-on:click="$refs.imagenSigm.click()"
+                                         x-on:dragover.prevent
+                                         x-on:drop.prevent="subirFormulario(($event.dataTransfer.files || [])[0])">
+                                        <input type="file" accept="image/*" class="d-none" x-ref="imagenSigm" x-on:click.stop wire:model="sigmImagen">
+                                        <div wire:loading.remove wire:target="sigmImagen">
+                                            <i class="ti ti-clipboard-plus"></i>
+                                            <b>Pega la captura del formulario de constitución (Ctrl+V)</b>, arrástrala o haz clic para elegirla:
+                                            se llenan solos el N° de formulario, el folio y la fecha.
+                                        </div>
+                                        <div wire:loading wire:target="sigmImagen" class="text-muted">
+                                            <i class="ti ti-loader"></i> Leyendo el formulario…
+                                        </div>
+                                    </div>
+                                    @error('sigmImagen') <div class="text-danger small mb-2">{{ $message }}</div> @enderror
+                                    @if($sigmAvisoLectura !== '')
+                                        <div class="alert alert-warning py-1 px-2 small mb-2"><i class="ti ti-alert-triangle"></i> {{ $sigmAvisoLectura }}</div>
+                                    @endif
+                                @endif
                                 <div class="row g-2">
                                     <div class="col-md-4">
                                         <label class="form-label small fw-semibold mb-1">N° de formulario *</label>

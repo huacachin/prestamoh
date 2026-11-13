@@ -12,6 +12,8 @@ use App\Services\Documentos\GeneradorAnexo2;
 use App\Services\Documentos\GeneradorContrato;
 use App\Services\Documentos\GeneradorDeclaracion;
 use App\Services\Documentos\GeneradorSigm;
+use App\Services\Documentos\Ocr\FormularioSigmIlegible;
+use App\Services\Documentos\Ocr\LectorDeFormularioSigm;
 use App\Services\Documentos\Ocr\LectorDeVoucher;
 use App\Services\Documentos\Ocr\VoucherIlegible;
 use App\Services\Factiliza;
@@ -579,6 +581,15 @@ class Documentos extends Component
 
     public string $sigmFecha = '';
 
+    /**
+     * Trello #137, punto 4 (13/11/2026): la captura del "Formulario de constitución" del SIGM, pegada
+     * (Ctrl+V), arrastrada o elegida. Solo se lee para llenar formulario, folio y fecha; no se guarda.
+     */
+    public $sigmImagen = null;
+
+    /** Lo que la persona debe revisar tras leer la imagen (dudas, datos que faltan, otro deudor). */
+    public string $sigmAvisoLectura = '';
+
     /** 30/10: se abre desde el botón SIGM de cada crédito en la tabla ($creditId); sin él, el más reciente. */
     public function abrirModalSigm(?int $creditId = null): void
     {
@@ -625,6 +636,7 @@ class Documentos extends Component
 
         try {
             GeneradorSigm::registrar(Client::findOrFail($this->clientId), $credit, $this->sigmFormulario, $this->sigmFolio, $this->sigmFecha);
+            $this->sigmAvisoLectura = '';
             $this->dispatch('successAlert', ['message' => $actual ? 'Constitución SIGM corregida.' : 'Constitución SIGM registrada.']);
         } catch (InvalidArgumentException $e) {
             $this->dispatch('errorAlert', ['message' => $e->getMessage()]);
@@ -644,8 +656,112 @@ class Documentos extends Component
         $this->dispatch('successAlert', ['message' => 'Se quitó la inscripción SIGM registrada.']);
     }
 
+    /** La imagen llegó por cualquiera de los tres caminos: se valida y se lee sola, como el voucher del Anexo 2. */
+    public function updatedSigmImagen(): void
+    {
+        try {
+            $this->validateOnly('sigmImagen', ['sigmImagen' => ['required', 'image', 'max:5120']], [
+                'sigmImagen.image' => 'Pega una imagen (captura del formulario), no otro tipo de archivo.',
+                'sigmImagen.max' => 'La imagen pesa más de 5 MB: recorta la captura al formulario.',
+            ]);
+        } catch (ValidationException $e) {
+            $this->sigmImagen = null;
+
+            throw $e;
+        }
+
+        // Como en el voucher: la lectura corre dentro del ciclo de subida; si algo inesperado
+        // revienta, se avisa y los datos se escriben a mano.
+        try {
+            $this->leerFormularioSigm();
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('errorAlert', ['message' => 'No se pudo leer el formulario: escribe los datos a mano.']);
+        } finally {
+            $this->sigmImagen = null;
+        }
+    }
+
+    /**
+     * Llena formulario, folio y fecha con lo leído para que la persona los REVISE y registre: la
+     * lectura puede equivocarse, así que nunca registra sola.
+     */
+    private function leerFormularioSigm(): void
+    {
+        if (! config('services.anthropic.habilitado')) {
+            $this->dispatch('errorAlert', ['message' => 'La lectura automática no está configurada: escribe los datos a mano.']);
+
+            return;
+        }
+        $credit = $this->creditoSigm();
+        if (! $credit || ! $this->sigmImagen) {
+            return;
+        }
+        $actual = GeneradorSigm::constitucionDe($credit);
+        if ($actual && $this->edicionBloqueada($actual, 'leerFormularioSigm')) {
+            return;
+        }
+
+        try {
+            $leido = app(LectorDeFormularioSigm::class)->leer((string) $this->sigmImagen->getRealPath());
+        } catch (FormularioSigmIlegible $e) {
+            $this->dispatch('errorAlert', ['message' => $e->getMessage().' Escribe los datos a mano.']);
+
+            return;
+        }
+
+        if (! $leido['esConstitucion']) {
+            $this->sigmAvisoLectura = '';
+            $this->dispatch('errorAlert', ['message' => 'La imagen no parece un "Formulario de constitución" del SIGM (¿es de cancelación o de otro trámite?). No se llenó nada.']);
+
+            return;
+        }
+
+        foreach (['formulario' => 'sigmFormulario', 'folio' => 'sigmFolio', 'fecha' => 'sigmFecha'] as $dato => $campo) {
+            if ($leido[$dato] !== '') {
+                $this->{$campo} = $leido[$dato];
+            }
+        }
+        $this->resetErrorBag(['sigmFormulario', 'sigmFolio', 'sigmFecha']);
+
+        $avisos = [];
+        $faltan = array_keys(array_filter(['N° de formulario' => $leido['formulario'], 'folio' => $leido['folio'], 'fecha' => $leido['fecha']], fn ($v) => $v === ''));
+        if ($faltan) {
+            $avisos[] = 'No se leyó: '.implode(', ', $faltan).'. Escríbelo a mano.';
+        }
+        // El deudor de la imagen debe ser el del contrato: pegar el formulario de otro cliente es el error caro.
+        $delContrato = $this->documentosDelContrato($credit);
+        if ($leido['documentos'] && $delContrato && ! array_intersect($leido['documentos'], $delContrato)) {
+            $avisos[] = 'El documento del deudor en la imagen ('.implode(', ', $leido['documentos']).') no coincide con el de este contrato ('.implode(', ', $delContrato).'): ¿es el formulario de otro cliente?';
+        }
+        if ($leido['dudas'] !== '') {
+            $avisos[] = 'Dudas de la lectura: '.$leido['dudas'];
+        }
+        $this->sigmAvisoLectura = implode(' ', $avisos);
+
+        Audit::log("Leyó el formulario de constitución SIGM del crédito #{$credit->id} con {$leido['modelo']}: formulario "
+            .($leido['formulario'] ?: '—').', folio '.($leido['folio'] ?: '—').', fecha '.($leido['fecha'] ?: '—'));
+        $this->dispatch('successAlert', ['message' => 'Datos leídos del formulario. Revísalos y pulsa "'.($actual ? 'Guardar corrección' : 'Registrar constitución').'".']);
+    }
+
+    /** @return list<string> DNI/RUC de los deudores del contrato emitido del crédito. */
+    private function documentosDelContrato(Credit $credit): array
+    {
+        try {
+            $deudores = GeneradorSigm::contexto(Client::findOrFail($this->clientId), $credit)['contrato']->snapshot['deudores'] ?? [];
+        } catch (InvalidArgumentException) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map(
+            fn (array $d) => preg_replace('/\D+/', '', (string) (($d['ruc'] ?? null) ?: ($d['dni'] ?? ''))),
+            $deudores
+        )));
+    }
+
     private function cargarRegistroSigm(): void
     {
+        $this->sigmAvisoLectura = '';
         $credit = $this->sigmCreditoId ? $this->creditosConContrato()->firstWhere('id', $this->sigmCreditoId) : null;
         $aviso = $credit ? GeneradorSigm::constitucionDe($credit) : null;
         $this->sigmFormulario = (string) ($aviso?->nro_formulario ?? '');

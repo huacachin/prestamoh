@@ -16,7 +16,8 @@ use Throwable;
  */
 class MensajeDeFallo
 {
-    public static function para(Throwable $e): string
+    /** @param  string  $que  lo que se estaba leyendo, para el mensaje por defecto ("el voucher", "el formulario"). */
+    public static function para(Throwable $e, string $que = 'el voucher'): string
     {
         $texto = mb_strtolower($e->getMessage());
         $clase = $e::class;
@@ -46,7 +47,7 @@ class MensajeDeFallo
             // Imagen que la API no aceptó (tamaño, formato, corrupta).
             str_contains($texto, 'image') => 'El servicio no pudo procesar esta imagen: prueba con una foto más nítida o más liviana.',
 
-            default => 'No se pudo leer el voucher.',
+            default => "No se pudo leer {$que}.",
         };
     }
 }

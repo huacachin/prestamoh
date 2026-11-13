@@ -5,7 +5,9 @@ namespace App\Providers;
 use App\Models\User;
 use App\Services\Chat\ClienteClaude;
 use App\Services\Chat\ModeloDeChat;
+use App\Services\Documentos\Ocr\LectorDeFormularioSigm;
 use App\Services\Documentos\Ocr\LectorDeVoucher;
+use App\Services\Documentos\Ocr\LectorFormularioSigmClaude;
 use App\Services\Documentos\Ocr\LectorVoucherClaude;
 use App\Support\PermisosVista;
 use Illuminate\Auth\Events\Failed;
@@ -28,6 +30,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(
             LectorDeVoucher::class,
             LectorVoucherClaude::class,
+        );
+        // Formulario de constitución del SIGM pegado como imagen (Trello #137, 13/11).
+        $this->app->bind(
+            LectorDeFormularioSigm::class,
+            LectorFormularioSigmClaude::class,
         );
         // Chat de consulta (23/10): mismo patrón, el modelo se resuelve por interfaz.
         $this->app->bind(
