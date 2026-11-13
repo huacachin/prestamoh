@@ -80,4 +80,36 @@ class ExportsMontosNumericosTest extends TestCase
         $this->assertMatchesRegularExpression('/<td class="num" align="right"[^>]*><b>500\.40<\/b><\/td>/', $html, 'total general numérico');
         $this->assertMatchesRegularExpression('/<td class="num" align="center"[^>]*><b>500\.40<\/b><\/td>/', $html, 'subtotal Otros numérico');
     }
+
+    /**
+     * 13/11/2026 (Antony, "en el Excel de egresos sí sale con la coma"): Excel no
+     * aplica las reglas de estilo a una celda con DOS clases, así que los TOTAL,
+     * SALDO y total general de Caja 3 (class="num izq") quedaban como texto
+     * "3135.77", sin separador ni SUMA. Ahora es una sola clase, num-izq.
+     */
+    public function test_los_totales_del_excel_de_caja_3_son_numericos_con_una_sola_clase(): void
+    {
+        $this->user->givePermissionTo(Permission::findOrCreate('reportes.caja-general-3', 'web'));
+        $hoy = now()->format('Y-m-d');
+        Income::create(['date' => $hoy, 'total' => 3129.37, 'reason' => 'OTROS', 'detail' => 'interés', 'asesor' => '', 'user_id' => $this->user->id, 'caja' => 3, 'modo' => 'Otros', 'headquarter_id' => 1]);
+
+        $res = $this->get('/exports/reports/cash-general-3?month='.now()->month.'&year='.now()->year);
+        $res->assertOk();
+        $html = $res->getContent();
+
+        $this->assertStringContainsString('td.num-izq, th.num-izq { mso-number-format: "#,##0.00"; text-align: left; }', $html);
+        $this->assertMatchesRegularExpression('/<td class="num-izq"[^>]*><b><font color="#0000FF">3129\.37<\/font><\/b><\/td>/', $html, 'TOTAL del día numérico');
+        $this->assertDoesNotMatchRegularExpression('/class="[^"]*\bnum\b[^"]*\s[^"]*"|class="[^"]*\s\bnum\b[^"]*"/', $html, 'ningún monto con dos clases');
+    }
+
+    /** Ningún Excel vuelve a mezclar la clase de monto con otra: Excel dejaría la celda como texto. */
+    public function test_ninguna_vista_de_export_pone_dos_clases_en_una_celda_de_monto(): void
+    {
+        $conDosClases = collect(glob(resource_path('views/exports/{,*/}*.blade.php'), GLOB_BRACE))
+            ->filter(fn (string $vista) => preg_match('/class="(?=[^"]*\bnum(-izq)?\b)[^"]*\s[^"]*"/', file_get_contents($vista)))
+            ->map(fn (string $vista) => basename(dirname($vista)).'/'.basename($vista))
+            ->values()->all();
+
+        $this->assertSame([], $conDosClases);
+    }
 }

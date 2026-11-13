@@ -98,14 +98,14 @@
                 <tr bgcolor="#F0F0F0">
                     <td></td>
                     <td colspan="4"><b>SUB TOTAL</b></td>
-                    <td class="num izq"><b>{{ number_format($day['sub_ingresos'], 2, '.', '') }}</b></td>
-                    <td class="num izq"><b>{{ number_format($day['sub_capital'], 2, '.', '') }}</b></td>
-                    <td class="num izq"><b>{{ number_format($day['sub_interes'], 2, '.', '') }}</b></td>
-                    <td class="num izq"><b>{{ number_format($day['sub_mora'], 2, '.', '') }}</b></td>
+                    <td class="num-izq"><b>{{ number_format($day['sub_ingresos'], 2, '.', '') }}</b></td>
+                    <td class="num-izq"><b>{{ number_format($day['sub_capital'], 2, '.', '') }}</b></td>
+                    <td class="num-izq"><b>{{ number_format($day['sub_interes'], 2, '.', '') }}</b></td>
+                    <td class="num-izq"><b>{{ number_format($day['sub_mora'], 2, '.', '') }}</b></td>
                     <td></td><td></td><td></td><td></td>
-                    <td class="num izq"><b>{{ number_format($day['sub_egresos'], 2, '.', '') }}</b></td>
+                    <td class="num-izq"><b>{{ number_format($day['sub_egresos'], 2, '.', '') }}</b></td>
                     <td></td>
-                    <td class="num izq"><b>{{ number_format($day['sub_egresos_interes'], 2, '.', '') }}</b></td>
+                    <td class="num-izq"><b>{{ number_format($day['sub_egresos_interes'], 2, '.', '') }}</b></td>
                     <td></td><td></td><td></td>
                 </tr>
                 {{-- TOTAL del día --}}

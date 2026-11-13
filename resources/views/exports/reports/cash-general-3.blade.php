@@ -44,13 +44,13 @@
                 <tr bgcolor="#CEE7FF">
                     <td {!! $sol !!}></td><td {!! $sol !!}></td><td {!! $sol !!}></td>
                     <td {!! $sol !!}><b>TOTAL</b></td>
-                    <td class="num izq" {!! $solr !!}><b><font color="#0000FF">{{ number_format($day['total_ingreso'], 2, '.', '') }}</font></b></td>
-                    <td class="num izq" {!! $solr !!}><b><font color="#FF0000">{{ number_format($day['total_egreso'], 2, '.', '') }}</font></b></td>
+                    <td class="num-izq" {!! $solr !!}><b><font color="#0000FF">{{ number_format($day['total_ingreso'], 2, '.', '') }}</font></b></td>
+                    <td class="num-izq" {!! $solr !!}><b><font color="#FF0000">{{ number_format($day['total_egreso'], 2, '.', '') }}</font></b></td>
                 </tr>
                 <tr bgcolor="#CEE7FF">
                     <td {!! $sol !!}></td><td {!! $sol !!}></td><td {!! $sol !!}></td>
                     <td {!! $sol !!}><b>SALDO <font color="#FF0000">FINAL-INICIAL</font></b></td>
-                    <td class="num izq" {!! $solr !!}><b><font color="#0000FF">{{ number_format($day['saldo'], 2, '.', '') }}</font></b></td>
+                    <td class="num-izq" {!! $solr !!}><b><font color="#0000FF">{{ number_format($day['saldo'], 2, '.', '') }}</font></b></td>
                     <td {!! $sol !!}></td>
                 </tr>
             @empty
@@ -60,8 +60,8 @@
             @if(count($report['days']) > 0)
                 <tr bgcolor="#CEE7FF">
                     <td {!! $sol !!} colspan="4"><b>REPORTE GENERAL <font color="#FF0000">CAJA 3 - </font>TOTAL <font color="#FF0000">GENERAL</font></b></td>
-                    <td class="num izq" {!! $solr !!}><b><font color="#0000FF">{{ number_format($report['total_ingresos'], 2, '.', '') }}</font></b></td>
-                    <td class="num izq" {!! $solr !!}><b><font color="#FF0000">{{ number_format($report['total_egresos'], 2, '.', '') }}</font></b></td>
+                    <td class="num-izq" {!! $solr !!}><b><font color="#0000FF">{{ number_format($report['total_ingresos'], 2, '.', '') }}</font></b></td>
+                    <td class="num-izq" {!! $solr !!}><b><font color="#FF0000">{{ number_format($report['total_egresos'], 2, '.', '') }}</font></b></td>
                 </tr>
             @endif
         </tbody>

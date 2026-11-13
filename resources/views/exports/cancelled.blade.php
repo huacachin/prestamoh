@@ -82,7 +82,7 @@
                 <td class="num" align="center" style="vertical-align:middle;">{{ number_format($totals['canceinte'] ?? 0, 2, '.', '') }}</td>
                 <td class="num" align="center" style="vertical-align:middle;">{{ number_format($totals['cancemora'] ?? 0, 2, '.', '') }}</td>
                 <td class="num" align="center" rowspan="2" style="vertical-align:middle;">{{ number_format($totals['totGP'] ?? 0, 2, '.', '') }}</td>
-                <td class="num izq" rowspan="2" style="vertical-align:middle;">{{ number_format($totals['montomorxdia'] ?? 0, 2, '.', '') }}</td>
+                <td class="num-izq" rowspan="2" style="vertical-align:middle;">{{ number_format($totals['montomorxdia'] ?? 0, 2, '.', '') }}</td>
                 <td rowspan="2" colspan="7" style="vertical-align:middle;"></td>
             </tr>
             <tr bgcolor="#f0f0f0">

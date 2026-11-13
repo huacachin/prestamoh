@@ -11,13 +11,14 @@
         .txt { mso-number-format: "\@"; }
         /* 02/10 (Antony): los MONTOS van como número con formato, no como texto:
            con "@" Excel los mostraba bien pero =SUMA() daba 0. La celda imprime el
-           valor crudo (1234.50) y Excel lo pinta "1,234.50". El estilo va también
-           inline en cada celda de monto, que es lo que Excel respeta sin falta. */
+           valor crudo (1234.50) y Excel lo pinta "1,234.50". */
         td.num, th.num { mso-number-format: "#,##0.00"; }
-        /* Una celda sin alineación explícita se veía a la izquierda (texto); como
-           número Excel la pondría a la derecha. Para que no varíe nada, se deja
-           a la izquierda. (El estilo inline del tag, si lo hay, manda.) */
-        td.izq, th.izq { text-align: left; }
+        /* Monto que se queda a la izquierda (una celda sin alineación explícita se
+           veía a la izquierda como texto; como número Excel la pondría a la
+           derecha). UNA sola clase: Excel no aplica las reglas a una celda con
+           dos clases ("num" + "izq" quedaba como texto "3135.77", sin coma ni
+           SUMA: los TOTAL/SALDO de Caja 3, 13/11). El estilo inline manda. */
+        td.num-izq, th.num-izq { mso-number-format: "#,##0.00"; text-align: left; }
     </style>
 </head>
 <body>
