@@ -25,8 +25,13 @@ use InvalidArgumentException;
  *  3.4 Resumen de cancelación: el texto para "Descripción de otros" del formulario de cancelación.
  *
  * Todo sale del contrato ya emitido del crédito (su snapshot). Sin modelo del área —y así quedan fuera
- * por ahora, decisión de Antony—: empresa, custodia y las combinaciones de vehículos que no tienen el suyo
+ * por ahora, decisión de Antony—: custodia y las combinaciones de vehículos que no tienen el suyo
  * (2 bienes futuros, futuro + presente, 2 vehículos sin GPS; el correo y la cancelación solo con uno).
+ *
+ * Empresa (13/11/2026, Trello #139, modelos "a.4 Correo.GPS. Empresa", "1.7 GPS. Resumen SIGM. Deudor
+ * Empresa" y "1.4 Deudor Empresa. Cancelación SIGM"): solo la empresa deudora con GPS y un vehículo, que
+ * es lo que emiten los contratos a.4 y a.4.1. El resumen es el del deudor con GPS (texto idéntico) y la
+ * cancelación dice "EL DEUDOR {razón social}", aunque el contrato redacta a la empresa como LA DEUDORA.
  */
 class GeneradorSigm
 {
@@ -47,28 +52,33 @@ class GeneradorSigm
         $gps = (bool) ($s['gps'] ?? false);
         $futuros = count(array_filter($bienes, fn ($b) => ! empty($b['esFuturo'])));
 
-        $sinModelo = match (true) {
-            (bool) ($s['conjunto']['juridica'] ?? ($deudores[0]['esJuridica'] ?? false)) => 'No hay modelo para empresas.',
-            (bool) ($s['custodia'] ?? false) => 'No hay modelo para contratos con custodia.',
-            default => null,
-        };
+        $empresa = (bool) ($s['conjunto']['juridica'] ?? ($deudores[0]['esJuridica'] ?? false));
+        $sinModelo = ($s['custodia'] ?? false) ? 'No hay modelo para contratos con custodia.' : null;
+        // La empresa solo tiene modelos con GPS y un vehículo presente (a.4 / a.4.1).
+        $empresaConModelo = $gps && count($bienes) === 1 && $futuros === 0;
 
         // Resumen: GPS con 1 vehículo (o bien futuro) o 2 vehículos presentes; sin GPS, 1 vehículo presente.
         $resumen = match (true) {
             $sinModelo !== null => null,
+            $empresa => $empresaConModelo ? 'gps' : null,
             $gps && count($bienes) === 1 => $futuros ? 'gps-futuro' : 'gps',
             $gps && count($bienes) === 2 && $futuros === 0 => 'gps-2vehiculos',
             ! $gps && count($bienes) === 1 && $futuros === 0 => 'sn',
             default => null,
         };
-        $unSoloBien = count($bienes) === 1 && ($gps || $futuros === 0);
+        $unSoloBien = $empresa ? $empresaConModelo : count($bienes) === 1 && ($gps || $futuros === 0);
 
         $montos = $s['montos'] ?? [];
         $valores = count($bienes) === 2
             ? array_map(fn ($b) => self::monto((float) ($b['valor'] ?? 0)), $bienes)
             : [self::monto((float) ($montos['valor_bien'] ?? ($bienes[0]['valor'] ?? 0)))];
 
-        $persona = count($deudores) > 1 ? 'deudores' : (mb_strtoupper((string) ($deudores[0]['sexo'] ?? 'M')) === 'F' ? 'deudora' : 'deudor');
+        $persona = match (true) {
+            $empresa => 'empresa',
+            count($deudores) > 1 => 'deudores',
+            mb_strtoupper((string) ($deudores[0]['sexo'] ?? 'M')) === 'F' => 'deudora',
+            default => 'deudor',
+        };
         $combinacion = 'No hay modelo para esta combinación de vehículos del contrato.';
 
         return [
@@ -89,7 +99,7 @@ class GeneradorSigm
             'resumen' => $resumen,
             'sinCorreo' => $sinModelo ?? ($unSoloBien ? null : $combinacion),
             'sinResumen' => $sinModelo ?? ($resumen ? null : $combinacion),
-            'sinCancelacion' => $sinModelo ?? (count($bienes) === 1 ? null : $combinacion),
+            'sinCancelacion' => $sinModelo ?? (($empresa ? $empresaConModelo : count($bienes) === 1) ? null : $combinacion),
         ];
     }
 
@@ -110,7 +120,11 @@ class GeneradorSigm
         $firma = (array) config('documentos.usuaria_sigm');
 
         $html = self::texto('correo', [
-            'saludo' => ['deudor' => 'Estimado señor', 'deudora' => 'Estimada señora', 'deudores' => 'Estimados señores'][$ctx['persona']],
+            'saludo' => [
+                'deudor' => 'Estimado señor', 'deudora' => 'Estimada señora', 'deudores' => 'Estimados señores',
+                // Modelo a.4: "Estimad(a) representante de {empresa}"; corregido a "Estimado(a)".
+                'empresa' => 'Estimado(a) representante de',
+            ][$ctx['persona']],
             'nombres' => implode(' y ', $ctx['nombres']),
             'plural' => $plural,
             'futuro' => $ctx['futuro'],
@@ -174,7 +188,7 @@ class GeneradorSigm
             'formulario' => (string) $constitucion->nro_formulario,
             'folio' => (string) $constitucion->folio,
             'fecha' => $constitucion->fecha_presentacion?->format('d/m/Y'),
-            'sujeto' => ['deudor' => 'EL DEUDOR', 'deudora' => 'LA DEUDORA', 'deudores' => 'LOS DEUDORES'][$ctx['persona']],
+            'sujeto' => ['deudor' => 'EL DEUDOR', 'deudora' => 'LA DEUDORA', 'deudores' => 'LOS DEUDORES', 'empresa' => 'EL DEUDOR'][$ctx['persona']],
             'nombres' => implode(' Y ', $ctx['nombres']),
             'plural' => $ctx['persona'] === 'deudores',
         ]);
@@ -261,7 +275,7 @@ class GeneradorSigm
             'client_id' => $client->id,
             'codeudor_client_id' => $contrato->codeudor_client_id,
             'tipo' => 'mobiliaria_vehicular',
-            'tipo_persona' => 'natural',
+            'tipo_persona' => $ctx['persona'] === 'empresa' ? 'juridica' : 'natural',
             'gps' => $ctx['gps'],
             'custodia' => (bool) ($s['custodia'] ?? false),
             'monto_gravamen' => $ctx['montoMaximoNumero'] ?: null,

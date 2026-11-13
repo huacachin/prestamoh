@@ -689,34 +689,41 @@
                                         formulario <b>{{ $sigm['registro']->nro_formulario }}</b> · folio <b>{{ $sigm['registro']->folio }}</b>
                                     </div>
                                 @endif
+                                @php $sigmBloqueado = $sigm['registroBloqueado'] ?? null; @endphp
                                 <div class="row g-2">
                                     <div class="col-md-4">
                                         <label class="form-label small fw-semibold mb-1">N° de formulario *</label>
-                                        <input type="text" class="form-control form-control-sm campo-obligatorio @error('sigmFormulario') is-invalid @enderror" wire:model="sigmFormulario" placeholder="2026-905021">
+                                        <input type="text" class="form-control form-control-sm campo-obligatorio @error('sigmFormulario') is-invalid @enderror" wire:model="sigmFormulario" placeholder="2026-905021" @disabled($sigmBloqueado)>
                                         @error('sigmFormulario') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                                     </div>
                                     <div class="col-md-5">
                                         <label class="form-label small fw-semibold mb-1">N° de folio electrónico *</label>
-                                        <input type="text" class="form-control form-control-sm campo-obligatorio @error('sigmFolio') is-invalid @enderror" wire:model="sigmFolio" placeholder="20261027002239830">
+                                        <input type="text" class="form-control form-control-sm campo-obligatorio @error('sigmFolio') is-invalid @enderror" wire:model="sigmFolio" placeholder="20261027002239830" @disabled($sigmBloqueado)>
                                         @error('sigmFolio') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                                     </div>
                                     <div class="col-md-3">
-                                        <label class="form-label small fw-semibold mb-1">Fecha de la inscripción *</label>
-                                        <input type="date" class="form-control form-control-sm campo-obligatorio @error('sigmFecha') is-invalid @enderror" wire:model="sigmFecha" max="{{ now()->toDateString() }}">
+                                        <label class="form-label small fw-semibold mb-1">Fecha de constitución *</label>
+                                        <input type="date" class="form-control form-control-sm campo-obligatorio @error('sigmFecha') is-invalid @enderror" wire:model="sigmFecha" max="{{ now()->toDateString() }}" @disabled($sigmBloqueado)>
                                         @error('sigmFecha') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                                     </div>
                                 </div>
-                                <div class="d-flex gap-2 mt-2">
-                                    <button type="button" class="btn btn-sm btn-success" wire:click="guardarRegistroSigm" wire:loading.attr="disabled" wire:target="guardarRegistroSigm">
-                                        <i class="ti ti-device-floppy"></i> {{ $sigm['registro'] ? 'Guardar corrección' : 'Registrar inscripción' }}
-                                    </button>
-                                    @if($sigm['registro'])
-                                        <button type="button" class="btn btn-sm btn-outline-danger" wire:click="quitarRegistroSigm"
-                                                data-confirmar="¿Quitar la inscripción SIGM registrada de este crédito? Solo se borra del sistema, no del SIGM.">
-                                            <i class="ti ti-trash"></i> Quitar registro
+                                @if($sigmBloqueado)
+                                    <div class="alert alert-secondary py-2 small mt-2 mb-0">
+                                        <i class="ti ti-lock"></i> {{ $sigmBloqueado }}
+                                    </div>
+                                @else
+                                    <div class="d-flex gap-2 mt-2">
+                                        <button type="button" class="btn btn-sm btn-success" wire:click="guardarRegistroSigm" wire:loading.attr="disabled" wire:target="guardarRegistroSigm">
+                                            <i class="ti ti-device-floppy"></i> {{ $sigm['registro'] ? 'Guardar corrección' : 'Registrar constitución' }}
                                         </button>
-                                    @endif
-                                </div>
+                                        @if($sigm['registro'])
+                                            <button type="button" class="btn btn-sm btn-outline-danger" wire:click="quitarRegistroSigm"
+                                                    data-confirmar="¿Quitar la inscripción SIGM registrada de este crédito? Solo se borra del sistema, no del SIGM.">
+                                                <i class="ti ti-trash"></i> Quitar registro
+                                            </button>
+                                        @endif
+                                    </div>
+                                @endif
                                 <div class="form-text" style="font-size:10px;">Los datos están en el formulario de constitución que entrega el SIGM (número de formulario, folio causal electrónico y fecha de inscripción).</div>
                             </div>
 
@@ -1052,8 +1059,10 @@
                                         </div>
                                         <div class="col-md-3">
                                             <label class="form-label small mb-1">Género *</label>
-                                            <select class="form-select form-select-sm campo-elegir @error('gerente.sexo') is-invalid @enderror @if(in_array('sexo', $autoGerente)) campo-api @endif"
-                                                    wire:model.live="gerente.sexo">
+                                            {{-- Trello #138 (13/11): género, nacionalidad, ocupación y estado civil del gerente de la ficha, bloqueados. --}}
+                                            @php $deFicha = fn (string $campo) => in_array($campo, $gerenteCamposDeFicha, true); @endphp
+                                            <select class="form-select form-select-sm {{ $deFicha('sexo') ? 'bg-light' : 'campo-elegir' }} @error('gerente.sexo') is-invalid @enderror @if(in_array('sexo', $autoGerente)) campo-api @endif"
+                                                    wire:model.live="gerente.sexo" @disabled($deFicha('sexo'))>
                                                 <option value="M">Masculino</option>
                                                 <option value="F">Femenino</option>
                                             </select>
@@ -1062,8 +1071,8 @@
                                         <div class="col-md-3">
                                             <label class="form-label small mb-1">Nacionalidad *</label>
                                             {{-- No flexiona (misma regla que el deudor). --}}
-                                            <select class="form-select form-select-sm campo-elegir @error('gerente.nacionalidad') is-invalid @enderror @if(in_array('nacionalidad', $autoGerente)) campo-api @endif"
-                                                    wire:model.blur="gerente.nacionalidad">
+                                            <select class="form-select form-select-sm {{ $deFicha('nacionalidad') ? 'bg-light' : 'campo-elegir' }} @error('gerente.nacionalidad') is-invalid @enderror @if(in_array('nacionalidad', $autoGerente)) campo-api @endif"
+                                                    wire:model.blur="gerente.nacionalidad" @disabled($deFicha('nacionalidad'))>
                                                 @foreach(\App\Support\Documentos\Nacionalidades::paraValor($gerente['nacionalidad'] ?? null) as $opcion)
                                                     <option value="{{ $opcion }}">{{ $opcion }}</option>
                                                 @endforeach
@@ -1072,11 +1081,11 @@
                                         </div>
                                         <div class="col-md-4">
                                             <label class="form-label small mb-1">Ocupación</label>
-                                            <input type="text" class="form-control form-control-sm campo-elegir @if(in_array('ocupacion', $autoGerente)) campo-api @endif" wire:model.blur="gerente.ocupacion">
+                                            <input type="text" class="form-control form-control-sm {{ $deFicha('ocupacion') ? 'bg-light' : 'campo-elegir' }} @if(in_array('ocupacion', $autoGerente)) campo-api @endif" wire:model.blur="gerente.ocupacion" @readonly($deFicha('ocupacion'))>
                                         </div>
                                         <div class="col-md-4">
                                             <label class="form-label small mb-1">Estado civil</label>
-                                            <select class="form-select form-select-sm campo-elegir @if(in_array('estado_civil', $autoGerente)) campo-api @endif" wire:model.live="gerente.estado_civil">
+                                            <select class="form-select form-select-sm {{ $deFicha('estado_civil') ? 'bg-light' : 'campo-elegir' }} @if(in_array('estado_civil', $autoGerente)) campo-api @endif" wire:model.live="gerente.estado_civil" @disabled($deFicha('estado_civil'))>
                                                 <option value="">—</option>
                                                 @foreach($estadosCiviles as $valor => $etiqueta)
                                                     <option value="{{ $valor }}">{{ $etiqueta }}</option>

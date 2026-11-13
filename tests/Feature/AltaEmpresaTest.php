@@ -162,16 +162,44 @@ class AltaEmpresaTest extends TestCase
         $this->assertStringContainsString('Cambiar gerente', $html);
         $this->assertStringNotContainsString('wire:click="consultarDocGerente"', $html);
 
+        // 13/11 (Trello #138): género, nacionalidad, ocupación y estado civil del gerente también bloqueados.
+        $this->assertSame(['sexo', 'nacionalidad', 'ocupacion', 'estado_civil'], $comp->get('gerenteCamposDeFicha'));
+        $this->assertMatchesRegularExpression('/wire:model\.live="gerente\.sexo"\s+disabled/', $html);
+        $this->assertMatchesRegularExpression('/wire:model\.blur="gerente\.nacionalidad"\s+disabled/', $html);
+        $this->assertMatchesRegularExpression('/wire:model\.blur="gerente\.ocupacion"\s+readonly/', $html);
+        $this->assertMatchesRegularExpression('/wire:model\.live="gerente\.estado_civil"\s+disabled/', $html);
+
         $comp->set('contratoCreditoId', $credit->id)->set('modeloContrato', 'a4')
             ->set('contratoVehiculos.0.vehiculo_id', Vehiculo::where('placa', 'EMP111')->value('id'))
             ->set('bancoDesembolso', 'bcp')->set('empresa.partida', '15626194')->set('empresa.oficina_registral', 'LIMA')
             ->set('empresa.razon_social', 'OTRA EMPRESA')->set('empresa.ruc', '20999999999')
             ->set('gerente.nombre', 'OTRA PERSONA')->set('gerente.dni', '99999999')
+            ->set('gerente.sexo', 'M')->set('gerente.nacionalidad', 'PERUANO')
+            ->set('gerente.ocupacion', 'otra')->set('gerente.estado_civil', 'soltero')
             ->call('generarContrato')->assertDispatched('successAlert');
         $deudora = DocumentoCliente::where('client_id', $empresa->id)->where('tipo', 'contrato')->firstOrFail()->snapshot['deudores'][0];
         $this->assertSame(['20601234599', 'ROSA QUISPE MAMANI', '41752169'],
             [$deudora['ruc'], $deudora['gerente']['nombre'], $deudora['gerente']['dni']]);
         $this->assertNotSame('OTRA EMPRESA', $deudora['nombre']);
+        $this->assertSame(['F', 'VENEZOLANO', 'INDEPENDIENTE', 'CASADO'], [
+            $deudora['gerente']['sexo'], $deudora['gerente']['nacionalidad'], $deudora['gerente']['ocupacion'], $deudora['gerente']['estadoCivil'],
+        ], 'lo tecleado encima de lo bloqueado no cuenta');
+    }
+
+    /** 13/11 (Trello #138): con RUC no aparecen los apellidos y no se guarda lo escrito antes de cambiar el tipo. */
+    public function test_el_alta_ruc_no_muestra_ni_guarda_apellidos(): void
+    {
+        $comp = Livewire::test(Create::class)->set('tipo_documento', 'DNI');
+        $this->assertStringContainsString('wire:model.defer="apellido_pat"', $comp->html());
+
+        $comp = $this->altaRuc()->set('apellido_pat', 'QUEDO')->set('apellido_mat', 'ESCRITO');
+        $this->assertStringNotContainsString('wire:model.defer="apellido_pat"', $comp->html());
+        $this->assertStringNotContainsString('wire:model.defer="apellido_mat"', $comp->html());
+
+        $comp->set('representante.nombre', 'ROSA QUISPE MAMANI')->set('representante.dni', '41752169')
+            ->call('siguientePaso')->call('save')->assertHasNoErrors();
+        $empresa = Client::where('documento', '20601234599')->firstOrFail();
+        $this->assertSame(['', ''], [(string) $empresa->apellido_pat, (string) $empresa->apellido_mat]);
     }
 
     public function test_el_domicilio_del_representante_elige_su_ubigeo(): void

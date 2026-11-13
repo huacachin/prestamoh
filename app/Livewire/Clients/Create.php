@@ -791,8 +791,9 @@ class Create extends Component
             $datosCliente = [
                 'expediente' => (string) $expediente,
                 'nombre' => $this->nombre,
-                'apellido_pat' => $this->apellido_pat,
-                'apellido_mat' => $this->apellido_mat,
+                // Con RUC los apellidos no se muestran (Trello #138): no se guarda lo que quedó escrito antes de cambiar el tipo.
+                'apellido_pat' => $isRuc ? '' : $this->apellido_pat,
+                'apellido_mat' => $isRuc ? '' : $this->apellido_mat,
                 'tipo_documento' => $this->tipo_documento,
                 'documento' => $this->documento,
                 // La EMPRESA no tiene datos personales: quedan NULL y los del

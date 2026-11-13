@@ -24,6 +24,7 @@ use App\Support\Documentos\DomicilioLegal;
 use App\Support\Documentos\ModelosContrato;
 use App\Support\Documentos\Nacionalidades;
 use App\Support\Documentos\Notarios;
+use App\Support\HorarioEliminacion;
 use App\Support\Ubigeo;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -164,6 +165,19 @@ class Documentos extends Component
 
     #[Locked]
     public bool $domicilioGerenteDeFicha = false;
+
+    /**
+     * Trello #138 (13/11/2026): del gerente de la ficha también van bloqueados
+     * género, nacionalidad, ocupación y estado civil, cada uno si la ficha lo
+     * tiene (si falta, se escribe y queda en la ficha al emitir).
+     *
+     * @var list<string>
+     */
+    #[Locked]
+    public array $gerenteCamposDeFicha = [];
+
+    /** Campos personales del gerente que se bloquean cuando vienen de la ficha. */
+    private const CAMPOS_GERENTE_FICHA = ['sexo', 'nacionalidad', 'ocupacion', 'estado_civil'];
 
     /**
      * Tercero autorizado a recibir el desembolso (modelos de depósito a tercero).
@@ -605,13 +619,13 @@ class Documentos extends Component
             'sigmFolio.required' => 'Escribe el N° de folio electrónico.',
             'sigmFolio.regex' => 'El folio electrónico son solo números, como 20261027002239830.',
             'sigmFolio.unique' => 'Ese folio ya está registrado en otro crédito.',
-            'sigmFecha.required' => 'Indica la fecha de la inscripción.',
-            'sigmFecha.before_or_equal' => 'La fecha de la inscripción no puede ser futura.',
+            'sigmFecha.required' => 'Indica la fecha de constitución.',
+            'sigmFecha.before_or_equal' => 'La fecha de constitución no puede ser futura.',
         ]);
 
         try {
             GeneradorSigm::registrar(Client::findOrFail($this->clientId), $credit, $this->sigmFormulario, $this->sigmFolio, $this->sigmFecha);
-            $this->dispatch('successAlert', ['message' => 'Inscripción SIGM registrada.']);
+            $this->dispatch('successAlert', ['message' => $actual ? 'Constitución SIGM corregida.' : 'Constitución SIGM registrada.']);
         } catch (InvalidArgumentException $e) {
             $this->dispatch('errorAlert', ['message' => $e->getMessage()]);
         }
@@ -677,6 +691,9 @@ class Documentos extends Component
             'resumen' => $ctx['sinResumen'] === null ? GeneradorSigm::resumen($ctx) : null,
             'sinResumen' => $ctx['sinResumen'],
             'registro' => $registro,
+            // Trello #137 (13/11): registrada, solo se corrige o quita el mismo día; luego, solo el director.
+            // El servidor ya lo rechazaba (edicionBloqueada); ahora la pantalla también lo muestra bloqueado.
+            'registroBloqueado' => $registro ? HorarioEliminacion::motivoBloqueo($registro, accion: 'modificar') : null,
             'cancelacion' => $registro && $ctx['sinCancelacion'] === null ? GeneradorSigm::cancelacion($ctx, $registro) : null,
             'sinCancelacion' => $ctx['sinCancelacion'] ?? ($registro ? null : 'Primero registra la inscripción de la constitución (pestaña Registro).'),
         ];
@@ -739,6 +756,9 @@ class Documentos extends Component
         ];
         $this->gerenteDeFicha = filled($vigente?->documento) && filled($vigente?->nombre);
         $this->domicilioGerenteDeFicha = $this->gerenteDeFicha && filled($vigente?->domicilio);
+        $this->gerenteCamposDeFicha = $this->gerenteDeFicha
+            ? array_values(array_filter(self::CAMPOS_GERENTE_FICHA, fn (string $campo) => filled($vigente?->{$campo})))
+            : [];
         $this->fijarDatosDeFicha();
         $this->tercero = ['nombre' => '', 'dni' => '', 'cuenta' => ''];
         $this->valorBien = '';
@@ -1044,6 +1064,7 @@ class Documentos extends Component
     {
         $this->gerenteDeFicha = false;
         $this->domicilioGerenteDeFicha = false;
+        $this->gerenteCamposDeFicha = [];
         $this->gerente = array_merge($this->gerente, [
             'nombre' => '', 'tipo_documento' => 'DNI', 'dni' => '', 'domicilio' => '',
             'direccion' => '', 'departamento' => 'Lima', 'provincia' => 'Lima', 'distrito' => '',
@@ -1080,6 +1101,11 @@ class Documentos extends Component
             $this->gerente['dni'] = (string) $vigente->documento;
             if ($this->domicilioGerenteDeFicha) {
                 $this->gerente['domicilio'] = (string) $vigente->domicilio;
+            }
+            foreach ($this->gerenteCamposDeFicha as $campo) {
+                $this->gerente[$campo] = $campo === 'sexo'
+                    ? ($vigente->sexo === 'F' ? 'F' : 'M')
+                    : (string) $vigente->{$campo};
             }
         }
         if (! $this->domicilioGerenteDeFicha && filled($this->gerente['direccion'] ?? null)) {

@@ -3,6 +3,8 @@
      (señor/señora/señores), singular o plural, constitución o pre-constitución (bien futuro) y la cláusula
      (Décimo Tercera con GPS, Décimo Segunda sin GPS). Corregido de los modelos: "Estimada señores" y el
      "usted… me faculta" de a.3.1 con dos deudores.
+     13/11/2026 (Trello #139): también "a.4 Correo.GPS. Empresa" (trato "Estimado(a) representante de", en
+     singular; el modelo dice "Estimad(a)").
      Formato de los .docx (30/10, Antony: "adaptar al formato que está en el documento"): las mismas negritas,
      párrafos justificados y la firma centrada con el nombre en negrita. HTML como el que arma Gmail (un div por
      línea y un div vacío entre párrafos) para pegarlo en el cuerpo; GeneradorSigm saca de aquí el texto plano.

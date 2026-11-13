@@ -19,6 +19,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
@@ -220,13 +221,85 @@ class SigmDocumentosTest extends TestCase
         $this->assertSame('No hay modelo para esta combinación de vehículos del contrato.', $ctx['sinCorreo']);
         $this->assertNotNull($ctx['sinCancelacion']);
 
-        // Sin modelo del área (decisión de Antony: quedan fuera): empresa, custodia y dos vehículos sin GPS.
-        $this->contratoCon([$rosa], [$this->bien('EMP777')], juridica: true);
-        $this->assertSame(['No hay modelo para empresas.', 'No hay modelo para empresas.'], [$this->contexto()['sinCorreo'], $this->contexto()['sinResumen']]);
+        // Sin modelo del área (decisión de Antony: quedan fuera): custodia y dos vehículos sin GPS.
         $this->contratoCon([$rosa], [$this->bien('CUS888')], custodia: true);
         $this->assertSame('No hay modelo para contratos con custodia.', $this->contexto()['sinResumen']);
         $this->contratoCon([$rosa], [$this->bien('SN1999'), $this->bien('SN2000')], gps: false);
         $this->assertNull($this->contexto()['resumen']);
+    }
+
+    /** 13/11/2026 (Trello #139): modelos a.4 (correo), 1.7 (resumen) y 1.4 (cancelación) de la empresa deudora. */
+    public function test_la_empresa_deudora_tiene_correo_resumen_y_cancelacion(): void
+    {
+        $empresa = ['esJuridica' => true, 'nombre' => 'INVERSIONES HUACACHIN SAC', 'sexo' => 'F', 'correo' => 'IHUACACHIN@GMAIL.COM'];
+        $this->contratoCon([$empresa], [$this->bien('F7A197')], juridica: true);
+        $ctx = $this->contexto();
+        $this->assertSame(['empresa', 'gps', null, null, null], [$ctx['persona'], $ctx['resumen'], $ctx['sinCorreo'], $ctx['sinResumen'], $ctx['sinCancelacion']]);
+
+        $correo = GeneradorSigm::correo($ctx);
+        $this->assertSame(['ihuacachin@gmail.com'], $correo['para']);
+        $this->assertSame('Comunicación sobre la constitución de garantía mobiliaria en el SIGM – PLACA N° F7A197.', $correo['asunto']);
+        $this->assertStringStartsWith('Estimado(a) representante de INVERSIONES HUACACHIN SAC:', $correo['cuerpo']);
+        $this->assertStringContainsString('Estimado(a) representante de <b>INVERSIONES HUACACHIN SAC</b>:', $correo['html']);
+        $this->assertStringContainsString('cumplo con informarle que se procederá a realizar la constitución de la garantía mobiliaria', $correo['cuerpo']);
+        $this->assertStringContainsString('otorgada por usted en la Cláusula Décimo Tercera del referido contrato, mediante la cual me faculta', $correo['cuerpo']);
+
+        // El resumen 1.7 es el del deudor con GPS palabra por palabra: EL DEUDOR, no LA DEUDORA.
+        $resumen = GeneradorSigm::resumen($ctx);
+        $this->assertSame(GeneradorSigm::resumen(['resumen' => 'gps', 'persona' => 'deudor'] + $ctx), $resumen);
+        $this->assertStringContainsString('8.1 PARA PROCEDER CON LA VENTA EXTRAJUDICIAL, EL DEUDOR OTORGA', $resumen);
+        $this->assertStringContainsString('SIGM, DE FECHA 15 DE OCTUBRE DEL 2026, ADJUNTANDO', $resumen);
+
+        $constitucion = GeneradorSigm::registrar($this->client, $this->credit, '2026-619681', '20260602000995110', '2026-06-02');
+        $this->assertSame('juridica', Garantia::where('credit_id', $this->credit->id)->value('tipo_persona'));
+        $this->assertSame(
+            'SE CANCELA LA CONSTITUCIÓN DE GARANTIA MOBILIARIA SOBRE EL VEHICULO DE PLACA N° F7A197 INSCRITA MEDIANTE FORMULARIO N° 2026-619681 Y FOLIO CAUSAL ELECTRÓNICO N° 20260602000995110 DE FECHA 02/06/2026, POR EL SUPUESTO DEL CUMPLIMIENTO DE LA OBLIGACIÓN, ES DECIR, EL DEUDOR INVERSIONES HUACACHIN SAC HA CUMPLIDO CON EFECTUAR EL PAGO COMPLETO DEL MONTO DE LA GARANTÍA.',
+            GeneradorSigm::cancelacion($ctx, $constitucion)
+        );
+
+        // Fuera de los modelos de empresa: dos vehículos o sin GPS.
+        $combinacion = 'No hay modelo para esta combinación de vehículos del contrato.';
+        $this->contratoCon([$empresa], [$this->bien('EMP111'), $this->bien('EMP222')], juridica: true);
+        $this->assertSame([$combinacion, $combinacion, $combinacion], [$this->contexto()['sinCorreo'], $this->contexto()['sinResumen'], $this->contexto()['sinCancelacion']]);
+        $this->contratoCon([$empresa], [$this->bien('EMP333')], gps: false, juridica: true);
+        $this->assertSame([$combinacion, $combinacion], [$this->contexto()['sinCorreo'], $this->contexto()['sinResumen']]);
+    }
+
+    /** 13/11/2026 (Trello #137): "Fecha de constitución", "Registrar constitución" y, registrada, solo se toca el mismo día salvo el director. */
+    public function test_la_constitucion_registrada_solo_se_modifica_el_mismo_dia_salvo_el_director(): void
+    {
+        config(['auditoria.eliminar_mismo_dia.activo' => true]);
+        $this->contratoReal();
+
+        Livewire::test(Documentos::class, ['id' => $this->client->id])
+            ->call('abrirModalSigm')
+            ->assertSee('Fecha de constitución *')
+            ->assertSee('Registrar constitución')
+            ->set('sigmFormulario', '2026-905021')->set('sigmFolio', '20261027002239830')->set('sigmFecha', '2026-10-30')
+            ->call('guardarRegistroSigm')
+            ->assertDispatched('successAlert', ['message' => 'Constitución SIGM registrada.'])
+            ->assertSee('Guardar corrección')
+            ->assertDontSee('Solo se puede modificar el mismo día');
+
+        $this->travelTo('2026-10-31 09:00:00');
+        $c = Livewire::test(Documentos::class, ['id' => $this->client->id])
+            ->call('abrirModalSigm')
+            ->assertSee('Solo se puede modificar el mismo día en que se registró. Pasado ese día, pídeselo al director.')
+            ->assertDontSee('Guardar corrección')
+            ->assertDontSee('Quitar registro')
+            ->assertSeeHtml('wire:model="sigmFolio" placeholder="20261027002239830" disabled');
+        $c->set('sigmFecha', '2026-10-29')->call('guardarRegistroSigm')->assertDispatched('errorAlert');
+        $c->call('quitarRegistroSigm')->assertDispatched('errorAlert');
+        $this->assertSame('2026-10-30', SigmAviso::sole()->fecha_presentacion->toDateString(), 'al día siguiente no cambia');
+
+        $director = User::factory()->create(['username' => 'guilmer-sigm']);
+        $director->syncRoles([Role::findOrCreate('director', 'web')]);
+        Livewire::actingAs($director)->test(Documentos::class, ['id' => $this->client->id])
+            ->call('abrirModalSigm')
+            ->assertSee('Guardar corrección')
+            ->set('sigmFecha', '2026-10-29')->call('guardarRegistroSigm')
+            ->assertDispatched('successAlert', ['message' => 'Constitución SIGM corregida.']);
+        $this->assertSame('2026-10-29', SigmAviso::sole()->fecha_presentacion->toDateString(), 'el director sí corrige');
     }
 
     public function test_registra_la_inscripcion_y_arma_la_cancelacion_desde_la_ficha(): void

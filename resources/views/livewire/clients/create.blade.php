@@ -111,11 +111,10 @@
                     {{-- ════════ Datos Personales ════════ --}}
                     <h6 class="mb-1" style="color:red;">Datos Personales</h6>
                     <div class="row g-2 mb-2">
+                        {{-- Trello #138 (13/11/2026): la EMPRESA no tiene apellidos; con RUC solo va la razón social. --}}
+                        @unless($tipo_documento === 'RUC')
                         <div class="col-md-3">
-                            <label class="form-label mb-0 small fw-semibold">
-                                Apellido Paterno
-                                @if($tipo_documento === 'RUC')<span class="text-muted small">(opcional)</span>@endif
-                            </label>
+                            <label class="form-label mb-0 small fw-semibold">Apellido Paterno</label>
                             <input type="text" class="form-control form-control-sm @error('apellido_pat') is-invalid @enderror @if(in_array('apellido_pat', $autoCliente)) campo-api @endif"
                                    wire:model.defer="apellido_pat" name="apellido_pat" autocomplete="family-name" placeholder="Apellido Paterno">
                         </div>
@@ -126,7 +125,8 @@
                             <input type="text" class="form-control form-control-sm @if(in_array('apellido_mat', $autoCliente)) campo-api @endif"
                                    wire:model.defer="apellido_mat" name="apellido_mat" autocomplete="off" placeholder="Apellido Materno">
                         </div>
-                        <div class="col-md-3">
+                        @endunless
+                        <div class="{{ $tipo_documento === 'RUC' ? 'col-md-6' : 'col-md-3' }}">
                             <label class="form-label mb-0 small fw-semibold">
                                 {{ $tipo_documento === 'RUC' ? 'Razón social' : 'Nombres' }}
                             </label>
