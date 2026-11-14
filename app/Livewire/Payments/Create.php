@@ -1150,6 +1150,12 @@ class Create extends Component
             return 'Activa la ubicación del navegador para registrar el pago: el sistema guarda desde dónde se cobra.';
         }
 
+        // 13/11 (Antony): "no me deja pagar si no pongo nada en monto a pagar". Para cobrar solo
+        // la mora acumulada elegida, el Monto a Pagar vacío vale 0 (antes había que escribir el 0).
+        if (($this->monto === null || trim((string) $this->monto) === '') && ! $this->cancel && $this->moraAcumCuotas !== []) {
+            $this->monto = 0;
+        }
+
         $this->validate([
             'monto' => 'required|numeric|min:0',
             'fecpag' => 'required|date',

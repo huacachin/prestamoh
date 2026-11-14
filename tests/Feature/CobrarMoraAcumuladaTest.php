@@ -138,21 +138,43 @@ class CobrarMoraAcumuladaTest extends TestCase
         $this->assertSame([1 => ['monto' => 1.72, 'dias' => 2], 2 => ['monto' => 4.30, 'dias' => 5]], MoraExonerada::porCuota($this->credit->fresh()));
     }
 
-    public function test_se_cobra_sola_con_el_monto_en_cero(): void
+    /** 13/11 (Antony): "no me deja pagar si no pongo nada en monto a pagar": vacío vale 0. */
+    public function test_se_cobra_sola_con_el_monto_vacio(): void
     {
         Livewire::test(Create::class, ['creditId' => $this->credit->id])
             ->call('abrirMoraAcumulada')
             ->call('aplicarMoraAcumulada')
             ->assertSet('moraAcumCuotas', [1 => 1.72, 2 => 4.30])
-            ->set('monto', 0)
+            ->assertSet('monto', null)
             ->call('confirmarPago')
+            ->assertHasNoErrors()
             ->call('pagar')
             ->assertNotDispatched('errorAlert');
 
-        // Con monto 0 entra la mora vigente de la cuota 3 (5.16) y la acumulada de la 1 y la 2 (6.02).
+        // Sin monto entra la mora vigente de la cuota 3 (5.16) y la acumulada de la 1 y la 2 (6.02).
         $this->assertEqualsWithDelta(11.18, (float) MassDeletion::where('credit_id', $this->credit->id)->sole()->amount, 0.001);
         $this->assertEqualsWithDelta(6.02, (float) Payment::where('credit_id', $this->credit->id)->where('documento', 'MORA ACUM.')->sum('monto'), 0.001);
         $this->assertSame([], MoraExonerada::porCuota($this->credit->fresh()));
+        $this->assertFalse((bool) $this->cuota(3)->pagado);
+    }
+
+    /** Solo la acumulada: campo borrado ("") y "Reserva Mora" para dejar pendiente la vigente de la cuota 3. */
+    public function test_solo_la_mora_acumulada_con_reserva_mora_y_el_monto_borrado(): void
+    {
+        Livewire::test(Create::class, ['creditId' => $this->credit->id])
+            ->call('abrirMoraAcumulada')
+            ->call('aplicarMoraAcumulada')
+            ->set('monto', '')
+            ->set('ckmora', true)
+            ->call('confirmarPago')
+            ->assertHasNoErrors()
+            ->assertSet('preview.total', 6.02)
+            ->call('pagar')
+            ->assertNotDispatched('errorAlert');
+
+        $this->assertEqualsWithDelta(6.02, (float) MassDeletion::where('credit_id', $this->credit->id)->sole()->amount, 0.001);
+        $this->assertSame(['MORA ACUM.', 'MORA ACUM.'], Payment::where('credit_id', $this->credit->id)->where('tipo', 'MORA')->pluck('documento')->all());
+        $this->assertSame(0, Payment::where('credit_id', $this->credit->id)->whereIn('tipo', ['CAPITAL', 'INTERES'])->where('fecha', '2026-11-13')->count());
         $this->assertFalse((bool) $this->cuota(3)->pagado);
     }
 
