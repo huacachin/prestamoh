@@ -46,7 +46,7 @@
                                 @php $sumDet += (float) $det->amount; @endphp
                                 <tr>
                                     <td class="text-center">{{ $loop->iteration }}</td>
-                                    <td class="text-center">{{ $det->installment?->num_cuota ?? '—' }}</td>
+                                    <td class="text-center">{{ $det->installment?->num_cuota ?? '—' }}{{ $det->tipo === 'MA' ? ' (mora acum.)' : '' }}</td>
                                     <td class="text-end">{{ number_format($det->amount, 2) }}</td>
                                     <td class="text-center">{{ $det->fecha?->format('d/m/Y H:i') }}</td>
                                 </tr>

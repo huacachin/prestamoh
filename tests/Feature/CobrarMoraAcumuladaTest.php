@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\Credits\MassDeleteEdit;
+use App\Livewire\Credits\Show;
 use App\Livewire\Payments\Create;
 use App\Models\Client;
 use App\Models\Credit;
@@ -121,6 +122,18 @@ class CobrarMoraAcumuladaTest extends TestCase
         $this->assertSame(['rotulo' => 'Mora acum. cuota 2', 'monto' => 4.30], $ticket['mora_acumulada']);
         $this->assertArrayNotHasKey($this->cuota(2)->id, RecibosCuota::porCuota($this->credit));
         $this->assertDatabaseHas('activity_log', ['description' => "Cobró la mora acumulada del crédito #{$this->credit->id}: cuota 2 (5 días) S/ 4.30"]);
+    }
+
+    /** "Pagos realizados" de la ficha: la mora acumulada va en la columna Mora y la fila dice de qué cuotas es. */
+    public function test_la_ficha_del_credito_muestra_la_mora_acumulada_del_cobro(): void
+    {
+        $this->cobrarMoraDeLaCuota2();
+
+        $html = Livewire::test(Show::class, ['id' => $this->credit->id])->html();
+
+        $this->assertStringContainsString('<td>3 · mora acum. 2</td>', $html);
+        // Mora del cobro: 5.16 de la vigente + 4.30 de la acumulada.
+        $this->assertSame(2, substr_count($html, '<td class="text-end">9.46</td>'), 'la fila del cobro y la de Totales');
     }
 
     public function test_revertir_el_cobro_devuelve_la_mora_a_acumulada_sin_reabrir_la_cuota(): void

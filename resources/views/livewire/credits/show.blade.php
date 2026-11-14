@@ -243,14 +243,24 @@
                         @php
                             $totales = ['C' => 0, 'I' => 0, 'E' => 0, 'M' => 0];
                             $cuotas = [];
+                            $cuotasMoraAcum = [];
                             foreach ($masivo->details as $d) {
-                                if (isset($totales[$d->tipo])) $totales[$d->tipo] += (float) $d->amount;
+                                // 13/11: la mora acumulada de cuotas ya pagadas (fila 'MA') también es mora del cobro.
+                                $tipoCol = $d->tipo === 'MA' ? 'M' : $d->tipo;
+                                if (isset($totales[$tipoCol])) $totales[$tipoCol] += (float) $d->amount;
                                 if ($d->tipo === 'C' && $d->installment?->num_cuota !== null) {
                                     $cuotas[] = $d->installment->num_cuota;
+                                }
+                                if ($d->tipo === 'MA' && $d->installment?->num_cuota !== null) {
+                                    $cuotasMoraAcum[] = (int) $d->installment->num_cuota;
                                 }
                             }
                             $cuotas = array_values(array_unique($cuotas));
                             sort($cuotas);
+                            $textoCuotas = implode(' · ', array_filter([
+                                $cuotas ? implode(',', $cuotas) : null,
+                                $cuotasMoraAcum ? 'mora acum. '.\App\Support\RangoCuotas::texto($cuotasMoraAcum) : null,
+                            ]));
                         @endphp
                         <tr>
                             <td>{{ $loop->iteration }}</td>
@@ -258,7 +268,7 @@
                                 {{ $masivo->date?->format('d/m/Y') }}
                                 <small class="text-muted">{{ $masivo->time }}</small>
                             </td>
-                            <td>{{ $cuotas ? implode(',', $cuotas) : '—' }}</td>
+                            <td>{{ $textoCuotas !== '' ? $textoCuotas : '—' }}</td>
                             <td class="text-end">{{ number_format($totales['C'], 2) }}</td>
                             <td class="text-end">{{ number_format($totales['I'], 2) }}</td>
                             @if($tieneExc)
@@ -318,7 +328,7 @@
                                     if ($d->tipo === 'C') $pC += (float) $d->amount;
                                     elseif ($d->tipo === 'I') $pI += (float) $d->amount;
                                     elseif ($d->tipo === 'E') $pE += (float) $d->amount;
-                                    elseif ($d->tipo === 'M') $pM += (float) $d->amount;
+                                    elseif ($d->tipo === 'M' || $d->tipo === 'MA') $pM += (float) $d->amount;
                                 }
                                 $pTot += (float) $m->amount;
                             }
