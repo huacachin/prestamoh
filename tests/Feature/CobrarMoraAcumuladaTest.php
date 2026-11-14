@@ -81,8 +81,8 @@ class CobrarMoraAcumuladaTest extends TestCase
             ->assertSee('Cobrar mora acumulada (S/ 6.02)')
             ->call('abrirMoraAcumulada')
             ->assertSet('moraAcumFilas', [
-                ['num' => 1, 'dias' => 2, 'monto' => 1.72, 'valor' => '1.72', 'sel' => true],
-                ['num' => 2, 'dias' => 5, 'monto' => 4.30, 'valor' => '4.30', 'sel' => true],
+                ['num' => 1, 'dias' => 2, 'monto' => 1.72, 'tope' => 1.80, 'valor' => '1.72', 'sel' => true],
+                ['num' => 2, 'dias' => 5, 'monto' => 4.30, 'tope' => 4.30, 'valor' => '4.30', 'sel' => true],
             ])
             ->set('moraAcumFilas.0.sel', false)
             ->call('aplicarMoraAcumulada')
@@ -185,6 +185,31 @@ class CobrarMoraAcumuladaTest extends TestCase
         // De la 2 quedan 1.30 por cobrar (otro día, o al cancelar).
         $this->assertSame([1 => ['monto' => 1.72, 'dias' => 2], 2 => ['monto' => 1.30, 'dias' => 5]], MoraExonerada::porCuota($this->credit->fresh()));
         $this->assertDatabaseHas('activity_log', ['description' => "Cobró la mora acumulada del crédito #{$this->credit->id}: cuota 2 (5 días) S/ 3.00 de 4.30"]);
+    }
+
+    /** 13/11 (Antony): "si el cliente tiene 9.52, debe poder cobrar el redondeo de hasta 9.6, más de eso no". */
+    public function test_se_puede_cobrar_hasta_el_redondeo_a_diez_centimos_y_no_mas(): void
+    {
+        $this->assertSame([9.60, 4.80, 4.30, 0.10], array_map(Create::topeMoraAcumulada(...), [9.52, 4.76, 4.30, 0.01]));
+
+        $pantalla = Livewire::test(Create::class, ['creditId' => $this->credit->id])
+            ->call('abrirMoraAcumulada')
+            ->set('moraAcumFilas.1.sel', false)
+            ->set('moraAcumFilas.0.valor', '1.81')
+            ->call('aplicarMoraAcumulada')
+            ->assertHasErrors(['moraAcumFilas.0.valor'])
+            ->assertSee('Cuota 1: su mora acumulada es S/ 1.72, se puede cobrar hasta S/ 1.80 con el redondeo.')
+            ->set('moraAcumFilas.0.valor', '1.80')
+            ->call('aplicarMoraAcumulada')
+            ->assertHasNoErrors()
+            ->assertSet('moraAcumCuotas', [1 => 1.80]);
+
+        $pantalla->set('monto', 120)->call('confirmarPago')->call('pagar')->assertNotDispatched('errorAlert');
+
+        // 120 + 5.16 de la vigente + 1.80 de la cuota 1: queda sin mora por cobrar (el 0.08 de más es el redondeo).
+        $this->assertEqualsWithDelta(126.96, (float) MassDeletion::where('credit_id', $this->credit->id)->sole()->amount, 0.001);
+        $this->assertSame([2 => ['monto' => 4.30, 'dias' => 5]], MoraExonerada::porCuota($this->credit->fresh()));
+        $this->assertDatabaseHas('activity_log', ['description' => "Cobró la mora acumulada del crédito #{$this->credit->id}: cuota 1 (2 días) S/ 1.80 (debía 1.72, con redondeo)"]);
     }
 
     public function test_si_otra_caja_ya_la_cobro_no_se_vuelve_a_cobrar(): void

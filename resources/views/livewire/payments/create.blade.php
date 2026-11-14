@@ -881,7 +881,7 @@
                                                 <td class="text-center text-danger fw-semibold">{{ $fila['dias'] }}</td>
                                                 <td class="text-end">{{ number_format($fila['monto'], 2) }}</td>
                                                 <td>
-                                                    <input type="number" step="0.01" min="0.01" max="{{ $fila['monto'] }}"
+                                                    <input type="number" step="0.01" min="0.01" max="{{ $fila['tope'] }}" title="Hasta {{ number_format($fila['tope'], 2) }} (lo que debe, redondeado a 0.10)"
                                                            class="form-control form-control-sm text-end input-rojo @error('moraAcumFilas.'.$i.'.valor') is-invalid @enderror"
                                                            wire:model.live.debounce.400ms="moraAcumFilas.{{ $i }}.valor"
                                                            @disabled(! $fila['sel'])>
@@ -906,8 +906,8 @@
                                 </table>
                             </div>
                             <p class="text-muted small mb-0 mt-2">
-                                Mora de las cuotas que ya se pagaron con atraso sin cobrarla. Puedes cobrar menos de lo que
-                                debe cada cuota: el resto sigue como mora acumulada. Se cobra junto con el Monto a Pagar
+                                Mora de las cuotas que ya se pagaron con atraso sin cobrarla. Cada cuota se cobra hasta lo que
+                                debe redondeado a 0.10 (9.52 → 9.60). Si cobras menos, el resto sigue como mora acumulada. Se cobra junto con el Monto a Pagar
                                 (o sola, con el monto en 0).
                             </p>
                         @endif

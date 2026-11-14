@@ -462,11 +462,20 @@ class Create extends Component
        anota en la propia cuota (importe_mora + fila 'MA' del cobro), así deja de salir
        como exonerada en el cronograma y al cancelar ya no se vuelve a cobrar.
        13/11 (Antony, mismo día): el importe de cada cuota es editable, hasta lo que la
-       cuota debe. Cobrar menos no perdona nada: el resto sigue como mora acumulada
-       (se cobra otro día o se exonera al cancelar, con su motivo). */
+       cuota debe redondeado hacia arriba a 0.10 ("si tiene 9.52, hasta 9.60, más de eso
+       no"). Cobrar menos no perdona nada: el resto sigue como mora acumulada (se cobra
+       otro día o se exonera al cancelar, con su motivo). */
 
-    /** @var list<array{num: int, dias: int, monto: float, valor: string, sel: bool}> filas del modal */
+    /** @var list<array{num: int, dias: int, monto: float, tope: float, valor: string, sel: bool}> filas del modal */
     public array $moraAcumFilas = [];
+
+    /** Lo más que se cobra de la mora acumulada de una cuota: lo que debe, redondeado hacia arriba a 0.10. */
+    public static function topeMoraAcumulada(float $debe): float
+    {
+        $centavos = (int) round($debe * 100);
+
+        return intdiv($centavos + 9, 10) * 10 / 100;
+    }
 
     /**
      * Mora acumulada que entra en ESTE cobro: número de cuota => importe a cobrar. Solo
@@ -493,6 +502,7 @@ class Create extends Component
                 'num' => (int) $num,
                 'dias' => (int) $m['dias'],
                 'monto' => (float) $m['monto'],
+                'tope' => self::topeMoraAcumulada((float) $m['monto']),
                 'valor' => number_format($elegido ?? (float) $m['monto'], 2, '.', ''),
                 'sel' => $this->moraAcumCuotas === [] || $elegido !== null,
             ];
@@ -513,12 +523,14 @@ class Create extends Component
                 continue;
             }
             $num = (int) $fila['num'];
-            $tope = round((float) ($debe[$num]['monto'] ?? 0), 2);
+            $debeCuota = round((float) ($debe[$num]['monto'] ?? 0), 2);
+            $tope = self::topeMoraAcumulada($debeCuota);
             $valor = is_numeric($fila['valor'] ?? null) ? round((float) $fila['valor'], 2) : 0.0;
             if ($valor < 0.01) {
                 $this->addError("moraAcumFilas.{$i}.valor", "Cuota {$num}: escribe un importe mayor que 0 o desmárcala.");
             } elseif ($valor > $tope + 0.001) {
-                $this->addError("moraAcumFilas.{$i}.valor", "Cuota {$num}: su mora acumulada es S/ ".number_format($tope, 2).', no se puede cobrar más.');
+                $this->addError("moraAcumFilas.{$i}.valor", "Cuota {$num}: su mora acumulada es S/ ".number_format($debeCuota, 2)
+                    .($tope > $debeCuota + 0.001 ? ', se puede cobrar hasta S/ '.number_format($tope, 2).' con el redondeo.' : ', no se puede cobrar más.'));
             } else {
                 $elegidas[$num] = $valor;
             }
@@ -563,7 +575,7 @@ class Create extends Component
         foreach ($this->moraAcumCuotas as $num => $monto) {
             $debe = round((float) ($pendiente[$num]['monto'] ?? 0), 2);
             $monto = round((float) $monto, 2);
-            if (isset($ids[$num]) && $monto >= 0.01 && $monto <= $debe + 0.001) {
+            if (isset($ids[$num]) && $monto >= 0.01 && $monto <= self::topeMoraAcumulada($debe) + 0.001) {
                 $elegida[] = ['num' => (int) $num, 'id' => (int) $ids[$num], 'dias' => (int) $pendiente[$num]['dias'], 'monto' => $monto, 'debe' => $debe];
             }
         }
@@ -1830,7 +1842,11 @@ class Create extends Component
                 Audit::log('Cobró la mora acumulada del crédito #'.$this->credit->id.': '
                     .collect($moraAcumElegida)->map(fn ($a) => 'cuota '.$a['num'].' ('.$a['dias'].' '.($a['dias'] === 1 ? 'día' : 'días').') S/ '.number_format($a['monto'], 2)
                         // Cobro parcial: el resto sigue como mora acumulada.
-                        .($a['monto'] < $a['debe'] - 0.001 ? ' de '.number_format($a['debe'], 2) : ''))->implode(', '),
+                        .match (true) {
+                            $a['monto'] < $a['debe'] - 0.001 => ' de '.number_format($a['debe'], 2),
+                            $a['monto'] > $a['debe'] + 0.001 => ' (debía '.number_format($a['debe'], 2).', con redondeo)',
+                            default => '',
+                        })->implode(', '),
                     $this->credit, ['mass_deletion_id' => $massHeaderId, 'cuotas' => $moraAcumElegida, 'total' => $moraAcumElegidaTotal]);
             }
 
