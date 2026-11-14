@@ -458,19 +458,22 @@ class Create extends Component
     /* ═══ Cobrar la mora acumulada (13/11, Antony, crédito 29440) ═══
        La mora de las cuotas YA PAGADAS con atraso sin cobrarla (con "Reserva Mora",
        por ejemplo: MoraExonerada) solo se cobraba al cancelar el crédito. Ahora
-       cualquiera que cobra la cobra con el crédito vigente, eligiendo las cuotas, y
-       siempre completa: cada cuota con toda su mora, sin rebaja. Se anota en la
-       propia cuota (importe_mora + fila 'MA' del cobro), así deja de salir como
-       exonerada en el cronograma y al cancelar ya no se vuelve a cobrar. */
+       cualquiera que cobra la cobra con el crédito vigente, eligiendo las cuotas. Se
+       anota en la propia cuota (importe_mora + fila 'MA' del cobro), así deja de salir
+       como exonerada en el cronograma y al cancelar ya no se vuelve a cobrar.
+       13/11 (Antony, mismo día): el importe de cada cuota es editable, hasta lo que la
+       cuota debe. Cobrar menos no perdona nada: el resto sigue como mora acumulada
+       (se cobra otro día o se exonera al cancelar, con su motivo). */
 
-    /** @var list<array{num: int, dias: int, monto: float, sel: bool}> filas del modal */
+    /** @var list<array{num: int, dias: int, monto: float, valor: string, sel: bool}> filas del modal */
     public array $moraAcumFilas = [];
 
     /**
-     * Cuotas cuya mora acumulada entra en ESTE cobro. Solo la fijan los métodos del
-     * servidor; el monto se recalcula siempre al cobrar (moraAcumuladaElegida).
+     * Mora acumulada que entra en ESTE cobro: número de cuota => importe a cobrar. Solo
+     * la fijan los métodos del servidor, y al cobrar se vuelve a comparar con lo que
+     * cada cuota debe (moraAcumuladaElegida).
      *
-     * @var list<int>
+     * @var array<int, float>
      */
     #[Locked]
     public array $moraAcumCuotas = [];
@@ -478,17 +481,20 @@ class Create extends Component
     public function abrirMoraAcumulada(): void
     {
         $this->moraAcumFilas = [];
+        $this->resetErrorBag();
         if (! $this->credit || $this->cancel) {
             return;
         }
 
         foreach (MoraExonerada::porCuota($this->credit) as $num => $m) {
+            // La primera vez van todas marcadas y completas; al volver a abrir, lo que ya se eligió.
+            $elegido = $this->moraAcumCuotas[(int) $num] ?? null;
             $this->moraAcumFilas[] = [
                 'num' => (int) $num,
                 'dias' => (int) $m['dias'],
                 'monto' => (float) $m['monto'],
-                // La primera vez van todas marcadas; al volver a abrir, lo que ya se eligió.
-                'sel' => $this->moraAcumCuotas === [] || in_array((int) $num, $this->moraAcumCuotas, true),
+                'valor' => number_format($elegido ?? (float) $m['monto'], 2, '.', ''),
+                'sel' => $this->moraAcumCuotas === [] || $elegido !== null,
             ];
         }
 
@@ -497,10 +503,32 @@ class Create extends Component
 
     public function aplicarMoraAcumulada(): void
     {
-        $this->moraAcumCuotas = collect($this->moraAcumFilas)
-            ->filter(fn ($fila) => (bool) $fila['sel'])
-            ->map(fn ($fila) => (int) $fila['num'])
-            ->values()->all();
+        $this->resetErrorBag();
+        // Lo que cada cuota debe sale del servidor: el "monto" de la fila viene del navegador.
+        $debe = $this->credit ? MoraExonerada::porCuota($this->credit) : [];
+
+        $elegidas = [];
+        foreach ($this->moraAcumFilas as $i => $fila) {
+            if (! $fila['sel']) {
+                continue;
+            }
+            $num = (int) $fila['num'];
+            $tope = round((float) ($debe[$num]['monto'] ?? 0), 2);
+            $valor = is_numeric($fila['valor'] ?? null) ? round((float) $fila['valor'], 2) : 0.0;
+            if ($valor < 0.01) {
+                $this->addError("moraAcumFilas.{$i}.valor", "Cuota {$num}: escribe un importe mayor que 0 o desmárcala.");
+            } elseif ($valor > $tope + 0.001) {
+                $this->addError("moraAcumFilas.{$i}.valor", "Cuota {$num}: su mora acumulada es S/ ".number_format($tope, 2).', no se puede cobrar más.');
+            } else {
+                $elegidas[$num] = $valor;
+            }
+        }
+        if ($this->getErrorBag()->isNotEmpty()) {
+            return;
+        }
+
+        ksort($elegidas);
+        $this->moraAcumCuotas = $elegidas;
         $this->refrescarPreview();
         $this->dispatch('mora-acum-close');
     }
@@ -512,11 +540,12 @@ class Create extends Component
     }
 
     /**
-     * La mora acumulada que se cobra en este cobro, recalculada en el servidor desde
-     * MoraExonerada (nunca la cifra que llegó del navegador). Al cancelar no aplica:
-     * la cancelación ya cobra (o exonera) TODA la acumulada.
+     * La mora acumulada que se cobra en este cobro, comparada en el servidor con lo que
+     * cada cuota debe HOY (MoraExonerada). Una cuota que ya no debe lo elegido (otra caja
+     * cobró antes) queda fuera, y validarCobro lo avisa. Al cancelar no aplica: la
+     * cancelación ya cobra (o exonera) TODA la acumulada.
      *
-     * @return list<array{num: int, id: int, dias: int, monto: float}>
+     * @return list<array{num: int, id: int, dias: int, monto: float, debe: float}>
      */
     private function moraAcumuladaElegida(): array
     {
@@ -527,13 +556,15 @@ class Create extends Component
         $pendiente = MoraExonerada::porCuota($this->credit);
         $ids = DB::table('credit_installments')
             ->where('credit_id', $this->credit->id)
-            ->whereIn('num_cuota', $this->moraAcumCuotas)
+            ->whereIn('num_cuota', array_keys($this->moraAcumCuotas))
             ->pluck('id', 'num_cuota');
 
         $elegida = [];
-        foreach ($this->moraAcumCuotas as $num) {
-            if (isset($pendiente[$num], $ids[$num]) && $pendiente[$num]['monto'] > 0.001) {
-                $elegida[] = ['num' => (int) $num, 'id' => (int) $ids[$num], 'dias' => (int) $pendiente[$num]['dias'], 'monto' => round((float) $pendiente[$num]['monto'], 2)];
+        foreach ($this->moraAcumCuotas as $num => $monto) {
+            $debe = round((float) ($pendiente[$num]['monto'] ?? 0), 2);
+            $monto = round((float) $monto, 2);
+            if (isset($ids[$num]) && $monto >= 0.01 && $monto <= $debe + 0.001) {
+                $elegida[] = ['num' => (int) $num, 'id' => (int) $ids[$num], 'dias' => (int) $pendiente[$num]['dias'], 'monto' => $monto, 'debe' => $debe];
             }
         }
         usort($elegida, fn ($a, $b) => $a['num'] <=> $b['num']);
@@ -1797,7 +1828,9 @@ class Create extends Component
             }
             if ($moraAcumElegida !== []) {
                 Audit::log('Cobró la mora acumulada del crédito #'.$this->credit->id.': '
-                    .collect($moraAcumElegida)->map(fn ($a) => 'cuota '.$a['num'].' ('.$a['dias'].' '.($a['dias'] === 1 ? 'día' : 'días').') S/ '.number_format($a['monto'], 2))->implode(', '),
+                    .collect($moraAcumElegida)->map(fn ($a) => 'cuota '.$a['num'].' ('.$a['dias'].' '.($a['dias'] === 1 ? 'día' : 'días').') S/ '.number_format($a['monto'], 2)
+                        // Cobro parcial: el resto sigue como mora acumulada.
+                        .($a['monto'] < $a['debe'] - 0.001 ? ' de '.number_format($a['debe'], 2) : ''))->implode(', '),
                     $this->credit, ['mass_deletion_id' => $massHeaderId, 'cuotas' => $moraAcumElegida, 'total' => $moraAcumElegidaTotal]);
             }
 

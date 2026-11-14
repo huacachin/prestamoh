@@ -81,12 +81,12 @@ class CobrarMoraAcumuladaTest extends TestCase
             ->assertSee('Cobrar mora acumulada (S/ 6.02)')
             ->call('abrirMoraAcumulada')
             ->assertSet('moraAcumFilas', [
-                ['num' => 1, 'dias' => 2, 'monto' => 1.72, 'sel' => true],
-                ['num' => 2, 'dias' => 5, 'monto' => 4.30, 'sel' => true],
+                ['num' => 1, 'dias' => 2, 'monto' => 1.72, 'valor' => '1.72', 'sel' => true],
+                ['num' => 2, 'dias' => 5, 'monto' => 4.30, 'valor' => '4.30', 'sel' => true],
             ])
             ->set('moraAcumFilas.0.sel', false)
             ->call('aplicarMoraAcumulada')
-            ->assertSet('moraAcumCuotas', [2])
+            ->assertSet('moraAcumCuotas', [2 => 4.30])
             ->assertSee('Se cobra la mora acumulada de la cuota 2: S/ 4.30')
             ->set('monto', 120)
             ->call('confirmarPago')
@@ -143,7 +143,7 @@ class CobrarMoraAcumuladaTest extends TestCase
         Livewire::test(Create::class, ['creditId' => $this->credit->id])
             ->call('abrirMoraAcumulada')
             ->call('aplicarMoraAcumulada')
-            ->assertSet('moraAcumCuotas', [1, 2])
+            ->assertSet('moraAcumCuotas', [1 => 1.72, 2 => 4.30])
             ->set('monto', 0)
             ->call('confirmarPago')
             ->call('pagar')
@@ -154,6 +154,37 @@ class CobrarMoraAcumuladaTest extends TestCase
         $this->assertEqualsWithDelta(6.02, (float) Payment::where('credit_id', $this->credit->id)->where('documento', 'MORA ACUM.')->sum('monto'), 0.001);
         $this->assertSame([], MoraExonerada::porCuota($this->credit->fresh()));
         $this->assertFalse((bool) $this->cuota(3)->pagado);
+    }
+
+    /** 13/11 (Antony): "el importe de la mora debería ser editable". Hasta lo que debe la cuota; el resto no se perdona. */
+    public function test_el_importe_se_edita_hasta_lo_que_debe_y_el_resto_sigue_acumulado(): void
+    {
+        $pantalla = Livewire::test(Create::class, ['creditId' => $this->credit->id])
+            ->call('abrirMoraAcumulada')
+            ->set('moraAcumFilas.0.sel', false)
+            // Más de lo que debe la cuota 2, aunque el navegador mande otra cifra como "monto".
+            ->set('moraAcumFilas.1.monto', 99)
+            ->set('moraAcumFilas.1.valor', '4.31')
+            ->call('aplicarMoraAcumulada')
+            ->assertHasErrors(['moraAcumFilas.1.valor'])
+            ->assertSee('Cuota 2: su mora acumulada es S/ 4.30, no se puede cobrar más.')
+            ->assertSet('moraAcumCuotas', [])
+            ->set('moraAcumFilas.1.valor', '0')
+            ->call('aplicarMoraAcumulada')
+            ->assertHasErrors(['moraAcumFilas.1.valor'])
+            ->set('moraAcumFilas.1.valor', '3')
+            ->call('aplicarMoraAcumulada')
+            ->assertHasNoErrors()
+            ->assertSet('moraAcumCuotas', [2 => 3.0])
+            ->assertSee('Se cobra la mora acumulada de la cuota 2: S/ 3.00');
+
+        $pantalla->set('monto', 120)->call('confirmarPago')->call('pagar')->assertNotDispatched('errorAlert');
+
+        $this->assertEqualsWithDelta(128.16, (float) MassDeletion::where('credit_id', $this->credit->id)->sole()->amount, 0.001);
+        $this->assertEqualsWithDelta(3.0, (float) $this->cuota(2)->importe_mora, 0.001);
+        // De la 2 quedan 1.30 por cobrar (otro día, o al cancelar).
+        $this->assertSame([1 => ['monto' => 1.72, 'dias' => 2], 2 => ['monto' => 1.30, 'dias' => 5]], MoraExonerada::porCuota($this->credit->fresh()));
+        $this->assertDatabaseHas('activity_log', ['description' => "Cobró la mora acumulada del crédito #{$this->credit->id}: cuota 2 (5 días) S/ 3.00 de 4.30"]);
     }
 
     public function test_si_otra_caja_ya_la_cobro_no_se_vuelve_a_cobrar(): void
@@ -175,6 +206,6 @@ class CobrarMoraAcumuladaTest extends TestCase
     {
         $this->expectException(CannotUpdateLockedPropertyException::class);
 
-        Livewire::test(Create::class, ['creditId' => $this->credit->id])->set('moraAcumCuotas', [3]);
+        Livewire::test(Create::class, ['creditId' => $this->credit->id])->set('moraAcumCuotas', [3 => 5.16]);
     }
 }

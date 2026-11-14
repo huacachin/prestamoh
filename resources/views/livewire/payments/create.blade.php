@@ -252,16 +252,17 @@
                     </div>
 
                     {{-- 13/11 (Antony, 29440): la mora acumulada de cuotas ya pagadas se cobra con el
-                         crédito vigente, completa y por cuota. Al cancelar ya la cobra la cancelación. --}}
+                         crédito vigente, por cuota y con importe editable (hasta lo que debe cada una).
+                         Al cancelar ya la cobra la cancelación. --}}
                     @if($moraAcumTotal > 0.001 && ! $cancel)
                         @php
-                            $acumElegida = collect($moraExon)->only($moraAcumCuotas);
+                            $acumElegida = collect($moraAcumCuotas); // cuota => importe a cobrar
                         @endphp
                         <div class="mora-acum-cobro d-flex align-items-center gap-2 flex-wrap small mb-2">
                             @if($acumElegida->isNotEmpty())
                                 @php
                                     $acumTexto = 'Se cobra la mora acumulada de '.($acumElegida->count() === 1 ? 'la cuota ' : 'las cuotas ')
-                                        .\App\Support\RangoCuotas::texto(array_keys($acumElegida->all())).': S/ '.number_format($acumElegida->sum('monto'), 2);
+                                        .\App\Support\RangoCuotas::texto($acumElegida->keys()->all()).': S/ '.number_format($acumElegida->sum(), 2);
                                 @endphp
                                 <span class="fw-semibold" style="color:#b8860b;"><i class="ti ti-check"></i> {{ $acumTexto }}</span>
                                 <button type="button" class="btn btn-sm btn-link p-0" wire:click.prevent="abrirMoraAcumulada">Cambiar</button>
@@ -865,7 +866,8 @@
                                             <th style="width:34px;"></th>
                                             <th class="text-center">Cuota</th>
                                             <th class="text-center">Días de atraso</th>
-                                            <th class="text-end">Mora</th>
+                                            <th class="text-end">Debe</th>
+                                            <th class="text-end" style="width:110px;">A cobrar</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -878,21 +880,35 @@
                                                 <td class="text-center"><label class="mb-0 w-100" for="mora-acum-{{ $fila['num'] }}">{{ $fila['num'] }}</label></td>
                                                 <td class="text-center text-danger fw-semibold">{{ $fila['dias'] }}</td>
                                                 <td class="text-end">{{ number_format($fila['monto'], 2) }}</td>
+                                                <td>
+                                                    <input type="number" step="0.01" min="0.01" max="{{ $fila['monto'] }}"
+                                                           class="form-control form-control-sm text-end input-rojo @error('moraAcumFilas.'.$i.'.valor') is-invalid @enderror"
+                                                           wire:model.live.debounce.400ms="moraAcumFilas.{{ $i }}.valor"
+                                                           @disabled(! $fila['sel'])>
+                                                </td>
                                             </tr>
+                                            @error('moraAcumFilas.'.$i.'.valor')
+                                                <tr wire:key="mora-acum-error-{{ $fila['num'] }}"><td colspan="5" class="text-danger small py-1">{{ $message }}</td></tr>
+                                            @enderror
                                         @endforeach
                                     </tbody>
                                     <tfoot>
-                                        @php $acumSel = collect($moraAcumFilas)->where('sel', true); @endphp
+                                        @php
+                                            $acumSel = collect($moraAcumFilas)->where('sel', true);
+                                            $acumACobrar = $acumSel->sum(fn ($f) => is_numeric($f['valor'] ?? null) ? max(0, (float) $f['valor']) : 0);
+                                        @endphp
                                         <tr class="fw-semibold">
                                             <td colspan="3" class="text-end">Se cobra ({{ $acumSel->count() }})</td>
-                                            <td class="text-end text-danger">{{ number_format($acumSel->sum('monto'), 2) }}</td>
+                                            <td class="text-end">{{ number_format($acumSel->sum('monto'), 2) }}</td>
+                                            <td class="text-end text-danger">{{ number_format($acumACobrar, 2) }}</td>
                                         </tr>
                                     </tfoot>
                                 </table>
                             </div>
                             <p class="text-muted small mb-0 mt-2">
-                                Mora de las cuotas que ya se pagaron con atraso sin cobrarla. Cada cuota se cobra
-                                completa, junto con el Monto a Pagar (o sola, con el monto en 0).
+                                Mora de las cuotas que ya se pagaron con atraso sin cobrarla. Puedes cobrar menos de lo que
+                                debe cada cuota: el resto sigue como mora acumulada. Se cobra junto con el Monto a Pagar
+                                (o sola, con el monto en 0).
                             </p>
                         @endif
                     </div>
