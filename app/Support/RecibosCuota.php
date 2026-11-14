@@ -28,6 +28,9 @@ class RecibosCuota
             ->join('mass_deletions', 'mass_deletions.id', '=', 'mass_deletion_details.mass_deletion_id')
             ->where('mass_deletions.credit_id', $credit->id)
             ->whereNotNull('mass_deletion_details.installment_id')
+            // La mora acumulada cobrada después (13/11, fila 'MA') no es el recibo de la cuota:
+            // el "Rec." sigue siendo el del cobro que la pagó.
+            ->where(fn ($q) => $q->whereNull('mass_deletion_details.tipo')->orWhere('mass_deletion_details.tipo', '<>', 'MA'))
             ->groupBy('mass_deletion_details.installment_id')
             ->selectRaw('mass_deletion_details.installment_id, MAX(mass_deletion_details.mass_deletion_id) as md_id')
             ->pluck('md_id', 'installment_id');

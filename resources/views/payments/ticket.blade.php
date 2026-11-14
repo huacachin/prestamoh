@@ -168,6 +168,9 @@
     @if($t['mora'] > 0.001)
         <div class="row"><span>Mora:</span><span>{{ number_format($t['mora'], 2) }}</span></div>
     @endif
+    @if(! empty($t['mora_acumulada']))
+        <div class="row"><span>{{ $t['mora_acumulada']['rotulo'] }}:</span><span>{{ number_format($t['mora_acumulada']['monto'], 2) }}</span></div>
+    @endif
 
     <div class="sep"></div>
 

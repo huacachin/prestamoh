@@ -175,9 +175,9 @@
                          barras saturadas que le ganaban a los saldos. --}}
                     <h6 class="mb-1 mt-3" style="color:red;">Atraso</h6>
                     @php
-                        // Mora acumulada (exonerada) histórica: informativa, igual al
-                        // total de la columna Mora Exon. del cronograma. NO entra en
-                        // la operación de pago.
+                        // Mora acumulada de cuotas ya pagadas: igual al total de la columna
+                        // Mora Exon. del cronograma. Solo entra en el cobro con "Cobrar mora
+                        // acumulada" (13/11) o al cancelar.
                         $moraAcumDias = collect($moraExon)->sum('dias');
                         $moraAcumTotal = collect($moraExon)->sum('monto');
                         $diasAtr = (int) $c['dias_atraso'];
@@ -197,12 +197,12 @@
                                 : '');
                     @endphp
                     <div class="atraso-band">
-                        <div class="atraso-kpi atraso-ambar" title="Mora exonerada de cuotas que ya se pagaron con atraso (columna Mora Exon. del cronograma). No entra en este cobro.">
+                        <div class="atraso-kpi atraso-ambar" title="Mora de cuotas que ya se pagaron con atraso sin cobrarla (columna Mora Exon. del cronograma). Se cobra con «Cobrar mora acumulada» o al cancelar.">
                             <div class="atraso-top">Días Mora Acumulada</div>
                             <div class="atraso-val">{{ $moraAcumDias }}</div>
                             <div class="atraso-pie">de cuotas ya pagadas</div>
                         </div>
-                        <div class="atraso-kpi atraso-ambar" title="Mora exonerada de cuotas que ya se pagaron con atraso (columna Mora Exon. del cronograma). No entra en este cobro.">
+                        <div class="atraso-kpi atraso-ambar" title="Mora de cuotas que ya se pagaron con atraso sin cobrarla (columna Mora Exon. del cronograma). Se cobra con «Cobrar mora acumulada» o al cancelar.">
                             <div class="atraso-top">Total Mora Acumulada</div>
                             <div class="atraso-val">{{ number_format($moraAcumTotal, 2) }}</div>
                             <div class="atraso-pie">de cuotas ya pagadas</div>
@@ -250,6 +250,30 @@
                             @endif
                         </div>
                     </div>
+
+                    {{-- 13/11 (Antony, 29440): la mora acumulada de cuotas ya pagadas se cobra con el
+                         crédito vigente, completa y por cuota. Al cancelar ya la cobra la cancelación. --}}
+                    @if($moraAcumTotal > 0.001 && ! $cancel)
+                        @php
+                            $acumElegida = collect($moraExon)->only($moraAcumCuotas);
+                        @endphp
+                        <div class="mora-acum-cobro d-flex align-items-center gap-2 flex-wrap small mb-2">
+                            @if($acumElegida->isNotEmpty())
+                                @php
+                                    $acumTexto = 'Se cobra la mora acumulada de '.($acumElegida->count() === 1 ? 'la cuota ' : 'las cuotas ')
+                                        .\App\Support\RangoCuotas::texto(array_keys($acumElegida->all())).': S/ '.number_format($acumElegida->sum('monto'), 2);
+                                @endphp
+                                <span class="fw-semibold" style="color:#b8860b;"><i class="ti ti-check"></i> {{ $acumTexto }}</span>
+                                <button type="button" class="btn btn-sm btn-link p-0" wire:click.prevent="abrirMoraAcumulada">Cambiar</button>
+                                <button type="button" class="btn btn-sm btn-link p-0 text-danger" wire:click="quitarMoraAcumulada">Quitar</button>
+                            @else
+                                <button type="button" class="btn btn-sm btn-outline-warning" wire:click.prevent="abrirMoraAcumulada"
+                                        title="Cobrar ahora la mora de las cuotas que ya se pagaron con atraso">
+                                    <i class="ti ti-coin"></i> Cobrar mora acumulada (S/ {{ number_format($moraAcumTotal, 2) }})
+                                </button>
+                            @endif
+                        </div>
+                    @endif
 
                     <div class="row g-2">
                         {{-- Motivo del ajuste: aparece solo cuando el override CAMBIÓ el
@@ -818,6 +842,72 @@
             </div>
         </div>
 
+        {{-- ═══ Modal: cobrar la mora acumulada de cuotas ya pagadas (13/11) ═══ --}}
+        <div class="modal fade" id="moraAcumModal" tabindex="-1" aria-hidden="true" wire:ignore.self
+             x-data="{ modal: null }"
+             x-init="modal = bootstrap.Modal.getOrCreateInstance($el)"
+             x-on:mora-acum-open.window="modal.show()"
+             x-on:mora-acum-close.window="modal.hide()">
+            <div class="modal-dialog modal-dialog-centered" style="max-width:460px;">
+                <div class="modal-content">
+                    <div class="modal-header py-2">
+                        <h6 class="modal-title mb-0"><i class="ti ti-coin f-s-14"></i> Cobrar mora acumulada</h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body py-2">
+                        @if(count($moraAcumFilas) === 0)
+                            <p class="text-muted mb-0 py-2 text-center">No hay mora acumulada por cobrar.</p>
+                        @else
+                            <div style="max-height: 320px; overflow:auto;">
+                                <table class="table table-sm table-striped mb-0 align-middle">
+                                    <thead style="position: sticky; top: 0; background: var(--bs-body-bg); z-index: 1;">
+                                        <tr>
+                                            <th style="width:34px;"></th>
+                                            <th class="text-center">Cuota</th>
+                                            <th class="text-center">Días de atraso</th>
+                                            <th class="text-end">Mora</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($moraAcumFilas as $i => $fila)
+                                            <tr class="{{ $fila['sel'] ? '' : 'opacity-50' }}" wire:key="mora-acum-{{ $fila['num'] }}">
+                                                <td class="text-center">
+                                                    <input type="checkbox" class="form-check-input" id="mora-acum-{{ $fila['num'] }}"
+                                                           wire:model.live="moraAcumFilas.{{ $i }}.sel">
+                                                </td>
+                                                <td class="text-center"><label class="mb-0 w-100" for="mora-acum-{{ $fila['num'] }}">{{ $fila['num'] }}</label></td>
+                                                <td class="text-center text-danger fw-semibold">{{ $fila['dias'] }}</td>
+                                                <td class="text-end">{{ number_format($fila['monto'], 2) }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                    <tfoot>
+                                        @php $acumSel = collect($moraAcumFilas)->where('sel', true); @endphp
+                                        <tr class="fw-semibold">
+                                            <td colspan="3" class="text-end">Se cobra ({{ $acumSel->count() }})</td>
+                                            <td class="text-end text-danger">{{ number_format($acumSel->sum('monto'), 2) }}</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                            <p class="text-muted small mb-0 mt-2">
+                                Mora de las cuotas que ya se pagaron con atraso sin cobrarla. Cada cuota se cobra
+                                completa, junto con el Monto a Pagar (o sola, con el monto en 0).
+                            </p>
+                        @endif
+                    </div>
+                    <div class="modal-footer justify-content-between py-2">
+                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                        @if(count($moraAcumFilas) > 0)
+                            <button type="button" class="btn btn-sm btn-primary" wire:click="aplicarMoraAcumulada">
+                                <i class="ti ti-check f-s-14"></i> Aplicar al cobro
+                            </button>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+
         {{-- ═══ Modal de confirmación del cobro ═══ --}}
         {{-- OJO: SIEMPRE en el DOM, aunque el crédito no sea pagable. Si se
              envuelve en @if($esPagable), al CANCELAR un crédito desde el
@@ -908,6 +998,9 @@
                                 {{-- 16/10 (Antony): sin línea "Excedente" en el voucher (va dentro del TOTAL). --}}
                                 @if($preview['mora'] > 0.001)
                                     <div class="tp-row"><span>Mora{{ $rotuloMora !== '' ? ' '.$rotuloMora : '' }}:</span><span>{{ number_format($preview['mora'], 2) }}</span></div>
+                                @endif
+                                @if(! empty($preview['mora_acum_cuotas']))
+                                    <div class="tp-row"><span>{{ \App\Services\Printing\TicketPrinter::rotuloMoraAcumulada($preview['mora_acum_cuotas']) }}:</span><span>{{ number_format($preview['mora_acum_cobrar'], 2) }}</span></div>
                                 @endif
 
                                 <div class="tp-sep"></div>

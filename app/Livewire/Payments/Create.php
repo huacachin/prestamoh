@@ -455,6 +455,92 @@ class Create extends Component
         $this->dispatch('mora-cuotas-close');
     }
 
+    /* ═══ Cobrar la mora acumulada (13/11, Antony, crédito 29440) ═══
+       La mora de las cuotas YA PAGADAS con atraso sin cobrarla (con "Reserva Mora",
+       por ejemplo: MoraExonerada) solo se cobraba al cancelar el crédito. Ahora
+       cualquiera que cobra la cobra con el crédito vigente, eligiendo las cuotas, y
+       siempre completa: cada cuota con toda su mora, sin rebaja. Se anota en la
+       propia cuota (importe_mora + fila 'MA' del cobro), así deja de salir como
+       exonerada en el cronograma y al cancelar ya no se vuelve a cobrar. */
+
+    /** @var list<array{num: int, dias: int, monto: float, sel: bool}> filas del modal */
+    public array $moraAcumFilas = [];
+
+    /**
+     * Cuotas cuya mora acumulada entra en ESTE cobro. Solo la fijan los métodos del
+     * servidor; el monto se recalcula siempre al cobrar (moraAcumuladaElegida).
+     *
+     * @var list<int>
+     */
+    #[Locked]
+    public array $moraAcumCuotas = [];
+
+    public function abrirMoraAcumulada(): void
+    {
+        $this->moraAcumFilas = [];
+        if (! $this->credit || $this->cancel) {
+            return;
+        }
+
+        foreach (MoraExonerada::porCuota($this->credit) as $num => $m) {
+            $this->moraAcumFilas[] = [
+                'num' => (int) $num,
+                'dias' => (int) $m['dias'],
+                'monto' => (float) $m['monto'],
+                // La primera vez van todas marcadas; al volver a abrir, lo que ya se eligió.
+                'sel' => $this->moraAcumCuotas === [] || in_array((int) $num, $this->moraAcumCuotas, true),
+            ];
+        }
+
+        $this->dispatch('mora-acum-open');
+    }
+
+    public function aplicarMoraAcumulada(): void
+    {
+        $this->moraAcumCuotas = collect($this->moraAcumFilas)
+            ->filter(fn ($fila) => (bool) $fila['sel'])
+            ->map(fn ($fila) => (int) $fila['num'])
+            ->values()->all();
+        $this->refrescarPreview();
+        $this->dispatch('mora-acum-close');
+    }
+
+    public function quitarMoraAcumulada(): void
+    {
+        $this->moraAcumCuotas = [];
+        $this->refrescarPreview();
+    }
+
+    /**
+     * La mora acumulada que se cobra en este cobro, recalculada en el servidor desde
+     * MoraExonerada (nunca la cifra que llegó del navegador). Al cancelar no aplica:
+     * la cancelación ya cobra (o exonera) TODA la acumulada.
+     *
+     * @return list<array{num: int, id: int, dias: int, monto: float}>
+     */
+    private function moraAcumuladaElegida(): array
+    {
+        if (! $this->credit || $this->cancel || $this->moraAcumCuotas === []) {
+            return [];
+        }
+
+        $pendiente = MoraExonerada::porCuota($this->credit);
+        $ids = DB::table('credit_installments')
+            ->where('credit_id', $this->credit->id)
+            ->whereIn('num_cuota', $this->moraAcumCuotas)
+            ->pluck('id', 'num_cuota');
+
+        $elegida = [];
+        foreach ($this->moraAcumCuotas as $num) {
+            if (isset($pendiente[$num], $ids[$num]) && $pendiente[$num]['monto'] > 0.001) {
+                $elegida[] = ['num' => (int) $num, 'id' => (int) $ids[$num], 'dias' => (int) $pendiente[$num]['dias'], 'monto' => round((float) $pendiente[$num]['monto'], 2)];
+            }
+        }
+        usort($elegida, fn ($a, $b) => $a['num'] <=> $b['num']);
+
+        return $elegida;
+    }
+
     /**
      * Abre "Calcular cancelación": entrega al modal (Alpine) los datos de la
      * fórmula, así el total se recalcula en el navegador mientras el cajero
@@ -1076,6 +1162,14 @@ class Create extends Component
             return 'El monto excede el saldo pendiente.';
         }
 
+        // Pantalla desfasada (otra caja ya la cobró): no se cobra a ciegas una mora que ya no se debe.
+        if (! $this->cancel && $this->moraAcumCuotas !== []
+            && count($this->moraAcumuladaElegida()) !== count($this->moraAcumCuotas)) {
+            $this->moraAcumCuotas = [];
+
+            return 'La mora acumulada elegida ya no está pendiente (¿se cobró en otra caja?). Revisa y vuelve a elegirla.';
+        }
+
         // Gate servidor del switch Cancelado (espejo del disabled del front):
         // el monto debe cubrir al menos capital pendiente + interés a la fecha;
         // con "Interés completo" (30/09, pedido de Antony) el mínimo es el
@@ -1367,6 +1461,10 @@ class Create extends Component
             $moraExonC = $this->cancel ? collect(MoraExonerada::porCuota($this->credit)) : collect();
             $moraAcumTeorica = round($moraExonC->sum('monto'), 2);
             $moraAcumACobrar = ($this->cancel && ! $quitarAcum) ? $moraAcumTeorica : 0.0;
+            // Sin cancelar (13/11): la acumulada de las cuotas elegidas, también ANTES del
+            // reparto (la cuota que se paga hoy con atraso no debe colarse en la cuenta).
+            $moraAcumElegida = $this->moraAcumuladaElegida();
+            $moraAcumElegidaTotal = round(array_sum(array_column($moraAcumElegida, 'monto')), 2);
 
             // ─── 1) DIAS MORA si hay descuento ─────────────────────────────
             if ($diasA > 0) {
@@ -1385,6 +1483,7 @@ class Create extends Component
                 $this->monto
                 + $moraQueSeCobra
                 + $moraAcumACobrar
+                + $moraAcumElegidaTotal
                 + (float) $this->impointe2
                 + (float) $this->impomora,
                 2
@@ -1681,6 +1780,27 @@ class Create extends Component
                 $this->createMoraPayment('MORA ACUM.', $moraAcumACobrar, 'Mora Acumulada Cancelacion', $hora, $usuario, $userId, $hqId, $semodn);
             }
 
+            // ─── 7c) MORA ACUMULADA cobrada con el crédito vigente (13/11) ─
+            // Un pago MORA ACUM. por cuota, anotado en esa misma cuota: importe_mora
+            // sube (MoraPagada lo cuenta como mora propia de la cuota y MoraExonerada
+            // deja de mostrarla) y la fila 'MA' permite revertirlo sin tocar la cuota.
+            // No es 'M' a propósito: MoraPagada repartiría la 'M' entre las cuotas que
+            // este cobro paga con atraso, que no son las que generaron esta mora.
+            foreach ($moraAcumElegida as $acum) {
+                $p = $this->createMoraPayment('MORA ACUM.', $acum['monto'], "Mora Acumulada Cuota {$acum['num']} Dias : {$acum['dias']}", $hora, $usuario, $userId, $hqId, $semodn);
+                DB::table('credit_installments')->where('id', $acum['id'])->increment('importe_mora', $acum['monto']);
+                DB::table('mass_deletion_details')->insert([
+                    'mass_deletion_id' => $massHeaderId, 'installment_id' => $acum['id'], 'payment_id' => $p->id,
+                    'amount' => $acum['monto'], 'fecha' => now(), 'tipo' => 'MA',
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+            }
+            if ($moraAcumElegida !== []) {
+                Audit::log('Cobró la mora acumulada del crédito #'.$this->credit->id.': '
+                    .collect($moraAcumElegida)->map(fn ($a) => 'cuota '.$a['num'].' ('.$a['dias'].' '.($a['dias'] === 1 ? 'día' : 'días').') S/ '.number_format($a['monto'], 2))->implode(', '),
+                    $this->credit, ['mass_deletion_id' => $massHeaderId, 'cuotas' => $moraAcumElegida, 'total' => $moraAcumElegidaTotal]);
+            }
+
             // Al cancelar, la mora reservada del crédito muere con él
             // (se cobró como MORA ACUM. o se perdonó con "quitar moras").
             if ($this->cancel) {
@@ -1795,6 +1915,7 @@ class Create extends Component
 
         $this->reset([
             'monto', 'obs', 'ckmora', 'cancel', 'impointe2', 'impomora',
+            'moraAcumCuotas', 'moraAcumFilas',
             'idpre', 'moraManual', 'moraMotivo', 'quitarMora', 'quitarMoraAcum', 'condonarMotivo', 'cancelUltimaCuota', 'decisionTotal', 'montoTecleado', 'cancelHasta', 'montoDeCancelacion',
             'metodoPago', 'depBanco', 'depCuenta', 'depCuentaOtra', 'depCanal',
             'depFecha', 'voucherFoto', 'egresoCreadoId',
@@ -1931,6 +2052,11 @@ class Create extends Component
             ? round(collect(MoraExonerada::porCuota($this->credit))->sum('monto'), 2)
             : 0.0;
         $moraAcum = ($this->cancel && ! $quitarAcum) ? $moraAcumTeorica : 0.0;
+        // Sin cancelar: la acumulada de las cuotas elegidas con "Cobrar mora acumulada" (13/11).
+        $moraAcumElegida = $this->moraAcumuladaElegida();
+        if ($moraAcumElegida !== []) {
+            $moraAcum = round(array_sum(array_column($moraAcumElegida, 'monto')), 2);
+        }
         $moraQueSeCobra = ($this->ckmora || $quitarVigente) ? 0.0 : $totMora;
 
         $moraTicket = $moraQueSeCobra;
@@ -2027,6 +2153,8 @@ class Create extends Component
             // Veredicto del modal: qué se cobra y qué se condona de cada mora
             'mora_cobrar' => round($moraQueSeCobra, 2),
             'mora_acum_cobrar' => round($moraAcum, 2),
+            // Línea propia del recibo, igual que el ticket (TicketPrinter, filas 'MA').
+            'mora_acum_cuotas' => array_column($moraAcumElegida, 'num'),
             'condonada_vigente' => ($quitarVigente && (float) $calcs['total_mora_calc'] > 0.001)
                 ? round((float) $calcs['total_mora_calc'], 2) : 0.0,
             'condonada_acum' => ($quitarAcum && $moraAcumTeorica > 0.001) ? $moraAcumTeorica : 0.0,

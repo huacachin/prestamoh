@@ -82,7 +82,7 @@ final class TicketPrinter
      *   numero:string, fecha_hora:string, sede:?string, cliente:?string,
      *   documento:?string, credit_id:int, cobrador:?string, asesor:?string,
      *   cuotas:array<int,int|string>, resto_cuotas:?array{rotulo:string, monto:float}, capital:float, interes:float,
-     *   excedente:float, mora:float, total:float, saldo:float, proxima:?string,
+     *   excedente:float, mora:float, mora_acumulada:?array{rotulo:string, monto:float}, total:float, saldo:float, proxima:?string,
      *   cancelacion:?array{titulo:string, exonera:?string, exonerado:float}
      * }
      */
@@ -112,6 +112,19 @@ final class TicketPrinter
         return 'Cuota '.$dc['num'].($dc['parcial'] ? ' (amortizada)' : (($dc['pago_saldo'] ?? false) ? ' (pago de saldo)' : ''));
     }
 
+    /**
+     * "Mora acum. cuota 5" / "Mora acum. cuotas 2-5": la mora de cuotas ya pagadas que se cobró
+     * en este recibo (13/11). Lo usan la vista previa, el ticket, la página y el PDF.
+     *
+     * @param  list<int>  $nums
+     */
+    public static function rotuloMoraAcumulada(array $nums): string
+    {
+        $nums = array_values(array_unique($nums));
+
+        return 'Mora acum. '.(count($nums) === 1 ? 'cuota ' : 'cuotas ').RangoCuotas::texto($nums);
+    }
+
     public function paymentTicketData(MassDeletion $masivo): array
     {
         $masivo->loadMissing(['credit.client', 'credit.headquarter:id,name']);
@@ -120,7 +133,8 @@ final class TicketPrinter
         // desglose salía sin montos (16/10: el recibo web/PDF no mostraba la amortizada ni su saldo).
         $masivo->load(['details.installment:id,num_cuota,pagado,importe_cuota,importe_interes,importe_excedente,importe_aplicado,interes_aplicado,excedente_aplicado']);
 
-        $totales = ['C' => 0.0, 'I' => 0.0, 'E' => 0.0, 'M' => 0.0];
+        $totales = ['C' => 0.0, 'I' => 0.0, 'E' => 0.0, 'M' => 0.0, 'MA' => 0.0];
+        $cuotasMoraAcum = []; // 13/11: mora acumulada de cuotas ya pagadas, cobrada con el crédito vigente
         // Desglose POR CUOTA (capital+interés+excedente que recibió cada una en
         // ESTE cobro). La mora queda fuera: va como línea global aparte. Se
         // marca "amortizada" SOLO la cuota que quedó sin completar (por montos,
@@ -135,6 +149,9 @@ final class TicketPrinter
             $tipo = (string) ($d->tipo ?? '');
             if (isset($totales[$tipo])) {
                 $totales[$tipo] += (float) $d->amount;
+            }
+            if ($tipo === 'MA' && $d->installment?->num_cuota !== null) {
+                $cuotasMoraAcum[] = (int) $d->installment->num_cuota;
             }
             if ($d->installment?->num_cuota !== null && in_array($tipo, ['C', 'I', 'E'], true)) {
                 $num = (int) $d->installment->num_cuota;
@@ -206,6 +223,9 @@ final class TicketPrinter
             'interes' => round($totales['I'], 2),
             'excedente' => round($totales['E'], 2),
             'mora' => round($totales['M'], 2),
+            'mora_acumulada' => $totales['MA'] > 0.001
+                ? ['rotulo' => self::rotuloMoraAcumulada($cuotasMoraAcum), 'monto' => round($totales['MA'], 2)]
+                : null,
             'total' => round((float) $masivo->amount, 2),
             // Saldo restante del crédito justo después de este cobro (17/10): lo que
             // falta hoy más lo cobrado después; para el último cobro es el actual.
@@ -331,6 +351,9 @@ final class TicketPrinter
             // cada cuota y del TOTAL.
             if ($t['mora'] > 0.001) {
                 $this->pt($printer, $this->row('Mora:', number_format($t['mora'], 2), $columns));
+            }
+            if ($t['mora_acumulada'] !== null) {
+                $this->pt($printer, $this->row($this->ascii($t['mora_acumulada']['rotulo']).':', number_format($t['mora_acumulada']['monto'], 2), $columns));
             }
 
             $this->pt($printer, $sep."\n");

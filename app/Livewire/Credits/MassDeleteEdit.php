@@ -46,6 +46,19 @@ class MassDeleteEdit extends Component
                     Payment::where('id', $det->payment_id)->delete();
                 }
 
+                // Mora acumulada cobrada con el crédito vigente (13/11): la cuota ya estaba
+                // pagada de antes; solo se le quita esa mora, sin reabrirla. Así vuelve a
+                // salir como mora acumulada por cobrar.
+                if ($det->tipo === 'MA') {
+                    $inst = $det->installment_id ? CreditInstallment::find($det->installment_id) : null;
+                    if ($inst) {
+                        $inst->importe_mora = max(0, round((float) $inst->importe_mora - (float) $det->amount, 2));
+                        $inst->save();
+                    }
+
+                    continue;
+                }
+
                 if ($det->installment_id) {
                     $inst = CreditInstallment::find($det->installment_id);
                     if ($inst) {

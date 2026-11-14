@@ -101,6 +101,9 @@
     @if($t['mora'] > 0.001)
         <tr><td>Mora:</td><td class="der">{{ number_format($t['mora'], 2) }}</td></tr>
     @endif
+    @if(! empty($t['mora_acumulada']))
+        <tr><td>{{ $t['mora_acumulada']['rotulo'] }}:</td><td class="der">{{ number_format($t['mora_acumulada']['monto'], 2) }}</td></tr>
+    @endif
 </table>
 
 <div class="sep"></div>
