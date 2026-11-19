@@ -284,6 +284,61 @@ class ContratoModelosNoviembreTest extends TestCase
         $this->assertStringContainsString('POR OTRO LADO, LA CONSTITUYENTE DECLARA BAJO JURAMENTO RESPECTO AL VEHICULO 2 SER PROPIETARIA', $html);
     }
 
+    // ── 3b · Dos vehículos: lo que el navegador manda de una sola vez ─────
+
+    /**
+     * 19/11/2026 (reporte del área con INVERSIONES CAMILA'S, a.4.3): "Falta el
+     * kárdex del vehículo 1 | Falta el kárdex del vehículo 2" con los dos
+     * kárdex escritos. Con DOS vehículos, Livewire 4 manda `contratoVehiculos`
+     * ENTERO cuando en el mismo pedido cambian los dos (fecha y número son
+     * wire:model.blur: viajan juntos con el siguiente clic), y el kárdex
+     * completo "1678-2026" solo se armaba cuando llegaba campo por campo. Con
+     * un vehículo nunca pasó.
+     */
+    public function test_el_kardex_de_los_dos_vehiculos_se_reconoce_cuando_llegan_en_un_mismo_pedido(): void
+    {
+        [$empresa, $credit, $v1, $v2] = $this->mundoEmpresa();
+
+        $comp = $this->wizardEmpresa($empresa, $credit, $v1)
+            ->call('agregarVehiculoContrato')
+            ->set('contratoVehiculos.1.vehiculo_id', $v2->id)
+            ->set('contratoVehiculos.0.es_futuro', true)
+            ->set('contratoVehiculos.1.es_futuro', true);
+        $this->assertSame('a43', $comp->get('modeloContrato'));
+
+        $slots = $comp->get('contratoVehiculos');
+        $slots[0] = ['fecha_acta' => '2026-11-18', 'kardex_num' => '1678', 'notario' => 'ROQUE ALBERTO DÍAZ DELGADO'] + $slots[0];
+        $slots[1] = ['fecha_acta' => '2026-10-27', 'kardex_num' => '1345', 'notario' => 'PAÚL JHON HINOJOSA CARRILLO'] + $slots[1];
+
+        $comp->set('contratoVehiculos', $slots)
+            ->call('generarContrato')
+            ->assertDispatched('successAlert')
+            ->assertNotDispatched('errorAlert');
+
+        $doc = $this->contratoDe($empresa);
+        $this->assertSame('a43', $doc->modelo);
+        $this->assertSame(['1678-2026', '1345-2026'], array_column($doc->snapshot['bienes'], 'kardex'));
+    }
+
+    /** El mismo envío en bloque no puede dejar el modelo ni el valor del bien sin recalcular. */
+    public function test_el_modelo_y_el_valor_se_recalculan_cuando_los_dos_vehiculos_cambian_en_un_mismo_pedido(): void
+    {
+        [$empresa, $credit, $v1, $v2] = $this->mundoEmpresa();
+
+        $comp = $this->wizardEmpresa($empresa, $credit, $v1)->call('agregarVehiculoContrato');
+        $this->assertSame('a42', $comp->get('modeloContrato'));
+
+        // Escribe el acta del vehículo 1, lo marca bien futuro y elige el vehículo 2: un solo pedido.
+        $slots = $comp->get('contratoVehiculos');
+        $slots[0] = ['es_futuro' => true, 'fecha_acta' => '2026-11-18', 'kardex_num' => '1678'] + $slots[0];
+        $slots[1] = ['vehiculo_id' => $v2->id] + $slots[1];
+        $comp->set('contratoVehiculos', $slots);
+
+        $this->assertSame('a45', $comp->get('modeloContrato'), 'futuro + presente, no el a.4.2 de antes');
+        $this->assertSame('25000.00', $comp->get('valorBien'), 'los dos vehículos: 10 000 + 15 000');
+        $this->assertSame('1678-2026', $comp->get('contratoVehiculos')[0]['kardex']);
+    }
+
     // ── 4 · Depósito a tercero con dos bienes ─────────────────────────────
 
     public function test_la_deudora_emite_el_deposito_a_tercero_con_dos_bienes_y_carne_de_extranjeria(): void

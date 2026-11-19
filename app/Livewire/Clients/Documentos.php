@@ -911,17 +911,35 @@ class Documentos extends Component
         $this->recalcularMontosContrato();
     }
 
-    /** Al elegir vehículos se precarga el valor del bien (suma de las fichas). */
+    /**
+     * Al elegir vehículos se precarga el valor del bien (suma de las fichas).
+     *
+     * 19/11/2026: con DOS vehículos Livewire 4 no siempre avisa campo por
+     * campo. Si en un mismo pedido cambian los dos (la fecha y el número del
+     * kárdex son wire:model.blur y viajan juntos con el siguiente clic), manda
+     * `contratoVehiculos` ENTERO y $clave llega vacía; un vehículo entero
+     * llegaría como '0' o '1'. Entonces no se sabe qué cambió y se rehace
+     * todo: sin esto el modelo y el valor quedaban como antes del cambio.
+     */
     public function updatedContratoVehiculos($valor, $clave): void
     {
-        if (str_ends_with((string) $clave, 'vehiculo_id')) {
+        $clave = (string) $clave;
+        $enBloque = self::vehiculosEnBloque('contratoVehiculos'.($clave === '' ? '' : '.'.$clave));
+
+        if ($enBloque || str_ends_with($clave, 'vehiculo_id')) {
             $this->valorBien = $this->sumaValorVehiculos();
         }
         // El toggle presente/futuro cambia la combinación → se re-resuelve el
         // modelo (y se normaliza el orden: en el mixto el vehículo 1 es el futuro).
-        if (str_ends_with((string) $clave, 'es_futuro')) {
+        if ($enBloque || str_ends_with($clave, 'es_futuro')) {
             $this->resolverModeloContrato();
         }
+    }
+
+    /** ¿La actualización trae `contratoVehiculos` entero, o un vehículo entero, en vez de un campo? */
+    private static function vehiculosEnBloque(string $nombre): bool
+    {
+        return preg_match('/^contratoVehiculos(\.\d+)?$/', $nombre) === 1;
     }
 
     public function updatedGarantiaContrato(): void
@@ -1098,6 +1116,13 @@ class Documentos extends Component
         // Obs. 3.2: el kardex se arma solo (número tecleado + año del acta).
         if (preg_match('/^contratoVehiculos\.(\d+)\.(kardex_num|fecha_acta)$/', (string) $name, $m)) {
             $this->sincronizarKardex((int) $m[1]);
+        } elseif (self::vehiculosEnBloque((string) $name)) {
+            // Llegaron los vehículos en bloque (ver updatedContratoVehiculos): el
+            // número pudo cambiar en cualquiera, así que se arma el de todos. Era
+            // el "Falta el kárdex del vehículo 1 | …2" con los dos kárdex escritos.
+            foreach (array_keys($this->contratoVehiculos) as $i) {
+                $this->sincronizarKardex((int) $i);
+            }
         }
 
         $raiz = explode('.', (string) $name)[0];
