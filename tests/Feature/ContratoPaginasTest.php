@@ -26,12 +26,29 @@ use Tests\TestCase;
  * Si un modelo se pasa, el arreglo NO es subir el tope: es apretar los
  * márgenes en estilos.blade.php (ver .clausula / .parrafo / .clausula-titulo)
  * o revisar qué cláusula creció.
+ *
+ * 19/11/2026: con las cláusulas de dos bienes en plural como sus maestras, el
+ * modelo más largo (a.3.5: dos deudores, bien futuro y bien presente) deja el
+ * bloque de firmas en una sexta hoja con la maqueta normal y cabe en 5 con el
+ * primer nivel de ajuste — el que GeneradorContrato::generar() aplica solo
+ * (MaquetaContrato). No se aprietan los estilos del nivel 0 por él: cambiaría
+ * la paginación del Word de todos los contratos ya emitidos. Queda anotado en
+ * NIVEL_DE_MAQUETA: cualquier OTRO modelo que empiece a necesitar la reserva,
+ * o este si necesitara más, hace fallar el test.
  */
 class ContratoPaginasTest extends TestCase
 {
     use RefreshDatabase;
 
     private const MAX_HOJAS = 5;
+
+    /**
+     * Nivel de MaquetaContrato con que cada modelo cabe en el tope con los
+     * datos de este test; los que no figuran, con la maqueta normal (0).
+     *
+     * @var array<string, int>
+     */
+    private const NIVEL_DE_MAQUETA = ['a35' => 1];
 
     private Client $client;
 
@@ -125,7 +142,7 @@ class ContratoPaginasTest extends TestCase
     }
 
     /** Páginas reales del PDF: cuenta los objetos /Type /Page (no /Pages). */
-    private function hojas(string $modelo): int
+    private function hojas(string $modelo, int $nivel = 0): int
     {
         $ids = count(ModelosContrato::slots(ModelosContrato::get($modelo)['bienes'])) === 2
             ? [$this->v1->id, $this->v2->id]
@@ -138,6 +155,9 @@ class ContratoPaginasTest extends TestCase
             $this->client, $this->credit, $ids, $modelo, $this->datos($modelo)
         );
 
+        // El mismo 'ajuste' que generar() deja en el snapshot cuando aprieta la maqueta.
+        $snapshot['ajuste'] = $nivel;
+
         $pdf = Pdf::loadHTML(RenderDocumento::html($snapshot, 'contrato', 'pdf'))
             ->setPaper('a4')->output();
 
@@ -149,9 +169,10 @@ class ContratoPaginasTest extends TestCase
         $excedidos = [];
 
         foreach (array_keys(ModelosContrato::todos()) as $modelo) {
-            $hojas = $this->hojas($modelo);
+            $nivel = self::NIVEL_DE_MAQUETA[$modelo] ?? 0;
+            $hojas = $this->hojas($modelo, $nivel);
             if ($hojas > self::MAX_HOJAS) {
-                $excedidos[] = "{$modelo}: {$hojas} hojas";
+                $excedidos[] = "{$modelo}: {$hojas} hojas".($nivel > 0 ? " con la maqueta al nivel {$nivel}" : '');
             }
         }
 

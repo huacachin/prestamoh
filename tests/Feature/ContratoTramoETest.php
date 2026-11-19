@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Vehiculo;
 use App\Services\Documentos\GeneradorAnexo2;
 use App\Services\Documentos\GeneradorContrato;
+use App\Services\Documentos\RenderDocumento;
 use App\Support\Documentos\ModelosContrato;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -31,6 +32,8 @@ use Tests\TestCase;
  *   5. GOLDEN de cada modelo: el texto completo derivado del snapshot se
  *      compara contra fixtures commiteados. Cualquier regresión de partial
  *      aparece como un diff legible.
+ *   6. Con DOS bienes, ejecución, GPS, representantes y prohibición siguen a
+ *      la maestra de su combinación (19/11), solo en los contratos nuevos.
  */
 class ContratoTramoETest extends TestCase
 {
@@ -364,6 +367,81 @@ class ContratoTramoETest extends TestCase
         $this->assertCount(2, $columnaDe['deudores'] ?? [], 'a3 es un modelo de DOS deudores');
         $this->assertSame([1, 1], $columnaDe['deudores'],
             'los dos deudores deben firmar en la MISMA columna, la derecha');
+    }
+
+    // ── 7 · Dos bienes: ejecución, GPS, representantes y prohibición ──────
+
+    /**
+     * 19/11/2026 (Antony, tras cotejar los 24 Word de dos vehículos): esas
+     * cuatro cláusulas salían con el texto de a.1 en singular. Cada maestra
+     * pluraliza SUS puntos, y no son los mismos en las tres combinaciones.
+     */
+    public function test_con_dos_bienes_presentes_las_clausulas_comunes_van_en_plural_como_su_maestra(): void
+    {
+        $texto = $this->texto('a12');
+
+        $this->assertStringContainsString('LA ADJUDICACIÓN EN PROPIEDAD DE LOS VEHICULOS A FAVOR DE EL ACREEDOR', $texto);
+        $this->assertStringContainsString('EL ACREEDOR PODRÁ PERSEGUIR LOS BIENES AUN CUANDO', $texto);
+        $this->assertStringContainsString('QUE LOS VEHICULOS DADOS EN GARANTÍA SE ENCUENTRA EQUIPADO CON UN DISPOSITIVO', $texto);
+        $this->assertStringContainsString('LA TOMA DE POSESIÓN DE LOS BIENES, SU EXHIBICIÓN', $texto);
+        $this->assertStringContainsString('DERECHO DE PERSEGUIR Y EJECUTAR LOS BIENES AUN CUANDO', $texto);
+
+        // Lo que la maestra a.1.2 NO pluraliza se queda como en a.1.
+        $this->assertStringContainsString('FORMALIZAR LA TRANSFERENCIA DE EL VEHÍCULO MEDIANTE SU VENTA', $texto);
+        $this->assertStringContainsString('RESPECTO DEL VEHÍCULO DADO EN GARANTÍA, SALVO AUTORIZACIÓN', $texto);
+    }
+
+    public function test_con_dos_bienes_futuros_tambien_se_pluralizan_el_poder_de_venta_y_la_prohibicion(): void
+    {
+        $texto = $this->texto('a13');
+
+        $this->assertStringContainsString('FORMALIZAR LA TRANSFERENCIA DE LOS VEHICULOS MEDIANTE SU VENTA', $texto);
+        $this->assertStringContainsString('POR LO QUE EL VALOR DE LOS BIENES ACORDADOS ENTRE AMBAS PARTES', $texto);
+        $this->assertStringContainsString('RESPECTO DE LOS VEHICULOS DADOS EN GARANTÍA, SALVO AUTORIZACIÓN', $texto);
+        $this->assertStringContainsString('LA VENTA O EL GRAVAMEN DE LOS VEHICULOS COMO SI', $texto);
+    }
+
+    public function test_el_mixto_lleva_los_giros_propios_de_su_maestra(): void
+    {
+        $texto = $this->texto('a15');
+
+        $this->assertStringContainsString('SE ENCUENTRAN EQUIPADOS CON UN DISPOSITIVO', $texto);
+        $this->assertStringContainsString('COSTO SERÁN EXCLUSIVAMENTE DE SU CARGO', $texto);
+        $this->assertStringContainsString('PUEDA PROCEDER DE FORMA INMEDIATA A LA EJECUCIÓN', $texto);
+        $this->assertStringContainsString('ADJUDICARSE LA PROPIEDAD DE LOS VEHICULOS,', $texto);
+        $this->assertStringContainsString('SE ENCUENTRAN PLENAMENTE AUTORIZADOS POR', $texto);
+        // La prohibición del mixto es la de un solo bien.
+        $this->assertStringContainsString('DERECHO DE PERSEGUIR Y EJECUTAR EL BIEN AUN CUANDO', $texto);
+    }
+
+    /** Las maestras de empresa dejaron la cláusula de representantes como la de a.4. */
+    public function test_la_empresa_con_dos_bienes_no_pluraliza_la_clausula_de_representantes(): void
+    {
+        $texto = $this->texto('a42');
+
+        $this->assertStringContainsString('LA ADJUDICACIÓN EN PROPIEDAD DE LOS VEHICULOS A FAVOR DE EL ACREEDOR', $texto);
+        $this->assertStringContainsString('LA TOMA DE POSESIÓN DEL BIEN, SU EXHIBICIÓN', $texto);
+    }
+
+    /**
+     * El plural NO es retroactivo: un contrato de dos vehículos emitido antes
+     * del 19/11 (snapshot sin 'redaccion') se firmó con esas cláusulas en
+     * singular, y su Word tiene que seguir saliendo igual que su PDF.
+     */
+    public function test_un_contrato_de_dos_bienes_ya_emitido_conserva_el_texto_con_que_se_firmo(): void
+    {
+        $snapshot = GeneradorContrato::construirSnapshot(
+            $this->client, $this->credit, [$this->v1->id, $this->v2->id], 'a12', $this->datos('a12')
+        );
+        $this->assertSame(2, $snapshot['redaccion'], 'los contratos nuevos nacen con la redacción 2');
+
+        unset($snapshot['redaccion']);
+        $texto = strip_tags(RenderDocumento::html($snapshot, 'contrato', 'word'));
+
+        $this->assertStringContainsString('LA ADJUDICACIÓN EN PROPIEDAD DEL VEHICULO A FAVOR DE', $texto);
+        $this->assertStringContainsString('PODRÁ PERSEGUIR EL BIEN AUN CUANDO', $texto);
+        $this->assertStringNotContainsString('DE LOS VEHICULOS A FAVOR', $texto);
+        $this->assertStringNotContainsString('PERSEGUIR LOS BIENES', $texto);
     }
 
     public function test_golden_de_todos_los_modelos(): void

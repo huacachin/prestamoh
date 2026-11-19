@@ -56,6 +56,18 @@ use Illuminate\Support\Facades\Storage;
  */
 class GeneradorContrato
 {
+    /**
+     * Versión de la redacción de las cláusulas, congelada en cada snapshot
+     * ('redaccion') para que un contrato ya firmado se vuelva a renderizar
+     * (Word, copia) con el texto con que se emitió.
+     *
+     *  - 1 (snapshots sin la clave): ejecución, GPS, representantes y
+     *    prohibición con el texto de a.1 en singular, también con dos bienes.
+     *  - 2 (19/11/2026, Trello #140): con dos bienes esas cuatro cláusulas
+     *    siguen a la maestra de su combinación — ContratoVm::segunBienes().
+     */
+    public const REDACCION = 2;
+
     /** Arma el snapshot del contrato (misma estructura que el factory legacy del área). */
     public static function construirSnapshot(Client $client, Credit $credit, array $vehiculoIds, string $modelo, array $datos = []): array
     {
@@ -89,6 +101,7 @@ class GeneradorContrato
         return [
             'numero' => "CONTRATO CRÉDITO N° {$credit->id}",
             'modelo' => $modelo,
+            'redaccion' => self::REDACCION,
             'conjunto' => [
                 'juridica' => $preset['personas'] === 'empresa',
                 'sexos' => array_column($deudores, 'sexo'),

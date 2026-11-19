@@ -130,6 +130,54 @@ final class ContratoVm
         return ($this->deudores[0]['esJuridica'] ?? false) === true;
     }
 
+    /**
+     * Perfil de las cláusulas COMUNES (ejecución, GPS, representantes y
+     * prohibición) cuando la garantía son dos bienes: 'presentes' (maestras
+     * a.x.2 / b.x.2), 'futuros' (a.x.3) o 'mixto' (a.x.5). null con un solo
+     * bien: el texto de a.1.
+     *
+     * También es null en los contratos emitidos ANTES del 19/11/2026 (snapshot
+     * sin 'redaccion'): hasta ese día esas cuatro cláusulas salían en singular
+     * aunque hubiera dos vehículos, y su Word debe seguir saliendo igual que
+     * el PDF que se firmó.
+     *
+     * @return 'presentes'|'futuros'|'mixto'|null
+     */
+    public function perfilBienes(): ?string
+    {
+        if (count($this->bienes) < 2 || (int) ($this->snapshot['redaccion'] ?? 1) < 2) {
+            return null;
+        }
+
+        $futuros = count(array_filter($this->bienes, fn ($bien) => ! empty($bien['esFuturo'])));
+
+        return match ($futuros) {
+            0 => 'presentes',
+            count($this->bienes) => 'futuros',
+            default => 'mixto',
+        };
+    }
+
+    /**
+     * Texto de una mención al vehículo o al bien según cuántos son: $uno con
+     * un solo bien y $dos con dos. $dos es un texto único cuando las tres
+     * maestras de dos bienes coinciden, o un mapa por perfil cuando no — el
+     * perfil que el mapa no trae se queda con $uno, que es lo que hace su
+     * maestra (p. ej. la de dos presentes no pluraliza "LA TRANSFERENCIA DE
+     * EL VEHÍCULO" y la de dos futuros sí).
+     *
+     * @param  string|array{presentes?: string, futuros?: string, mixto?: string}  $dos
+     */
+    public function segunBienes(string $uno, string|array $dos): string
+    {
+        $perfil = $this->perfilBienes();
+        if ($perfil === null) {
+            return $uno;
+        }
+
+        return is_array($dos) ? ($dos[$perfil] ?? $uno) : $dos;
+    }
+
     /** Constante de config('documentos') ya resuelta (acreedor, apoderada, usuaria_sigm, representantes...) */
     public function constante(string $clave, mixed $default = null): mixed
     {
