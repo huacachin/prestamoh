@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Livewire\Clients\Documentos;
 use App\Models\Client;
 use App\Models\Credit;
 use App\Models\CreditInstallment;
@@ -17,7 +16,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Tramo E — fidelidad fina contra las maestras + goldens de los 32 modelos.
+ * Tramo E — fidelidad fina contra las maestras + goldens de todos los modelos
+ * (32 al 28/08/2026; 48 desde los 16 del 18/11/2026).
  *
  *   1. Las viñetas de OCTAVO/NOVENO/DÉCIMO QUINTO/custodia son listas
  *      NUMERADAS (el texto cita "EL NUMERAL PRECEDENTE"); el segundo bloque
@@ -28,7 +28,7 @@ use Tests\TestCase;
  *      exclusivo del caso mixto (a.x.5) — a.1.3 no lo trae.
  *   4. El título del contrato tiene UNA fuente ($vm->titulo()): carátula y
  *      cita del Anexo 1 en OCTAVO dicen lo mismo, también en las variantes.
- *   5. GOLDEN de los 32 modelos: el texto completo derivado del snapshot se
+ *   5. GOLDEN de cada modelo: el texto completo derivado del snapshot se
  *      compara contra fixtures commiteados. Cualquier regresión de partial
  *      aparece como un diff legible.
  */
@@ -125,7 +125,6 @@ class ContratoTramoETest extends TestCase
             ],
             'tercero' => [
                 'nombre' => 'CARLOS HUAMAN FLORES', 'dni' => '74218017', 'banco' => 'BCP', 'cuenta' => '19172571532076',
-                'motivo' => Documentos::MOTIVO_TERCERO,
             ],
             'bienes' => [
                 $this->v1->id => ['es_futuro' => true, 'fecha_acta' => '2026-05-04', 'kardex' => '0373-2026', 'notario' => 'JULIO BLAS', 'estado_registral' => 'EN TRÁMITE DE INSCRIPCIÓN'],
@@ -283,7 +282,7 @@ class ContratoTramoETest extends TestCase
         $this->assertNull($parsear(''));
     }
 
-    // ── 6 · Goldens de los 32 modelos ─────────────────────────────────────
+    // ── 6 · Goldens de todos los modelos ──────────────────────────────────
 
     /**
      * El texto derivado de cada modelo se compara contra su fixture. Si un
@@ -367,7 +366,7 @@ class ContratoTramoETest extends TestCase
             'los dos deudores deben firmar en la MISMA columna, la derecha');
     }
 
-    public function test_golden_de_los_32_modelos(): void
+    public function test_golden_de_todos_los_modelos(): void
     {
         if (! is_dir(self::DIR_GOLDEN)) {
             mkdir(self::DIR_GOLDEN, 0755, true);

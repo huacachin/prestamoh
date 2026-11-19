@@ -133,8 +133,11 @@ class ContratoEspecFinalTest extends TestCase
         $this->assertSame([], $errores, 'con nombre, DNI, cuenta y motivo el tercero está completo');
     }
 
-    /** Lo que sí sigue siendo obligatorio del tercero. */
-    public function test_el_tercero_exige_nombre_dni_cuenta_y_motivo(): void
+    /**
+     * Lo que sí sigue siendo obligatorio del tercero. El motivo ya no: es el
+     * texto fijo de la maestra y lo escribe el generador (19/11).
+     */
+    public function test_el_tercero_exige_nombre_documento_y_cuenta(): void
     {
         [$client, $credit, $v] = $this->mundo();
 
@@ -142,10 +145,11 @@ class ContratoEspecFinalTest extends TestCase
             'banco' => 'bcp', 'tercero' => [],
         ]));
 
-        foreach (['el nombre del tercero', 'el DNI del tercero', 'la cuenta o CCI del tercero', 'el motivo de la autorización'] as $falta) {
+        foreach (['el nombre del tercero', 'el documento del tercero', 'la cuenta o CCI del tercero'] as $falta) {
             $this->assertStringContainsString($falta, $texto);
         }
         $this->assertStringNotContainsString('banco del tercero', $texto);
+        $this->assertStringNotContainsString('motivo', $texto);
     }
 
     /**

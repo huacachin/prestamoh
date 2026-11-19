@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Livewire\Clients\Documentos;
 use App\Models\Client;
 use App\Models\Credit;
 use App\Models\CreditInstallment;
@@ -117,7 +116,6 @@ class ContratoPaginasTest extends TestCase
             ],
             'tercero' => [
                 'nombre' => 'CARLOS HUAMAN FLORES', 'dni' => '74218017', 'banco' => 'BCP', 'cuenta' => '19172571532076',
-                'motivo' => Documentos::MOTIVO_TERCERO,
             ],
             'bienes' => [
                 $this->v1->id => ['es_futuro' => true, 'fecha_acta' => '2026-05-04', 'kardex' => '0373-2026', 'notario' => 'JULIO BLAS', 'estado_registral' => 'EN TRÁMITE DE INSCRIPCIÓN'],

@@ -2,9 +2,12 @@
      Variantes por $vm->destino:
        - 'propio'  → redacción de la maestra a.1 (a favor de los deudores).
        - 'tercero' → redacción de a.1.1 (depósito a cuenta de un tercero
-                     autorizado; datos y motivo en $vm->tercero).
+                     autorizado; datos y motivo en $vm->tercero). Vale igual
+                     con dos bienes o con bienes futuros (a.1.2.1 … a.2.5.1,
+                     18/11/2026), y el documento del tercero es DNI o carné
+                     de extranjería.
        - 'gerente' → redacción de a.4.1 (cuenta del gerente general del
-                     deudor persona jurídica).
+                     deudor persona jurídica); la misma en a.4.2.1 … a.4.5.1.
      Monto SIEMPRE via $vm->monto('obligacion'); el banco sale del voucher.
 
      Son DOS viñetas, como en las maestras: la de certificación y la de
@@ -34,7 +37,7 @@
             {{-- Segundo párrafo del numeral, al MISMO nivel que su texto (21/09,
                  Antony con Desktop/ejem_sigm.jpeg): antes iba como párrafo
                  suelto y arrancaba en el margen izquierdo. --}}
-            <div class="numeral-cont">ASIMISMO, LAS PARTES DEJAN CONSTANCIA QUE, POR EXPRESA AUTORIZACIÓN DE {{ $vm->g->deudor() }}, DICHO DEPÓSITO FUE REALIZADO A LA CUENTA BANCARIA N° {{ $vm->v($vm->tercero['cuenta']) }} A NOMBRE DE {{ $vm->v(mb_strtoupper($vm->tercero['nombre'])) }}, IDENTIFICADO CON DNI N.° {{ $vm->v($vm->tercero['dni']) }}, DEBIDO A QUE {{ mb_strtoupper($vm->tercero['motivo']) }}, CIRCUNSTANCIA QUE NO AFECTA LA VALIDEZ NI EL DESTINO DEL PAGO, EL CUAL SE CONSIDERA ÍNTEGRAMENTE RECIBIDO POR {{ $vm->g->deudor() }}.</div>
+            <div class="numeral-cont">ASIMISMO, LAS PARTES DEJAN CONSTANCIA QUE, POR EXPRESA AUTORIZACIÓN DE {{ $vm->g->deudor() }}, DICHO DEPÓSITO FUE REALIZADO A LA CUENTA BANCARIA N° {{ $vm->v($vm->tercero['cuenta']) }} A NOMBRE DE {{ $vm->v(mb_strtoupper($vm->tercero['nombre'])) }}, IDENTIFICADO CON {{ $vm->tercero['documentoTipo'] ?? 'DNI' }} N.° {{ $vm->v($vm->tercero['dni']) }}, DEBIDO A QUE {{ mb_strtoupper($vm->tercero['motivo']) }}, CIRCUNSTANCIA QUE NO AFECTA LA VALIDEZ NI EL DESTINO DEL PAGO, EL CUAL SE CONSIDERA ÍNTEGRAMENTE RECIBIDO POR {{ $vm->g->deudor() }}.</div>
             <div class="numeral">{{ $n }}.{{ ++$i }}. INSERTO: EL COMPROBANTE DEL DEPÓSITO/TRANSFERENCIA BANCARIA POR EL IMPORTE TOTAL DE {{ $vm->v($vm->monto('obligacion')) }} EFECTUADO EN {{ $vm->v($banco) }}, A LA CUENTA DE {{ $vm->v(mb_strtoupper($vm->tercero['nombre'])) }}, POR AUTORIZACIÓN EXPRESA DE {{ $vm->g->deudor() }} {!! $nombres !!}, {{ $anexo2 }}</div>
         </div>
     @elseif ($vm->destino === 'gerente')

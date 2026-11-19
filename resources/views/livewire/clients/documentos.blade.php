@@ -818,7 +818,7 @@
                     @else
 
                         {{-- ── 1 · Modelo (RESUELTO desde las decisiones — Guía §5) ──
-                             El asesor ya no elige entre 32 nombres: responde
+                             El asesor no elige entre los 48 nombres: responde
                              garantía y destino, agrega vehículos y marca cuál es
                              bien futuro; el modelo se deduce solo. Sexo de la
                              ficha; personas del codeudor/empresa. --}}
@@ -930,9 +930,10 @@
                                                     @endif
                                                 </label>
                                                 <div class="d-flex align-items-center gap-2">
-                                                    @if($garantiaContrato === 'gps' && ! $esEmpresaContrato)
+                                                    @if($garantiaContrato === 'gps')
                                                         {{-- ¿Ya está inscrito a nombre del deudor? (Guía §5, decisión 4).
-                                                             En el mixto el vehículo 1 pasa a ser el futuro solo. --}}
+                                                             En el mixto el vehículo 1 pasa a ser el futuro solo. La
+                                                             empresa también lo tiene desde las maestras a.4.3 – a.4.5.1. --}}
                                                         <div class="form-check form-switch mb-0">
                                                             <input class="form-check-input switch-futuro" type="checkbox" role="switch"
                                                                    id="futuro-{{ $i }}" wire:model.live="contratoVehiculos.{{ $i }}.es_futuro">
@@ -1006,7 +1007,8 @@
                                         @endforeach
                                     </div>
 
-                                    @if(count($contratoVehiculos) < 2 && $garantiaContrato !== 'custodia' && ! $esEmpresaContrato)
+                                    {{-- La empresa también admite el segundo vehículo (a.4.2 / a.4.2.1, 18/11/2026). --}}
+                                    @if(count($contratoVehiculos) < 2 && $garantiaContrato !== 'custodia')
                                         <button type="button" class="btn btn-sm btn-outline-success mt-2"
                                                 wire:click="agregarVehiculoContrato">
                                             <i class="ti ti-plus"></i> Agregar segundo vehículo
@@ -1354,13 +1356,20 @@
                                                         @error('tercero.nombre') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                                     </div>
                                                     <div class="col-md-3">
-                                                        <label class="form-label small mb-1">DNI *</label>
+                                                        <label class="form-label small mb-1">Documento *</label>
                                                         <div class="input-group input-group-sm">
+                                                            {{-- DNI o carné de extranjería: "[DNI O CE]" en las maestras del 18/11/2026. --}}
+                                                            <select class="form-select form-select-sm campo-elegir @error('tercero.tipo_documento') is-invalid @enderror"
+                                                                    style="max-width: 5.5rem;" wire:model.live="tercero.tipo_documento">
+                                                                <option value="DNI">DNI</option>
+                                                                <option value="CE">CE</option>
+                                                            </select>
                                                             {{-- Obs. 4.1 (29/09): DNI y cuenta del tercero en amarillo. --}}
                                                             <input type="text" class="form-control form-control-sm campo-elegir @error('tercero.dni') is-invalid @enderror"
                                                                    wire:model.blur="tercero.dni">
                                                             <button type="button" class="btn btn-danger" wire:click="consultarDocTercero"
-                                                                    wire:loading.attr="disabled" wire:target="consultarDocTercero" title="Consultar DNI">
+                                                                    wire:loading.attr="disabled" wire:target="consultarDocTercero"
+                                                                    title="Consultar: hereda de la ficha si está registrado; si no, RENIEC/Migraciones">
                                                                 <span wire:loading.remove wire:target="consultarDocTercero"><i class="ti ti-search"></i></span>
                                                                 <span wire:loading wire:target="consultarDocTercero" class="small">…</span>
                                                             </button>

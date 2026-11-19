@@ -24,8 +24,9 @@ use Tests\TestCase;
  * Las combinaciones que NO existen en las maestras se corrigen a la más
  * cercana en vez de dejar al asesor trabado: custodia fuerza un bien
  * presente y depósito propio; sin GPS no tiene bienes futuros; el tercero
- * solo existe con UN bien presente; y en el mixto el vehículo 1 es siempre
- * el futuro.
+ * solo donde el catálogo tiene modelo (con GPS y un deudor, cualquier
+ * combinación de bienes desde el 18/11; con dos deudores o sin GPS, solo UN
+ * bien presente); y en el mixto el vehículo 1 es siempre el futuro.
  */
 class ContratoDecisionesTest extends TestCase
 {
@@ -155,17 +156,73 @@ class ContratoDecisionesTest extends TestCase
         $this->assertFalse((bool) $comp->get('contratoVehiculos')[0]['es_futuro']);
     }
 
-    public function test_agregar_vehiculo_con_destino_tercero_vuelve_a_propio(): void
+    /**
+     * Trello #140 (18/11): con GPS y un deudor el depósito a tercero ya no se
+     * pierde al agregar el segundo vehículo ni al marcar un bien futuro.
+     */
+    public function test_el_deposito_a_tercero_se_mantiene_con_dos_vehiculos_y_con_bienes_futuros(): void
     {
         $comp = $this->wizard()
             ->set('destinoContrato', 'tercero');
         $this->assertSame('a11', $comp->get('modeloContrato'));
 
-        // El tercero solo existe con UN bien presente: al agregar el segundo
-        // vehículo, el destino se corrige solo.
+        $comp->call('agregarVehiculoContrato');
+        $this->assertSame('tercero', $comp->get('destinoContrato'));
+        $this->assertSame('a121', $comp->get('modeloContrato'), 'dos presentes a tercero = a.1.2.1');
+
+        $comp->set('contratoVehiculos.0.es_futuro', true);
+        $this->assertSame('a151', $comp->get('modeloContrato'), 'futuro y presente a tercero = a.1.5.1');
+
+        $comp->set('contratoVehiculos.1.es_futuro', true);
+        $this->assertSame('a131', $comp->get('modeloContrato'), 'dos futuros a tercero = a.1.3.1');
+
+        $comp->call('quitarVehiculoContrato', 1);
+        $this->assertSame('a141', $comp->get('modeloContrato'), 'un futuro a tercero = a.1.4.1');
+        $this->assertSame('tercero', $comp->get('destinoContrato'));
+    }
+
+    public function test_la_deudora_resuelve_el_tercero_de_la_serie_a2(): void
+    {
+        $this->client->update(['sexo' => 'F']);
+
+        $comp = $this->wizard()
+            ->set('destinoContrato', 'tercero')
+            ->call('agregarVehiculoContrato');
+        $this->assertSame('a221', $comp->get('modeloContrato'));
+
+        $comp->set('contratoVehiculos.0.es_futuro', true);
+        $this->assertSame('a251', $comp->get('modeloContrato'));
+    }
+
+    /** Donde el área no tiene maestra, el destino se corrige solo, como antes. */
+    public function test_el_tercero_vuelve_a_propio_sin_gps_con_dos_vehiculos(): void
+    {
+        $comp = $this->wizard()
+            ->set('garantiaContrato', 'sin_gps')
+            ->set('destinoContrato', 'tercero');
+        $this->assertSame('b11', $comp->get('modeloContrato'));
+
         $comp->call('agregarVehiculoContrato');
         $this->assertSame('propio', $comp->get('destinoContrato'));
-        $this->assertSame('a12', $comp->get('modeloContrato'));
+        $this->assertSame('b12', $comp->get('modeloContrato'));
+    }
+
+    public function test_el_tercero_vuelve_a_propio_con_codeudor_y_dos_vehiculos(): void
+    {
+        $codeudor = Client::create([
+            'expediente' => '9802', 'nombre' => 'ANA', 'apellido_pat' => 'CODEUDORA', 'apellido_mat' => 'Y',
+            'tipo_documento' => 'DNI', 'documento' => '47200003', 'sexo' => 'F',
+            'headquarter_id' => $this->sede->id, 'status' => 'active',
+        ]);
+
+        $comp = $this->wizard()
+            ->call('seleccionarCodeudorContrato', $codeudor->id)
+            ->set('destinoContrato', 'tercero');
+        $this->assertSame('a31', $comp->get('modeloContrato'));
+
+        $comp->call('agregarVehiculoContrato');
+        $this->assertSame('propio', $comp->get('destinoContrato'));
+        $this->assertSame('a32', $comp->get('modeloContrato'));
     }
 
     public function test_la_deudora_resuelve_la_serie_a2(): void

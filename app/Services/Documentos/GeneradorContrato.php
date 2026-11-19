@@ -45,7 +45,9 @@ use Illuminate\Support\Facades\Storage;
  *  - empresa{razon_social, ruc, partida, oficina_registral, domicilio, correo,
  *    gerente{nombre, dni, sexo, nacionalidad, ocupacion, estado_civil, domicilio}}
  *    (presets de persona jurídica)
- *  - tercero{nombre, dni, cuenta, motivo}  (presets con destino 'tercero')
+ *  - tercero{nombre, tipo_documento, dni, cuenta}  (presets con destino 'tercero';
+ *    tipo_documento DNI|CE; el motivo no se pide: es el texto fijo de las
+ *    maestras, flexionado con el deudor — ver motivoTercero())
  *  - banco (clave de BancosVoucher — la cláusula de constancia lo menciona;
  *    el tenor gráfico del voucher queda para el Anexo 2)
  *  - bienes[vehiculo_id]{es_futuro, fecha_acta, kardex, notario}  (sin N° de
@@ -98,10 +100,16 @@ class GeneradorContrato
             'destino' => $preset['destino'],
             'tercero' => $preset['destino'] === 'tercero' ? [
                 'nombre' => trim((string) ($datos['tercero']['nombre'] ?? '')),
+                // "[DNI O CE]" en las maestras del 18/11/2026: el tercero puede
+                // ser extranjero. Los snapshots anteriores no traen la clave y
+                // la constancia sigue diciendo DNI.
+                'documentoTipo' => self::etiquetaDocumento($datos['tercero']['tipo_documento'] ?? null),
                 'dni' => trim((string) ($datos['tercero']['dni'] ?? '')),
                 'banco' => mb_strtoupper(trim((string) ($datos['tercero']['banco'] ?? ''))),
                 'cuenta' => trim((string) ($datos['tercero']['cuenta'] ?? '')),
-                'motivo' => trim((string) ($datos['tercero']['motivo'] ?? '')),
+                'motivo' => filled($datos['tercero']['motivo'] ?? null)
+                    ? trim((string) $datos['tercero']['motivo'])
+                    : self::motivoTercero(array_column($deudores, 'sexo')),
             ] : null,
             'bienes' => $bienes,
             'montos' => [
@@ -357,11 +365,12 @@ class GeneradorContrato
             // banco del DESEMBOLSO, $snapshot['banco']), y el modal dejó de
             // pedirlo el 18/09. Exigirlo bloqueaba TODO contrato con depósito a
             // tercero: "necesita el banco del tercero" (Antony, 21/09).
+            // Sin 'motivo': es el texto fijo de la maestra y construirSnapshot()
+            // lo escribe siempre (motivoTercero).
             foreach ([
                 'nombre' => 'el nombre del tercero',
-                'dni' => 'el DNI del tercero',
+                'dni' => 'el documento del tercero',
                 'cuenta' => 'la cuenta o CCI del tercero',
-                'motivo' => 'el motivo de la autorización',
             ] as $campo => $etiqueta) {
                 if (blank($snapshot['tercero'][$campo] ?? null)) {
                     $errores[] = 'El depósito a tercero necesita '.$etiqueta.'.';
@@ -470,6 +479,23 @@ class GeneradorContrato
             "El contrato sale en {$hojas} hojas y el máximo es ".MaquetaContrato::MAX_HOJAS
             .': acorte las cláusulas adicionales o los datos editados.'
         );
+    }
+
+    /**
+     * Motivo del depósito a tercero: el texto fijo de las maestras, que no se
+     * pide en el formulario (Antony, 21/09: "ese dato no es modificable") y
+     * concuerda con quien debe — "EL DEUDOR PRESENTA" (a.1.1), "LA DEUDORA
+     * PRESENTA" (a.2.1) y "LOS DEUDORES PRESENTAN" (a.3.1). Hasta el
+     * 19/11/2026 salía "EL DEUDOR PRESENTA" también en el contrato de una
+     * deudora. Queda congelado en el snapshot: los ya emitidos no cambian.
+     *
+     * @param  list<string>  $sexos  sexo de cada deudor ('M'|'F')
+     */
+    public static function motivoTercero(array $sexos): string
+    {
+        $g = Genero::conjunto($sexos);
+
+        return $g->deudor().' '.$g->verbo('PRESENTA', 'PRESENTAN').' PROBLEMAS ADMINISTRATIVOS CON SUS CUENTAS PERSONALES';
     }
 
     /** Lista ordenada de cláusulas activas según los parámetros del modelo. */

@@ -5,10 +5,17 @@ namespace App\Support\Documentos;
 use InvalidArgumentException;
 
 /**
- * Catálogo de los 32 modelos de contrato de garantía mobiliaria del área
+ * Catálogo de los 48 modelos de contrato de garantía mobiliaria del área
  * legal, con sus NOMBRES REALES (los de la carpeta de plantillas Word). Cada
  * modelo es un preset de parámetros del contrato; el texto legal es el mismo
  * motor de cláusulas (partials) para todos.
+ *
+ * Son los 32 de la entrega del 28/08/2026 más los 16 del 18/11/2026 (Trello
+ * #140): el depósito a tercero con dos bienes o con bienes futuros para
+ * deudor y deudora (a.1.2.1 – a.1.5.1, a.2.2.1 – a.2.5.1) y la empresa con
+ * dos bienes o con bienes futuros, a su cuenta o a la del gerente (a.4.2 –
+ * a.4.5.1). Los Word a.4.x.1 se llaman "Deposito Tercero", pero su cláusula
+ * de constancia es la de a.4.1: a la cuenta del gerente general.
  *
  * Claves = prefijo del archivo Word ('a.1' → 'a1', 'a.1.1' → 'a11'...).
  *
@@ -20,13 +27,13 @@ use InvalidArgumentException;
  *  - destino:  'propio' | 'tercero' | 'gerente' — a qué cuenta fue el desembolso
  *              (gobierna la cláusula de constancia de entrega).
  *  - sexo:     'M' | 'F' | null — para qué sexo de deudor es el modelo. Es lo
- *              único que separa a los 10 pares Deudor/Deudora (a.1↔a.2,
+ *              único que separa a los 14 pares Deudor/Deudora (a.1↔a.2,
  *              a.1.1↔a.2.1, …), que en todo lo demás son idénticos. null en
  *              los de dos deudores y en los de empresa, que no lo distinguen.
  *
- * Las otras 5 dimensiones dan 22 combinaciones únicas: los 32 modelos son 22
- * contratos distintos más los 10 duplicados por género. Por eso el asesor NO
- * elige entre 32 nombres — responde las decisiones del negocio y resolver()
+ * Las otras 5 dimensiones dan 34 combinaciones únicas: los 48 modelos son 34
+ * contratos distintos más los 14 duplicados por género. Por eso el asesor NO
+ * elige entre 48 nombres — responde las decisiones del negocio y resolver()
  * deduce la clave, con el sexo saliendo de la ficha del cliente.
  */
 final class ModelosContrato
@@ -36,18 +43,26 @@ final class ModelosContrato
         'a1' => ['nombre' => 'a.1 GPS. Deudor - Contrato SIGM', 'personas' => 1, 'gps' => true, 'custodia' => false, 'bienes' => 'presente', 'destino' => 'propio', 'sexo' => 'M'],
         'a11' => ['nombre' => 'a.1.1 GPS. Deudor - Deposito tercero', 'personas' => 1, 'gps' => true, 'custodia' => false, 'bienes' => 'presente', 'destino' => 'tercero', 'sexo' => 'M'],
         'a12' => ['nombre' => 'a.1.2 GPS. Deudor. 2 Bienes Presentes', 'personas' => 1, 'gps' => true, 'custodia' => false, 'bienes' => '2presentes', 'destino' => 'propio', 'sexo' => 'M'],
+        'a121' => ['nombre' => 'a.1.2.1 GPS. Deudor. 2 Bienes Presentes. Deposito tercero', 'personas' => 1, 'gps' => true, 'custodia' => false, 'bienes' => '2presentes', 'destino' => 'tercero', 'sexo' => 'M'],
         'a13' => ['nombre' => 'a.1.3 GPS. Deudor. 2 Bienes Futuros', 'personas' => 1, 'gps' => true, 'custodia' => false, 'bienes' => '2futuros', 'destino' => 'propio', 'sexo' => 'M'],
+        'a131' => ['nombre' => 'a.1.3.1 GPS. Deudor. 2 Bienes Futuros. Deposito tercero', 'personas' => 1, 'gps' => true, 'custodia' => false, 'bienes' => '2futuros', 'destino' => 'tercero', 'sexo' => 'M'],
         'a14' => ['nombre' => 'a.1.4 GPS. Deudor. Bien futuro', 'personas' => 1, 'gps' => true, 'custodia' => false, 'bienes' => 'futuro', 'destino' => 'propio', 'sexo' => 'M'],
+        'a141' => ['nombre' => 'a.1.4.1 GPS. Deudor. Bien futuro. Deposito tercero', 'personas' => 1, 'gps' => true, 'custodia' => false, 'bienes' => 'futuro', 'destino' => 'tercero', 'sexo' => 'M'],
         'a15' => ['nombre' => 'a.1.5 GPS. Deudor. Bien futuro y bien presente', 'personas' => 1, 'gps' => true, 'custodia' => false, 'bienes' => 'futuro_presente', 'destino' => 'propio', 'sexo' => 'M'],
+        'a151' => ['nombre' => 'a.1.5.1 GPS. Deudor. Bien futuro y bien presente. Deposito tercero', 'personas' => 1, 'gps' => true, 'custodia' => false, 'bienes' => 'futuro_presente', 'destino' => 'tercero', 'sexo' => 'M'],
         'a16' => ['nombre' => 'c.1 Custodia. Deudor - Contrato SIGM', 'personas' => 1, 'gps' => false, 'custodia' => true, 'bienes' => 'presente', 'destino' => 'propio', 'sexo' => 'M'],
 
         // ─── Serie a.2 — GPS, una deudora ───
         'a2' => ['nombre' => 'a.2 GPS. Deudora - Contrato SIGM', 'personas' => 1, 'gps' => true, 'custodia' => false, 'bienes' => 'presente', 'destino' => 'propio', 'sexo' => 'F'],
         'a21' => ['nombre' => 'a.2.1 GPS. Deudora - Deposito Tercero', 'personas' => 1, 'gps' => true, 'custodia' => false, 'bienes' => 'presente', 'destino' => 'tercero', 'sexo' => 'F'],
         'a22' => ['nombre' => 'a.2.2 GPS. Deudora. 2 Bienes Presentes', 'personas' => 1, 'gps' => true, 'custodia' => false, 'bienes' => '2presentes', 'destino' => 'propio', 'sexo' => 'F'],
+        'a221' => ['nombre' => 'a.2.2.1 GPS. Deudora. 2 Bienes Presentes. Deposito tercero', 'personas' => 1, 'gps' => true, 'custodia' => false, 'bienes' => '2presentes', 'destino' => 'tercero', 'sexo' => 'F'],
         'a23' => ['nombre' => 'a.2.3 GPS. Deudora. 2 Bienes Futuros', 'personas' => 1, 'gps' => true, 'custodia' => false, 'bienes' => '2futuros', 'destino' => 'propio', 'sexo' => 'F'],
+        'a231' => ['nombre' => 'a.2.3.1 GPS. Deudora. 2 Bienes Futuros. Deposito tercero', 'personas' => 1, 'gps' => true, 'custodia' => false, 'bienes' => '2futuros', 'destino' => 'tercero', 'sexo' => 'F'],
         'a24' => ['nombre' => 'a.2.4 GPS. Deudora. Bien futuro', 'personas' => 1, 'gps' => true, 'custodia' => false, 'bienes' => 'futuro', 'destino' => 'propio', 'sexo' => 'F'],
+        'a241' => ['nombre' => 'a.2.4.1 GPS. Deudora. Bien futuro. Deposito tercero', 'personas' => 1, 'gps' => true, 'custodia' => false, 'bienes' => 'futuro', 'destino' => 'tercero', 'sexo' => 'F'],
         'a25' => ['nombre' => 'a.2.5 GPS. Deudora. Bien futuro y bien presente', 'personas' => 1, 'gps' => true, 'custodia' => false, 'bienes' => 'futuro_presente', 'destino' => 'propio', 'sexo' => 'F'],
+        'a251' => ['nombre' => 'a.2.5.1 GPS. Deudora. Bien futuro y bien presente. Deposito tercero', 'personas' => 1, 'gps' => true, 'custodia' => false, 'bienes' => 'futuro_presente', 'destino' => 'tercero', 'sexo' => 'F'],
         'a26' => ['nombre' => 'c.2 Custodia. Deudora - Contrato SIGM', 'personas' => 1, 'gps' => false, 'custodia' => true, 'bienes' => 'presente', 'destino' => 'propio', 'sexo' => 'F'],
 
         // ─── Serie a.3 — GPS, dos deudores ───
@@ -62,6 +77,14 @@ final class ModelosContrato
         // ─── Serie a.4 — GPS, persona jurídica ───
         'a4' => ['nombre' => 'a.4 GPS. Deudor Empresa', 'personas' => 'empresa', 'gps' => true, 'custodia' => false, 'bienes' => 'presente', 'destino' => 'propio', 'sexo' => null],
         'a41' => ['nombre' => 'a.4.1 GPS. Deudor Empresa - Deposito Gerente', 'personas' => 'empresa', 'gps' => true, 'custodia' => false, 'bienes' => 'presente', 'destino' => 'gerente', 'sexo' => null],
+        'a42' => ['nombre' => 'a.4.2 GPS. Deudor Empresa - 2 bienes presentes', 'personas' => 'empresa', 'gps' => true, 'custodia' => false, 'bienes' => '2presentes', 'destino' => 'propio', 'sexo' => null],
+        'a421' => ['nombre' => 'a.4.2.1 GPS. Deudor Empresa - 2 bienes presentes. Deposito Gerente', 'personas' => 'empresa', 'gps' => true, 'custodia' => false, 'bienes' => '2presentes', 'destino' => 'gerente', 'sexo' => null],
+        'a43' => ['nombre' => 'a.4.3 GPS. Deudor Empresa - 2 bienes Futuros', 'personas' => 'empresa', 'gps' => true, 'custodia' => false, 'bienes' => '2futuros', 'destino' => 'propio', 'sexo' => null],
+        'a431' => ['nombre' => 'a.4.3.1 GPS. Deudor Empresa - 2 bienes Futuros. Deposito Gerente', 'personas' => 'empresa', 'gps' => true, 'custodia' => false, 'bienes' => '2futuros', 'destino' => 'gerente', 'sexo' => null],
+        'a44' => ['nombre' => 'a.4.4 GPS. Deudor Empresa - 1 Bien Futuro', 'personas' => 'empresa', 'gps' => true, 'custodia' => false, 'bienes' => 'futuro', 'destino' => 'propio', 'sexo' => null],
+        'a441' => ['nombre' => 'a.4.4.1 GPS. Deudor Empresa - 1 Bien Futuro. Deposito Gerente', 'personas' => 'empresa', 'gps' => true, 'custodia' => false, 'bienes' => 'futuro', 'destino' => 'gerente', 'sexo' => null],
+        'a45' => ['nombre' => 'a.4.5 GPS. Deudor Empresa - 1 Bien Futuro y 1 Bien Presente', 'personas' => 'empresa', 'gps' => true, 'custodia' => false, 'bienes' => 'futuro_presente', 'destino' => 'propio', 'sexo' => null],
+        'a451' => ['nombre' => 'a.4.5.1 GPS. Deudor Empresa - 1 Bien Futuro y 1 Bien Presente. Deposito Gerente', 'personas' => 'empresa', 'gps' => true, 'custodia' => false, 'bienes' => 'futuro_presente', 'destino' => 'gerente', 'sexo' => null],
 
         // ─── Serie b.1 — sin GPS, un deudor ───
         'b1' => ['nombre' => 'b.1 Deudor - Contrato SIGM', 'personas' => 1, 'gps' => false, 'custodia' => false, 'bienes' => 'presente', 'destino' => 'propio', 'sexo' => 'M'],
@@ -128,7 +151,7 @@ final class ModelosContrato
      * Modelos aplicables a un cliente según su sexo y su naturaleza.
      *
      * Es el filtro que pedía el negocio: un cliente hombre no debe poder
-     * elegir "a.2 Deudora", y una empresa solo tiene a.4 / a.4.1. Los de dos
+     * elegir "a.2 Deudora", y una empresa solo tiene la serie a.4. Los de dos
      * deudores (sexo null) aparecen siempre que el contrato lleve codeudor,
      * porque el plural no distingue género.
      *
@@ -162,7 +185,7 @@ final class ModelosContrato
      * Deduce la clave del modelo desde las decisiones del negocio.
      * Devuelve null cuando la combinación NO EXISTE en las maestras — que es
      * información útil, no un error: p. ej. no hay depósito a tercero con dos
-     * vehículos, ni bien futuro sin GPS, ni empresa con codeudor.
+     * deudores y dos vehículos, ni bien futuro sin GPS, ni empresa con codeudor.
      *
      * @param  string  $garantia  'gps' | 'sin_gps' | 'custodia'
      */

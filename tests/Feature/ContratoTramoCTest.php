@@ -47,17 +47,17 @@ class ContratoTramoCTest extends TestCase
 
     // ── 1 · Deducción del modelo ──────────────────────────────────────────
 
-    public function test_los_32_modelos_son_22_contratos_mas_10_pares_de_genero(): void
+    public function test_los_48_modelos_son_34_contratos_mas_14_pares_de_genero(): void
     {
         $firmas = [];
         foreach (ModelosContrato::MODELOS as $clave => $m) {
             $firmas[json_encode([$m['personas'], $m['gps'], $m['custodia'], $m['bienes'], $m['destino']])][] = $clave;
         }
 
-        $this->assertCount(22, $firmas);
+        $this->assertCount(34, $firmas);
 
         $duplicados = array_values(array_filter($firmas, fn ($ks) => count($ks) > 1));
-        $this->assertCount(10, $duplicados);
+        $this->assertCount(14, $duplicados);
         foreach ($duplicados as $par) {
             [$m, $f] = $par;
             $this->assertSame('M', ModelosContrato::MODELOS[$m]['sexo'], "{$m} debe ser el masculino del par");
@@ -83,19 +83,23 @@ class ContratoTramoCTest extends TestCase
      */
     public function test_resolver_devuelve_null_para_las_combinaciones_inexistentes(): void
     {
-        // No hay depósito a tercero con dos vehículos…
-        $this->assertNull(ModelosContrato::resolver(1, 'M', 'gps', '2presentes', 'tercero'));
-        // …ni con bien futuro.
-        $this->assertNull(ModelosContrato::resolver(1, 'M', 'gps', 'futuro', 'tercero'));
+        // Con dos deudores o sin GPS, el depósito a tercero sigue siendo solo
+        // con UN bien presente (las maestras del 18/11 lo abrieron para el
+        // deudor y la deudora con GPS, no para estos).
+        $this->assertNull(ModelosContrato::resolver(2, null, 'gps', '2presentes', 'tercero'));
+        $this->assertNull(ModelosContrato::resolver(2, null, 'gps', 'futuro', 'tercero'));
+        $this->assertNull(ModelosContrato::resolver(1, 'M', 'sin_gps', '2presentes', 'tercero'));
         // No existe bien futuro sin GPS.
         $this->assertNull(ModelosContrato::resolver(1, 'M', 'sin_gps', 'futuro', 'propio'));
         // La custodia solo existe con un bien presente y depósito propio.
         $this->assertNull(ModelosContrato::resolver(1, 'M', 'custodia', '2presentes', 'propio'));
         $this->assertNull(ModelosContrato::resolver(1, 'M', 'custodia', 'presente', 'tercero'));
-        // La empresa solo tiene a.4 y a.4.1: nada de custodia, sin GPS ni codeudor.
+        // La empresa solo tiene la serie a.4: nada de custodia ni sin GPS, y
+        // su "tercero" es el gerente (destino 'gerente'), no un tercero cualquiera.
         $this->assertNull(ModelosContrato::resolver('empresa', null, 'sin_gps', 'presente', 'propio'));
+        $this->assertNull(ModelosContrato::resolver('empresa', null, 'custodia', 'presente', 'propio'));
         $this->assertNull(ModelosContrato::resolver('empresa', null, 'gps', 'presente', 'tercero'));
-        $this->assertNull(ModelosContrato::resolver('empresa', null, 'gps', 'futuro', 'propio'));
+        $this->assertNull(ModelosContrato::resolver('empresa', null, 'gps', '2presentes', 'tercero'));
     }
 
     public function test_aplicables_filtra_por_la_ficha_del_cliente(): void
@@ -114,7 +118,11 @@ class ContratoTramoCTest extends TestCase
         $this->assertContains('a3', $conCodeudor);
         $this->assertNotContains('a1', $conCodeudor);
 
-        $this->assertSame(['a4', 'a41'], array_keys(ModelosContrato::aplicables(null, juridica: true)));
+        $this->assertSame(
+            ['a4', 'a41', 'a42', 'a421', 'a43', 'a431', 'a44', 'a441', 'a45', 'a451'],
+            array_keys(ModelosContrato::aplicables(null, juridica: true)),
+            'la empresa ve toda la serie a.4 y nada más'
+        );
     }
 
     /**

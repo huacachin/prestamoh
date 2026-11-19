@@ -188,9 +188,9 @@ class DocumentoContratoTest extends TestCase
         $this->fail('Se esperaba una excepción de validación y no se lanzó ninguna.');
     }
 
-    public function test_catalogo_tiene_32_modelos(): void
+    public function test_catalogo_tiene_48_modelos(): void
     {
-        $this->assertCount(32, ModelosContrato::todos());
+        $this->assertCount(48, ModelosContrato::todos());
 
         // a2 — contrato base (deudora): CON GPS, sin custodia
         $a2 = ModelosContrato::get('a2');

@@ -42,7 +42,7 @@ use Livewire\Component;
  * Apartado "Documentos" del cliente: historial de documentos emitidos
  * (Anexo 1, Contrato, Anexo 2) con descargas en PDF y Word, y los modales de
  * generación del Anexo 1 (cronograma), del Contrato de garantía mobiliaria
- * (wizard con los 32 modelos del área — FASE 2) y del Anexo 2 (constancia de
+ * (wizard con los 48 modelos del área — FASE 2) y del Anexo 2 (constancia de
  * entrega del monto: transcripción del voucher bancario + foto — FASE 3).
  *
  * Todo documento se emite congelando un snapshot: la lista solo lee de
@@ -85,9 +85,6 @@ class Documentos extends Component
     /** Correo hardcodeado del legacy: jamás se precarga como correo real. */
     private const CORREO_LEGACY = 'g@huacachin.com';
 
-    /** Motivo del depósito a tercero: texto fijo de la maestra a.1.1. */
-    public const MOTIVO_TERCERO = 'EL DEUDOR PRESENTA PROBLEMAS ADMINISTRATIVOS CON SUS CUENTAS PERSONALES';
-
     /**
      * Opciones de estado civil del wizard (valor => etiqueta). Catálogo
      * CERRADO de 4, igual que la ficha del cliente: la Guía simple del área
@@ -102,8 +99,8 @@ class Documentos extends Component
     ];
 
     /**
-     * DECISIONES del contrato (la Guía simple §5): el asesor ya no elige
-     * entre 32 nombres — responde garantía, n° de vehículos, presente/futuro
+     * DECISIONES del contrato (la Guía simple §5): el asesor no elige entre
+     * los 48 nombres — responde garantía, n° de vehículos, presente/futuro
      * por vehículo y destino del depósito, y el modelo se RESUELVE solo
      * (ModelosContrato::resolver). El sexo sale de la ficha y las personas
      * del codeudor/empresa.
@@ -183,11 +180,15 @@ class Documentos extends Component
 
     /**
      * Tercero autorizado a recibir el desembolso (modelos de depósito a tercero).
-     * El motivo NO se pide: es el texto fijo de la maestra a.1.1
-     * (MOTIVO_TERCERO) y va tal cual al contrato (Antony, 21/09: "ese dato
-     * no es modificable"). Hasta entonces había un campo editable.
+     * El motivo NO se pide: es el texto fijo de las maestras, que arma
+     * GeneradorContrato::motivoTercero() según quién debe (Antony, 21/09: "ese
+     * dato no es modificable"). Hasta entonces había un campo editable.
+     * El documento es DNI o carné de extranjería ("[DNI O CE]" en las maestras
+     * del 18/11/2026).
      */
-    public array $tercero = ['nombre' => '', 'dni' => '', 'cuenta' => ''];
+    public array $tercero = self::TERCERO_VACIO;
+
+    private const TERCERO_VACIO = ['nombre' => '', 'tipo_documento' => 'DNI', 'dni' => '', 'cuenta' => ''];
 
     /**
      * Campos del gerente / tercero que llenó la consulta de documento — se
@@ -876,7 +877,7 @@ class Documentos extends Component
             ? array_values(array_filter(self::CAMPOS_GERENTE_FICHA, fn (string $campo) => filled($vigente?->{$campo})))
             : [];
         $this->fijarDatosDeFicha();
-        $this->tercero = ['nombre' => '', 'dni' => '', 'cuenta' => ''];
+        $this->tercero = self::TERCERO_VACIO;
         $this->valorBien = '';
         $this->bancoDesembolso = '';
         $this->fechaContrato = now()->format('Y-m-d');
@@ -998,10 +999,13 @@ class Documentos extends Component
      * Deduce el modelo desde las decisiones y aplica las restricciones del
      * catálogo (las combinaciones que NO existen en las maestras se corrigen
      * a la más cercana en vez de dejar al asesor en un callejón):
-     *  - empresa: solo GPS, un bien presente, destino propio|gerente;
+     *  - empresa: solo GPS y destino propio|gerente; desde el 18/11/2026
+     *    (a.4.2 – a.4.5.1) admite dos vehículos y bienes futuros;
      *  - custodia: un bien presente y depósito propio;
      *  - sin GPS: no existen bienes futuros;
-     *  - tercero: solo con UN bien presente;
+     *  - tercero: donde el catálogo lo tenga (puedeTercero) — con GPS y un
+     *    deudor vale con cualquier combinación de bienes (a.1.2.1 – a.2.5.1);
+     *    con dos deudores o sin GPS, solo con UN bien presente;
      *  - mixto: el vehículo 1 es SIEMPRE el futuro (maestra a.x.5).
      */
     private function resolverModeloContrato(): void
@@ -1011,7 +1015,6 @@ class Documentos extends Component
 
         if ($esEmpresa) {
             $this->garantiaContrato = 'gps';
-            $this->contratoVehiculos = array_slice(array_values($this->contratoVehiculos), 0, 1);
             if (! in_array($this->destinoContrato, ['propio', 'gerente'], true)) {
                 $this->destinoContrato = 'propio';
             }
@@ -1022,7 +1025,7 @@ class Documentos extends Component
             $this->destinoContrato = 'propio';
         }
 
-        if ($this->garantiaContrato !== 'gps' || $esEmpresa) {
+        if ($this->garantiaContrato !== 'gps') {
             foreach ($this->contratoVehiculos as $i => $slot) {
                 $this->contratoVehiculos[$i]['es_futuro'] = false;
             }
@@ -1040,19 +1043,13 @@ class Documentos extends Component
             }
         }
 
-        $futuros = count(array_filter($this->contratoVehiculos, fn ($s) => ! empty($s['es_futuro'])));
-        $dos = count($this->contratoVehiculos) === 2;
+        $bienes = $this->bienesContrato();
+        $personas = $esEmpresa ? 'empresa' : ($this->codeudorClientId !== null ? 2 : 1);
 
-        // El depósito a tercero solo existe con UN bien presente.
-        if ($this->destinoContrato === 'tercero' && ($dos || $futuros > 0)) {
+        // El depósito a tercero solo donde el área tiene modelo para esa combinación.
+        if ($this->destinoContrato === 'tercero' && ! $this->puedeTercero($client)) {
             $this->destinoContrato = 'propio';
         }
-
-        $bienes = $dos
-            ? ($futuros === 2 ? '2futuros' : ($futuros === 1 ? 'futuro_presente' : '2presentes'))
-            : ($futuros === 1 ? 'futuro' : 'presente');
-
-        $personas = $esEmpresa ? 'empresa' : ($this->codeudorClientId !== null ? 2 : 1);
 
         $this->modeloContrato = ModelosContrato::resolver(
             $personas, $client?->sexo, $this->garantiaContrato, $bienes, $this->destinoContrato
@@ -1060,6 +1057,39 @@ class Documentos extends Component
 
         $this->valorBien = $this->sumaValorVehiculos();
         $this->resetErrorBag();
+    }
+
+    /**
+     * 'bienes' del catálogo según los vehículos elegidos: uno o dos, y cuántos
+     * son bien futuro (presente | futuro | 2presentes | 2futuros | futuro_presente).
+     */
+    private function bienesContrato(): string
+    {
+        $futuros = count(array_filter($this->contratoVehiculos, fn ($s) => ! empty($s['es_futuro'])));
+
+        return count($this->contratoVehiculos) === 2
+            ? ($futuros === 2 ? '2futuros' : ($futuros === 1 ? 'futuro_presente' : '2presentes'))
+            : ($futuros === 1 ? 'futuro' : 'presente');
+    }
+
+    /**
+     * ¿Existe el modelo de depósito a tercero para lo que hay elegido? Lo dice
+     * el catálogo, no una regla aparte: así una maestra nueva abre la opción
+     * sola. La empresa no tiene tercero: su variante es la cuenta del gerente.
+     */
+    private function puedeTercero(?Client $client): bool
+    {
+        if ($client === null || $client->esPersonaJuridica()) {
+            return false;
+        }
+
+        return ModelosContrato::resolver(
+            $this->codeudorClientId !== null ? 2 : 1,
+            $client->sexo,
+            $this->garantiaContrato,
+            $this->bienesContrato(),
+            'tercero',
+        ) !== null;
     }
 
     /** Cualquier cambio de datos del contrato invalida su vista previa. */
@@ -1234,14 +1264,14 @@ class Documentos extends Component
 
     /**
      * Consulta el documento del TERCERO autorizado: ficha local primero,
-     * endpoint de DNI después. Solo llena el nombre (lo demás del tercero
-     * es de la operación, no de la persona).
+     * RENIEC (DNI) o Migraciones (CE) después. Solo llena el nombre (lo demás
+     * del tercero es de la operación, no de la persona).
      */
     public function consultarDocTercero(Factiliza $api): void
     {
         $doc = trim((string) $this->tercero['dni']);
         if ($doc === '') {
-            $this->dispatch('errorAlert', ['message' => 'Escribe el DNI del tercero antes de consultar.']);
+            $this->dispatch('errorAlert', ['message' => 'Escribe el documento del tercero antes de consultar.']);
 
             return;
         }
@@ -1257,7 +1287,7 @@ class Documentos extends Component
             return;
         }
 
-        $r = $api->dni($doc);
+        $r = ($this->tercero['tipo_documento'] ?? 'DNI') === 'CE' ? $api->cee($doc) : $api->dni($doc);
         if (! $r['ok']) {
             $this->dispatch('errorAlert', ['message' => $r['error'].' Puedes completar el nombre a mano.']);
 
@@ -2445,12 +2475,13 @@ class Documentos extends Component
         }
 
         if (($preset['destino'] ?? 'propio') === 'tercero') {
+            // Sin 'motivo': es el texto fijo de la maestra y lo arma el generador
+            // según quién debe (EL DEUDOR / LA DEUDORA / LOS DEUDORES).
             $datos['tercero'] = [
                 'nombre' => trim((string) $this->tercero['nombre']),
+                'tipo_documento' => ($this->tercero['tipo_documento'] ?? 'DNI') === 'CE' ? 'CE' : 'DNI',
                 'dni' => trim((string) $this->tercero['dni']),
                 'cuenta' => trim((string) $this->tercero['cuenta']) ?: null,
-                // Texto fijo de la maestra, no un dato del formulario.
-                'motivo' => self::MOTIVO_TERCERO,
             ];
         }
 
@@ -2530,6 +2561,7 @@ class Documentos extends Component
         if ($preset['destino'] === 'tercero') {
             $reglas += [
                 'tercero.nombre' => ['required', 'string', 'max:150'],
+                'tercero.tipo_documento' => ['required', Rule::in(['DNI', 'CE'])],
                 'tercero.dni' => ['required', 'string', 'max:15'],
                 // 18/09: sin 'tercero.banco'. El banco del depósito es
                 // bancoDesembolso (el único que cita la constancia); este se
@@ -2574,7 +2606,7 @@ class Documentos extends Component
             'gerente.sexo.required' => 'Indica el género del gerente general.',
             'gerente.sexo.in' => 'El género del gerente debe ser M o F.',
             'tercero.nombre.required' => 'Ingresa el nombre del tercero autorizado a recibir el desembolso.',
-            'tercero.dni.required' => 'Ingresa el DNI del tercero autorizado.',
+            'tercero.dni.required' => 'Ingresa el documento del tercero autorizado.',
         ];
     }
 
@@ -2604,9 +2636,9 @@ class Documentos extends Component
      * tipo de garantía.
      *
      * Filtrado por la ficha: un cliente con sexo M no ve los modelos
-     * "Deudora", una persona jurídica solo ve a.4 / a.4.1, y los de dos
+     * "Deudora", una persona jurídica solo ve la serie a.4, y los de dos
      * deudores aparecen únicamente si el contrato lleva codeudor. Antes se
-     * ofrecían los 32 y elegir "a.2 Deudora" sobre un hombre producía un
+     * ofrecían todos y elegir "a.2 Deudora" sobre un hombre producía un
      * contrato en masculino sin ninguna advertencia.
      */
     private function modelosAgrupados(): array
@@ -2687,10 +2719,8 @@ class Documentos extends Component
             'modelosAgrupados' => $this->modelosAgrupados(),
             'presetContrato' => $presetContrato,
             'esEmpresaContrato' => $client->esPersonaJuridica(),
-            // El depósito a tercero solo existe con UN bien presente.
-            'puedeTerceroContrato' => count($this->contratoVehiculos) === 1
-                && $this->garantiaContrato !== 'custodia'
-                && array_filter($this->contratoVehiculos, fn ($s) => ! empty($s['es_futuro'])) === [],
+            // El depósito a tercero, solo donde el catálogo tiene modelo para lo elegido.
+            'puedeTerceroContrato' => $this->puedeTercero($client),
             'codeudoresEncontrados' => $codeudoresEncontrados,
             'bancosDesembolso' => BancosVoucher::NOMBRES_LEGALES,
             'estadosCiviles' => self::ESTADOS_CIVILES,
