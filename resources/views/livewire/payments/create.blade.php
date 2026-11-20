@@ -267,6 +267,15 @@
                                 <span class="fw-semibold" style="color:#b8860b;"><i class="ti ti-check"></i> {{ $acumTexto }}</span>
                                 <button type="button" class="btn btn-sm btn-link p-0" wire:click.prevent="abrirMoraAcumulada">Cambiar</button>
                                 <button type="button" class="btn btn-sm btn-link p-0 text-danger" wire:click="quitarMoraAcumulada">Quitar</button>
+                                {{-- 20/11 (Antony, 29404): sin Monto a Pagar se cobra SOLO la acumulada;
+                                     la mora vigente no entra porque no se paga su cuota. --}}
+                                @if(((float) $monto) < 0.005 && $c['total_mora'] > 0.001)
+                                    @php $variasMora = count($cuotasMora) > 1; @endphp
+                                    <span class="w-100 text-muted">
+                                        <i class="ti ti-info-circle"></i>
+                                        Sin Monto a Pagar se cobra solo la mora acumulada: la mora{{ $rotuloMora !== '' ? ' de '.($variasMora ? 'las ' : 'la ').$rotuloMora : '' }} (S/ {{ number_format($c['total_mora'], 2) }}) no entra en este cobro, se cobra al pagar {{ $variasMora ? 'esas cuotas' : 'esa cuota' }}.
+                                    </span>
+                                @endif
                             @else
                                 <button type="button" class="btn btn-sm btn-outline-warning" wire:click.prevent="abrirMoraAcumulada"
                                         title="Cobrar ahora la mora de las cuotas que ya se pagaron con atraso">
@@ -907,8 +916,8 @@
                             </div>
                             <p class="text-muted small mb-0 mt-2">
                                 Mora de las cuotas que ya se pagaron con atraso sin cobrarla. Cada cuota se cobra hasta lo que
-                                debe redondeado a 0.10 (9.52 → 9.60). Si cobras menos, el resto sigue como mora acumulada. Se cobra junto con el Monto a Pagar
-                                (o sola, con el monto en 0).
+                                debe redondeado a 0.10 (9.52 → 9.60). Si cobras menos, el resto sigue como mora acumulada. Se cobra junto con el Monto a Pagar,
+                                o sola con el monto vacío (así no entra la mora de la cuota pendiente).
                             </p>
                         @endif
                     </div>
@@ -1064,6 +1073,12 @@
                     @if($preview['reserva_mora'])
                                 <div class="alert alert-info py-1 px-2 mt-2 mb-0 small text-center">
                                     Mora reservada: no se cobra ahora, queda acumulada.
+                                </div>
+                            @endif
+                            {{-- 20/11 (Antony, 29404): cobro solo de mora acumulada, la vigente queda fuera. --}}
+                            @if(! empty($preview['mora_vigente_fuera']))
+                                <div class="alert alert-info py-1 px-2 mt-2 mb-0 small text-center">
+                                    Solo mora acumulada: la mora{{ $preview['mora_vigente_fuera']['cuota'] ? ' de la cuota '.$preview['mora_vigente_fuera']['cuota'] : '' }} (S/ {{ number_format($preview['mora_vigente_fuera']['monto'], 2) }}) no se cobra ahora, se cobra al pagar esa cuota.
                                 </div>
                             @endif
                             @if($preview['mora_ajustada'] ?? false)
@@ -1750,6 +1765,7 @@
                             <span>Mora: se cobra aparte, como en cualquier cobro</span>
                             <b x-text="alDia ? soles(alDia.mora) : ''"></b>
                         </div>
+                        @include('livewire.payments.partials._cancelacion-mora-acum', ['sufijo' => 'al-dia'])
                         <div class="rounded p-2 mt-2 small" style="background:#e8f4fd; color:#0b3d62;">
                             <i class="ti ti-info-circle f-s-12"></i>
                             El crédito <b>queda vigente</b>: este monto se cobra como un pago normal. La cancelación del crédito se hace después.
@@ -1810,6 +1826,7 @@
                             <span>Mora<span x-show="p.mora_rotulo" x-text="' (' + p.mora_rotulo + ')'"></span>: se cobra aparte, como en cualquier cobro</span>
                             <b x-text="soles(p.mora)"></b>
                         </div>
+                        @include('livewire.payments.partials._cancelacion-mora-acum', ['sufijo' => 'cuotas'])
                         <div class="rounded p-2 mt-2 small" style="background:#e8f4fd; color:#0b3d62;">
                             <i class="ti ti-info-circle f-s-12"></i>
                             El crédito <b>queda vigente</b>: este monto se cobra como un pago normal. La cancelación del crédito se hace después.
@@ -1888,7 +1905,7 @@
                     <div class="modal-footer py-2 justify-content-between">
                         <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                         <button type="button" class="btn btn-sm btn-danger" x-show="tab === 'cancelacion' && (hayCancelacion || alDia)"
-                                x-on:click="usar()" :disabled="(hayCancelacion && ! valido()) || enviando">
+                                x-on:click="usar()" :disabled="(hayCancelacion && ! valido()) || (ma.sel && ! maValida()) || enviando">
                             <i class="ti ti-check"></i> Usar en Monto a Pagar
                         </button>
                         {{-- x-show en un div sin d-flex: el display:flex !important de Bootstrap le ganaba y los
@@ -1931,6 +1948,8 @@
                         tab: 'cancelacion',
                         hayCancelacion: true,
                         alDia: null, // 06/11: cancelar hoy de un crédito sin la fórmula por cuota
+                        // 20/11: check "Agregar mora acumulada" (debe, tope y rótulo vienen del servidor; valor es lo tecleado).
+                        ma: { debe: 0, tope: 0, rotulo: '', sel: false, valor: '' },
                         sinCancelacion: '',
                         vencs: [],
                         vencPorFecha: {},
@@ -1949,6 +1968,11 @@
                                 if (! d) return;
                                 this.hayCancelacion = !! d.cancelacion;
                                 this.alDia = d.cancelacion_al_dia || null;
+                                // Marcada solo si ya está elegida para el cobro (con lo elegido); si no, propone todo lo que se debe.
+                                const acum = d.mora_acumulada;
+                                this.ma = acum
+                                    ? { debe: acum.debe, tope: acum.tope, rotulo: acum.rotulo, sel: acum.elegida !== null, valor: Number(acum.elegida ?? acum.debe).toFixed(2) }
+                                    : { debe: 0, tope: 0, rotulo: '', sel: false, valor: '' };
                                 this.sinCancelacion = d.sin_cancelacion || '';
                                 if (d.cancelacion) {
                                     this.p = d.cancelacion;
@@ -2060,11 +2084,26 @@
                         descuento() { return Math.max(0, this.redondear(this.p.saldo - this.total())); },
                         vence() { return this.p.vencimientos[this.n] || ''; },
                         soles(v) { return 'S/ ' + Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
+                        // 20/11: mora acumulada marcada. El servidor vuelve a comprobar el importe y lo reparte por cuota.
+                        maValor() { const v = Number(this.ma.valor); return this.ma.valor !== '' && Number.isFinite(v) ? this.redondear(v) : 0; },
+                        maValida() { const v = this.maValor(); return v >= 0.01 && v <= this.ma.tope + 0.001; },
+                        maError() {
+                            if (this.maValor() < 0.01) return 'Escribe un importe mayor que 0 o desmarca la casilla.';
+                            return 'La mora acumulada es ' + this.soles(this.ma.debe)
+                                + (this.ma.tope > this.ma.debe + 0.001 ? ': se puede cobrar hasta ' + this.soles(this.ma.tope) + ' con el redondeo.' : ': no se puede cobrar más.');
+                        },
+                        maResto() { return Math.max(0, this.redondear(this.ma.debe - this.maValor())); },
+                        moraVigente() { return this.hayCancelacion ? this.p.mora : (this.alDia ? this.alDia.mora : 0); },
+                        totalACobrar() {
+                            const base = this.hayCancelacion ? (this.valido() ? this.total() : 0) : (this.alDia ? this.alDia.total : 0);
+                            return this.redondear(base + this.moraVigente() + (this.ma.sel ? this.maValor() : 0));
+                        },
                         // Ojo: no llamarlo aplicar(); ese nombre es de modalFlotante (coloca la ventana al abrir).
                         usar() {
-                            if (this.enviando || (this.hayCancelacion && ! this.valido())) return;
+                            if (this.enviando || (this.hayCancelacion && ! this.valido()) || (this.ma.sel && ! this.maValida())) return;
                             this.enviando = true;
-                            const llamada = this.hayCancelacion ? this.$wire.aplicarCancelacion(this.n) : this.$wire.aplicarMontoDeCancelacion();
+                            const acum = this.ma.sel && this.ma.debe > 0.005 ? this.maValor() : null;
+                            const llamada = this.hayCancelacion ? this.$wire.aplicarCancelacion(this.n, acum) : this.$wire.aplicarMontoDeCancelacion(acum);
                             llamada.then((ok) => {
                                 this.enviando = false;
                                 if (ok) this.modal.hide();
@@ -2212,6 +2251,10 @@
                                             <i class="ti ti-eye"></i>
                                         </button>
                                     @endif
+                                    @include('livewire.payments.partials._recibos-mora-acum', [
+                                        'recibosMora' => $recibosMoraAcum[$inst->id] ?? [],
+                                        'n' => $inst->num_cuota,
+                                    ])
                                 </td>
                             </tr>
                             {{-- 17/10 (Antony): cuota pagada o amortizada en varios abonos → un renglón por

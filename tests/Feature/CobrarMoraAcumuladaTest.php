@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\Credits\MassDeleteEdit;
+use App\Livewire\Credits\Schedule;
 use App\Livewire\Credits\Show;
 use App\Livewire\Payments\Create;
 use App\Models\Client;
@@ -90,8 +91,11 @@ class CobrarMoraAcumuladaTest extends TestCase
             ->assertSet('moraAcumCuotas', [2 => 4.30])
             ->assertSee('Se cobra la mora acumulada de la cuota 2: S/ 4.30')
             ->set('monto', 120)
+            // Pagando la cuota 3, su mora vigente sí entra: el aviso de "solo mora acumulada" no aplica.
+            ->assertDontSee('Sin Monto a Pagar se cobra solo la mora acumulada')
             ->call('confirmarPago')
             ->assertSet('preview.total', 129.46)
+            ->assertSet('preview.mora_vigente_fuera', null)
             ->assertSee('Mora acum. cuota 2:')
             ->call('pagar')
             ->assertNotDispatched('errorAlert')
@@ -136,6 +140,27 @@ class CobrarMoraAcumuladaTest extends TestCase
         $this->assertSame(2, substr_count($html, '<td class="text-end">9.46</td>'), 'la fila del cobro y la de Totales');
     }
 
+    /**
+     * 20/11 (Antony, 29404): "he pagado una mora de 416.43, ¿dónde puedo visualizar ese pago? … no se
+     * visualiza en el cronograma de cuotas". El recibo de ese cobro se abre desde la fila de su cuota.
+     */
+    public function test_el_cronograma_abre_el_recibo_de_la_mora_acumulada_desde_su_cuota(): void
+    {
+        $cobro = $this->cobrarMoraDeLaCuota2();
+
+        $recibos = RecibosCuota::moraAcumuladaPorCuota($this->credit);
+        $this->assertSame([$this->cuota(2)->id], array_keys($recibos), 'solo la cuota cuya mora acumulada se cobró');
+        $this->assertCount(1, $recibos[$this->cuota(2)->id]);
+        $recibo = $recibos[$this->cuota(2)->id][0];
+        $this->assertSame([$cobro->id, '13/11/2026', 4.30], [$recibo['lote'], $recibo['fecha'], $recibo['monto']]);
+        $this->assertStringContainsString("/recibo/{$cobro->id}?signature=", $recibo['ver']);
+
+        // Un solo botón, en la pantalla de cobro y en el cronograma del crédito.
+        $boton = 'Ver recibo de la mora acumulada: S/ 4.30 cobrada el 13/11/2026';
+        $this->assertSame(1, substr_count(Livewire::test(Create::class, ['creditId' => $this->credit->id])->html(), $boton));
+        $this->assertSame(1, substr_count(Livewire::test(Schedule::class, ['id' => $this->credit->id])->html(), $boton));
+    }
+
     public function test_revertir_el_cobro_devuelve_la_mora_a_acumulada_sin_reabrir_la_cuota(): void
     {
         $cobro = $this->cobrarMoraDeLaCuota2();
@@ -151,28 +176,39 @@ class CobrarMoraAcumuladaTest extends TestCase
         $this->assertSame([1 => ['monto' => 1.72, 'dias' => 2], 2 => ['monto' => 4.30, 'dias' => 5]], MoraExonerada::porCuota($this->credit->fresh()));
     }
 
-    /** 13/11 (Antony): "no me deja pagar si no pongo nada en monto a pagar": vacío vale 0. */
-    public function test_se_cobra_sola_con_el_monto_vacio(): void
+    /**
+     * 13/11 (Antony): "no me deja pagar si no pongo nada en monto a pagar": vacío vale 0.
+     * 20/11 (Antony, 29404): "si quiero pagar solo la mora acumulada de la cuota 1, me obliga a pagar
+     * la mora de la cuota 2". Sin Monto a Pagar no se paga ninguna cuota: la vigente (5.16, cuota 3) no entra.
+     */
+    public function test_con_el_monto_vacio_se_cobra_solo_la_mora_acumulada_sin_la_vigente(): void
     {
         Livewire::test(Create::class, ['creditId' => $this->credit->id])
             ->call('abrirMoraAcumulada')
             ->call('aplicarMoraAcumulada')
             ->assertSet('moraAcumCuotas', [1 => 1.72, 2 => 4.30])
             ->assertSet('monto', null)
+            ->assertSee('Sin Monto a Pagar se cobra solo la mora acumulada: la mora de la cuota 3 (S/ 5.16) no entra en este cobro')
             ->call('confirmarPago')
             ->assertHasNoErrors()
+            ->assertSet('preview.total', 6.02)
+            ->assertSet('preview.mora', 0.0)
+            ->assertSet('preview.mora_vigente_fuera', ['cuota' => 3, 'monto' => 5.16])
+            ->assertSee('Solo mora acumulada: la mora de la cuota 3 (S/ 5.16) no se cobra ahora')
             ->call('pagar')
             ->assertNotDispatched('errorAlert');
 
-        // Sin monto entra la mora vigente de la cuota 3 (5.16) y la acumulada de la 1 y la 2 (6.02).
-        $this->assertEqualsWithDelta(11.18, (float) MassDeletion::where('credit_id', $this->credit->id)->sole()->amount, 0.001);
-        $this->assertEqualsWithDelta(6.02, (float) Payment::where('credit_id', $this->credit->id)->where('documento', 'MORA ACUM.')->sum('monto'), 0.001);
+        $this->assertEqualsWithDelta(6.02, (float) MassDeletion::where('credit_id', $this->credit->id)->sole()->amount, 0.001);
+        $this->assertSame(['MORA ACUM.', 'MORA ACUM.'], Payment::where('credit_id', $this->credit->id)->where('tipo', 'MORA')->pluck('documento')->all());
         $this->assertSame([], MoraExonerada::porCuota($this->credit->fresh()));
+        // La cuota 3 queda como estaba: impaga y sin mora anotada (la suya se cobra al pagarla).
         $this->assertFalse((bool) $this->cuota(3)->pagado);
+        $this->assertEqualsWithDelta(0.0, (float) $this->cuota(3)->importe_mora, 0.001);
+        $this->assertDatabaseMissing('dias_mora', ['credit_id' => $this->credit->id]);
     }
 
-    /** Solo la acumulada: campo borrado ("") y "Reserva Mora" para dejar pendiente la vigente de la cuota 3. */
-    public function test_solo_la_mora_acumulada_con_reserva_mora_y_el_monto_borrado(): void
+    /** Con el campo borrado ("") y "Reserva Mora" marcada tampoco se reserva nada: no se pagó ninguna cuota. */
+    public function test_solo_la_mora_acumulada_con_reserva_mora_no_reserva_la_vigente(): void
     {
         Livewire::test(Create::class, ['creditId' => $this->credit->id])
             ->call('abrirMoraAcumulada')
@@ -182,6 +218,7 @@ class CobrarMoraAcumuladaTest extends TestCase
             ->call('confirmarPago')
             ->assertHasNoErrors()
             ->assertSet('preview.total', 6.02)
+            ->assertSet('preview.reserva_mora', false)
             ->call('pagar')
             ->assertNotDispatched('errorAlert');
 
@@ -189,6 +226,7 @@ class CobrarMoraAcumuladaTest extends TestCase
         $this->assertSame(['MORA ACUM.', 'MORA ACUM.'], Payment::where('credit_id', $this->credit->id)->where('tipo', 'MORA')->pluck('documento')->all());
         $this->assertSame(0, Payment::where('credit_id', $this->credit->id)->whereIn('tipo', ['CAPITAL', 'INTERES'])->where('fecha', '2026-11-13')->count());
         $this->assertFalse((bool) $this->cuota(3)->pagado);
+        $this->assertDatabaseMissing('mora_acumulada', ['credit_id' => $this->credit->id]);
     }
 
     /** 13/11 (Antony): "el importe de la mora debería ser editable". Hasta lo que debe la cuota; el resto no se perdona. */
@@ -245,6 +283,103 @@ class CobrarMoraAcumuladaTest extends TestCase
         $this->assertEqualsWithDelta(126.96, (float) MassDeletion::where('credit_id', $this->credit->id)->sole()->amount, 0.001);
         $this->assertSame([2 => ['monto' => 4.30, 'dias' => 5]], MoraExonerada::porCuota($this->credit->fresh()));
         $this->assertDatabaseHas('activity_log', ['description' => "Cobró la mora acumulada del crédito #{$this->credit->id}: cuota 1 (2 días) S/ 1.80 (debía 1.72, con redondeo)"]);
+    }
+
+    /**
+     * 20/11 (Antony, 29404): "en el modal de Calcular pagos, en cancelación, debemos agregarle un check para
+     * agregarle la suma de la mora acumulada, con la opción de poder editar la mora acumulada".
+     */
+    public function test_la_pestana_cancelacion_agrega_la_mora_acumulada_al_cobro(): void
+    {
+        $pantalla = Livewire::test(Create::class, ['creditId' => $this->credit->id])
+            ->call('abrirCalcularPagos')
+            // Sin marcar por defecto: propone todo lo que se debe (6.02) y deja cobrar hasta el redondeo (1.80 + 4.30).
+            ->assertReturned(fn ($d) => $d['mora_acumulada'] === ['debe' => 6.02, 'tope' => 6.1, 'rotulo' => 'cuotas 1 y 2', 'elegida' => null])
+            ->call('aplicarCancelacion', 3, 6.02)
+            ->assertReturned(true)
+            ->assertSet('monto', '420.00')
+            ->assertSet('cancel', false)
+            ->assertSet('moraAcumCuotas', [1 => 1.72, 2 => 4.30])
+            ->assertSee(['Se cobra la mora acumulada de las cuotas', ': S/ 6.02'])
+            // Al reabrir la ventana, la casilla vuelve marcada con lo elegido.
+            ->call('abrirCalcularPagos')
+            ->assertReturned(fn ($d) => $d['mora_acumulada']['elegida'] === 6.02)
+            ->call('confirmarPago')
+            ->assertSet('preview.total', 431.18)
+            ->call('pagar')
+            ->assertNotDispatched('errorAlert');
+
+        // 420 del cálculo (interés hasta la cuota 3) + 5.16 de la mora de la cuota 3 + 6.02 de la acumulada.
+        $this->assertEqualsWithDelta(431.18, (float) MassDeletion::where('credit_id', $this->credit->id)->sole()->amount, 0.001);
+        $this->assertEqualsWithDelta(6.02, (float) Payment::where('credit_id', $this->credit->id)->where('documento', 'MORA ACUM.')->sum('monto'), 0.001);
+        $this->assertSame('Activo', $this->credit->fresh()->situacion);
+        $this->assertEqualsWithDelta(1.72, (float) $this->cuota(1)->importe_mora, 0.001);
+        $this->assertEqualsWithDelta(4.30, (float) $this->cuota(2)->importe_mora, 0.001);
+    }
+
+    /** El importe se edita: se reparte desde la cuota más antigua, hasta el redondeo de cada una y no más. */
+    public function test_la_mora_acumulada_de_la_cancelacion_se_edita_y_se_reparte_desde_la_cuota_mas_antigua(): void
+    {
+        Livewire::test(Create::class, ['creditId' => $this->credit->id])
+            // Más de lo que se puede cobrar: avisa y no cambia nada (ni el Monto a Pagar).
+            ->call('aplicarCancelacion', 3, 6.11)
+            ->assertReturned(false)
+            ->assertDispatched('errorAlert', ['message' => 'La mora acumulada es S/ 6.02: se puede cobrar hasta S/ 6.10 con el redondeo.'])
+            ->assertSet('monto', null)
+            ->assertSet('cancelHasta', null)
+            ->assertSet('moraAcumCuotas', [])
+            ->call('aplicarCancelacion', 3, 0)
+            ->assertReturned(false)
+            ->assertDispatched('errorAlert', ['message' => 'Escribe un importe de mora acumulada mayor que 0 o desmarca la casilla.'])
+            ->assertSet('moraAcumCuotas', [])
+            // Con el redondeo de la cuota 1 (1.72 → 1.80).
+            ->call('aplicarCancelacion', 3, 6.10)
+            ->assertReturned(true)
+            ->assertSet('moraAcumCuotas', [1 => 1.80, 2 => 4.30])
+            // Menos de lo que se debe: primero la cuota más antigua; lo demás de la 2 sigue acumulado.
+            ->call('aplicarCancelacion', 3, 3)
+            ->assertSet('moraAcumCuotas', [1 => 1.72, 2 => 1.28])
+            ->call('aplicarCancelacion', 3, 1)
+            ->assertSet('moraAcumCuotas', [1 => 1.0])
+            // Casilla sin marcar: el cobro no lleva mora acumulada.
+            ->call('aplicarCancelacion', 3)
+            ->assertReturned(true)
+            ->assertSet('monto', '420.00')
+            ->assertSet('moraAcumCuotas', []);
+    }
+
+    /** Mensual de una cuota (sin la fórmula por cuota): la misma casilla junto a lo de cancelar hoy. */
+    public function test_la_cancelacion_de_un_mensual_de_una_cuota_tambien_agrega_la_mora_acumulada(): void
+    {
+        $client = Client::create(['nombre' => 'Cliente Mensual Mora Acumulada']);
+        $mensual = Credit::create([
+            'client_id' => $client->id, 'fecha_prestamo' => '2026-09-14', 'importe' => 3000, 'cuotas' => 1,
+            'tipo_planilla' => 3, 'interes' => 5, 'interes_total' => 150, 'situacion' => 'Activo', 'estado' => 1,
+        ]);
+        CreditInstallment::create([
+            'credit_id' => $mensual->id, 'num_cuota' => 1, 'fecha_vencimiento' => '2026-10-14',
+            'importe_cuota' => 3000, 'importe_interes' => 150, 'interes_aplicado' => 150, 'pagado' => 0,
+        ]);
+        // El interés se pagó 10 días tarde sin cobrar la mora: 10 × 5.25 (5% de 3,150 entre 30) = 52.50.
+        DB::table('payments')->insert([
+            'credit_id' => $mensual->id, 'monto' => 150, 'tipo' => 'INTERES', 'documento' => 'INTERES',
+            'fecha' => '2026-10-24', 'hora' => '10:00:00', 'headquarter_id' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        Livewire::test(Create::class, ['creditId' => $mensual->id])
+            ->call('abrirCalcularPagos')
+            ->assertReturned(fn ($d) => $d['cancelacion'] === null && $d['cancelacion_al_dia'] !== null
+                && $d['mora_acumulada'] === ['debe' => 52.5, 'tope' => 52.5, 'rotulo' => 'cuota 1', 'elegida' => null])
+            ->call('aplicarMontoDeCancelacion', 52.51)
+            ->assertReturned(false)
+            ->assertDispatched('errorAlert', ['message' => 'La mora acumulada es S/ 52.50: no se puede cobrar más.'])
+            ->assertSet('montoDeCancelacion', false)
+            ->call('aplicarMontoDeCancelacion', 40)
+            ->assertReturned(true)
+            ->assertSet('montoDeCancelacion', true)
+            ->assertSet('moraAcumCuotas', [1 => 40.0])
+            ->call('aplicarMontoDeCancelacion')
+            ->assertSet('moraAcumCuotas', []);
     }
 
     public function test_si_otra_caja_ya_la_cobro_no_se_vuelve_a_cobrar(): void

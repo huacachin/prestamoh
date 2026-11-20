@@ -74,4 +74,37 @@ class RecibosCuota
 
         return $out;
     }
+
+    /**
+     * Recibos de la mora acumulada que se cobró aparte (filas 'MA', 13/11), por cuota. Ese cobro
+     * no es el "Rec." de la cuota, pero tiene que poder abrirse desde su fila del cronograma
+     * (20/11, Antony, 29404: "he pagado una mora de 416.43, ¿dónde puedo visualizar ese pago?").
+     * Una cuota puede tener varios: la mora acumulada se puede cobrar por partes.
+     *
+     * @return array<int, list<array{lote: int, ver: string, fecha: string, monto: float}>> por installment_id
+     */
+    public static function moraAcumuladaPorCuota(Credit $credit): array
+    {
+        $filas = DB::table('mass_deletion_details')
+            ->join('mass_deletions', 'mass_deletions.id', '=', 'mass_deletion_details.mass_deletion_id')
+            ->where('mass_deletions.credit_id', $credit->id)
+            ->where('mass_deletion_details.tipo', 'MA')
+            ->whereNotNull('mass_deletion_details.installment_id')
+            ->groupBy('mass_deletion_details.installment_id', 'mass_deletions.id', 'mass_deletions.date')
+            ->orderBy('mass_deletions.id')
+            ->selectRaw('mass_deletion_details.installment_id, mass_deletions.id as lote, mass_deletions.date as fecha, SUM(mass_deletion_details.amount) as monto')
+            ->get();
+
+        $out = [];
+        foreach ($filas as $fila) {
+            $out[(int) $fila->installment_id][] = [
+                'lote' => (int) $fila->lote,
+                'ver' => URL::signedRoute('recibo.publico', ['massDeletionId' => $fila->lote]),
+                'fecha' => $fila->fecha ? Carbon::parse($fila->fecha)->format('d/m/Y') : '',
+                'monto' => round((float) $fila->monto, 2),
+            ];
+        }
+
+        return $out;
+    }
 }

@@ -200,6 +200,10 @@
                                             <i class="ti ti-eye"></i>
                                         </button>
                                     @endif
+                                    @include('livewire.payments.partials._recibos-mora-acum', [
+                                        'recibosMora' => $recibosMoraAcum[$row['installment_id']] ?? [],
+                                        'n' => $row['n'],
+                                    ])
                                 </td>
                             </tr>
                             {{-- 02/10 (Antony): cuota pagada en varios abonos (mensual de 1 cuota, pagos

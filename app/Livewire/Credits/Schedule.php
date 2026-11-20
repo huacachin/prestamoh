@@ -311,6 +311,8 @@ class Schedule extends Component
             // Homologado con /payments/create: recibo por cuota (modal) y
             // desglose de la mora pagada para los tooltips de la columna Mora
             'recibos' => RecibosCuota::porCuota($this->credit),
+            // 20/11 (Antony, 29404): el recibo de la mora acumulada cobrada aparte, en la fila de su cuota.
+            'recibosMoraAcum' => RecibosCuota::moraAcumuladaPorCuota($this->credit),
             'moraPagadaCuotas' => $reparto,
             // 17/09: la celda de cada cuota muestra SU parte del reparto (antes
             // pintaba importe_mora, que carga todo el cobro en la primera cuota).
