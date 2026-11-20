@@ -541,6 +541,14 @@ class Create extends Component
 
         session()->flash('credit_success', 'Crédito #'.$this->codpre_.' creado.');
 
+        // 20/11/2026 (el cliente, vía Antony: "al crear un préstamo te lleva a un lado y luego tiene que
+        // regresar al cliente"): el alta termina en el paso a paso de ESE préstamo, en la ficha del cliente,
+        // igual que cuando se crea desde la pestaña Préstamos. Quien no entra a Clientes sigue yendo a la
+        // ficha del crédito.
+        if (auth()->user()?->can('clientes') ?? false) {
+            return redirect()->route('clients.edit', ['id' => $this->codigod, 'prestamo' => $this->codpre_, 'tab' => 'prestamos']);
+        }
+
         return redirect()->route('credits.show', $this->codpre_);
     }
 

@@ -219,5 +219,5 @@
     </div>
 
     {{-- 26/09: reportes de GPS de los vehículos en garantía, debajo de las direcciones --}}
-    <livewire:clients.gps-vehiculos :id="$clientId" :key="'gps-veh-'.$clientId" />
+    <livewire:clients.gps-vehiculos :id="$clientId" :prestamo="$prestamo" :key="'gps-veh-'.$clientId" />
 </div>

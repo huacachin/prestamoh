@@ -25,6 +25,12 @@
     <div @class(['card shadow-sm' => ! $embebido])>
         <div @class(['card-body' => ! $embebido])>
 
+            @if($avisoPrestamo)
+                <div class="alert alert-warning py-2 px-3 mb-2 small" role="status">
+                    <i class="ti ti-alert-triangle"></i> {{ $avisoPrestamo }}
+                </div>
+            @endif
+
             @unless($embebido)
             {{-- Header con nombre del cliente --}}
             <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">

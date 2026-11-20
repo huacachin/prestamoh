@@ -71,6 +71,8 @@ class MenuLateral
                     ['title' => 'Eliminar Masivo',     'route' => 'credits.mass-delete',            'can' => 'registro.eliminar-masivo'],
                     ['title' => 'Pagos/Credito',       'route' => 'payments.index',                 'can' => 'pagos'],
                     ['title' => 'Prestamo',            'route' => 'credits.index',                  'can' => 'creditos'],
+                    // 20/11: ruta del expediente (Cliente → … → GPS) de los clientes que se están trabajando.
+                    ['title' => 'Seguimiento Exped.',  'route' => 'clients.seguimiento',            'can' => 'clientes'],
                     ['title' => 'Tipo de Cambio',      'route' => 'settings.exchange-rates.index',  'can' => 'configuracion.tipo-cambio'],
                 ],
             ],

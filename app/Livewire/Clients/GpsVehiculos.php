@@ -3,14 +3,17 @@
 namespace App\Livewire\Clients;
 
 use App\Models\Client;
+use App\Models\CreditVehiculo;
 use App\Models\Vehiculo;
 use App\Models\VehiculoGpsCuenta;
 use App\Models\VehiculoGpsReporte;
 use App\Support\ConReglasDeEliminacion;
 use App\Support\Coordenadas;
 use App\Support\HorarioEliminacion;
+use App\Support\RutaExpediente;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\Reactive;
 use Livewire\Component;
 
 /**
@@ -56,10 +59,15 @@ class GpsVehiculos extends Component
     /** @var array{aplicativo: string, enlace: string, usuario: string, contrasena: string} */
     public array $cuenta = [];
 
-    public function mount(int $id): void
+    /** 20/11: préstamo cuyo paso a paso muestra la ruta de la ficha (null = el de la ruta). */
+    #[Reactive]
+    public ?int $prestamo = null;
+
+    public function mount(int $id, ?int $prestamo = null): void
     {
         $this->client = Client::findOrFail($id);
         $this->clientId = $id;
+        $this->prestamo = $prestamo;
         // Mismo gate que la pestaña GPS: el analista de cartera propia solo mira.
         $this->puedeEditar = ! (auth()->user()?->can('clientes.scope-propio') ?? false);
     }
@@ -242,6 +250,47 @@ class GpsVehiculos extends Component
         $this->dispatch('cuenta-gps-modal-open');
     }
 
+    /**
+     * 20/11/2026 (Antony): con un préstamo nuevo el GPS se vuelve a pedir aunque la placa ya tenga su
+     * cuenta registrada de un préstamo anterior. Con esto se confirma que esa cuenta sigue valiendo.
+     */
+    public function confirmarCuenta(int $vehiculoId): void
+    {
+        abort_unless($this->puedeEditar, 403, 'No tienes permiso para confirmar la cuenta del GPS.');
+        $vehiculo = Vehiculo::where('client_id', $this->clientId)->find($vehiculoId);
+        if (! $vehiculo || ! VehiculoGpsCuenta::where('vehiculo_id', $vehiculoId)->exists()) {
+            $this->dispatch('errorAlert', ['message' => 'Esa placa aún no tiene cuenta GPS registrada.']);
+
+            return;
+        }
+        if (! $this->darPorConfirmada($vehiculo)) {
+            $this->dispatch('errorAlert', ['message' => 'Ese vehículo no es del préstamo de la ruta: elígelo antes en el paso Vehículo.']);
+
+            return;
+        }
+        $this->msgType = 'ok';
+        $this->msg = "Cuenta GPS del vehículo {$vehiculo->placa} confirmada para el préstamo.";
+        $this->dispatch('expediente-actualizado');
+    }
+
+    /** Anota que la cuenta GPS de la placa vale para el préstamo de la ruta; false si el vehículo no es de ese préstamo. */
+    private function darPorConfirmada(Vehiculo $vehiculo): bool
+    {
+        $ruta = RutaExpediente::vehiculosDelPrestamo($this->clientId, $this->prestamo);
+        if ($ruta['credito'] === null || ! ($ruta['vehiculos'][$vehiculo->id]['del_prestamo'] ?? false)) {
+            return false;
+        }
+        $vinculo = CreditVehiculo::firstOrNew(['credit_id' => $ruta['credito'], 'vehiculo_id' => $vehiculo->id]);
+        if (! $vinculo->exists) {
+            // El vehículo ya era de este préstamo (registrado para él): la fila solo guarda la confirmación.
+            $vinculo->prendado = false;
+            $vinculo->registrado_por = auth()->id();
+        }
+        $vinculo->fill(['gps_confirmado_at' => now(), 'gps_confirmado_por' => auth()->id()])->save();
+
+        return true;
+    }
+
     /** Al cerrar el modal la contraseña sale del estado del componente. */
     public function cerrarCuenta(): void
     {
@@ -288,6 +337,8 @@ class GpsVehiculos extends Component
             $cuenta->actualizado_por = auth()->id();
         }
         $cuenta->save();
+        // 20/11: guardar la cuenta desde el paso a paso de un préstamo la da por confirmada para él.
+        $this->darPorConfirmada($vehiculo);
 
         $this->cerrarCuenta();
         $this->dispatch('cuenta-gps-modal-close');
@@ -314,6 +365,8 @@ class GpsVehiculos extends Component
             ->keyBy('vehiculo_id');
 
         return view('livewire.clients.gps-vehiculos', [
+            // 20/11: qué placas son del préstamo de la ruta y si su cuenta GPS ya vale para él.
+            'ruta' => RutaExpediente::vehiculosDelPrestamo($this->clientId, $this->prestamo),
             'vehiculos' => $vehiculos,
             'porVehiculo' => $porVehiculo,
             'huerfanas' => $huerfanas,

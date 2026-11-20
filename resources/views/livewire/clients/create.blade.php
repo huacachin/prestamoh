@@ -33,23 +33,11 @@
                     .campo-obligatorio.campo-api { background-color: #ffeccc !important; }
                 </style>
 
-                {{-- ════════ Pasos del wizard ════════ --}}
-                <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
-                    @foreach([1 => 'Datos del cliente', 2 => 'Vehículos (opcional)'] as $n => $titulo)
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="d-inline-flex align-items-center justify-content-center rounded-circle fw-bold"
-                                  style="width:26px; height:26px; font-size:12px;
-                                         background:{{ $paso === $n ? '#d9534f' : ($paso > $n ? '#198754' : '#e9ecef') }};
-                                         color:{{ $paso >= $n ? '#fff' : '#6c757d' }};">
-                                @if($paso > $n)<i class="ti ti-check"></i>@else{{ $n }}@endif
-                            </span>
-                            <span class="small {{ $paso === $n ? 'fw-bold' : 'text-muted' }}">{{ $titulo }}</span>
-                        </div>
-                        @if($n === 1)
-                            <div class="flex-grow-1" style="height:2px; background:{{ $paso > 1 ? '#198754' : '#e9ecef' }}; max-width:120px;"></div>
-                        @endif
-                    @endforeach
-                </div>
+                {{-- ════════ Pasos ════════
+                     20/11 (Antony: "ya existe un wizard de vehículo… pide otra vez vehículo, es confuso"): los dos pasos
+                     de este wizard —datos del cliente y vehículos— son los dos primeros de la ruta del expediente,
+                     así que la barra de la ruta es el único indicador y avanza con el wizard. --}}
+                @include('livewire.clients.partials._ruta-expediente', ['ruta' => $ruta, 'tab' => null, 'navegable' => false])
 
                 {{-- Resumen de errores --}}
                 @if ($errors->any())
@@ -421,7 +409,7 @@
                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
                         <div>
                             <h6 class="mb-0" style="color:red;">
-                                Vehículos <span class="text-muted small fw-normal">(opcional · puedes registrar varios)</span>
+                                Vehículos <span class="text-muted small fw-normal">({{ $pideVehiculo ? 'lo pide este tipo de crédito' : 'opcional' }} · puedes registrar varios)</span>
                             </h6>
                             <div class="small text-muted">
                                 Cliente: <b>{{ trim($apellido_pat.' '.$apellido_mat.' '.$nombre) }}</b> · Doc. {{ $documento }}

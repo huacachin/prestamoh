@@ -11,6 +11,7 @@ use App\Support\Auditoria\ConCapturaDeAuditoria;
 use App\Support\Documentos\DomicilioLegal;
 use App\Support\Documentos\Nacionalidades;
 use App\Support\PlacaRegistrada;
+use App\Support\RutaExpediente;
 use App\Support\Ubigeo;
 use App\Support\VehiculoCatalogos;
 use Illuminate\Support\Facades\DB;
@@ -911,11 +912,19 @@ class Create extends Component
         Audit::log('Creó el cliente '.($createdClient?->fullName() ?? $this->documento), $createdClient,
             $placas !== [] ? ['vehiculos' => $placas] : []);
 
-        return redirect()->route('clients.gallery', $this->newClientId);
+        // 20/11 (ruta del expediente): en vez de ir siempre a Adjuntos, a la ficha en el paso que sigue
+        // (Vehículos si no registró ninguno; si no, Adjuntos), con la barra de la ruta a la vista.
+        $siguiente = RutaExpediente::de($this->newClientId)['siguiente']['tab'] ?? 'adjuntos';
+
+        return redirect()->route('clients.edit', ['id' => $this->newClientId, 'tab' => $siguiente]);
     }
 
     public function render()
     {
-        return view('livewire.clients.create');
+        return view('livewire.clients.create', [
+            // 20/11: la ruta del expediente es el único indicador de pasos del alta y sigue al wizard.
+            'ruta' => RutaExpediente::enAlta($this->paso, $this->zona, count($this->vehiculos)),
+            'pideVehiculo' => RutaExpediente::conGarantiaMobiliaria($this->zona),
+        ]);
     }
 }

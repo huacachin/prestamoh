@@ -80,16 +80,25 @@ class ClientePrestamosTabTest extends TestCase
         $this->credito($this->client, 27001, 'Eliminado', 300, '2026-01-01');
         $this->credito($this->otro, 29002, 'Activo', 800, '2026-09-02');
 
+        // 20/11 (tras hablar con el cliente): la navegación de la ficha es la ruta del expediente, el paso a
+        // paso del préstamo; sus pasos abren cada pantalla y ya no hay una segunda fila de pestañas.
         $html = Livewire::test(Edit::class, ['id' => $this->client->id])->html();
-        $this->assertStringContainsString("wire:click=\"\$set('tab', 'prestamos')\"", $html);
+        preg_match_all('/wire:key="ruta-([a-z]+)"\s+wire:click="\$parent\.\$set\(\'tab\', \'([a-z]+)\'\)"/', $html, $pasos);
+        $this->assertSame(['cliente', 'vehiculo', 'adjuntos', 'prestamo', 'documentos', 'sigm', 'gps'], $pasos[1]);
+        $this->assertSame(['datos', 'vehiculos', 'adjuntos', 'prestamos', 'documentos', 'documentos', 'gps'], $pasos[2], 'cada paso abre su pantalla');
+        $this->assertStringNotContainsString("wire:click=\"\$set('tab', 'prestamos')\"", $html, 'sin la fila de pestañas');
+
+        // La persona relacionada no lleva ruta: conserva las pestañas, en el orden del 12/10 (Antony):
+        // Datos, Vehículos, Préstamos, Documentos, Adjuntos, GPS.
+        $relacionada = Client::create(['nombre' => 'Relacionada', 'apellido_pat' => 'Persona', 'es_relacionado' => true, 'status' => 'active', 'asesor_id' => $this->user->id]);
+        $html = Livewire::test(Edit::class, ['id' => $relacionada->id])->html();
         $this->assertStringContainsString('ti-cash', $html);
-        // 12/10 (Antony): orden de las pestañas = Datos, Vehículos, Préstamos, Documentos, Adjuntos, GPS.
-        $posiciones = array_map(fn ($tab) => strpos($html, "\$set('tab', '{$tab}')"), ['datos', 'vehiculos', 'prestamos', 'documentos', 'adjuntos', 'gps']);
+        $posiciones = array_map(fn ($tab) => strpos($html, "wire:click=\"\$set('tab', '{$tab}')\""), ['datos', 'vehiculos', 'prestamos', 'documentos', 'adjuntos', 'gps']);
         $this->assertNotContains(false, $posiciones, 'las seis pestañas están');
-        $this->assertSame($posiciones, array_values(array_filter($posiciones)), 'ninguna falta');
         $ordenadas = $posiciones;
         sort($ordenadas);
         $this->assertSame($ordenadas, $posiciones, 'en ese orden');
+        $this->assertStringNotContainsString('Ruta del expediente', $html);
 
         $comp = Livewire::test(Prestamos::class, ['id' => $this->client->id]);
         $html = $comp->html();
@@ -168,12 +177,13 @@ class ClientePrestamosTabTest extends TestCase
             ->assertHasNoErrors()->assertDispatched('prestamo-creado', id: 29502)->assertSet('codpre_', 29503);
         $this->assertSame(2, Credit::where('client_id', $this->client->id)->count());
 
-        // La página completa /credits/create sigue redirigiendo a la ficha del crédito.
+        // 20/11 (el cliente: "al crear un préstamo te lleva a un lado y luego tiene que regresar al cliente"):
+        // la página completa /credits/create termina en el paso a paso de ese préstamo, en la ficha del cliente.
         Livewire::test(Create::class, ['clientId' => $this->client->id])
             ->set('seletipl', '1')->set('impopres', 500)->set('cuot', 4)->set('inte', 10)->set('nomasesores', 'asesor-pre')
             ->call('save')
             ->assertHasNoErrors()
-            ->assertRedirect(route('credits.show', 29503));
+            ->assertRedirect(route('clients.edit', ['id' => $this->client->id, 'prestamo' => 29503, 'tab' => 'prestamos']));
     }
 
     public function test_el_analista_ve_la_lista_pero_no_el_boton_de_nuevo_prestamo(): void

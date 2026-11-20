@@ -17,6 +17,11 @@
     @if(session('credit_success'))
         <div class="alert alert-success alert-dismissible fade show py-2 mb-2" role="alert">
             {{ session('credit_success') }}
+            @if($pasoQueSigue)
+                <a href="{{ route('clients.edit', ['id' => $credit->client_id, 'prestamo' => $credit->id, 'tab' => $pasoQueSigue['tab']]) }}" class="alert-link ms-2">
+                    Seguir con el expediente: {{ $pasoQueSigue['nombre'] }} <i class="ti ti-arrow-right"></i>
+                </a>
+            @endif
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     @endif
@@ -106,10 +111,23 @@
                         <i class="ti ti-report-money"></i> Reporte de pagos
                     </a>
                 @endcan
-                @if(!auth()->user()->can('clientes.scope-propio') && (auth()->user()->can('caja.editar-historico') || $credit->fecha_prestamo?->format('Y-m-d') === now()->format('Y-m-d')))
+                {{-- 20/11: los pasos de este préstamo, en la ficha del cliente. --}}
+                @if($credit->situacion === 'Activo' && auth()->user()->can('clientes'))
+                    <a href="{{ route('clients.edit', ['id' => $credit->client_id, 'prestamo' => $credit->id, 'tab' => 'prestamos']) }}" class="btn btn-sm btn-outline-primary"
+                       title="Ver los pasos del expediente de este préstamo">
+                        <i class="ti ti-route"></i> Pasos del préstamo
+                    </a>
+                @endif
+                {{-- Editar: la regla de siempre (hoy, o con permiso de histórico) y, desde el 20/11, sin contrato emitido. --}}
+                @if($motivoNoEditar === null)
                     <a href="{{ route('credits.edit', $credit->id) }}" class="btn btn-sm btn-outline-warning">
                         <i class="ti ti-edit"></i> Editar
                     </a>
+                @elseif($motivoNoEditar === \App\Support\EdicionCredito::MOTIVO_CONTRATO)
+                    <span class="btn btn-sm btn-outline-secondary disabled" title="{{ $motivoNoEditar }}" aria-disabled="true">
+                        <i class="ti ti-lock"></i> Editar
+                    </span>
+                    <span class="small text-muted">Contrato emitido: para editar, anúlalo antes.</span>
                 @endif
                 <a href="{{ route('credits.index') }}" class="btn btn-sm btn-secondary">Volver</a>
             </div>

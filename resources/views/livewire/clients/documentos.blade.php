@@ -125,6 +125,9 @@
                 </div>
             </div>
 
+            {{-- 20/11 (ruta del expediente): los documentos del préstamo en curso, en orden y con su estado. --}}
+            @include('livewire.clients.partials._lista-documentos', ['lista' => $listaDocumentos])
+
             {{-- Historial de documentos emitidos. Los anulados van ocultos por
                  defecto (25/09): siguen existiendo y descargables, solo no estorban. --}}
             @if($documentosAnulados > 0)

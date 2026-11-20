@@ -11,6 +11,7 @@ use App\Models\ClientEmpresa;
 use App\Models\Concept;
 use App\Models\Contrato;
 use App\Models\Credit;
+use App\Models\CreditVehiculo;
 use App\Models\DocumentoCliente;
 use App\Models\EmpresaRepresentante;
 use App\Models\ExchangeRate;
@@ -80,6 +81,7 @@ return [
         LegalSetting::class => 'Configuración legal',
         VehiculoGpsReporte::class => 'Reporte GPS',
         VehiculoGpsCuenta::class => 'Cuenta GPS',
+        CreditVehiculo::class => 'Vehículo del préstamo',
         // Adjuntos
         ClientAttachment::class => 'Adjunto de cliente',
         IncomeAttachment::class => 'Adjunto de ingreso',

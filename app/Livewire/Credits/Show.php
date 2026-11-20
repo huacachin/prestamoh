@@ -6,6 +6,8 @@ use App\Models\Credit;
 use App\Models\MassDeletion;
 use App\Services\Printing\TicketPrinter;
 use App\Support\CreditoCancelado;
+use App\Support\EdicionCredito;
+use App\Support\RutaExpediente;
 use Livewire\Component;
 
 class Show extends Component
@@ -65,6 +67,16 @@ class Show extends Component
             $saldoPendiente = 0.0;
         }
 
-        return view('livewire.credits.show', compact('totalPagado', 'totalDeuda', 'saldoPendiente', 'creditoCerrado', 'cobradoPorCuota', 'noCobrado'));
+        // 20/11 (ruta del expediente): el préstamo creado desde /credits/create termina aquí, fuera de la ficha
+        // del cliente. El aviso de "creado" lleva de vuelta a la ficha, en el paso que sigue, para no cortar el flujo.
+        $pasoQueSigue = null;
+        if (session('credit_success') && (auth()->user()?->can('clientes') ?? false)) {
+            $ruta = RutaExpediente::de((int) $this->credit->client_id, (int) $this->credit->id);
+            $pasoQueSigue = $ruta['credito'] === (int) $this->credit->id ? $ruta['siguiente'] : null;
+        }
+        // Por qué no se ofrece Editar (null = se puede): la misma regla que aplica la pantalla de edición.
+        $motivoNoEditar = EdicionCredito::motivoBloqueo(auth()->user(), $this->credit);
+
+        return view('livewire.credits.show', compact('totalPagado', 'totalDeuda', 'saldoPendiente', 'creditoCerrado', 'cobradoPorCuota', 'noCobrado', 'pasoQueSigue', 'motivoNoEditar'));
     }
 }

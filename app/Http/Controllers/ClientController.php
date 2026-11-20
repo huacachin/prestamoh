@@ -21,6 +21,11 @@ class ClientController extends Controller
         return view('clients.create');
     }
 
+    public function seguimiento()
+    {
+        return view('clients.seguimiento');
+    }
+
     public function edit(int $id)
     {
         return view('clients.edit', compact('id'));

@@ -6,9 +6,11 @@ use App\Models\Client;
 use App\Models\ClientAttachment;
 use App\Support\ConReglasDeEliminacion;
 use App\Support\ConSubidaDeArchivos;
+use App\Support\RutaExpediente;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Reactive;
 use Livewire\Component;
 
 class Gallery extends Component
@@ -43,9 +45,14 @@ class Gallery extends Component
     /** true cuando se renderiza dentro de una pestaña (sin cabecera ni card propios). */
     public bool $embebido = false;
 
-    public function mount(int $id, bool $embebido = false): void
+    /** 20/11: préstamo cuyo paso a paso muestra la ruta de la ficha (null = el de la ruta). */
+    #[Reactive]
+    public ?int $prestamo = null;
+
+    public function mount(int $id, bool $embebido = false, ?int $prestamo = null): void
     {
         $this->embebido = $embebido;
+        $this->prestamo = $prestamo;
         $this->client = Client::findOrFail($id);
 
         // Analista (scope-propio): solo SUS clientes
@@ -148,6 +155,7 @@ class Gallery extends Component
         $att->delete();
         // Nota: no dispatcheamos successAlert porque custom.js ya muestra
         // el modal "Eliminado!" automáticamente tras confirmar questionDelete.
+        $this->dispatch('expediente-actualizado'); // 20/11: la barra de la ruta de la ficha se recalcula
     }
 
     private function makeThumbnail(string $src, string $dst, int $maxWidth): bool
@@ -208,6 +216,19 @@ class Gallery extends Component
             ->orderByDesc('id')
             ->get();
 
-        return view('livewire.clients.gallery', compact('attachments'));
+        // 20/11 (Antony): las fotos se piden para cada préstamo. Si el de la ruta aún no tiene las suyas y
+        // las que se ven son de préstamos anteriores, se avisa: si no, parece que el paso ya está hecho.
+        $avisoPrestamo = null;
+        if ($this->embebido && $attachments->isNotEmpty()) {
+            $ruta = RutaExpediente::de($this->clientId, $this->prestamo);
+            $adjuntos = collect($ruta['pasos'])->firstWhere('clave', 'adjuntos');
+            if ($adjuntos['estado'] === RutaExpediente::PENDIENTE) {
+                $avisoPrestamo = $ruta['credito'] !== null
+                    ? "Estas fotos son de préstamos anteriores. Sube las del préstamo #{$ruta['credito']} para completar este paso."
+                    : 'Estas fotos son de préstamos anteriores. Las que subas ahora contarán para el próximo préstamo.';
+            }
+        }
+
+        return view('livewire.clients.gallery', compact('attachments', 'avisoPrestamo'));
     }
 }

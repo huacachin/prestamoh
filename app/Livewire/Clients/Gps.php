@@ -12,6 +12,7 @@ use App\Support\HorarioEliminacion;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\Reactive;
 use Livewire\Component;
 
 /**
@@ -79,10 +80,15 @@ class Gps extends Component
 
     public ?string $msgType = null;
 
-    public function mount(int $id): void
+    /** 20/11: préstamo cuyo paso a paso muestra la ruta de la ficha; se le pasa a las tarjetas de vehículos. */
+    #[Reactive]
+    public ?int $prestamo = null;
+
+    public function mount(int $id, ?int $prestamo = null): void
     {
         $this->client = Client::findOrFail($id);
         $this->clientId = $id;
+        $this->prestamo = $prestamo;
         abort_if(
             (auth()->user()?->can('clientes.scope-propio') ?? false)
             && (int) $this->client->asesor_id !== (int) auth()->id(),

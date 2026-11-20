@@ -6,8 +6,10 @@ use App\Models\Credit;
 use App\Support\Audit;
 use App\Support\Auditoria\ConCapturaDeAuditoria;
 use App\Support\ConReglasDeEliminacion;
+use App\Support\EdicionCredito;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class Edit extends Component
@@ -38,6 +40,14 @@ class Edit extends Component
 
     public string $situacion = 'Activo';
 
+    /**
+     * 20/11/2026: 'expediente' = se llegó desde el paso a paso de la ficha del cliente; al guardar o
+     * volver se regresa ahí, no a la ficha del crédito (el cliente: "te lleva a un lado y luego tiene
+     * que regresar al cliente").
+     */
+    #[Url(as: 'desde', except: '')]
+    public string $desde = '';
+
     protected $rules = [
         'fecha_prestamo' => 'required|date',
         'importe' => 'required|numeric|min:1',
@@ -51,17 +61,13 @@ class Edit extends Component
     public function mount(int $id)
     {
         // Analista (scope-propio): solo ve/paga SUS créditos — no crea ni edita
-        abort_if(auth()->user()?->can('clientes.scope-propio') ?? false, 403,
-            'Tu rol no permite esta acción.');
+        abort_if(auth()->user()?->can('clientes.scope-propio') ?? false, 403, EdicionCredito::MOTIVO_ROL);
         $this->credit = Credit::with('payments')->findOrFail($id);
 
-        // Mapa 21/08: sin editar-historico solo se editan créditos registrados HOY.
-        abort_unless(
-            (auth()->user()?->can('caja.editar-historico') ?? false)
-            || $this->credit->fecha_prestamo?->format('Y-m-d') === now()->format('Y-m-d'),
-            403,
-            'Solo se pueden editar créditos registrados hoy.'
-        );
+        // Mapa 21/08: sin editar-historico solo se editan créditos registrados HOY. Y desde el 20/11, con
+        // el contrato emitido no lo edita nadie (EdicionCredito).
+        $motivo = EdicionCredito::motivoBloqueo(auth()->user(), $this->credit);
+        abort_if($motivo !== null, 403, (string) $motivo);
         $this->creditId = $id;
 
         $this->fecha_prestamo = $this->credit->fecha_prestamo?->format('Y-m-d') ?? '';
@@ -83,12 +89,8 @@ class Edit extends Component
 
         // Re-validación de lo que mount() exige: las acciones Livewire no
         // vuelven a pasar por mount, así que el guard debe vivir también aquí.
-        abort_if($user?->can('clientes.scope-propio') ?? false, 403);
-        abort_unless(
-            ($user?->can('caja.editar-historico') ?? false)
-            || $this->credit->fecha_prestamo?->format('Y-m-d') === now()->format('Y-m-d'),
-            403, 'Solo se pueden editar créditos registrados hoy.'
-        );
+        $motivo = EdicionCredito::motivoBloqueo($user, $this->credit);
+        abort_if($motivo !== null, 403, (string) $motivo);
 
         // Sin bypass-fecha-anterior la fecha del crédito no se toca.
         if (! ($user?->can('caja.bypass-fecha-anterior') ?? false)) {
@@ -134,7 +136,15 @@ class Edit extends Component
 
         session()->flash('credit_success', 'Crédito actualizado correctamente.');
 
-        return redirect()->route('credits.show', $this->creditId);
+        return redirect()->to($this->urlDeRegreso());
+    }
+
+    /** A dónde se vuelve al guardar o cancelar: al paso a paso de la ficha si se vino de ahí; si no, a la ficha del crédito. */
+    public function urlDeRegreso(): string
+    {
+        return $this->desde === 'expediente' && (auth()->user()?->can('clientes') ?? false)
+            ? route('clients.edit', ['id' => $this->credit->client_id, 'prestamo' => $this->creditId, 'tab' => 'prestamos'])
+            : route('credits.show', $this->creditId);
     }
 
     public function questionDelete(int $id): void

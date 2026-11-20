@@ -27,6 +27,7 @@ use App\Support\Documentos\ModelosContrato;
 use App\Support\Documentos\Nacionalidades;
 use App\Support\Documentos\Notarios;
 use App\Support\HorarioEliminacion;
+use App\Support\RutaExpediente;
 use App\Support\Ubigeo;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -36,6 +37,8 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
+use Livewire\Attributes\Reactive;
 use Livewire\Component;
 
 /**
@@ -320,9 +323,10 @@ class Documentos extends Component
     /** true cuando se renderiza dentro de una pestaña (sin cabecera ni card propios). */
     public bool $embebido = false;
 
-    public function mount(int $id, bool $embebido = false): void
+    public function mount(int $id, bool $embebido = false, ?int $prestamo = null): void
     {
         $this->embebido = $embebido;
+        $this->prestamo = $prestamo;
         $client = Client::findOrFail($id);
 
         // Analista (scope-propio): solo SUS clientes
@@ -2687,6 +2691,159 @@ class Documentos extends Component
         return array_filter($grupos);
     }
 
+    /** Documentos que salen del contrato emitido: no se pueden emitir antes que él. */
+    private const DESPUES_DEL_CONTRATO = ['djprop', 'djpubli'];
+
+    /**
+     * Préstamo elegido en la ruta del expediente de la ficha (20/11/2026): la lista de documentos es la de
+     * ese préstamo. null fuera de la ficha, o si en la ficha se sigue el préstamo de la ruta.
+     */
+    #[Reactive]
+    public ?int $prestamo = null;
+
+    /**
+     * Préstamo cuya lista de documentos se muestra (20/11/2026). Por defecto, el de la ruta del
+     * expediente; fuera de la ficha, con varios préstamos activos, se cambia desde la misma lista.
+     */
+    public ?int $listaCreditoId = null;
+
+    /** Un préstamo nuevo desde la pestaña Préstamos: la lista vuelve al de la ruta, que ahora es ese. */
+    #[On('prestamo-creado')]
+    public function alCrearPrestamo(): void
+    {
+        $this->listaCreditoId = null;
+    }
+
+    /**
+     * Botón "Emitir" de la lista de documentos (20/11/2026): abre el modal de siempre y deja elegido el
+     * préstamo de la lista, para que no haya que buscarlo entre los créditos del cliente (uno de cada
+     * cinco clientes con préstamo tiene dos o más activos). Elegirlo aquí hace lo mismo que elegirlo a
+     * mano en el modal: se llama al mismo `updated…` que dispara el selector.
+     */
+    public function emitirDeLaLista(string $tipo): void
+    {
+        match ($tipo) {
+            'contrato' => $this->abrirModalContrato(),
+            'anexo1' => $this->abrirModalAnexo1(),
+            'anexo2' => $this->abrirModalAnexo2(),
+            'djprop', 'djpubli' => $this->abrirModalDeclaracion($tipo),
+            default => abort(404),
+        };
+
+        $credito = $this->prestamosDeLaLista(Client::findOrFail($this->clientId))['credito'];
+        if ($credito === null) {
+            return;
+        }
+        if ($tipo === 'contrato' && $this->contratoCreditoId !== $credito) {
+            $this->contratoCreditoId = $credito;
+            $this->updatedContratoCreditoId();
+        } elseif ($tipo === 'anexo1' && $this->creditoId !== $credito) {
+            $this->creditoId = $credito;
+            $this->updatedCreditoId();
+        } elseif ($tipo === 'anexo2' && $this->anexo2CreditoId !== $credito) {
+            $this->anexo2CreditoId = $credito;
+            $this->updatedAnexo2CreditoId();
+        } elseif (in_array($tipo, self::DESPUES_DEL_CONTRATO, true) && $this->djCreditoId !== $credito
+            && $this->creditosConContrato()->contains('id', $credito)) {
+            $this->djCreditoId = $credito;
+            $this->updatedDjCreditoId();
+        }
+    }
+
+    /**
+     * Préstamos activos del cliente a los que se les piden documentos (o que ya tienen alguno), con lo que
+     * cada uno tiene emitido, y cuál se muestra en la lista: el elegido, si no el de la ruta del expediente.
+     * Un préstamo que viene de una refinanciación no entra: sus documentos son los del original.
+     *
+     * @return array{opciones: Collection<int, array{id: int, fecha: ?string, emitidos: list<string>}>, credito: ?int, sin_prestamo: bool}
+     */
+    private function prestamosDeLaLista(Client $client): array
+    {
+        $activos = $this->creditosActivos();
+        $emitidos = DocumentoCliente::where('client_id', $this->clientId)->where('estado', 'emitido')
+            ->whereIn('credit_id', $activos->pluck('id'))->get(['credit_id', 'tipo'])
+            ->groupBy('credit_id')
+            ->map(fn (Collection $docs) => $docs->pluck('tipo')->unique()->values()->all());
+
+        $opciones = $activos
+            ->filter(fn (Credit $c) => RutaExpediente::pideDocumentos($client->zona, (bool) $c->refinanciado) || $emitidos->has($c->id))
+            ->map(fn (Credit $c) => ['id' => (int) $c->id, 'fecha' => $c->fecha_prestamo?->format('d/m/Y'), 'emitidos' => $emitidos->get($c->id, [])])
+            ->values();
+        $ids = $opciones->pluck('id');
+        // En la ficha manda el préstamo de la barra: si a ese no se le piden documentos, no hay lista.
+        if ($this->prestamo !== null && $activos->contains('id', $this->prestamo) && ! $ids->contains($this->prestamo)) {
+            return ['opciones' => collect(), 'credito' => null, 'sin_prestamo' => false];
+        }
+        $elegido = $this->prestamo ?? $this->listaCreditoId;
+        $deLaRuta = RutaExpediente::creditoEnCurso($this->clientId);
+
+        return [
+            'opciones' => $opciones,
+            'credito' => match (true) {
+                $elegido !== null && $ids->contains($elegido) => $elegido,
+                $deLaRuta !== null && $ids->contains($deLaRuta) => $deLaRuta,
+                default => $ids->first(),
+            },
+            'sin_prestamo' => $activos->isEmpty(),
+        ];
+    }
+
+    /**
+     * Lista ordenada de documentos de un préstamo (20/11/2026, ruta del expediente; Antony: "que el flujo
+     * hasta generar sus documentos les sea amigable"): Contrato → Anexo 1 → Anexo 2 → DJ de propiedad → DJ
+     * de publicidad y, al final, el SIGM; cada uno emitido o por emitir, y cuál sigue. Solo ordena y
+     * muestra: los botones abren los mismos modales de siempre, con sus mismas reglas (emitirDeLaLista).
+     *
+     * Las declaraciones juradas y el SIGM salen del contrato emitido: hasta que exista no se ofrecen.
+     *
+     * Se muestra cuando al préstamo se le piden documentos (garantía mobiliaria, no refinanciación) o ya
+     * tiene alguno, igual que la barra de la ruta; a los demás no se les pide nada.
+     *
+     * @return array{mostrar: bool, credito: ?int, opciones: list<array{id: int, fecha: ?string, emitidos: int}>, emitidos: int, total: int, tiene_contrato: bool, filas: list<array{tipo: string, num: int, nombre: string, corto: string, emitido: bool, sigue: bool, espera_contrato: bool, puede_emitir: bool}>}
+     */
+    private function listaDocumentos(Client $client): array
+    {
+        $prestamos = $this->prestamosDeLaLista($client);
+        $credito = $prestamos['credito'];
+        // El selector de la lista muestra siempre el préstamo que se está viendo.
+        $this->listaCreditoId = $credito;
+        $requeridos = array_keys(RutaExpediente::documentos());
+        $emitidos = $credito === null ? [] : ($prestamos['opciones']->firstWhere('id', $credito)['emitidos'] ?? []);
+        $tieneContrato = in_array('contrato', $emitidos, true);
+
+        $filas = [];
+        $sigue = null;
+        foreach ($requeridos as $i => $tipo) {
+            $emitido = in_array($tipo, $emitidos, true);
+            // "Sigue este": el primero sin emitir, solo si ya hay préstamo sobre el que emitirlo.
+            $esElQueSigue = ! $emitido && $sigue === null && $credito !== null;
+            if ($esElQueSigue) {
+                $sigue = $tipo;
+            }
+            $esperaContrato = ! $emitido && ! $tieneContrato && in_array($tipo, self::DESPUES_DEL_CONTRATO, true);
+            $nombre = DocumentoCliente::TIPOS[$tipo] ?? $tipo;
+            $filas[] = [
+                // 'corto' es lo que cabe en la tarjeta: "Anexo 2" por "Anexo 2 — Constancia de entrega".
+                'tipo' => $tipo, 'num' => $i + 1, 'nombre' => $nombre, 'corto' => Str::before($nombre, ' — '),
+                'emitido' => $emitido, 'sigue' => $esElQueSigue, 'espera_contrato' => $esperaContrato,
+                'puede_emitir' => ! $emitido && ! $esperaContrato && $credito !== null,
+            ];
+        }
+
+        return [
+            'mostrar' => $prestamos['opciones']->isNotEmpty()
+                || ($prestamos['sin_prestamo'] && RutaExpediente::conGarantiaMobiliaria($client->zona)),
+            'credito' => $credito,
+            'opciones' => $prestamos['opciones']
+                ->map(fn (array $o) => ['id' => $o['id'], 'fecha' => $o['fecha'], 'emitidos' => count(array_intersect($requeridos, $o['emitidos']))])
+                ->all(),
+            'emitidos' => count(array_filter($filas, fn (array $f) => $f['emitido'])),
+            'total' => count($filas),
+            'tiene_contrato' => $tieneContrato,
+            'filas' => $filas,
+        ];
+    }
+
     public function render()
     {
         $client = Client::findOrFail($this->clientId);
@@ -2726,6 +2883,8 @@ class Documentos extends Component
         return view('livewire.clients.documentos', [
             'client' => $client,
             'documentos' => $documentos,
+            // 20/11 (ruta del expediente): los documentos del préstamo en curso, en orden y con su estado.
+            'listaDocumentos' => $this->listaDocumentos($client),
             'documentosAnulados' => $anulados,
             'creditosActivos' => $this->creditosActivos(),
             'creditosConEstado' => $this->creditosConEstado(),

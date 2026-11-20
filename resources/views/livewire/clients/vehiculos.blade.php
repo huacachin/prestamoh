@@ -179,6 +179,23 @@
             <div class="small">Este cliente no tiene vehículos registrados.</div>
         </div>
     @else
+        {{-- 20/11 (Antony): con un préstamo nuevo el vehículo se vuelve a pedir; el mismo se puede volver a prendar. --}}
+        @php
+            $prestamoRuta = $ruta['abre'] ? $ruta['credito'] : null;
+            $delPrestamo = count(array_filter($ruta['vehiculos'], fn (array $v) => $v['del_prestamo']));
+        @endphp
+        @if($prestamoRuta !== null && $delPrestamo === 0)
+            <div class="alert alert-warning py-2 px-3 mb-2 small" role="status">
+                <i class="ti ti-alert-triangle"></i>
+                El préstamo <b>#{{ $prestamoRuta }}</b> todavía no tiene vehículo. Si vuelve a prendar uno de estos, pulsa
+                <b>Usar en el préstamo</b>; si es otro, agrégalo con <b>Agregar vehículo</b>.
+            </div>
+        @elseif($ruta['credito'] === null && $delPrestamo === 0)
+            <div class="alert alert-light border py-2 px-3 mb-2 small" role="status">
+                <i class="ti ti-info-circle"></i>
+                Estos vehículos son de préstamos anteriores. Para volver a prendar uno, primero crea el préstamo y luego elígelo aquí.
+            </div>
+        @endif
         <div class="table-responsive">
             <table class="table table-bordered table-striped table-hover table-autofit mb-0" style="font-size: 12px;">
                 <thead class="bg-primary">
@@ -198,7 +215,13 @@
                 <tbody>
                     @foreach($listado as $v)
                         <tr wire:key="veh-{{ $v->id }}">
-                            <td class="text-center fw-bold">{{ $v->placa }}</td>
+                            @php $enRuta = $ruta['vehiculos'][$v->id] ?? ['del_prestamo' => false, 'prendado' => false]; @endphp
+                            <td class="text-center fw-bold">
+                                {{ $v->placa }}
+                                @if($prestamoRuta !== null && $enRuta['del_prestamo'])
+                                    <div><span class="badge bg-primary" style="font-size:9px;" title="Este vehículo garantiza el préstamo #{{ $prestamoRuta }}">préstamo #{{ $prestamoRuta }}</span></div>
+                                @endif
+                            </td>
                             <td>{{ trim($v->marca.' '.$v->modelo) ?: '—' }}</td>
                             <td class="text-center" style="white-space:nowrap;">{{ $v->nro_motor ?: '—' }}</td>
                             <td class="text-center" style="white-space:nowrap;">{{ $v->nro_serie ?: '—' }}</td>
@@ -207,6 +230,18 @@
                             <td class="text-end">{{ $v->valor !== null ? number_format((float) $v->valor, 2) : '—' }}</td>
                             @if($puedeEditar)
                                 <td class="text-center" style="white-space:nowrap;">
+                                    {{-- 20/11: prendar el mismo vehículo para el préstamo de la ruta, o deshacerlo. --}}
+                                    @if($prestamoRuta !== null && ! $enRuta['del_prestamo'])
+                                        <button type="button" class="btn btn-sm btn-primary py-0" wire:click="prendar({{ $v->id }})"
+                                                title="Este vehículo garantiza también el préstamo #{{ $prestamoRuta }}">
+                                            <i class="ti ti-link"></i> Usar en el préstamo
+                                        </button>
+                                    @elseif($prestamoRuta !== null && $enRuta['prendado'])
+                                        <button type="button" class="btn btn-sm btn-outline-secondary py-0" wire:click="quitarPrenda({{ $v->id }})"
+                                                title="Deja de garantizar el préstamo #{{ $prestamoRuta }}">
+                                            <i class="ti ti-unlink"></i> Quitar del préstamo
+                                        </button>
+                                    @endif
                                     {{-- 25/09: botones con texto y tamaño normal (los iconos de 12 px no se veían). --}}
                                     <button type="button" class="btn btn-sm btn-outline-primary py-0"
                                             wire:click="editar({{ $v->id }})" title="Editar vehículo">

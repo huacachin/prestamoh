@@ -64,6 +64,7 @@ return [
         'cancelados' => 500,   // Resumen de cancelados (22 columnas)
         'periodo' => 500,      // Crédito Diario / Semanal / Mensual (29-48 columnas)
         'reporte_caja' => 1000, // Reporte de caja por rango
+        'seguimiento' => 300,   // Seguimiento de expedientes (20/11)
     ],
 
 ];

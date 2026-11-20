@@ -5,8 +5,11 @@ namespace App\Livewire\Clients;
 use App\Models\Client;
 use App\Models\Credit;
 use App\Models\CreditInstallment;
+use App\Support\EdicionCredito;
+use App\Support\RutaExpediente;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Reactive;
 use Livewire\Component;
 
 /**
@@ -25,6 +28,10 @@ class Prestamos extends Component
     /** Crédito recién guardado desde esta pestaña: su fila sale resaltada. */
     public ?int $recienCreado = null;
 
+    /** 20/11: préstamo cuyo paso a paso muestra la ruta de la ficha (null = el de la ruta). */
+    #[Reactive]
+    public ?int $prestamo = null;
+
     public bool $puedeVerCreditos = false;
 
     public bool $puedeCrear = false;
@@ -32,10 +39,11 @@ class Prestamos extends Component
     /** 06/11: por qué no se le puede prestar (cliente cesado); null si se puede. */
     public ?string $bloqueoPrestamo = null;
 
-    public function mount(int $id): void
+    public function mount(int $id, ?int $prestamo = null): void
     {
         $client = Client::findOrFail($id);
         $this->clientId = $client->id;
+        $this->prestamo = $prestamo;
 
         $user = auth()->user();
         $this->puedeVerCreditos = $user?->can('creditos') ?? false;
@@ -89,10 +97,21 @@ class Prestamos extends Component
         ['credits' => $credits, 'resumen' => $resumen] = $this->creditos();
         $activos = $credits->where('situacion', 'Activo')->count();
 
+        // 20/11: cuál es el préstamo del paso a paso y cuáles se pueden editar todavía (EdicionCredito: hoy,
+        // o con permiso de histórico, y sin contrato emitido).
+        $conContrato = EdicionCredito::conContrato($credits->where('situacion', 'Activo')->pluck('id'));
+        $edicion = [];
+        foreach ($credits->where('situacion', 'Activo') as $credit) {
+            $tieneContrato = in_array((int) $credit->id, $conContrato, true);
+            $edicion[$credit->id] = ['contrato' => $tieneContrato, 'editable' => EdicionCredito::motivoBloqueo(auth()->user(), $credit, $tieneContrato) === null];
+        }
+
         return view('livewire.clients.prestamos', [
             'client' => $client,
             'credits' => $credits,
             'resumen' => $resumen,
+            'edicion' => $edicion,
+            'prestamoDeLaRuta' => RutaExpediente::de($client, $this->prestamo)['credito'],
             'conteo' => $credits->count().($activos > 0 ? ' · '.$activos.($activos === 1 ? ' activo' : ' activos') : ''),
         ]);
     }

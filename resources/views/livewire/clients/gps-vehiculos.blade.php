@@ -36,10 +36,26 @@
                     <span class="placa-nombre"><i class="ti ti-car"></i> {{ $v->placa }}</span>
                     <span class="text-muted small ms-1">{{ trim($v->marca.' '.$v->modelo) }}</span>
                     <span class="text-muted small ms-1">· {{ $ubicaciones->count() }} {{ $ubicaciones->count() === 1 ? 'ubicación' : 'ubicaciones' }}</span>
+                    {{-- 20/11: el GPS se pide para cada préstamo; aquí, cómo va esta placa en el de la ruta. --}}
+                    @php
+                        $cuentaV = $cuentas->get($v->id);
+                        $enRuta = $ruta['vehiculos'][$v->id] ?? null;
+                        $delPrestamo = $ruta['credito'] !== null && ($enRuta['del_prestamo'] ?? false);
+                    @endphp
+                    @if($delPrestamo)
+                        <span class="badge {{ $enRuta['gps'] ? 'bg-success' : 'bg-warning text-dark' }} ms-1" style="font-size:10px;">
+                            préstamo #{{ $ruta['credito'] }} · {{ $enRuta['gps'] ? 'GPS listo' : ($enRuta['cuenta'] ? 'falta confirmar el GPS' : 'falta la cuenta GPS') }}
+                        </span>
+                    @endif
                 </div>
                 <div class="d-flex gap-1 flex-wrap">
+                    @if($puedeEditar && $delPrestamo && $enRuta['cuenta'] && ! $enRuta['gps'])
+                        <button type="button" class="btn btn-sm btn-primary py-0" wire:click="confirmarCuenta({{ $v->id }})"
+                                title="La cuenta GPS ya registrada de esta placa sigue valiendo para el préstamo #{{ $ruta['credito'] }}">
+                            <i class="ti ti-check"></i> Confirmar para el préstamo
+                        </button>
+                    @endif
                     {{-- 06/11 (Trello): la cuenta del GPS de la placa, en un modal. Verde si ya está registrada. --}}
-                    @php $cuentaV = $cuentas->get($v->id); @endphp
                     @if($cuentaV || $puedeEditar)
                         <button type="button" class="btn btn-sm py-0 {{ $cuentaV ? 'btn-success' : 'btn-outline-dark' }}"
                                 wire:click="abrirCuenta({{ $v->id }})" wire:loading.attr="disabled" wire:target="abrirCuenta({{ $v->id }})"

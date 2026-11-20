@@ -92,6 +92,67 @@ class ClienteVehiculoTest extends TestCase
         $this->assertSame('2018', $vehiculo->anio_modelo);
         $this->assertEqualsWithDelta(38000, (float) $vehiculo->valor, 0.01);
         $this->assertTrue($cliente->vehiculos->contains($vehiculo));
+        // 20/11 (ruta del expediente): con el vehículo ya registrado, la ficha abre en Adjuntos.
+        $c->assertRedirect(route('clients.edit', ['id' => $cliente->id, 'tab' => 'adjuntos']));
+    }
+
+    /**
+     * 20/11 (Antony: "ya existe un wizard de vehículo… pide otra vez vehículo, es confuso"): el alta lleva un solo
+     * indicador de pasos, la ruta del expediente, que avanza con el wizard.
+     */
+    public function test_el_alta_lleva_un_solo_indicador_de_pasos_que_avanza_con_el_wizard(): void
+    {
+        $this->operador();
+
+        $c = Livewire::test(Create::class)
+            ->assertSee('Ruta del expediente')
+            ->assertSee('Estás aquí · Datos del cliente')
+            ->assertSee('Paso 1: los datos del cliente.')
+            ->assertDontSee('Vehículos (opcional)'); // el indicador propio del wizard ya no está
+        foreach (['zona' => 'SIGM.S'] + $this->formularioBase() as $campo => $valor) {
+            $c->set($campo, $valor);
+        }
+
+        $c->call('siguientePaso')
+            ->assertSet('paso', 2)
+            ->assertSee('Datos listos')
+            ->assertSee('Estás aquí · Sin vehículos')
+            ->assertSee('Paso 2: agrega aquí el vehículo.')
+            ->assertSee('lo pide este tipo de crédito');
+
+        $c->call('agregarVehiculo')
+            ->assertSee('Estás aquí · 1 por guardar')
+            ->assertSee('Paso 2: el vehículo se guarda junto con el cliente.');
+    }
+
+    public function test_en_el_alta_de_un_tipo_de_credito_sin_garantia_mobiliaria_el_vehiculo_sigue_siendo_opcional(): void
+    {
+        $this->operador();
+
+        $c = Livewire::test(Create::class);
+        foreach (['zona' => 'Sin Garantia'] + $this->formularioBase() as $campo => $valor) {
+            $c->set($campo, $valor);
+        }
+
+        $c->call('siguientePaso')
+            ->assertSee('Estás aquí · No aplica')
+            ->assertSee('Este tipo de crédito no pide vehículo')
+            ->assertSee('opcional · puedes registrar varios');
+    }
+
+    /** 20/11 (ruta del expediente): tras el alta se va a la ficha, en el paso que sigue (antes, siempre a Adjuntos). */
+    public function test_un_cliente_con_garantia_mobiliaria_y_sin_vehiculo_va_a_la_ficha_en_vehiculos(): void
+    {
+        $this->operador();
+
+        $c = Livewire::test(Create::class);
+        foreach (['zona' => 'SIGM.S'] + $this->formularioBase() as $campo => $valor) {
+            $c->set($campo, $valor);
+        }
+        $c->call('save')->assertHasNoErrors();
+
+        $cliente = Client::where('documento', '87654321')->firstOrFail();
+        $c->assertRedirect(route('clients.edit', ['id' => $cliente->id, 'tab' => 'vehiculos']));
     }
 
     public function test_cliente_sin_datos_de_vehiculo_no_crea_ninguno(): void

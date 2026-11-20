@@ -117,6 +117,13 @@ class Edit extends Component
     #[Url(as: 'tab', except: 'datos')]
     public string $tab = 'datos';
 
+    /**
+     * 20/11/2026: préstamo cuyo paso a paso muestra la ruta del expediente ('' = el de la ruta). Va en la
+     * URL para poder enlazar "los pasos de este préstamo" desde cualquier pantalla; texto porque llega de ahí.
+     */
+    #[Url(as: 'prestamo', except: '')]
+    public string $prestamo = '';
+
     public ?int $asesor_id = null;
 
     // ── Permisos cacheados ──
@@ -310,6 +317,8 @@ class Edit extends Component
     public function alCrearPrestamo(int $id): void
     {
         $this->tieneCreditosVigentes = true;
+        // 20/11: el paso a paso pasa a ser el del préstamo recién creado.
+        $this->prestamo = (string) $id;
     }
 
     #[On('register_destroy')]

@@ -28,7 +28,22 @@
     <div class="card shadow-sm">
         <div class="card-body">
 
-            {{-- ════════ Pestañas (compactas: píldoras pequeñas) ════════ --}}
+            {{-- 20/11: al llegar desde el alta del cliente o del préstamo se confirma lo guardado (el mensaje del
+                 cliente ya se guardaba, pero no se mostraba; el del préstamo salía en la ficha del crédito). --}}
+            @foreach(array_filter([session('client_success'), session('credit_success')]) as $confirmacion)
+                <div class="alert alert-success py-2 px-3 mb-2 small" role="status">
+                    <i class="ti ti-circle-check"></i> {{ $confirmacion }}
+                </div>
+            @endforeach
+
+            {{-- ════════ Ruta del expediente (20/11): el paso a paso del préstamo elegido. Es la navegación de la
+                 ficha: cada paso abre su pantalla. ════════ --}}
+            @php $prestamoElegido = ((int) $prestamo) ?: null; @endphp
+            <livewire:clients.ruta-expediente :id="$clientId" :tab="$tab" :prestamo="$prestamoElegido" :key="'ruta-'.$clientId" />
+
+            {{-- ════════ Pestañas (compactas: píldoras pequeñas) ════════
+                 20/11: con la ruta del expediente arriba (que ya lleva a cada pantalla) las pestañas eran una
+                 segunda navegación, en otro orden. Quedan solo donde no hay ruta: la persona relacionada. --}}
             @php
                 $tabs = [
                     'datos' => ['Datos', 'ti-user'],
@@ -52,39 +67,41 @@
                     .tabs-cliente .btn { font-size:13px; padding:6px 10px; }
                 }
             </style>
-            <div class="tabs-cliente">
-                @foreach($tabs as $clave => [$titulo, $icono])
-                    <button type="button"
-                            class="btn btn-sm py-1 px-2 {{ $tab === $clave ? 'btn-dark' : 'btn-link text-muted text-decoration-none' }}"
-                            wire:click="$set('tab', '{{ $clave }}')">
-                        <i class="ti {{ $icono }} f-s-14"></i> {{ $titulo }}
-                    </button>
-                @endforeach
-            </div>
+            @if($client->es_relacionado)
+                <div class="tabs-cliente">
+                    @foreach($tabs as $clave => [$titulo, $icono])
+                        <button type="button"
+                                class="btn btn-sm py-1 px-2 {{ $tab === $clave ? 'btn-dark' : 'btn-link text-muted text-decoration-none' }}"
+                                wire:click="$set('tab', '{{ $clave }}')">
+                            <i class="ti {{ $icono }} f-s-14"></i> {{ $titulo }}
+                        </button>
+                    @endforeach
+                </div>
+            @endif
 
             {{-- ════════ Préstamos (10/10: lista + alta en la misma pestaña) ════════ --}}
             @if($tab === 'prestamos')
-                <livewire:clients.prestamos :id="$clientId" :key="'pre-'.$clientId" />
+                <livewire:clients.prestamos :id="$clientId" :prestamo="$prestamoElegido" :key="'pre-'.$clientId" />
             @endif
 
             {{-- ════════ Vehículos ════════ --}}
             @if($tab === 'vehiculos')
-                <livewire:clients.vehiculos :id="$clientId" :key="'veh-'.$clientId" />
+                <livewire:clients.vehiculos :id="$clientId" :prestamo="$prestamoElegido" :key="'veh-'.$clientId" />
             @endif
 
             {{-- ════════ Documentos ════════ --}}
             @if($tab === 'documentos')
-                <livewire:clients.documentos :id="$clientId" :embebido="true" :key="'doc-'.$clientId" />
+                <livewire:clients.documentos :id="$clientId" :embebido="true" :prestamo="$prestamoElegido" :key="'doc-'.$clientId" />
             @endif
 
             {{-- ════════ Adjuntos ════════ --}}
             @if($tab === 'adjuntos')
-                <livewire:clients.gallery :id="$clientId" :embebido="true" :key="'gal-'.$clientId" />
+                <livewire:clients.gallery :id="$clientId" :embebido="true" :prestamo="$prestamoElegido" :key="'gal-'.$clientId" />
             @endif
 
             {{-- ════════ GPS (antes columnas C. y N. del listado) ════════ --}}
             @if($tab === 'gps')
-                <livewire:clients.gps :id="$clientId" :key="'gps-'.$clientId" />
+                <livewire:clients.gps :id="$clientId" :prestamo="$prestamoElegido" :key="'gps-'.$clientId" />
             @endif
 
             {{-- ════════ Datos del cliente ════════ --}}

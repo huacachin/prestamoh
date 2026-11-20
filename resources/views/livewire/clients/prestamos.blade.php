@@ -91,6 +91,8 @@
                                     {{ $credit->id }}
                                 @endif
                                 @if($esNuevo)<span class="badge bg-success ms-1" style="font-size:9px;">nuevo</span>@endif
+                                {{-- 20/11: el préstamo cuyos pasos muestra la ruta de arriba. --}}
+                                @if($prestamoDeLaRuta === $credit->id)<span class="badge bg-primary ms-1" style="font-size:9px;" title="La ruta de arriba muestra los pasos de este préstamo">en la ruta</span>@endif
                             </td>
                             <td class="text-center">{{ $credit->fecha_prestamo?->format('d/m/Y') }}</td>
                             <td class="text-center">{{ $credit->fecha_vencimiento?->format('d/m/Y') }}</td>
@@ -116,6 +118,24 @@
                                             <i class="ti ti-currency-dollar"></i>
                                         </a>
                                     @endcan
+                                    {{-- 20/11: ver en la ruta los pasos de este préstamo. --}}
+                                    @if($prestamoDeLaRuta !== $credit->id)
+                                        <button type="button" class="btn btn-xs btn-outline-primary" style="padding: 1px 6px; font-size: 10px;"
+                                                wire:click="$parent.$set('prestamo', '{{ $credit->id }}')" title="Ver en la ruta los pasos de este préstamo">
+                                            <i class="ti ti-route"></i> Pasos
+                                        </button>
+                                    @endif
+                                    {{-- 20/11: se edita mientras no tenga el contrato emitido (y, como siempre, el día del registro). --}}
+                                    @if($puedeVerCreditos && ($edicion[$credit->id]['editable'] ?? false))
+                                        <a href="{{ route('credits.edit', ['id' => $credit->id, 'desde' => 'expediente']) }}" class="btn btn-xs btn-outline-warning"
+                                           style="padding: 1px 6px; font-size: 10px;" title="Editar el préstamo">
+                                            <i class="ti ti-edit"></i>
+                                        </a>
+                                    @elseif($puedeVerCreditos && ($edicion[$credit->id]['contrato'] ?? false))
+                                        <span class="text-muted" style="padding: 1px 4px; font-size: 12px;" title="{{ \App\Support\EdicionCredito::MOTIVO_CONTRATO }}">
+                                            <i class="ti ti-lock" aria-hidden="true"></i><span class="visually-hidden">Edición bloqueada: contrato emitido</span>
+                                        </span>
+                                    @endif
                                 @endif
                             </td>
                         </tr>

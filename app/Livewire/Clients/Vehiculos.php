@@ -3,6 +3,7 @@
 namespace App\Livewire\Clients;
 
 use App\Models\Client;
+use App\Models\CreditVehiculo;
 use App\Models\Vehiculo;
 use App\Services\Factiliza;
 use App\Support\Audit;
@@ -10,10 +11,12 @@ use App\Support\ConReglasDeEliminacion;
 use App\Support\CorreoEnPartes;
 use App\Support\Documentos\Nacionalidades;
 use App\Support\PlacaRegistrada;
+use App\Support\RutaExpediente;
 use App\Support\Ubigeo;
 use App\Support\VehiculoCatalogos;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\Reactive;
 use Livewire\Component;
 
 /**
@@ -122,10 +125,15 @@ class Vehiculos extends Component
      */
     public array $autoCopro = [];
 
-    public function mount(int $id): void
+    /** 20/11: préstamo cuyo paso a paso muestra la ruta de la ficha (null = el de la ruta). */
+    #[Reactive]
+    public ?int $prestamo = null;
+
+    public function mount(int $id, ?int $prestamo = null): void
     {
         $this->client = Client::findOrFail($id);
         $this->clientId = $id;
+        $this->prestamo = $prestamo;
 
         // Analista (scope-propio): solo su cartera y sin editar
         abort_if(
@@ -248,6 +256,7 @@ class Vehiculos extends Component
 
         $this->msgType = 'ok';
         $this->limpiarFormulario();
+        $this->dispatch('expediente-actualizado'); // 20/11: la barra de la ruta de la ficha se recalcula
     }
 
     public function eliminar(int $id): void
@@ -263,6 +272,7 @@ class Vehiculos extends Component
         $this->msgType = 'ok';
         $this->msg = "Vehículo {$placa} eliminado.";
         $this->limpiarFormulario();
+        $this->dispatch('expediente-actualizado');
     }
 
     /** Autocompleta el formulario con los datos de la placa (Factiliza). */
@@ -591,6 +601,47 @@ class Vehiculos extends Component
         $this->msg = 'Copropietario retirado del vehículo '.$v->placa.'.';
     }
 
+    /**
+     * 20/11/2026 (Antony: "un cliente puede prendar el mismo vehículo si ya ha pagado parte de su
+     * préstamo"): un préstamo nuevo vuelve a pedir el vehículo; con esto se dice que lo garantiza uno ya
+     * registrado, sin volver a cargarlo.
+     */
+    public function prendar(int $vehiculoId): void
+    {
+        $this->autorizarEdicion();
+        $vehiculo = Vehiculo::where('client_id', $this->clientId)->findOrFail($vehiculoId);
+        $ruta = RutaExpediente::vehiculosDelPrestamo($this->clientId, $this->prestamo);
+        if ($ruta['credito'] === null || ! $ruta['abre']) {
+            $this->dispatch('errorAlert', ['message' => 'Primero crea el préstamo: el vehículo se elige para un préstamo activo.']);
+
+            return;
+        }
+
+        CreditVehiculo::updateOrCreate(
+            ['credit_id' => $ruta['credito'], 'vehiculo_id' => $vehiculo->id],
+            ['prendado' => true, 'registrado_por' => auth()->id()]
+        );
+        $this->msgType = 'ok';
+        $this->msg = "El vehículo {$vehiculo->placa} garantiza el préstamo #{$ruta['credito']}.";
+        $this->dispatch('expediente-actualizado');
+    }
+
+    /** Deshace prendar(): el vehículo deja de garantizar el préstamo (y con él, la confirmación de su GPS). */
+    public function quitarPrenda(int $vehiculoId): void
+    {
+        $this->autorizarEdicion();
+        $vehiculo = Vehiculo::where('client_id', $this->clientId)->findOrFail($vehiculoId);
+        $credito = RutaExpediente::vehiculosDelPrestamo($this->clientId, $this->prestamo)['credito'];
+        if ($credito === null) {
+            return;
+        }
+
+        CreditVehiculo::where('credit_id', $credito)->where('vehiculo_id', $vehiculo->id)->where('prendado', true)->get()->each->delete();
+        $this->msgType = 'ok';
+        $this->msg = "El vehículo {$vehiculo->placa} ya no garantiza el préstamo #{$credito}.";
+        $this->dispatch('expediente-actualizado');
+    }
+
     private function autorizarEdicion(): void
     {
         abort_unless($this->puedeEditar, 403, 'Tu rol no permite editar vehículos.');
@@ -620,6 +671,8 @@ class Vehiculos extends Component
             : collect();
 
         return view('livewire.clients.vehiculos', [
+            // 20/11: qué vehículos son del préstamo de la ruta (los pasos son de cada préstamo).
+            'ruta' => RutaExpediente::vehiculosDelPrestamo($this->clientId, $this->prestamo),
             'listado' => Vehiculo::with('copropietarios')->where('client_id', $this->clientId)->orderBy('id')->get(),
             'coproCandidatos' => $candidatos,
             // Sin resultados porque lo buscado es el propio titular: avisar en vez de ofrecer "crear persona".
