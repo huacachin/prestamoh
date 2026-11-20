@@ -39,8 +39,16 @@
         .ruta-expediente { border: 1px solid #e3e6ee; border-radius: 8px; padding: 10px 12px; background: #fff; }
         .ruta-cabecera { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; margin-bottom: 6px; }
         .ruta-titulo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; }
-        .ruta-prestamo { font-weight: 600; color: #3a4152; }
-        .ruta-prestamo select { font-size: 12px; font-weight: 600; }
+        /* 20/11 (Antony: "ese select de préstamos que sea más visible"… "algo más sutil"): sin recuadro; el
+           selector lleva borde y fondo azul claro y la letra un punto más grande que el resto de la barra.
+           !important: el tema fija la letra de todos los .form-select en 10px. */
+        .ruta-prestamo { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #3a4152; }
+        .ruta-prestamo select.form-select { padding: 1px 24px 1px 7px; border: 1px solid #0a6fb0; background-color: #f1f7fc; color: #0a3f66;
+                                            background-position: right 6px center; background-size: 12px 10px; line-height: 1.3;
+                                            font-size: 11px !important; font-weight: 700; cursor: pointer; }
+        .ruta-prestamo select.form-select:focus { box-shadow: 0 0 0 2px rgba(10, 111, 176, .2); }
+        .ruta-prestamo-uno { color: #0a3f66; font-weight: 700; }
+        .ruta-prestamo-cuantos { font-size: 11px; color: #5b6472; white-space: nowrap; }
         .ruta-avance { font-size: 12px; font-weight: 600; color: #3a4152; }
         .ruta-barra { height: 6px; border-radius: 3px; background: #e6e9f0; overflow: hidden; margin-bottom: 8px; }
         .ruta-barra > div { height: 6px; border-radius: 3px; background: #1a7a34; }
@@ -76,17 +84,18 @@
                          selector cuando el préstamo cambia desde fuera (uno recién creado). --}}
                     <span class="ruta-prestamo">
                         <label for="ruta-prestamo" class="mb-0">· Pasos del préstamo</label>
-                        <select id="ruta-prestamo" class="form-select form-select-sm d-inline-block w-auto py-0" wire:key="ruta-prestamo-{{ $ruta['credito'] }}"
-                                wire:change="$parent.$set('prestamo', $event.target.value)">
+                        <select id="ruta-prestamo" class="form-select d-inline-block w-auto" wire:key="ruta-prestamo-{{ $ruta['credito'] }}"
+                                wire:change="$parent.$set('prestamo', $event.target.value)" title="Elige de qué préstamo se ven los pasos">
                             @foreach($prestamos as $opcion)
                                 <option value="{{ $opcion['id'] }}" @selected($opcion['id'] === $ruta['credito'])>
-                                    #{{ $opcion['id'] }} · {{ $opcion['fecha'] }}{{ $opcion['refinanciacion'] ? ' · refinanciación' : '' }}
+                                    #{{ $opcion['id'] }} · {{ $opcion['fecha'] }} · S/ {{ number_format($opcion['importe'], 2) }}{{ $opcion['refinanciacion'] ? ' · refinanciación' : '' }}
                                 </option>
                             @endforeach
                         </select>
+                        <span class="ruta-prestamo-cuantos">{{ count($prestamos) }} activos</span>
                     </span>
                 @else
-                    <span class="ruta-prestamo">· Pasos del préstamo #{{ $ruta['credito'] }}</span>
+                    <span class="ruta-prestamo ruta-prestamo-uno">· Pasos del préstamo #{{ $ruta['credito'] }}</span>
                 @endif
             @endif
         </span>

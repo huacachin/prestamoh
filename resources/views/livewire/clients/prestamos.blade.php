@@ -6,6 +6,13 @@
      x-on:prestamo-cancelado="abierto = false">
     <style>
         .alta-prestamo { background: #fffdf5; }
+        /* 20/11 (Antony): el préstamo cuyos pasos muestra la ruta va sombreado en amarillo Huacachin (el mismo de
+           la fila con recibos abiertos del reporte de pagos y de las cuotas vencidas en Morosos). Bootstrap pinta
+           la cebra y el hover con un box-shadow interior sobre la celda, que teñiría el amarillo; se apaga igual. */
+        .tabla-prestamos tbody tr.fila-en-ruta > td {
+            background-color: #ffff00 !important;
+            --bs-table-bg-type: transparent; --bs-table-accent-bg: transparent; --bs-table-bg-state: transparent; box-shadow: none;
+        }
     </style>
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
         <h6 class="mb-0" style="color:red;">
@@ -81,8 +88,11 @@
                                 default => 'bg-secondary',
                             };
                             $esNuevo = $recienCreado === $credit->id;
+                            // 20/11: el préstamo cuyos pasos muestra la ruta de arriba (fila en amarillo).
+                            $enRuta = $prestamoDeLaRuta === $credit->id;
                         @endphp
-                        <tr @class(['table-success fila-nueva' => $esNuevo]) wire:key="prestamo-{{ $credit->id }}">
+                        <tr @class(['table-success fila-nueva' => $esNuevo, 'fila-en-ruta' => $enRuta]) wire:key="prestamo-{{ $credit->id }}"
+                            @if($enRuta) aria-current="true" title="La ruta de arriba muestra los pasos de este préstamo" @endif>
                             <td class="text-center">{{ $loop->iteration }}</td>
                             <td class="text-center fw-bold">
                                 @if($puedeVerCreditos)
@@ -91,8 +101,6 @@
                                     {{ $credit->id }}
                                 @endif
                                 @if($esNuevo)<span class="badge bg-success ms-1" style="font-size:9px;">nuevo</span>@endif
-                                {{-- 20/11: el préstamo cuyos pasos muestra la ruta de arriba. --}}
-                                @if($prestamoDeLaRuta === $credit->id)<span class="badge bg-primary ms-1" style="font-size:9px;" title="La ruta de arriba muestra los pasos de este préstamo">en la ruta</span>@endif
                             </td>
                             <td class="text-center">{{ $credit->fecha_prestamo?->format('d/m/Y') }}</td>
                             <td class="text-center">{{ $credit->fecha_vencimiento?->format('d/m/Y') }}</td>
@@ -119,7 +127,7 @@
                                         </a>
                                     @endcan
                                     {{-- 20/11: ver en la ruta los pasos de este préstamo. --}}
-                                    @if($prestamoDeLaRuta !== $credit->id)
+                                    @if(! $enRuta)
                                         <button type="button" class="btn btn-xs btn-outline-primary" style="padding: 1px 6px; font-size: 10px;"
                                                 wire:click="$parent.$set('prestamo', '{{ $credit->id }}')" title="Ver en la ruta los pasos de este préstamo">
                                             <i class="ti ti-route"></i> Pasos

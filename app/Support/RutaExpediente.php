@@ -20,6 +20,7 @@ use Illuminate\Support\Str;
  *  · Documentos y SIGM llevan el préstamo anotado.
  *  · Fotos, vehículos y cuentas GPS no: pertenecen al préstamo vigente cuando se registraron (ver
  *    expedientesDe y esDe). Lo que vino del sistema anterior es de los préstamos antiguos.
+ *  · El vehículo que nombra el contrato emitido del préstamo es suyo, se registrara cuando se registrara.
  *  · El mismo vehículo puede volver a prendarse (Antony: "un cliente puede prendar el mismo vehículo si ya
  *    ha pagado parte de su préstamo"): se dice en la pestaña Vehículos y queda en `credit_vehiculo`, igual
  *    que la confirmación de que su cuenta GPS vale para el préstamo nuevo.
@@ -142,14 +143,19 @@ final class RutaExpediente
     /**
      * Préstamos Activos del cliente entre los que se puede elegir la ruta, primero el de la ruta.
      *
-     * @return list<array{id: int, fecha: ?string, refinanciacion: bool}>
+     * @return list<array{id: int, fecha: ?string, importe: float, refinanciacion: bool}>
      */
     public static function prestamosActivos(int $clientId): array
     {
         return DB::table('credits')->where('client_id', $clientId)->where('situacion', 'Activo')
             ->orderBy('refinanciado')->orderByDesc('fecha_prestamo')->orderByDesc('id')
-            ->get(['id', 'fecha_prestamo', 'refinanciado'])
-            ->map(fn ($c) => ['id' => (int) $c->id, 'fecha' => $c->fecha_prestamo ? date('d/m/Y', strtotime((string) $c->fecha_prestamo)) : null, 'refinanciacion' => (bool) $c->refinanciado])
+            ->get(['id', 'fecha_prestamo', 'importe', 'refinanciado'])
+            ->map(fn ($c) => [
+                'id' => (int) $c->id,
+                'fecha' => $c->fecha_prestamo ? date('d/m/Y', strtotime((string) $c->fecha_prestamo)) : null,
+                'importe' => (float) $c->importe,
+                'refinanciacion' => (bool) $c->refinanciado,
+            ])
             ->all();
     }
 
@@ -277,8 +283,10 @@ final class RutaExpediente
             $fotos[(int) $foto->client_id][] = self::momento($foto->created_at);
         }
         $vehiculos = [];
-        foreach (DB::table('vehiculos')->whereIn('client_id', $ids)->orderBy('id')->get(['id', 'client_id', 'created_at']) as $vehiculo) {
+        $placas = [];
+        foreach (DB::table('vehiculos')->whereIn('client_id', $ids)->orderBy('id')->get(['id', 'client_id', 'placa', 'created_at']) as $vehiculo) {
             $vehiculos[(int) $vehiculo->client_id][(int) $vehiculo->id] = self::momento($vehiculo->created_at);
+            $placas[(int) $vehiculo->id] = self::placa($vehiculo->placa);
         }
         $cuentas = [];
         foreach (DB::table('vehiculo_gps_cuentas')->join('vehiculos', 'vehiculos.id', '=', 'vehiculo_gps_cuentas.vehiculo_id')
@@ -291,6 +299,18 @@ final class RutaExpediente
         if ($creditos !== []) {
             foreach (DB::table('credit_vehiculo')->whereIn('credit_id', $creditos)->get(['credit_id', 'vehiculo_id', 'prendado', 'gps_confirmado_at']) as $vinculo) {
                 $vinculos[(int) $vinculo->credit_id][(int) $vinculo->vehiculo_id] = ['prendado' => (bool) $vinculo->prendado, 'gps' => $vinculo->gps_confirmado_at !== null];
+            }
+        }
+
+        // Las placas que nombra el contrato emitido del préstamo: ese vehículo es suyo, se registrara cuando
+        // se registrara (20/11: en producción, 13 préstamos con el contrato ya emitido pedían "elegir el vehículo").
+        $enContrato = [];
+        if ($creditos !== []) {
+            foreach (DB::table('documentos_cliente')->whereIn('credit_id', $creditos)->where('tipo', 'contrato')->where('estado', 'emitido')
+                ->selectRaw("credit_id, JSON_EXTRACT(snapshot, '$.bienes[*].placa') as placas")->get() as $contrato) {
+                foreach ((array) json_decode((string) $contrato->placas, true) as $placa) {
+                    $enContrato[(int) $contrato->credit_id][self::placa($placa)] = true;
+                }
             }
         }
 
@@ -314,7 +334,7 @@ final class RutaExpediente
                 $vinculo = $vinculos[$credito][$vehiculoId] ?? ['prendado' => false, 'gps' => false];
                 $cuenta = $cuentas[$vehiculoId] ?? null;
                 $delCliente[$vehiculoId] = [
-                    'del_prestamo' => $abre && ($vinculo['prendado'] || $esSuyo($registrado)),
+                    'del_prestamo' => $abre && ($vinculo['prendado'] || $esSuyo($registrado) || isset($enContrato[$credito][$placas[$vehiculoId]])),
                     'prendado' => $vinculo['prendado'],
                     'cuenta' => $cuenta !== null,
                     // La cuenta vale para este préstamo si se registró o se volvió a guardar durante él, o se confirmó.
@@ -364,6 +384,12 @@ final class RutaExpediente
         }
 
         return [$expedientes, $ultimoCreado];
+    }
+
+    /** La placa sin guiones ni espacios y en mayúsculas, para comparar la de la ficha con la del contrato. */
+    private static function placa(mixed $placa): string
+    {
+        return strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', (string) $placa));
     }
 
     /** Momento en que se registró algo; PHP_INT_MIN si vino del sistema anterior (su fecha es la de la migración). */

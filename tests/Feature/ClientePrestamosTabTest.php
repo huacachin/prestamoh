@@ -164,7 +164,8 @@ class ClientePrestamosTabTest extends TestCase
         $comp->dispatch('prestamo-creado', id: 29501)->assertSet('recienCreado', 29501);
         $html = $comp->html();
         $this->assertStringContainsString('(1 · 1 activo)', $html);
-        $this->assertMatchesRegularExpression('/<tr class="table-success fila-nueva" wire:key="prestamo-29501">/', $html);
+        // 20/11 (Antony): el préstamo recién creado pasa a ser el de la ruta, y su fila va además en amarillo Huacachin.
+        $this->assertMatchesRegularExpression('/<tr class="table-success fila-nueva fila-en-ruta" wire:key="prestamo-29501"/', $html);
         $this->assertStringContainsString('>nuevo</span>', $html);
 
         // La ficha también se entera: el Estado del cliente deja de editarse.

@@ -607,7 +607,7 @@ class RutaExpedienteTest extends TestCase
             ->assertDontSee('Documentos del préstamo');
     }
 
-    public function test_la_pestana_prestamos_marca_el_prestamo_de_la_ruta_y_deja_ver_los_pasos_de_los_otros(): void
+    public function test_la_pestana_prestamos_sombrea_el_prestamo_de_la_ruta_y_deja_ver_los_pasos_de_los_otros(): void
     {
         $this->asesor->givePermissionTo(Permission::findOrCreate('creditos', 'web'));
         app(PermissionRegistrar::class)->forgetCachedPermissions();
@@ -616,15 +616,18 @@ class RutaExpedienteTest extends TestCase
         $reciente = $this->credito($client, 'Activo', '2026-11-20');
         $anterior = $this->credito($client, 'Activo', '2026-10-01');
         $fila = fn (string $html, Credit $c): string => explode('</tr>', explode('wire:key="prestamo-'.$c->id.'"', $html)[1])[0];
+        // 20/11 (Antony): en vez de la etiqueta "en la ruta", la fila va sombreada en amarillo Huacachin.
+        $sombreada = fn (string $html, Credit $c): bool => (bool) preg_match('/<tr\b[^>]*class="[^"]*\bfila-en-ruta\b[^"]*"[^>]*wire:key="prestamo-'.$c->id.'"/', $html);
         $verPasos = fn (Credit $c): string => "wire:click=\"\$parent.\$set('prestamo', '{$c->id}')\"";
 
         $html = Livewire::test(Prestamos::class, ['id' => $client->id])->html();
-        $this->assertStringContainsString('en la ruta', $fila($html, $reciente));
+        $this->assertSame([true, false], [$sombreada($html, $reciente), $sombreada($html, $anterior)]);
+        $this->assertStringNotContainsString('>en la ruta</span>', $html, 'ya sin la etiqueta');
         $this->assertStringNotContainsString($verPasos($reciente), $fila($html, $reciente));
         $this->assertStringContainsString($verPasos($anterior), $fila($html, $anterior));
 
         $html = Livewire::test(Prestamos::class, ['id' => $client->id, 'prestamo' => $anterior->id])->html();
-        $this->assertStringContainsString('en la ruta', $fila($html, $anterior));
+        $this->assertSame([false, true], [$sombreada($html, $reciente), $sombreada($html, $anterior)]);
         $this->assertStringContainsString($verPasos($reciente), $fila($html, $reciente));
     }
 
@@ -788,6 +791,28 @@ class RutaExpedienteTest extends TestCase
         $this->travelTo('2026-11-20 10:00:00');
 
         return [$client, $vehiculo, $this->credito($client, 'Activo', '2026-11-20')];
+    }
+
+    public function test_el_vehiculo_que_nombra_el_contrato_emitido_del_prestamo_es_de_ese_prestamo(): void
+    {
+        [$client, $vehiculo, $nuevo] = $this->clienteQueVuelve();
+        $this->assertSame(['pendiente', 'Elige el vehículo'], $this->pasos($client)['vehiculo']);
+        $contrato = fn (string $placa, string $estado) => DB::table('documentos_cliente')->insertGetId([
+            'client_id' => $client->id, 'credit_id' => $nuevo->id, 'tipo' => 'contrato', 'estado' => $estado,
+            'snapshot' => json_encode(['bienes' => [['placa' => $placa]]]), 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        // Un contrato anulado, o el de otra placa, no dice nada de este vehículo.
+        $contrato('rut-001', 'anulado');
+        $contrato('OTRA99', 'emitido');
+        $this->assertSame('pendiente', $this->pasos($client)['vehiculo'][0]);
+
+        // La placa se compara sin guiones ni mayúsculas: la ficha dice RUT001 y el contrato "rut-001".
+        $this->assertSame('RUT001', $vehiculo->placa);
+        $contrato('rut-001', 'emitido');
+
+        $this->assertSame(['hecho', '1 vehículo'], $this->pasos($client)['vehiculo']);
+        $this->assertTrue(RutaExpediente::vehiculosDelPrestamo($client->id, $nuevo->id)['vehiculos'][$vehiculo->id]['del_prestamo']);
     }
 
     public function test_en_la_pestana_vehiculos_se_vuelve_a_prendar_el_mismo_vehiculo_y_se_puede_deshacer(): void
