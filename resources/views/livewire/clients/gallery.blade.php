@@ -85,17 +85,16 @@
                      @dragover.prevent="drag = true"
                      @dragenter.prevent="drag = true"
                      @dragleave.prevent="drag = false"
-                     @drop.prevent="onDrop($event)"
-                     :class="drag ? 'huac-drop--active' : ''"
-                     class="huac-drop"
-                     @click="openPicker()">
+                     @drop.prevent="onDrop($event)">
 
-                    <input type="file" class="d-none" x-ref="fileInput" multiple
-                           wire:model="files"
-                           accept="image/jpeg,image/png,image/gif,image/webp">
-
-                    {{-- ESTADO 1 · Vacío --}}
-                    @if(empty($files))
+                    {{-- 20/11 (Antony: "como en taxivan… así separados, no dentro"): la zona punteada queda siempre
+                         igual y es la que abre el selector; las vistas previas van debajo, fuera de ella. Soltar
+                         sigue valiendo en todo el bloque, también sobre las vistas previas: si no, el navegador
+                         abriría la imagen soltada y se perdería lo escrito en el formulario. --}}
+                    <div class="huac-drop" :class="drag ? 'huac-drop--active' : ''" @click="openPicker()">
+                        <input type="file" class="d-none" x-ref="fileInput" multiple
+                               wire:model="files"
+                               accept="image/jpeg,image/png,image/gif,image/webp">
                         <div class="d-flex align-items-center justify-content-center gap-2 flex-wrap">
                             <i class="ti ti-cloud-upload" style="font-size:22px; color:#9aa0aa;"></i>
                             <span class="fw-semibold small">Arrastra imágenes aquí</span>
@@ -103,23 +102,14 @@
                                 o <span class="text-primary text-decoration-underline">click para seleccionar</span> · JPG/PNG/GIF/WebP · máx. 10 MB c/u
                             </span>
                         </div>
-                    @endif
+                    </div>
 
-                    {{-- ESTADO 2 · Con archivos: previews adentro --}}
-                    @if(!empty($files))
-                        <div>
-                            <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-                                <span class="small fw-semibold text-success">
-                                    <i class="ti ti-circle-check"></i>
-                                    {{ count($files) }} {{ count($files) === 1 ? 'imagen lista' : 'imágenes listas' }}
-                                </span>
-                                <span class="small text-muted">
-                                    Suelta más imágenes o haz clic en cualquier parte para añadir otra.
-                                </span>
+                    @if(! empty($files))
+                        <div class="mt-2">
+                            <div class="small fw-semibold text-success mb-2">
+                                <i class="ti ti-circle-check"></i>
+                                {{ count($files) }} {{ count($files) === 1 ? 'imagen lista' : 'imágenes listas' }}
                             </div>
-                            {{-- 20/11 (Antony): toda la zona abre el selector, también sobre las miniaturas; solo «Quitar»
-                                 frena el clic. Antes lo frenaba la rejilla entera y, con las vistas previas grandes, solo
-                                 respondía el borde. --}}
                             <div class="row g-2">
                                 @foreach($files as $i => $f)
                                     <div class="col-6 col-sm-3 col-md-2">
@@ -141,7 +131,7 @@
                                             <button type="button"
                                                     class="btn btn-danger position-absolute"
                                                     style="top:2px; right:2px; padding:0 6px; font-size:10px; line-height:18px;"
-                                                    wire:click="removeFile({{ $i }})" @click.stop
+                                                    wire:click="removeFile({{ $i }})"
                                                     title="Quitar">
                                                 <i class="ti ti-x"></i>
                                             </button>
