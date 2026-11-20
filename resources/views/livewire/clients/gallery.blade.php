@@ -114,10 +114,13 @@
                                     {{ count($files) }} {{ count($files) === 1 ? 'imagen lista' : 'imágenes listas' }}
                                 </span>
                                 <span class="small text-muted">
-                                    Suelta más imágenes para añadirlas — o haz clic fuera de las miniaturas para seleccionar.
+                                    Suelta más imágenes o haz clic en cualquier parte para añadir otra.
                                 </span>
                             </div>
-                            <div class="row g-2" @click.stop>
+                            {{-- 20/11 (Antony): toda la zona abre el selector, también sobre las miniaturas; solo «Quitar»
+                                 frena el clic. Antes lo frenaba la rejilla entera y, con las vistas previas grandes, solo
+                                 respondía el borde. --}}
+                            <div class="row g-2">
                                 @foreach($files as $i => $f)
                                     <div class="col-6 col-sm-3 col-md-2">
                                         <div class="position-relative border rounded p-1 bg-white">
@@ -138,7 +141,7 @@
                                             <button type="button"
                                                     class="btn btn-danger position-absolute"
                                                     style="top:2px; right:2px; padding:0 6px; font-size:10px; line-height:18px;"
-                                                    wire:click="removeFile({{ $i }})"
+                                                    wire:click="removeFile({{ $i }})" @click.stop
                                                     title="Quitar">
                                                 <i class="ti ti-x"></i>
                                             </button>

@@ -200,9 +200,12 @@
                                                     <i class="ti ti-circle-check"></i>
                                                     {{ count($files) }} {{ count($files) === 1 ? 'imagen lista' : 'imágenes listas' }}
                                                 </span>
-                                                <span class="small text-muted">Soltá más imágenes para añadirlas.</span>
+                                                <span class="small text-muted">Soltá más imágenes o hacé clic en cualquier parte para añadir otra.</span>
                                             </div>
-                                            <div class="row g-2" @click.stop>
+                                            {{-- 20/11 (Antony): toda la zona abre el selector, también sobre las miniaturas; solo «Quitar»
+                                                 frena el clic. Antes lo frenaba la rejilla entera y, con las vistas previas grandes, solo
+                                                 respondía el borde. --}}
+                                            <div class="row g-2">
                                                 @foreach($files as $i => $f)
                                                     <div class="col-12 col-xl-6">{{-- 26/09: vista previa al 75% del tamaño real --}}
                                                         <div class="position-relative border rounded p-1 bg-white">
@@ -219,7 +222,7 @@
                                                             @endif
                                                             <button type="button" class="btn btn-danger position-absolute"
                                                                     style="top:2px; right:2px; padding:0 6px; font-size:10px; line-height:18px;"
-                                                                    wire:click="removeFile({{ $i }})" title="Quitar">
+                                                                    wire:click="removeFile({{ $i }})" @click.stop title="Quitar">
                                                                 <i class="ti ti-x"></i>
                                                             </button>
                                                         </div>
