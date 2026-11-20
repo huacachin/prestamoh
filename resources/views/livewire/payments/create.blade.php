@@ -742,6 +742,21 @@
             /* El tema fuerza 10px en .btn e input: la cuota elegida es la cifra principal del modal. */
             .cancelacion-paso .btn, .cancelacion-paso input { font-size: .95rem !important; }
             .cancelacion-cuenta .cancelacion-total td { font-weight: 700; font-size: 1.05rem; color: #dc3545; border-top: 2px solid #dc3545; border-bottom: 0; }
+            /* 20/11 (Antony: "se ha vuelto muy desordenado"): resumen tipo recibo de "Calcular pagos" — bloques con
+               título, filas concepto/importe, subtotal en rojo y una franja con el total. Sin display !important:
+               así x-show las oculta (con .d-flex de Bootstrap no se ocultaban). */
+            .calc-seccion { font-size: .68rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #6b7280; margin-bottom: 4px; }
+            .calc-resumen { border: 1px solid #d9dee5; border-radius: 8px; overflow: hidden; background: #fff; }
+            .calc-bloque { padding: 8px 12px; }
+            .calc-bloque + .calc-bloque { border-top: 1px solid #e5e7eb; }
+            .calc-titulo { font-size: .7rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: #374151; margin-bottom: 3px; }
+            .calc-titulo-nota { font-weight: 400; letter-spacing: 0; text-transform: none; color: #6b7280; margin-left: 4px; }
+            .calc-fila { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 2px 0; }
+            .calc-fila > span:last-child { white-space: nowrap; font-variant-numeric: tabular-nums; }
+            .calc-fila.calc-subtotal { font-weight: 700; color: #dc3545; border-top: 1px solid #f1aeb5; margin-top: 4px; padding-top: 5px; }
+            .calc-total { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 9px 12px; background: #f3f4f6; border-top: 1px solid #d9dee5; font-weight: 800; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+            .calc-importe { width: 96px; }
+            .calc-nota { font-size: .78rem; color: #0b3d62; background: #e8f4fd; border-radius: 6px; padding: 6px 9px; }
             /* En móvil una debajo de la otra, sin apretar las cifras. */
             @media (max-width: 575.98px) { .saldo-band { grid-template-columns: 1fr; } }
         </style>
@@ -1747,99 +1762,117 @@
                     <div class="modal-body" x-show="tab === 'cancelacion' && ! hayCancelacion && ! alDia">
                         <div class="alert alert-light border small mb-0" x-text="sinCancelacion"></div>
                     </div>
-                    {{-- 06/11 (Antony, 28732): sin la fórmula por cuota (mensual de una cuota), lo de cancelar hoy:
-                         capital + interés a la fecha, la cifra del switch Cancelado; va al Monto a Pagar sin cancelar. --}}
-                    <div class="modal-body" x-show="tab === 'cancelacion' && ! hayCancelacion && alDia">
-                      <div class="mx-auto" style="max-width:420px;" x-show="alDia">
-                        <table class="table table-sm mb-0 cancelacion-cuenta">
-                            <tbody>
-                                <tr><td class="text-start">Capital pendiente</td><td class="text-end" x-text="alDia ? soles(alDia.capital) : ''"></td></tr>
-                                <tr><td class="text-start">+ Interés a la fecha</td><td class="text-end" x-text="alDia ? soles(alDia.interes) : ''"></td></tr>
-                                <tr class="cancelacion-total">
-                                    <td class="text-start">Total para cancelar hoy</td>
-                                    <td class="text-end" x-text="alDia ? soles(alDia.total) : ''"></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <div class="d-flex justify-content-between small mt-2" x-show="alDia && alDia.mora > 0.005">
-                            <span>Mora: se cobra aparte, como en cualquier cobro</span>
-                            <b x-text="alDia ? soles(alDia.mora) : ''"></b>
-                        </div>
-                        @include('livewire.payments.partials._cancelacion-mora-acum', ['sufijo' => 'al-dia'])
-                        <div class="rounded p-2 mt-2 small" style="background:#e8f4fd; color:#0b3d62;">
-                            <i class="ti ti-info-circle f-s-12"></i>
-                            El crédito <b>queda vigente</b>: este monto se cobra como un pago normal. La cancelación del crédito se hace después.
-                        </div>
-                      </div>
-                    </div>
-                    <div class="modal-body" x-show="tab === 'cancelacion' && hayCancelacion">
-                      <div class="mx-auto" style="max-width:420px;">
-                        <div class="small text-muted mb-2" x-text="'Crédito #' + p.credito + ' · ' + p.total_cuotas + ' cuotas · ' + p.pagadas + ' pagadas'"></div>
+                    {{-- Pestaña "Cancelación", reordenada el 20/11 (Antony: "con todas las cosas que le hemos agregado
+                         se ha vuelto muy desordenado"). Dos columnas: a la izquierda lo que se ELIGE (hasta qué cuota se
+                         paga el interés) y a la derecha el RESUMEN, tipo recibo, en tres bloques: el Monto a Pagar con su
+                         cuenta, las moras que se cobran aparte (la del cobro y la casilla de la acumulada, 20/11) y un
+                         único "Total a cobrar". El mensual de una cuota (06/11, 28732: capital pendiente + interés a la
+                         fecha, sin fórmula por cuota) usa el mismo resumen, centrado y sin la columna de elegir.
+                         Esta pestaña solo pone el monto: el crédito queda vigente (06/11). --}}
+                    <div class="modal-body" x-show="tab === 'cancelacion' && (hayCancelacion || alDia)">
+                        <div class="row g-3 justify-content-center">
+                            {{-- 1 · Elegir la cuota (solo con la fórmula por cuota) --}}
+                            <div class="col-md-5" x-show="hayCancelacion">
+                                <div class="calc-seccion">1 · Elige la cuota</div>
+                                <label class="form-label fw-semibold mb-0" for="cancelacion-hasta">¿Hasta qué cuota paga los intereses?</label>
+                                <div class="small text-muted mb-2" x-text="'Crédito #' + p.credito + ' · ' + p.total_cuotas + ' cuotas · ' + p.pagadas + ' pagadas'"></div>
 
-                        <label class="form-label fw-semibold mb-1" for="cancelacion-hasta">¿Hasta qué cuota paga los intereses?</label>
-                        <div class="d-flex align-items-center gap-2">
-                            <div class="input-group input-group-sm cancelacion-paso" style="width: 150px;">
-                                <button type="button" class="btn btn-outline-secondary" x-on:click="mover(-1)" :disabled="n <= p.minimo" aria-label="Una cuota menos">−</button>
-                                <input type="number" id="cancelacion-hasta" class="form-control text-center fw-bold"
-                                       x-model.number="n" :min="p.minimo" :max="p.maximo" step="1"
-                                       x-on:blur="n = limitar(n)" x-on:keydown.enter.prevent="usar()">
-                                <button type="button" class="btn btn-outline-secondary" x-on:click="mover(1)" :disabled="n >= p.maximo" aria-label="Una cuota más">+</button>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="input-group input-group-sm cancelacion-paso" style="width: 150px;">
+                                        <button type="button" class="btn btn-outline-secondary" x-on:click="mover(-1)" :disabled="n <= p.minimo" aria-label="Una cuota menos">−</button>
+                                        <input type="number" id="cancelacion-hasta" class="form-control text-center fw-bold"
+                                               x-model.number="n" :min="p.minimo" :max="p.maximo" step="1"
+                                               x-on:blur="n = limitar(n)" x-on:keydown.enter.prevent="usar()">
+                                        <button type="button" class="btn btn-outline-secondary" x-on:click="mover(1)" :disabled="n >= p.maximo" aria-label="Una cuota más">+</button>
+                                    </div>
+                                    <span class="small text-muted" x-text="valido() && vence() ? 'vence el ' + vence() : ''"></span>
+                                </div>
+                                <input type="range" class="form-range mt-2" :min="p.minimo" :max="p.maximo" step="1"
+                                       x-model.number="n" aria-label="Cuota hasta la que se cobra el interés">
+                                <div class="d-flex justify-content-between small text-muted" style="margin-top:-4px;">
+                                    <span x-text="'desde la ' + p.minimo"></span>
+                                    <span x-text="'hasta la ' + p.maximo"></span>
+                                </div>
+                                <div class="d-flex gap-1 flex-wrap mt-2">
+                                    <button type="button" class="btn btn-sm btn-light border" x-show="vencidasEnRango()"
+                                            x-on:click="n = limitar(p.vencidas)" x-text="'Hasta la última vencida (' + limitar(p.vencidas) + ')'"></button>
+                                    <button type="button" class="btn btn-sm btn-light border"
+                                            x-on:click="n = p.maximo" x-text="'Todas (' + p.maximo + ')'"></button>
+                                </div>
+
+                                <div class="small text-danger mt-2" x-show="! valido()" x-text="'Elige una cuota entre la ' + p.minimo + ' y la ' + p.maximo + '.'"></div>
+                                <div class="small text-muted mt-3" x-show="valido()">
+                                    <span x-show="n < p.maximo" x-text="'Quedan ' + soles(descuento()) + ' pendientes en el crédito: el interés de las cuotas ' + (n + 1) + ' a ' + p.maximo + ' no entra en este monto.'"></span>
+                                    <span x-show="n >= p.maximo">Incluye el interés de todas las cuotas.</span>
+                                </div>
                             </div>
-                            <span class="small text-muted" x-text="valido() && vence() ? 'vence el ' + vence() : ''"></span>
-                        </div>
-                        <input type="range" class="form-range mt-2" :min="p.minimo" :max="p.maximo" step="1"
-                               x-model.number="n" aria-label="Cuota hasta la que se cobra el interés">
-                        <div class="d-flex justify-content-between small text-muted" style="margin-top:-4px;">
-                            <span x-text="'desde la ' + p.minimo"></span>
-                            <span x-text="'hasta la ' + p.maximo"></span>
-                        </div>
-                        <div class="d-flex gap-1 flex-wrap mt-1">
-                            <button type="button" class="btn btn-sm btn-light border" x-show="vencidasEnRango()"
-                                    x-on:click="n = limitar(p.vencidas)" x-text="'Hasta la última vencida (' + limitar(p.vencidas) + ')'"></button>
-                            <button type="button" class="btn btn-sm btn-light border"
-                                    x-on:click="n = p.maximo" x-text="'Todas (' + p.maximo + ')'"></button>
-                        </div>
 
-                        <table class="table table-sm mb-0 mt-3 cancelacion-cuenta">
-                            <tbody>
-                                <tr>
-                                    <td class="text-start">Interés <span class="text-muted" x-text="soles(p.interes_cuota) + ' × ' + (valido() ? n : '…') + ' cuotas'"></span></td>
-                                    <td class="text-end" x-text="valido() ? soles(interes()) : '—'"></td>
-                                </tr>
-                                <tr><td class="text-start">+ Capital del crédito</td><td class="text-end" x-text="soles(p.capital)"></td></tr>
-                                <tr><td class="text-start">− Monto pagado</td><td class="text-end" x-text="soles(p.pagado)"></td></tr>
-                                <tr class="cancelacion-total">
-                                    <td class="text-start">Total para cancelar</td>
-                                    <td class="text-end" x-text="valido() ? soles(total()) : '—'"></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <div class="small text-muted mt-2">
-                            <span x-show="valido() && n < p.maximo" x-text="'Quedan ' + soles(descuento()) + ' pendientes en el crédito: el interés de las cuotas ' + (n + 1) + ' a ' + p.maximo + ' no entra en este monto.'"></span>
-                            <span x-show="valido() && n >= p.maximo">Incluye el interés de todas las cuotas.</span>
+                            {{-- 2 · Resumen de lo que se cobra --}}
+                            <div :class="hayCancelacion ? 'col-md-7' : 'col-md-8'">
+                                <div class="calc-seccion" x-text="hayCancelacion ? '2 · Lo que se cobra' : 'Lo que se cobra'"></div>
+                                <div class="calc-resumen">
+                                    <div class="calc-bloque">
+                                        <div class="calc-titulo">Monto a Pagar</div>
+                                        {{-- Con la fórmula por cuota: interés por cuota × N + capital del crédito − monto pagado. --}}
+                                        <div x-show="hayCancelacion">
+                                            <div class="calc-fila">
+                                                <span>Interés <span class="text-muted" x-text="numero(p.interes_cuota) + ' × ' + (valido() ? n : '…') + ' cuotas'"></span></span>
+                                                <span x-text="valido() ? numero(interes()) : '—'"></span>
+                                            </div>
+                                            <div class="calc-fila"><span>+ Capital del crédito</span><span x-text="numero(p.capital)"></span></div>
+                                            <div class="calc-fila"><span>− Monto pagado</span><span x-text="numero(p.pagado)"></span></div>
+                                        </div>
+                                        {{-- Mensual de una cuota: lo de cancelar hoy. --}}
+                                        <div x-show="! hayCancelacion">
+                                            <div class="calc-fila"><span>Capital pendiente</span><span x-text="alDia ? numero(alDia.capital) : ''"></span></div>
+                                            <div class="calc-fila"><span>+ Interés a la fecha</span><span x-text="alDia ? numero(alDia.interes) : ''"></span></div>
+                                        </div>
+                                        <div class="calc-fila calc-subtotal">
+                                            <span x-text="hayCancelacion ? 'Total para cancelar' : 'Total para cancelar hoy'"></span>
+                                            <span x-text="baseCancelacion() !== null ? soles(baseCancelacion()) : '—'"></span>
+                                        </div>
+                                    </div>
+                                    {{-- Las moras no van en el Monto a Pagar: el cobro las suma aparte (la del cobro, como
+                                         siempre —o Reserva Mora—; la acumulada, solo si se marca su casilla). --}}
+                                    <div class="calc-bloque" x-show="moraVigente() > 0.005 || ma.debe > 0.005">
+                                        <div class="calc-titulo">Moras <span class="calc-titulo-nota">se cobran aparte, como en cualquier cobro</span></div>
+                                        <div class="calc-fila" x-show="moraVigente() > 0.005">
+                                            <span>Mora<span class="text-muted" x-show="hayCancelacion && p.mora_rotulo" x-text="' (' + p.mora_rotulo + ')'"></span></span>
+                                            <span x-text="numero(moraVigente())"></span>
+                                        </div>
+                                        @include('livewire.payments.partials._cancelacion-mora-acum')
+                                    </div>
+                                    <div class="calc-total" x-show="moraVigente() > 0.005 || ma.debe > 0.005">
+                                        <span>Total a cobrar</span>
+                                        <span x-text="totalACobrar() !== null ? soles(totalACobrar()) : '—'"></span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-
-                        {{-- 06/11 (Antony, 28732): esta pestaña solo pone el monto; no cancela el crédito. Fuera los
-                             checks de mora del 28/10 (sin marcar exoneraban al cancelar): la mora la cobra el cobro como
-                             siempre, aparte (o Reserva Mora). Aquí solo se informa. --}}
-                        <div class="d-flex justify-content-between small mt-2" x-show="p.mora > 0.005">
-                            <span>Mora<span x-show="p.mora_rotulo" x-text="' (' + p.mora_rotulo + ')'"></span>: se cobra aparte, como en cualquier cobro</span>
-                            <b x-text="soles(p.mora)"></b>
-                        </div>
-                        @include('livewire.payments.partials._cancelacion-mora-acum', ['sufijo' => 'cuotas'])
-                        <div class="rounded p-2 mt-2 small" style="background:#e8f4fd; color:#0b3d62;">
+                        <div class="calc-nota mt-3">
                             <i class="ti ti-info-circle f-s-12"></i>
-                            El crédito <b>queda vigente</b>: este monto se cobra como un pago normal. La cancelación del crédito se hace después.
+                            El crédito <b>queda vigente</b>: el monto se cobra como un pago normal. La cancelación del crédito se hace después.
                         </div>
-                        <div class="small text-danger mt-1" x-show="! valido()" x-text="'Elige una cuota entre la ' + p.minimo + ' y la ' + p.maximo + '.'"></div>
-                      </div>
                     </div>
 
                     {{-- Pestaña "Pagos a una fecha" (30/10, Antony): cualquier fecha; el calendario pinta los
-                         vencimientos para ubicarlos (vencidas, por vencer y pagadas). --}}
+                         vencimientos para ubicarlos (vencidas, por vencer y pagadas).
+                         Reordenada el 20/11 (Antony: "¿pagos a una fecha también podemos ordenarlo más?") con el
+                         mismo esquema de "Cancelación": 1 · se elige la fecha (atajos arriba, calendario y leyenda)
+                         y 2 · lo que debe pagar (cuotas, resumen con el total y avisos). El texto para el cliente
+                         repite la tabla, así que llega plegado: el botón "Copiar" lo copia igual. --}}
                     <div class="modal-body" x-show="tab === 'fecha'">
                         <div class="row g-3">
+                            {{-- 1 · Elegir la fecha --}}
                             <div class="col-md-4">
+                                <div class="calc-seccion">1 · Elige la fecha</div>
+                                <div class="d-flex gap-1 flex-wrap mb-2">
+                                    <button type="button" class="btn btn-sm btn-light border" x-on:click="elegirFecha(hoy)">Hoy</button>
+                                    {{-- Texto corto para que quepa junto a "Hoy" en la misma fila; el completo va en el title. --}}
+                                    <button type="button" class="btn btn-sm btn-light border" x-show="proximoVencimiento()"
+                                            x-on:click="elegirFecha(proximoVencimiento().fecha)" title="Próximo vencimiento"
+                                            x-text="proximoVencimiento() ? 'Próx. venc. ' + fechaCorta(proximoVencimiento().fecha) : ''"></button>
+                                </div>
                                 <div class="calendario-pagos" x-ref="calendario"></div>
                                 <div class="d-flex flex-wrap gap-2 small mt-2 calendario-pagos-leyenda">
                                     <span><i class="dp-muestra dp-vencida"></i> vencida</span>
@@ -1847,16 +1880,12 @@
                                     <span><i class="dp-muestra dp-pagada"></i> pagada</span>
                                 </div>
                                 <div class="small text-muted mt-1">Puedes elegir cualquier fecha; los colores solo marcan los vencimientos.</div>
-                                <div class="d-flex gap-1 flex-wrap mt-2">
-                                    <button type="button" class="btn btn-sm btn-light border" x-on:click="elegirFecha(hoy)">Hoy</button>
-                                    <button type="button" class="btn btn-sm btn-light border" x-show="proximoVencimiento()"
-                                            x-on:click="elegirFecha(proximoVencimiento().fecha)"
-                                            x-text="proximoVencimiento() ? 'Próximo vencimiento (' + fechaCorta(proximoVencimiento().fecha) + ')' : ''"></button>
-                                </div>
                             </div>
+
+                            {{-- 2 · Lo que debe pagar ese día --}}
                             <div class="col-md-8">
-                                <div class="fw-semibold mb-1">
-                                    Si paga el <span class="text-danger" x-text="r ? r.fecha : fechaCorta(fecha)"></span>
+                                <div class="calc-seccion">
+                                    2 · Si paga el <span class="text-danger" x-text="r ? r.fecha : fechaCorta(fecha)"></span>
                                     <span class="spinner-border spinner-border-sm text-secondary ms-1" x-show="calculando"></span>
                                 </div>
                                 <template x-if="r && r.filas.length === 0">
@@ -1869,7 +1898,7 @@
                                         <div class="table-responsive">
                                         <table class="table table-sm table-bordered mb-1 small pagos-fecha-tabla">
                                             <thead>
-                                                <tr><th></th><th>Cuota</th><th>Vence</th><th class="text-end">Cuota</th><th class="text-end">Abonado</th><th>Estado</th><th class="text-end">Mora</th></tr>
+                                                <tr><th></th><th>Cuota</th><th>Vence</th><th class="text-end">Monto</th><th class="text-end">Abonado</th><th>Estado</th><th class="text-end">Mora</th></tr>
                                             </thead>
                                             <tbody>
                                                 <template x-for="(f, i) in r.filas" :key="f.num">
@@ -1886,16 +1915,38 @@
                                             </tbody>
                                         </table>
                                         </div>
-                                        <div class="small text-muted mb-1" x-show="r.filas.length > 1">Al marcar una cuota se marcan las anteriores: el cobro paga de la más antigua en adelante.</div>
-                                        <div class="d-flex justify-content-between small"><span>Mora por día</span><span x-text="r.mora_dia.map((v) => soles(v)).join(' / ') + ' por cuota vencida'"></span></div>
-                                        <div class="d-flex justify-content-between small border-top pt-1 mt-1"><span>Cuotas marcadas</span><span x-text="r.cuantas + ' de ' + r.filas.length"></span></div>
-                                        <div class="d-flex justify-content-between small"><span>Mora</span><span x-text="soles(r.mora)"></span></div>
-                                        <div class="d-flex justify-content-between fw-semibold"><span>Total sin mora</span><span x-text="soles(r.saldo)"></span></div>
-                                        <div class="d-flex justify-content-between fw-bold"><span>Total con mora</span><span x-text="soles(r.total)"></span></div>
-                                        <label class="form-label small text-muted mt-2 mb-1">Para enviar al cliente</label>
-                                        <textarea class="form-control form-control-sm pagos-fecha-texto" readonly x-ref="textoPagos" :value="r.texto" :rows="Math.min(16, r.texto.split('\n').length + 1)"></textarea>
-                                        <div class="small text-muted mt-1" x-show="fecha !== hoy">El cobro se registra con la fecha de hoy; la mora va calculada al <span x-text="r.fecha"></span>.</div>
-                                        <div class="small text-muted mt-1" x-show="! puedeMora">Al llevarlo al cobro, el Total Mora lo pone el sistema (no tienes permiso para cambiarlo).</div>
+                                        <div class="small text-muted mb-2" x-show="r.filas.length > 1">Al marcar una cuota se marcan las anteriores: el cobro paga de la más antigua en adelante.</div>
+
+                                        {{-- Mismo resumen que la pestaña "Cancelación": filas + franja con el total. --}}
+                                        <div class="calc-resumen">
+                                            <div class="calc-bloque">
+                                                <div class="calc-fila">
+                                                    <span>Total sin mora <span class="text-muted" x-text="'(' + r.cuantas + ' de ' + r.filas.length + (r.filas.length === 1 ? ' cuota)' : ' cuotas)')"></span></span>
+                                                    <span x-text="numero(r.saldo)"></span>
+                                                </div>
+                                                <div class="calc-fila">
+                                                    <span>Mora <span class="text-muted" x-text="'(' + r.mora_dia.map((v) => soles(v)).join(' / ') + ' por día y cuota vencida)'"></span></span>
+                                                    <span x-text="numero(r.mora)"></span>
+                                                </div>
+                                            </div>
+                                            <div class="calc-total"><span>Total con mora</span><span x-text="soles(r.total)"></span></div>
+                                        </div>
+
+                                        <div class="calc-nota mt-2" x-show="fecha !== hoy || ! puedeMora">
+                                            <div x-show="fecha !== hoy"><i class="ti ti-info-circle f-s-12"></i> El cobro se registra con la fecha de hoy; la mora va calculada al <span x-text="r.fecha"></span>.</div>
+                                            <div x-show="! puedeMora"><i class="ti ti-info-circle f-s-12"></i> Al llevarlo al cobro, el Total Mora lo pone el sistema (no tienes permiso para cambiarlo).</div>
+                                        </div>
+
+                                        {{-- El texto repite la tabla y los totales: plegado; "Copiar" (pie de la ventana) lo copia igual. --}}
+                                        <div class="mt-2">
+                                            <a href="#" class="small text-decoration-none" x-on:click.prevent="verTexto = ! verTexto">
+                                                <i class="ti" :class="verTexto ? 'ti-chevron-down' : 'ti-chevron-right'"></i>
+                                                <span x-text="verTexto ? 'Ocultar el texto para el cliente' : 'Ver el texto para el cliente'"></span>
+                                            </a>
+                                            <span class="small text-muted" x-show="! verTexto">· es lo que copia el botón «Copiar»</span>
+                                            <textarea class="form-control form-control-sm pagos-fecha-texto mt-1" readonly x-ref="textoPagos" x-show="verTexto"
+                                                      :value="r.texto" :rows="Math.min(16, r.texto.split('\n').length + 1)"></textarea>
+                                        </div>
                                     </div>
                                 </template>
                             </div>
@@ -1960,6 +2011,7 @@
                         r: null,
                         calculando: false,
                         copiado: false,
+                        verTexto: false, // 20/11: el texto para el cliente llega plegado
                         abrir() {
                             if (this.cargando) return;
                             this.cargando = true;
@@ -2094,8 +2146,12 @@
                         },
                         maResto() { return Math.max(0, this.redondear(this.ma.debe - this.maValor())); },
                         moraVigente() { return this.hayCancelacion ? this.p.mora : (this.alDia ? this.alDia.mora : 0); },
+                        // Lo que va al Monto a Pagar; null mientras la cuota elegida no vale.
+                        baseCancelacion() { return this.hayCancelacion ? (this.valido() ? this.total() : null) : (this.alDia ? this.alDia.total : null); },
+                        // Monto a Pagar + la mora del cobro + la mora acumulada marcada; null si falta corregir algo.
                         totalACobrar() {
-                            const base = this.hayCancelacion ? (this.valido() ? this.total() : 0) : (this.alDia ? this.alDia.total : 0);
+                            const base = this.baseCancelacion();
+                            if (base === null || (this.ma.sel && ! this.maValida())) return null;
                             return this.redondear(base + this.moraVigente() + (this.ma.sel ? this.maValor() : 0));
                         },
                         // Ojo: no llamarlo aplicar(); ese nombre es de modalFlotante (coloca la ventana al abrir).
