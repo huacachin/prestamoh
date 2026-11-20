@@ -18,7 +18,6 @@ use App\Models\Headquarter;
 use App\Models\User;
 use App\Models\Vehiculo;
 use App\Support\RutaExpediente;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -842,11 +841,8 @@ class RutaExpedienteTest extends TestCase
         [$client, , $nuevo] = $this->clienteQueVuelve();
         $ajeno = $this->vehiculo($this->cliente(), 'AJENO1');
 
-        try {
-            Livewire::test(Vehiculos::class, ['id' => $client->id])->call('prendar', $ajeno->id);
-            $this->fail('prendó el vehículo de otro cliente');
-        } catch (ModelNotFoundException) {
-        }
+        // Un vehículo que no es de este cliente no existe para esta pestaña: 404 y nada se vincula.
+        Livewire::test(Vehiculos::class, ['id' => $client->id])->call('prendar', $ajeno->id)->assertNotFound();
         $this->assertDatabaseMissing('credit_vehiculo', ['credit_id' => $nuevo->id]);
 
         // El analista (cartera propia) ve la pestaña pero no edita.
