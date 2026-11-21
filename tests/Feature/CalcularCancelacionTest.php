@@ -354,6 +354,120 @@ class CalcularCancelacionTest extends TestCase
         $this->assertDatabaseMissing('mora_overrides', ['credit_id' => $credit->id]);
     }
 
+    /**
+     * 21/11 (Antony, 29036): "hay un check para la mora acumulada pero también hay que colocar un check editable en
+     * Mora (cuotas 16 a 31)". Sin marcar, el cobro va con "Reserva Mora": esa mora no se cobra y queda reservada.
+     */
+    public function test_sin_marcar_la_casilla_de_la_mora_el_cobro_va_con_reserva_mora(): void
+    {
+        $this->actingAs($this->actor());
+        $credit = $this->credito();
+
+        Livewire::test(Create::class, ['creditId' => $credit->id])
+            ->call('abrirCalcularPagos')
+            ->assertReturned(fn ($d) => $d['mora_del_cobro'] === ['reservada' => false, 'elegida' => null])
+            ->call('aplicarCancelacion', 8, null, false)
+            ->assertReturned(true)
+            ->assertSet('ckmora', true)
+            // Al reabrir la ventana la casilla vuelve sin marcar; marcarla apaga la reserva.
+            ->call('abrirCalcularPagos')
+            ->assertReturned(fn ($d) => $d['mora_del_cobro']['reservada'] === true)
+            ->call('aplicarCancelacion', 8, null, true)
+            ->assertSet('ckmora', false)
+            ->call('aplicarCancelacion', 8, null, false)
+            ->call('confirmarPago')
+            ->call('pagar')
+            ->assertNotDispatched('errorAlert');
+
+        $this->assertSame(0, Payment::where('credit_id', $credit->id)->where('tipo', 'MORA')->count());
+        $this->assertEqualsWithDelta(675.00, (float) MassDeletion::where('credit_id', $credit->id)->latest('id')->value('amount'), 0.001);
+        $this->assertEqualsWithDelta(18.06, (float) DB::table('mora_acumulada')->where('credit_id', $credit->id)->value('importe'), 0.001);
+    }
+
+    /** El importe es el Total Mora de siempre: se cambia con el permiso de mora manual, con su motivo y su rastro. */
+    public function test_con_el_permiso_de_mora_manual_el_importe_de_la_mora_se_edita(): void
+    {
+        $user = $this->actor();
+        $user->givePermissionTo(Permission::findOrCreate('pagos.mora-manual', 'web'));
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $this->actingAs($user);
+        $credit = $this->credito();
+
+        $c = Livewire::test(Create::class, ['creditId' => $credit->id])
+            // Marcada y sin importe: avisa y no cambia nada (ni el Monto a Pagar).
+            ->call('aplicarCancelacion', 8, null, true, 0)
+            ->assertReturned(false)
+            ->assertDispatched('errorAlert', ['message' => 'Escribe un importe de mora mayor que 0 o desmarca la casilla.'])
+            ->assertSet('monto', null)
+            ->assertSet('cancelHasta', null)
+            // El mismo importe que la calculada no es un ajuste.
+            ->call('aplicarCancelacion', 8, null, true, 18.06)
+            ->assertSet('moraManual', null)
+            ->call('aplicarCancelacion', 8, null, true, 10)
+            ->assertReturned(true)
+            ->assertSet('ckmora', false)
+            ->assertSet('moraManual', '10.00')
+            ->assertSet('moraMotivo', 'Mora exonerada')
+            // Al reabrir la ventana, la casilla trae lo tecleado.
+            ->call('abrirCalcularPagos')
+            ->assertReturned(fn ($d) => $d['mora_del_cobro']['reservada'] === false && (float) $d['mora_del_cobro']['elegida'] === 10.0)
+            ->call('confirmarPago');
+        $this->assertSame(10.0, $c->get('preview')['mora_cobrar']);
+        $c->call('pagar')->assertNotDispatched('errorAlert');
+
+        $this->assertEqualsWithDelta(10.00, (float) Payment::where('credit_id', $credit->id)->where('tipo', 'MORA')->sum('monto'), 0.001);
+        $this->assertEqualsWithDelta(685.00, (float) MassDeletion::where('credit_id', $credit->id)->latest('id')->value('amount'), 0.001);
+        $this->assertDatabaseHas('mora_overrides', ['credit_id' => $credit->id, 'tipo' => 'ajuste', 'mora_calculada' => 18.06, 'mora_cobrada' => 10.00]);
+    }
+
+    public function test_sin_el_permiso_el_importe_de_la_mora_no_cuenta_y_el_cobro_lleva_la_calculada(): void
+    {
+        $this->actingAs($this->actor());
+        $credit = $this->credito();
+
+        $c = Livewire::test(Create::class, ['creditId' => $credit->id])
+            ->call('aplicarCancelacion', 8, null, true, 1)
+            ->assertReturned(true)
+            ->assertSet('moraManual', null)
+            ->call('confirmarPago');
+
+        $this->assertSame(18.06, $c->get('preview')['mora_cobrar']);
+    }
+
+    /** Mensual de una cuota (sin la fórmula por cuota): la misma casilla junto a lo de cancelar hoy. */
+    public function test_la_casilla_de_la_mora_tambien_vale_en_el_mensual_de_una_cuota(): void
+    {
+        $user = $this->actor();
+        $user->givePermissionTo(Permission::findOrCreate('pagos.mora-manual', 'web'));
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $this->actingAs($user);
+        $client = Client::create(['nombre' => 'Cliente Mensual Vencido']);
+        $credit = Credit::create([
+            'client_id' => $client->id, 'fecha_prestamo' => now()->subDays(40)->format('Y-m-d'),
+            'importe' => 3000, 'cuotas' => 1, 'tipo_planilla' => 3, 'interes' => 5,
+            'interes_total' => 150, 'situacion' => 'Activo', 'estado' => 1,
+        ]);
+        // Vencida hace 10 días: 10 × 5.25 (5% de 3,150 entre 30) = 52.50 de mora.
+        CreditInstallment::create([
+            'credit_id' => $credit->id, 'num_cuota' => 1, 'fecha_vencimiento' => now()->subDays(10)->format('Y-m-d'),
+            'importe_cuota' => 3000, 'importe_interes' => 150, 'pagado' => 0,
+        ]);
+
+        Livewire::test(Create::class, ['creditId' => $credit->id])
+            ->call('abrirCalcularPagos')
+            ->assertReturned(fn ($d) => $d['cancelacion'] === null && $d['cancelacion_al_dia']['mora'] === 52.5
+                && $d['mora_del_cobro'] === ['reservada' => false, 'elegida' => null])
+            ->call('aplicarMontoDeCancelacion', null, false)
+            ->assertReturned(true)
+            ->assertSet('ckmora', true)
+            ->call('aplicarMontoDeCancelacion', null, true, 40)
+            ->assertSet('ckmora', false)
+            ->assertSet('moraManual', '40.00')
+            // Volver a la calculada deshace el ajuste.
+            ->call('aplicarMontoDeCancelacion', null, true, 52.5)
+            ->assertSet('moraManual', '52.50');
+    }
+
     /** Cancelar a mano con el cálculo ya no exonera la mora por su cuenta: se cobran la mora y la acumulada. */
     public function test_con_el_switch_cancelado_a_mano_la_mora_y_la_acumulada_se_cobran(): void
     {

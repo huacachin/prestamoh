@@ -348,6 +348,44 @@ class CobrarMoraAcumuladaTest extends TestCase
             ->assertSet('moraAcumCuotas', []);
     }
 
+    /**
+     * 21/11 (Antony, 29036): la mora del cobro también lleva su casilla editable en la pestaña. Lo que no se
+     * cobra de ella no se pierde: al pagarse la cuota queda como mora acumulada, y se cobra después.
+     */
+    public function test_la_mora_del_cobro_que_no_se_cobra_en_la_cancelacion_queda_como_mora_acumulada(): void
+    {
+        $debe = fn () => round(array_sum(array_column(MoraExonerada::porCuota($this->credit->fresh()), 'monto')), 2);
+        $this->assertSame(6.02, $debe());
+
+        // Sin marcar (Reserva Mora): la cuota 3 se paga sin su mora de 5.16, que pasa a deberse como acumulada.
+        Livewire::test(Create::class, ['creditId' => $this->credit->id])
+            ->call('aplicarCancelacion', 3, null, false)
+            ->call('confirmarPago')
+            ->assertSet('preview.total', 420.0)
+            ->call('pagar')
+            ->assertNotDispatched('errorAlert');
+
+        $this->assertSame(0, Payment::where('credit_id', $this->credit->id)->where('tipo', 'MORA')->count());
+        $this->assertSame(11.18, $debe());
+    }
+
+    public function test_con_el_importe_de_la_mora_rebajado_la_diferencia_queda_como_mora_acumulada(): void
+    {
+        $this->cajero->givePermissionTo(Permission::findOrCreate('pagos.mora-manual', 'web'));
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        Livewire::test(Create::class, ['creditId' => $this->credit->id])
+            ->call('aplicarCancelacion', 3, null, true, 2)
+            ->call('confirmarPago')
+            ->assertSet('preview.total', 422.0)
+            ->call('pagar')
+            ->assertNotDispatched('errorAlert');
+
+        // De los 5.16 de la cuota 3 se cobraron 2.00: los otros 3.16 se suman a los 6.02 que ya se debían.
+        $this->assertEqualsWithDelta(2.00, (float) Payment::where('credit_id', $this->credit->id)->where('tipo', 'MORA')->sum('monto'), 0.001);
+        $this->assertSame(9.18, round(array_sum(array_column(MoraExonerada::porCuota($this->credit->fresh()), 'monto')), 2));
+    }
+
     /** Mensual de una cuota (sin la fórmula por cuota): la misma casilla junto a lo de cancelar hoy. */
     public function test_la_cancelacion_de_un_mensual_de_una_cuota_tambien_agrega_la_mora_acumulada(): void
     {

@@ -624,7 +624,7 @@ class Create extends Component
      * la cancelación (si el crédito la admite) y los pagos a una fecha, con los vencimientos del crédito
      * para pintarlos en el calendario.
      *
-     * @return array{cancelacion: ?array, cancelacion_al_dia: ?array, mora_acumulada: ?array{debe: float, tope: float, rotulo: string, elegida: ?float}, sin_cancelacion: ?string, vencimientos: list<array{num: int, fecha: string, pagada: bool}>, hoy: string, puede_mora: bool}|null
+     * @return array{cancelacion: ?array, cancelacion_al_dia: ?array, mora_acumulada: ?array{debe: float, tope: float, rotulo: string, elegida: ?float}, mora_del_cobro: array{reservada: bool, elegida: ?float}, sin_cancelacion: ?string, vencimientos: list<array{num: int, fecha: string, pagada: bool}>, hoy: string, puede_mora: bool}|null
      */
     #[Renderless]
     public function abrirCalcularPagos(): ?array
@@ -642,6 +642,8 @@ class Create extends Component
             'cancelacion_al_dia' => $alDia,
             // 20/11 (Antony, 29404): check "Agregar mora acumulada" de la pestaña, con el importe editable.
             'mora_acumulada' => $this->datosMoraAcumulada(),
+            // 21/11 (Antony, 29036): casilla editable de la mora del cobro, al lado de la acumulada.
+            'mora_del_cobro' => $this->datosMoraDelCobro(),
             'sin_cancelacion' => $plan === null && $alDia === null ? $this->motivoSinCalculoDeCancelacion() : null,
             'vencimientos' => PagosAUnaFecha::vencimientos($this->credit),
             'hoy' => now()->toDateString(),
@@ -741,8 +743,11 @@ class Create extends Component
      *
      * 20/11/2026 (Antony, 29404): $moraAcumulada es el importe del check "Agregar mora acumulada"
      * (null = sin marcar). Queda elegida para el cobro como con "Cobrar mora acumulada".
+     *
+     * 21/11/2026 (Antony, 29036): $cobrarMora y $mora son la casilla editable de la mora del cobro
+     * (elegirMoraDelCalculo); sin ellos, el cálculo no toca la mora ni "Reserva Mora".
      */
-    public function aplicarCancelacion(int $hasta, ?float $moraAcumulada = null): bool
+    public function aplicarCancelacion(int $hasta, ?float $moraAcumulada = null, ?bool $cobrarMora = null, ?float $mora = null): bool
     {
         if (! $this->credit || $this->credit->situacion !== 'Activo') {
             return false;
@@ -761,7 +766,7 @@ class Create extends Component
             return false;
         }
 
-        if (! $this->elegirMoraAcumuladaDelCalculo($moraAcumulada)) {
+        if (! $this->moraDelCalculoVale($cobrarMora, $mora) || ! $this->elegirMoraAcumuladaDelCalculo($moraAcumulada)) {
             return false;
         }
 
@@ -775,6 +780,7 @@ class Create extends Component
         // Con el cálculo la mora es la suma de cada cuota vencida (moraCalcAt): el Total Mora
         // que updatedMonto() precargó (solo la más antigua) no debe mandar sobre ella.
         $this->moraManual = null;
+        $this->elegirMoraDelCalculo($cobrarMora, $mora);
         $this->dispatch('monto-usado');
 
         return true;
@@ -808,7 +814,7 @@ class Create extends Component
      * Pestaña "Cancelación" de un crédito sin la fórmula por cuota (06/11, Antony, crédito 28732): lleva
      * lo de cancelar hoy al Monto a Pagar sin encender Cancelado. El crédito queda vigente.
      */
-    public function aplicarMontoDeCancelacion(?float $moraAcumulada = null): bool
+    public function aplicarMontoDeCancelacion(?float $moraAcumulada = null, ?bool $cobrarMora = null, ?float $mora = null): bool
     {
         if (! $this->credit || $this->credit->situacion !== 'Activo' || $this->planCancelacion() !== null) {
             return false;
@@ -821,7 +827,7 @@ class Create extends Component
             return false;
         }
 
-        if (! $this->elegirMoraAcumuladaDelCalculo($moraAcumulada)) {
+        if (! $this->moraDelCalculoVale($cobrarMora, $mora) || ! $this->elegirMoraAcumuladaDelCalculo($moraAcumulada)) {
             return false;
         }
 
@@ -831,9 +837,68 @@ class Create extends Component
         $this->cancelUltimaCuota = false;
         $this->cancel = false;
         $this->decisionTotal = 'no';
+        $this->elegirMoraDelCalculo($cobrarMora, $mora);
         $this->dispatch('monto-usado');
 
         return true;
+    }
+
+    /**
+     * Casilla editable de la mora del cobro en la pestaña "Cancelación" (21/11/2026, Antony, crédito
+     * 29036: "hay un check para la mora acumulada pero también hay que colocar un check editable en Mora
+     * (cuotas 16 a 31)"). No trae reglas nuevas: son dos atajos a lo que la pantalla ya tenía.
+     *  · Sin marcar = "Reserva Mora": el cobro no lleva esa mora y queda como mora acumulada.
+     *  · Con otro importe = el Total Mora editable, solo con el permiso de mora manual; como siempre,
+     *    el cambio pide su motivo y deja rastro (mora_overrides).
+     * Aquí va el estado con el que abre la casilla: si la mora está reservada y, dentro de un cálculo
+     * ya aplicado, el importe que se tecleó.
+     *
+     * @return array{reservada: bool, elegida: ?float}
+     */
+    private function datosMoraDelCobro(): array
+    {
+        $enCalculo = $this->cancelHasta !== null || $this->montoDeCancelacion;
+
+        return [
+            'reservada' => $this->ckmora,
+            'elegida' => $enCalculo && $this->canEditMora() && is_numeric($this->moraManual) ? round((float) $this->moraManual, 2) : null,
+        ];
+    }
+
+    /** Falso, con su aviso, si la casilla de la mora del cobro llega marcada con un importe que no vale; entonces no cambia nada. */
+    private function moraDelCalculoVale(?bool $cobrar, ?float $importe): bool
+    {
+        if ($cobrar !== false && $importe !== null && $this->canEditMora() && round($importe, 2) < 0.01) {
+            $this->dispatch('errorAlert', ['message' => 'Escribe un importe de mora mayor que 0 o desmarca la casilla.']);
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Deja en el cobro lo elegido en la casilla de la mora (datosMoraDelCobro). Se llama con el cálculo
+     * ya puesto, porque la mora calculada depende de él. $cobrar null = la casilla no vino: "Reserva Mora"
+     * queda como esté. Sin permiso de mora manual el importe no cuenta: el cobro lleva la calculada.
+     */
+    private function elegirMoraDelCalculo(?bool $cobrar, ?float $importe): void
+    {
+        if ($cobrar !== null) {
+            $this->ckmora = ! $cobrar;
+        }
+        if ($this->ckmora || $importe === null || ! $this->canEditMora()) {
+            return;
+        }
+
+        $importe = round($importe, 2);
+        $calculada = round((float) $this->buildCalcs()['total_mora_calc'], 2);
+        if (abs($importe - $calculada) >= 0.005) {
+            $this->moraManual = number_format($importe, 2, '.', '');
+        } elseif ($this->moraManual !== null && $this->moraManual !== '') {
+            $this->moraManual = number_format($calculada, 2, '.', '');
+        }
+        $this->motivoSegunDireccion();
     }
 
     /**

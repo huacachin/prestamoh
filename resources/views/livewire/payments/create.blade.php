@@ -1832,17 +1832,15 @@
                                             <span x-text="baseCancelacion() !== null ? soles(baseCancelacion()) : '—'"></span>
                                         </div>
                                     </div>
-                                    {{-- Las moras no van en el Monto a Pagar: el cobro las suma aparte (la del cobro, como
-                                         siempre —o Reserva Mora—; la acumulada, solo si se marca su casilla). --}}
-                                    <div class="calc-bloque" x-show="moraVigente() > 0.005 || ma.debe > 0.005">
+                                    {{-- Las moras no van en el Monto a Pagar: el cobro las suma aparte. Cada una con su casilla
+                                         y su importe (21/11): la del cobro, marcada —sin marcar es Reserva Mora—; la
+                                         acumulada, solo si se marca. --}}
+                                    <div class="calc-bloque" x-show="moraCalculada() > 0.005 || ma.debe > 0.005">
                                         <div class="calc-titulo">Moras <span class="calc-titulo-nota">se cobran aparte, como en cualquier cobro</span></div>
-                                        <div class="calc-fila" x-show="moraVigente() > 0.005">
-                                            <span>Mora<span class="text-muted" x-show="hayCancelacion && p.mora_rotulo" x-text="' (' + p.mora_rotulo + ')'"></span></span>
-                                            <span x-text="numero(moraVigente())"></span>
-                                        </div>
+                                        @include('livewire.payments.partials._cancelacion-mora-cobro')
                                         @include('livewire.payments.partials._cancelacion-mora-acum')
                                     </div>
-                                    <div class="calc-total" x-show="moraVigente() > 0.005 || ma.debe > 0.005">
+                                    <div class="calc-total" x-show="moraCalculada() > 0.005 || ma.debe > 0.005">
                                         <span>Total a cobrar</span>
                                         <span x-text="totalACobrar() !== null ? soles(totalACobrar()) : '—'"></span>
                                     </div>
@@ -1956,7 +1954,7 @@
                     <div class="modal-footer py-2 justify-content-between">
                         <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                         <button type="button" class="btn btn-sm btn-danger" x-show="tab === 'cancelacion' && (hayCancelacion || alDia)"
-                                x-on:click="usar()" :disabled="(hayCancelacion && ! valido()) || (ma.sel && ! maValida()) || enviando">
+                                x-on:click="usar()" :disabled="(hayCancelacion && ! valido()) || (ma.sel && ! maValida()) || ! mvValida() || enviando">
                             <i class="ti ti-check"></i> Usar en Monto a Pagar
                         </button>
                         {{-- x-show en un div sin d-flex: el display:flex !important de Bootstrap le ganaba y los
@@ -2001,6 +1999,8 @@
                         alDia: null, // 06/11: cancelar hoy de un crédito sin la fórmula por cuota
                         // 20/11: check "Agregar mora acumulada" (debe, tope y rótulo vienen del servidor; valor es lo tecleado).
                         ma: { debe: 0, tope: 0, rotulo: '', sel: false, valor: '' },
+                        // 21/11: casilla de la mora del cobro (marcada salvo Reserva Mora; valor es lo tecleado).
+                        mv: { sel: true, valor: '' },
                         sinCancelacion: '',
                         vencs: [],
                         vencPorFecha: {},
@@ -2039,6 +2039,9 @@
                                 });
                                 this.hoy = d.hoy;
                                 this.puedeMora = !! d.puede_mora;
+                                // Sin marcar si "Reserva Mora" ya está encendida; propone la calculada o lo ya tecleado.
+                                const delCobro = d.mora_del_cobro || { reservada: false, elegida: null };
+                                this.mv = { sel: ! delCobro.reservada, valor: Number(delCobro.elegida ?? this.moraCalculada()).toFixed(2) };
                                 this.fecha = d.hoy;
                                 this.cuantas = null;
                                 this.r = null;
@@ -2145,21 +2148,32 @@
                                 + (this.ma.tope > this.ma.debe + 0.001 ? ': se puede cobrar hasta ' + this.soles(this.ma.tope) + ' con el redondeo.' : ': no se puede cobrar más.');
                         },
                         maResto() { return Math.max(0, this.redondear(this.ma.debe - this.maValor())); },
-                        moraVigente() { return this.hayCancelacion ? this.p.mora : (this.alDia ? this.alDia.mora : 0); },
+                        // La mora que el cobro calcula sola: la de las cuotas vencidas.
+                        moraCalculada() { return this.hayCancelacion ? this.p.mora : (this.alDia ? this.alDia.mora : 0); },
+                        // 21/11: su casilla. Lo tecleado solo cuenta con permiso de mora manual; el servidor lo vuelve a comprobar.
+                        mvValor() { const v = Number(this.mv.valor); return this.mv.valor !== '' && Number.isFinite(v) ? this.redondear(v) : 0; },
+                        mvValida() { return ! this.mv.sel || ! this.puedeMora || this.mvValor() >= 0.01; },
+                        // Lo que el cobro llevará de mora: nada sin la casilla (Reserva Mora).
+                        moraVigente() { return ! this.mv.sel ? 0 : (this.puedeMora ? this.mvValor() : this.moraCalculada()); },
+                        mvResto() { return Math.max(0, this.redondear(this.moraCalculada() - this.moraVigente())); },
                         // Lo que va al Monto a Pagar; null mientras la cuota elegida no vale.
                         baseCancelacion() { return this.hayCancelacion ? (this.valido() ? this.total() : null) : (this.alDia ? this.alDia.total : null); },
                         // Monto a Pagar + la mora del cobro + la mora acumulada marcada; null si falta corregir algo.
                         totalACobrar() {
                             const base = this.baseCancelacion();
-                            if (base === null || (this.ma.sel && ! this.maValida())) return null;
+                            if (base === null || (this.ma.sel && ! this.maValida()) || ! this.mvValida()) return null;
                             return this.redondear(base + this.moraVigente() + (this.ma.sel ? this.maValor() : 0));
                         },
                         // Ojo: no llamarlo aplicar(); ese nombre es de modalFlotante (coloca la ventana al abrir).
                         usar() {
-                            if (this.enviando || (this.hayCancelacion && ! this.valido()) || (this.ma.sel && ! this.maValida())) return;
+                            if (this.enviando || (this.hayCancelacion && ! this.valido()) || (this.ma.sel && ! this.maValida()) || ! this.mvValida()) return;
                             this.enviando = true;
                             const acum = this.ma.sel && this.ma.debe > 0.005 ? this.maValor() : null;
-                            const llamada = this.hayCancelacion ? this.$wire.aplicarCancelacion(this.n, acum) : this.$wire.aplicarMontoDeCancelacion(acum);
+                            // La casilla de la mora del cobro: si se cobra y, con permiso, cuánto (null = la calculada).
+                            const mora = this.mv.sel && this.puedeMora && this.moraCalculada() > 0.005 ? this.mvValor() : null;
+                            const llamada = this.hayCancelacion
+                                ? this.$wire.aplicarCancelacion(this.n, acum, this.mv.sel, mora)
+                                : this.$wire.aplicarMontoDeCancelacion(acum, this.mv.sel, mora);
                             llamada.then((ok) => {
                                 this.enviando = false;
                                 if (ok) this.modal.hide();
