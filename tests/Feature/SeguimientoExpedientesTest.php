@@ -118,10 +118,9 @@ class SeguimientoExpedientesTest extends TestCase
     public function test_por_defecto_salen_los_incompletos_y_los_filtros_separan_completos_y_por_paso(): void
     {
         $this->credito($this->cliente('Faltavehiculo'), '2026-11-15');
-        $conVehiculo = $this->cliente('Faltaadjuntos');
-        Vehiculo::create(['client_id' => $conVehiculo->id, 'placa' => 'SEG001']);
-        $this->credito($conVehiculo, '2026-11-16');
-        // Sin garantía mobiliaria solo se piden adjuntos y préstamo: con los dos, expediente completo.
+        // Sin garantía mobiliaria solo se piden préstamo y adjuntos (el último paso): con el préstamo y sin
+        // fotos faltan los adjuntos; con los dos, expediente completo.
+        $this->credito($this->cliente('Faltaadjuntos', ['zona' => 'Sin Garantia']), '2026-11-16');
         $completo = $this->cliente('Expedientecompleto', ['zona' => 'Sin Garantia']);
         $this->adjunto($completo);
         $this->credito($completo, '2026-11-17');
@@ -166,8 +165,8 @@ class SeguimientoExpedientesTest extends TestCase
             ->assertSee('#'.$credit->id)
             ->assertSee('18/11/2026')
             ->assertSee('3 de 7')
-            ->assertSeeHtml('href="'.e(route('clients.edit', ['id' => $client->id, 'prestamo' => $credit->id, 'tab' => 'adjuntos'])).'"')
-            ->assertSeeHtml('title="Ir a la ficha: subir los adjuntos"');
+            ->assertSeeHtml('href="'.e(route('clients.edit', ['id' => $client->id, 'prestamo' => $credit->id, 'tab' => 'documentos'])).'"')
+            ->assertSeeHtml('title="Ir a la ficha: emitir los documentos"');
     }
 
     /** Tras hablar con el cliente (20/11): el expediente es de cada préstamo — "verificar si los pasos de ese préstamo se han completado". */

@@ -913,8 +913,9 @@ class Create extends Component
             $placas !== [] ? ['vehiculos' => $placas] : []);
 
         // 20/11 (ruta del expediente): en vez de ir siempre a Adjuntos, a la ficha en el paso que sigue
-        // (Vehículos si no registró ninguno; si no, Adjuntos), con la barra de la ruta a la vista.
-        $siguiente = RutaExpediente::de($this->newClientId)['siguiente']['tab'] ?? 'adjuntos';
+        // (Vehículos si no registró ninguno; si no, Préstamos: desde el 21/11 los adjuntos van al final),
+        // con la barra de la ruta a la vista.
+        $siguiente = RutaExpediente::de($this->newClientId)['siguiente']['tab'] ?? 'prestamos';
 
         return redirect()->route('clients.edit', ['id' => $this->newClientId, 'tab' => $siguiente]);
     }

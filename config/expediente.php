@@ -5,7 +5,7 @@
 | Ruta del expediente (20/11/2026)
 |--------------------------------------------------------------------------
 | La ficha del cliente muestra en qué paso va su expediente: Cliente →
-| Vehículo → Adjuntos → Préstamo → Documentos → SIGM → GPS
+| Vehículo → Préstamo → Documentos → SIGM → GPS → Adjuntos
 | (App\Support\RutaExpediente). Solo orienta; no bloquea ningún paso.
 */
 

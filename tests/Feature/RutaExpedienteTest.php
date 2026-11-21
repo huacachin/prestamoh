@@ -28,8 +28,9 @@ use Tests\TestCase;
 
 /**
  * 20/11/2026 (Antony): "un flujo de creación de clientes hasta la generación de sus documentos… que
- * les sea amigable". La ficha muestra la ruta del expediente —Cliente → Vehículo → Adjuntos → Préstamo
- * → Documentos → SIGM → GPS— calculada con lo ya guardado; solo orienta, no bloquea.
+ * les sea amigable". La ficha muestra la ruta del expediente —Cliente → Vehículo → Préstamo → Documentos
+ * → SIGM → GPS → Adjuntos— calculada con lo ya guardado; solo orienta, no bloquea. Los adjuntos van al
+ * final desde el 21/11 (Antony: "en el paso a paso los adjuntos deben de ir al final").
  */
 class RutaExpedienteTest extends TestCase
 {
@@ -90,8 +91,8 @@ class RutaExpedienteTest extends TestCase
         $ruta = RutaExpediente::de($this->cliente('SIGM.S'));
 
         $this->assertSame([
-            'cliente' => 'hecho', 'vehiculo' => 'pendiente', 'adjuntos' => 'pendiente', 'prestamo' => 'pendiente',
-            'documentos' => 'pendiente', 'sigm' => 'pendiente', 'gps' => 'pendiente',
+            'cliente' => 'hecho', 'vehiculo' => 'pendiente', 'prestamo' => 'pendiente', 'documentos' => 'pendiente',
+            'sigm' => 'pendiente', 'gps' => 'pendiente', 'adjuntos' => 'pendiente',
         ], array_column($ruta['pasos'], 'estado', 'clave'));
         $this->assertSame([1, 7], [$ruta['hechos'], $ruta['total']]);
         $this->assertSame(['clave' => 'vehiculo', 'nombre' => 'Vehículo', 'tab' => 'vehiculos', 'accion' => 'registrar o elegir el vehículo'], $ruta['siguiente']);
@@ -105,11 +106,7 @@ class RutaExpedienteTest extends TestCase
         $detalle = fn (string $paso) => array_column(RutaExpediente::de($client)['pasos'], 'detalle', 'clave')[$paso];
 
         $vehiculo = $this->vehiculo($client);
-        $this->assertSame('adjuntos', $siguiente());
-
-        DB::table('client_attachments')->insert(['client_id' => $client->id, 'filename' => 'dni.jpg', 'path' => 'clients/dni.jpg', 'created_at' => now(), 'updated_at' => now()]);
         $this->assertSame('prestamo', $siguiente());
-        $this->assertSame('1 foto', $detalle('adjuntos'));
 
         $credit = $this->credito($client);
         $this->assertSame('documentos', $siguiente());
@@ -133,6 +130,12 @@ class RutaExpedienteTest extends TestCase
         $this->assertSame('0 de 1 placa', $detalle('gps'));
 
         DB::table('vehiculo_gps_cuentas')->insert(['vehiculo_id' => $vehiculo->id, 'aplicativo' => 'Plataforma', 'usuario' => 'usuario', 'contrasena' => 'cifrada', 'created_at' => now(), 'updated_at' => now()]);
+        // Los adjuntos son el último paso: se suben cuando el préstamo ya existe.
+        $this->assertSame('adjuntos', $siguiente());
+        $this->assertSame('Sin fotos', $detalle('adjuntos'));
+
+        DB::table('client_attachments')->insert(['client_id' => $client->id, 'filename' => 'dni.jpg', 'path' => 'clients/dni.jpg', 'created_at' => now(), 'updated_at' => now()]);
+        $this->assertSame('1 foto', $detalle('adjuntos'));
         $ruta = RutaExpediente::de($client);
         $this->assertNull($ruta['siguiente']);
         $this->assertTrue($ruta['completa']);
@@ -186,11 +189,11 @@ class RutaExpedienteTest extends TestCase
         $ruta = RutaExpediente::de($client);
 
         $this->assertSame([
-            'cliente' => 'hecho', 'vehiculo' => 'no_aplica', 'adjuntos' => 'pendiente', 'prestamo' => 'pendiente',
-            'documentos' => 'no_aplica', 'sigm' => 'no_aplica', 'gps' => 'no_aplica',
+            'cliente' => 'hecho', 'vehiculo' => 'no_aplica', 'prestamo' => 'pendiente', 'documentos' => 'no_aplica',
+            'sigm' => 'no_aplica', 'gps' => 'no_aplica', 'adjuntos' => 'pendiente',
         ], array_column($ruta['pasos'], 'estado', 'clave'));
         $this->assertSame([1, 3], [$ruta['hechos'], $ruta['total']]);
-        $this->assertSame('adjuntos', $ruta['siguiente']['clave']);
+        $this->assertSame('prestamo', $ruta['siguiente']['clave']);
     }
 
     public function test_lo_ya_registrado_cuenta_aunque_el_tipo_de_credito_no_lleve_garantia_mobiliaria(): void
@@ -302,7 +305,7 @@ class RutaExpedienteTest extends TestCase
 
         $barra->dispatch('expediente-actualizado')
             ->assertSee('2 de 7 pasos')
-            ->assertSee('Falta subir los adjuntos.');
+            ->assertSee('Falta crear el préstamo.');
     }
 
     public function test_en_la_pestana_del_paso_que_sigue_la_barra_lo_dice_y_no_repite_el_boton(): void
@@ -460,8 +463,8 @@ class RutaExpedienteTest extends TestCase
         $this->assertSame($refinanciacion->id, RutaExpediente::de($client)['credito']);
         // La refinanciación no abre expediente: sigue siendo el del préstamo original, nada se vuelve a pedir.
         $this->assertSame([
-            'cliente' => 'hecho', 'vehiculo' => 'no_aplica', 'adjuntos' => 'no_aplica', 'prestamo' => 'hecho',
-            'documentos' => 'no_aplica', 'sigm' => 'no_aplica', 'gps' => 'no_aplica',
+            'cliente' => 'hecho', 'vehiculo' => 'no_aplica', 'prestamo' => 'hecho', 'documentos' => 'no_aplica',
+            'sigm' => 'no_aplica', 'gps' => 'no_aplica', 'adjuntos' => 'no_aplica',
         ], $estados);
         Livewire::test(Documentos::class, ['id' => $client->id])->assertDontSee('Documentos del préstamo');
 
@@ -543,19 +546,22 @@ class RutaExpedienteTest extends TestCase
         $this->assertMatchesRegularExpression('/<button[^>]*disabled[^>]*>\s*<i class="ti ti-arrow-left"><\/i> Anterior\s*<\/button>/', $html);
         $this->assertStringContainsString('Siguiente: Vehículo', $html);
 
-        $html = $enPantalla('adjuntos');
+        $html = $enPantalla('prestamos');
         $this->assertStringContainsString('Anterior: Vehículo', $html);
-        $this->assertStringContainsString('Siguiente: Préstamo', $html);
+        $this->assertStringContainsString('Siguiente: Documentos', $html);
         $this->assertStringContainsString('Falta registrar o elegir el vehículo.', $html, 'y sigue diciendo qué falta, con el atajo para ir');
         $this->assertStringContainsString('Ir a ese paso', $html);
 
-        // Documentos y SIGM comparten pantalla: de ahí se pasa al GPS, que es el último.
+        // Documentos y SIGM comparten pantalla: de ahí se pasa al GPS y, al final, a los adjuntos.
         $html = $enPantalla('documentos');
         $this->assertStringContainsString('Anterior: Préstamo', $html);
         $this->assertStringContainsString('Siguiente: GPS', $html);
         $this->assertSame(2, substr_count($html, ' es-actual"'), 'Documentos y SIGM, los dos pasos de esa pantalla');
         $html = $enPantalla('gps');
         $this->assertStringContainsString('Anterior: Documentos', $html);
+        $this->assertStringContainsString('Siguiente: Adjuntos', $html);
+        $html = $enPantalla('adjuntos');
+        $this->assertStringContainsString('Anterior: GPS', $html);
         $this->assertMatchesRegularExpression('/<button[^>]*disabled[^>]*>\s*Siguiente\s*<i class="ti ti-arrow-right"><\/i>\s*<\/button>/', $html);
     }
 
@@ -563,8 +569,9 @@ class RutaExpedienteTest extends TestCase
     {
         $client = $this->cliente('Sin Garantia');
 
-        Livewire::test(BarraRuta::class, ['id' => $client->id, 'tab' => 'datos'])->assertSee('Siguiente: Adjuntos');
-        Livewire::test(BarraRuta::class, ['id' => $client->id, 'tab' => 'prestamos'])->assertSee('Anterior: Adjuntos')->assertDontSee('Siguiente: Documentos');
+        Livewire::test(BarraRuta::class, ['id' => $client->id, 'tab' => 'datos'])->assertSee('Siguiente: Préstamo');
+        Livewire::test(BarraRuta::class, ['id' => $client->id, 'tab' => 'prestamos'])->assertSee('Siguiente: Adjuntos')->assertDontSee('Siguiente: Documentos');
+        Livewire::test(BarraRuta::class, ['id' => $client->id, 'tab' => 'adjuntos'])->assertSee('Anterior: Préstamo');
     }
 
     public function test_la_ficha_sigue_al_prestamo_recien_creado_y_confirma_el_alta_del_prestamo(): void

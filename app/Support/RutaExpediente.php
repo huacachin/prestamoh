@@ -10,7 +10,9 @@ use Illuminate\Support\Str;
 /**
  * Ruta del expediente: el paso a paso de un préstamo (20/11/2026, Antony: "un flujo de creación de
  * clientes hasta la generación de sus documentos… que les sea amigable"). Siete pasos —Cliente → Vehículo
- * → Adjuntos → Préstamo → Documentos → SIGM → GPS—, cada uno hecho, pendiente o no aplica.
+ * → Préstamo → Documentos → SIGM → GPS → Adjuntos—, cada uno hecho, pendiente o no aplica. Los adjuntos
+ * van al final (21/11, Antony: "en el paso a paso los adjuntos deben de ir al final"): las fotos se
+ * suben cuando el préstamo ya existe.
  *
  * El estado se CALCULA con lo que ya está guardado: nadie marca nada a mano. La ruta solo orienta: no
  * bloquea ningún paso ni cambia las reglas de las pantallas.
@@ -42,11 +44,11 @@ final class RutaExpediente
     public const PASOS = [
         'cliente' => ['Cliente', 'datos', 'completar los datos del cliente'],
         'vehiculo' => ['Vehículo', 'vehiculos', 'registrar o elegir el vehículo'],
-        'adjuntos' => ['Adjuntos', 'adjuntos', 'subir los adjuntos'],
         'prestamo' => ['Préstamo', 'prestamos', 'crear el préstamo'],
         'documentos' => ['Documentos', 'documentos', 'emitir los documentos'],
         'sigm' => ['SIGM', 'documentos', 'registrar la constitución del SIGM'],
         'gps' => ['GPS', 'gps', 'registrar o confirmar la cuenta GPS'],
+        'adjuntos' => ['Adjuntos', 'adjuntos', 'subir los adjuntos'],
     ];
 
     /**
@@ -94,9 +96,9 @@ final class RutaExpediente
 
         $aviso = match (true) {
             ! $enVehiculos => 'Paso 1: los datos del cliente. Al continuar sigue el vehículo, en esta misma pantalla.',
-            $vehiculos > 0 => 'Paso 2: el vehículo se guarda junto con el cliente. Después siguen los adjuntos, ya en su ficha.',
+            $vehiculos > 0 => 'Paso 2: el vehículo se guarda junto con el cliente. Después sigue el préstamo, ya en su ficha.',
             $pideVehiculo => 'Paso 2: agrega aquí el vehículo. Si todavía no tienes sus datos, guarda al cliente: su ficha te lo pedirá como el paso que sigue.',
-            default => 'Este tipo de crédito no pide vehículo: puedes guardar al cliente sin registrarlo. Después siguen los adjuntos, ya en su ficha.',
+            default => 'Este tipo de crédito no pide vehículo: puedes guardar al cliente sin registrarlo. Después sigue el préstamo, ya en su ficha.',
         };
 
         return ['actual' => $enVehiculos ? 'vehiculo' : 'cliente', 'aviso' => $aviso] + self::resumir($pasos, null);

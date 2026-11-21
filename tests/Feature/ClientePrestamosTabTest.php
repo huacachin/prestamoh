@@ -84,8 +84,9 @@ class ClientePrestamosTabTest extends TestCase
         // paso del préstamo; sus pasos abren cada pantalla y ya no hay una segunda fila de pestañas.
         $html = Livewire::test(Edit::class, ['id' => $this->client->id])->html();
         preg_match_all('/wire:key="ruta-([a-z]+)"\s+wire:click="\$parent\.\$set\(\'tab\', \'([a-z]+)\'\)"/', $html, $pasos);
-        $this->assertSame(['cliente', 'vehiculo', 'adjuntos', 'prestamo', 'documentos', 'sigm', 'gps'], $pasos[1]);
-        $this->assertSame(['datos', 'vehiculos', 'adjuntos', 'prestamos', 'documentos', 'documentos', 'gps'], $pasos[2], 'cada paso abre su pantalla');
+        // 21/11 (Antony): "en el paso a paso los adjuntos deben de ir al final".
+        $this->assertSame(['cliente', 'vehiculo', 'prestamo', 'documentos', 'sigm', 'gps', 'adjuntos'], $pasos[1]);
+        $this->assertSame(['datos', 'vehiculos', 'prestamos', 'documentos', 'documentos', 'gps', 'adjuntos'], $pasos[2], 'cada paso abre su pantalla');
         $this->assertStringNotContainsString("wire:click=\"\$set('tab', 'prestamos')\"", $html, 'sin la fila de pestañas');
 
         // La persona relacionada no lleva ruta: conserva las pestañas, en el orden del 12/10 (Antony):

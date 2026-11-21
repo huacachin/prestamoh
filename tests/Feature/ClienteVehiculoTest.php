@@ -92,8 +92,9 @@ class ClienteVehiculoTest extends TestCase
         $this->assertSame('2018', $vehiculo->anio_modelo);
         $this->assertEqualsWithDelta(38000, (float) $vehiculo->valor, 0.01);
         $this->assertTrue($cliente->vehiculos->contains($vehiculo));
-        // 20/11 (ruta del expediente): con el vehículo ya registrado, la ficha abre en Adjuntos.
-        $c->assertRedirect(route('clients.edit', ['id' => $cliente->id, 'tab' => 'adjuntos']));
+        // Ruta del expediente: con el vehículo ya registrado, la ficha abre en el paso que sigue, Préstamos
+        // (desde el 21/11 los adjuntos van al final).
+        $c->assertRedirect(route('clients.edit', ['id' => $cliente->id, 'tab' => 'prestamos']));
     }
 
     /**
