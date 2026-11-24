@@ -18,6 +18,7 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use InvalidArgumentException;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -30,6 +31,49 @@ use Tests\TestCase;
 class SigmDocumentosTest extends TestCase
 {
     use RefreshDatabase;
+
+    /** Los 27 modelos de correo del área, sacados de sus .docx con las negritas (24/11/2026, Trello #142). */
+    private const DIR_CORREOS = __DIR__.'/../Fixtures/sigm/correos';
+
+    /**
+     * Lo que el correo corrige de su modelo, con el visto bueno del área (24/11/2026): el trato "Estimados
+     * señores" que a.3.3 y a.3.4 dejan en "Estimados", y el título del contrato en a.3.4, que no lleva
+     * "sobre Bien Futuro".
+     */
+    private const CORRECCIONES_DE_CORREO = [
+        'a33' => ['Estimados <b>' => 'Estimados señores <b>'],
+        'a34' => [
+            'Estimados <b>' => 'Estimados señores <b>',
+            'Pre-constitución de Garantía Mobiliaria sobre Bien Futuro en el' => 'Pre-constitución de Garantía Mobiliaria en el',
+        ],
+    ];
+
+    /** Los 26 modelos de resumen del área, con la numeración real de sus listas (24/11/2026, Trello #143). */
+    private const DIR_RESUMENES = __DIR__.'/../Fixtures/sigm/resumenes';
+
+    /**
+     * Lo que el resumen corrige de su modelo, con el visto bueno del área (24/11/2026): "OTORGANN" en los de
+     * dos deudores, la línea de la obligación principal que a.3.2 no trae, el título del contrato en a.3.4
+     * (no lleva "SOBRE BIEN FUTURO") y el plural que le faltaba al de dos deudores sin GPS con un vehículo.
+     * Además, en ninguno va la placa en la línea del valor: se quita de todos en el propio test.
+     */
+    private const CORRECCIONES_DE_RESUMEN = [
+        'a3' => ['OTORGANN' => 'OTORGAN'],
+        'a32' => [
+            'OTORGANN' => 'OTORGAN',
+            "\nMONTO MÁXIMO DE LA GARANTÍA:" => "\nMONTO DE LA OBLIGACIÓN PRINCIPAL: [OBLIGACIÓN].\nMONTO MÁXIMO DE LA GARANTÍA:",
+        ],
+        'a33' => ['OTORGANN' => 'OTORGAN'],
+        'a34' => [
+            'OTORGANN' => 'OTORGAN',
+            'PRE-CONSTITUCIÓN DE GARANTÍA MOBILIARIA SOBRE BIEN FUTURO EN EL' => 'PRE-CONSTITUCIÓN DE GARANTÍA MOBILIARIA EN EL',
+        ],
+        'a35' => ['OTORGANN' => 'OTORGAN'],
+        'b3' => ['LOS DEUDORES OTORGA PODER' => 'LOS DEUDORES OTORGAN PODER', 'LOS DEUDORES ADEUDARA TOTAL' => 'LOS DEUDORES ADEUDARAN TOTAL'],
+    ];
+
+    /** Los 8 modelos de cancelación del área: deudor, deudora, deudores y empresa, con uno y con dos vehículos (24/11/2026, Trello #144). */
+    private const DIR_CANCELACIONES = __DIR__.'/../Fixtures/sigm/cancelaciones';
 
     private Client $client;
 
@@ -95,7 +139,7 @@ class SigmDocumentosTest extends TestCase
      * @param  list<array<string, mixed>>  $deudores
      * @param  list<array<string, mixed>>  $bienes
      */
-    private function contratoCon(array $deudores, array $bienes, bool $gps = true, bool $custodia = false, bool $juridica = false): DocumentoCliente
+    private function contratoCon(array $deudores, array $bienes, bool $gps = true, bool $custodia = false, bool $juridica = false, int $redaccion = GeneradorContrato::REDACCION): DocumentoCliente
     {
         DocumentoCliente::query()->delete();
 
@@ -103,7 +147,7 @@ class SigmDocumentosTest extends TestCase
             'client_id' => $this->client->id, 'credit_id' => $this->credit->id, 'tipo' => 'contrato',
             'modelo' => 'a3', 'version' => 1, 'estado' => 'emitido',
             'snapshot' => [
-                'fecha' => '15/10/2026', 'gps' => $gps, 'custodia' => $custodia, 'conjunto' => ['juridica' => $juridica],
+                'fecha' => '15/10/2026', 'redaccion' => $redaccion, 'gps' => $gps, 'custodia' => $custodia, 'conjunto' => ['juridica' => $juridica],
                 'montos' => ['valor_bien' => 30000, 'obligacion' => 5000, 'monto_maximo' => 6000],
                 'deudores' => $deudores, 'bienes' => $bienes,
             ],
@@ -123,6 +167,37 @@ class SigmDocumentosTest extends TestCase
     private function contexto(): array
     {
         return GeneradorSigm::contexto($this->client, $this->credit);
+    }
+
+    /**
+     * Deja emitido el contrato de un modelo del área, que se reconoce por el nombre de su archivo: a = con
+     * GPS, b = sin GPS; después 1 deudor, 2 deudora, 3 dos deudores, 4 empresa; y al final 2 = dos bienes
+     * presentes, 3 = dos futuros, 4 = un futuro, 5 = futuro y presente (sin cifra, un bien presente; a41 es
+     * la empresa con depósito al gerente, también un presente).
+     *
+     * @return list<array<string, mixed>> los deudores del contrato
+     */
+    private function contratoDelModelo(string $modelo): array
+    {
+        $this->assertSame(1, preg_match('/^([ab])([1-4])([1-5]?)$/', $modelo, $m), "Nombre de modelo inesperado: {$modelo}");
+        [, $garantia, $persona, $variante] = $m;
+
+        $rosa = $this->persona('QUISPE MAMANI ROSA LINDA', 'F', 'rosa.p@example.com');
+        $juan = $this->persona('TAFUR CUENCA JUAN', 'M', 'juan.t@example.com');
+        $empresa = ['esJuridica' => true, 'nombre' => 'INVERSIONES HUACACHIN SAC', 'sexo' => 'F', 'correo' => 'ihuacachin@gmail.com'];
+        $deudores = ['1' => [$juan], '2' => [$rosa], '3' => [$rosa, $juan], '4' => [$empresa]][$persona];
+        $uno = fn (bool $futuro) => $this->bien('UNO111', $futuro, 12000);
+        $dos = fn (bool $futuro) => $this->bien('DOS222', $futuro, 18000);
+
+        $this->contratoCon($deudores, match ($persona === '4' && $variante === '1' ? '' : $variante) {
+            '2' => [$uno(false), $dos(false)],
+            '3' => [$uno(true), $dos(true)],
+            '4' => [$uno(true)],
+            '5' => [$uno(true), $dos(false)],
+            default => [$uno(false)],
+        }, gps: $garantia === 'a', juridica: $persona === '4');
+
+        return $deudores;
     }
 
     public function test_el_correo_sale_del_contrato_y_abre_gmail_con_todo_puesto(): void
@@ -175,6 +250,7 @@ class SigmDocumentosTest extends TestCase
         foreach (['8.1 PARA PROCEDER CON LA VENTA EXTRAJUDICIAL, LA DEUDORA', '8.5 AMBAS PARTES', '8.7 EL ACREEDOR Y LA DEUDORA', '9.1 LA DEUDORA DECLARA', '9.4 EN CASO LA DEUDORA'] as $numeral) {
             $this->assertStringContainsString($numeral, $resumen);
         }
+        $this->assertStringNotContainsString('SIG111', $resumen, 'en ningún resumen va la placa');
         $this->assertStringNotContainsString('{', $resumen);
     }
 
@@ -206,26 +282,158 @@ class SigmDocumentosTest extends TestCase
         $this->contratoCon([$rosa], [$this->bien('FUT444', futuro: true)]);
         $ctx = $this->contexto();
         $correo = GeneradorSigm::correo($ctx);
-        $this->assertSame('gps-futuro', $ctx['resumen']);
         $this->assertSame('Comunicación sobre la Pre-constitución de garantía mobiliaria en el SIGM – PLACA N° FUT444.', $correo['asunto']);
         $this->assertStringContainsString('realizar la pre-constitución de la garantía mobiliaria correspondiente al Contrato de Crédito Vehicular con Pre-constitución', $correo['cuerpo']);
 
-        // Dos vehículos con GPS: resumen con el valor de cada uno; el correo y la cancelación no tienen modelo.
+        // Dos vehículos con GPS: resumen con el valor de cada uno y correo con las dos placas.
         $this->contratoCon([$rosa], [$this->bien('UNO555', valor: 12000), $this->bien('DOS666', valor: 18000)]);
         $ctx = $this->contexto();
-        $this->assertSame('gps-2vehiculos', $ctx['resumen']);
         $this->assertSame(['S/ 12,000.00 (DOCE MIL CON 00/100 SOLES)', 'S/ 18,000.00 (DIECIOCHO MIL CON 00/100 SOLES)'], $ctx['valores']);
         $resumen = GeneradorSigm::resumen($ctx);
         $this->assertStringContainsString('S/ 12,000.00 (DOCE MIL CON 00/100 SOLES)', $resumen);
         $this->assertStringContainsString('S/ 18,000.00 (DIECIOCHO MIL CON 00/100 SOLES)', $resumen);
-        $this->assertSame('No hay modelo para esta combinación de vehículos del contrato.', $ctx['sinCorreo']);
-        $this->assertNotNull($ctx['sinCancelacion']);
+        $this->assertSame('Comunicación sobre la constitución de garantía mobiliaria en el SIGM – PLACAS N° UNO555 y N° DOS666.', GeneradorSigm::correo($ctx)['asunto']);
 
-        // Sin modelo del área (decisión de Antony: quedan fuera): custodia y dos vehículos sin GPS.
+        // Dos vehículos sin GPS: su propio resumen, con el valor de cada uno y sin la placa.
+        $this->contratoCon([$rosa], [$this->bien('SN1999', valor: 12000), $this->bien('SN2000', valor: 18000)], gps: false);
+        $ctx = $this->contexto();
+        $this->assertSame('sn-2vehiculos', $ctx['resumen']);
+        $this->assertStringContainsString('QUINTO: VALOR DEL VEHÍCULO 1: S/ 12,000.00 (DOCE MIL CON 00/100 SOLES).', GeneradorSigm::resumen($ctx));
+    }
+
+    /** 24/11/2026 (Trello #142): cada modelo de correo del área, palabra por palabra y con sus negritas. */
+    public function test_el_correo_de_cada_contrato_sale_como_su_modelo_del_area(): void
+    {
+        $modelos = glob(self::DIR_CORREOS.'/*.txt');
+        $this->assertCount(27, $modelos);
+
+        foreach ($modelos as $ruta) {
+            $modelo = basename($ruta, '.txt');
+            $deudores = $this->contratoDelModelo($modelo);
+
+            $correo = GeneradorSigm::correo($this->contexto());
+
+            $esperado = strtr(trim((string) file_get_contents($ruta)), [
+                '[PLACA]' => 'UNO111', '[PLACA 1]' => 'UNO111', '[PLACA 2]' => 'DOS222',
+                '[PLACA DEL BIEN FUTURO]' => 'UNO111', '[PLACA DEL BIEN PRESENTE]' => 'DOS222',
+                '[NOMBRES Y APELLIDOS]' => $deudores[0]['nombre'],
+                '[NOMBRES Y APELLIDOS 1]' => 'QUISPE MAMANI ROSA LINDA', '[NOMBRES Y APELLIDOS 2]' => 'TAFUR CUENCA JUAN',
+                '[RAZÓN SOCIAL]' => 'INVERSIONES HUACACHIN SAC',
+                '[FECHA DEL CONTRATO]' => '15 DE OCTUBRE DEL 2026',
+            ] + (self::CORRECCIONES_DE_CORREO[$modelo] ?? []));
+            preg_match_all('#<div[^>]*>(.*?)</div>#', $correo['html'], $lineas);
+            $generado = implode("\n", ['Asunto: '.$correo['asunto'], ...array_diff($lineas[1], ['<br>'])]);
+
+            $this->assertSame($esperado, $generado, "El correo del modelo {$modelo} no sale como su modelo del área.");
+        }
+    }
+
+    /**
+     * 24/11/2026 (Trello #143): cada modelo de resumen del área, palabra por palabra y con su numeración. En
+     * los modelos los datos del contrato van entre corchetes: fecha, valor de cada vehículo, obligación y monto
+     * máximo (los tres de un vehículo sin GPS traían datos de ejemplo en su lugar). Los de GPS traían además
+     * "PLACA [PLACA n] – " delante del valor: el área pidió que ningún resumen lleve la placa.
+     */
+    public function test_el_resumen_de_cada_contrato_sale_como_su_modelo_del_area(): void
+    {
+        $modelos = glob(self::DIR_RESUMENES.'/*.txt');
+        $this->assertCount(26, $modelos);
+
+        foreach ($modelos as $ruta) {
+            $modelo = basename($ruta, '.txt');
+            $this->contratoDelModelo($modelo);
+            $ctx = $this->contexto();
+
+            $sinPlaca = preg_replace('/PLACA \[PLACA [12]\] – /u', '', trim((string) file_get_contents($ruta)));
+            $esperado = strtr(strtr($sinPlaca, self::CORRECCIONES_DE_RESUMEN[$modelo] ?? []), [
+                '[FECHA DEL CONTRATO]' => '15 DE OCTUBRE DEL 2026',
+                '[VALOR 1]' => count($ctx['placas']) === 1 ? 'S/ 30,000.00 (TREINTA MIL CON 00/100 SOLES)' : 'S/ 12,000.00 (DOCE MIL CON 00/100 SOLES)',
+                '[VALOR 2]' => 'S/ 18,000.00 (DIECIOCHO MIL CON 00/100 SOLES)',
+                '[OBLIGACIÓN]' => 'S/ 5,000.00 (CINCO MIL CON 00/100 SOLES)',
+                '[MONTO MÁXIMO]' => 'S/ 6,000.00 (SEIS MIL CON 00/100 SOLES)',
+            ]);
+
+            $this->assertSame($esperado, GeneradorSigm::resumen($ctx), "El resumen del modelo {$modelo} no sale como su modelo del área.");
+        }
+    }
+
+    /**
+     * 24/11/2026 (Trello #142, #143 y #144): lo que sigue sin modelo avisa en vez de generar. La cancelación
+     * solo falta con más de dos vehículos; custodia la tiene, pero no correo ni resumen (el área los debe).
+     */
+    public function test_el_correo_el_resumen_y_la_cancelacion_avisan_cuando_el_contrato_no_tiene_modelo(): void
+    {
+        $rosa = $this->persona('QUISPE MAMANI ROSA LINDA', 'F', 'rosa.p@example.com');
+        $empresa = ['esJuridica' => true, 'nombre' => 'INVERSIONES HUACACHIN SAC', 'sexo' => 'F', 'correo' => 'ihuacachin@gmail.com'];
+        $combinacion = 'No hay modelo para esta combinación de vehículos del contrato.';
+
+        $avisos = fn () => array_values(array_intersect_key($this->contexto(), ['sinCorreo' => 1, 'sinResumen' => 1, 'sinCancelacion' => 1]));
+
         $this->contratoCon([$rosa], [$this->bien('CUS888')], custodia: true);
-        $this->assertSame('No hay modelo para contratos con custodia.', $this->contexto()['sinResumen']);
-        $this->contratoCon([$rosa], [$this->bien('SN1999'), $this->bien('SN2000')], gps: false);
-        $this->assertNull($this->contexto()['resumen']);
+        $this->assertSame(['No hay modelo para contratos con custodia.', 'No hay modelo para contratos con custodia.', null], $avisos());
+
+        $this->contratoCon([$rosa], [$this->bien('SNF111', futuro: true)], gps: false);
+        $this->assertSame([$combinacion, $combinacion, null], $avisos());
+
+        $this->contratoCon([$rosa], [$this->bien('TRE111'), $this->bien('TRE222'), $this->bien('TRE333')]);
+        $this->assertSame([$combinacion, $combinacion, $combinacion], $avisos());
+
+        $this->contratoCon([$empresa], [$this->bien('EMP333')], gps: false, juridica: true);
+        $ctx = $this->contexto();
+        $this->assertSame([$combinacion, $combinacion, null], $avisos());
+        $this->expectExceptionObject(new InvalidArgumentException($combinacion));
+        GeneradorSigm::resumen($ctx);
+    }
+
+    /**
+     * 24/11/2026 (Trello #144): cada modelo de cancelación del área, palabra por palabra. Valen para todo
+     * contrato de uno o dos vehículos: con o sin GPS, con bien futuro y con custodia (confirmado por el área).
+     */
+    public function test_la_cancelacion_de_cada_contrato_sale_como_su_modelo_del_area(): void
+    {
+        $modelos = glob(self::DIR_CANCELACIONES.'/*.txt');
+        $this->assertCount(8, $modelos);
+
+        $constitucion = new SigmAviso(['nro_formulario' => '2026-905021', 'folio' => '20261027002239830', 'fecha_presentacion' => '2026-10-27']);
+        $rosa = $this->persona('QUISPE MAMANI ROSA LINDA', 'F', 'rosa.p@example.com');
+        $juan = $this->persona('TAFUR CUENCA JUAN', 'M', 'juan.t@example.com');
+        $empresa = ['esJuridica' => true, 'nombre' => 'INVERSIONES HUACACHIN SAC', 'sexo' => 'F', 'correo' => 'ihuacachin@gmail.com'];
+        $deudoresDe = ['deudor' => [$juan], 'deudora' => [$rosa], 'deudores' => [$rosa, $juan], 'empresa' => [$empresa]];
+
+        foreach ($modelos as $ruta) {
+            [$persona, $vehiculos] = explode('-', basename($ruta, '.txt'));
+            $esperado = strtr(trim((string) file_get_contents($ruta)), [
+                '[PLACA]' => 'UNO111', '[PLACA 1]' => 'UNO111', '[PLACA 2]' => 'DOS222',
+                '[NÚMERO DE FORMULARIO]' => '2026-905021', '[FOLIO CAUSAL ELECTRÓNICO]' => '20261027002239830',
+                '[FECHA DD/MM/AAAA]' => '27/10/2026',
+                '[NOMBRE DEL DEUDOR]' => 'TAFUR CUENCA JUAN', '[NOMBRE DE LA DEUDORA]' => 'QUISPE MAMANI ROSA LINDA',
+                '[NOMBRE DEL PRIMER DEUDOR]' => 'QUISPE MAMANI ROSA LINDA', '[NOMBRE DEL SEGUNDO DEUDOR]' => 'TAFUR CUENCA JUAN',
+                '[RAZÓN SOCIAL]' => 'INVERSIONES HUACACHIN SAC',
+            ]);
+
+            foreach (['con GPS' => [true, false, false], 'sin GPS' => [false, false, false], 'bien futuro' => [true, true, false], 'custodia' => [true, false, true]] as $caso => [$gps, $futuro, $custodia]) {
+                $bienes = array_slice([$this->bien('UNO111', $futuro), $this->bien('DOS222')], 0, (int) $vehiculos);
+                $this->contratoCon($deudoresDe[$persona], $bienes, gps: $gps, custodia: $custodia, juridica: $persona === 'empresa');
+
+                $this->assertSame($esperado, GeneradorSigm::cancelacion($this->contexto(), $constitucion), "La cancelación de {$persona} con {$vehiculos} vehículo(s), {$caso}, no sale como su modelo del área.");
+            }
+        }
+    }
+
+    /**
+     * 24/11/2026 (área legal: "sobre la empresa mantenlo con el título base"): el correo y el resumen citan
+     * el título con que se emitió el contrato. El de la empresa con bien futuro y bien presente lleva el base
+     * (sus modelos a.4.5, arriba); uno emitido antes de ese día se firmó con el del mixto y así se sigue citando.
+     */
+    public function test_la_empresa_con_bien_futuro_y_presente_emitida_antes_se_cita_con_el_titulo_con_que_se_firmo(): void
+    {
+        $empresa = ['esJuridica' => true, 'nombre' => 'INVERSIONES HUACACHIN SAC', 'sexo' => 'F', 'correo' => 'ihuacachin@gmail.com'];
+        $this->contratoCon([$empresa], [$this->bien('UNO111', futuro: true), $this->bien('DOS222')], juridica: true, redaccion: 2);
+        $ctx = $this->contexto();
+
+        $this->assertSame(['mixto', 'mixto'], [$ctx['bienes'], $ctx['titulo']]);
+        $this->assertStringContainsString('Contrato de Crédito Vehicular con Constitución de Garantía Mobiliaria sobre Bien Futuro y Bien Presente en el', GeneradorSigm::correo($ctx)['cuerpo']);
+        $this->assertSame(2, substr_count(GeneradorSigm::resumen($ctx), 'CON CONSTITUCIÓN DE GARANTÍA MOBILIARIA SOBRE BIEN FUTURO Y BIEN PRESENTE EN EL SISTEMA'));
     }
 
     /** 13/11/2026 (Trello #139): modelos a.4 (correo), 1.7 (resumen) y 1.4 (cancelación) de la empresa deudora. */
@@ -239,10 +447,10 @@ class SigmDocumentosTest extends TestCase
         $correo = GeneradorSigm::correo($ctx);
         $this->assertSame(['ihuacachin@gmail.com'], $correo['para']);
         $this->assertSame('Comunicación sobre la constitución de garantía mobiliaria en el SIGM – PLACA N° F7A197.', $correo['asunto']);
-        $this->assertStringStartsWith('Estimado(a) representante de INVERSIONES HUACACHIN SAC:', $correo['cuerpo']);
-        $this->assertStringContainsString('Estimado(a) representante de <b>INVERSIONES HUACACHIN SAC</b>:', $correo['html']);
+        $this->assertStringStartsWith('Señores INVERSIONES HUACACHIN SAC:', $correo['cuerpo']);
+        $this->assertStringContainsString('Señores <b>INVERSIONES HUACACHIN SAC</b>:', $correo['html']);
         $this->assertStringContainsString('cumplo con informarle que se procederá a realizar la constitución de la garantía mobiliaria', $correo['cuerpo']);
-        $this->assertStringContainsString('otorgada por usted en la Cláusula Décimo Tercera del referido contrato, mediante la cual me faculta', $correo['cuerpo']);
+        $this->assertStringContainsString('otorgada por su representada en la Cláusula Décimo Tercera del referido contrato, mediante la cual me faculta', $correo['cuerpo']);
 
         // El resumen 1.7 es el del deudor con GPS palabra por palabra: EL DEUDOR, no LA DEUDORA.
         $resumen = GeneradorSigm::resumen($ctx);
@@ -257,12 +465,12 @@ class SigmDocumentosTest extends TestCase
             GeneradorSigm::cancelacion($ctx, $constitucion)
         );
 
-        // Fuera de los modelos de empresa: dos vehículos o sin GPS.
+        // Con dos vehículos la empresa tiene los tres; sin GPS, solo la cancelación.
         $combinacion = 'No hay modelo para esta combinación de vehículos del contrato.';
         $this->contratoCon([$empresa], [$this->bien('EMP111'), $this->bien('EMP222')], juridica: true);
-        $this->assertSame([$combinacion, $combinacion, $combinacion], [$this->contexto()['sinCorreo'], $this->contexto()['sinResumen'], $this->contexto()['sinCancelacion']]);
+        $this->assertSame([null, null, null], [$this->contexto()['sinCorreo'], $this->contexto()['sinResumen'], $this->contexto()['sinCancelacion']]);
         $this->contratoCon([$empresa], [$this->bien('EMP333')], gps: false, juridica: true);
-        $this->assertSame([$combinacion, $combinacion], [$this->contexto()['sinCorreo'], $this->contexto()['sinResumen']]);
+        $this->assertSame([$combinacion, $combinacion, null], [$this->contexto()['sinCorreo'], $this->contexto()['sinResumen'], $this->contexto()['sinCancelacion']]);
     }
 
     /** 13/11/2026 (Trello #137): "Fecha de constitución", "Registrar constitución" y, registrada, solo se toca el mismo día salvo el director. */

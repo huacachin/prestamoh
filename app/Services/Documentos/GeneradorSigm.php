@@ -24,21 +24,25 @@ use InvalidArgumentException;
  *      tablas del Área Legal (garantias + sigm_avisos, tipo 'constitucion').
  *  3.4 Resumen de cancelación: el texto para "Descripción de otros" del formulario de cancelación.
  *
- * Todo sale del contrato ya emitido del crédito (su snapshot). Sin modelo del área —y así quedan fuera
- * por ahora, decisión de Antony—: custodia y las combinaciones de vehículos que no tienen el suyo
- * (2 bienes futuros, futuro + presente, 2 vehículos sin GPS; el correo y la cancelación solo con uno).
+ * Todo sale del contrato ya emitido del crédito (su snapshot). Lo que no tiene modelo del área avisa en
+ * vez de generar.
  *
- * Empresa (13/11/2026, Trello #139, modelos "a.4 Correo.GPS. Empresa", "1.7 GPS. Resumen SIGM. Deudor
- * Empresa" y "1.4 Deudor Empresa. Cancelación SIGM"): solo la empresa deudora con GPS y un vehículo, que
- * es lo que emiten los contratos a.4 y a.4.1. El resumen es el del deudor con GPS (texto idéntico) y la
- * cancelación dice "EL DEUDOR {razón social}", aunque el contrato redacta a la empresa como LA DEUDORA.
+ * Correo previo y resumen de constitución (24/11/2026, Trello #142 y #143: 27 modelos de correo y 26 de
+ * resumen): con GPS, uno o dos vehículos presentes, futuros o uno de cada uno, también la empresa; sin
+ * GPS, uno o dos vehículos presentes de persona natural. Custodia sigue sin los suyos: el área los
+ * entregará en otro bloque, con más casos (tres vehículos).
+ *
+ * Cancelación (24/11/2026, Trello #144: 8 modelos, deudor, deudora, deudores y empresa con uno o dos
+ * vehículos): vale para todo contrato de uno o dos vehículos, también con custodia (confirmado por el
+ * área). La de la empresa dice "EL DEUDOR {razón social}", aunque el contrato la redacta como LA DEUDORA;
+ * su resumen también dice EL DEUDOR.
  */
 class GeneradorSigm
 {
     /**
      * Lo que el contrato vigente del crédito permite generar.
      *
-     * @return array{contrato: DocumentoCliente, persona: string, gps: bool, futuro: bool, placas: list<string>, nombres: list<string>, correos: list<string>, fecha: string, valores: list<string>, obligacion: string, montoMaximo: string, montoMaximoNumero: float, resumen: ?string, sinCorreo: ?string, sinResumen: ?string, sinCancelacion: ?string}
+     * @return array{contrato: DocumentoCliente, persona: string, gps: bool, bienes: 'presente'|'futuro'|'mixto', titulo: 'presente'|'futuro'|'mixto', placas: list<string>, futuros: list<bool>, nombres: list<string>, correos: list<string>, fecha: string, valores: list<string>, obligacion: string, montoMaximo: string, montoMaximoNumero: float, resumen: ?string, sinCorreo: ?string, sinResumen: ?string, sinCancelacion: ?string}
      */
     public static function contexto(Client $client, Credit $credit): array
     {
@@ -53,20 +57,16 @@ class GeneradorSigm
         $futuros = count(array_filter($bienes, fn ($b) => ! empty($b['esFuturo'])));
 
         $empresa = (bool) ($s['conjunto']['juridica'] ?? ($deudores[0]['esJuridica'] ?? false));
+        $unoODos = in_array(count($bienes), [1, 2], true);
+        // Correo y resumen: custodia aún no tiene los suyos; sin GPS solo hay modelo con bienes presentes y de persona natural.
         $sinModelo = ($s['custodia'] ?? false) ? 'No hay modelo para contratos con custodia.' : null;
-        // La empresa solo tiene modelos con GPS y un vehículo presente (a.4 / a.4.1).
-        $empresaConModelo = $gps && count($bienes) === 1 && $futuros === 0;
-
-        // Resumen: GPS con 1 vehículo (o bien futuro) o 2 vehículos presentes; sin GPS, 1 vehículo presente.
+        $conModelo = $unoODos && ($gps || ($futuros === 0 && ! $empresa));
         $resumen = match (true) {
-            $sinModelo !== null => null,
-            $empresa => $empresaConModelo ? 'gps' : null,
-            $gps && count($bienes) === 1 => $futuros ? 'gps-futuro' : 'gps',
-            $gps && count($bienes) === 2 && $futuros === 0 => 'gps-2vehiculos',
-            ! $gps && count($bienes) === 1 && $futuros === 0 => 'sn',
-            default => null,
+            $sinModelo !== null || ! $conModelo => null,
+            $gps => 'gps',
+            count($bienes) === 1 => 'sn',
+            default => 'sn-2vehiculos',
         };
-        $unSoloBien = $empresa ? $empresaConModelo : count($bienes) === 1 && ($gps || $futuros === 0);
 
         $montos = $s['montos'] ?? [];
         $valores = count($bienes) === 2
@@ -85,8 +85,15 @@ class GeneradorSigm
             'contrato' => $contrato,
             'persona' => $persona,
             'gps' => $gps,
-            'futuro' => $futuros > 0,
+            'bienes' => match (true) {
+                $futuros === 0 => 'presente',
+                $futuros === count($bienes) => 'futuro',
+                default => 'mixto',
+            },
+            // El título con que se emitió el contrato: el correo y el resumen lo citan tal cual.
+            'titulo' => ContratoVm::varianteDelTitulo($bienes, $empresa, (int) ($s['redaccion'] ?? 1)),
             'placas' => array_map(fn ($b) => (string) ($b['placa'] ?? ''), $bienes),
+            'futuros' => array_map(fn ($b) => ! empty($b['esFuturo']), $bienes),
             'nombres' => array_map(fn ($d) => (string) ($d['nombre'] ?? ''), $deudores),
             'correos' => array_values(array_unique(array_filter(array_map(
                 fn ($d) => mb_strtolower(trim((string) ($d['correo'] ?? ''))), $deudores
@@ -97,9 +104,9 @@ class GeneradorSigm
             'montoMaximo' => self::monto((float) ($montos['monto_maximo'] ?? 0)),
             'montoMaximoNumero' => (float) ($montos['monto_maximo'] ?? 0),
             'resumen' => $resumen,
-            'sinCorreo' => $sinModelo ?? ($unSoloBien ? null : $combinacion),
-            'sinResumen' => $sinModelo ?? ($resumen ? null : $combinacion),
-            'sinCancelacion' => $sinModelo ?? (($empresa ? $empresaConModelo : count($bienes) === 1) ? null : $combinacion),
+            'sinCorreo' => $sinModelo ?? ($conModelo ? null : $combinacion),
+            'sinResumen' => $sinModelo ?? ($conModelo ? null : $combinacion),
+            'sinCancelacion' => $unoODos ? null : $combinacion,
         ];
     }
 
@@ -108,6 +115,9 @@ class GeneradorSigm
      * pegarlo en Gmail; 'cuerpo' es el mismo texto sin formato. El enlace de Gmail no admite formato:
      * 'gmailSinCuerpo' abre la redacción con destinatario y asunto (el cuerpo se pega con formato) y 'gmail'
      * trae además el texto plano, de respaldo si el navegador no deja copiar.
+     *
+     * Con dos vehículos el asunto nombra las dos placas en el orden del contrato; en el de bien futuro y
+     * bien presente el contrato ya pone primero el futuro, como pide el modelo.
      *
      * @return array{para: list<string>, asunto: string, html: string, cuerpo: string, gmail: string, gmailSinCuerpo: string}
      */
@@ -122,12 +132,13 @@ class GeneradorSigm
         $html = self::texto('correo', [
             'saludo' => [
                 'deudor' => 'Estimado señor', 'deudora' => 'Estimada señora', 'deudores' => 'Estimados señores',
-                // Modelo a.4: "Estimad(a) representante de {empresa}"; corregido a "Estimado(a)".
-                'empresa' => 'Estimado(a) representante de',
+                'empresa' => 'Señores',
             ][$ctx['persona']],
             'nombres' => implode(' y ', $ctx['nombres']),
             'plural' => $plural,
-            'futuro' => $ctx['futuro'],
+            'otorgante' => ['deudores' => 'ustedes', 'empresa' => 'su representada'][$ctx['persona']] ?? 'usted',
+            'bienes' => $ctx['bienes'],
+            'titulo' => $ctx['titulo'],
             'gps' => $ctx['gps'],
             'fecha' => $ctx['fecha'],
             'firma' => [
@@ -139,8 +150,9 @@ class GeneradorSigm
             ],
         ]);
         $cuerpo = self::textoPlano($html);
-        $asunto = 'Comunicación sobre la '.($ctx['futuro'] ? 'Pre-constitución' : 'constitución')
-            .' de garantía mobiliaria en el SIGM – PLACA N° '.$ctx['placas'][0].'.';
+        $acto = ['presente' => 'constitución', 'futuro' => 'Pre-constitución', 'mixto' => 'pre-constitución y constitución'][$ctx['bienes']];
+        $placas = count($ctx['placas']) === 1 ? 'PLACA N° '.$ctx['placas'][0] : 'PLACAS N° '.implode(' y N° ', $ctx['placas']);
+        $asunto = "Comunicación sobre la {$acto} de garantía mobiliaria en el SIGM – {$placas}.";
 
         // Redacción de Gmail; authuser elige la cuenta del área si está abierta.
         $gmail = fn (array $extra) => 'https://mail.google.com/mail/?'.http_build_query(array_filter([
@@ -161,22 +173,35 @@ class GeneradorSigm
         ];
     }
 
-    /** 3.2: el resumen para "Descripción de cláusula del contrato". */
+    /**
+     * 3.2: el resumen para "Descripción de cláusula del contrato". Con GPS, una plantilla para todos sus
+     * modelos; sin GPS, la de dos vehículos y, con uno, la de cada deudor (modelos del 15/10/2026). La línea
+     * del valor no lleva la placa en ninguno (24/11/2026, área legal).
+     */
     public static function resumen(array $ctx): string
     {
         if ($ctx['sinResumen'] !== null) {
             throw new InvalidArgumentException($ctx['sinResumen']);
         }
 
-        return self::texto("resumen-{$ctx['resumen']}-{$ctx['persona']}", [
+        return self::texto($ctx['resumen'] === 'sn' ? "resumen-sn-{$ctx['persona']}" : "resumen-{$ctx['resumen']}", [
             'fecha' => $ctx['fecha'],
             'valores' => $ctx['valores'],
             'obligacion' => $ctx['obligacion'],
             'montoMaximo' => $ctx['montoMaximo'],
+            'sujeto' => self::sujeto($ctx['persona']),
+            'plural' => $ctx['persona'] === 'deudores',
+            'bienes' => $ctx['bienes'],
+            'titulo' => $ctx['titulo'],
+            'rotulos' => array_map(fn (bool $futuro) => match (true) {
+                $futuro => ' (BIEN FUTURO)',
+                $ctx['bienes'] === 'mixto' => ' (BIEN PRESENTE)',
+                default => '',
+            }, $ctx['futuros']),
         ]);
     }
 
-    /** 3.4: el resumen de cancelación de una constitución registrada. */
+    /** 3.4: el resumen de cancelación de una constitución registrada; con dos vehículos nombra las dos placas. */
     public static function cancelacion(array $ctx, SigmAviso $constitucion): string
     {
         if ($ctx['sinCancelacion'] !== null) {
@@ -184,11 +209,11 @@ class GeneradorSigm
         }
 
         return self::texto('cancelacion', [
-            'placa' => $ctx['placas'][0],
+            'placas' => $ctx['placas'],
             'formulario' => (string) $constitucion->nro_formulario,
             'folio' => (string) $constitucion->folio,
             'fecha' => $constitucion->fecha_presentacion?->format('d/m/Y'),
-            'sujeto' => ['deudor' => 'EL DEUDOR', 'deudora' => 'LA DEUDORA', 'deudores' => 'LOS DEUDORES', 'empresa' => 'EL DEUDOR'][$ctx['persona']],
+            'sujeto' => self::sujeto($ctx['persona']),
             'nombres' => implode(' Y ', $ctx['nombres']),
             'plural' => $ctx['persona'] === 'deudores',
         ]);
@@ -299,6 +324,12 @@ class GeneradorSigm
         $garantia->vehiculos()->sync($vehiculos);
 
         return $garantia;
+    }
+
+    /** Cómo nombran al deudor el resumen y la cancelación; la empresa es EL DEUDOR, como en sus modelos. */
+    private static function sujeto(string $persona): string
+    {
+        return ['deudora' => 'LA DEUDORA', 'deudores' => 'LOS DEUDORES'][$persona] ?? 'EL DEUDOR';
     }
 
     /** "S/ 22,401.60 (VEINTIDOS MIL CUATROCIENTOS UNO CON 60/100 SOLES)", como en los modelos y el contrato. */
