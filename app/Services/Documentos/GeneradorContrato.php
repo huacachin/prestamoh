@@ -65,8 +65,11 @@ class GeneradorContrato
      *    prohibición con el texto de a.1 en singular, también con dos bienes.
      *  - 2 (19/11/2026, Trello #140): con dos bienes esas cuatro cláusulas
      *    siguen a la maestra de su combinación — ContratoVm::segunBienes().
+     *  - 3 (24/11/2026, respuesta del área legal): la empresa con un bien
+     *    futuro y uno presente lleva el título base, no el del mixto —
+     *    ContratoVm::varianteDelTitulo().
      */
-    public const REDACCION = 2;
+    public const REDACCION = 3;
 
     /** Arma el snapshot del contrato (misma estructura que el factory legacy del área). */
     public static function construirSnapshot(Client $client, Credit $credit, array $vehiculoIds, string $modelo, array $datos = []): array

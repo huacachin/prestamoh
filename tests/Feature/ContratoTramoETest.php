@@ -433,7 +433,7 @@ class ContratoTramoETest extends TestCase
         $snapshot = GeneradorContrato::construirSnapshot(
             $this->client, $this->credit, [$this->v1->id, $this->v2->id], 'a12', $this->datos('a12')
         );
-        $this->assertSame(2, $snapshot['redaccion'], 'los contratos nuevos nacen con la redacción 2');
+        $this->assertSame(GeneradorContrato::REDACCION, $snapshot['redaccion'], 'los contratos nuevos nacen con la redacción vigente');
 
         unset($snapshot['redaccion']);
         $texto = strip_tags(RenderDocumento::html($snapshot, 'contrato', 'word'));

@@ -111,18 +111,39 @@ final class ContratoVm
      */
     public function titulo(): string
     {
-        $futuros = array_filter($this->bienes, fn ($b) => ! empty($b['esFuturo']));
-        $todosFuturos = $futuros !== [] && count($futuros) === count($this->bienes);
-        $mixto = $futuros !== [] && ! $todosFuturos;
-
-        $nucleo = match (true) {
-            $this->custodia => 'CONSTITUCIÓN DE GARANTÍA MOBILIARIA CON POSESIÓN',
-            $todosFuturos => 'PRE-CONSTITUCIÓN DE GARANTÍA MOBILIARIA',
-            $mixto => 'CONSTITUCIÓN DE GARANTÍA MOBILIARIA SOBRE BIEN FUTURO Y BIEN PRESENTE',
-            default => 'CONSTITUCIÓN DE GARANTÍA MOBILIARIA',
-        };
+        $nucleo = $this->custodia ? 'CONSTITUCIÓN DE GARANTÍA MOBILIARIA CON POSESIÓN' : [
+            'futuro' => 'PRE-CONSTITUCIÓN DE GARANTÍA MOBILIARIA',
+            'mixto' => 'CONSTITUCIÓN DE GARANTÍA MOBILIARIA SOBRE BIEN FUTURO Y BIEN PRESENTE',
+        ][self::varianteDelTitulo($this->bienes, $this->esJuridica(), (int) ($this->snapshot['redaccion'] ?? 1))] ?? 'CONSTITUCIÓN DE GARANTÍA MOBILIARIA';
 
         return "CONTRATO DE CRÉDITO VEHICULAR CON {$nucleo} EN EL SISTEMA INFORMATIVO DE GARANTÍAS MOBILIARIAS – SIGM";
+    }
+
+    /**
+     * Qué título lleva el contrato por sus bienes: 'presente' (el base),
+     * 'futuro' (todos futuros: PRE-CONSTITUCIÓN) o 'mixto' (…SOBRE BIEN FUTURO
+     * Y BIEN PRESENTE). Lo comparten el contrato y el correo y el resumen
+     * SIGM, que citan ese título (GeneradorSigm).
+     *
+     * La empresa con un bien futuro y uno presente lleva el título BASE
+     * (24/11/2026, respuesta del área legal: "sobre la empresa mantenlo con
+     * el título base"; así traen la carátula sus Word a.4.5 y a.4.5.1, y así
+     * lo citan su correo y su resumen). Los que se emitieron antes
+     * (redacción < 3) conservan el del mixto con que se firmaron.
+     *
+     * @param  list<array<string, mixed>>  $bienes
+     * @return 'presente'|'futuro'|'mixto'
+     */
+    public static function varianteDelTitulo(array $bienes, bool $juridica, int $redaccion): string
+    {
+        $futuros = count(array_filter($bienes, fn ($b) => ! empty($b['esFuturo'])));
+
+        return match (true) {
+            $futuros === 0 => 'presente',
+            $futuros === count($bienes) => 'futuro',
+            $juridica && $redaccion >= 3 => 'presente',
+            default => 'mixto',
+        };
     }
 
     public function esJuridica(): bool

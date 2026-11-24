@@ -263,7 +263,13 @@ class ContratoModelosNoviembreTest extends TestCase
         $this->assertStringNotContainsString('LA DEUDORA', $html, 'la empresa nunca se redacta como LA DEUDORA');
     }
 
-    public function test_la_empresa_con_bien_futuro_y_presente_lleva_el_titulo_del_mixto(): void
+    /**
+     * 24/11/2026 (área legal: "sobre la empresa mantenlo con el título base"). Los Word a.4.5 y
+     * a.4.5.1 traen el título base en la carátula y el del mixto en la cita de OCTAVO: el contrato
+     * lleva el base en los dos sitios (una sola fuente, y así lo citan su correo y su resumen SIGM).
+     * El "CONSTE POR EL PRESENTE DOCUMENTO…" sigue como en el Word.
+     */
+    public function test_la_empresa_con_bien_futuro_y_presente_lleva_el_titulo_base(): void
     {
         [$empresa, $credit, $v1, $v2] = $this->mundoEmpresa();
 
@@ -276,12 +282,16 @@ class ContratoModelosNoviembreTest extends TestCase
         $doc = $this->contratoDe($empresa);
         $this->assertSame('a45', $doc->modelo);
 
-        // Los Word a.4.5 / a.4.5.1 / a.1.5.1 dejaron el título base en la carátula, pero su
-        // propia cláusula OCTAVO cita el del mixto: una sola fuente, como en a.1.5.
         $html = $this->texto($doc);
-        $this->assertSame(2, substr_count($html, 'CON CONSTITUCIÓN DE GARANTÍA MOBILIARIA SOBRE BIEN FUTURO Y BIEN PRESENTE EN EL'));
+        $this->assertSame(2, substr_count($html, 'CON CONSTITUCIÓN DE GARANTÍA MOBILIARIA EN EL SISTEMA INFORMATIVO'), 'carátula y cita de OCTAVO');
+        $this->assertStringNotContainsString('SOBRE BIEN FUTURO Y BIEN PRESENTE EN EL', $html);
+        $this->assertStringContainsString('EL CONTRATO DE CONSTITUCIÓN DE GARANTÍA MOBILIARIA SOBRE BIEN FUTURO Y BIEN PRESENTE MEDIANTE EL SISTEMA', $html);
         $this->assertStringContainsString('RESPECTO AL VEHICULO 1, QUE HA REALIZADO LA TRANSFERENCIA DEL VEHICULO CONFORME A LEY, Y QUE SERÁ LA PROPIETARIA', $html);
         $this->assertStringContainsString('POR OTRO LADO, LA CONSTITUYENTE DECLARA BAJO JURAMENTO RESPECTO AL VEHICULO 2 SER PROPIETARIA', $html);
+
+        // No es retroactivo: el que se emitió antes (redacción 2) se firmó con el título del mixto.
+        $doc->snapshot = ['redaccion' => 2] + $doc->snapshot;
+        $this->assertSame(2, substr_count($this->texto($doc), 'CON CONSTITUCIÓN DE GARANTÍA MOBILIARIA SOBRE BIEN FUTURO Y BIEN PRESENTE EN EL'));
     }
 
     // ── 3b · Dos vehículos: lo que el navegador manda de una sola vez ─────
