@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Livewire\Cash\CreateExpense;
 use App\Livewire\Cash\EditExpense;
 use App\Livewire\Clients\Documentos;
+use App\Livewire\Clients\Edit as ClientEdit;
 use App\Livewire\Clients\Gallery;
 use App\Livewire\Clients\Gps;
 use App\Livewire\Clients\GpsVehiculos;
@@ -195,14 +196,14 @@ class EliminarMismoDiaTest extends TestCase
         $cliente = $this->cliente();
         $ayer = '2026-10-08 16:00:00';
 
-        // Adjunto del cliente (llega como evento register_destroy).
+        // Adjunto del cliente (llega como evento client_attachment_destroy).
         $adjunto = ClientAttachment::create([
             'client_id' => $cliente->id, 'filename' => 'a.jpg', 'original_name' => 'a.jpg', 'path' => "clients/{$cliente->id}/a.jpg",
             'thumb_path' => null, 'mime' => 'image/jpeg', 'size' => 10, 'uploaded_by' => $this->user->id,
         ]);
         ClientAttachment::whereKey($adjunto->id)->update(['created_at' => $ayer]);
         Livewire::test(Gallery::class, ['id' => $cliente->id])
-            ->dispatch('register_destroy', id: $adjunto->id)
+            ->dispatch('client_attachment_destroy', id: $adjunto->id)
             ->assertDispatched('errorAlert');
         $this->assertNotNull($adjunto->fresh(), 'adjunto de ayer: sigue');
 
@@ -282,7 +283,7 @@ class EliminarMismoDiaTest extends TestCase
             ->assertDispatched('questionDelete')
             ->assertNotDispatched('errorAlert');
         Livewire::test(Gallery::class, ['id' => $cliente->id])
-            ->dispatch('register_destroy', id: $deHoy->id)
+            ->dispatch('client_attachment_destroy', id: $deHoy->id)
             ->assertNotDispatched('errorAlert');
         $this->assertNull($deHoy->fresh(), 'subido hoy: se borra');
         Storage::disk('public')->assertMissing($deHoy->path);
@@ -292,9 +293,55 @@ class EliminarMismoDiaTest extends TestCase
             ->assertNotDispatched('questionDelete')
             ->assertDispatched('errorAlert');
         Livewire::test(Gallery::class, ['id' => $cliente->id])
-            ->dispatch('register_destroy', id: $deAyer->id)
+            ->dispatch('client_attachment_destroy', id: $deAyer->id)
             ->assertDispatched('errorAlert');
         $this->assertNotNull($deAyer->fresh(), 'subido ayer: sigue');
+    }
+
+    /**
+     * 24/11/2026 (Trello #141, "Al querer eliminar 1 adjunto del mismo día me sale error"): en la ficha, confirmar
+     * el borrado de un adjunto le llegaba también a la ficha, que tomaba el número del adjunto por el de un
+     * cliente: respondía 404 y el adjunto no se borraba; de coincidir con otro cliente, lo habría desactivado.
+     */
+    public function test_en_la_ficha_borrar_un_adjunto_no_le_llega_a_la_ficha_ni_toca_a_otro_cliente(): void
+    {
+        Storage::fake('public');
+        $this->user->givePermissionTo('clientes');
+        $cliente = $this->cliente();
+        $otro = Client::create([
+            'expediente' => '951', 'nombre' => 'Otro', 'apellido_pat' => 'Cliente', 'apellido_mat' => 'Ajeno',
+            'tipo_documento' => 'DNI', 'documento' => '33445577', 'sexo' => 'M', 'status' => 'active',
+            'headquarter_id' => $this->sede->id, 'asesor_id' => $this->user->id,
+        ]);
+        $adjunto = ClientAttachment::create([
+            'client_id' => $cliente->id, 'filename' => 'hoy.jpg', 'original_name' => 'hoy.jpg', 'path' => "clients/{$cliente->id}/hoy.jpg",
+            'thumb_path' => null, 'mime' => 'image/jpeg', 'size' => 10, 'uploaded_by' => $this->user->username,
+        ]);
+
+        // La galería pide la confirmación por su propio canal, y por ahí borra.
+        Livewire::test(Gallery::class, ['id' => $cliente->id, 'embebido' => true])
+            ->call('questionDelete', $adjunto->id)
+            ->assertDispatched('questionDelete', fn (string $evento, array $datos) => ($datos[0]['event'] ?? null) === 'client_attachment_destroy');
+        Livewire::test(Gallery::class, ['id' => $cliente->id, 'embebido' => true])
+            ->dispatch('client_attachment_destroy', id: $adjunto->id);
+        $this->assertNull($adjunto->fresh(), 'el adjunto de hoy se borra');
+
+        // La ficha solo atiende la confirmación de su propio cliente: ni el de otro, ni un número que no es de nadie.
+        Livewire::test(ClientEdit::class, ['id' => $cliente->id])
+            ->dispatch('register_destroy', id: $otro->id)
+            ->assertNoRedirect();
+        $this->assertSame('active', $otro->fresh()->status, 'no desactiva a otro cliente');
+        Livewire::test(ClientEdit::class, ['id' => $cliente->id])
+            ->dispatch('register_destroy', id: 987654)
+            ->assertOk()
+            ->assertNoRedirect();
+        $this->assertSame('active', $cliente->fresh()->status);
+
+        // El botón Desactivar de la ficha sigue funcionando.
+        Livewire::test(ClientEdit::class, ['id' => $cliente->id])
+            ->dispatch('register_destroy', id: $cliente->id)
+            ->assertRedirect(route('clients.index'));
+        $this->assertSame('inactive', $cliente->fresh()->status);
     }
 
     /** 10/11/2026 (Antony): "Quitar" copropietario de un vehículo, solo si se vinculó hoy (salvo el director). */

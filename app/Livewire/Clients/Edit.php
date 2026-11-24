@@ -324,6 +324,13 @@ class Edit extends Component
     #[On('register_destroy')]
     public function destroy(int $id): void
     {
+        // register_destroy es global y la ficha lleva componentes anidados: solo vale el id del propio
+        // cliente (el botón Desactivar siempre manda $clientId). Con el id de un adjunto daba 404 y, de
+        // coincidir con el de otro cliente, lo habría desactivado (24/11/2026, Trello #141).
+        if ($id !== $this->clientId) {
+            return;
+        }
+
         $client = Client::findOrFail($id);
         if ($this->eliminacionBloqueada($client)) {
             return;

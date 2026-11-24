@@ -133,10 +133,12 @@ class Gallery extends Component
         if (! $att || $this->eliminacionBloqueada($att)) {
             return;
         }
-        $this->dispatch('questionDelete', ['id' => $id]);
+        // Canal propio (24/11/2026, Trello #141): en la ficha la galería va anidada y el register_destroy
+        // global también lo escucha Clients\Edit, que tomaba el id del adjunto por el de un cliente.
+        $this->dispatch('questionDelete', ['id' => $id, 'event' => 'client_attachment_destroy']);
     }
 
-    #[On('register_destroy')]
+    #[On('client_attachment_destroy')]
     public function deleteAttachment(int $id): void
     {
         $att = ClientAttachment::where('client_id', $this->clientId)->find($id);
