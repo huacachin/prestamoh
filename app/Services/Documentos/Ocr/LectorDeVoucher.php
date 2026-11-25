@@ -14,10 +14,11 @@ interface LectorDeVoucher
      * @param  string  $rutaAbsoluta  imagen del voucher en el disco
      * @param  string  $banco  clave de BancosVoucher::BANCOS como PISTA; vacío para que la lectura lo identifique (18/09)
      * @param  string  $modalidad  clave de BancosVoucher::MODALIDADES, ídem
-     * @return array{transcripcion: string, monto: string, beneficiario: string, dudas: string, banco: string, modalidad: string, modelo: string}
+     * @return array{transcripcion: string, monto: string, beneficiario: string, dudas: string, banco: string, modalidad: string, modelo: string, comision?: string}
      *
      * banco/modalidad: la pista si se dio; si no, lo identificado (claves del
-     * catálogo) o '' si no coincide con ninguno.
+     * catálogo) o '' si no coincide con ninguno. comision: lo que el banco
+     * cobró por la operación tal como figura, o '' (24/11).
      *
      * @throws VoucherIlegible cuando no se puede leer (imagen o servicio)
      */

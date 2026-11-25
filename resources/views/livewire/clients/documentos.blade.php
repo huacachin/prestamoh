@@ -1597,12 +1597,15 @@
                                         @php
                                             $sumaTxt = $anexo2DosVouchers && ($chequeosAnexo2['suma'] ?? null) !== null
                                                 ? ' (suma de los dos vouchers: S/ '.number_format($chequeosAnexo2['suma'], 2).')' : '';
+                                            // 24/11: Caja Huancayo a otra plaza descuenta su comisión del depósito; cuadra lo que queda.
+                                            $netoTxt = isset($chequeosAnexo2['comision'])
+                                                ? 'la comisión del banco de S/ '.number_format($chequeosAnexo2['comision'], 2).': quedan S/ '.number_format($chequeosAnexo2['neto'], 2) : '';
                                         @endphp
                                         <div class="form-text" style="font-size:10px;">
                                             @if(($chequeosAnexo2['monto'] ?? null) === true)
-                                                <span class="text-success"><i class="ti ti-check"></i> Coincide con el desembolso: S/ {{ number_format($montoDesembolsoAnexo2, 2) }}{{ $sumaTxt }}</span>
+                                                <span class="text-success"><i class="ti ti-check"></i> Coincide con el desembolso: S/ {{ number_format($montoDesembolsoAnexo2, 2) }}{{ $sumaTxt }}{{ ($chequeosAnexo2['porComision'] ?? false) ? ' (descontada '.$netoTxt.')' : '' }}</span>
                                             @elseif(($chequeosAnexo2['monto'] ?? null) === false)
-                                                <span class="text-danger"><i class="ti ti-alert-triangle"></i> No coincide con el desembolso: S/ {{ number_format($montoDesembolsoAnexo2, 2) }}{{ $sumaTxt }}</span>
+                                                <span class="text-danger"><i class="ti ti-alert-triangle"></i> No coincide con el desembolso: S/ {{ number_format($montoDesembolsoAnexo2, 2) }}{{ $sumaTxt }}{{ $netoTxt !== '' ? ' (ni descontando '.$netoTxt.')' : '' }}</span>
                                             @else
                                                 {{ $anexo2DosVouchers ? 'La suma de los dos vouchers debe coincidir' : 'Debe coincidir' }} con el desembolso: S/ {{ number_format($montoDesembolsoAnexo2, 2) }}
                                             @endif

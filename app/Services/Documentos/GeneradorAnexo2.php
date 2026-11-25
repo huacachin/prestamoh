@@ -21,7 +21,9 @@ use Illuminate\Support\Facades\Storage;
  * VALIDACIÓN BLOQUEANTE A PROPÓSITO: además del combo y los campos requeridos
  * del voucher, el monto transcrito DEBE cuadrar con credit->importe (±0.01).
  * Esta verificación ya salvó al área de emitir una constancia de S/ 8,000
- * sobre un desembolso de S/ 5,000 — no es una validación suave.
+ * sobre un desembolso de S/ 5,000 — no es una validación suave. La única
+ * salvedad es la comisión que el banco descuenta del propio depósito: ver
+ * cuadre().
  *
  * La imagen del comprobante NO es obligatoria: el área a veces la adjunta
  * después de transcribir. Con imagen_path null la previa muestra un
@@ -31,18 +33,27 @@ use Illuminate\Support\Facades\Storage;
  *  - banco (clave de BancosVoucher::BANCOS)
  *  - modalidad (clave de BancosVoucher::MODALIDADES)
  *  - campos (assoc clave => valor según BancosVoucher::campos(banco, modalidad))
+ *  - comision (lo que el banco cobró por la operación, tal como lo dice el
+ *    voucher; solo cuenta donde BancosVoucher::descuentaComision())
  *  - imagen_path (string|null, relativa al disk public)
  *  - fecha ('d/m/Y'; default hoy)
  */
 class GeneradorAnexo2
 {
     /**
+     * Cuánto puede diferir del préstamo un depósito ya descontada la comisión
+     * del banco: el efectivo se deposita al décimo, así que el neto no sale
+     * exacto.
+     */
+    private const TOLERANCIA_CON_COMISION = 0.10;
+
+    /**
      * Vouchers del desembolso (obs. 5.1 del Área Legal, 29/09): hasta dos
      * operaciones que entre las dos suman el monto. $datos['vouchers'] trae la
      * lista; sin ella, el voucher único de siempre viaja en las claves de
      * primer nivel (banco, modalidad, transcripcion, monto, imagen_path).
      *
-     * @return list<array{banco: string, modalidad: string, transcripcion: string, monto: string, imagen_path: ?string}>
+     * @return list<array{banco: string, modalidad: string, transcripcion: string, monto: string, comision: string, imagen_path: ?string}>
      */
     public static function vouchersDe(array $datos): array
     {
@@ -55,8 +66,48 @@ class GeneradorAnexo2
             'modalidad' => trim((string) ($v['modalidad'] ?? '')),
             'transcripcion' => trim((string) ($v['transcripcion'] ?? '')),
             'monto' => trim((string) ($v['monto'] ?? '')),
+            'comision' => trim((string) ($v['comision'] ?? '')),
             'imagen_path' => filled($v['imagen_path'] ?? null) ? $v['imagen_path'] : null,
         ], $lista);
+    }
+
+    /**
+     * El cuadre de la constancia contra el desembolso. Los vouchers lo
+     * reproducen con su monto tal cual (±0.01) o, donde el banco descuenta su
+     * comisión del propio depósito (BancosVoucher::descuentaComision()), con
+     * el monto MENOS esa comisión: el acreedor deposita de más para que al
+     * deudor le llegue el préstamo entero. Ahí se tolera hasta 0.10
+     * (24/11/2026, Caja Huancayo a otra plaza: 45,203.40 − 203.42 = 44,999.98
+     * para un préstamo de 45,000.00).
+     *
+     * Lo usan la validación al generar y el cotejo en pantalla: el aviso y el
+     * bloqueo nunca se contradicen.
+     *
+     * @param  list<array{banco?: string, modalidad?: string, monto?: string, comision?: string}>  $vouchers
+     * @return array{suma: float, comision: float, neto: float, cuadra: bool, porComision: bool}|null null si falta algún monto o no es un número
+     */
+    public static function cuadre(array $vouchers, float $importe): ?array
+    {
+        $suma = 0.0;
+        $comision = 0.0;
+        foreach ($vouchers as $v) {
+            $monto = self::parsearMonto((string) ($v['monto'] ?? ''));
+            if ($monto === null) {
+                return null;
+            }
+            $suma += $monto;
+            if (BancosVoucher::descuentaComision((string) ($v['banco'] ?? ''), (string) ($v['modalidad'] ?? ''))) {
+                $comision += self::parsearMonto((string) ($v['comision'] ?? '')) ?? 0.0;
+            }
+        }
+
+        $suma = round($suma, 2);
+        $comision = round($comision, 2);
+        $neto = round($suma - $comision, 2);
+        $exacto = round(abs($suma - $importe), 2) <= 0.01;
+        $porComision = ! $exacto && $comision > 0 && round(abs($neto - $importe), 2) <= self::TOLERANCIA_CON_COMISION;
+
+        return ['suma' => $suma, 'comision' => $comision, 'neto' => $neto, 'cuadra' => $exacto || $porComision, 'porComision' => $porComision];
     }
 
     /** Arma el snapshot del Anexo 2 según el contrato de datos. */
@@ -131,7 +182,6 @@ class GeneradorAnexo2
         }
 
         $errores = [];
-        $suma = 0.0;
         $montosOk = true;
 
         foreach ($vouchers as $k => $v) {
@@ -149,30 +199,31 @@ class GeneradorAnexo2
             if ($v['monto'] === '') {
                 $errores[] = "Falta el monto del voucher{$cual}: es lo que cuadra la constancia contra el crédito.";
                 $montosOk = false;
-            } else {
-                $monto = self::parsearMonto($v['monto']);
-                if ($monto === null) {
-                    $errores[] = "El monto del voucher{$cual} ('{$v['monto']}') no se puede interpretar como un número.";
-                    $montosOk = false;
-                } else {
-                    $suma += $monto;
-                }
+            } elseif (self::parsearMonto($v['monto']) === null) {
+                $errores[] = "El monto del voucher{$cual} ('{$v['monto']}') no se puede interpretar como un número.";
+                $montosOk = false;
             }
         }
 
         if ($montosOk) {
             $montoCredito = round((float) $credit->importe, 2);
-            if (abs($suma - $montoCredito) > 0.01) {
+            $cuadre = self::cuadre($vouchers, $montoCredito);
+            if (! $cuadre['cuadra']) {
+                $sinComision = $cuadre['comision'] > 0
+                    ? sprintf(', tampoco descontando la comisión del banco de S/ %s (quedan S/ %s)', number_format($cuadre['comision'], 2), number_format($cuadre['neto'], 2))
+                    : '';
                 $errores[] = $dos
                     ? sprintf(
-                        'La suma de los dos vouchers (S/ %s) no coincide con el monto del crédito (S/ %s) — entre los dos deben reproducir el desembolso exacto.',
-                        number_format($suma, 2),
-                        number_format($montoCredito, 2)
+                        'La suma de los dos vouchers (S/ %s) no coincide con el monto del crédito (S/ %s)%s — entre los dos deben reproducir el desembolso exacto.',
+                        number_format($cuadre['suma'], 2),
+                        number_format($montoCredito, 2),
+                        $sinComision
                     )
                     : sprintf(
-                        'El monto del voucher (S/ %s) no coincide con el monto del crédito (S/ %s) — la constancia debe reproducir el desembolso exacto.',
-                        number_format($suma, 2),
-                        number_format($montoCredito, 2)
+                        'El monto del voucher (S/ %s) no coincide con el monto del crédito (S/ %s)%s — la constancia debe reproducir el desembolso exacto.',
+                        number_format($cuadre['suma'], 2),
+                        number_format($montoCredito, 2),
+                        $sinComision
                     );
             }
         }
@@ -246,7 +297,11 @@ class GeneradorAnexo2
             ]);
             $doc->sinAuditoriaAutomatica(fn () => $doc->save());
 
-            Audit::log("Generó el Anexo 2 v{$version} del crédito #{$credit->id} ({$snapshot['cliente']['nombre']})", $doc);
+            $cuadre = self::cuadre(self::vouchersDe($datos), round((float) $credit->importe, 2));
+            $porComision = ($cuadre['porComision'] ?? false)
+                ? sprintf(': depósito de S/ %s menos la comisión del banco de S/ %s', number_format($cuadre['suma'], 2), number_format($cuadre['comision'], 2))
+                : '';
+            Audit::log("Generó el Anexo 2 v{$version} del crédito #{$credit->id} ({$snapshot['cliente']['nombre']}){$porComision}", $doc);
 
             return $doc;
         });

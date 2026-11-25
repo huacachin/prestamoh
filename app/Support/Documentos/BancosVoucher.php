@@ -233,6 +233,25 @@ final class BancosVoucher
         ],
     ];
 
+    /**
+     * Formatos en los que el banco descuenta su comisión del propio depósito:
+     * al beneficiario le llega el depósito MENOS esa comisión. Hoy, solo el
+     * depósito de Caja Huancayo a una cuenta de otra plaza ("Com(Fue_Pla)").
+     * Voucher del 24/11/2026: depósito de 45,203.40 con comisión de 203.42
+     * para un préstamo de 45,000.00 — el acreedor deposita de más para que al
+     * deudor le llegue el préstamo entero. En las transferencias la comisión
+     * la paga aparte quien envía y no entra aquí.
+     */
+    private const COMISION_DESCONTADA = [
+        'caja_huancayo' => ['deposito', 'deposito_descripcion'],
+    ];
+
+    /** true si en ese formato la comisión del voucher se descuenta de lo depositado (GeneradorAnexo2::cuadre()). */
+    public static function descuentaComision(string $banco, string $modalidad): bool
+    {
+        return in_array($modalidad, self::COMISION_DESCONTADA[$banco] ?? [], true);
+    }
+
     /** @return array<string, array{0: string, 1: bool}> campos del combo, en orden */
     public static function campos(string $banco, string $modalidad): array
     {

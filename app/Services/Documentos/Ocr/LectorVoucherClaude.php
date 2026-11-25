@@ -47,8 +47,12 @@ class LectorVoucherClaude implements LectorDeVoucher
                 // ninguno). Antes el operador los elegía a mano antes de leer.
                 'banco' => ['type' => 'string'],
                 'modalidad' => ['type' => 'string'],
+                // 24/11: la comisión que el banco cobró por la operación (Caja
+                // Huancayo a otra plaza la descuenta del depósito). La resta la
+                // hace GeneradorAnexo2::cuadre(), nunca el modelo.
+                'comision' => ['type' => 'string'],
             ],
-            'required' => ['transcripcion', 'monto', 'beneficiario', 'dudas', 'banco', 'modalidad'],
+            'required' => ['transcripcion', 'monto', 'beneficiario', 'dudas', 'banco', 'modalidad', 'comision'],
             'additionalProperties' => false,
         ],
     ];
@@ -242,10 +246,11 @@ class LectorVoucherClaude implements LectorDeVoucher
         Devuelve:
 
         1. "transcripcion": el texto del voucher en el MISMO ORDEN en que aparece, separando cada dato con "; ". LITERAL: respeta mayúsculas, símbolos (S/), asteriscos de enmascarado (****2097), guiones y puntuación tal como se ven; no corrijas los errores del banco ni normalices las fechas. SÁLTATE el ruido que no describe la operación: RUC del banco, comisiones en cero, códigos internos de auditoría, publicidad, "escaneado con...". No inventes nada: si un dato no se lee, escribe [ilegible]. No agregues punto final.
-        2. "monto": el importe de la operación tal como aparece, sin el símbolo de moneda (ej. "10,000.00"). Si el voucher distingue importe abonado del pagado, devuelve el ABONADO: el ITF no es parte del desembolso.
+        2. "monto": el importe de la operación tal como aparece, sin el símbolo de moneda (ej. "10,000.00"). Si el voucher distingue importe abonado del pagado, devuelve el ABONADO: el ITF no es parte del desembolso. No le restes comisiones: van aparte, en "comision".
         3. "beneficiario": a quién se le envió o depositó, tal como figura.
         4. "dudas": los dígitos o palabras que NO distingues con certeza y por qué (ej. "el 3er dígito de la operación podría ser 6 u 8: el punteado está borroso"). Vacío si no tienes ninguna. Sé honesto: declarar la duda es más útil que adivinar, porque quien revisa mira justo ahí.
         5. "banco" y "modalidad": las claves indicadas arriba.
+        6. "comision": la comisión que el banco cobró por ESTA operación, solo el número tal como aparece (ej. "203.42" si el voucher dice "Com(Fue_Pla) ******203.42" o "COMISIÓN S/ 203.42"). Vacío si el voucher no muestra comisión o si es cero. El ITF no es una comisión.
 
         ESTILO DE LA TRANSCRIPCIÓN — así se hace en el área (ejemplo con datos inventados):
 
@@ -258,7 +263,7 @@ class LectorVoucherClaude implements LectorDeVoucher
         TXT;
     }
 
-    /** @return array{transcripcion: string, monto: string, beneficiario: string, dudas: string, modelo: string} */
+    /** @return array{transcripcion: string, monto: string, beneficiario: string, dudas: string, banco: string, modalidad: string, comision: string, modelo: string} */
     private function interpretar(object $respuesta, string $modelo): array
     {
         // Las clasificaciones de seguridad pueden declinar: hay que mirar
@@ -301,6 +306,7 @@ class LectorVoucherClaude implements LectorDeVoucher
             'dudas' => $limpio('dudas'),
             'banco' => $banco,
             'modalidad' => $modalidad,
+            'comision' => $limpio('comision'),
             'modelo' => $modelo,
         ];
     }

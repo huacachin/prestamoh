@@ -311,6 +311,38 @@ class LecturaVoucherTest extends TestCase
     }
 
     /** Se precarga el crédito activo más reciente que aún no tiene Anexo 2. */
+    /**
+     * 24/11/2026 (voucher real de Caja Huancayo a otra plaza): la lectura devuelve aparte la comisión que el
+     * banco descuenta del depósito y el cotejo compara lo que queda con el desembolso. Antes salía en rojo
+     * y el Anexo 2 no se podía generar: el depósito lleva la comisión encima.
+     */
+    public function test_el_deposito_con_la_comision_encima_se_coteja_por_lo_que_le_llega_al_deudor(): void
+    {
+        $this->mundo();
+        $this->credit->update(['importe' => 45000]);
+        config(['services.anthropic.habilitado' => true, 'services.anthropic.key' => 'sk-ant-falsa']);
+        $voucher = ['transcripcion' => 'DEPOSITO ***45,203.40; COM(FUE_PLA) ******203.42', 'monto' => '45,203.40', 'banco' => 'caja_huancayo', 'modalidad' => 'deposito'];
+
+        $this->lectorDevuelve($voucher + ['comision' => '203.42']);
+        $c = Livewire::test(Documentos::class, ['id' => $this->client->id])
+            ->set('anexo2CreditoId', $this->credit->id)
+            ->set('comprobante', UploadedFile::fake()->image('v.jpg'));
+
+        $c->assertSet('anexo2Comision', '203.42')
+            ->assertSee('Coincide con el desembolso: S/ 45,000.00 (descontada la comisión del banco de S/ 203.42: quedan S/ 44,999.98)');
+        $this->assertSame(
+            ['monto' => true, 'beneficiario' => null, 'comision' => 203.42, 'neto' => 44999.98, 'porComision' => true],
+            $c->viewData('chequeosAnexo2')
+        );
+
+        // Releer un voucher que no trae comisión la borra: no se arrastra de la lectura anterior.
+        $this->lectorDevuelve($voucher);
+        $c->call('leerVoucher')
+            ->assertSet('anexo2Comision', '')
+            ->assertSee('No coincide con el desembolso: S/ 45,000.00');
+        $this->assertSame(['monto' => false, 'beneficiario' => null], $c->viewData('chequeosAnexo2'));
+    }
+
     public function test_precarga_el_credito_sin_anexo_2(): void
     {
         $this->mundo();

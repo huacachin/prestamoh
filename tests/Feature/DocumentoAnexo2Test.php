@@ -214,6 +214,46 @@ class DocumentoAnexo2Test extends TestCase
         $this->assertStringContainsString('no coincide', $e->getMessage());
     }
 
+    /**
+     * 24/11/2026 (voucher real de Caja Huancayo, préstamo de 45,000.00): el depósito a una cuenta de otra
+     * plaza lleva encima la comisión que el banco descuenta ("Com(Fue_Pla)"), para que al deudor le llegue el
+     * préstamo entero. Cuadra el depósito menos esa comisión; el efectivo va al décimo y no sale exacto.
+     */
+    public function test_el_deposito_de_caja_huancayo_a_otra_plaza_cuadra_descontando_la_comision(): void
+    {
+        $this->mundo();
+        Storage::fake('public');
+        $this->credit->update(['importe' => 45000]);
+        $voucher = [
+            'banco' => 'caja_huancayo', 'modalidad' => 'deposito', 'monto' => '45,203.40', 'comision' => '203.42',
+            'transcripcion' => 'AHORRO; DEPOSITO REM. AG. CARHUAMAYO; DEPOSITO ***45,203.40; IMP.(I.T.F.) ********2.25; COM(FUE_PLA) ******203.42',
+        ] + $this->datosVoucher();
+
+        // Lo que no reproduce el desembolso sigue bloqueado.
+        foreach ([
+            'sin la comisión leída' => ['comision' => ''],
+            'la comisión no explica la diferencia' => ['comision' => '100.00'],
+            'en una transferencia la comisión la paga aparte quien envía' => ['banco' => 'bcp', 'modalidad' => 'transferencia'],
+        ] as $caso => $cambio) {
+            $e = $this->capturarExcepcion(fn () => $this->generador()->previsualizar($this->client, $this->credit, $cambio + $voucher));
+            $this->assertStringContainsString('El monto del voucher (S/ 45,203.40) no coincide con el monto del crédito (S/ 45,000.00)', $e->getMessage(), $caso);
+        }
+        $this->assertStringContainsString('tampoco descontando la comisión del banco de S/ 100.00 (quedan S/ 45,103.40)', $this->capturarExcepcion(
+            fn () => $this->generador()->previsualizar($this->client, $this->credit, ['comision' => '100.00'] + $voucher)
+        )->getMessage());
+
+        // Un depósito por el importe exacto cuadra como siempre, aunque el voucher traiga su comisión.
+        $this->assertStringContainsString('COM(FUE_PLA)', $this->generador()->previsualizar($this->client, $this->credit, ['monto' => '45,000.00', 'comision' => '202.50'] + $voucher));
+
+        // El voucher real: 45,203.40 − 203.42 = 44,999.98. Se emite y queda dicho por qué cuadró.
+        $doc = $this->generador()->generar($this->client, $this->credit, $voucher);
+
+        $this->assertSame('emitido', $doc->estado);
+        $this->assertDatabaseHas('activity_log', [
+            'description' => "Generó el Anexo 2 v1 del crédito #{$this->credit->id} ({$doc->snapshot['cliente']['nombre']}): depósito de S/ 45,203.40 menos la comisión del banco de S/ 203.42",
+        ]);
+    }
+
     public function test_sin_transcripcion_bloquea(): void
     {
         $this->mundo();

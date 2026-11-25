@@ -251,6 +251,13 @@ class Documentos extends Component
     public string $anexo2Monto = '';
 
     /**
+     * Comisión que el banco cobró por la operación, tal como la leyó la lectura
+     * (24/11). Solo cuenta donde el banco la descuenta del propio depósito
+     * (Caja Huancayo a otra plaza): ahí el cuadre es monto − comisión.
+     */
+    public string $anexo2Comision = '';
+
+    /**
      * Dudas que la lectura automática declaró sobre su propia transcripción
      * ("no distingo si es 0 u 8 y por qué"). Se muestran para que el operador
      * mire justo ahí: en un documento que se firma, saber dónde dudar vale
@@ -286,6 +293,8 @@ class Documentos extends Component
     public string $anexo2Transcripcion2 = '';
 
     public string $anexo2Monto2 = '';
+
+    public string $anexo2Comision2 = '';
 
     public string $anexo2Dudas2 = '';
 
@@ -1510,6 +1519,7 @@ class Documentos extends Component
         $this->anexo2Modalidad = '';
         $this->anexo2Transcripcion = '';
         $this->anexo2Monto = '';
+        $this->anexo2Comision = '';
         $this->anexo2Dudas = '';
         $this->anexo2Beneficiario = '';
         $this->fechaAnexo2 = now()->format('Y-m-d');
@@ -1544,6 +1554,7 @@ class Documentos extends Component
         $this->anexo2Modalidad2 = '';
         $this->anexo2Transcripcion2 = '';
         $this->anexo2Monto2 = '';
+        $this->anexo2Comision2 = '';
         $this->anexo2Dudas2 = '';
         $this->anexo2Beneficiario2 = '';
         $this->comprobante2 = null;
@@ -1718,6 +1729,7 @@ class Documentos extends Component
             'modalidad' => $this->anexo2Modalidad,
             'transcripcion' => trim($this->anexo2Transcripcion),
             'monto' => trim($this->anexo2Monto),
+            'comision' => trim($this->anexo2Comision),
             'imagen_path' => $imagenPath,
         ]];
         if ($this->anexo2DosVouchers) {
@@ -1726,6 +1738,7 @@ class Documentos extends Component
                 'modalidad' => $this->anexo2Modalidad2,
                 'transcripcion' => trim($this->anexo2Transcripcion2),
                 'monto' => trim($this->anexo2Monto2),
+                'comision' => trim($this->anexo2Comision2),
                 'imagen_path' => $imagenPath2,
             ];
         }
@@ -1785,6 +1798,8 @@ class Documentos extends Component
         if ($leido['monto'] !== '') {
             $this->{'anexo2Monto'.$s} = $leido['monto'];
         }
+        // La comisión va con ESTA lectura: releer un voucher que no la trae la borra.
+        $this->{'anexo2Comision'.$s} = trim((string) ($leido['comision'] ?? ''));
 
         $bancoLeido = (string) ($leido['banco'] ?? '');
         $modalidadLeida = (string) ($leido['modalidad'] ?? '');
@@ -1822,6 +1837,7 @@ class Documentos extends Component
     private function limpiarMontoAnexo2(): void
     {
         $this->anexo2Monto = '';
+        $this->anexo2Comision = '';
     }
 
     /** Importe del crédito activo elegido en el modal del Anexo 2 (null si no hay). */
@@ -1849,7 +1865,7 @@ class Documentos extends Component
      * LLIUYACC ADONIS HUGO" aunque la app del banco abrevie el segundo nombre.
      * La validación dura sigue siendo la del generador (monto == importe).
      *
-     * @return array{monto: ?bool, beneficiario: ?bool}
+     * @return array{monto: ?bool, beneficiario: ?bool, suma?: ?float, comision?: float, neto?: float, porComision?: bool}
      */
     private function chequeosAnexo2(Client $client): array
     {
@@ -1858,24 +1874,21 @@ class Documentos extends Component
         // real nunca se contradicen ("12.000,00" y "12,000.00" valen igual).
         $importe = $this->importeCreditoAnexo2();
         // Obs. 5.1: con dos vouchers lo que cuadra es la SUMA de los dos montos.
-        $textos = [trim($this->anexo2Monto)];
+        $vouchers = [['banco' => $this->anexo2Banco, 'modalidad' => $this->anexo2Modalidad, 'monto' => trim($this->anexo2Monto), 'comision' => trim($this->anexo2Comision)]];
         if ($this->anexo2DosVouchers) {
-            $textos[] = trim($this->anexo2Monto2);
+            $vouchers[] = ['banco' => $this->anexo2Banco2, 'modalidad' => $this->anexo2Modalidad2, 'monto' => trim($this->anexo2Monto2), 'comision' => trim($this->anexo2Comision2)];
         }
         $montoOk = null;
-        $suma = null;
-        if ($importe !== null && ! in_array('', $textos, true)) {
-            $montos = array_map(fn ($t) => GeneradorAnexo2::parsearMonto($t), $textos);
-            if (! in_array(null, $montos, true)) {
-                $suma = round(array_sum($montos), 2);
-                $montoOk = abs($suma - $importe) <= 0.01;
-            } else {
-                $montoOk = false;
-            }
+        $cuadre = null;
+        if ($importe !== null && ! in_array('', array_column($vouchers, 'monto'), true)) {
+            // 24/11: donde el banco descuenta su comisión del depósito, cuadra el monto menos la comisión.
+            $cuadre = GeneradorAnexo2::cuadre($vouchers, $importe);
+            $montoOk = $cuadre['cuadra'] ?? false;
         }
 
         return ['monto' => $montoOk, 'beneficiario' => $this->beneficiarioCuadra($client)]
-            + ($this->anexo2DosVouchers ? ['suma' => $suma] : []);
+            + ($this->anexo2DosVouchers ? ['suma' => $cuadre['suma'] ?? null] : [])
+            + (($cuadre['comision'] ?? 0) > 0 ? ['comision' => $cuadre['comision'], 'neto' => $cuadre['neto'], 'porComision' => $cuadre['porComision']] : []);
     }
 
     /**
