@@ -131,6 +131,8 @@
                                  tanto para deudor como para deudora. --}}
                             <select class="form-select form-select-sm select2-simple campo-obligatorio @error('nacionalidad') is-invalid @enderror"
                                     wire:model.defer="nacionalidad" name="nacionalidad">
+                                {{-- 25/11 (Antony): sexo, nacionalidad y estado civil nacen en blanco; los elige quien registra. --}}
+                                <option value="">— Seleccione —</option>
                                 @foreach(\App\Support\Documentos\Nacionalidades::OPCIONES as $opcion)
                                     <option value="{{ $opcion }}">{{ $opcion }}</option>
                                 @endforeach
@@ -140,10 +142,12 @@
 
                         <div class="col-md-2">
                             <label class="form-label mb-0 small fw-semibold">Sexo <span class="text-danger">*</span></label>
-                            <select class="form-select form-select-sm campo-obligatorio @if(in_array('sexo', $autoCliente)) campo-api @endif" wire:model.defer="sexo">
+                            <select class="form-select form-select-sm campo-obligatorio @error('sexo') is-invalid @enderror" wire:model.defer="sexo">
+                                <option value="">— Seleccione —</option>
                                 <option value="F">Femenino</option>
                                 <option value="M">Masculino</option>
                             </select>
+                            @error('sexo') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                         <div class="col-md-2">
                             <label class="form-label mb-0 small fw-semibold">Nacimiento <span class="text-danger">*</span></label>
@@ -204,10 +208,12 @@
                         <div class="col-md-4">
                             <label class="form-label mb-0 small fw-semibold">Estado civil <span class="text-danger">*</span></label>
                             <select class="form-select form-select-sm select2-tags campo-obligatorio @error('estado_civil') is-invalid @enderror" wire:model.defer="estado_civil">
+                                <option value="">— Seleccione —</option>
                                 @foreach(\App\Livewire\Clients\Create::estadosCivilesPara($estado_civil) as $valor => $etiqueta)
                                     <option value="{{ $valor }}">{{ $etiqueta }}</option>
                                 @endforeach
                             </select>
+                            @error('estado_civil') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                         @endunless
                     </div>
@@ -247,18 +253,22 @@
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small fw-semibold">Sexo *</label>
-                                <select class="form-select form-select-sm campo-obligatorio @if(in_array('sexo', $autoRep)) campo-api @endif" wire:model.defer="representante.sexo">
+                                <select class="form-select form-select-sm campo-obligatorio @error('representante.sexo') is-invalid @enderror @if(in_array('sexo', $autoRep)) campo-api @endif" wire:model.defer="representante.sexo">
+                                    <option value="">— Seleccione —</option>
                                     <option value="M">Masculino</option>
                                     <option value="F">Femenino</option>
                                 </select>
+                                @error('representante.sexo') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label mb-0 small fw-semibold">Nacionalidad *</label>
-                                <select class="form-select form-select-sm campo-obligatorio @if(in_array('nacionalidad', $autoRep)) campo-api @endif" wire:model.defer="representante.nacionalidad">
+                                <select class="form-select form-select-sm campo-obligatorio @error('representante.nacionalidad') is-invalid @enderror @if(in_array('nacionalidad', $autoRep)) campo-api @endif" wire:model.defer="representante.nacionalidad">
+                                    <option value="">— Seleccione —</option>
                                     @foreach(\App\Support\Documentos\Nacionalidades::OPCIONES as $opcion)
                                         <option value="{{ $opcion }}">{{ $opcion }}</option>
                                     @endforeach
                                 </select>
+                                @error('representante.nacionalidad') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label mb-0 small fw-semibold">Ocupación *</label>
@@ -270,11 +280,13 @@
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label mb-0 small fw-semibold">Estado civil *</label>
-                                <select class="form-select form-select-sm campo-obligatorio @if(in_array('estado_civil', $autoRep)) campo-api @endif" wire:model.defer="representante.estado_civil">
-                                    @foreach(\App\Livewire\Clients\Create::estadosCivilesPara($estado_civil) as $valor => $etiqueta)
+                                <select class="form-select form-select-sm campo-obligatorio @error('representante.estado_civil') is-invalid @enderror @if(in_array('estado_civil', $autoRep)) campo-api @endif" wire:model.defer="representante.estado_civil">
+                                    <option value="">— Seleccione —</option>
+                                    @foreach(\App\Livewire\Clients\Create::ESTADOS_CIVILES as $valor => $etiqueta)
                                         <option value="{{ $valor }}">{{ $etiqueta }}</option>
                                     @endforeach
                                 </select>
+                                @error('representante.estado_civil') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label mb-0 small fw-semibold">Domicilio <span class="text-muted">(si difiere del de la empresa)</span></label>

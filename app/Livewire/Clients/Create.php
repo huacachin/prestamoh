@@ -86,9 +86,15 @@ class Create extends Component
 
     public string $nombre = '';
 
-    public string $nacionalidad = Nacionalidades::DEFECTO;
+    /**
+     * 25/11/2026 (Antony): sexo, nacionalidad y estado civil nacen EN BLANCO y la consulta del DNI no los
+     * toca: los elige quien registra, y son obligatorios. Antes nacían en Masculino / Peruano / Soltero y
+     * la consulta ponía el sexo y el estado civil de RENIEC; casi todas las fichas quedaban "soltero".
+     * Lo mismo en el representante, el copropietario nuevo (Vehiculos) y el gerente del contrato (Documentos).
+     */
+    public string $nacionalidad = '';
 
-    public string $sexo = 'M';
+    public string $sexo = '';
 
     public ?string $fecha_nacimiento = null;
 
@@ -114,7 +120,7 @@ class Create extends Component
 
     public string $ocupacion = 'transportista';
 
-    public string $estado_civil = 'soltero';
+    public string $estado_civil = '';
 
     public ?int $expediente = null;
 
@@ -193,9 +199,9 @@ class Create extends Component
      * contrato los precarga solo.
      */
     public array $representante = [
-        'nombre' => '', 'tipo_documento' => 'DNI', 'dni' => '', 'sexo' => 'M',
-        'nacionalidad' => 'PERUANO', 'ocupacion' => 'independiente',
-        'estado_civil' => 'soltero', 'domicilio' => '',
+        'nombre' => '', 'tipo_documento' => 'DNI', 'dni' => '', 'sexo' => '',
+        'nacionalidad' => '', 'ocupacion' => 'independiente',
+        'estado_civil' => '', 'domicilio' => '',
         // 06/11 (Trello, tarjeta 6): 'domicilio' es la dirección y el ubigeo se
         // elige de las listas; al guardar se arma el domicilio legal.
         'departamento' => 'Lima', 'provincia' => 'Lima', 'distrito' => '',
@@ -302,12 +308,12 @@ class Create extends Component
             foreach (['nombre', 'apellido_pat', 'apellido_mat', 'direccion', 'distrito', 'departamento'] as $campo) {
                 $this->{$campo} = (string) ($existe->{$campo} ?? '');
             }
-            $this->sexo = $existe->sexo ?: 'M';
-            $this->nacionalidad = $existe->nacionalidad ?: $this->nacionalidad;
+            $this->sexo = in_array($existe->sexo, ['M', 'F'], true) ? $existe->sexo : '';
+            $this->nacionalidad = (string) ($existe->nacionalidad ?? '');
             $this->email = (string) ($existe->email ?? '');
             $this->repartirEmail($this->email);
             $this->ocupacion = $existe->ocupacion ?: $this->ocupacion;
-            $this->estado_civil = $existe->estado_civil ?: $this->estado_civil;
+            $this->estado_civil = (string) ($existe->estado_civil ?? '');
             $this->departamento = Ubigeo::resolverDepartamento($existe->departamento) ?? ($existe->departamento ?: $this->departamento);
             $this->provincia = Ubigeo::resolverProvincia($this->departamento, $existe->provincia)
                 ?? ($existe->provincia ?: $this->provincia);
@@ -395,14 +401,7 @@ class Create extends Component
             $this->fecha_nacimiento = (string) $d['fecha_nacimiento'];
             $this->autoCliente[] = 'fecha_nacimiento';
         }
-        if (! empty($d['estado_civil']) && isset(self::ESTADOS_CIVILES[$d['estado_civil']])) {
-            $this->estado_civil = (string) $d['estado_civil'];
-            $this->autoCliente[] = 'estado_civil';
-        }
-        if (! empty($d['sexo'])) {
-            $this->sexo = (string) $d['sexo'];
-            $this->autoCliente[] = 'sexo';
-        }
+        // Sexo y estado civil NO se toman de la consulta (25/11): los elige quien registra.
         $this->autoCliente[] = 'documento';
 
         $this->docMsgType = 'ok';
@@ -423,7 +422,9 @@ class Create extends Component
     public function siguientePaso(): void
     {
         $this->componerEmail();
-        $this->nacionalidad = Nacionalidades::normalizar($this->nacionalidad);
+        if (filled($this->nacionalidad)) {
+            $this->nacionalidad = Nacionalidades::normalizar($this->nacionalidad);
+        }
         $this->validate($this->reglasCliente(), $this->messages());
         $this->paso = 2;
     }
@@ -504,7 +505,8 @@ class Create extends Component
     /**
      * Consulta el documento del REPRESENTANTE (alta RUC): ficha local primero
      * (hereda sexo, nacionalidad, ocupación y estado civil del cliente si ya
-     * está registrado), endpoint de DNI/CE después. Lo llenado va en rojo.
+     * está registrado), endpoint de DNI/CE después, que solo trae el nombre:
+     * sexo y estado civil ya no se toman de la consulta (25/11). Lo llenado va en rojo.
      */
     public function consultarDocRepresentante(Factiliza $api): void
     {
@@ -521,15 +523,20 @@ class Create extends Component
         $ficha = Client::where('documento', $doc)->first();
         if ($ficha !== null) {
             $this->representante['nombre'] = mb_strtoupper($ficha->fullName());
-            $this->representante['sexo'] = $ficha->sexo === 'F' ? 'F' : 'M';
-            $this->representante['nacionalidad'] = $ficha->nacionalidad ?: Nacionalidades::DEFECTO;
+            $this->autoRep = ['nombre'];
+            // Lo que la ficha no tiene queda en blanco, para elegirlo.
+            $this->representante['sexo'] = in_array($ficha->sexo, ['M', 'F'], true) ? $ficha->sexo : '';
+            $this->representante['nacionalidad'] = Nacionalidades::esConocida($ficha->nacionalidad) ? Nacionalidades::normalizar($ficha->nacionalidad) : '';
             if (isset(self::OCUPACIONES[(string) $ficha->ocupacion])) {
                 $this->representante['ocupacion'] = (string) $ficha->ocupacion;
+                $this->autoRep[] = 'ocupacion';
             }
-            if (isset(self::ESTADOS_CIVILES[(string) $ficha->estado_civil])) {
-                $this->representante['estado_civil'] = (string) $ficha->estado_civil;
+            $this->representante['estado_civil'] = isset(self::ESTADOS_CIVILES[(string) $ficha->estado_civil]) ? (string) $ficha->estado_civil : '';
+            foreach (['sexo', 'nacionalidad', 'estado_civil'] as $campo) {
+                if ($this->representante[$campo] !== '') {
+                    $this->autoRep[] = $campo;
+                }
             }
-            $this->autoRep = ['nombre', 'sexo', 'nacionalidad', 'ocupacion', 'estado_civil'];
             $this->docMsgType = 'ok';
             $this->docMsg = "Representante heredado de la ficha de {$ficha->fullName()}.";
 
@@ -551,14 +558,6 @@ class Create extends Component
             $this->representante['nombre'] = mb_strtoupper($nombre);
             $this->autoRep[] = 'nombre';
         }
-        if (in_array($r['data']['sexo'] ?? null, ['M', 'F'], true)) {
-            $this->representante['sexo'] = $r['data']['sexo'];
-            $this->autoRep[] = 'sexo';
-        }
-        if (! empty($r['data']['estado_civil']) && isset(self::ESTADOS_CIVILES[$r['data']['estado_civil']])) {
-            $this->representante['estado_civil'] = $r['data']['estado_civil'];
-            $this->autoRep[] = 'estado_civil';
-        }
         $this->docMsgType = 'ok';
         $this->docMsg = 'Datos del representante cargados. Verifica y completa lo que falte.';
     }
@@ -573,11 +572,8 @@ class Create extends Component
             'giro', 'zona', 'celular1', 'celular2',
             'vehiculos', 'vehMsg', 'vehMsgType', 'autoCliente', 'autoVehiculo', 'placaRegistrada',
         ]);
-        $this->sexo = 'M';
         $this->tipo_documento = 'DNI';
         $this->ocupacion = 'transportista';
-        $this->estado_civil = 'soltero';
-        $this->nacionalidad = Nacionalidades::DEFECTO;
         $this->reset('representante', 'autoRep');
         $this->provincia = 'LIMA';
         $this->departamento = 'LIMA';
@@ -752,6 +748,16 @@ class Create extends Component
             'asesor_id.required' => 'Selecciona el ejecutivo / asesor.',
             'ocupacion.required' => 'Selecciona la ocupación.',
             'estado_civil.required' => 'Selecciona el estado civil.',
+            'sexo.required' => 'Selecciona el sexo.',
+            'sexo.in' => 'Selecciona el sexo.',
+            'nacionalidad.required' => 'Selecciona la nacionalidad.',
+            'nacionalidad.in' => 'Selecciona la nacionalidad.',
+            'representante.sexo.required' => 'Selecciona el sexo del representante.',
+            'representante.sexo.in' => 'Selecciona el sexo del representante.',
+            'representante.nacionalidad.required' => 'Selecciona la nacionalidad del representante.',
+            'representante.nacionalidad.in' => 'Selecciona la nacionalidad del representante.',
+            'representante.estado_civil.required' => 'Selecciona el estado civil del representante.',
+            'representante.estado_civil.in' => 'Selecciona el estado civil del representante.',
         ];
     }
 

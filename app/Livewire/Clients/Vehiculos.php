@@ -102,9 +102,11 @@ class Vehiculos extends Component
 
     public array $nuevoCopro = [
         'tipo_documento' => 'DNI', 'documento' => '', 'nombre' => '',
-        'apellido_pat' => '', 'apellido_mat' => '', 'sexo' => 'M',
-        'nacionalidad' => 'PERUANO', 'ocupacion' => 'transportista',
-        'estado_civil' => 'soltero', 'direccion' => '', 'distrito' => '',
+        // 25/11 (Antony): sexo, nacionalidad y estado civil nacen en blanco y la consulta del
+        // documento no los toca; los elige quien registra (obligatorios), como en Nuevo cliente.
+        'apellido_pat' => '', 'apellido_mat' => '', 'sexo' => '',
+        'nacionalidad' => '', 'ocupacion' => 'transportista',
+        'estado_civil' => '', 'direccion' => '', 'distrito' => '',
         'provincia' => 'Lima', 'departamento' => 'Lima', 'email' => '',
         // 05/11 (Trello, tarjeta 4): el correo en dos partes, como en Nuevo cliente.
         'email_usuario' => '', 'email_dominio' => '', 'email_dominio_otro' => '',
@@ -480,14 +482,7 @@ class Vehiculos extends Component
                 $this->autoCopro[] = $campo;
             }
         }
-        if (! empty($r['data']['sexo']) && in_array($r['data']['sexo'], ['M', 'F'], true)) {
-            $this->nuevoCopro['sexo'] = $r['data']['sexo'];
-            $this->autoCopro[] = 'sexo';
-        }
-        if (! empty($r['data']['estado_civil']) && isset(Create::ESTADOS_CIVILES[$r['data']['estado_civil']])) {
-            $this->nuevoCopro['estado_civil'] = $r['data']['estado_civil'];
-            $this->autoCopro[] = 'estado_civil';
-        }
+        // Sexo y estado civil NO se toman de la consulta (25/11): los elige quien registra.
         // Como en Nuevo cliente: la provincia del catálogo arrastra su departamento.
         $ubicada = Ubigeo::buscarProvincia((string) ($r['data']['provincia'] ?? ''));
         if ($ubicada !== null) {
@@ -511,7 +506,10 @@ class Vehiculos extends Component
         Vehiculo::where('client_id', $this->clientId)->findOrFail($vehiculoId);
 
         $this->nuevoCopro['documento'] = trim($this->nuevoCopro['documento']);
-        $this->nuevoCopro['nacionalidad'] = Nacionalidades::normalizar($this->nuevoCopro['nacionalidad']);
+        // En blanco se queda en blanco (normalizar() lo volvería PERUANO): la validación pide elegirla.
+        if (filled($this->nuevoCopro['nacionalidad'])) {
+            $this->nuevoCopro['nacionalidad'] = Nacionalidades::normalizar($this->nuevoCopro['nacionalidad']);
+        }
         $this->nuevoCopro = CorreoEnPartes::completar($this->nuevoCopro);
 
         // Documento repetido: decir de quién es, no el "ya ha sido registrado" genérico.
@@ -546,6 +544,9 @@ class Vehiculos extends Component
             'nuevoCopro.apellido_pat' => 'apellido paterno',
             'nuevoCopro.email' => 'correo',
             'nuevoCopro.celular1' => 'celular',
+            'nuevoCopro.sexo' => 'sexo',
+            'nuevoCopro.nacionalidad' => 'nacionalidad',
+            'nuevoCopro.estado_civil' => 'estado civil',
         ] + CorreoEnPartes::atributos('nuevoCopro'));
 
         $copro = Client::create([

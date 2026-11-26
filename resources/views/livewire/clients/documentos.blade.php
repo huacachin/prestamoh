@@ -1107,6 +1107,8 @@
                                             @php $deFicha = fn (string $campo) => in_array($campo, $gerenteCamposDeFicha, true); @endphp
                                             <select class="form-select form-select-sm {{ $deFicha('sexo') ? 'bg-light' : 'campo-elegir' }} @error('gerente.sexo') is-invalid @enderror @if(in_array('sexo', $autoGerente)) campo-api @endif"
                                                     wire:model.live="gerente.sexo" @disabled($deFicha('sexo'))>
+                                                {{-- 25/11 (Antony): sin ficha de la que heredarlo, nace en blanco y se elige. --}}
+                                                <option value="">— Seleccione —</option>
                                                 <option value="M">Masculino</option>
                                                 <option value="F">Femenino</option>
                                             </select>
@@ -1117,6 +1119,7 @@
                                             {{-- No flexiona (misma regla que el deudor). --}}
                                             <select class="form-select form-select-sm {{ $deFicha('nacionalidad') ? 'bg-light' : 'campo-elegir' }} @error('gerente.nacionalidad') is-invalid @enderror @if(in_array('nacionalidad', $autoGerente)) campo-api @endif"
                                                     wire:model.blur="gerente.nacionalidad" @disabled($deFicha('nacionalidad'))>
+                                                <option value="">— Seleccione —</option>
                                                 @foreach(\App\Support\Documentos\Nacionalidades::paraValor($gerente['nacionalidad'] ?? null) as $opcion)
                                                     <option value="{{ $opcion }}">{{ $opcion }}</option>
                                                 @endforeach

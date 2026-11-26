@@ -157,6 +157,36 @@ class ClienteEditCopropietariosTest extends TestCase
         $this->assertSame('Pedro Pablo', $this->otroTitular->fresh()->nombre);
     }
 
+    /**
+     * 25/11/2026 (Antony: "ni al editar"): la ficha muestra en blanco el sexo, la nacionalidad y el estado
+     * civil que no tiene, en vez de Masculino / Peruano / Soltero, y al guardar no los inventa. A la persona
+     * se le pide el estado civil; la empresa no los tiene.
+     */
+    public function test_la_ficha_no_rellena_sexo_nacionalidad_ni_estado_civil_que_no_tiene(): void
+    {
+        $this->mundo();
+        $vacios = ['sexo' => null, 'nacionalidad' => null, 'estado_civil' => null];
+        $this->otroTitular->update($vacios);
+        $empresa = Client::create($vacios + [
+            'expediente' => '1406', 'nombre' => 'TRANSPORTES ORE S.A.C.', 'tipo_documento' => 'RUC', 'documento' => '20601234588',
+            'status' => 'active', 'headquarter_id' => $this->titular->headquarter_id, 'provincia' => 'LIMA',
+        ]);
+
+        Livewire::test(Edit::class, ['id' => $this->otroTitular->id])
+            ->assertSet('sexo', '')->assertSet('nacionalidad', '')->assertSet('estado_civil', '')
+            ->call('update')
+            ->assertHasErrors(['estado_civil' => 'required']);
+
+        Livewire::test(Edit::class, ['id' => $empresa->id])
+            ->assertSet('sexo', '')->assertSet('nacionalidad', '')->assertSet('estado_civil', '')
+            ->call('update')
+            ->assertHasNoErrors();
+
+        foreach ([$this->otroTitular, $empresa] as $ficha) {
+            $this->assertSame([null, null, null], array_values($ficha->fresh()->only(['sexo', 'nacionalidad', 'estado_civil'])), $ficha->nombre);
+        }
+    }
+
     public function test_sin_permiso_de_guardar_no_se_guarda_nada(): void
     {
         $this->mundo(['clientes', 'clientes.scope-propio']);

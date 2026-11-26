@@ -48,6 +48,10 @@ class ClienteWizardTest extends TestCase
             ->set('apellido_mat', 'Rojas')
             ->set('documento', '45678912')
             ->set('email', 'juan@correo.com')
+            // 25/11: sexo, nacionalidad y estado civil ya no nacen puestos; los elige quien registra.
+            ->set('sexo', 'M')
+            ->set('nacionalidad', 'PERUANO')
+            ->set('estado_civil', 'soltero')
             // Domicilio legal: obligatorio desde el tramo B (arma la cláusula
             // PRIMERO del contrato sin que nadie lo retipee).
             ->set('direccion', 'AV. AREQUIPA 3400')
@@ -120,13 +124,29 @@ class ClienteWizardTest extends TestCase
             ->assertSet('paso', 1);
     }
 
-    public function test_defaults_transportista_y_soltero(): void
+    /**
+     * 25/11/2026 (Antony): sexo, nacionalidad y estado civil nacen en blanco y son obligatorios. Antes
+     * nacían en Masculino / Peruano / Soltero y casi todas las fichas se guardaban así, sin elegirlos.
+     */
+    public function test_sexo_nacionalidad_y_estado_civil_nacen_en_blanco_y_hay_que_elegirlos(): void
     {
         Livewire::test(Create::class)
             ->assertSet('ocupacion', 'transportista')
-            ->assertSet('estado_civil', 'soltero')
             ->assertSet('tipo_documento', 'DNI')
-            ->assertSet('paso', 1);
+            ->assertSet('paso', 1)
+            ->assertSet('sexo', '')
+            ->assertSet('nacionalidad', '')
+            ->assertSet('estado_civil', '');
+
+        $this->paso1()
+            ->set('sexo', '')->set('nacionalidad', '')->set('estado_civil', '')
+            ->call('siguientePaso')
+            ->assertHasErrors(['sexo' => 'required', 'nacionalidad' => 'required', 'estado_civil' => 'required'])
+            ->assertSet('paso', 1)
+            ->assertSet('nacionalidad', '')
+            ->assertSee('Selecciona el sexo.')
+            ->assertSee('Selecciona la nacionalidad.')
+            ->assertSee('Selecciona el estado civil.');
     }
 
     public function test_correo_invalido_no_pasa_de_paso(): void
@@ -283,6 +303,32 @@ class ClienteWizardTest extends TestCase
             ->assertSet('nombre', 'Juan Carlos')
             ->assertSet('documento', '27427864')
             ->assertSet('docMsgType', 'ok');
+    }
+
+    /**
+     * 25/11/2026 (Antony: "al buscar un dni no se deberían de llenar los campos sexo, nacionalidad, estado
+     * civil"): la consulta trae el sexo y el estado civil de RENIEC, pero ya no se ponen en el formulario.
+     */
+    public function test_la_consulta_del_dni_no_pone_sexo_nacionalidad_ni_estado_civil(): void
+    {
+        Http::fake(['*/dni/info/*' => Http::response([
+            'status' => 200, 'success' => true,
+            'data' => [
+                'numero' => '27427865', 'nombres' => 'ROSA', 'apellido_paterno' => 'QUISPE', 'apellido_materno' => 'MAMANI',
+                'direccion' => 'AV. UNO 123', 'sexo' => 'F', 'estado_civil' => 'CASADO',
+            ],
+        ], 200)]);
+
+        $c = Livewire::test(Create::class)
+            ->set('docBuscar', '27427865')
+            ->call('consultarDocumento')
+            ->assertSet('docMsgType', 'ok')
+            ->assertSet('nombre', 'Rosa')
+            ->assertSet('sexo', '')
+            ->assertSet('nacionalidad', '')
+            ->assertSet('estado_civil', '');
+
+        $this->assertSame([], array_values(array_intersect(['sexo', 'nacionalidad', 'estado_civil'], $c->get('autoCliente'))));
     }
 
     public function test_ruc_carga_la_razon_social_en_nombre(): void

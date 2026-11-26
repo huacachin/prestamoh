@@ -15,6 +15,7 @@ use App\Models\Vehiculo;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -58,7 +59,11 @@ class AltaEmpresaTest extends TestCase
             ->set('giro', 'Transporte de carga')
             ->set('zona', 'Gar. Veh.')
             ->set('celular1', '987654321')
-            ->set('asesor_id', auth()->id());
+            ->set('asesor_id', auth()->id())
+            // 25/11: sexo, nacionalidad y estado civil del representante ya no nacen puestos; se eligen.
+            ->set('representante.sexo', 'M')
+            ->set('representante.nacionalidad', 'PERUANO')
+            ->set('representante.estado_civil', 'soltero');
     }
 
     public function test_el_alta_ruc_exige_al_representante_y_no_los_personales_del_cliente(): void
@@ -222,6 +227,32 @@ class AltaEmpresaTest extends TestCase
         $this->assertSame('MZ. E LT. 13 URB. TRABAJADORES HAD NARANJAL, DISTRITO DE CHANCAY, PROVINCIA DE HUARAL, DEPARTAMENTO DE LIMA', $vigente->domicilio);
     }
 
+    /**
+     * 25/11/2026 (Antony): la consulta del documento del representante ya no pone sexo ni estado civil, y
+     * la nacionalidad tampoco nace puesta. Si la persona ya está registrada en el sistema, sí se copian de su ficha.
+     */
+    public function test_el_representante_hereda_sexo_nacionalidad_y_estado_civil_de_su_ficha_pero_no_de_la_consulta(): void
+    {
+        config(['services.factiliza.token' => 'token-de-prueba']);
+        Http::fake(['*/dni/info/*' => Http::response(['success' => true, 'data' => [
+            'nombres' => 'ROSA', 'apellido_paterno' => 'QUISPE', 'apellido_materno' => 'MAMANI', 'sexo' => 'F', 'estado_civil' => 'CASADO',
+        ]])]);
+
+        $comp = Livewire::test(Create::class)->set('tipo_documento', 'RUC');
+        $this->assertSame(['', '', ''], array_values(array_intersect_key($comp->get('representante'), array_flip(['sexo', 'nacionalidad', 'estado_civil']))));
+
+        $rep = $comp->set('representante.dni', '41752169')->call('consultarDocRepresentante')->get('representante');
+        $this->assertSame(['ROSA QUISPE MAMANI', '', '', ''], [$rep['nombre'], $rep['sexo'], $rep['nacionalidad'], $rep['estado_civil']]);
+
+        Client::create([
+            'expediente' => '9650', 'nombre' => 'CARLA', 'apellido_pat' => 'ORE', 'apellido_mat' => 'BARRIENTOS',
+            'tipo_documento' => 'DNI', 'documento' => '41752170', 'sexo' => 'F', 'nacionalidad' => 'VENEZOLANO',
+            'estado_civil' => 'casado', 'ocupacion' => 'comerciante', 'headquarter_id' => $this->sede->id, 'status' => 'active',
+        ]);
+        $rep = $comp->set('representante.dni', '41752170')->call('consultarDocRepresentante')->get('representante');
+        $this->assertSame(['F', 'VENEZOLANO', 'casado'], [$rep['sexo'], $rep['nacionalidad'], $rep['estado_civil']]);
+    }
+
     public function test_el_alta_con_dni_no_pide_representante(): void
     {
         Livewire::test(Create::class)
@@ -230,6 +261,7 @@ class AltaEmpresaTest extends TestCase
             ->set('nombre', 'JUAN')
             ->set('apellido_pat', 'NORMAL')
             ->set('sexo', 'M')
+            ->set('nacionalidad', 'PERUANO')
             ->set('email', 'juan.normal@example.com')
             ->set('ocupacion', 'transportista')
             ->set('estado_civil', 'soltero')

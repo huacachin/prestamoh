@@ -197,13 +197,21 @@ class PersonasRelacionadasTest extends TestCase
 
         // La convención de la casa: lo traído por la API va EN ROJO.
         $auto = $comp->get('autoCopro');
-        foreach (['nombre', 'apellido_pat', 'direccion', 'distrito', 'sexo', 'provincia', 'estado_civil'] as $campo) {
+        foreach (['nombre', 'apellido_pat', 'direccion', 'distrito', 'provincia'] as $campo) {
             $this->assertContains($campo, $auto, "el campo {$campo} vino de la API y debe marcarse");
         }
         $comp->assertSeeHtml('campo-api');
         // Factiliza normaliza los nombres a Título (misma regla que el alta).
         $this->assertSame('Maria Elena', $comp->get('nuevoCopro')['nombre']);
-        $this->assertSame('casado', $comp->get('nuevoCopro')['estado_civil']);
+
+        // 25/11 (Antony): sexo, nacionalidad y estado civil no se toman de la consulta; nacen en blanco y
+        // sin elegirlos el copropietario no se guarda.
+        $copro = $comp->get('nuevoCopro');
+        $this->assertSame(['', '', ''], [$copro['sexo'], $copro['nacionalidad'], $copro['estado_civil']]);
+        $comp->call('crearYVincularCopro')
+            ->assertHasErrors(['nuevoCopro.sexo' => 'required', 'nuevoCopro.nacionalidad' => 'required', 'nuevoCopro.estado_civil' => 'required']);
+        $this->assertSame('', $comp->get('nuevoCopro')['nacionalidad'], 'en blanco no se convierte en PERUANO');
+        $this->assertSame(0, Client::where('documento', '47000009')->count());
     }
 
     // ── 2 · No ensucian listado ni export ─────────────────────────────────

@@ -417,18 +417,23 @@
 
                                                     <div class="col-6 col-md-2">
                                                         <label class="form-label mb-0 small fw-semibold">Sexo *</label>
-                                                        <select class="form-select form-select-sm campo-obligatorio @if(in_array('sexo', $autoCopro)) campo-api @endif" wire:model.blur="nuevoCopro.sexo">
+                                                        {{-- 25/11 (Antony): sexo, nacionalidad y estado civil nacen en blanco; los elige quien registra. --}}
+                                                        <select class="form-select form-select-sm campo-obligatorio @error('nuevoCopro.sexo') is-invalid @enderror" wire:model.blur="nuevoCopro.sexo">
+                                                            <option value="">— Seleccione —</option>
                                                             <option value="M">Masculino</option>
                                                             <option value="F">Femenino</option>
                                                         </select>
+                                                        @error('nuevoCopro.sexo') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                                     </div>
                                                     <div class="col-6 col-md-2">
                                                         <label class="form-label mb-0 small fw-semibold">Nacionalidad *</label>
-                                                        <select class="form-select form-select-sm campo-obligatorio" wire:model.blur="nuevoCopro.nacionalidad">
+                                                        <select class="form-select form-select-sm campo-obligatorio @error('nuevoCopro.nacionalidad') is-invalid @enderror" wire:model.blur="nuevoCopro.nacionalidad">
+                                                            <option value="">— Seleccione —</option>
                                                             @foreach(\App\Support\Documentos\Nacionalidades::OPCIONES as $op)
                                                                 <option value="{{ $op }}">{{ $op }}</option>
                                                             @endforeach
                                                         </select>
+                                                        @error('nuevoCopro.nacionalidad') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                                     </div>
                                                     <div class="col-6 col-md-2">
                                                         <label class="form-label mb-0 small fw-semibold">Ocupación *</label>
@@ -440,11 +445,13 @@
                                                     </div>
                                                     <div class="col-6 col-md-2">
                                                         <label class="form-label mb-0 small fw-semibold">Estado civil *</label>
-                                                        <select class="form-select form-select-sm campo-obligatorio @if(in_array('estado_civil', $autoCopro)) campo-api @endif" wire:model.blur="nuevoCopro.estado_civil">
+                                                        <select class="form-select form-select-sm campo-obligatorio @error('nuevoCopro.estado_civil') is-invalid @enderror" wire:model.blur="nuevoCopro.estado_civil">
+                                                            <option value="">— Seleccione —</option>
                                                             @foreach(\App\Livewire\Clients\Create::ESTADOS_CIVILES as $v => $et)
                                                                 <option value="{{ $v }}">{{ $et }}</option>
                                                             @endforeach
                                                         </select>
+                                                        @error('nuevoCopro.estado_civil') <div class="invalid-feedback">{{ $message }}</div> @enderror
                                                     </div>
                                                     <div class="col-6 col-md-2">
                                                         <label class="form-label mb-0 small fw-semibold">Celular / WhatsApp *</label>

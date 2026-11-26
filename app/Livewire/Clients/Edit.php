@@ -39,7 +39,7 @@ class Edit extends Component
 
     public ?string $fecha_nacimiento = null;
 
-    public string $sexo = 'M';
+    public string $sexo = '';
 
     public string $status = 'active';
 
@@ -97,7 +97,7 @@ class Edit extends Component
 
     public string $ocupacion = 'transportista';
 
-    public string $estado_civil = 'soltero';
+    public string $estado_civil = '';
 
     public ?string $referencia = null;
 
@@ -145,7 +145,9 @@ class Edit extends Component
             'apellido_mat' => 'nullable|string|max:100',
             'documento' => 'required|string|max:20|unique:clients,documento,'.$this->clientId,
             'fecha_nacimiento' => 'nullable|date',
-            'sexo' => 'required|in:M,F',
+            // 25/11 (Antony): sexo, nacionalidad y estado civil ya no se rellenan con un valor por defecto.
+            // La empresa no los tiene, y el sexo solo lo exige a quien puede editarlo (identidad).
+            'sexo' => ($isRuc || ! $this->puedeEditarIdentidad) ? 'nullable|in:M,F' : 'required|in:M,F',
             'status' => 'required|in:active,inactive',
             'direccion' => 'nullable|string|max:255',
             'distrito' => 'nullable|string|max:100',
@@ -155,7 +157,7 @@ class Edit extends Component
             'nacionalidad' => 'nullable|string|in:'.implode(',', Nacionalidades::paraValor($this->nacionalidad)),
             'email' => 'nullable|email|max:150',
             'ocupacion' => 'required|string|max:100',
-            'estado_civil' => 'required|string|max:100',
+            'estado_civil' => $isRuc ? 'nullable|string|max:100' : 'required|string|max:100',
             'referencia' => 'nullable|string|max:255',
             'giro' => 'nullable|string|max:100',
             'capital' => 'nullable|numeric|min:0',
@@ -201,7 +203,7 @@ class Edit extends Component
         $this->tipo_documento = $c->tipo_documento ?? 'DNI';
         $this->documento = (string) ($c->documento ?? '');
         $this->fecha_nacimiento = $c->fecha_nacimiento?->format('Y-m-d');
-        $this->sexo = $c->sexo ?? 'M';
+        $this->sexo = in_array($c->sexo, ['M', 'F'], true) ? $c->sexo : '';
         $this->status = $c->status ?? 'active';
         $this->direccion = $c->direccion;
         $this->distrito = $c->distrito;
@@ -214,10 +216,10 @@ class Edit extends Component
         $this->departamento = $depGuardado ?: ($ubicada[0] ?? 'Lima');
         $this->provincia = Ubigeo::resolverProvincia($this->departamento, $c->provincia)
             ?? ($c->provincia ?: 'Lima');
-        $this->nacionalidad = $c->nacionalidad ?: Nacionalidades::DEFECTO;
+        $this->nacionalidad = filled($c->nacionalidad) ? (string) $c->nacionalidad : '';
         $this->email = (string) ($c->email ?? '');
         $this->ocupacion = filled($c->ocupacion) ? (string) $c->ocupacion : 'transportista';
-        $this->estado_civil = filled($c->estado_civil) ? (string) $c->estado_civil : 'soltero';
+        $this->estado_civil = (string) ($c->estado_civil ?? '');
         $this->referencia = $c->referencia;
         $this->giro = $c->giro;
         $this->capital = $c->capital;
@@ -257,7 +259,7 @@ class Edit extends Component
             // van con la identidad (solo SuperUsuario); la vista los bloquea y
             // aquí se ignora lo que llegue de todos modos.
             'fecha_nacimiento' => $this->puedeEditarIdentidad ? $this->fecha_nacimiento : $this->client->fecha_nacimiento,
-            'sexo' => $this->puedeEditarIdentidad ? $this->sexo : $this->client->sexo,
+            'sexo' => $this->puedeEditarIdentidad ? ($this->sexo ?: null) : $this->client->sexo,
             'nacionalidad' => $this->puedeEditarIdentidad
                 ? (filled($this->nacionalidad) ? $this->nacionalidad : null)
                 : $this->client->nacionalidad,
@@ -269,7 +271,7 @@ class Edit extends Component
             'departamento' => $this->departamento,
             'email' => trim($this->email) ?: null,
             'ocupacion' => $this->ocupacion,
-            'estado_civil' => $this->estado_civil,
+            'estado_civil' => $this->estado_civil ?: null,
             'referencia' => $this->referencia,
             'giro' => $this->giro,
             'capital' => $this->capital !== null && $this->capital !== '' ? $this->capital : null,
@@ -368,7 +370,8 @@ class Edit extends Component
             return;
         }
         $this->coproForm = collect(self::COPRO_CAMPOS)->mapWithKeys(fn ($c) => [$c => (string) ($persona->{$c} ?? '')])->all();
-        $this->coproForm['nacionalidad'] = Nacionalidades::normalizar($this->coproForm['nacionalidad'] ?: 'PERUANO');
+        // 25/11 (Antony): sexo, nacionalidad y estado civil que la ficha no tiene quedan en blanco, para elegirlos.
+        $this->coproForm['nacionalidad'] = filled($this->coproForm['nacionalidad']) ? Nacionalidades::normalizar($this->coproForm['nacionalidad']) : '';
         // Fichas migradas traen otra caja ("Lima", "Transportista"): se ajustan a las claves de los selects.
         $this->coproForm['ocupacion'] = mb_strtolower($this->coproForm['ocupacion']);
         $this->coproForm['estado_civil'] = mb_strtolower($this->coproForm['estado_civil']);
@@ -378,7 +381,7 @@ class Edit extends Component
         $this->coproForm['provincia'] = $this->coproForm['provincia'] ?: 'Lima';
         $this->coproForm = CorreoEnPartes::partir($this->coproForm['email']) + Ubigeo::encadenar($this->coproForm);
         foreach (['ocupacion' => Create::OCUPACIONES, 'estado_civil' => Create::ESTADOS_CIVILES] as $campo => $opciones) {
-            if (! array_key_exists($this->coproForm[$campo], $opciones)) {
+            if (! array_key_exists($this->coproForm[$campo], $opciones) && ! ($campo === 'estado_civil' && $this->coproForm[$campo] === '')) {
                 $this->coproForm[$campo] = array_key_first($opciones);
             }
         }
@@ -424,7 +427,9 @@ class Edit extends Component
             }
         }
         $this->coproForm['documento'] = trim((string) ($this->coproForm['documento'] ?? ''));
-        $this->coproForm['nacionalidad'] = Nacionalidades::normalizar((string) ($this->coproForm['nacionalidad'] ?? ''));
+        if (filled($this->coproForm['nacionalidad'] ?? null)) {
+            $this->coproForm['nacionalidad'] = Nacionalidades::normalizar((string) $this->coproForm['nacionalidad']);
+        }
         $this->coproForm = CorreoEnPartes::completar($this->coproForm);
 
         $this->validate([

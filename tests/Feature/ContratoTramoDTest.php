@@ -304,6 +304,32 @@ class ContratoTramoDTest extends TestCase
         $this->assertFalse((bool) $ficha->representantes()->where('documento', '46964491')->first()->vigente);
     }
 
+    /**
+     * 25/11/2026 (Antony): al cambiar de gerente, sexo, nacionalidad y estado civil no se quedan con los del
+     * anterior (es otra persona): quedan en blanco y sin elegirlos el contrato no se genera.
+     */
+    public function test_cambiar_gerente_deja_en_blanco_sexo_nacionalidad_y_estado_civil(): void
+    {
+        $empresa = $this->cliente(['tipo_documento' => 'RUC', 'documento' => '20601234573', 'nombre' => 'TRANSPORTES TD7 S.A.C.']);
+        $credit = $this->credito($empresa);
+        $v = $this->vehiculo($empresa, 'TRD999');
+        $this->emitirContratoEmpresa($empresa, $credit, $v, ['nombre' => 'JACK BLAS SULLCA', 'dni' => '46964491', 'sexo' => 'M']);
+
+        $comp = Livewire::test(Documentos::class, ['id' => $empresa->id])->call('abrirModalContrato');
+        $g = $comp->get('gerente');
+        $this->assertSame(['M', 'PERUANO', 'CASADO'], [$g['sexo'], $g['nacionalidad'], $g['estado_civil']], 'el gerente registrado trae lo de su ficha');
+
+        $g = $comp->call('cambiarGerente')->get('gerente');
+        $this->assertSame(['', '', '', ''], [$g['nombre'], $g['sexo'], $g['nacionalidad'], $g['estado_civil']]);
+
+        $comp->set('contratoCreditoId', $credit->id)->set('modeloContrato', 'a4')->set('contratoVehiculos.0.vehiculo_id', $v->id)
+            ->set('bancoDesembolso', 'bcp')
+            ->set('gerente.nombre', 'ROSA QUISPE MAMANI')->set('gerente.dni', '41752169')
+            ->call('generarContrato')
+            ->assertHasErrors(['gerente.sexo' => 'required', 'gerente.nacionalidad' => 'required']);
+        $this->assertSame(1, DocumentoCliente::where('client_id', $empresa->id)->where('tipo', 'contrato')->count(), 'no se emitió otro contrato');
+    }
+
     public function test_sin_gerente_registrado_su_domicilio_se_arma_con_el_ubigeo_elegido(): void
     {
         // 06/11 (Trello, tarjeta 6): sin representante en la ficha, dirección + listas de ubigeo.
@@ -322,6 +348,7 @@ class ContratoTramoDTest extends TestCase
         $comp->set('contratoCreditoId', $credit->id)->set('contratoVehiculos.0.vehiculo_id', $v->id)
             ->set('bancoDesembolso', 'bcp')->set('empresa.partida', '15626194')->set('empresa.oficina_registral', 'LIMA')
             ->set('gerente.nombre', 'JACK BLAS SULLCA')->set('gerente.dni', '46964491')->set('gerente.sexo', 'M')
+            ->set('gerente.nacionalidad', 'PERUANO') // 25/11: ya no nace puesta
             ->set('gerente.ocupacion', 'EMPRESARIO')->set('gerente.estado_civil', 'CASADO')
             ->set('gerente.direccion', 'Av. Salaverry 2900')->set('gerente.departamento', 'Callao')
             ->assertSet('gerente.provincia', 'Callao')

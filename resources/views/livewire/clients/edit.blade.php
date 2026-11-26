@@ -177,11 +177,14 @@
                          se bloquean como la identidad (solo SuperUsuario). --}}
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">Sexo</label>
-                        <select class="form-select form-select-sm @unless($puedeEditarIdentidad) bg-light @endunless" wire:model.defer="sexo"
+                        <select class="form-select form-select-sm @unless($puedeEditarIdentidad) bg-light @endunless @error('sexo') is-invalid @enderror" wire:model.defer="sexo"
                                 @unless($puedeEditarIdentidad) disabled @endunless>
+                            {{-- 25/11 (Antony): lo que la ficha no tiene se muestra en blanco, no con un valor por defecto. --}}
+                            <option value="">— Seleccione —</option>
                             <option value="F">Femenino</option>
                             <option value="M">Masculino</option>
                         </select>
+                        @error('sexo') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                     <div class="col-md-2">
                         <label class="form-label mb-0 small fw-semibold">Nacimiento</label>
@@ -216,6 +219,7 @@
                              tanto para deudor como para deudora. --}}
                         <select class="form-select form-select-sm select2-simple @error('nacionalidad') is-invalid @enderror"
                                 wire:model.defer="nacionalidad" @unless($puedeEditarIdentidad) disabled @endunless>
+                            <option value="">— Seleccione —</option>
                             @foreach(\App\Support\Documentos\Nacionalidades::paraValor($nacionalidad) as $opcion)
                                 <option value="{{ $opcion }}">{{ $opcion }}</option>
                             @endforeach
@@ -234,6 +238,7 @@
                     <div class="col-md-3">
                         <label class="form-label mb-0 small fw-semibold">Estado civil</label>
                         <select class="form-select form-select-sm select2-tags @error('estado_civil') is-invalid @enderror" wire:model.defer="estado_civil">
+                            <option value="">— Seleccione —</option>
                             @foreach(\App\Livewire\Clients\Create::estadosCivilesPara($estado_civil) as $valor => $etiqueta)
                                 <option value="{{ $valor }}">{{ $etiqueta }}</option>
                             @endforeach
@@ -416,14 +421,16 @@
                                             </div>
                                             <div class="col-6 col-md-2">
                                                 <label class="form-label mb-0 small fw-semibold">Sexo *</label>
-                                                <select class="form-select form-select-sm campo-obligatorio" wire:model="coproForm.sexo" @disabled(! $identidad)>
+                                                <select class="form-select form-select-sm campo-obligatorio @error('coproForm.sexo') is-invalid @enderror" wire:model="coproForm.sexo" @disabled(! $identidad)>
+                                                    <option value="">— Seleccione —</option>
                                                     <option value="M">Masculino</option>
                                                     <option value="F">Femenino</option>
                                                 </select>
                                             </div>
                                             <div class="col-6 col-md-2">
                                                 <label class="form-label mb-0 small fw-semibold">Nacionalidad *</label>
-                                                <select class="form-select form-select-sm campo-obligatorio" wire:model="coproForm.nacionalidad" @disabled(! $identidad)>
+                                                <select class="form-select form-select-sm campo-obligatorio @error('coproForm.nacionalidad') is-invalid @enderror" wire:model="coproForm.nacionalidad" @disabled(! $identidad)>
+                                                    <option value="">— Seleccione —</option>
                                                     @foreach(\App\Support\Documentos\Nacionalidades::OPCIONES as $op)
                                                         <option value="{{ $op }}">{{ $op }}</option>
                                                     @endforeach
@@ -440,6 +447,7 @@
                                             <div class="col-6 col-md-2">
                                                 <label class="form-label mb-0 small fw-semibold">Estado civil *</label>
                                                 <select class="form-select form-select-sm campo-obligatorio @error('coproForm.estado_civil') is-invalid @enderror" wire:model="coproForm.estado_civil">
+                                                    <option value="">— Seleccione —</option>
                                                     @foreach(\App\Livewire\Clients\Create::ESTADOS_CIVILES as $v => $et)
                                                         <option value="{{ $v }}">{{ $et }}</option>
                                                     @endforeach

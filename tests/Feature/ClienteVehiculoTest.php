@@ -42,7 +42,10 @@ class ClienteVehiculoTest extends TestCase
             'apellido_pat' => 'Prueba',
             'apellido_mat' => 'Vehicular',
             'documento' => '87654321',
+            // 25/11: sexo, nacionalidad y estado civil ya no nacen puestos; los elige quien registra.
             'sexo' => 'M',
+            'nacionalidad' => 'PERUANO',
+            'estado_civil' => 'soltero',
             'email' => 'vehicular@correo.com',
             // Domicilio legal: obligatorio desde el tramo B.
             'direccion' => 'AV. AREQUIPA 3400',

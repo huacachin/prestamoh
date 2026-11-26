@@ -147,8 +147,10 @@ class Documentos extends Component
      * y toda gerenta salía IDENTIFICADO/SOLTERO/INSCRITO.
      */
     public array $gerente = [
-        'nombre' => '', 'tipo_documento' => 'DNI', 'dni' => '', 'sexo' => 'M',
-        'nacionalidad' => 'PERUANO', 'ocupacion' => '', 'estado_civil' => '',
+        // 25/11 (Antony): sexo, nacionalidad y estado civil nacen en blanco y la consulta del
+        // documento no los toca; se eligen a mano, o vienen de la ficha si la persona ya está registrada.
+        'nombre' => '', 'tipo_documento' => 'DNI', 'dni' => '', 'sexo' => '',
+        'nacionalidad' => '', 'ocupacion' => '', 'estado_civil' => '',
         'domicilio' => '', 'banco' => '', 'cuenta' => '',
         // 06/11 (Trello, tarjeta 6): sin domicilio en la ficha, se arma con
         // dirección + ubigeo elegido (DomicilioLegal), como en Nuevo cliente.
@@ -874,8 +876,9 @@ class Documentos extends Component
             'nombre' => (string) ($vigente->nombre ?? ''),
             'tipo_documento' => (string) (($vigente->tipo_documento ?? null) ?: 'DNI'),
             'dni' => (string) ($vigente->documento ?? ''),
-            'sexo' => ($vigente->sexo ?? 'M') === 'F' ? 'F' : 'M',
-            'nacionalidad' => (string) (($vigente->nacionalidad ?? null) ?: Nacionalidades::DEFECTO),
+            // Sin representante registrado quedan en blanco, para elegirlos (25/11).
+            'sexo' => in_array($vigente?->sexo, ['M', 'F'], true) ? (string) $vigente->sexo : '',
+            'nacionalidad' => (string) ($vigente->nacionalidad ?? ''),
             'ocupacion' => (string) ($vigente->ocupacion ?? ''),
             'estado_civil' => (string) ($vigente->estado_civil ?? ''),
             'domicilio' => (string) ($vigente->domicilio ?? ''),
@@ -1161,7 +1164,8 @@ class Documentos extends Component
      * Consulta el documento del GERENTE: primero la ficha local (si la
      * persona ya está registrada, ocupación, sexo, estado civil,
      * nacionalidad y domicilio se HEREDAN del cliente), y si no, el
-     * endpoint de DNI/CE — que trae nombre, sexo y domicilio de RENIEC.
+     * endpoint de DNI/CE — del que se toman el nombre y el domicilio. Sexo y
+     * estado civil ya no se toman de la consulta (25/11): se eligen a mano.
      * Todo lo llenado se pinta en rojo (autoGerente).
      */
     public function consultarDocGerente(Factiliza $api): void
@@ -1181,15 +1185,15 @@ class Documentos extends Component
         $ficha = Client::where('documento', $doc)->first();
         if ($ficha !== null) {
             $this->gerente['nombre'] = mb_strtoupper($ficha->fullName());
-            $this->gerente['sexo'] = $ficha->sexo === 'F' ? 'F' : 'M';
-            $this->gerente['nacionalidad'] = $ficha->nacionalidad ?: Nacionalidades::DEFECTO;
+            // Lo que la ficha no tiene queda en blanco, para elegirlo.
+            $this->gerente['sexo'] = in_array($ficha->sexo, ['M', 'F'], true) ? $ficha->sexo : '';
+            $this->gerente['nacionalidad'] = filled($ficha->nacionalidad) ? Nacionalidades::normalizar($ficha->nacionalidad) : '';
             $this->gerente['ocupacion'] = mb_strtoupper(trim((string) ($ficha->ocupacion ?? '')));
             $estadoCivil = mb_strtoupper(trim((string) ($ficha->estado_civil ?? '')));
-            if (isset(self::ESTADOS_CIVILES[$estadoCivil])) {
-                $this->gerente['estado_civil'] = $estadoCivil;
-            }
+            $this->gerente['estado_civil'] = isset(self::ESTADOS_CIVILES[$estadoCivil]) ? $estadoCivil : '';
             $this->ubicarDomicilioGerente($ficha->direccion, $ficha->distrito, $ficha->provincia, $ficha->departamento);
-            $this->autoGerente = ['nombre', 'sexo', 'nacionalidad', 'ocupacion', 'estado_civil', 'direccion', 'distrito', 'provincia', 'departamento'];
+            $this->autoGerente = ['nombre', 'ocupacion', 'direccion', 'distrito', 'provincia', 'departamento',
+                ...array_filter(['sexo', 'nacionalidad', 'estado_civil'], fn (string $campo) => $this->gerente[$campo] !== '')];
             $this->dispatch('successAlert', ['message' => "Gerente heredado de la ficha de {$ficha->fullName()}. Verifica los datos."]);
 
             return;
@@ -1208,15 +1212,6 @@ class Documentos extends Component
         if ($nombre !== '') {
             $this->gerente['nombre'] = mb_strtoupper($nombre);
             $this->autoGerente[] = 'nombre';
-        }
-        if (in_array($r['data']['sexo'] ?? null, ['M', 'F'], true)) {
-            $this->gerente['sexo'] = $r['data']['sexo'];
-            $this->autoGerente[] = 'sexo';
-        }
-        $estadoCivilApi = mb_strtoupper(trim((string) ($r['data']['estado_civil'] ?? '')));
-        if ($estadoCivilApi !== '' && isset(self::ESTADOS_CIVILES[$estadoCivilApi])) {
-            $this->gerente['estado_civil'] = $estadoCivilApi;
-            $this->autoGerente[] = 'estado_civil';
         }
         if (filled($r['data']['direccion'] ?? null)) {
             $this->ubicarDomicilioGerente($r['data']['direccion'], $r['data']['distrito'] ?? null, $r['data']['provincia'] ?? null, $r['data']['departamento'] ?? null);
@@ -1252,6 +1247,8 @@ class Documentos extends Component
         $this->gerente = array_merge($this->gerente, [
             'nombre' => '', 'tipo_documento' => 'DNI', 'dni' => '', 'domicilio' => '',
             'direccion' => '', 'departamento' => 'Lima', 'provincia' => 'Lima', 'distrito' => '',
+            // 25/11: es otra persona; sexo, nacionalidad y estado civil no se heredan del gerente anterior.
+            'sexo' => '', 'nacionalidad' => '', 'estado_civil' => '',
         ]);
         $this->autoGerente = [];
         $this->htmlPreviewContrato = '';
@@ -2646,6 +2643,7 @@ class Documentos extends Component
             'gerente.nombre.required' => 'Ingresa el nombre del gerente general.',
             'gerente.dni.required' => 'Ingresa el DNI del gerente general.',
             'gerente.sexo.required' => 'Indica el género del gerente general.',
+            'gerente.nacionalidad.required' => 'Indica la nacionalidad del gerente general.',
             'gerente.sexo.in' => 'El género del gerente debe ser M o F.',
             'tercero.nombre.required' => 'Ingresa el nombre del tercero autorizado a recibir el desembolso.',
             'tercero.dni.required' => 'Ingresa el documento del tercero autorizado.',

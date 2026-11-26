@@ -302,9 +302,10 @@ class ContratoEspecFinalTest extends TestCase
         $this->assertSame('JACK YELTSIN BLAS SULLCA', $g['nombre']);
         $this->assertSame(['Av. Salaverry 2900', 'Lima', 'Lima', 'Magdalena del Mar'], [$g['direccion'], $g['departamento'], $g['provincia'], $g['distrito']]);
         $this->assertContains('direccion', $comp->get('autoGerente'));
-        $this->assertSame('SOLTERO', $g['estado_civil'], 'el estado civil de la API fluye al gerente');
         $this->assertContains('nombre', $comp->get('autoGerente'));
-        $this->assertContains('estado_civil', $comp->get('autoGerente'));
+        // 25/11 (Antony): sexo, nacionalidad y estado civil no se toman de la consulta; quedan en blanco para elegirlos.
+        $this->assertSame(['', '', ''], [$g['sexo'], $g['nacionalidad'], $g['estado_civil']]);
+        $this->assertSame([], array_values(array_intersect(['sexo', 'nacionalidad', 'estado_civil'], $comp->get('autoGerente'))));
     }
 
     public function test_el_tercero_consulta_su_dni(): void
