@@ -73,10 +73,16 @@
                                        @unless($canEditDate) readonly @endunless>
                             </div>
 
-                            <div class="col-md-2">
+                            {{-- 27/11 (Antony: "que tenga la opción de poder agregar y búsquedas, lo mismo que cuando agregas un
+                                 vehículo con color"): el campo A es una lista con buscador (select2, como en la ficha).
+                                 En "Otros" trae los motivos ya usados y deja escribir uno nuevo, que al guardar el
+                                 ingreso queda para la próxima vez; en "Fijos" son los conceptos de Configuración, que
+                                 no se crean desde aquí. El wire:key cambia con el tipo para que el cuadro se rearme.
+                                 Con .live, al elegir se recalcula la lista de montos previos del Monto (02/10). --}}
+                            <div class="col-md-2" wire:key="campo-a-{{ $modo === 'Fijos' ? 'fijos' : 'otros' }}">
                                 <label class="form-label mb-0 small fw-semibold">A (*)</label>
                                 @if($modo === 'Fijos')
-                                    <select class="form-select form-select-sm @error('reason') is-invalid @enderror"
+                                    <select class="form-select form-select-sm select2-simple @error('reason') is-invalid @enderror"
                                             wire:model.live="reason"
                                             {{ !$canChooseOtros ? 'disabled' : '' }}>
                                         <option value="">— Seleccione —</option>
@@ -85,12 +91,14 @@
                                         @endforeach
                                     </select>
                                 @else
-                                    {{-- .live.blur: al salir del campo se recalcula la lista de montos previos del Monto (02/10) --}}
-                                    <input type="text" name="reason" autocomplete="on"
-                                           class="form-control form-control-sm @error('reason') is-invalid @enderror"
-                                           wire:model.live.blur="reason"
-                                           placeholder="Motivo libre (proveedor, ej. 'Recarga teléfono')"
-                                           maxlength="255">
+                                    <select class="form-select form-select-sm select2-tags @error('reason') is-invalid @enderror"
+                                            wire:model.live="reason" name="reason"
+                                            data-placeholder="Busca o escribe el motivo">
+                                        <option value=""></option>
+                                        @foreach($motivosOtros as $motivo)
+                                            <option value="{{ $motivo }}">{{ $motivo }}</option>
+                                        @endforeach
+                                    </select>
                                 @endif
                             </div>
 

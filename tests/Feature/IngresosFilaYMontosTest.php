@@ -81,7 +81,7 @@ class IngresosFilaYMontosTest extends TestCase
         $this->ingreso('Caja chica', 'x', 7, '2026-09-01');
 
         $comp = Livewire::test(CreateIncome::class)->set('modo', 'Otros');
-        $comp->assertSeeHtml('wire:model.live.blur="reason"')->assertSeeHtml('wire:model.live.blur="detail"')
+        $comp->assertSeeHtml('wire:model.live="reason"')->assertSeeHtml('wire:model.live.blur="detail"')
             ->assertSeeHtml('list="montos-previos-ingreso"')->assertSeeHtml('inputmode="decimal"');
         $this->assertSame(['15.00', '25.00', '20.00', '7.00'], $this->opciones($comp->html()), 'sin motivo: los últimos de la caja');
 
@@ -90,5 +90,42 @@ class IngresosFilaYMontosTest extends TestCase
 
         $comp->set('detail', ' yape ')->assertSet('total', '');
         $this->assertSame(['25.00', '20.00', '15.00'], $this->opciones($comp->html()), 'con detalle: primero los de ese detalle');
+    }
+
+    /**
+     * 27/11/2026 (Antony): "en campo A que tenga la opción de poder agregar y búsquedas, lo mismo que cuando
+     * agregas un vehículo con color". En "Otros" el campo es una lista con buscador de los motivos ya usados
+     * donde también se escribe uno nuevo, que queda para la próxima vez; en "Fijos", los conceptos con buscador.
+     */
+    public function test_el_campo_a_lista_los_motivos_ya_usados_y_deja_agregar_uno_nuevo(): void
+    {
+        $this->mundo();
+        $this->travelTo('2026-11-27 10:00:00');
+        $this->ingreso('Banco', 'Yape', 20, '2026-09-20');
+        $this->ingreso('I.D', 'x', 15, '2026-11-20');
+        $this->ingreso('i.d ', 'y', 15, '2026-10-01');        // el mismo motivo escrito distinto: una sola vez
+        $this->ingreso('Taxivan', 'viejo', 30, '2020-01-10'); // del sistema anterior: fuera de la lista
+        $this->ingreso('Legal', 'z', 9, '2026-11-01', 4);      // otra caja: no cuenta
+        $this->ingreso('Diario', 'fijo', 5, '2026-11-02', 1, ['modo' => 'Fijos']); // los conceptos fijos no son motivos libres
+
+        $comp = Livewire::test(CreateIncome::class)->set('modo', 'Otros');
+        $this->assertSame(['I.D', 'Banco'], $comp->viewData('motivosOtros'), 'del usado más recientemente al más antiguo');
+        $comp->assertSeeHtml('select2-tags')->assertSeeHtml('<option value="I.D">I.D</option>')->assertDontSeeHtml('<option value="Taxivan">');
+
+        // Uno nuevo se escribe en el mismo cuadro, se conserva y al guardar el ingreso queda para la próxima vez.
+        $comp->set('reason', 'Devolución');
+        $this->assertSame(['Devolución', 'I.D', 'Banco'], $comp->viewData('motivosOtros'));
+        $comp->set('detail', 'De un cliente')->set('total', '50')->call('save')->assertHasNoErrors();
+        $this->assertSame(['Devolución', 'I.D', 'Banco'], Livewire::test(CreateIncome::class)->set('modo', 'Otros')->viewData('motivosOtros'));
+
+        // El mismo motivo con otras mayúsculas o espacios se guarda como ya está en la lista.
+        Livewire::test(CreateIncome::class)->set('modo', 'Otros')->set('reason', ' i.d ')->set('detail', 'otro')->set('total', '10')->call('save')->assertHasNoErrors();
+        $this->assertSame('I.D', Income::where('detail', 'otro')->value('reason'));
+
+        // En "Fijos": los conceptos de Configuración, con buscador y sin motivos libres.
+        Livewire::test(CreateIncome::class)->set('modo', 'Fijos')
+            ->assertSeeHtml('select2-simple')
+            ->assertDontSeeHtml('select2-tags')
+            ->assertSeeHtml('<option value="Diario">Diario</option>');
     }
 }
