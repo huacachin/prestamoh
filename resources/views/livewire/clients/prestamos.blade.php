@@ -115,14 +115,17 @@
                             <td class="text-center">{{ $credit->asesor ?: '-' }}</td>
                             <td class="text-center">{{ $credit->user?->username ?? $credit->usuario ?? '-' }}</td>
                             <td class="text-center text-nowrap">
+                                {{-- 27/11 (Antony, ficha 1493): el cronograma y el cobro llevan de dónde se vino, para que su
+                                     "Regresar" vuelva a esta pestaña (con el préstamo abierto en la ruta, si lo había). --}}
+                                @php $regreso = ['desde' => 'expediente'] + ($prestamo ? ['prestamo' => $prestamo] : []); @endphp
                                 @if($puedeVerCreditos)
-                                    <a href="{{ route('credits.schedule', $credit->id) }}" class="btn btn-xs btn-outline-primary" style="padding: 1px 6px; font-size: 10px;" title="Cronograma">
+                                    <a href="{{ route('credits.schedule', ['id' => $credit->id] + $regreso) }}" class="btn btn-xs btn-outline-primary" style="padding: 1px 6px; font-size: 10px;" title="Cronograma">
                                         <i class="ti ti-calendar"></i>
                                     </a>
                                 @endif
                                 @if($credit->situacion === 'Activo')
                                     @can('pagos')
-                                        <a href="{{ route('payments.create', $credit->id) }}" class="btn btn-xs btn-outline-success" style="padding: 1px 6px; font-size: 10px;" title="Cobrar">
+                                        <a href="{{ route('payments.create', ['creditId' => $credit->id] + $regreso) }}" class="btn btn-xs btn-outline-success" style="padding: 1px 6px; font-size: 10px;" title="Cobrar">
                                             <i class="ti ti-currency-dollar"></i>
                                         </a>
                                     @endcan

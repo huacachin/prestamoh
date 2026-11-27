@@ -7,12 +7,15 @@ use App\Support\AbonosPorCuota;
 use App\Support\CreditoCancelado;
 use App\Support\MoraPagada;
 use App\Support\RecibosCuota;
+use App\Support\RegresaAlExpediente;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 
 class Schedule extends Component
 {
+    use RegresaAlExpediente;
+
     public Credit $credit;
 
     public function mount(int $id)

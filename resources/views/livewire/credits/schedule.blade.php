@@ -31,7 +31,8 @@
                         <i class="ti ti-report-money"></i> Reporte de pagos
                     </a>
                 @endcan
-                <a href="{{ route('clients.show', $credit->client_id) }}" class="btn btn-sm btn-secondary ms-auto">Regresar</a>
+                {{-- 27/11 (Antony): si se entró desde la pestaña Préstamos de la ficha, vuelve ahí (RegresaAlExpediente). --}}
+                <a href="{{ $this->urlDeRegreso() }}" class="btn btn-sm btn-secondary ms-auto">Regresar</a>
             </div>
         </div>
     </div>

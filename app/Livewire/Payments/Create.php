@@ -19,6 +19,7 @@ use App\Support\MoraExonerada;
 use App\Support\MoraPagada;
 use App\Support\PagosAUnaFecha;
 use App\Support\RecibosCuota;
+use App\Support\RegresaAlExpediente;
 use App\Support\RotuloCuotas;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -31,6 +32,7 @@ class Create extends Component
 {
     use ConCapturaDeAuditoria;
     use ConSubidaDeArchivos;
+    use RegresaAlExpediente;
     use SavesExpenseAttachments;
 
     public ?Credit $credit = null;

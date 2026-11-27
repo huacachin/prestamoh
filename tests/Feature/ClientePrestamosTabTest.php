@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Livewire\Clients\Edit;
 use App\Livewire\Clients\Prestamos;
 use App\Livewire\Credits\Create;
+use App\Livewire\Credits\Schedule;
+use App\Livewire\Payments\Create as Cobro;
 use App\Models\Client;
 use App\Models\Credit;
 use App\Models\CreditInstallment;
@@ -14,6 +16,7 @@ use Database\Seeders\PermissionCatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
+use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
@@ -186,6 +189,48 @@ class ClientePrestamosTabTest extends TestCase
             ->call('save')
             ->assertHasNoErrors()
             ->assertRedirect(route('clients.edit', ['id' => $this->client->id, 'prestamo' => 29503, 'tab' => 'prestamos']));
+    }
+
+    /**
+     * 27/11/2026 (Antony, ficha 1493): desde la pestaña Préstamos, el cronograma y el cobro se abren en la misma
+     * pestaña del navegador y su "Regresar" llevaba a la consulta del cliente ("no regresa al mismo
+     * clients/1493/edit?tab=prestamos, sino a otra ventana"). Ahora vuelve a la pestaña de la que se vino.
+     */
+    public function test_el_cronograma_y_el_cobro_abiertos_desde_la_ficha_regresan_a_la_pestana_prestamos(): void
+    {
+        $this->mundo();
+        $this->credito($this->client, 29001, 'Activo');
+        $ficha = route('clients.edit', ['id' => $this->client->id, 'tab' => 'prestamos']);
+        $fichaConPrestamo = route('clients.edit', ['id' => $this->client->id, 'prestamo' => 29001, 'tab' => 'prestamos']);
+        $consulta = route('clients.show', $this->client->id);
+
+        // Los dos enlaces de la pestaña dicen de dónde se viene, y con qué préstamo abierto en la ruta.
+        $html = Livewire::test(Prestamos::class, ['id' => $this->client->id])->html();
+        $this->assertStringContainsString('href="'.route('credits.schedule', ['id' => 29001, 'desde' => 'expediente']).'"', $html);
+        $this->assertStringContainsString('href="'.route('payments.create', ['creditId' => 29001, 'desde' => 'expediente']).'"', $html);
+        $html = Livewire::test(Prestamos::class, ['id' => $this->client->id, 'prestamo' => 29001])->html();
+        $this->assertStringContainsString('href="'.e(route('credits.schedule', ['id' => 29001, 'desde' => 'expediente', 'prestamo' => 29001])).'"', $html);
+
+        foreach ([Schedule::class => ['id' => 29001], Cobro::class => ['creditId' => 29001]] as $pantalla => $parametros) {
+            // Desde la ficha: "Regresar" vuelve a la pestaña Préstamos.
+            $desdeLaFicha = Livewire::withQueryParams(['desde' => 'expediente'])->test($pantalla, $parametros);
+            $this->assertSame($ficha, $desdeLaFicha->instance()->urlDeRegreso(), $pantalla);
+            $desdeLaFicha->assertSeeHtml('<a href="'.e($ficha).'"');
+
+            $conPrestamo = Livewire::withQueryParams(['desde' => 'expediente', 'prestamo' => '29001'])->test($pantalla, $parametros);
+            $this->assertSame($fichaConPrestamo, $conPrestamo->instance()->urlDeRegreso(), $pantalla);
+
+            // Por cualquier otro lado, como siempre: a la consulta del cliente. (withQueryParams([]) limpia los
+            // parámetros de las pruebas anteriores: Livewire los conserva entre llamadas.)
+            $porOtroLado = Livewire::withQueryParams([])->test($pantalla, $parametros);
+            $this->assertSame($consulta, $porOtroLado->instance()->urlDeRegreso(), $pantalla);
+            $porOtroLado->assertDontSeeHtml('<a href="'.e($ficha).'"');
+        }
+
+        // Quien no puede entrar a la ficha del cliente vuelve a la consulta aunque el enlace diga que vino de ahí.
+        $this->user->revokePermissionTo('clientes');
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $this->assertSame($consulta, Livewire::withQueryParams(['desde' => 'expediente'])->test(Schedule::class, ['id' => 29001])->instance()->urlDeRegreso());
     }
 
     public function test_el_analista_ve_la_lista_pero_no_el_boton_de_nuevo_prestamo(): void

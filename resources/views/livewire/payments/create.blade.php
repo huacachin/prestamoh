@@ -565,7 +565,8 @@
                                 <i class="ti ti-eye"></i> Ver ficha del crédito
                             </a>
                         @endif
-                        <a href="{{ route('clients.show', $credit->client_id) }}"
+                        {{-- 27/11 (Antony): si se entró desde la pestaña Préstamos de la ficha, vuelve ahí (RegresaAlExpediente). --}}
+                        <a href="{{ $this->urlDeRegreso() }}"
                            class="btn btn-sm btn-danger ms-auto">
                             <i class="ti ti-arrow-back"></i> Regresar
                         </a>
