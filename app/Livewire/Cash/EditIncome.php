@@ -49,6 +49,9 @@ class EditIncome extends Component
 
     public bool $canEditDate = false;
 
+    /** Solo para pintar el campo "A" bloqueado; al guardar decide el permiso (puedeCambiarMotivo). */
+    public bool $canChangeReason = false;
+
     public function mount(int $id): void
     {
         $this->income = Income::findOrFail($id);
@@ -60,6 +63,7 @@ class EditIncome extends Component
 
         $this->autorizar();
         $this->canEditDate = auth()->user()?->can('caja.bypass-fecha-anterior') ?? false;
+        $this->canChangeReason = $this->puedeCambiarMotivo();
 
         $this->date = $this->income->date->format('Y-m-d');
         $this->reason = (string) $this->income->reason;
@@ -116,8 +120,11 @@ class EditIncome extends Component
     {
         $this->autorizar();
 
-        // "i.d" o " I.D " son el motivo "I.D" que ya está en la lista: se guarda con esa misma escritura.
-        if ($this->motivoLibre()) {
+        if (! $this->puedeCambiarMotivo()) {
+            // Se decide por el PERMISO: las propiedades públicas se pueden manipular desde el navegador.
+            $this->reason = (string) $this->income->reason;
+        } elseif ($this->motivoLibre()) {
+            // "i.d" o " I.D " son el motivo "I.D" que ya está en la lista: se guarda con esa misma escritura.
             $this->reason = $this->motivoComoYaSeUso($this->reason, $this->incomeId);
         }
 
@@ -181,6 +188,16 @@ class EditIncome extends Component
         Audit::log("Eliminó el ingreso #{$id}", $income);
         session()->flash('cash_success', 'Ingreso eliminado correctamente.');
         $this->redirectRoute('cash.incomes');
+    }
+
+    /**
+     * La misma restricción del alta (27/11/2026, Antony: "que tenga la misma restricción"): quien al crear
+     * solo puede registrar "Fijos" con motivo "Diario" (asesor, cobranza: sin caja.editar-historico ni
+     * caja.ver-todo) tampoco cambia el campo "A" al editar su ingreso del día; el motivo se queda como está.
+     */
+    private function puedeCambiarMotivo(): bool
+    {
+        return auth()->user()?->canAny(['caja.editar-historico', 'caja.ver-todo']) ?? false;
     }
 
     /** Un ingreso "Otros" lleva un motivo libre; el resto, un concepto de Configuración. El tipo no se cambia al editar. */

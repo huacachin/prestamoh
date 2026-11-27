@@ -76,6 +76,45 @@ class CajaEdicionPropiaTest extends TestCase
         Livewire::test(EditIncome::class, ['id' => $ingreso->id])->assertStatus(403);
     }
 
+    /**
+     * 27/11/2026 (Antony: "que tenga la misma restricción"): quien al crear solo puede registrar "Fijos" con
+     * motivo "Diario" (sin caja.editar-historico ni caja.ver-todo) tampoco cambia el campo "A" al editar su
+     * ingreso del día; lo demás sí lo corrige. Con caja.ver-todo el motivo de lo propio se cambia como antes.
+     */
+    public function test_sin_permiso_de_elegir_motivo_el_campo_a_no_se_cambia_al_editar(): void
+    {
+        $diario = fn (User $user) => Income::create([
+            'date' => now()->format('Y-m-d'), 'reason' => 'Diario', 'detail' => 'test', 'total' => 100,
+            'modo' => 'Fijos', 'caja' => 1, 'user_id' => $user->id, 'headquarter_id' => 1,
+        ]);
+
+        $campoBloqueado = '/<select[^>]*name="reason"[^>]*\\sdisabled/s';
+
+        $this->actingAs($asesor = $this->actorCon(['caja.ingresos'], 'asesor-like'));
+        $ingreso = $diario($asesor);
+        $comp = Livewire::test(EditIncome::class, ['id' => $ingreso->id]);
+        $this->assertMatchesRegularExpression($campoBloqueado, $comp->html());
+        $comp->assertSet('canChangeReason', false)
+            ->assertSee('no puedes cambiar el motivo')
+            ->set('canChangeReason', true)   // manipulado desde el navegador: manda el permiso
+            ->set('reason', 'Mensual')
+            ->set('detail', 'corregido')
+            ->call('update')
+            ->assertHasNoErrors();
+        $this->assertSame(['Diario', 'corregido'], [$ingreso->refresh()->reason, $ingreso->detail]);
+
+        $this->actingAs($admin = $this->actorCon(['caja.ingresos', 'caja.ver-todo'], 'admin-like'));
+        $ingreso = $diario($admin);
+        $comp = Livewire::test(EditIncome::class, ['id' => $ingreso->id]);
+        $this->assertDoesNotMatchRegularExpression($campoBloqueado, $comp->html());
+        $comp->assertSet('canChangeReason', true)
+            ->assertDontSee('no puedes cambiar el motivo')
+            ->set('reason', 'Mensual')
+            ->call('update')
+            ->assertHasNoErrors();
+        $this->assertSame('Mensual', $ingreso->refresh()->reason);
+    }
+
     public function test_el_dueno_si_edita_su_movimiento_del_dia(): void
     {
         $this->actingAs($this->dueno);

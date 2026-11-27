@@ -33,6 +33,14 @@
                         </div>
                     @endif
 
+                    {{-- 27/11 (Antony: "que tenga la misma restricción"): igual que en el alta, asesor y cobranza no cambian el motivo. --}}
+                    @unless($canChangeReason)
+                        <div class="alert alert-info py-1 px-2 mb-2" style="font-size:11px;">
+                            <i class="ti ti-info-circle"></i>
+                            Como Asesor / Cobranza no puedes cambiar el motivo (campo <strong>A</strong>) del ingreso.
+                        </div>
+                    @endunless
+
                     <div class="row">
                         <div class="col-md-auto col-sm-12">
                             <div class="mb-3">
@@ -51,7 +59,8 @@
                                      escribir uno nuevo; en uno "Fijos", los conceptos de Configuración, que no se crean aquí. --}}
                                 <select class="form-select form-select-sm {{ $motivoLibre ? 'select2-tags' : 'select2-simple' }} @error('reason') is-invalid @enderror"
                                         wire:model.defer="reason" name="reason"
-                                        data-placeholder="{{ $motivoLibre ? 'Busca o escribe el motivo' : '-- Seleccionar --' }}">
+                                        data-placeholder="{{ $motivoLibre ? 'Busca o escribe el motivo' : '-- Seleccionar --' }}"
+                                        @disabled(! $canChangeReason)>
                                     <option value=""></option>
                                     @foreach($opcionesA as $opcion)
                                         <option value="{{ $opcion }}">{{ $opcion }}</option>
