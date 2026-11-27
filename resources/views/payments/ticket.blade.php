@@ -117,6 +117,10 @@
     <div class="center">
         <div class="titulo">RECIBO DE PAGO</div>
         <div class="numero">#{{ $t['numero'] }}</div>
+        {{-- 27/11 (Antony, 29397): desde el botón ámbar del cronograma sale solo la mora acumulada de esa cuota. --}}
+        @if(! empty($t['parte_de']))
+            <div>MORA ACUMULADA</div>
+        @endif
     </div>
 
     <div class="sep"></div>
@@ -178,9 +182,14 @@
 
     <div class="sep"></div>
 
-    <div class="row"><span>Saldo restante:</span><span>S/ {{ number_format($t['saldo'], 2) }}</span></div>
-    @if($t['proxima'])
-        <div class="row"><span>Prox. vencimiento:</span><span>{{ $t['proxima'] }}</span></div>
+    @if(! empty($t['parte_de']))
+        {{-- Es un trozo del cobro: el saldo y el próximo vencimiento van en el recibo completo. --}}
+        <div class="nota">Forma parte del recibo #{{ $t['parte_de']['numero'] }} (cobro total: S/ {{ number_format($t['parte_de']['total'], 2) }}).</div>
+    @else
+        <div class="row"><span>Saldo restante:</span><span>S/ {{ number_format($t['saldo'], 2) }}</span></div>
+        @if($t['proxima'])
+            <div class="row"><span>Prox. vencimiento:</span><span>{{ $t['proxima'] }}</span></div>
+        @endif
     @endif
 
     <div class="sep-dbl"></div>

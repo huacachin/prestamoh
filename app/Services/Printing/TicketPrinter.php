@@ -238,6 +238,31 @@ final class TicketPrinter
         ];
     }
 
+    /**
+     * El recibo con SOLO la mora acumulada de una cuota (27/11/2026, Antony, 29397): es lo que abre el
+     * botón ámbar del cronograma en la fila de esa cuota. Conserva la cabecera del cobro (número, fecha,
+     * medio de pago, cliente) y deja una sola línea y un total: lo de esa cuota. 'parte_de' recuerda que
+     * es un trozo del recibo completo, que sigue saliendo entero desde las cuotas que pagó.
+     *
+     * @param  array<string, mixed>  $t  paymentTicketData() del cobro
+     * @return array<string, mixed>
+     */
+    public function soloMoraAcumulada(MassDeletion $masivo, int $installmentId, array $t): array
+    {
+        $filas = $masivo->details()->where('tipo', 'MA')->where('installment_id', $installmentId)->get();
+        abort_if($filas->isEmpty(), 404);
+        $monto = round((float) $filas->sum('amount'), 2);
+        $cuota = (int) CreditInstallment::whereKey($installmentId)->value('num_cuota');
+
+        return [
+            'cuotas' => [], 'detalle_cuotas' => [], 'detalle_cuotas_visible' => false, 'resto_cuotas' => null,
+            'cancelacion' => null, 'capital' => 0.0, 'interes' => 0.0, 'excedente' => 0.0, 'mora' => 0.0,
+            'mora_acumulada' => ['rotulo' => 'Mora acumulada cuota '.$cuota, 'monto' => $monto],
+            'total' => $monto,
+            'parte_de' => ['numero' => $t['numero'], 'total' => $t['total']],
+        ] + $t;
+    }
+
     /** Lo que le falta a una cuota: capital + interés + excedente menos lo aplicado (nunca negativo). */
     private static function saldoDeCuota(CreditInstallment $i): float
     {

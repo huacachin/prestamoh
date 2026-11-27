@@ -67,10 +67,18 @@ class PaymentController extends Controller
     /**
      * Recibo PÚBLICO: lo abre el cliente desde el link firmado que se le
      * envía por WhatsApp (ruta con middleware 'signed', sin login).
+     *
+     * Con ?mora_acumulada={id de la cuota} (27/11/2026, botón ámbar del cronograma) muestra solo la
+     * mora acumulada de esa cuota que se cobró en este recibo. El parámetro va dentro de la firma.
      */
-    public function reciboPublico(int $massDeletionId, TicketPrinter $printer)
+    public function reciboPublico(Request $request, int $massDeletionId, TicketPrinter $printer)
     {
-        return view('payments.ticket', $this->datosRecibo($massDeletionId, $printer) + [
+        $datos = $this->datosRecibo($massDeletionId, $printer);
+        if ($request->filled('mora_acumulada')) {
+            $datos['t'] = $printer->soloMoraAcumulada(MassDeletion::findOrFail($massDeletionId), (int) $request->query('mora_acumulada'), $datos['t']);
+        }
+
+        return view('payments.ticket', $datos + [
             'publico' => true,
         ]);
     }

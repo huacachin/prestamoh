@@ -17,6 +17,7 @@ use App\Support\MoraExonerada;
 use App\Support\RecibosCuota;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\URL;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
@@ -153,12 +154,40 @@ class CobrarMoraAcumuladaTest extends TestCase
         $this->assertCount(1, $recibos[$this->cuota(2)->id]);
         $recibo = $recibos[$this->cuota(2)->id][0];
         $this->assertSame([$cobro->id, '13/11/2026', 4.30], [$recibo['lote'], $recibo['fecha'], $recibo['monto']]);
-        $this->assertStringContainsString("/recibo/{$cobro->id}?signature=", $recibo['ver']);
+        $this->assertStringContainsString("/recibo/{$cobro->id}?mora_acumulada={$this->cuota(2)->id}&signature=", $recibo['ver']);
 
         // Un solo botón, en la pantalla de cobro y en el cronograma del crédito.
-        $boton = 'Ver recibo de la mora acumulada: S/ 4.30 cobrada el 13/11/2026';
+        $boton = "Mora acumulada de esta cuota: S/ 4.30, cobrada el 13/11/2026 (recibo #{$cobro->id})";
         $this->assertSame(1, substr_count(Livewire::test(Create::class, ['creditId' => $this->credit->id])->html(), $boton));
         $this->assertSame(1, substr_count(Livewire::test(Schedule::class, ['id' => $this->credit->id])->html(), $boton));
+    }
+
+    /**
+     * 27/11/2026 (Antony, 29397): el recibo del botón ámbar se abría entero, con las cuotas y moras que ese
+     * cobro pagó, en la fila de una cuota pagada semanas antes: "es como si el pago se hubiese realizado en
+     * esas fechas". Ahí sale solo la mora acumulada de esa cuota; el recibo completo sigue donde estaba.
+     */
+    public function test_el_boton_de_la_mora_acumulada_abre_el_recibo_con_solo_la_mora_de_esa_cuota(): void
+    {
+        $cobro = $this->cobrarMoraDeLaCuota2();
+        $numero = str_pad((string) $cobro->id, 6, '0', STR_PAD_LEFT);
+        $ver = RecibosCuota::moraAcumuladaPorCuota($this->credit)[$this->cuota(2)->id][0]['ver'];
+
+        $this->get($ver)->assertOk()
+            ->assertSeeInOrder(['RECIBO DE PAGO', "#{$numero}", 'MORA ACUMULADA', 'Mora acumulada cuota 2:', '4.30', 'TOTAL', 'S/ 4.30'])
+            ->assertSee("Forma parte del recibo #{$numero} (cobro total: S/ 129.46).")
+            ->assertDontSee('Cuotas:')
+            ->assertDontSee('Mora:')
+            ->assertDontSee('Saldo restante');
+
+        // El recibo completo no cambia.
+        $this->get(RecibosCuota::porCuota($this->credit)[$this->cuota(3)->id]['ver'])->assertOk()
+            ->assertSeeInOrder(['Mora:', 'Mora acum. cuota 2:', '4.30', 'TOTAL', 'S/ 129.46', 'Saldo restante'])
+            ->assertDontSee('Forma parte del recibo');
+
+        // La cuota va dentro de la firma: cambiarla a mano no abre nada, y una cuota sin mora acumulada en ese cobro no tiene recibo.
+        $this->get(str_replace("mora_acumulada={$this->cuota(2)->id}", "mora_acumulada={$this->cuota(1)->id}", $ver))->assertForbidden();
+        $this->get(URL::signedRoute('recibo.publico', ['massDeletionId' => $cobro->id, 'mora_acumulada' => $this->cuota(1)->id]))->assertNotFound();
     }
 
     public function test_revertir_el_cobro_devuelve_la_mora_a_acumulada_sin_reabrir_la_cuota(): void

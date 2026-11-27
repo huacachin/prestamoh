@@ -81,6 +81,10 @@ class RecibosCuota
      * (20/11, Antony, 29404: "he pagado una mora de 416.43, ¿dónde puedo visualizar ese pago?").
      * Una cuota puede tener varios: la mora acumulada se puede cobrar por partes.
      *
+     * 27/11/2026 (Antony, 29397): el enlace abre el recibo con SOLO la mora acumulada de esa cuota
+     * (parámetro firmado mora_acumulada = id de la cuota). El cobro entero confundía: aparecía en la
+     * fila de una cuota pagada semanas antes, como si ese día se hubieran pagado las demás.
+     *
      * @return array<int, list<array{lote: int, ver: string, fecha: string, monto: float}>> por installment_id
      */
     public static function moraAcumuladaPorCuota(Credit $credit): array
@@ -99,7 +103,7 @@ class RecibosCuota
         foreach ($filas as $fila) {
             $out[(int) $fila->installment_id][] = [
                 'lote' => (int) $fila->lote,
-                'ver' => URL::signedRoute('recibo.publico', ['massDeletionId' => $fila->lote]),
+                'ver' => URL::signedRoute('recibo.publico', ['massDeletionId' => $fila->lote, 'mora_acumulada' => (int) $fila->installment_id]),
                 'fecha' => $fila->fecha ? Carbon::parse($fila->fecha)->format('d/m/Y') : '',
                 'monto' => round((float) $fila->monto, 2),
             ];
