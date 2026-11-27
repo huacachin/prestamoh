@@ -20,7 +20,7 @@
                         <span class="d-none d-md-block">Clientes</span>
                     </a>
                 </li>
-                <li class="d-flex active"><span class="f-s-14">Editar #{{ $client->expediente ?? $clientId }}</span></li>
+                <li class="d-flex active"><span class="f-s-14">Expediente #{{ $client->expediente ?? $clientId }}</span></li>
             </ul>
         </div>
     </div>
