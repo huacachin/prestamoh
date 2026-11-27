@@ -8,6 +8,7 @@ use App\Models\Credit;
 use App\Models\CreditInstallment;
 use App\Models\Headquarter;
 use App\Models\User;
+use App\Models\Vehiculo;
 use App\Support\MoraExonerada;
 use App\Support\ResumenDeudaCredito;
 use Carbon\Carbon;
@@ -252,5 +253,46 @@ class ResumenDeudaCreditoTest extends TestCase
         $this->assertSame($credit->id, $ficha->get('resumen')['codigo']);
 
         $ficha->call('verResumen', $ajeno->id)->assertDispatched('errorAlert')->assertNotDispatched('resumen-credito-listo');
+    }
+
+    /**
+     * 27/11/2026 (Antony, ficha 61): "si ese préstamo tiene vehículos asignados también que se coloque". Van
+     * los vehículos DEL PRÉSTAMO (los que la ficha marca como suyos), no todos los del cliente, debajo de
+     * las fechas; con más de uno, numerados.
+     */
+    public function test_el_resumen_nombra_los_vehiculos_asignados_al_prestamo(): void
+    {
+        $client = $this->cliente();
+        $mensual = ['importe' => 16800, 'cuotas' => 1, 'tipo_planilla' => 3, 'interes' => 5, 'interes_total' => 840];
+        $credit = $this->credito($client, $mensual + ['fecha_prestamo' => '2026-10-23', 'fecha_vencimiento' => '2026-11-23']);
+        $this->cuota($credit, 1, '2026-11-23', 16800, 840);
+
+        $sinVehiculo = ResumenDeudaCredito::de($credit->fresh(), $client);
+        $this->assertSame([], $sinVehiculo['vehiculos']);
+        $this->assertStringNotContainsString('Vehículo', $sinVehiculo['texto']);
+
+        Vehiculo::create(['client_id' => $client->id, 'placa' => 'a2z714', 'marca' => 'Toyota', 'modelo' => 'Hiace', 'anio_modelo' => '2010', 'color' => 'Azul Oscuro Metalico']);
+        $r = ResumenDeudaCredito::de($credit->fresh(), $client);
+        $this->assertSame(['Placa A2Z714 · Toyota Hiace · 2010 · Azul Oscuro Metalico'], $r['vehiculos']);
+        $this->assertStringContainsString("Fecha de corte: 23/10/2026\nVehículo: Placa A2Z714 · Toyota Hiace · 2010 · Azul Oscuro Metalico\nCapital prestado: S/ 16,800.00\n", $r['texto']);
+        $this->assertSame($r['texto'], $r['texto_copia'], 'lo que se copia lleva la misma línea');
+
+        // Dos vehículos: numerados; el dato que falta (color) no deja un separador suelto.
+        Vehiculo::create(['client_id' => $client->id, 'placa' => 'M1Z757', 'marca' => 'Toyota', 'modelo' => 'Hiace Commuter', 'anio_modelo' => '2011']);
+        $this->assertStringContainsString(
+            "Vehículo 1: Placa A2Z714 · Toyota Hiace · 2010 · Azul Oscuro Metalico\nVehículo 2: Placa M1Z757 · Toyota Hiace Commuter · 2011\nCapital prestado: ",
+            ResumenDeudaCredito::de($credit->fresh(), $client)['texto']
+        );
+
+        // Otro préstamo del mismo cliente, creado después: esos vehículos no son suyos y su resumen no los lleva.
+        $this->travelTo(Carbon::parse('2026-11-20 10:00:00'));
+        $otro = $this->credito($client, $mensual + ['fecha_prestamo' => '2026-11-20', 'fecha_vencimiento' => '2026-12-20']);
+        $this->cuota($otro, 1, '2026-12-20', 16800, 840);
+        $this->assertSame([], ResumenDeudaCredito::de($otro->fresh(), $client)['vehiculos']);
+        $this->assertCount(2, ResumenDeudaCredito::de($credit->fresh(), $client)['vehiculos']);
+
+        // Cancelado: sin la línea.
+        $credit->update(['situacion' => 'Cancelado', 'fecha_cancelacion' => '2026-11-20']);
+        $this->assertStringNotContainsString('Vehículo', ResumenDeudaCredito::de($credit->fresh(), $client)['texto']);
     }
 }

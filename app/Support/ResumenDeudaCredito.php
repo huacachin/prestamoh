@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\Client;
 use App\Models\Credit;
 use App\Models\CreditInstallment;
+use App\Models\Vehiculo;
 use Carbon\Carbon;
 
 /**
@@ -24,11 +25,12 @@ use Carbon\Carbon;
  * Mora (todos los tipos, 23/10): la de CADA cuota vencida, como el modal
  * "elegir cuotas" del cobro, y su suma; Total con mora = total sin mora + esa
  * suma. La mora acumulada de cuotas ya pagadas se muestra aparte (informativa).
+ * Vehículos (27/11): los que el préstamo tiene asignados, debajo de las fechas.
  */
 final class ResumenDeudaCredito
 {
     /**
-     * @return array{codigo: int, nombre: string, fecha: string, fecha_corte: string, mensual: bool, capital: float, capital_pendiente: float, capital_amortizado: float, interes_pendiente: float, interes_pct: string, interes: float, interes_diario: float, retraso_meses: int, retraso_dias: int, retraso_texto: string, monto_retraso: float, monto_meses: float, monto_dias: float, mora_cuotas: list<array{cuota: int, dias: int, por_dia: float, monto: float}>, mora_dias: int, mora: float, mora_acumulada: array{dias: int, monto: float}, total: float, total_con_mora: float, cancelado: ?string, texto: string, texto_copia: string}
+     * @return array{codigo: int, nombre: string, fecha: string, fecha_corte: string, mensual: bool, capital: float, capital_pendiente: float, capital_amortizado: float, interes_pendiente: float, interes_pct: string, interes: float, interes_diario: float, retraso_meses: int, retraso_dias: int, retraso_texto: string, monto_retraso: float, monto_meses: float, monto_dias: float, mora_cuotas: list<array{cuota: int, dias: int, por_dia: float, monto: float}>, mora_dias: int, mora: float, mora_acumulada: array{dias: int, monto: float}, vehiculos: list<string>, total: float, total_con_mora: float, cancelado: ?string, texto: string, texto_copia: string}
      */
     public static function de(Credit $credit, Client $client, ?Carbon $hoy = null): array
     {
@@ -131,6 +133,7 @@ final class ResumenDeudaCredito
             'mora_dias' => $moraDias,
             'mora' => $mora,
             'mora_acumulada' => $acumulada,
+            'vehiculos' => self::vehiculosDe($credit),
             'total' => $total,
             'total_con_mora' => $cancelado ? 0.0 : round($total + $mora, 2),
             'cancelado' => $cancelado ? ($credit->fecha_cancelacion ? Carbon::parse($credit->fecha_cancelacion)->format('d/m/Y') : 'sí') : null,
@@ -155,8 +158,13 @@ final class ResumenDeudaCredito
             $d['nombre'],
             'Fecha del crédito: '.$d['fecha'],
             'Fecha de corte: '.$d['fecha_corte'],
-            'Capital prestado: '.$s($d['capital']),
         ];
+        // Los vehículos del préstamo; con más de uno van numerados, una línea cada uno.
+        $vehiculos = $d['vehiculos'] ?? [];
+        foreach ($vehiculos as $i => $vehiculo) {
+            $lineas[] = 'Vehículo'.(count($vehiculos) > 1 ? ' '.($i + 1) : '').': '.$vehiculo;
+        }
+        $lineas[] = 'Capital prestado: '.$s($d['capital']);
         if ($d['cancelado'] === null && $d['capital_pendiente'] < $d['capital']) {
             $lineas[] = 'Capital amortizado: '.$s($d['capital_amortizado']);
             $lineas[] = 'Capital pendiente: '.$s($d['capital_pendiente']);
@@ -205,6 +213,36 @@ final class ResumenDeudaCredito
         }
 
         return implode("\n", $lineas);
+    }
+
+    /**
+     * Los vehículos que el préstamo tiene asignados (27/11/2026, Antony: "si ese préstamo tiene vehículos
+     * asignados también que se coloque"), cada uno en una línea: "Placa A2Z714 · Toyota Hiace · 2010 · Azul".
+     * Son los mismos que la ficha marca como "de este préstamo" (RutaExpediente): los registrados para él,
+     * los que nombra su contrato y los que se volvieron a prendar. Esa asignación solo existe para los
+     * préstamos activos; un cancelado o una refinanciación no llevan la línea.
+     *
+     * @return list<string>
+     */
+    private static function vehiculosDe(Credit $credit): array
+    {
+        if ($credit->situacion !== 'Activo') {
+            return [];
+        }
+        $ruta = RutaExpediente::vehiculosDelPrestamo((int) $credit->client_id, (int) $credit->id);
+        $suyos = array_keys(array_filter($ruta['vehiculos'], fn (array $vehiculo): bool => $vehiculo['del_prestamo']));
+        if ($ruta['credito'] !== (int) $credit->id || $suyos === []) {
+            return [];
+        }
+
+        return Vehiculo::whereKey($suyos)->orderBy('id')->get()
+            ->map(fn (Vehiculo $vehiculo): string => implode(' · ', array_filter([
+                trim((string) $vehiculo->placa) !== '' ? 'Placa '.mb_strtoupper(trim((string) $vehiculo->placa)) : '',
+                trim($vehiculo->marca.' '.$vehiculo->modelo),
+                trim((string) $vehiculo->anio_modelo),
+                trim((string) $vehiculo->color),
+            ], fn (string $dato): bool => $dato !== '')))
+            ->filter()->values()->all();
     }
 
     /**
