@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\Cash\CreateIncome;
+use App\Livewire\Cash\EditIncome;
 use App\Livewire\Cash\Incomes;
 use App\Models\Concept;
 use App\Models\Headquarter;
@@ -127,5 +128,51 @@ class IngresosFilaYMontosTest extends TestCase
             ->assertSeeHtml('select2-simple')
             ->assertDontSeeHtml('select2-tags')
             ->assertSeeHtml('<option value="Diario">Diario</option>');
+    }
+
+    /**
+     * 27/11/2026 (Antony): "el campo A que colocamos en ingresos nuevo también debe de ir en el editar". El
+     * tipo del ingreso no se cambia al editar: uno "Otros" ofrece los motivos ya usados y deja escribir uno
+     * nuevo; uno "Fijos", los conceptos. Antes era siempre la lista de conceptos, y en un "Otros" salía vacía.
+     */
+    public function test_al_editar_el_campo_a_es_la_misma_lista_con_buscador(): void
+    {
+        $this->mundo();
+        $this->travelTo('2026-11-27 10:00:00');
+        $this->ingreso('Banco', 'Yape', 20, '2026-09-20');
+        $otro = $this->ingreso('I.D', 'x', 15, '2026-11-20');
+        $viejo = $this->ingreso('Taxivan', 'viejo', 30, '2020-01-10');
+        $fijo = $this->ingreso('Diario', 'fijo', 5, '2026-11-02', 1, ['modo' => 'Fijos']);
+        $sinConcepto = $this->ingreso('Sunarp', 'ya no existe', 15, '2026-11-03', 1, ['modo' => 'Fijos']);
+
+        // "Otros": los motivos ya usados, con buscador, y uno nuevo se escribe en el mismo cuadro.
+        $comp = Livewire::test(EditIncome::class, ['id' => $otro->id]);
+        $this->assertSame(['I.D', 'Banco'], $comp->viewData('opcionesA'));
+        $comp->assertSeeHtml('select2-tags')->assertDontSeeHtml('select2-simple')
+            ->assertSeeHtml('<option value="Banco">Banco</option>')->assertDontSeeHtml('<option value="Diario">');
+        $comp->set('reason', 'Devolución')->call('update')->assertHasNoErrors()->assertRedirect(route('cash.incomes'));
+        $this->assertSame('Devolución', $otro->fresh()->reason);
+
+        // El motivo de un ingreso antiguo, fuera de los dos años, sigue puesto en su cuadro.
+        $comp = Livewire::test(EditIncome::class, ['id' => $viejo->id]);
+        $this->assertSame(['Taxivan', 'Devolución', 'Banco'], $comp->viewData('opcionesA'));
+
+        // El mismo motivo con otras mayúsculas o espacios se guarda como ya está en la lista…
+        $comp->set('reason', ' banco ')->call('update')->assertHasNoErrors();
+        $this->assertSame('Banco', $viejo->fresh()->reason);
+        // …salvo que el ingreso editado sea el único que lo usa: ahí se le corrige la escritura.
+        Livewire::test(EditIncome::class, ['id' => $otro->id])->set('reason', 'DEVOLUCIÓN')->call('update')->assertHasNoErrors();
+        $this->assertSame('DEVOLUCIÓN', $otro->fresh()->reason);
+
+        // Sin motivo no se guarda.
+        Livewire::test(EditIncome::class, ['id' => $otro->id])->set('reason', '')->call('update')->assertHasErrors(['reason' => 'required']);
+
+        // "Fijos": los conceptos de Configuración, con buscador y sin motivos libres.
+        $comp = Livewire::test(EditIncome::class, ['id' => $fijo->id]);
+        $this->assertSame(['Diario'], $comp->viewData('opcionesA'));
+        $comp->assertSeeHtml('select2-simple')->assertDontSeeHtml('select2-tags');
+
+        // Un concepto que ya no está activo sigue puesto en el cuadro del ingreso que lo tiene.
+        $this->assertSame(['Sunarp', 'Diario'], Livewire::test(EditIncome::class, ['id' => $sinConcepto->id])->viewData('opcionesA'));
     }
 }

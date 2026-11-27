@@ -46,14 +46,18 @@
                         <div class="col-md-3">
                             <div class="mb-3">
                                 <label class="form-label">A (*)</label>
-                                <select class="form-select form-select-sm @error('reason') is-invalid @enderror"
-                                        wire:model.defer="reason">
-                                    <option value="">-- Seleccionar --</option>
-                                    @foreach($concepts as $concept)
-                                        <option value="{{ $concept->name }}">{{ $concept->name }}</option>
+                                {{-- 27/11 (Antony: "el campo A que colocamos en ingresos nuevo también debe de ir en el editar"):
+                                     lista con buscador (select2). En un ingreso "Otros" trae los motivos ya usados y deja
+                                     escribir uno nuevo; en uno "Fijos", los conceptos de Configuración, que no se crean aquí. --}}
+                                <select class="form-select form-select-sm {{ $motivoLibre ? 'select2-tags' : 'select2-simple' }} @error('reason') is-invalid @enderror"
+                                        wire:model.defer="reason" name="reason"
+                                        data-placeholder="{{ $motivoLibre ? 'Busca o escribe el motivo' : '-- Seleccionar --' }}">
+                                    <option value=""></option>
+                                    @foreach($opcionesA as $opcion)
+                                        <option value="{{ $opcion }}">{{ $opcion }}</option>
                                     @endforeach
                                 </select>
-                                @error('reason') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                                @error('reason') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                             </div>
                         </div>
 

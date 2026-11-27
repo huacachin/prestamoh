@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Cash;
 
+use App\Livewire\Cash\Concerns\ConMotivosDeIngreso;
 use App\Livewire\Cash\Concerns\SavesIncomeAttachments;
 use App\Models\Concept;
 use App\Models\Income;
@@ -17,6 +18,7 @@ use Livewire\Component;
 class EditIncome extends Component
 {
     use ConCapturaDeAuditoria;
+    use ConMotivosDeIngreso;
     use ConReglasDeEliminacion;
     use ConSubidaDeArchivos;
     use SavesIncomeAttachments;
@@ -76,6 +78,7 @@ class EditIncome extends Component
     ];
 
     protected $messages = [
+        'reason.required' => 'Indique el motivo (campo "A").',
         'files.*.image' => 'Cada archivo debe ser una imagen.',
         'files.*.mimes' => 'Formatos válidos: JPG, PNG, GIF o WebP.',
         'files.*.max' => 'Cada imagen debe pesar máximo 10 MB.',
@@ -112,6 +115,11 @@ class EditIncome extends Component
     public function update(): void
     {
         $this->autorizar();
+
+        // "i.d" o " I.D " son el motivo "I.D" que ya está en la lista: se guarda con esa misma escritura.
+        if ($this->motivoLibre()) {
+            $this->reason = $this->motivoComoYaSeUso($this->reason, $this->incomeId);
+        }
 
         try {
             $this->validate();
@@ -175,13 +183,39 @@ class EditIncome extends Component
         $this->redirectRoute('cash.incomes');
     }
 
+    /** Un ingreso "Otros" lleva un motivo libre; el resto, un concepto de Configuración. El tipo no se cambia al editar. */
+    private function motivoLibre(): bool
+    {
+        return $this->income->modo === 'Otros';
+    }
+
+    /**
+     * Lo que ofrece el campo "A", igual que en el alta (27/11/2026, Antony: "también debe de ir en el
+     * editar"): en "Otros", los motivos ya usados (y lo que se escriba nuevo); en "Fijos", los conceptos
+     * activos. El motivo que el ingreso ya tiene va siempre en la lista, aunque su concepto se haya
+     * desactivado: si no, el cuadro saldría vacío con un valor guardado.
+     *
+     * @return list<string>
+     */
+    public function opcionesDeA(): array
+    {
+        if ($this->motivoLibre()) {
+            return $this->motivosDeOtros();
+        }
+
+        $conceptos = Concept::where('type', 'ingreso')->where('status', 'active')->orderBy('name')->pluck('name')->all();
+        if (trim($this->reason) !== '' && ! in_array($this->reason, $conceptos, true)) {
+            array_unshift($conceptos, $this->reason);
+        }
+
+        return $conceptos;
+    }
+
     public function render()
     {
-        $concepts = Concept::where('type', 'ingreso')
-            ->where('status', 'active')
-            ->orderBy('name')
-            ->get();
-
-        return view('livewire.cash.edit-income', compact('concepts'));
+        return view('livewire.cash.edit-income', [
+            'motivoLibre' => $this->motivoLibre(),
+            'opcionesA' => $this->opcionesDeA(),
+        ]);
     }
 }
